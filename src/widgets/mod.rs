@@ -24,7 +24,7 @@ impl<T> ScrollBuffer<T> {
     }
 
     fn is_at_end(&self) -> bool {
-        self.pos == self.entries.len() - self.height
+        self.pos == self.entries.len().saturating_sub(self.height)
     }
 
     pub fn lines(&mut self) -> &[T] {

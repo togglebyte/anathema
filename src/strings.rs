@@ -16,7 +16,7 @@ fn split_to_len(line: &str, max_width: usize) -> (&str, &str) {
 
     let split_pos = &line[..index]
         .rfind(char::is_whitespace)
-        .unwrap_or(max_width);
+        .unwrap_or(index);
 
     let (lhs, rhs) = line.split_at(*split_pos);
     (lhs, rhs)
