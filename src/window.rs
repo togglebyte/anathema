@@ -108,6 +108,22 @@ impl<T> Window<T> {
         let res = self.inner.mv(pos.y, pos.x);
         panerr!(res, Error::Erase);
     }
+
+    pub fn border(&self) {
+    }
+
+    pub fn border_thin(&self) {
+        self.inner.border(
+            '│', // left_side: T,
+            '│', // right_side: T,
+            '─', // top_side: T,
+            '─', // bottom_side: T,
+            '┌', // top_left_corner: T,
+            '┐', //top_right_corner: T,
+            '└', //bottom_left_corner: T,
+            '┘', //bottom_right_corner: T
+        );
+    }
 }
 
 // -----------------------------------------------------------------------------
