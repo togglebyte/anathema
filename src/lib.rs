@@ -7,7 +7,7 @@ mod strings;
 pub use colors::{Color, Colors, Pair};
 pub use errors::{Error, Result};
 pub use pancurses::{Attributes, Input};
-pub use window::{Cursor, Window};
+pub use window::{Cursor, Window, Sub, Main};
 pub use widgets::ScrollBuffer;
 pub use widgets::lines::{Line, Lines, Instruction};
 pub use strings::split;

@@ -35,7 +35,6 @@ pub struct Window<T> {
 impl<T> Window<T> {
     pub fn size(&self) -> Size {
         let (y, x) = self.inner.get_max_yx();
-
         Size { width: x, height: y }
     }
 
@@ -68,11 +67,13 @@ impl<T> Window<T> {
         panerr!(res, Error::Print(s.as_ref().into()));
     }
 
+    /// Draw what's in the virtual buffer to the screen
     pub fn refresh(&self) -> Result<()> {
         let res = self.inner.refresh();
         panerr!(res, Error::Refresh);
     }
 
+    /// Clear the virtual buffer
     pub fn erase(&self) -> Result<()> {
         let res = self.inner.erase();
         panerr!(res, Error::Erase);
