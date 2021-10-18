@@ -1,4 +1,7 @@
 use std::mem;
+
+use unicode_width::UnicodeWidthStr;
+
 use crate::split;
 
 // -----------------------------------------------------------------------------
@@ -15,7 +18,7 @@ pub enum Instruction {
 impl Instruction {
     fn len(&self) -> usize {
         match self {
-            Instruction::Line(s) => s.len(),
+            Instruction::Line(s) => s.width(),
             Instruction::Pad(size) => *size,
             Instruction::Color(_) => 0,
             Instruction::Reset => 0,
@@ -42,7 +45,7 @@ impl Line {
     pub fn push(&mut self, inst: Instruction) {
         use Instruction::*;
         self.len += match &inst {
-            Line(s) => s.len(),
+            Line(s) => s.width(),
             Pad(size) => *size,
             _ => 0
         };

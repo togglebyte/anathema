@@ -26,7 +26,7 @@ impl<T> ScrollBuffer<T> {
     }
 
     fn is_at_end(&self) -> bool {
-        self.pos == self.entries.len() - self.height
+        self.pos == self.entries.len().saturating_sub(self.height)
     }
 
     /// Get the lines of the buffer if the buffer is `dirty`,
