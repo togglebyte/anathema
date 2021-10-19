@@ -44,10 +44,24 @@ impl Pos {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
+
+    pub fn abs(self) -> Self {
+        Pos::new(self.x.abs(), self.y.abs())
+    }
 }
 
 impl From<(i32, i32)> for Pos {
     fn from((x, y): (i32, i32)) -> Self {
         Self { x, y }
+    }
+}
+
+impl std::ops::Sub for Pos {
+    type Output = Pos;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
+        self
     }
 }

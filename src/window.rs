@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::time::Duration;
 
 use pancurses::Window as PanWindow;
-use pancurses::{curs_set, endwin, initscr, napms, noraw, raw, start_color};
+use pancurses::{curs_set, endwin, initscr, napms, noraw, raw, start_color, ACS_VLINE, ACS_HLINE};
 
 use super::{panerr, Attributes, Error, Input, Pair, Pos, Result, Size};
 
@@ -84,6 +84,11 @@ impl<T> Window<T> {
         panerr!(res, Error::AddChar(c));
     }
 
+    pub fn add_char_at(&self, pos: Pos, c: char) -> Result<()> {
+        let res = self.inner.mvaddch(pos.y, pos.x, c);
+        panerr!(res, Error::MoveAddChar(c, pos));
+    }
+
     pub fn enable_scroll(&self) -> Result<()> {
         let res = self.inner.scrollok(true);
         panerr!(res, Error::EnableScrolling);
@@ -110,7 +115,8 @@ impl<T> Window<T> {
         panerr!(res, Error::Erase);
     }
 
-    pub fn border(&self) {
+    pub fn draw_box(&self) {
+        self.inner.draw_box(ACS_VLINE(), ACS_HLINE());
     }
 
     pub fn border_thin(&self) {

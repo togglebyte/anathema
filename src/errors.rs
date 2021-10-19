@@ -1,4 +1,4 @@
-use super::Cursor;
+use super::{Cursor, Pos};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -22,6 +22,8 @@ pub enum Error {
     Erase,
     #[error("failed to add char: {0:?}")]
     AddChar(char),
+    #[error("failed to move and add char: {0:?} | {1:?}")]
+    MoveAddChar(char, Pos),
     #[error("failed to enable scrolling")]
     EnableScrolling,
     #[error("failed to disable scrolling")]
