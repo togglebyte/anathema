@@ -101,16 +101,33 @@ impl Lines {
     /// Push a string which will in turn be convereted into multiple lines
     /// that fits the given width
     pub fn push_str(&mut self, s: &str) {
-        split(s, self.max_width, self.current_width)
-            .into_iter()
-            .for_each(|line| self.push(Instruction::String(line.to_owned())));
+        let mut lines = split(s, self.max_width, self.current_width);
+        
+        // If the there are more than one line, the 
+        // current line should be pushed into lines,
+        // however this should only happen if there are more 
+        // than one line
+        let last = lines.pop();
+        let mut lines = lines.into_iter();
+
+        if let Some(line) = lines.next() {
+            self.push(Instruction::String(line.to_owned()), false);
+        }
+
+        for line in lines {
+            self.push(Instruction::String(line.to_owned()), true);
+        }
+
+        if let Some(line) = last {
+            self.push(Instruction::String(line.to_owned()), false);
+        }
     }
 
-    pub fn push(&mut self, inst: Instruction) {
+    pub fn push(&mut self, inst: Instruction, force_new: bool) {
         // If the current line can't fit the next instruction,
         // insert the current_line into `lines` and create a new
         // `current_line`.
-        if self.current_width + inst.len() > self.max_width {
+        if self.current_width + inst.len() > self.max_width || force_new {
             // Shelve the current line and start a new one
 
             // Copy any styling from previous line to continue styling the new line.
@@ -147,5 +164,22 @@ mod test {
         let expected = Instruction::String("12345".into());
         let actual = &lines[0].instructions()[0];
         assert_eq!(&expected, actual);
+    }
+
+    #[test]
+    fn test_three_lines() {
+        let width = 4;
+        let input = "123456789";
+        let mut lines = Lines::new(width);
+        lines.push_str(input);
+        let lines = lines.complete();
+        let expected = 3;
+
+        for line in lines {
+            eprintln!("{:?}", line);
+        }
+
+        // let actual = lines.len();
+        // assert_eq!(expected, actual);
     }
 }
