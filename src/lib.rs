@@ -45,6 +45,10 @@ impl Pos {
         Self { x, y }
     }
 
+    pub fn zero() -> Self {
+        Self::new(0, 0)
+    }
+
     pub fn abs(self) -> Self {
         Pos::new(self.x.abs(), self.y.abs())
     }

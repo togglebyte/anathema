@@ -16,6 +16,8 @@ pub enum Error {
     CreateWindow,
     #[error("failed to print {0:?}")]
     Print(String),
+    #[error("failed to print {0:?} at {1:?}")]
+    PrintAt(String, Pos),
     #[error("failed to refresh window")]
     Refresh,
     #[error("failed to perform erase on window")]
@@ -24,6 +26,8 @@ pub enum Error {
     AddChar(char),
     #[error("failed to move and add char: {0:?} | {1:?}")]
     MoveAddChar(char, Pos),
+    #[error("failed to move {0:?}")]
+    MoveCursor(Pos),
     #[error("failed to enable scrolling")]
     EnableScrolling,
     #[error("failed to disable scrolling")]
@@ -44,4 +48,6 @@ pub enum Error {
     InvalidColorString(String),
     #[error("failed to set scroll region")]
     SetScrollRegion,
+    #[error("failed to draw a horizontal line")]
+    HorizontalLine,
 }

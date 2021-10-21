@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::time::Duration;
 
 use pancurses::Window as PanWindow;
-use pancurses::{curs_set, endwin, initscr, napms, noraw, raw, start_color, ACS_VLINE, ACS_HLINE};
+use pancurses::{curs_set, endwin, ToChtype, initscr, napms, noraw, raw, start_color, ACS_VLINE, ACS_HLINE};
 
 use super::{panerr, Attributes, Error, Input, Pair, Pos, Result, Size};
 
@@ -67,6 +67,12 @@ impl<T> Window<T> {
         panerr!(res, Error::Print(s.as_ref().into()));
     }
 
+    /// Print a string at a position
+    pub fn print_at(&self, pos: Pos, s: impl AsRef<str>) -> Result<()> {
+        let res = self.inner.mvaddstr(pos.y, pos.x, s.as_ref());
+        panerr!(res, Error::PrintAt(s.as_ref().into(), pos));
+    }
+
     /// Draw what's in the virtual buffer to the screen
     pub fn refresh(&self) -> Result<()> {
         let res = self.inner.refresh();
@@ -112,7 +118,7 @@ impl<T> Window<T> {
     pub fn move_cursor(&self, pos: impl Into<Pos>) -> Result<()> {
         let pos = pos.into();
         let res = self.inner.mv(pos.y, pos.x);
-        panerr!(res, Error::Erase);
+        panerr!(res, Error::MoveCursor(pos));
     }
 
     pub fn draw_box(&self) {
@@ -130,6 +136,17 @@ impl<T> Window<T> {
             '└', //bottom_left_corner: T,
             '┘', //bottom_right_corner: T
         );
+    }
+
+    pub fn horizontal_line<C: ToChtype>(&self, c: C, len: i32) -> Result<()> {
+        let res = self.inner.hline(c, len);
+        panerr!(res, Error::HorizontalLine);
+    }
+
+    pub fn horizontal_line_at<C: ToChtype>(&self, pos: Pos, c: C, len: i32) -> Result<()> {
+        self.move_cursor(pos)?;
+        self.horizontal_line(c, len)?;
+        Ok(())
     }
 }
 

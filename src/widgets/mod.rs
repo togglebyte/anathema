@@ -98,4 +98,10 @@ impl<T> ScrollBuffer<T> {
         self.entries.clear();
         self.dirty = true;
     }
+
+    /// Force the buffer to be redrawn 
+    /// even if there are no changes
+    pub fn touch(&mut self) {
+        self.dirty = true;
+    }
 }

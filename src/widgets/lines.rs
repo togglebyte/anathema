@@ -7,9 +7,9 @@ use crate::split;
 // -----------------------------------------------------------------------------
 //     - Instructions -
 // -----------------------------------------------------------------------------
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
-    Line(String),
+    String(String),
     Color(u32),
     Pad(usize),
     Reset,
@@ -18,7 +18,7 @@ pub enum Instruction {
 impl Instruction {
     fn len(&self) -> usize {
         match self {
-            Instruction::Line(s) => s.width(),
+            Instruction::String(s) => s.width(),
             Instruction::Pad(size) => *size,
             Instruction::Color(_) => 0,
             Instruction::Reset => 0,
@@ -29,23 +29,24 @@ impl Instruction {
 // -----------------------------------------------------------------------------
 //     - Line -
 // -----------------------------------------------------------------------------
+#[derive(Debug, Clone)]
 pub struct Line {
     instructions: Vec<Instruction>,
-    len: usize,
+    width: usize,
 }
 
 impl Line {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
-            len: 0,
+            width: 0,
         }
     }
 
     pub fn push(&mut self, inst: Instruction) {
         use Instruction::*;
-        self.len += match &inst {
-            Line(s) => s.width(),
+        self.width += match &inst {
+            String(s) => s.width(),
             Pad(size) => *size,
             _ => 0
         };
@@ -57,11 +58,15 @@ impl Line {
         &self.instructions
     }
 
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
     fn styles(&self) -> impl Iterator<Item=&Instruction> {
         self.instructions.iter().filter(|i| match i {
             Instruction::Color(_) => true,
             Instruction::Reset => true,
-            Instruction::Line(_) => false,
+            Instruction::String(_) => false,
             Instruction::Pad(_) => false,
         })
     }
@@ -93,10 +98,12 @@ impl Lines {
         }
     }
 
+    /// Push a string which will in turn be convereted into multiple lines
+    /// that fits the given width
     pub fn push_str(&mut self, s: &str) {
         split(s, self.max_width, self.current_width)
             .into_iter()
-            .for_each(|line| self.push(Instruction::Line(line.to_owned())));
+            .for_each(|line| self.push(Instruction::String(line.to_owned())));
     }
 
     pub fn push(&mut self, inst: Instruction) {
@@ -125,3 +132,20 @@ impl Lines {
     }
 }
 
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn two_lines() {
+        let width = 5;
+        let input = "123456";
+        let mut lines = Lines::new(width);
+        lines.push_str(input);
+        let lines = lines.complete();
+        let expected = Instruction::String("12345".into());
+        let actual = &lines[0].instructions()[0];
+        assert_eq!(&expected, actual);
+    }
+}

@@ -5,8 +5,6 @@ use pancurses::{init_color, init_pair, COLOR_PAIR};
 
 const THRESHOLD: u8 = 30;
 
-const RESERVED_COUNT: i16 = 10;
-
 #[derive(Debug, Copy, Clone)]
 pub struct Pair(pub(crate) u32);
 
@@ -74,12 +72,13 @@ pub struct Colors {
     cache: HashMap<String, i16>,
     next_id: i16,
     max_colors: i16,
+    start_id: i16,
 }
 
 impl Colors {
-    pub fn new() -> Self {
-        let max_colors = i16::MAX - RESERVED_COUNT;
-        Self { cache: HashMap::new(), next_id: RESERVED_COUNT, max_colors }
+    pub fn new(start_id: i16) -> Self {
+        let max_colors = i16::MAX - start_id;
+        Self { cache: HashMap::new(), next_id: start_id, max_colors, start_id }
     }
 
     pub fn from_hex(&mut self, color: impl AsRef<str>) -> Result<Color> {
@@ -108,12 +107,12 @@ impl Colors {
             let g = g as i16;
             let b = b as i16;
 
-            self.init_color(r, g, b)?;
+            Self::init_color(self.next_id, r, g, b)?;
             self.cache.insert(color.into(), self.next_id);
 
             match self.next_id == self.max_colors {
                 true => {
-                    self.next_id = RESERVED_COUNT;
+                    self.next_id = self.start_id;
                     // TODO: remove previous colour with this id from the cache
                 }
                 false => self.next_id += 1,
@@ -125,8 +124,8 @@ impl Colors {
         Ok(color)
     }
 
-    fn init_color(&self, r: i16, g: i16, b: i16) -> Result<()> {
-        let res = init_color(self.next_id, r, g, b);
+    pub fn init_color(next_id: i16, r: i16, g: i16, b: i16) -> Result<()> {
+        let res = init_color(next_id, r, g, b);
         panerr!(res, Error::InitColor);
     }
 

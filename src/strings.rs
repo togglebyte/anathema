@@ -51,6 +51,10 @@ pub fn split(input: &str, max_width: usize, mut starting_offset: usize) -> Vec<&
         .map(|line| split_lines(line, max_width, &mut starting_offset))
         .flatten()
         .collect::<Vec<_>>();
+
+    let lark = lines;
+
+    let lines = lark;
     lines
 }
 
@@ -62,17 +66,25 @@ mod test {
     fn test_split_nospace() {
         let line = "hello";
         let max_width = 4;
-        let result = lines(line, max_width);
+        let result = split(line, max_width, 0);
 
         assert_eq!(result.len(), 2);
     }
 
     #[test]
     fn test_split_prefix_space() {
-        let line = "   hello";
+        // Without an offset the first line "hello" fits
+        // a width of five...
+        let line = "hello";
         let max_width = 5;
-        let result = lines(line, max_width);
+        let result = split(line, max_width, 0);
+        assert_eq!(result.len(), 1);
 
+        // ... however with an offset "hello" now spans
+        // two lines
+        let line = "hello";
+        let max_width = 5;
+        let result = split(line, max_width, 1);
         assert_eq!(result.len(), 2);
     }
 }
