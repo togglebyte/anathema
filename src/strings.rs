@@ -47,7 +47,7 @@ fn split_lines<'lines, 'offset>(mut line: &'lines str, max_width: usize, startin
 /// also break on newline chars.
 pub fn split(input: &str, max_width: usize, mut starting_offset: usize) -> Vec<&str> {
     let lines = input
-        .lines()
+        .split_inclusive('\n')
         .map(|line| split_lines(line, max_width, &mut starting_offset))
         .flatten()
         .collect::<Vec<_>>();

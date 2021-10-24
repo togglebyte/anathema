@@ -1,5 +1,3 @@
-use std::mem;
-
 use unicode_width::UnicodeWidthStr;
 
 use crate::split;
@@ -8,14 +6,14 @@ use crate::split;
 //     - Instructions -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone, PartialEq)]
-pub enum Instruction {
-    String(String),
+pub enum Instruction<'s> {
+    String(&'s str),
     Color(u32),
     Pad(usize),
     Reset,
 }
 
-impl Instruction {
+impl<'s> Instruction<'s> {
     fn len(&self) -> usize {
         match self {
             Instruction::String(s) => s.width(),
@@ -30,12 +28,12 @@ impl Instruction {
 //     - Line -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone)]
-pub struct Line {
-    instructions: Vec<Instruction>,
+pub struct Line<'s> {
+    instructions: Vec<Instruction<'s>>,
     width: usize,
 }
 
-impl Line {
+impl<'s> Line<'s> {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
@@ -43,7 +41,7 @@ impl Line {
         }
     }
 
-    pub fn push(&mut self, inst: Instruction) {
+    pub fn push(&mut self, inst: Instruction<'s>) {
         use Instruction::*;
         self.width += match &inst {
             String(s) => s.width(),
@@ -54,7 +52,7 @@ impl Line {
         self.instructions.push(inst);
     }
 
-    pub fn instructions(&self) -> &[Instruction] {
+    pub fn instructions(&self) -> &[Instruction<'s>] {
         &self.instructions
     }
 
@@ -62,7 +60,7 @@ impl Line {
         self.width
     }
 
-    fn styles(&self) -> impl Iterator<Item=&Instruction> {
+    fn styles(&self) -> impl Iterator<Item=&Instruction<'s>> {
         self.instructions.iter().filter(|i| match i {
             Instruction::Color(_) => true,
             Instruction::Reset => true,
@@ -72,8 +70,8 @@ impl Line {
     }
 }
 
-impl Default for Line {
-    fn default() -> Line {
+impl<'s> Default for Line<'s> {
+    fn default() -> Line<'s> {
         Line::new()
     }
 }
@@ -81,71 +79,82 @@ impl Default for Line {
 // -----------------------------------------------------------------------------
 //     - Lines -
 // -----------------------------------------------------------------------------
-pub struct Lines {
-    lines: Vec<Line>,
-    current_line: Line,
+pub struct Lines<'s> {
+    lines: Vec<Line<'s>>,
     max_width: usize,
     current_width: usize,
+    start_newline: bool,
 }
 
-impl Lines {
+impl<'s> Lines<'s> {
     pub fn new(max_width: usize,) -> Self {
         Self {
             lines: Vec::new(),
-            current_line: Line::new(),
             max_width,
             current_width: 0,
+            start_newline: false,
         }
+    }
+
+    fn current_line(&mut self) -> &mut Line<'s> {
+        if self.lines.is_empty() {
+            self.lines.push(Line::new());
+        }
+        self.lines.last_mut().expect("well this is a surprise")
     }
 
     /// Push a string which will in turn be convereted into multiple lines
     /// that fits the given width
-    pub fn push_str(&mut self, s: &str) {
-        let mut lines = split(s, self.max_width, self.current_width);
-        
-        // If the there are more than one line, the 
-        // current line should be pushed into lines,
-        // however this should only happen if there are more 
-        // than one line
-        let last = lines.pop();
-        let mut lines = lines.into_iter();
-
-        if let Some(line) = lines.next() {
-            self.push(Instruction::String(line.to_owned()), false);
-        }
-
-        for line in lines {
-            self.push(Instruction::String(line.to_owned()), true);
-        }
-
-        if let Some(line) = last {
-            self.push(Instruction::String(line.to_owned()), false);
+    pub fn push_str(&mut self, s: &'s str) {
+        for line in split(s, self.max_width, self.current_width) {
+            self.push(Instruction::String(line));
         }
     }
-
-    pub fn push(&mut self, inst: Instruction, force_new: bool) {
+    
+    pub fn push(&mut self, inst: Instruction<'s>) {
         // If the current line can't fit the next instruction,
         // insert the current_line into `lines` and create a new
         // `current_line`.
-        if self.current_width + inst.len() > self.max_width || force_new {
+        if self.current_width + inst.len() > self.max_width || self.start_newline {
             // Shelve the current line and start a new one
 
             // Copy any styling from previous line to continue styling the new line.
             let mut current_line = Line::new();
-            self.current_line.styles().cloned().for_each(|s| current_line.push(s));
-
-            mem::swap(&mut current_line, &mut self.current_line);
+            self.current_line().styles().cloned().for_each(|s| current_line.push(s));
             self.lines.push(current_line);
+            
             self.current_width = 0;
+            self.start_newline = false;
         } 
 
+        if matches!(inst, Instruction::String(ref s) if s.ends_with('\n')) {
+            self.start_newline = true;
+        }
+
         self.current_width += inst.len();
-        self.current_line.push(inst);
+        self.current_line().push(inst);
     }
 
-    pub fn complete(mut self) -> Vec<Line> {
-        self.lines.push(mem::take(&mut self.current_line));
-        self.lines
+    pub fn lines(&self) -> &[Line] {
+        &self.lines
+    }
+
+    pub fn len(&self) -> usize {
+        self.lines.len()
+    }
+
+    pub fn resize(&mut self, new_max_width: usize) {
+        self.max_width = new_max_width;
+
+        let mut lines = Lines::new(new_max_width);
+
+        for line in self.lines.drain(..) {
+            for inst in line.instructions {
+                lines.push(inst);
+            }
+        }
+
+        *self = lines;
     }
 }
 
@@ -160,9 +169,8 @@ mod test {
         let input = "123456";
         let mut lines = Lines::new(width);
         lines.push_str(input);
-        let lines = lines.complete();
         let expected = Instruction::String("12345".into());
-        let actual = &lines[0].instructions()[0];
+        let actual = &lines.lines()[0].instructions()[0];
         assert_eq!(&expected, actual);
     }
 
@@ -172,14 +180,57 @@ mod test {
         let input = "123456789";
         let mut lines = Lines::new(width);
         lines.push_str(input);
-        let lines = lines.complete();
         let expected = 3;
 
-        for line in lines {
-            eprintln!("{:?}", line);
-        }
+        let actual = lines.len();
+        assert_eq!(expected, actual);
+    }
 
-        // let actual = lines.len();
-        // assert_eq!(expected, actual);
+    #[test]
+    fn resize() {
+        let width = 4;
+        let input = "123456789";
+        let mut lines = Lines::new(width);
+        lines.push_str(input);
+        lines.resize(5);
+        let expected = 2;
+        let actual = lines.len();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn resize_with_newlines() {
+        let width = 4;
+        let input = "1234\n5678\n9";
+        let mut lines = Lines::new(width);
+        lines.push_str(input);
+        lines.resize(5);
+        let expected = 3;
+        let actual = lines.len();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn push_and_split() {
+        let width = 4;
+        let input = "1234\n5678\n9";
+        let mut lines = Lines::new(width);
+        lines.push(Instruction::String(input));
+        lines.resize(5);
+        let expected = 3;
+        let actual = lines.len();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn styles_spans_multiplie_lines() {
+        let width = 1;
+        let input = "ab";
+        let mut lines = Lines::new(width);
+        lines.push(Instruction::Color(5));
+        lines.push(Instruction::String(input));
+
+        let second_line = &lines.lines()[1];
+        assert!(matches!(second_line.instructions()[0], Instruction::Color(5)));
     }
 }

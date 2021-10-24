@@ -11,7 +11,7 @@ pub struct ScrollBuffer<T> {
 }
 
 impl<T> ScrollBuffer<T> {
-    /// Create a new buffer witgh a given height an a max size.
+    /// Create a new buffer with a given height an a max size.
     pub fn new(height: usize, max_buffer: usize) -> Self {
         let mut entries = VecDeque::new();
         entries.make_contiguous();
@@ -103,5 +103,13 @@ impl<T> ScrollBuffer<T> {
     /// even if there are no changes
     pub fn touch(&mut self) {
         self.dirty = true;
+    }
+
+    pub fn pos(&mut self) -> usize {
+        self.pos
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 }

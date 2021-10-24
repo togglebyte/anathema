@@ -33,11 +33,13 @@ pub struct Window<T> {
 }
 
 impl<T> Window<T> {
+    /// Get the current size of the window
     pub fn size(&self) -> Size {
         let (y, x) = self.inner.get_max_yx();
         Size { width: x, height: y }
     }
 
+    /// Create a new child window at a given position with a given size
     pub fn new_window(&self, pos: Pos, size: Size) -> Result<Window<Sub>> {
         let inst = Window {
             inner: self.inner.subwin(size.height, size.width, pos.y, pos.x).map_err(|_| Error::CreateWindow)?,
@@ -46,6 +48,7 @@ impl<T> Window<T> {
         Ok(inst)
     }
 
+    /// Set an attribute
     pub fn set_attribute(&self, attribute: impl Into<u32>) -> Result<()> {
         let res = self.inner.attrset(attribute.into());
         panerr!(res, Error::AttributeSet);
