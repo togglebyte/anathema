@@ -110,8 +110,20 @@ impl<'s> Lines<'s> {
             self.push(Instruction::String(line));
         }
     }
+
+    pub fn pad(&mut self, pad: usize) {
+        self.push(Instruction::Pad(pad));
+    }
     
-    pub fn push(&mut self, inst: Instruction<'s>) {
+    pub fn color(&mut self, color: u32) {
+        self.push(Instruction::Color(color));
+    }
+
+    pub fn reset(&mut self) {
+        self.push(Instruction::Reset);
+    }
+    
+    fn push(&mut self, inst: Instruction<'s>) {
         // If the current line can't fit the next instruction,
         // insert the current_line into `lines` and create a new
         // `current_line`.
@@ -211,26 +223,23 @@ mod test {
     }
 
     #[test]
-    fn push_and_split() {
-        let width = 4;
-        let input = "1234\n5678\n9";
-        let mut lines = Lines::new(width);
-        lines.push(Instruction::String(input));
-        lines.resize(5);
-        let expected = 3;
-        let actual = lines.len();
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
     fn styles_spans_multiplie_lines() {
         let width = 1;
         let input = "ab";
         let mut lines = Lines::new(width);
         lines.push(Instruction::Color(5));
-        lines.push(Instruction::String(input));
+        lines.push_str(input);
 
         let second_line = &lines.lines()[1];
         assert!(matches!(second_line.instructions()[0], Instruction::Color(5)));
+
+        let s = &second_line.instructions()[1];
+
+        match s {
+            Instruction::String("b") => {}
+            _ => panic!("wrong wrong wrong")
+        }
+
+        
     }
 }
