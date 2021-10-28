@@ -6,14 +6,14 @@ use crate::split;
 //     - Instructions -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone, PartialEq)]
-pub enum Instruction<'s> {
-    String(&'s str),
+pub enum Instruction {
+    String(String),
     Color(u32),
     Pad(usize),
     Reset,
 }
 
-impl<'s> Instruction<'s> {
+impl Instruction {
     fn len(&self) -> usize {
         match self {
             Instruction::String(s) => s.width(),
@@ -28,31 +28,28 @@ impl<'s> Instruction<'s> {
 //     - Line -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone)]
-pub struct Line<'s> {
-    instructions: Vec<Instruction<'s>>,
+pub struct Line {
+    instructions: Vec<Instruction>,
     width: usize,
 }
 
-impl<'s> Line<'s> {
+impl Line {
     pub fn new() -> Self {
-        Self {
-            instructions: Vec::new(),
-            width: 0,
-        }
+        Self { instructions: Vec::new(), width: 0 }
     }
 
-    pub fn push(&mut self, inst: Instruction<'s>) {
+    fn push(&mut self, inst: Instruction) {
         use Instruction::*;
         self.width += match &inst {
             String(s) => s.width(),
             Pad(size) => *size,
-            _ => 0
+            _ => 0,
         };
 
         self.instructions.push(inst);
     }
 
-    pub fn instructions(&self) -> &[Instruction<'s>] {
+    pub fn instructions(&self) -> &[Instruction] {
         &self.instructions
     }
 
@@ -60,7 +57,7 @@ impl<'s> Line<'s> {
         self.width
     }
 
-    fn styles(&self) -> impl Iterator<Item=&Instruction<'s>> {
+    fn styles(&self) -> impl Iterator<Item = &Instruction> {
         self.instructions.iter().filter(|i| match i {
             Instruction::Color(_) => true,
             Instruction::Reset => true,
@@ -70,8 +67,8 @@ impl<'s> Line<'s> {
     }
 }
 
-impl<'s> Default for Line<'s> {
-    fn default() -> Line<'s> {
+impl Default for Line {
+    fn default() -> Line {
         Line::new()
     }
 }
@@ -79,24 +76,24 @@ impl<'s> Default for Line<'s> {
 // -----------------------------------------------------------------------------
 //     - Lines -
 // -----------------------------------------------------------------------------
-pub struct Lines<'s> {
-    lines: Vec<Line<'s>>,
+pub struct Lines {
+    lines: Vec<Line>,
     max_width: usize,
     current_width: usize,
     start_newline: bool,
 }
 
-impl<'s> Lines<'s> {
-    pub fn new(max_width: usize,) -> Self {
-        Self {
+impl Lines {
+    pub fn new(max_width: usize) -> Self {
+        Self { 
             lines: Vec::new(),
             max_width,
             current_width: 0,
-            start_newline: false,
+            start_newline: false 
         }
     }
 
-    fn current_line(&mut self) -> &mut Line<'s> {
+    fn current_line(&mut self) -> &mut Line {
         if self.lines.is_empty() {
             self.lines.push(Line::new());
         }
@@ -105,25 +102,28 @@ impl<'s> Lines<'s> {
 
     /// Push a string which will in turn be convereted into multiple lines
     /// that fits the given width
-    pub fn push_str(&mut self, s: &'s str) {
-        for line in split(s, self.max_width, self.current_width) {
-            self.push(Instruction::String(line));
+    pub fn push_str(&mut self, s: &str, keep_whitespace: bool) {
+        for line in split(s, self.max_width, self.current_width, keep_whitespace) {
+            self.push(Instruction::String(line.into()));
         }
     }
 
+    /// Pad a line with space
     pub fn pad(&mut self, pad: usize) {
         self.push(Instruction::Pad(pad));
     }
-    
+
+    /// Set a color
     pub fn color(&mut self, color: u32) {
         self.push(Instruction::Color(color));
     }
 
+    /// Reset the colors (set color to zero)
     pub fn reset(&mut self) {
         self.push(Instruction::Reset);
     }
-    
-    fn push(&mut self, inst: Instruction<'s>) {
+
+    fn push(&mut self, inst: Instruction) {
         // If the current line can't fit the next instruction,
         // insert the current_line into `lines` and create a new
         // `current_line`.
@@ -134,10 +134,10 @@ impl<'s> Lines<'s> {
             let mut current_line = Line::new();
             self.current_line().styles().cloned().for_each(|s| current_line.push(s));
             self.lines.push(current_line);
-            
+
             self.current_width = 0;
             self.start_newline = false;
-        } 
+        }
 
         if matches!(inst, Instruction::String(ref s) if s.ends_with('\n')) {
             self.start_newline = true;
@@ -147,10 +147,15 @@ impl<'s> Lines<'s> {
         self.current_line().push(inst);
     }
 
-    pub fn lines(&self) -> &[Line] {
-        &self.lines
+    pub fn iter(&self) -> impl Iterator<Item=&Line> {
+        self.lines.iter()
     }
 
+    pub fn drain(&mut self) -> std::vec::Drain<'_, Line> {
+        self.lines.drain(..)
+    }
+
+    /// Number of lines
     pub fn len(&self) -> usize {
         self.lines.len()
     }
@@ -160,16 +165,14 @@ impl<'s> Lines<'s> {
 
         let mut lines = Lines::new(new_max_width);
 
-        for line in self.lines.drain(..) {
-            for inst in line.instructions {
-                lines.push(inst);
-            }
-        }
+        self.lines
+            .drain(..)
+            .flat_map(|line| line.instructions)
+            .for_each(|instruction| lines.push(instruction));
 
         *self = lines;
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -180,9 +183,10 @@ mod test {
         let width = 5;
         let input = "123456";
         let mut lines = Lines::new(width);
-        lines.push_str(input);
+        lines.push_str(input, false);
+        let lines = lines.iter().collect::<Vec<&Line>>();
         let expected = Instruction::String("12345".into());
-        let actual = &lines.lines()[0].instructions()[0];
+        let actual = &lines[0].instructions()[0];
         assert_eq!(&expected, actual);
     }
 
@@ -191,10 +195,11 @@ mod test {
         let width = 4;
         let input = "123456789";
         let mut lines = Lines::new(width);
-        lines.push_str(input);
+        lines.push_str(input, false);
+        let lines = lines.iter();
         let expected = 3;
 
-        let actual = lines.len();
+        let actual = lines.count();
         assert_eq!(expected, actual);
     }
 
@@ -203,7 +208,7 @@ mod test {
         let width = 4;
         let input = "123456789";
         let mut lines = Lines::new(width);
-        lines.push_str(input);
+        lines.push_str(input, false);
         lines.resize(5);
         let expected = 2;
         let actual = lines.len();
@@ -215,7 +220,7 @@ mod test {
         let width = 4;
         let input = "1234\n5678\n9";
         let mut lines = Lines::new(width);
-        lines.push_str(input);
+        lines.push_str(input, false);
         lines.resize(5);
         let expected = 3;
         let actual = lines.len();
@@ -228,18 +233,30 @@ mod test {
         let input = "ab";
         let mut lines = Lines::new(width);
         lines.push(Instruction::Color(5));
-        lines.push_str(input);
+        lines.push_str(input, false);
 
-        let second_line = &lines.lines()[1];
+        let second_line = &lines.iter().collect::<Vec<_>>()[1];
         assert!(matches!(second_line.instructions()[0], Instruction::Color(5)));
 
         let s = &second_line.instructions()[1];
 
         match s {
-            Instruction::String("b") => {}
-            _ => panic!("wrong wrong wrong")
+            Instruction::String(s) if s == "b" => {}
+            _ => panic!("wrong wrong wrong"),
         }
+    }
 
-        
+    #[test]
+    fn split_lines_on_word_boundary() {
+        let line = r#"    let y = "this is a longer string that should have lots of wonderful spelling mistakes and what not in it and we have to make sure this spans multiple lines to see if it works";"#;
+        // let line = "     hello world";
+        // let max_width = 13;
+        let max_width = 125;
+        let mut lines = Lines::new(max_width);
+        lines.push_str(line, true);
+
+        for line in lines.iter() {
+            eprintln!("{:?}", line);
+        }
     }
 }

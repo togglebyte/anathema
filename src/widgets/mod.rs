@@ -22,7 +22,7 @@ impl<T> ScrollBuffer<T> {
     pub fn from_vec(entries: Vec<T>, height: usize, max_buffer: usize) -> Self {
         let mut entries: VecDeque<T> = entries.into();
         entries.make_contiguous();
-        Self { entries: entries.into(), height, pos: 0, max_buffer, dirty: true }
+        Self { entries, height, pos: 0, max_buffer, dirty: true }
     }
 
     fn is_at_end(&self) -> bool {

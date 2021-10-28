@@ -2,7 +2,8 @@ mod colors;
 mod errors;
 mod window;
 mod widgets;
-mod strings;
+// mod strings;
+mod strings2;
 
 pub use colors::{Color, Colors, Pair};
 pub use errors::{Error, Result};
@@ -10,7 +11,8 @@ pub use pancurses::{Attributes, Input};
 pub use window::{Cursor, Window, Sub, Main};
 pub use widgets::ScrollBuffer;
 pub use widgets::lines::{Line, Lines, Instruction};
-pub use strings::split;
+// pub use strings::split;
+pub use strings2::split;
 
 #[macro_export]
 macro_rules! panerr {

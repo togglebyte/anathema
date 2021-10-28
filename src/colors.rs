@@ -14,9 +14,9 @@ impl Pair {
     }
 }
 
-impl Into<u32> for Pair {
-    fn into(self) -> u32 {
-        self.0
+impl From<Pair> for u32 {
+    fn from(pair: Pair) -> Self {
+        pair.0
     }
 }
 
@@ -49,9 +49,9 @@ impl From<i16> for Color {
     }
 }
 
-impl Into<i16> for Color {
-    fn into(self) -> i16 {
-        match self {
+impl From<Color> for i16 {
+    fn from(c: Color) -> i16 {
+        match c {
             Color::Black => 0,
             Color::Red => 1,
             Color::Green => 2,
@@ -119,7 +119,7 @@ impl Colors {
             }
         }
 
-        let color = self.cache.get(color).map(|id| Color::from(*id)).ok_or(Error::NoColor(color.into()))?;
+        let color = self.cache.get(color).map(|id| Color::from(*id)).ok_or_else(|| Error::NoColor(color.into()))?;
 
         Ok(color)
     }
@@ -132,7 +132,7 @@ impl Colors {
     /// Init pair with BLACK as the background
     pub fn init_fg(color: Color) -> Result<u32> {
         let color_id: i16 = color.into();
-        Self::init_pair(color_id, color, Color::Black.into())?;
+        Self::init_pair(color_id, color, Color::Black)?;
         Ok(color_id as u32)
     }
 
