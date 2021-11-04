@@ -1,6 +1,6 @@
 use unicode_width::UnicodeWidthStr;
 
-use crate::split;
+use crate::{split, Attribute};
 
 // -----------------------------------------------------------------------------
 //     - Instructions -
@@ -10,7 +10,9 @@ pub enum Instruction<'src> {
     String(&'src str),
     Color(u32), // this is the id of a color pair, not a color pait it self
     Pad(usize),
-    Reset,
+    Style(Attribute),
+    ResetStyle,
+    ResetColor,
 }
 
 impl<'src> Instruction <'src>{
@@ -19,7 +21,9 @@ impl<'src> Instruction <'src>{
             Instruction::String(s) => s.width(),
             Instruction::Pad(size) => *size,
             Instruction::Color(_) => 0,
-            Instruction::Reset => 0,
+            Instruction::ResetColor => 0,
+            Instruction::ResetStyle => 0,
+            Instruction::Style(_) => 0,
         }
     }
 }
@@ -60,7 +64,9 @@ impl<'src> Line<'src> {
     fn styles(&self) -> impl Iterator<Item = &Instruction<'src>> {
         self.instructions.iter().filter(|i| match i {
             Instruction::Color(_) => true,
-            Instruction::Reset => true,
+            Instruction::ResetColor => true,
+            Instruction::ResetStyle => true,
+            Instruction::Style(_) => true,
             Instruction::String(_) => false,
             Instruction::Pad(_) => false,
         })
@@ -102,6 +108,12 @@ impl<'src> Lines<'src> {
         }
     }
 
+    /// Set a style.
+    /// Use `Style::Normal` to reset 
+    pub fn style(&mut self, style: Attribute) {
+        self.push(Instruction::Style(style));
+    }
+    
     /// Pad a line with space
     pub fn pad(&mut self, pad: usize) {
         self.push(Instruction::Pad(pad));
@@ -113,8 +125,13 @@ impl<'src> Lines<'src> {
     }
 
     /// Reset the colors (set color to zero)
-    pub fn reset(&mut self) {
-        self.push(Instruction::Reset);
+    pub fn reset_color(&mut self) {
+        self.push(Instruction::ResetColor);
+    }
+
+    /// Reset the colors (set color to zero)
+    pub fn reset_style(&mut self) {
+        self.push(Instruction::ResetStyle);
     }
 
     fn push(&mut self, inst: Instruction<'src>) {
@@ -123,14 +140,15 @@ impl<'src> Lines<'src> {
         // `current_line`.
         if self.current_width + inst.len() > self.max_width || self.start_newline {
             // Shelve the current line and start a new one
+            self.force_new_line();
 
             // Copy any styling from previous line to continue styling the new line.
-            let mut current_line = Line::new();
-            self.current_line().styles().cloned().for_each(|s| current_line.push(s));
-            self.lines.push(current_line);
+            // let mut current_line = Line::new();
+            // self.current_line().styles().cloned().for_each(|s| current_line.push(s));
+            // self.lines.push(current_line);
 
-            self.current_width = 0;
-            self.start_newline = false;
+            // self.current_width = 0;
+            // self.start_newline = false;
         }
 
         if matches!(inst, Instruction::String(ref s) if s.ends_with('\n')) {
@@ -142,7 +160,12 @@ impl<'src> Lines<'src> {
     }
     
     pub fn force_new_line(&mut self) {
-        self.start_newline = true;
+        let mut current_line = Line::new();
+        // Copy the styles over to the new line
+        self.current_line().styles().cloned().for_each(|s| current_line.push(s));
+        self.lines.push(current_line);
+        self.current_width = 0;
+        self.start_newline = false;
     }
 
     pub fn iter(&self) -> impl Iterator<Item=&Line<'src>> {

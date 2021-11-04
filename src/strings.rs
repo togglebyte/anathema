@@ -47,7 +47,12 @@ fn split_line<'line, 'offset>(
                 }
             }
 
+
+            log::info!("max: {} | start: {}", max_width, starting_offset);
+            log::info!("line: {:?}", line);
             let (lhs, rhs) = split_to_len(line, max_width - starting_offset);
+            log::info!("lhs: {:?}", lhs);
+            log::info!("rhs: {:?}", rhs);
             starting_offset = 0;
 
             let lhs = match keep_whitespace {
@@ -103,8 +108,16 @@ mod test {
         let s_split = split(line, max_width, 0, true);
 
         let result = s_split.collect::<Vec<_>>();
-        assert_eq!(result[0], "     hello");
+        assert_eq!(result[0], "     hello ");
         assert_eq!(result[1], "world");
+
+
+        let line = "   x   ";
+        let max_width = 5;
+        let s_split = split(line, max_width, 0, true);
+
+        let result = s_split.collect::<Vec<_>>();
+        assert_eq!(result[0], "   x ");
     }
 
     #[test]

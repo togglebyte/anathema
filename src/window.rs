@@ -2,9 +2,9 @@ use std::cell::RefCell;
 use std::time::Duration;
 
 use pancurses::Window as PanWindow;
-use pancurses::{curs_set, endwin, ToChtype, initscr, napms, noraw, raw, start_color, ACS_VLINE, ACS_HLINE};
+use pancurses::{curs_set, endwin, initscr, napms, noraw, raw, start_color, ToChtype, ACS_HLINE, ACS_VLINE};
 
-use super::{panerr, Attributes, Error, Input, Pair, Pos, Result, Size};
+use super::{panerr, Attribute, Error, Input, Pair, Pos, Result, Size};
 
 thread_local! {
     static MAIN: RefCell<State> = RefCell::new(State::FirstTime);
@@ -62,7 +62,7 @@ impl<T> Window<T> {
 
     /// Set an attribute
     pub fn set_attribute(&self, attribute: impl Into<u32>) -> Result<()> {
-        let res = self.inner.attrset(attribute.into());
+        let res = self.inner.attron(attribute.into());
         panerr!(res, Error::AttributeSet);
     }
 
@@ -71,9 +71,20 @@ impl<T> Window<T> {
         Ok(())
     }
 
-    pub fn set_attributes(&self, attributes: Attributes) -> Result<()> {
-        self.set_attribute(attributes)?;
-        Ok(())
+    pub fn enable_style(&self, attribute: Attribute) -> Result<()> {
+        let res = self.inner.attron(attribute);
+        panerr!(res, Error::AttributeSet);
+    }
+
+    pub fn disable_style(&self, attribute: Attribute) -> Result<()> {
+        let res = self.inner.attroff(attribute);
+        panerr!(res, Error::AttributeSet);
+    }
+
+    pub fn reset_style(&self) -> Result<()> {
+        let (attrs, _col) = self.inner.attrget();
+        let res = self.inner.attroff(attrs);
+        panerr!(res, Error::AttributeSet);
     }
 
     /// Uses `addstr`, **NOT** printw as it is rather unsafe.
