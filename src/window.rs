@@ -48,6 +48,18 @@ impl<T> Window<T> {
         Ok(inst)
     }
 
+    /// Move the window to a new position.
+    pub fn move_win(&mut self, pos: Pos) -> Result<()> {
+        let res = self.inner.mvwin(pos.y, pos.x);
+        panerr!(res, Error::MoveWindow);
+    }
+
+    /// Resize the window
+    pub fn resize(&mut self, size: Size) -> Result<()> {
+        let res = self.inner.resize(size.height, size.width);
+        panerr!(res, Error::Resize);
+    }
+
     /// Set an attribute
     pub fn set_attribute(&self, attribute: impl Into<u32>) -> Result<()> {
         let res = self.inner.attrset(attribute.into());
@@ -181,6 +193,7 @@ impl Window<Main> {
         Ok(inst)
     }
 
+    /// Don't block on input `get_input`
     pub fn no_delay(&self, no_delay: bool) -> Result<()> {
         let res = self.inner.nodelay(no_delay);
         panerr!(res, Error::NoDelay);

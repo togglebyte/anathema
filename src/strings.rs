@@ -13,7 +13,7 @@ fn split_to_len(line: &str, max_width: usize) -> (&str, &str) {
         max_width - i
     };
 
-    let split_pos = &line[..index].rfind(char::is_whitespace).unwrap_or(index);
+    let split_pos = &line[..index].rfind(char::is_whitespace).map(|p| p + 1).unwrap_or(index);
 
     let (lhs, rhs) = line.split_at(*split_pos);
     (lhs, rhs)
@@ -31,7 +31,22 @@ fn split_line<'line, 'offset>(
             return None;
         }
 
-        if line.width() + starting_offset > max_width {
+        if line.len() + starting_offset > max_width && line.width() + starting_offset > max_width {
+
+            // If the starting offset prevents the full word
+            // from fitting, rather than breaking the word,
+            // return empty string and try to split the line again
+            // with the starting offest set to zero
+            if starting_offset > 0 {
+                if let Some(whitespace_pos) = line.find(|c: char| c.is_whitespace()) {
+                    let total = starting_offset + whitespace_pos;
+                    if total > max_width {
+                        starting_offset = 0;
+                        return Some("");
+                    }
+                }
+            }
+
             let (lhs, rhs) = split_to_len(line, max_width - starting_offset);
             starting_offset = 0;
 
@@ -40,11 +55,11 @@ fn split_line<'line, 'offset>(
                 true => lhs,
             };
 
-            // if !lhs.is_empty() {
-            //     lines.push(lhs);
-            // }
+            line = match keep_whitespace {
+                true => rhs.trim_start(),
+                false => rhs.trim_start(),
+            };
 
-            line = rhs.trim_start();
             return Some(lhs);
         } else {
             let ret_val = line;
@@ -71,18 +86,25 @@ mod test {
     use super::*;
 
     #[test]
-    fn flap() {
+    fn split_preserving_newlines() {
+        let input = "hello\nworld\nlonger line here\nthe end";
+        let res = split(input, 5, 0, false).collect::<Vec<_>>();
+
+        let expected = "hello\n";
+        let actual = res[0];
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn split_preserving_whitespace() {
         let line = "     hello world";
         let max_width = 13;
-        let mut s_split = split(line, max_width, 0, true);
+        let s_split = split(line, max_width, 0, true);
 
-        for x in s_split {
-            eprintln!("{:?}", x);
-        }
-
-        // let result = s_split.collect::<Vec<_>>();
-        // assert_eq!(result[0], "     hello");
-        // assert_eq!(result[1], "world");
+        let result = s_split.collect::<Vec<_>>();
+        assert_eq!(result[0], "     hello");
+        assert_eq!(result[1], "world");
     }
 
     #[test]

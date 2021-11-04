@@ -50,4 +50,8 @@ pub enum Error {
     SetScrollRegion,
     #[error("failed to draw a horizontal line")]
     HorizontalLine,
+    #[error("failed to move window")]
+    MoveWindow,
+    #[error("failed to resize window")]
+    Resize,
 }

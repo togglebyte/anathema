@@ -5,7 +5,7 @@ use pancurses::{init_color, init_pair, COLOR_PAIR};
 
 const THRESHOLD: u8 = 30;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Pair(pub(crate) u32);
 
 impl Pair {
