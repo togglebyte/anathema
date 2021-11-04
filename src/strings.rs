@@ -47,12 +47,7 @@ fn split_line<'line, 'offset>(
                 }
             }
 
-
-            log::info!("max: {} | start: {}", max_width, starting_offset);
-            log::info!("line: {:?}", line);
             let (lhs, rhs) = split_to_len(line, max_width - starting_offset);
-            log::info!("lhs: {:?}", lhs);
-            log::info!("rhs: {:?}", rhs);
             starting_offset = 0;
 
             let lhs = match keep_whitespace {
