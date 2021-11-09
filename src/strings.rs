@@ -5,12 +5,16 @@ use unicode_width::UnicodeWidthStr;
 /// whitespace available.
 fn split_to_len(line: &str, max_width: usize) -> (&str, &str) {
     let index = {
-        let mut i = 0;
-        while !line.is_char_boundary(max_width - i) {
-            i += 1;
+        let mut byte_pos = line.len();
+        let mut temp_str = line;
+        while temp_str.width() > max_width {
+            byte_pos -= 1;
+            while !line.is_char_boundary(byte_pos) {
+                byte_pos -= 1;
+            }
+            temp_str = &line[..byte_pos];
         }
-
-        max_width - i
+        byte_pos
     };
 
     let split_pos = &line[..index].rfind(char::is_whitespace).map(|p| p + 1).unwrap_or(index);

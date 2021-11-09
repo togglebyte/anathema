@@ -181,6 +181,11 @@ impl<'src> Lines<'src> {
         self.lines.len()
     }
 
+    /// Are there any lines?
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn remove(&mut self, index: usize) {
         let _ = self.lines.remove(index);
     }
@@ -280,19 +285,6 @@ mod test {
 
         for line in lines.iter() {
             eprintln!("{:?}", line);
-        }
-    }
-
-    #[test]
-    fn split_retain_newlines() {
-        let input = "hello\nworld\nlonger line here\nthe end";
-        let mut lines = Lines::new(5);
-        let res = lines.push_str(input, false);
-
-        for line in lines.iter() {
-            for inst in line.instructions() {
-                eprintln!("{:?}", inst);
-            }
         }
     }
 }

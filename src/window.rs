@@ -174,6 +174,14 @@ impl<T> Window<T> {
         self.horizontal_line(c, len)?;
         Ok(())
     }
+
+    pub fn contains(&self, pos: Pos) -> bool {
+        let size = self.size();
+        pos.x >= 0 
+        && pos.x < size.width
+        && pos.y >= 0
+        && pos.y < size.height
+    }
 }
 
 // -----------------------------------------------------------------------------
