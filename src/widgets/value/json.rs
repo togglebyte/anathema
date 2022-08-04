@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use display::Color;
+use crate::display::Color;
 
 use super::{Number, Value};
-use crate::widgets::Display;
-use crate::{Align, Axis, BorderStyle, Sides, Wrap};
+use crate::widgets::{Align, Axis, BorderStyle, Display, Sides, Wrap};
 
 #[cfg(feature = "serde-json")]
 impl From<serde_json::Value> for Value {

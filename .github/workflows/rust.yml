@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --features=serde-json,runtime
     - name: Rust fmt
       run: cargo fmt -- --check
     - name: Clippy
