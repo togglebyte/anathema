@@ -16,10 +16,7 @@ pub struct WithSize {
 
 impl WithSize {
     pub fn new(local_size: Size, global_pos: Pos) -> Self {
-        Self {
-            local_size,
-            global_pos,
-        }
+        Self { local_size, global_pos }
     }
 }
 
@@ -46,20 +43,12 @@ impl<'screen> Deref for PaintCtx<'screen, WithSize> {
 
 impl<'screen> PaintCtx<'screen, Unsized> {
     pub fn new(screen: &'screen mut Screen, clip: Option<&'screen Region>) -> Self {
-        Self {
-            screen,
-            clip,
-            state: Unsized,
-        }
+        Self { screen, clip, state: Unsized }
     }
 
     /// Create a sized context at a given position
     pub fn into_sized(self, size: Size, global_pos: Pos) -> PaintCtx<'screen, WithSize> {
-        PaintCtx {
-            screen: self.screen,
-            clip: self.clip,
-            state: WithSize::new(size, global_pos),
-        }
+        PaintCtx { screen: self.screen, clip: self.clip, state: WithSize::new(size, global_pos) }
     }
 }
 
@@ -101,10 +90,7 @@ impl<'screen> PaintCtx<'screen, WithSize> {
             return None;
         }
 
-        Some(ScreenPos {
-            x: screen_x as u16,
-            y: screen_y as u16,
-        })
+        Some(ScreenPos { x: screen_x as u16, y: screen_y as u16 })
     }
 
     fn newline(&mut self, pos: LocalPos) -> Option<LocalPos> {
@@ -134,10 +120,7 @@ impl<'screen> PaintCtx<'screen, WithSize> {
     // The `outpout_pos` is the same as the `input_pos` unless clipping has been applied.
     pub fn put(&mut self, c: char, style: Style, input_pos: LocalPos) -> Option<LocalPos> {
         let width = c.width().unwrap_or(0);
-        let next = LocalPos {
-            x: input_pos.x + width,
-            y: input_pos.y,
-        };
+        let next = LocalPos { x: input_pos.x + width, y: input_pos.y };
 
         // Ensure that the position is inside provided clipping region
         if let Some(clip) = self.clip.as_ref() {
@@ -164,19 +147,12 @@ impl<'screen> PaintCtx<'screen, WithSize> {
         if input_pos.x >= self.local_size.width {
             self.newline(input_pos)
         } else {
-            Some(LocalPos {
-                x: input_pos.x + width,
-                y: input_pos.y,
-            })
+            Some(LocalPos { x: input_pos.x + width, y: input_pos.y })
         }
     }
 
     pub fn sub_context<'a>(&'a mut self, clip: Option<&'a Region>) -> PaintCtx<'_, Unsized> {
-        PaintCtx {
-            screen: self.screen,
-            clip,
-            state: Unsized,
-        }
+        PaintCtx { screen: self.screen, clip, state: Unsized }
     }
 }
 
@@ -192,11 +168,7 @@ pub struct LayoutCtx {
 
 impl LayoutCtx {
     pub fn new(constraints: Constraints, force_layout: bool, padding: Padding) -> Self {
-        Self {
-            constraints,
-            force_layout,
-            padding,
-        }
+        Self { constraints, force_layout, padding }
     }
 
     pub fn padding(&mut self) -> Padding {
@@ -243,12 +215,7 @@ pub struct PositionCtx {
 
 impl PositionCtx {
     pub fn new(pos: Pos, size: Size, padding: Padding) -> Self {
-        Self {
-            pos,
-            size,
-            alignment: None,
-            padding,
-        }
+        Self { pos, size, alignment: None, padding }
     }
 
     pub fn padded_position(&self) -> Pos {
@@ -287,8 +254,7 @@ mod test {
         let mut screen = Screen::new(&mut vec![], size).unwrap();
         let global_pos = Pos::new(1, 1);
         let clipping_region = Region::new(global_pos, Pos::new(3, 3));
-        let mut ctx = PaintCtx::new(&mut screen, Some(&clipping_region))
-            .into_sized(Size::new(20, 20), global_pos);
+        let mut ctx = PaintCtx::new(&mut screen, Some(&clipping_region)).into_sized(Size::new(20, 20), global_pos);
 
         // Inside clipping space
         let first = LocalPos::new(1, 1);

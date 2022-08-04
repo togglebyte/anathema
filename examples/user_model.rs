@@ -103,7 +103,7 @@ impl UserModel for State {
         }
 
         // Select color by finding the widget under the cursor
-        if let Some((screen_pos, btn, _modifiers)) = event.mouse_down() {
+        if let Some((screen_pos, _btn, _modifiers)) = event.mouse_down() {
             root.at_coords(screen_pos, |w| match w.id() {
                 NodeId::Value(val) => match val.to_int() {
                     Some(id) => {

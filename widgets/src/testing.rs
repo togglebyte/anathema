@@ -1,7 +1,7 @@
 use display::{Screen, ScreenPos, Size};
 
-use crate::{PaintCtx, Pos, Widget, WidgetContainer, NodeId};
 use crate::layout::Constraints;
+use crate::{NodeId, PaintCtx, Pos, Widget, WidgetContainer};
 
 pub fn test_widget(widget: impl Widget, expected: &str) {
     test_widget_container(widget.into_container(NodeId::auto()), expected)

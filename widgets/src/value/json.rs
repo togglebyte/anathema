@@ -20,23 +20,16 @@ impl From<serde_json::Value> for Value {
                         // If a number isn't f64 or i64 then it has to be u64,
                         // see https://github.com/serde-rs/json/blob/5d2cbcdd4b146e98b5aa2200de7a8ae6231bf0ba/src/number.rs#L22-L34
                         None => Value::Number(Number::Unsigned(
-                            number
-                                .as_u64()
-                                .expect("can't fail as it's either f64, i64 or u64"),
+                            number.as_u64().expect("can't fail as it's either f64, i64 or u64"),
                         )),
                     },
                 }
             }
-            serde_json::Value::String(value) if value.contains(|c: char| c.is_whitespace()) => {
-                Value::String(value)
-            }
+            serde_json::Value::String(value) if value.contains(|c: char| c.is_whitespace()) => Value::String(value),
             serde_json::Value::String(value) => value_from_json_string(value),
-            serde_json::Value::Array(values) => Value::List(
-                values
-                    .into_iter()
-                    .filter_map(|v| v.try_into().ok())
-                    .collect(),
-            ),
+            serde_json::Value::Array(values) => {
+                Value::List(values.into_iter().filter_map(|v| v.try_into().ok()).collect())
+            }
             serde_json::Value::Object(json_values) => {
                 let mut values = HashMap::<_, Value>::new();
 
@@ -212,22 +205,8 @@ mod json_test {
     #[test]
     fn colour() {
         let inputs = vec![
-            (
-                "#00FF00",
-                Value::Color(Color::Rgb {
-                    r: 0,
-                    g: u8::MAX,
-                    b: 0,
-                }),
-            ),
-            (
-                "#00ff00",
-                Value::Color(Color::Rgb {
-                    r: 0,
-                    g: u8::MAX,
-                    b: 0,
-                }),
-            ),
+            ("#00FF00", Value::Color(Color::Rgb { r: 0, g: u8::MAX, b: 0 })),
+            ("#00ff00", Value::Color(Color::Rgb { r: 0, g: u8::MAX, b: 0 })),
             ("red", Value::Color(Color::Red)),
             ("blue", Value::Color(Color::Blue)),
         ];
@@ -242,20 +221,11 @@ mod json_test {
     fn alignment() {
         let inputs = vec![
             (Align::Top.to_string(), Value::Alignment(Align::Top)),
-            (
-                Align::TopRight.to_string(),
-                Value::Alignment(Align::TopRight),
-            ),
+            (Align::TopRight.to_string(), Value::Alignment(Align::TopRight)),
             (Align::Right.to_string(), Value::Alignment(Align::Right)),
-            (
-                Align::BottomRight.to_string(),
-                Value::Alignment(Align::BottomRight),
-            ),
+            (Align::BottomRight.to_string(), Value::Alignment(Align::BottomRight)),
             (Align::Bottom.to_string(), Value::Alignment(Align::Bottom)),
-            (
-                Align::BottomLeft.to_string(),
-                Value::Alignment(Align::BottomLeft),
-            ),
+            (Align::BottomLeft.to_string(), Value::Alignment(Align::BottomLeft)),
             (Align::Left.to_string(), Value::Alignment(Align::Left)),
             (Align::TopLeft.to_string(), Value::Alignment(Align::TopLeft)),
             (Align::Centre.to_string(), Value::Alignment(Align::Centre)),
@@ -284,10 +254,8 @@ mod json_test {
 
     #[test]
     fn border() {
-        let inputs = vec![
-            ("thin", Value::BorderStyle(BorderStyle::Thin)),
-            ("thick", Value::BorderStyle(BorderStyle::Thick)),
-        ];
+        let inputs =
+            vec![("thin", Value::BorderStyle(BorderStyle::Thin)), ("thick", Value::BorderStyle(BorderStyle::Thick))];
 
         for (input, expected) in inputs {
             let actual = value_from_json_string(input.to_string());

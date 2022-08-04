@@ -1,8 +1,8 @@
 use display::Size;
 
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::attributes::Attributes;
 use crate::layout::stacked;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
 /// Unlike the [`HStack`](crate::HStack) or the [`VStack`](crate::VStack) the [`ZStack`] draws the
 /// children on top of each other.
@@ -50,11 +50,7 @@ pub struct ZStack {
 impl ZStack {
     /// Create a new instance of a `ZStack`
     pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self {
-            children: Vec::new(),
-            width: width.into(),
-            height: height.into(),
-        }
+        Self { children: Vec::new(), width: width.into(), height: height.into() }
     }
 }
 

@@ -1,8 +1,7 @@
 use super::AntString;
 
-
 /// Finds the position of either a [`char`] or a slice of chars.
-pub trait Find<P> : crate::sealed::Sealed {
+pub trait Find<P>: crate::sealed::Sealed {
     /// Find the pattern inside the string, starting from the beginning of the string
     fn find(&self, pat: P) -> Option<usize>;
     /// Find the pattern inside the string, starting from the end of the string

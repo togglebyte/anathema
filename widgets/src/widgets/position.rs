@@ -1,8 +1,8 @@
 use display::Size;
 
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::attributes::{fields, Attributes};
 use crate::Pos;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
 /// Position on the horizontal axis.
 /// Left 0 would mean the left edge of the widget is positioned at the `left` value.
@@ -30,11 +30,11 @@ pub enum HorzEdge {
 /// | ┌────────┐
 /// | │1       │
 /// | └────────┘
-/// | 
-/// | 
-/// | 
-/// | 
-/// | 
+/// |
+/// |
+/// |
+/// |
+/// |
 /// | ┌────────┐
 /// | │2       │
 /// | └────────┘
@@ -66,11 +66,7 @@ impl Position {
 
     /// Create a new instance of a `Position`
     pub fn new(horz_edge: HorzEdge, vert_edge: VertEdge) -> Self {
-        Self {
-            child: None,
-            horz_edge,
-            vert_edge,
-        }
+        Self { child: None, horz_edge, vert_edge }
     }
 
     /// Position to the left
@@ -180,9 +176,7 @@ impl Widget for Position {
                 fields::LEFT => self.horz_edge = HorzEdge::Left(attributes.left().unwrap_or(0)),
                 fields::RIGHT => self.horz_edge = HorzEdge::Right(attributes.right().unwrap_or(0)),
                 fields::TOP => self.vert_edge = VertEdge::Top(attributes.top().unwrap_or(0)),
-                fields::BOTTOM => {
-                    self.vert_edge = VertEdge::Bottom(attributes.bottom().unwrap_or(0))
-                }
+                fields::BOTTOM => self.vert_edge = VertEdge::Bottom(attributes.bottom().unwrap_or(0)),
                 _ => {}
             }
         }

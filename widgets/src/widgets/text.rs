@@ -1,12 +1,12 @@
 use antstring::AntString;
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use display::{Size, Style};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::attributes::{fields, Attributes};
 use crate::layout::text::TextLayout;
 use crate::LocalPos;
 use crate::Wrap;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
 /// Text alignment aligns the text inside its parent.
 ///
@@ -204,11 +204,8 @@ impl Widget for Text {
         self.needs_layout = false;
         self.max_width = ctx.constraints.max_width;
 
-        let string_slices = self
-            .spans
-            .iter()
-            .map(|span| (&span.style, span.text.as_str()))
-            .collect::<Vec<(&Style, &str)>>();
+        let string_slices =
+            self.spans.iter().map(|span| (&span.style, span.text.as_str())).collect::<Vec<(&Style, &str)>>();
         let string = AntString::with_annotations(&string_slices);
 
         self.previous_width = string.width();
@@ -232,11 +229,7 @@ impl Widget for Text {
 
     fn paint(&mut self, mut ctx: PaintCtx<'_, WithSize>) {
         self.needs_paint = false;
-        let texts = self
-            .spans
-            .iter()
-            .map(|span| (&span.style, span.text.as_str()))
-            .collect::<Vec<(&Style, &str)>>();
+        let texts = self.spans.iter().map(|span| (&span.style, span.text.as_str())).collect::<Vec<(&Style, &str)>>();
 
         if texts.is_empty() {
             return;
@@ -318,10 +311,7 @@ pub struct TextSpan {
 impl TextSpan {
     /// Create a new instance of a text span
     pub fn new(text: impl AsRef<str>) -> Self {
-        Self {
-            text: text.as_ref().to_owned(),
-            style: Style::new(),
-        }
+        Self { text: text.as_ref().to_owned(), style: Style::new() }
     }
 }
 
@@ -336,7 +326,7 @@ mod test {
     use super::*;
     use crate::layout::Constraints;
     use crate::testing::test_widget;
-    use crate::{Align, Alignment, Border, BorderStyle, Sides, Padding, Pos};
+    use crate::{Align, Alignment, Border, BorderStyle, Padding, Pos, Sides};
     use display::Screen;
 
     fn test_text(text: impl Widget, expected: &str) {

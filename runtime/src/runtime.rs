@@ -21,6 +21,12 @@ pub struct Runtime<T> {
     events: Events<T>,
 }
 
+impl<T: Send + Sync + 'static> Default for Runtime<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Send + Sync + 'static> Runtime<T> {
     /// Create a new instance of the basic runtime.
     pub fn new() -> Self {

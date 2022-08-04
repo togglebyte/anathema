@@ -17,7 +17,7 @@ use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, W
 /// │3│
 /// └─┘
 /// ```
-/// 
+///
 /// ```
 /// use widgets::{VStack, Text, Widget, NodeId};
 /// let mut vstack = VStack::new(None, None);
@@ -44,11 +44,7 @@ pub struct VStack {
 impl VStack {
     /// Creates a new instance of a `VStack`
     pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self {
-            children: Vec::new(),
-            width: width.into(),
-            height: height.into(),
-        }
+        Self { children: Vec::new(), width: width.into(), height: height.into() }
     }
 }
 

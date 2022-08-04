@@ -1,7 +1,7 @@
 use display::Size;
 
-use crate::attributes::Attributes;
 use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use crate::attributes::Attributes;
 
 /// Expand to fill in all available space.
 ///

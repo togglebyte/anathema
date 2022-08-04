@@ -6,8 +6,8 @@ use crate::error::{Error, Result};
 use crate::nodes::{Kind, Node};
 
 use widgets::{
-    fields, Align, Alignment, Animation, Axis, Border, Canvas, Expand, HStack, 
-    Position, ScrollView, Spacer, Text, TextSpan, VStack, Value, Widget, WidgetContainer, ZStack,
+    fields, Align, Alignment, Animation, Axis, Border, Canvas, Expand, HStack, Position, ScrollView, Spacer, Text,
+    TextSpan, VStack, Value, Widget, WidgetContainer, ZStack,
 };
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
@@ -34,16 +34,11 @@ impl WidgetLookup {
 
     pub(crate) fn make(&self, node: &Node) -> Result<WidgetContainer> {
         let ident = node.ident();
-        let f = self
-            .inner
-            .get(ident)
-            .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
+        let f = self.inner.get(ident).ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
 
         let mut widget = f(node, self)?;
 
-        node.attributes
-            .padding_all()
-            .map(|padding| widget.padding = padding);
+        node.attributes.padding_all().map(|padding| widget.padding = padding);
         widget.background = node.attributes.background();
 
         let transitions = node.attributes.transitions();
@@ -90,9 +85,7 @@ pub fn text_widget(node: &Node, _: &WidgetLookup) -> Result<WidgetContainer> {
 
 impl Default for WidgetLookup {
     fn default() -> Self {
-        let mut inst = Self {
-            inner: HashMap::new(),
-        };
+        let mut inst = Self { inner: HashMap::new() };
 
         inst.register("alignment", &alignment_widget);
         inst.register("border", &border_widget);

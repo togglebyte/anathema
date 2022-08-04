@@ -2,7 +2,7 @@
 //     - Display baiscs -
 // -----------------------------------------------------------------------------
 // An example showing the use of just the `display` crate.
-use display::{Screen, ScreenPos, Style, Color, size};
+use display::{size, Color, Screen, ScreenPos, Style};
 use std::io::stdout;
 
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
     // Enter an alternative screen, preserving the output
     // before the program runs.
     let _ = screen.enter_alt_screen(&mut output);
-    
+
     // Clear the entire screen.
     // let _ = screen.clear_all(&mut output);
 

@@ -1,5 +1,3 @@
-use std::fs::read_to_string;
-
 use anathema::runtime::{Event, Runtime};
 use anathema::templates::DataCtx;
 
@@ -9,10 +7,12 @@ border:
 "#;
 
 fn main() {
-    let mut runtime = Runtime::<()>::new();
-    runtime.start(TEMPLATE, DataCtx::empty(), |event, ctx, root_widget, tx| {
-        if event.ctrl_c() {
-            let _ = tx.send(Event::Quit);
-        }
-    });
+    let runtime = Runtime::<()>::new();
+    runtime
+        .start(TEMPLATE, DataCtx::empty(), |event, _ctx, _root_widget, tx| {
+            if event.ctrl_c() {
+                let _ = tx.send(Event::Quit);
+            }
+        })
+        .unwrap();
 }

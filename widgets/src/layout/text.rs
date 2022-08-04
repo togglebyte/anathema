@@ -127,14 +127,7 @@ pub(crate) struct TextLayout {
 
 impl TextLayout {
     pub(crate) fn new(wrap: Wrap, max_width: usize) -> Self {
-        Self {
-            trim_start: true,
-            trim_end: true,
-            collapse_spaces: false,
-            ignore_newline: false,
-            wrap,
-            max_width,
-        }
+        Self { trim_start: true, trim_end: true, collapse_spaces: false, ignore_newline: false, wrap, max_width }
     }
 
     /// Return a list of strings where each string represents a new line
@@ -184,7 +177,6 @@ impl TextLayout {
 
         // Make a new line for each iteration
         loop {
-
             // Trim whitespace
             match (self.trim_start, self.trim_end) {
                 (true, true) => input.trim(),

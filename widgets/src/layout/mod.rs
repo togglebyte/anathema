@@ -53,12 +53,7 @@ impl Padding {
 
     /// Create a new instance padding
     pub const fn new(padding: usize) -> Self {
-        Self {
-            top: padding,
-            right: padding,
-            bottom: padding,
-            left: padding,
-        }
+        Self { top: padding, right: padding, bottom: padding, left: padding }
     }
 
     /// Return the current padding and set the padding to zero
@@ -72,7 +67,6 @@ impl Padding {
     pub const fn no_padding(&self) -> bool {
         self.top + self.bottom + self.left + self.right == 0
     }
-
 }
 
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is

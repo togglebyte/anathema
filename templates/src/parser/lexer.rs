@@ -164,11 +164,11 @@ impl<'src> Lexer<'src> {
                 true => match input.parse::<i64>() {
                     Ok(num) => Ok(TokenKind::Number(Number::Signed(num))),
                     Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-                }
+                },
                 false => match input.parse::<u64>() {
                     Ok(num) => Ok(TokenKind::Number(Number::Unsigned(num))),
                     Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-                }
+                },
             },
         }?;
 
@@ -301,11 +301,7 @@ mod test {
 
     #[test]
     fn double_char_token() {
-        let inputs = [
-            ("//", TokenKind::Comment),
-            ("{{", TokenKind::LDoubleCurly),
-            ("}}", TokenKind::RDoubleCurly),
-        ];
+        let inputs = [("//", TokenKind::Comment), ("{{", TokenKind::LDoubleCurly), ("}}", TokenKind::RDoubleCurly)];
 
         for (input, expected) in inputs {
             let actual = token_kind(input);

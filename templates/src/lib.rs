@@ -23,7 +23,11 @@ pub fn parse(src: &str) -> Result<Vec<WidgetNode>> {
     nodes::widget::to_widget_nodes(node_tree, false)
 }
 
-pub fn to_nodes(widget_nodes: &[WidgetNode], data_ctx: &SubContext<'_>, node_ctx: &mut NodeCtx<'_>) -> Result<Vec<Node>> {
+pub fn to_nodes(
+    widget_nodes: &[WidgetNode],
+    data_ctx: &SubContext<'_>,
+    node_ctx: &mut NodeCtx<'_>,
+) -> Result<Vec<Node>> {
     let mut nodes = vec![];
     for widget_node in widget_nodes {
         nodes.extend(nodes::to_nodes(widget_node, data_ctx, node_ctx)?);
@@ -52,7 +56,6 @@ pub fn build_widget_tree(
 mod test {
     use super::*;
     use widgets::testing::test_widget_container;
-    use widgets::Border;
 
     fn test_parse_input(src: &str, expected: &str) {
         let lookup = WidgetLookup::default();

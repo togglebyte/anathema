@@ -30,9 +30,11 @@ impl AnimationCtx {
     /// Update all transitions with the new time delta.
     /// Without this function call none of the transitions would progress.
     pub fn update(&mut self, elapsed: Duration) {
-        self.transitions.iter_mut().for_each(|(_, a)| drop(a.update(elapsed)));
+        self.transitions.iter_mut().for_each(|(_, a)| {
+            let _ = a.update(elapsed);
+        });
         self.position.as_mut().map(|a| {
-            drop(a.update(elapsed));
+            a.update(elapsed);
         });
     }
 
@@ -139,12 +141,7 @@ impl<T: PartialEq> Animation<T> {
 
 impl<T> Animation<T>
 where
-    T: std::fmt::Debug
-        + Copy
-        + PartialEq
-        + Add<Output = T>
-        + Sub<Output = T>
-        + Mul<f32, Output = T>,
+    T: std::fmt::Debug + Copy + PartialEq + Add<Output = T> + Sub<Output = T> + Mul<f32, Output = T>,
 {
     fn get_value(&self) -> Option<T> {
         if !self.active() {

@@ -1,20 +1,14 @@
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::{Entry, HashMap};
 
-use widgets::{Path, Value, Number, Align, Axis, BorderStyle, Display, Sides, Wrap};
 use display::Color;
+use widgets::{Align, Axis, BorderStyle, Display, Number, Path, Sides, Value, Wrap};
 
 use crate::error::Result;
 use crate::WidgetNode;
 
 /// Caching includes
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct IncludeCache(HashMap<String, Vec<WidgetNode>>);
-
-impl Default for IncludeCache {
-    fn default() -> Self {
-        Self(HashMap::new())
-    }
-}
 
 /// Track the include depth and maintain the include cache to prevent
 /// multiple reads from disk.
@@ -87,12 +81,11 @@ macro_rules! mut_ref_push_diff {
                     self.diff.push(key.into());
                     Some(value)
                 }
-                _ => None
+                _ => None,
             }
         }
-    }
+    };
 }
-
 
 /// Contain values that are available inside templates.
 #[derive(Debug, Clone, PartialEq)]
@@ -189,7 +182,7 @@ impl DataCtx {
                 self.diff.push(key.into());
                 Some(num)
             }
-            _ => None
+            _ => None,
         }
     }
 
@@ -199,7 +192,7 @@ impl DataCtx {
                 self.diff.push(key.into());
                 Some(num)
             }
-            _ => None
+            _ => None,
         }
     }
 

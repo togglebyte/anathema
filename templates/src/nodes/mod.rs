@@ -45,7 +45,7 @@ impl Node {
 
     pub(crate) fn by_id(&self, id: &NodeId) -> Option<&Self> {
         if self.id.eq(id) {
-            return Some(&self);
+            return Some(self);
         }
 
         for child in &self.children {
@@ -57,8 +57,8 @@ impl Node {
         None
     }
 
-    pub fn to_string(&self) -> String {
-        to_string(&self, 0)
+    pub fn stringify(&self) -> String {
+        to_string(self, 0)
     }
 }
 
@@ -83,18 +83,11 @@ fn for_loop(
     template: &[WidgetNode],
 ) -> Result<Vec<Node>> {
     // Lookup data if needed
-    let data = if let Value::DataBinding(path) = data {
-        data_ctx.by_path(path).unwrap_or_else(|| DEFAULT_VALUE)
-    } else {
-        data
-    };
+    let data = if let Value::DataBinding(path) = data { data_ctx.by_path(path).unwrap_or(DEFAULT_VALUE) } else { data };
 
     // Lookup binding if needed
-    let binding = if let Value::DataBinding(path) = binding {
-        data_ctx.by_path(path).unwrap_or_else(|| DEFAULT_VALUE)
-    } else {
-        binding
-    };
+    let binding =
+        if let Value::DataBinding(path) = binding { data_ctx.by_path(path).unwrap_or(DEFAULT_VALUE) } else { binding };
 
     let many = match data {
         Value::List(values) => {
@@ -196,12 +189,10 @@ fn widget_node_to_nodes(
     let attributes = lookup_attributes(&widget_node.attributes, data_ctx);
 
     let id = match widget_node.node_id() {
-        NodeId::Value(Value::DataBinding(path)) => {
-            match data_ctx.by_path(&path) {
-                Some(data) => NodeId::Value(data.clone()),
-                None => return Err(Error::IdNotFound(path)),
-            }
-        }
+        NodeId::Value(Value::DataBinding(path)) => match data_ctx.by_path(&path) {
+            Some(data) => NodeId::Value(data.clone()),
+            None => return Err(Error::IdNotFound(path)),
+        },
         NodeId::Value(Value::Fragments(ref fragments)) => NodeId::Value(fragments_to_values(fragments, data_ctx)),
         id => id,
     };

@@ -29,7 +29,10 @@ impl fmt::Display for NodeId {
     }
 }
 
-impl<T> From<T> for NodeId where T: Into<Value> {
+impl<T> From<T> for NodeId
+where
+    T: Into<Value>,
+{
     fn from(v: T) -> Self {
         Self::Value(v.into())
     }

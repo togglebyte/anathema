@@ -1,7 +1,7 @@
-use display::Size;
 use crate::ctx::{LayoutCtx, PositionCtx};
 use crate::widgets::spacer::Spacer;
 use crate::widgets::WidgetContainer;
+use display::Size;
 
 pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
     let _max_height = ctx.constraints.max_height;

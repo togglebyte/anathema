@@ -15,7 +15,7 @@ pub enum Error {
     MissingRoot,
 }
 
-impl std::error::Error for Error { }
+impl std::error::Error for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,7 +27,6 @@ impl Display for Error {
             Self::MissingRoot => write!(f, "missing root widget"),
         }
     }
-
 }
 
 impl From<std::io::Error> for Error {
@@ -36,7 +35,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<templates::error::Error> for Error  {
+impl From<templates::error::Error> for Error {
     fn from(e: templates::error::Error) -> Self {
         Self::Template(e)
     }

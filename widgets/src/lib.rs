@@ -3,11 +3,11 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use display::ScreenPos;
 
-mod layout;
 mod animation;
 mod attributes;
 mod ctx;
 mod id;
+mod layout;
 mod value;
 mod widgets;
 

@@ -18,13 +18,13 @@ impl<'src> TemplateNode<'src> {
         let attributes = Attributes::from(attributes);
 
         // If this is a text node then take the text
-        // and move it into a span that is injected into the node 
+        // and move it into a span that is injected into the node
         // as a child.
         let children = (ident == "text")
             .then_some(())
             .and_then(|()| text.take())
             .map(|text| vec![Self::span(text, attributes.take_style())])
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
 
         Self { ident, attributes, children, text }
     }
@@ -66,7 +66,7 @@ pub(crate) fn create_tree(nodes: Parser<'_>) -> Result<Vec<TemplateNode<'_>>> {
                 match stack.last_mut() {
                     Some((parent_indent, parent)) if *parent_indent < prev_indent => parent.add_child(prev),
                     Some((parent_indent, _)) if *parent_indent == prev_indent => stack.push((prev_indent, prev)),
-                    Some(_)  => unreachable!(),
+                    Some(_) => unreachable!(),
                     None => stack.push((indent, prev)),
                 }
                 stack.push((indent, node));

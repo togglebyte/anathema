@@ -1,7 +1,7 @@
-use display::Size;
 use crate::layout::Constraints;
 use crate::widgets::spacer::Spacer;
 use crate::widgets::{Axis, WidgetContainer};
+use display::Size;
 
 pub fn layout(
     spacers: &mut [WidgetContainer],
@@ -10,10 +10,7 @@ pub fn layout(
     direction: Axis,
 ) -> Size {
     let mut size = Size::ZERO;
-    let count = spacers
-        .iter_mut()
-        .filter(|c| c.kind() == Spacer::KIND)
-        .count();
+    let count = spacers.iter_mut().filter(|c| c.kind() == Spacer::KIND).count();
     if count == 0 {
         return size;
     }

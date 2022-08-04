@@ -11,9 +11,9 @@ mod appstate;
 mod events;
 mod runtime;
 
+pub use crate::appstate::{AppState, Sender, UserModel};
+pub use crate::events::{CrossEvent, Event, Events, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 pub use crate::runtime::Runtime;
-pub use crate::appstate::{AppState, UserModel, Sender};
-pub use crate::events::{Event, Events, CrossEvent, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 
 pub trait Output: Write {
     /// The size of the output.

@@ -1,8 +1,8 @@
 use display::Size;
 
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::attributes::Attributes;
 use crate::layout::horizontal;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -10,7 +10,7 @@ use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, W
 /// │1││2││3││4│
 /// └─┘└─┘└─┘└─┘
 /// ```
-/// 
+///
 /// ```
 /// use widgets::{HStack, Text, Widget, NodeId};
 /// let mut hstack = HStack::new(None, None);
@@ -36,11 +36,7 @@ pub struct HStack {
 impl HStack {
     /// Create a new instance of an `HStack`.
     pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self {
-            children: Vec::new(),
-            width: width.into(),
-            height: height.into(),
-        }
+        Self { children: Vec::new(), width: width.into(), height: height.into() }
     }
 }
 

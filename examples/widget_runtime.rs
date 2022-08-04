@@ -1,6 +1,6 @@
+use anathema::display::{size, Screen, Size};
+use anathema::widgets::{Border, Constraints, NodeId, PaintCtx, Pos, Text, Widget};
 use std::io::stdout;
-use anathema::widgets::{Border, Text, Widget, NodeId, PaintCtx, Constraints, Pos};
-use anathema::display::{Size, size, Screen};
 
 fn main() {
     // Get the screen size
@@ -11,7 +11,7 @@ fn main() {
 
     // Create a screen to do the rendering
     let mut screen = Screen::new(&mut stdout, size).unwrap();
-    screen.clear_all(&mut stdout);
+    screen.clear_all(&mut stdout).unwrap();
 
     // Setup widgets
     let mut border = Border::thin(None, None).into_container(NodeId::auto());
@@ -26,10 +26,9 @@ fn main() {
     border.paint(paint_ctx);
 
     // ... and finally render to stdout
-    screen.render(&mut stdout);
+    screen.render(&mut stdout).unwrap();
 
     // Wait two seconds and then restore the terminal
     std::thread::sleep(std::time::Duration::from_secs(2));
-    screen.restore(&mut stdout);
+    screen.restore(&mut stdout).unwrap();
 }
-

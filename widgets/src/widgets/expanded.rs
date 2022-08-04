@@ -120,12 +120,7 @@ impl Widget for Expand {
 
     fn paint(&mut self, mut ctx: PaintCtx<'_, WithSize>) {
         if !self.fill.is_empty() {
-            let background_str = self
-                .fill
-                .chars()
-                .cycle()
-                .take(ctx.local_size.width)
-                .collect::<String>();
+            let background_str = self.fill.chars().cycle().take(ctx.local_size.width).collect::<String>();
 
             for y in 0..ctx.local_size.height {
                 let pos = LocalPos::new(0, y);
@@ -174,7 +169,7 @@ impl Widget for Expand {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Constraints, Border};
+    use crate::{Border, Constraints};
 
     fn expand_border(dir: Option<Direction>) -> WidgetContainer {
         let mut parent = Border::thick(None, None).into_container(NodeId::auto());

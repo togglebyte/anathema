@@ -1,4 +1,4 @@
-use core::ops::{Range, RangeInclusive, RangeFrom, RangeFull, RangeTo, RangeToInclusive};
+use core::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
 pub trait FromRange {
     fn into_start_end(self, max: usize) -> (usize, usize);
@@ -40,7 +40,6 @@ impl FromRange for RangeToInclusive<usize> {
         (0, self.end + 1)
     }
 }
-
 
 #[cfg(test)]
 mod test {

@@ -146,7 +146,7 @@ impl<'a, T> AntString<'a, T> {
         (Self::with_annotations(left), Self::with_annotations(right))
     }
 
-    /// Split the string on newline characters, 
+    /// Split the string on newline characters,
     /// and consume the newline char
     pub fn lines(self) -> Lines<'a, T> {
         Lines::new(self)
@@ -543,14 +543,12 @@ impl<'a, T: Iterator<Item = &'a str>> Iterator for CharIndices<'a, T> {
 // -----------------------------------------------------------------------------
 /// Lines iterator for AntString (consumes the annotated string)
 pub struct Lines<'a, T> {
-    inner: Option<AntString<'a, T>>
+    inner: Option<AntString<'a, T>>,
 }
 
 impl<'a, T> Lines<'a, T> {
     fn new(inner: AntString<'a, T>) -> Self {
-        Self {
-            inner: Some(inner),
-        }
+        Self { inner: Some(inner) }
     }
 }
 

@@ -121,8 +121,7 @@ mod test {
     use super::*;
     use crate::layout::Constraints;
     use crate::testing::test_widget;
-    use crate::{Border, BorderStyle, Sides, Text, Padding};
-    
+    use crate::{Border, BorderStyle, Padding, Sides, Text};
 
     fn align_widget(align: Align, expected: &str) {
         let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);

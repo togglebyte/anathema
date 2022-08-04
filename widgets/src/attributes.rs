@@ -5,9 +5,7 @@ use display::{Color, Style};
 
 use crate::value::Path;
 use crate::value::{Easing, Value};
-use crate::{
-    Align, Axis, BorderStyle, Display, NodeId, Padding, Sides, TextAlignment, Wrap,
-};
+use crate::{Align, Axis, BorderStyle, Display, NodeId, Padding, Sides, TextAlignment, Wrap};
 
 // -----------------------------------------------------------------------------
 //     - Attribute names -
@@ -79,9 +77,7 @@ impl From<Vec<Attribute<'_>>> for Attributes {
 
 impl Attributes {
     pub fn empty() -> Self {
-        Self {
-            inner: HashMap::new(),
-        }
+        Self { inner: HashMap::new() }
     }
 
     pub fn new(key: &str, value: impl Into<Value>) -> Self {
@@ -94,9 +90,9 @@ impl Attributes {
     /// as alignment affects the child rather than self.
     pub fn transitions(&self) -> impl Iterator<Item = (&str, f32, Duration, Easing)> {
         self.inner.iter().filter_map(|(k, v)| match v {
-            Value::Transition(val, duration, easing) if k != fields::ALIGNMENT => val
-                .to_signed_int()
-                .map(|val| (k.as_ref(), val as f32, *duration, *easing)),
+            Value::Transition(val, duration, easing) if k != fields::ALIGNMENT => {
+                val.to_signed_int().map(|val| (k.as_ref(), val as f32, *duration, *easing))
+            }
             _ => None,
         })
     }
@@ -143,23 +139,19 @@ impl Attributes {
     }
 
     pub fn constraint_min_width(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MIN_WIDTH)
-            .map(|i| i as usize)
+        self.get_int(fields::CONSTRAINT_MIN_WIDTH).map(|i| i as usize)
     }
 
     pub fn constraint_min_height(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MIN_HEIGHT)
-            .map(|i| i as usize)
+        self.get_int(fields::CONSTRAINT_MIN_HEIGHT).map(|i| i as usize)
     }
 
     pub fn constraint_max_width(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MAX_WIDTH)
-            .map(|i| i as usize)
+        self.get_int(fields::CONSTRAINT_MAX_WIDTH).map(|i| i as usize)
     }
 
     pub fn constraint_max_height(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MAX_HEIGHT)
-            .map(|i| i as usize)
+        self.get_int(fields::CONSTRAINT_MAX_HEIGHT).map(|i| i as usize)
     }
 
     pub fn offset(&self) -> i32 {
@@ -182,7 +174,7 @@ impl Attributes {
 
         let padding = self.get_int(fields::PADDING).map(|p| p as usize);
 
-        left.or(right.or(top.or(bottom.or(padding))))?;
+        left.or_else(|| right.or_else(|| top.or_else(|| bottom.or(padding))))?;
 
         let padding = padding.unwrap_or(0);
 
@@ -199,27 +191,19 @@ impl Attributes {
     }
 
     pub fn padding_top(&self) -> Option<usize> {
-        self.get_int(fields::PADDING_TOP)
-            .map(|i| i as usize)
-            .or_else(|| self.padding())
+        self.get_int(fields::PADDING_TOP).map(|i| i as usize).or_else(|| self.padding())
     }
 
     pub fn padding_right(&self) -> Option<usize> {
-        self.get_int(fields::PADDING_RIGHT)
-            .map(|i| i as usize)
-            .or_else(|| self.padding())
+        self.get_int(fields::PADDING_RIGHT).map(|i| i as usize).or_else(|| self.padding())
     }
 
     pub fn padding_bottom(&self) -> Option<usize> {
-        self.get_int(fields::PADDING_BOTTOM)
-            .map(|i| i as usize)
-            .or_else(|| self.padding())
+        self.get_int(fields::PADDING_BOTTOM).map(|i| i as usize).or_else(|| self.padding())
     }
 
     pub fn padding_left(&self) -> Option<usize> {
-        self.get_int(fields::PADDING_LEFT)
-            .map(|i| i as usize)
-            .or_else(|| self.padding())
+        self.get_int(fields::PADDING_LEFT).map(|i| i as usize).or_else(|| self.padding())
     }
 
     pub fn left(&self) -> Option<i32> {

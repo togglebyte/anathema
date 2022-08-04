@@ -2,10 +2,10 @@ use std::collections::VecDeque;
 
 use display::Size;
 
+use super::{Axis, LayoutCtx, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::attributes::{fields, Attributes};
 use crate::layout::Constraints;
 use crate::{NodeId, Pos, Region};
-use super::{Axis, LayoutCtx, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
 /// A `ScrollView` can contain more widgets than what is visible.
 #[derive(Debug)]
@@ -31,13 +31,7 @@ pub struct ScrollView {
 
 impl ScrollView {
     /// Create a new instance of a `ScrollView`
-    pub fn new(
-        max_children: Option<usize>,
-        axis: Axis,
-        offset: i32,
-        auto_scroll: bool,
-        reverse: bool,
-    ) -> Self {
+    pub fn new(max_children: Option<usize>, axis: Axis, offset: i32, auto_scroll: bool, reverse: bool) -> Self {
         Self {
             axis,
             max_children,
@@ -63,13 +57,7 @@ impl ScrollView {
     }
 
     fn clipping_region(&self, global_pos: Pos, size: Size) -> Region {
-        Region::new(
-            global_pos,
-            Pos::new(
-                global_pos.x + size.width as i32,
-                global_pos.y + size.height as i32,
-            ),
-        )
+        Region::new(global_pos, Pos::new(global_pos.x + size.width as i32, global_pos.y + size.height as i32))
     }
 }
 
@@ -119,11 +107,7 @@ impl Widget for ScrollView {
             }
         }
 
-        let offset = if total_child_size > axis_size {
-            self.offset
-        } else {
-            0
-        };
+        let offset = if total_child_size > axis_size { self.offset } else { 0 };
         let mut positioning = Position::new(self.axis, offset);
 
         let visible = match self.reverse {
@@ -195,11 +179,7 @@ impl Layout {
         Self { axis }
     }
 
-    fn layout<'a>(
-        &'a mut self,
-        ctx: LayoutCtx,
-        children: impl Iterator<Item = &'a mut WidgetContainer>,
-    ) -> Size {
+    fn layout<'a>(&'a mut self, ctx: LayoutCtx, children: impl Iterator<Item = &'a mut WidgetContainer>) -> Size {
         // -----------------------------------------------------------------------------
         //     - Layout children -
         // -----------------------------------------------------------------------------
@@ -249,10 +229,7 @@ impl Position {
         size: Size,
         children: impl Iterator<Item = &'a mut WidgetContainer>,
     ) -> Vec<NodeId> {
-        let viewport_region = Region::new(
-            pos,
-            Pos::new(pos.x + size.width as i32, pos.y + size.height as i32),
-        );
+        let viewport_region = Region::new(pos, Pos::new(pos.x + size.width as i32, pos.y + size.height as i32));
 
         let mut next_pos = pos - self.offset_pos();
 

@@ -10,7 +10,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     /// Template node parse error.
-    Parse(crate::parser::Error),
+    Parse(crate::parser::error::Error),
     /// Widget is not registered in lookup.
     UnregisteredWidget(String),
     /// Failed to create a widget through lookup.
@@ -63,8 +63,8 @@ impl Display for Error {
     }
 }
 
-impl From<crate::parser::Error> for Error {
-    fn from(e: crate::parser::Error) -> Self {
+impl From<crate::parser::error::Error> for Error {
+    fn from(e: crate::parser::error::Error) -> Self {
         Self::Parse(e)
     }
 }
@@ -74,4 +74,3 @@ impl From<std::io::Error> for Error {
         Self::Io(e)
     }
 }
-

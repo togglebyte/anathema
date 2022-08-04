@@ -44,7 +44,7 @@ pub use crossterm::terminal::{
 };
 pub use crossterm::{cursor, ExecutableCommand, QueueableCommand};
 pub use screen::Screen;
-pub use style::{Style, Attributes};
+pub use style::{Attributes, Style};
 
 #[cfg(feature = "events")]
 pub mod events {

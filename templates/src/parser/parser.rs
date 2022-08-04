@@ -33,13 +33,13 @@ impl Text {
         let mut buffer = String::new();
         match self {
             Text::String(s) => buffer.push_str(s),
-            Text::Fragments(fragments) => fragments.into_iter().for_each(|frag| match frag {
+            Text::Fragments(fragments) => fragments.iter().for_each(|frag| match frag {
                 Fragment::String(s) => buffer.push_str(s),
                 Fragment::Data(ref path) => {
                     let value = data_ctx.by_path(path);
                     let value = value.map(Value::to_string);
                     if let Some(val) = value {
-                        buffer.push_str(&val.to_string());
+                        buffer.push_str(&val);
                     }
                 }
             }),
@@ -99,7 +99,7 @@ impl<'src> Parser<'src> {
                     Some(base) => indent - base,
                     None => {
                         self.base_indent = Some(indent);
-                        indent - indent
+                        0
                     }
                 };
 
@@ -394,12 +394,12 @@ impl<'src> Parser<'src> {
                         let path = self.try_parse_path(ident)?;
                         Ok(Value::DataBinding(path))
                     }
-                    _ => return Err(Error::invalid_attribute(start..start + 1, self.src, left, None)),
+                    _ => Err(Error::invalid_attribute(start..start + 1, self.src, left, None)),
                 };
                 self.consume_whitespace();
                 match self.lexer.next() {
-                    Some(Ok(Token(TokenKind::RDoubleCurly, _))) => return ret,
-                    _ => return Err(Error::invalid_attribute(start..start + 1, self.src, left, None)),
+                    Some(Ok(Token(TokenKind::RDoubleCurly, _))) => ret,
+                    _ => Err(Error::invalid_attribute(start..start + 1, self.src, left, None)),
                 }
             }
             Some(Ok(invalid_token)) => {

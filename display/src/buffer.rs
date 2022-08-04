@@ -156,7 +156,6 @@ impl Buffer {
                 if let Some(col) = cell.style.bg {
                     current.style.bg = Some(col);
                 }
-
             }
             _ => *current = cell,
         }

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use display::{Screen, Size};
 use templates::Node;
-use templates::{NodeCtx, IncludeCache, DataCtx, SubContext, WidgetLookup, WidgetNode};
+use templates::{DataCtx, IncludeCache, NodeCtx, SubContext, WidgetLookup, WidgetNode};
 use widgets::{Constraints, PaintCtx, Pos, Value, WidgetContainer};
 
 use crate::error::{Error, Result};
@@ -266,4 +266,3 @@ pub trait UserModel {
 
     fn data(&mut self) -> &mut DataCtx;
 }
-

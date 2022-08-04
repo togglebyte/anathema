@@ -50,11 +50,7 @@ impl Canvas {
             _ => CanvasState::Unsized,
         };
 
-        Self {
-            needs_layout: true,
-            needs_paint: true,
-            state,
-        }
+        Self { needs_layout: true, needs_paint: true, state }
     }
 
     /// Put a character somewhere on the canvas
@@ -172,7 +168,6 @@ impl Widget for Canvas {
         if buf.size() != size {
             buf.resize(size);
         }
-
     }
 }
 

@@ -210,13 +210,7 @@ impl WidgetContainer {
     }
 
     pub fn region(&self) -> Region {
-        Region::new(
-            self.pos,
-            Pos::new(
-                self.pos.x + self.size.width as i32,
-                self.pos.y + self.size.height as i32,
-            ),
-        )
+        Region::new(self.pos, Pos::new(self.pos.x + self.size.width as i32, self.pos.y + self.size.height as i32))
     }
 
     pub fn kind(&self) -> &'static str {
@@ -260,8 +254,7 @@ impl WidgetContainer {
                         .map(|p| Padding::new(p as usize))
                         .unwrap_or(self.padding);
 
-                    self.animation
-                        .update_dst(fields::CONSTRAINT_MAX_WIDTH, constraints.max_width as f32);
+                    self.animation.update_dst(fields::CONSTRAINT_MAX_WIDTH, constraints.max_width as f32);
                     constraints.max_width = self
                         .animation
                         .get_value(fields::CONSTRAINT_MAX_WIDTH)
@@ -280,11 +273,8 @@ impl WidgetContainer {
     pub fn position(&mut self, pos: Pos) {
         self.animation.update_pos(self.pos, pos);
         self.pos = self.animation.get_pos().unwrap_or(pos);
-        let padding = self
-            .animation
-            .get_value(fields::PADDING)
-            .map(|p| Padding::new(p as usize))
-            .unwrap_or(self.padding);
+        let padding =
+            self.animation.get_value(fields::PADDING).map(|p| Padding::new(p as usize)).unwrap_or(self.padding);
         let ctx = PositionCtx::new(self.pos, self.size, padding);
         self.inner.position(ctx);
     }
@@ -382,7 +372,7 @@ impl WidgetContainer {
         }
     }
 
-    pub fn to_string(&mut self) -> String {
+    pub fn stringify(&mut self) -> String {
         to_string(self, 0)
     }
 
