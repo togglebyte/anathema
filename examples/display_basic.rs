@@ -2,8 +2,8 @@
 //     - Display baiscs -
 // -----------------------------------------------------------------------------
 // An example showing the use of just the `display` crate.
-use display::{size, Color, Screen, ScreenPos, Style};
 use std::io::stdout;
+use anathema::display::{size, Color, Screen, ScreenPos, Style};
 
 fn main() {
     let mut output = stdout();

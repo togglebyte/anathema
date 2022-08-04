@@ -11,23 +11,21 @@ repository = "https://github.com/togglebyte/anathema"
 
 [features]
 default = ["runtime"]
-widgets = ["dep:widgets", "antstring"]
-templates = ["dep:templates", "widgets"]
-runtime = ["dep:runtime", "templates"]
-logging = [
-    "display/logging",
-    "runtime/logging",
-    "templates/logging",
-    "widgets/logging",
-]
-serde-json = [
-    "widgets/serde-json",
-    "runtime/serde-json",
-]
+widgets = []
+templates = ["widgets"]
+runtime = ["templates"]
+
+logging = ["log"]
+flume = ["dep:flume"]
+serde-json = ["serde_json"]
 
 [dependencies]
-antstring = { path = "antstring", optional = true, version = "0.1.0" }
-display = { path = "display", version = "0.1.0" }
-runtime = { path = "runtime", optional = true, version = "0.1.0" }
-templates = { path = "templates", optional = true, version = "0.1.0" }
-widgets = { path = "widgets", optional = true, version = "0.1.0" }
+bitflags = "1.3.2"
+crossterm = "0.24.0"
+flume = { version = "0.10.14", optional = true }
+log = { version = "0.4.17", optional = true }
+serde_json = { version = "1.0.83", optional = true }
+unicode-width = "0.1.9"
+
+[dev-dependencies]
+proptest = "1.0.0"
