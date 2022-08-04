@@ -3,6 +3,11 @@ name = "anathema"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.62"
+license = "MIT"
+description = "Text User Interface library (TUI) with a template language and runtime"
+documentation = "https://togglebyte.github.io/anathema-guide/"
+homepage = "https://github.com/togglebyte/anathema"
+repo = "https://github.com/togglebyte/anathema"
 
 [features]
 default = ["runtime"]
@@ -21,11 +26,11 @@ serde-json = [
 ]
 
 [dependencies]
-antstring = { path = "antstring", optional = true }
-display = { path = "display" }
-runtime = { path = "runtime", optional = true }
-templates = { path = "templates", optional = true }
-widgets = { path = "widgets", optional = true }
+antstring = { path = "antstring", optional = true, version = "0.1.0" }
+display = { path = "display", version = "0.1.0" }
+runtime = { path = "runtime", optional = true, version = "0.1.0" }
+templates = { path = "templates", optional = true, version = "0.1.0" }
+widgets = { path = "widgets", optional = true, version = "0.1.0" }
 
 [workspace]
 members = [
