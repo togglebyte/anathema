@@ -7,7 +7,7 @@ license = "MIT"
 description = "Text User Interface library (TUI) with a template language and runtime"
 documentation = "https://togglebyte.github.io/anathema-guide/"
 homepage = "https://github.com/togglebyte/anathema"
-repo = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
 
 [features]
 default = ["runtime"]
@@ -31,12 +31,3 @@ display = { path = "display", version = "0.1.0" }
 runtime = { path = "runtime", optional = true, version = "0.1.0" }
 templates = { path = "templates", optional = true, version = "0.1.0" }
 widgets = { path = "widgets", optional = true, version = "0.1.0" }
-
-[workspace]
-members = [
-    "antstring",
-    "display",
-    "runtime",
-    "templates",
-    "widgets",
-]
