@@ -1,0 +1,37 @@
+[package]
+name = "anathema"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.62"
+
+[features]
+default = ["runtime"]
+widgets = ["dep:widgets", "antstring"]
+templates = ["dep:templates", "widgets"]
+runtime = ["dep:runtime", "templates"]
+logging = [
+    "display/logging",
+    "runtime/logging",
+    "templates/logging",
+    "widgets/logging",
+]
+serde-json = [
+    "widgets/serde-json",
+    "runtime/serde-json",
+]
+
+[dependencies]
+antstring = { path = "antstring", optional = true }
+display = { path = "display" }
+runtime = { path = "runtime", optional = true }
+templates = { path = "templates", optional = true }
+widgets = { path = "widgets", optional = true }
+
+[workspace]
+members = [
+    "antstring",
+    "display",
+    "runtime",
+    "templates",
+    "widgets",
+]
