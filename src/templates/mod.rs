@@ -37,7 +37,7 @@ pub fn to_nodes(
 pub fn build_widget_tree(
     lookup: &WidgetLookup,
     widget_nodes: &[WidgetNode],
-    data_ctx: &SubContext,
+    data_ctx: &SubContext<'_>,
     node_ctx: &mut NodeCtx<'_>,
 ) -> Result<Vec<crate::widgets::WidgetContainer>> {
     let mut widgets = vec![];

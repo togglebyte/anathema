@@ -44,7 +44,7 @@ impl<'src> TemplateNode<'src> {
 //     Collapse all nodes into a tree
 // -----------------------------------------------------------------------------
 pub(crate) fn create_tree(nodes: Parser<'_>) -> Result<Vec<TemplateNode<'_>>> {
-    let mut stack: Vec<(usize, TemplateNode)> = vec![];
+    let mut stack: Vec<(usize, TemplateNode<'_>)> = vec![];
 
     for node in nodes {
         let (indent, node) = node?;

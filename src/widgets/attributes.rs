@@ -64,7 +64,7 @@ pub struct Attributes {
 }
 
 impl From<Vec<Attribute<'_>>> for Attributes {
-    fn from(attributes: Vec<Attribute>) -> Self {
+    fn from(attributes: Vec<Attribute<'_>>) -> Self {
         let mut inner = HashMap::new();
 
         for attr in attributes {

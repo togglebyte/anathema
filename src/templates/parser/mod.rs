@@ -33,7 +33,7 @@ impl Text {
         }
     }
 
-    pub(crate) fn path(&self, data_ctx: &SubContext) -> String {
+    pub(crate) fn path(&self, data_ctx: &SubContext<'_>) -> String {
         let mut buffer = String::new();
         match self {
             Text::String(s) => buffer.push_str(s),
@@ -589,7 +589,7 @@ fn parse_to_fragments(text: &str) -> Text {
 //  Note: this is not part of the `Parser` as this is used in other
 //  places to parse paths
 // -----------------------------------------------------------------------------
-fn parse_path(lexer: &mut Peekable<Lexer>, ident: &str) -> Result<Path> {
+fn parse_path(lexer: &mut Peekable<Lexer<'_>>, ident: &str) -> Result<Path> {
     let mut path = Path::new(ident);
 
     let mut stack = Vec::new();
