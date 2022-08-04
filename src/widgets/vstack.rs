@@ -1,8 +1,8 @@
 use crate::display::Size;
 
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::widgets::layout::vertical;
 use crate::widgets::Attributes;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
 /// A widget that lays out its children vertically.
 /// ```text

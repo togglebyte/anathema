@@ -4,7 +4,9 @@ use crate::display::{ScreenPos, Size};
 use super::appstate::Receiver;
 use super::appstate::Sender;
 
-pub use crate::display::events::{CrossEvent, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+pub use crate::display::events::{
+    CrossEvent, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 
 pub enum Event<T> {
     Key(KeyEvent),

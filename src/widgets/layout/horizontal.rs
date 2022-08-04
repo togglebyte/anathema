@@ -1,10 +1,10 @@
 use crate::display::Size;
 
-use crate::widgets::ctx::{LayoutCtx, PositionCtx};
-use crate::widgets::{Expand, Spacer};
-use crate::widgets::{Axis, WidgetContainer};
 use super::{expanded, spacers};
 use super::{Constraints, Padding};
+use crate::widgets::ctx::{LayoutCtx, PositionCtx};
+use crate::widgets::{Axis, WidgetContainer};
+use crate::widgets::{Expand, Spacer};
 
 pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
     let mut used_width = 0;

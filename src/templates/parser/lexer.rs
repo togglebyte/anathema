@@ -2,8 +2,8 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use crate::widgets::Number;
 use super::error::{Error, Result};
+use crate::widgets::Number;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum TokenKind<'src> {

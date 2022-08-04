@@ -6,7 +6,7 @@ use super::attributes::{fields, Attributes};
 use super::ctx::{LayoutCtx, PaintCtx, PositionCtx, Unsized, WithSize};
 use super::id::NodeId;
 use super::layout::{Constraints, Padding};
-use super::{AnimationCtx, LocalPos, Pos, Region, Display};
+use super::{AnimationCtx, Display, LocalPos, Pos, Region};
 
 // Layout:
 // 1. Receive constraints
@@ -405,4 +405,3 @@ fn to_string(node: &mut WidgetContainer, level: usize) -> String {
 
     string
 }
-

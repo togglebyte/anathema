@@ -2,9 +2,9 @@ use std::ops::Deref;
 
 use unicode_width::UnicodeWidthChar;
 
-use crate::display::{Screen, ScreenPos, Size, Style};
 use super::layout::{Constraints, Padding};
 use super::{Align, LocalPos, Pos, Region};
+use crate::display::{Screen, ScreenPos, Size, Style};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Unsized;

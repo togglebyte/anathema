@@ -1,8 +1,8 @@
 use crate::widgets::{fields, Attributes, NodeId, Value};
 
-use crate::templates::parser::Text;
-use crate::templates::error::{Error, Result};
 use super::template::TemplateNode;
+use crate::templates::error::{Error, Result};
+use crate::templates::parser::Text;
 
 mod keywords {
     pub(super) const FOR: &str = "for";

@@ -1,6 +1,6 @@
 use super::Constraints;
-use crate::widgets::{Spacer, Axis, WidgetContainer};
 use crate::display::Size;
+use crate::widgets::{Axis, Spacer, WidgetContainer};
 
 pub fn layout(
     spacers: &mut [WidgetContainer],

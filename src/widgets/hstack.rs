@@ -1,8 +1,8 @@
 use crate::display::Size;
 
 use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::widgets::Attributes;
 use crate::widgets::layout::horizontal;
+use crate::widgets::Attributes;
 
 /// A widget that lays out its children horizontally.
 /// ```text

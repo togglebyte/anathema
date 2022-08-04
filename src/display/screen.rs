@@ -1,7 +1,7 @@
 use std::io::{Result, Write};
 
-use super::{ScreenPos, Size, Style};
 use super::buffer::{diff, draw_changes, Buffer};
+use super::{ScreenPos, Size, Style};
 use crossterm::event::DisableMouseCapture;
 use crossterm::style::{Color, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{

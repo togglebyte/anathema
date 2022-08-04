@@ -1,8 +1,8 @@
 use crate::display::Size;
 
+use super::Pos;
 use super::{fields, Attributes};
 use crate::widgets::Align;
-use super::Pos;
 
 use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 
@@ -119,8 +119,8 @@ impl Widget for Alignment {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::widgets::Constraints;
     use crate::widgets::testing::test_widget;
+    use crate::widgets::Constraints;
     use crate::widgets::{Border, BorderStyle, Padding, Sides, Text};
 
     fn align_widget(align: Align, expected: &str) {

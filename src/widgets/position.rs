@@ -1,8 +1,8 @@
 use crate::display::Size;
 
+use super::Pos;
 use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::widgets::attributes::{fields, Attributes};
-use super::Pos;
 
 /// Position on the horizontal axis.
 /// Left 0 would mean the left edge of the widget is positioned at the `left` value.

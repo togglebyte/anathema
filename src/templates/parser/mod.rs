@@ -7,8 +7,8 @@ use crate::widgets::{fields, Attribute};
 use crate::widgets::{Align, Axis, BorderStyle, Display, Sides, TextAlignment, Wrap};
 use crate::widgets::{Easing, Fragment, Number, Path, Value};
 
-use crate::templates::nodes::template::TemplateNode;
 use crate::templates::ctx::SubContext;
+use crate::templates::nodes::template::TemplateNode;
 
 use self::error::{Error, Result};
 use lexer::{Lexer, Meta, Token, TokenKind};

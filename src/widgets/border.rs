@@ -2,9 +2,9 @@ use unicode_width::UnicodeWidthChar;
 
 use crate::display::{Size, Style};
 
-use crate::widgets::{fields, Attributes};
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use super::LocalPos;
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use crate::widgets::{fields, Attributes};
 
 const DEFAULT_SLIM_EDGES: [char; 8] = ['┌', '─', '┐', '│', '┘', '─', '└', '│'];
 const DEFAULT_THICK_EDGES: [char; 8] = ['╔', '═', '╗', '║', '╝', '═', '╚', '║'];

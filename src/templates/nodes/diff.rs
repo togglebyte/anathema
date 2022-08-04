@@ -1,8 +1,8 @@
 use std::iter::zip;
 
 use crate::display::Style;
-use crate::widgets::{Attributes, NodeId, WidgetContainer};
 use crate::templates::WidgetLookup;
+use crate::widgets::{Attributes, NodeId, WidgetContainer};
 
 use super::{Kind, Node};
 

@@ -1,8 +1,8 @@
 use crate::widgets::{Attributes, Fragment, NodeId, Value};
 
-use widget::{Statement, WidgetNode};
-use super::error::{Error, Result};
 use super::ctx::{NodeCtx, SubContext};
+use super::error::{Error, Result};
+use widget::{Statement, WidgetNode};
 
 pub mod diff;
 pub mod template;

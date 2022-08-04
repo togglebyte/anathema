@@ -108,7 +108,8 @@ impl<T: UserModel, O: Output> AppState<T, O> {
 
         let mut include_cache = IncludeCache::default();
         let mut node_ctx = NodeCtx::new(&mut include_cache);
-        let mut widget_containers = crate::templates::build_widget_tree(&widget_lookup, &nodes, &sub_context, &mut node_ctx)?;
+        let mut widget_containers =
+            crate::templates::build_widget_tree(&widget_lookup, &nodes, &sub_context, &mut node_ctx)?;
         if widget_containers.is_empty() {
             return Err(Error::MissingRoot);
         }

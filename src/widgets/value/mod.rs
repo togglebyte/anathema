@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use crate::display::Color;
 
-use crate::widgets::Display;
 use super::{Align, Axis, BorderStyle, Sides, TextAlignment, Wrap};
+use crate::widgets::Display;
 
 #[cfg(feature = "serde-json")]
 pub mod json;

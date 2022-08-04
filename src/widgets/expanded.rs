@@ -1,8 +1,8 @@
 use crate::display::{Size, Style};
 
-use crate::widgets::{fields, Attributes};
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use super::{Direction, LocalPos};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use crate::widgets::{fields, Attributes};
 
 const DEFAULT_FACTOR: usize = 1;
 

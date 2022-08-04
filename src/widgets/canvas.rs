@@ -1,8 +1,8 @@
 use crate::display::{Buffer, ScreenPos, Size, Style};
 
+use super::LocalPos;
 use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::widgets::{fields, Attributes};
-use super::LocalPos;
 
 #[derive(Debug)]
 enum CanvasState {

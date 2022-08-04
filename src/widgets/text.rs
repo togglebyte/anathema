@@ -324,10 +324,10 @@ impl<S: AsRef<str>> From<S> for TextSpan {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::widgets::Constraints;
-    use crate::widgets::testing::test_widget;
-    use crate::widgets::{Align, Alignment, Border, BorderStyle, Padding, Pos, Sides};
     use crate::display::Screen;
+    use crate::widgets::testing::test_widget;
+    use crate::widgets::Constraints;
+    use crate::widgets::{Align, Alignment, Border, BorderStyle, Padding, Pos, Sides};
 
     fn test_text(text: impl Widget, expected: &str) {
         let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);

@@ -1,5 +1,5 @@
-use std::time::Duration;
 use std::io::{self, Write};
+use std::time::Duration;
 
 use crate::display::Size;
 use crate::display::{
@@ -16,7 +16,7 @@ pub mod error;
 mod appstate;
 mod events;
 
-pub use appstate::{AppState, Sender, UserModel, Run, WaitFor};
+pub use appstate::{AppState, Run, Sender, UserModel, WaitFor};
 pub use events::{CrossEvent, Event, Events, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 
 pub trait Output: Write {
@@ -116,7 +116,11 @@ impl<T: Send + Sync + 'static> Runtime<T> {
     }
 
     /// Start the runtime with a custom user model.
-    pub fn with_usermodel(self, template: impl AsRef<str>, user_model: impl UserModel<Message = T>) -> error::Result<()> {
+    pub fn with_usermodel(
+        self,
+        template: impl AsRef<str>,
+        user_model: impl UserModel<Message = T>,
+    ) -> error::Result<()> {
         // -----------------------------------------------------------------------------
         //     - Output -
         // -----------------------------------------------------------------------------

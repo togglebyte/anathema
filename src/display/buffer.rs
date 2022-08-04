@@ -5,8 +5,8 @@ use crossterm::style::Print;
 use crossterm::{cursor, QueueableCommand};
 use unicode_width::UnicodeWidthChar;
 
-use super::{ScreenPos, Size};
 use super::Style;
+use super::{ScreenPos, Size};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {

@@ -1,8 +1,8 @@
 use crate::display::Size;
 
-use crate::widgets::ctx::LayoutCtx;
-use crate::widgets::{Expand, Axis, WidgetContainer};
 use super::Constraints;
+use crate::widgets::ctx::LayoutCtx;
+use crate::widgets::{Axis, Expand, WidgetContainer};
 
 pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Axis) -> Size {
     let mut expansions = widgets.iter_mut().filter(|c| c.kind() == Expand::KIND).collect::<Vec<_>>();

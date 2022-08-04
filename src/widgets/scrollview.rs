@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
 use crate::display::Size;
-use crate::widgets::{fields, Attributes};
 use crate::widgets::layout::Constraints;
+use crate::widgets::{fields, Attributes};
 
 use super::{Axis, LayoutCtx, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use super::{NodeId, Pos, Region};
