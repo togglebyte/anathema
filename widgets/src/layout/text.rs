@@ -149,8 +149,8 @@ impl TextLayout {
         }
 
         for s in input.lines() {
-            let mut meh = self._layout(s);
-            ret.append(&mut meh);
+            let mut text = self._layout(s);
+            ret.append(&mut text);
         }
 
         ret
