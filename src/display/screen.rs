@@ -22,7 +22,6 @@ impl Screen {
     /// The `output` is used initially to move the cursor and hide it.
     pub fn new(mut output: impl Write, size: impl Into<Size>) -> Result<Self> {
         let size: Size = size.into();
-        // output.queue(cursor::MoveTo(0, 0))?;
         output.queue(cursor::Hide)?;
         let inst = Self { old_buffer: Buffer::new(size), new_buffer: Buffer::new(size) };
         Ok(inst)
@@ -135,6 +134,7 @@ impl Screen {
     pub fn restore(&mut self, mut output: impl Write) -> Result<()> {
         disable_raw_mode()?;
         output.execute(LeaveAlternateScreen)?;
+        #[cfg(not(target_os="windows"))]
         output.execute(DisableMouseCapture)?;
         output.execute(cursor::Show)?;
         Ok(())
