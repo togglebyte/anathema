@@ -276,7 +276,7 @@ impl WidgetContainer {
         self.id.clone()
     }
 
-    pub fn by_id(&mut self, id: &NodeId) -> Option<&mut WidgetContainer> {
+    pub fn by_id<T: PartialEq<NodeId> + ?Sized>(&mut self, id: &T) -> Option<&mut WidgetContainer> {
         if id == &self.id {
             Some(self)
         } else {

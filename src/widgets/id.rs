@@ -29,6 +29,24 @@ impl fmt::Display for NodeId {
     }
 }
 
+impl PartialEq<NodeId> for &str {
+    fn eq(&self, rhs: &NodeId) -> bool {
+        match rhs {
+            NodeId::Value(Value::String(s)) => s == self,
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<NodeId> for str {
+    fn eq(&self, rhs: &NodeId) -> bool {
+        match rhs {
+            NodeId::Value(Value::String(s)) => s == self,
+            _ => false,
+        }
+    }
+}
+
 impl<T> From<T> for NodeId
 where
     T: Into<Value>,
