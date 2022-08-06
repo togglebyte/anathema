@@ -168,6 +168,31 @@ impl Text {
         self.needs_layout = true;
         self.needs_paint = true;
     }
+
+    /// Get a mutable reference to the inner span's String
+    /// ```
+    /// # use anathema::widgets::{Text, WidgetContainer};
+    /// # fn run(root: &mut WidgetContainer) -> Option<()> {
+    ///     let text = root.by_id("the-text")?.to::<Text>().get_text_mut(0)?;
+    ///     text.push_str("updated");
+    /// #   Some(())
+    /// # }
+    /// ```
+    pub fn get_text_mut(&mut self, index: usize) -> Option<&mut String> {
+        self.spans.get_mut(index).map(|span| &mut span.text)
+    }
+
+    /// Get a reference to the inner span's String
+    /// ```
+    /// # use anathema::widgets::{Text, WidgetContainer};
+    /// # fn run(root: &mut WidgetContainer) -> Option<()> {
+    ///     let text = root.by_id("the-text")?.to::<Text>().get_text(0)?;
+    /// #   Some(())
+    /// # }
+    /// ```
+    pub fn get_text(&self, index: usize) -> Option<&String> {
+        self.spans.get(index).map(|span| &span.text)
+    }
 }
 
 impl<T: Into<String>> From<T> for Text {
@@ -222,7 +247,12 @@ impl Widget for Text {
         let strings = text_layout.layout(string);
 
         let height = strings.len().min(ctx.constraints.max_height);
-        let width = strings.iter().map(|s| s.width()).max().unwrap_or(0);
+        let width = strings
+            .iter()
+            .map(|s| s.width())
+            .max()
+            .unwrap_or(0)
+            .min(ctx.constraints.max_width);
 
         Size { width, height }
     }

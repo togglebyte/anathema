@@ -108,6 +108,12 @@ pub struct Border {
     pub width: Option<usize>,
     /// The height of the border. This will make the constraints tight for the height.
     pub height: Option<usize>,
+    /// The minimum width of the border. This will force the minimum constrained width to expand to
+    /// this value.
+    pub min_width: Option<usize>,
+    /// The minimum height of the border. This will force the minimum constrained height to expand to
+    /// this value.
+    pub min_height: Option<usize>,
     /// If the border has a child widget, it will size it self around the child.
     pub child: Option<WidgetContainer>,
     /// The style of the border.
@@ -135,7 +141,7 @@ impl Border {
         let height = height.into();
 
         let edges = style.edges();
-        Self { sides, edges, width, height, child: None, style: Style::new() }
+        Self { sides, edges, width, height, min_width: None, min_height: None, child: None, style: Style::new() }
     }
 
     /// Create a "thin" border with an optional width and height
@@ -226,6 +232,16 @@ impl Widget for Border {
     }
 
     fn layout(&mut self, mut ctx: LayoutCtx) -> Size {
+        // If there is a min width / height, make sure the minimum constraints 
+        // are matching these
+        if let Some(min_width) = self.min_width {
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+        }
+
+        if let Some(min_height) = self.min_height {
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+        }
+
         // If there is a width / height then make the constraints tight
         // around the size. This will modify the size to fit within the
         // constraints first.
@@ -255,6 +271,15 @@ impl Widget for Border {
                 }
 
                 let mut size = child.layout(constraints, ctx.force_layout) + border_size + ctx.padding_size();
+
+                if let Some(min_width) = self.min_width {
+                    size.width = size.width.max(min_width);
+                }
+
+                if let Some(min_height) = self.min_height {
+                    size.height = size.height.max(min_height);
+                }
+
                 if ctx.constraints.is_width_tight() {
                     size.width = ctx.constraints.max_width;
                 }
@@ -264,7 +289,7 @@ impl Widget for Border {
                 size
             }
             None => {
-                let mut size = Size::ZERO;
+                let mut size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
                 if ctx.constraints.is_width_tight() {
                     size.width = ctx.constraints.max_width;
                 }
@@ -427,6 +452,7 @@ impl Widget for Border {
 mod test {
     use super::*;
     use crate::widgets::testing::test_widget;
+    use crate::widgets::Constraints;
 
     fn test_border(sides: Sides, expected: &str) {
         test_widget(Border::new(&BorderStyle::Thin, sides, None, None), expected);
@@ -505,5 +531,16 @@ mod test {
         let mut border = Border::thick(10, 3).into_container(NodeId::auto());
         border.update(Attributes::new("italic", true));
         assert!(border.to::<Border>().style.attributes.contains(crate::display::Attributes::ITALIC));
+    }
+
+    #[test]
+    fn min_width_height() {
+        let mut border = Border::thick(10, 3);
+        border.min_width = Some(10);
+        border.min_height = Some(3);
+        let mut border = border.into_container(NodeId::auto());
+        border.layout(Constraints::unbounded(), false);
+        let actual = border.size();
+        assert_eq!(Size::new(10, 3), actual);
     }
 }

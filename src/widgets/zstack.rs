@@ -45,12 +45,18 @@ pub struct ZStack {
     pub width: Option<usize>,
     /// Height
     pub height: Option<usize>,
+    /// The minimum width of the border. This will force the minimum constrained width to expand to
+    /// this value.
+    pub min_width: Option<usize>,
+    /// The minimum height of the border. This will force the minimum constrained height to expand to
+    /// this value.
+    pub min_height: Option<usize>,
 }
 
 impl ZStack {
     /// Create a new instance of a `ZStack`
     pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self { children: Vec::new(), width: width.into(), height: height.into() }
+        Self { children: Vec::new(), width: width.into(), height: height.into(), min_width: None, min_height: None }
     }
 }
 
@@ -64,6 +70,18 @@ impl Widget for ZStack {
     }
 
     fn layout(&mut self, mut ctx: LayoutCtx) -> Size {
+        if let Some(min_width) = self.min_width {
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+        }
+        if let Some(min_height) = self.min_height {
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+        }
+        if let Some(min_width) = self.min_width {
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+        }
+        if let Some(min_height) = self.min_height {
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+        }
         if let Some(width) = self.width {
             ctx.constraints.make_width_tight(width);
         }

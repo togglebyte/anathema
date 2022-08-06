@@ -21,10 +21,10 @@ pub mod fields {
     pub const BORDER_STYLE: &str = "border-style";
     pub const BOTTOM: &str = "bottom";
     pub const COLLAPSE_SPACES: &str = "collapse-spaces";
-    pub const CONSTRAINT_MAX_HEIGHT: &str = "max-height";
-    pub const CONSTRAINT_MAX_WIDTH: &str = "max-width";
-    pub const CONSTRAINT_MIN_HEIGHT: &str = "min-height";
-    pub const CONSTRAINT_MIN_WIDTH: &str = "min-width";
+    pub const MAX_HEIGHT: &str = "max-height";
+    pub const MAX_WIDTH: &str = "max-width";
+    pub const MIN_HEIGHT: &str = "min-height";
+    pub const MIN_WIDTH: &str = "min-width";
     pub const DATA: &str = "data";
     pub const DIRECTION: &str = "direction";
     pub const DISPLAY: &str = "display";
@@ -138,20 +138,20 @@ impl Attributes {
         self.get_int(fields::WIDTH).map(|i| i as usize)
     }
 
-    pub fn constraint_min_width(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MIN_WIDTH).map(|i| i as usize)
+    pub fn min_width(&self) -> Option<usize> {
+        self.get_int(fields::MIN_WIDTH).map(|i| i as usize)
     }
 
-    pub fn constraint_min_height(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MIN_HEIGHT).map(|i| i as usize)
+    pub fn min_height(&self) -> Option<usize> {
+        self.get_int(fields::MIN_HEIGHT).map(|i| i as usize)
     }
 
-    pub fn constraint_max_width(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MAX_WIDTH).map(|i| i as usize)
+    pub fn max_width(&self) -> Option<usize> {
+        self.get_int(fields::MAX_WIDTH).map(|i| i as usize)
     }
 
-    pub fn constraint_max_height(&self) -> Option<usize> {
-        self.get_int(fields::CONSTRAINT_MAX_HEIGHT).map(|i| i as usize)
+    pub fn max_height(&self) -> Option<usize> {
+        self.get_int(fields::MAX_HEIGHT).map(|i| i as usize)
     }
 
     pub fn offset(&self) -> i32 {

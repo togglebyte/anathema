@@ -31,12 +31,18 @@ pub struct HStack {
     pub width: Option<usize>,
     /// If a height is provided then the layout constraints will be tight for height
     pub height: Option<usize>,
+    /// The minimum width of the border. This will force the minimum constrained width to expand to
+    /// this value.
+    pub min_width: Option<usize>,
+    /// The minimum height of the border. This will force the minimum constrained height to expand to
+    /// this value.
+    pub min_height: Option<usize>,
 }
 
 impl HStack {
     /// Create a new instance of an `HStack`.
     pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self { children: Vec::new(), width: width.into(), height: height.into() }
+        Self { children: Vec::new(), width: width.into(), height: height.into(), min_width: None, min_height: None }
     }
 }
 
@@ -55,6 +61,12 @@ impl Widget for HStack {
         }
         if let Some(height) = self.height {
             ctx.constraints.make_height_tight(height);
+        }
+        if let Some(min_width) = self.min_width {
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+        }
+        if let Some(min_height) = self.min_height {
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
         horizontal::layout(&mut self.children, ctx)
     }

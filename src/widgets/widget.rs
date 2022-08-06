@@ -220,10 +220,10 @@ impl WidgetContainer {
                         .map(|p| Padding::new(p as usize))
                         .unwrap_or(self.padding);
 
-                    self.animation.update_dst(fields::CONSTRAINT_MAX_WIDTH, constraints.max_width as f32);
+                    self.animation.update_dst(fields::MAX_WIDTH, constraints.max_width as f32);
                     constraints.max_width = self
                         .animation
-                        .get_value(fields::CONSTRAINT_MAX_WIDTH)
+                        .get_value(fields::MAX_WIDTH)
                         .map(|val| val as usize)
                         .unwrap_or(constraints.max_width);
                     let ctx = LayoutCtx::new(constraints, force_layout, padding);

@@ -155,6 +155,8 @@ fn scrollview_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContain
 // -----------------------------------------------------------------------------
 fn zstack_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
     let mut widget = ZStack::new(node.attributes.width(), node.attributes.height());
+    widget.min_width = node.attributes.min_width();
+    widget.min_height = node.attributes.min_height();
 
     for child in &node.children {
         let child = lookup.make(child)?;
@@ -169,6 +171,8 @@ fn zstack_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> 
 // -----------------------------------------------------------------------------
 fn hstack_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
     let mut widget = HStack::new(node.attributes.width(), node.attributes.height());
+    widget.min_width = node.attributes.min_width();
+    widget.min_height = node.attributes.min_height();
 
     for child in &node.children {
         let child = lookup.make(child)?;
@@ -185,6 +189,8 @@ fn vstack_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> 
     let attribs = &node.attributes;
 
     let mut widget = VStack::new(attribs.width(), attribs.height());
+    widget.min_width = attribs.min_width();
+    widget.min_height = attribs.min_height();
 
     for child in &node.children {
         let child = lookup.make(child)?;
@@ -241,6 +247,8 @@ fn border_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> 
     let height = attribs.height();
 
     let mut widget = Border::new(border_style, sides, width, height);
+    widget.min_width = attribs.min_width();
+    widget.min_height = attribs.min_height();
     widget.style = attribs.style();
     if let Some(child) = node.children.first() {
         widget.child = Some(lookup.make(child)?);
@@ -275,4 +283,73 @@ fn expand_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> 
 
     let widget = widget.into_container(node.id());
     Ok(widget)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::widgets::{fields, Attributes, BorderStyle, NodeId};
+
+    fn node_to_widget(node: &Node) -> WidgetContainer {
+        let lookup = WidgetLookup::default();
+        lookup.make(node).unwrap()
+    }
+
+    #[test]
+    fn lookup_border() {
+        let mut attributes = Attributes::empty();
+        attributes.set(fields::MIN_WIDTH, 10u64);
+        attributes.set(fields::MIN_HEIGHT, 3u64);
+        attributes.set(fields::BORDER_STYLE, BorderStyle::Custom("01234567".into()));
+        let node =
+            Node { kind: Kind::Node { ident: "border".into() }, children: vec![], id: NodeId::auto(), attributes };
+
+        let mut widget = node_to_widget(&node);
+        let border = widget.to::<Border>();
+        assert_eq!(Some(10), border.min_width);
+        assert_eq!(Some(3), border.min_height);
+        assert_eq!(['0', '1', '2', '3', '4', '5', '6', '7'], border.edges);
+    }
+
+    #[test]
+    fn lookup_vstack() {
+        let mut attributes = Attributes::empty();
+        attributes.set(fields::MIN_WIDTH, 10u64);
+        attributes.set(fields::MIN_HEIGHT, 3u64);
+        let node =
+            Node { kind: Kind::Node { ident: "vstack".into() }, children: vec![], id: NodeId::auto(), attributes };
+
+        let mut widget = node_to_widget(&node);
+        let stack = widget.to::<VStack>();
+        assert_eq!(Some(10), stack.min_width);
+        assert_eq!(Some(3), stack.min_height);
+    }
+
+    #[test]
+    fn lookup_hstack() {
+        let mut attributes = Attributes::empty();
+        attributes.set(fields::MIN_WIDTH, 10u64);
+        attributes.set(fields::MIN_HEIGHT, 3u64);
+        let node =
+            Node { kind: Kind::Node { ident: "hstack".into() }, children: vec![], id: NodeId::auto(), attributes };
+
+        let mut widget = node_to_widget(&node);
+        let stack = widget.to::<HStack>();
+        assert_eq!(Some(10), stack.min_width);
+        assert_eq!(Some(3), stack.min_height);
+    }
+
+    #[test]
+    fn lookup_zstack() {
+        let mut attributes = Attributes::empty();
+        attributes.set(fields::MIN_WIDTH, 10u64);
+        attributes.set(fields::MIN_HEIGHT, 3u64);
+        let node =
+            Node { kind: Kind::Node { ident: "zstack".into() }, children: vec![], id: NodeId::auto(), attributes };
+
+        let mut widget = node_to_widget(&node);
+        let stack = widget.to::<ZStack>();
+        assert_eq!(Some(10), stack.min_width);
+        assert_eq!(Some(3), stack.min_height);
+    }
 }

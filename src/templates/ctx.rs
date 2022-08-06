@@ -73,7 +73,7 @@ impl<'ctx> SubContext<'ctx> {
 }
 
 macro_rules! mut_ref_push_diff {
-    ($fn:ident, $ret:tt, $variant:ident) => {
+    ($fn:ident, $ret:ty, $variant:ident) => {
         /// Get a mutable reference to a `$ret`
         pub fn $fn(&mut self, key: &str) -> Option<&mut $ret> {
             match self.values.get_mut(key)? {
@@ -81,6 +81,18 @@ macro_rules! mut_ref_push_diff {
                     self.diff.push(key.into());
                     Some(value)
                 }
+                _ => None,
+            }
+        }
+    };
+}
+
+macro_rules! get_ref {
+    ($fn:ident, $ret:ty, $variant:ident) => {
+        /// Get a reference to a `$ret`
+        pub fn $fn(&self, key: &str) -> Option<&$ret> {
+            match self.values.get(key)? {
+                Value::$variant(value) => Some(value),
                 _ => None,
             }
         }
@@ -176,6 +188,9 @@ impl DataCtx {
         self.values.is_empty()
     }
 
+    // -----------------------------------------------------------------------------
+    //     - Convenient value access -
+    // -----------------------------------------------------------------------------
     pub fn get_u64_mut(&mut self, key: &str) -> Option<&mut u64> {
         match self.values.get_mut(key)? {
             Value::Number(Number::Unsigned(num)) => {
@@ -196,6 +211,21 @@ impl DataCtx {
         }
     }
 
+    pub fn get_u64(&self, key: &str) -> Option<&u64> {
+        match self.values.get(key)? {
+            Value::Number(Number::Unsigned(num)) => Some(num),
+            _ => None,
+        }
+    }
+
+    pub fn get_i64(&self, key: &str) -> Option<&i64> {
+        match self.values.get(key)? {
+            Value::Number(Number::Signed(num)) => Some(num),
+            _ => None,
+        }
+    }
+
+    // Get mutable references, also insert a diff
     mut_ref_push_diff!(get_alignment_mut, Align, Alignment);
     mut_ref_push_diff!(get_axis_mut, Axis, Axis);
     mut_ref_push_diff!(get_bool_mut, bool, Bool);
@@ -206,6 +236,20 @@ impl DataCtx {
     mut_ref_push_diff!(get_sides_mut, Sides, Sides);
     mut_ref_push_diff!(get_string_mut, String, String);
     mut_ref_push_diff!(get_wrap_mut, Wrap, Wrap);
+    mut_ref_push_diff!(get_list_mut, Vec<Value>, List);
+
+    // Get reference
+    get_ref!(get_alignment, Align, Alignment);
+    get_ref!(get_axis, Axis, Axis);
+    get_ref!(get_bool, bool, Bool);
+    get_ref!(get_border_style, BorderStyle, BorderStyle);
+    get_ref!(get_color, Color, Color);
+    get_ref!(get_path, Path, DataBinding);
+    get_ref!(get_display, Display, Display);
+    get_ref!(get_sides, Sides, Sides);
+    get_ref!(get_string, String, String);
+    get_ref!(get_wrap, Wrap, Wrap);
+    get_ref!(get_list, Vec<Value>, List);
 }
 
 #[cfg(test)]

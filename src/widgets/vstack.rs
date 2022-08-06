@@ -38,12 +38,18 @@ pub struct VStack {
     pub width: Option<usize>,
     /// If a height is provided then the layout constraints will be tight for height
     pub height: Option<usize>,
+    /// The minimum width of the border. This will force the minimum constrained width to expand to
+    /// this value.
+    pub min_width: Option<usize>,
+    /// The minimum height of the border. This will force the minimum constrained height to expand to
+    /// this value.
+    pub min_height: Option<usize>,
 }
 
 impl VStack {
     /// Creates a new instance of a `VStack`
     pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self { children: Vec::new(), width: width.into(), height: height.into() }
+        Self { children: Vec::new(), width: width.into(), height: height.into(), min_width: None, min_height: None }
     }
 }
 
@@ -62,6 +68,12 @@ impl Widget for VStack {
         }
         if let Some(height) = self.height {
             ctx.constraints.make_height_tight(height);
+        }
+        if let Some(min_width) = self.min_width {
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+        }
+        if let Some(min_height) = self.min_height {
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
         vertical::layout(&mut self.children, ctx)
     }
@@ -109,19 +121,19 @@ mod test {
     use crate::widgets::testing::test_widget;
     use crate::widgets::{Border, BorderStyle, Sides, Text};
 
-    fn test_column(col: impl Widget, expected: &str) {
+    fn test_vstack(col: impl Widget, expected: &str) {
         let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
         border.child = Some(col.into_container(NodeId::auto()));
         test_widget(border, expected);
     }
 
     #[test]
-    fn column() {
+    fn only_vstack() {
         let mut vstack = VStack::new(None, None);
         vstack.add_child(Text::with_text("0").into_container(NodeId::auto()));
         vstack.add_child(Text::with_text("1").into_container(NodeId::auto()));
         vstack.add_child(Text::with_text("2").into_container(NodeId::auto()));
-        test_column(
+        test_vstack(
             vstack,
             r#"
             ┌───────┐
@@ -134,12 +146,12 @@ mod test {
     }
 
     #[test]
-    fn fixed_size_column() {
+    fn fixed_height_stack() {
         let mut vstack = VStack::new(None, 2);
         vstack.add_child(Text::with_text("0").into_container(NodeId::auto()));
         vstack.add_child(Text::with_text("1").into_container(NodeId::auto()));
         vstack.add_child(Text::with_text("2").into_container(NodeId::auto()));
-        test_column(
+        test_vstack(
             vstack,
             r#"
             ┌───────┐
