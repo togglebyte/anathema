@@ -2,8 +2,10 @@ use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
 use crate::display::{Screen, Size};
-use crate::templates::Node;
-use crate::templates::{DataCtx, IncludeCache, NodeCtx, SubContext, WidgetLookup, WidgetNode};
+use crate::templates::diff;
+use crate::templates::{
+    build_widget_tree, to_nodes, DataCtx, IncludeCache, Node, NodeCtx, SubContext, WidgetLookup, WidgetNode,
+};
 use crate::widgets::{Constraints, PaintCtx, Pos, Value, WidgetContainer};
 
 use super::error::{Error, Result};
@@ -99,21 +101,34 @@ impl<T: UserModel, O: Output> AppState<T, O> {
         wait_for: WaitFor,
     ) -> Result<Self> {
         let size = output.size();
+
+        // -----------------------------------------------------------------------------
+        //     - Setup the "screen" -
+        // -----------------------------------------------------------------------------
         let mut screen = Screen::new(&mut output, size)?;
         screen.clear_all(&mut output)?;
 
+        // -----------------------------------------------------------------------------
+        //     - Data context -
+        //     ... and add an empty `IncludeCache`
+        // -----------------------------------------------------------------------------
         let ctx = user_model.data();
-        // ctx.insert("context", extra_context(size, &Metrics::new()));
         let sub_context = SubContext::new(ctx);
-
         let mut include_cache = IncludeCache::default();
         let mut node_ctx = NodeCtx::new(&mut include_cache);
-        let mut widget_containers =
-            crate::templates::build_widget_tree(&widget_lookup, &nodes, &sub_context, &mut node_ctx)?;
-        if widget_containers.is_empty() {
-            return Err(Error::MissingRoot);
-        }
-        let root = widget_containers.remove(0);
+
+        // -----------------------------------------------------------------------------
+        //     - Widget tree -
+        //     Build upt he initial widget tree
+        // -----------------------------------------------------------------------------
+        let root = {
+            let mut widget_containers = build_widget_tree(&widget_lookup, &nodes, &sub_context, &mut node_ctx)?;
+            if widget_containers.is_empty() {
+                return Err(Error::MissingRoot);
+            }
+            widget_containers.remove(0)
+        };
+
         let old_nodes = crate::templates::to_nodes(&nodes, &sub_context, &mut node_ctx)?;
 
         let inst = Self {
@@ -148,6 +163,12 @@ impl<T: UserModel, O: Output> AppState<T, O> {
                 return Ok(Run::Quit);
             }
 
+            if let Event::ReplaceWidgets(new_nodes) = event {
+                self.nodes = new_nodes;
+                self.rebuild_widgets(true)?;
+                return Ok(Run::Continue);
+            }
+
             if let Event::Resize(new_size) = event {
                 self.root.resize(new_size);
 
@@ -180,17 +201,24 @@ impl<T: UserModel, O: Output> AppState<T, O> {
             self.user_model.event(event, &mut self.root);
         }
 
-        let ctx = self.user_model.data();
-        let diff = ctx.diff();
+        self.rebuild_widgets(false)?;
 
-        if !diff.is_empty() {
-            let mut sub_context = SubContext::new(ctx);
-            sub_context.insert("context", extra_context(self.screen.size(), &self.metrics));
+        self.metrics.update_time = now.elapsed();
+        Ok(())
+    }
+
+    fn rebuild_widgets(&mut self, force_rebuild: bool) -> Result<()> {
+        let ctx = self.user_model.data();
+        #[cfg(feature = "metrics")]
+        ctx.insert("context", extra_context(self.screen.size(), &self.metrics));
+
+        if !ctx.diff().is_empty() || force_rebuild {
+            let sub_context = SubContext::new(ctx);
             let mut node_ctx = NodeCtx::new(&mut self.include_cache);
-            let new_nodes = crate::templates::to_nodes(&self.nodes, &sub_context, &mut node_ctx)?;
+            let new_nodes = to_nodes(&self.nodes, &sub_context, &mut node_ctx)?;
 
             if !self.old_nodes.is_empty() {
-                let changes = crate::templates::diff::diff(&new_nodes[0], self.old_nodes.remove(0));
+                let changes = diff::diff(&new_nodes[0], self.old_nodes.remove(0));
                 if !changes.is_empty() {
                     changes.apply(&mut self.root, &self.widget_lookup, &new_nodes);
                 }
@@ -199,7 +227,6 @@ impl<T: UserModel, O: Output> AppState<T, O> {
             self.old_nodes = new_nodes;
         }
 
-        self.metrics.update_time = now.elapsed();
         Ok(())
     }
 
@@ -260,6 +287,31 @@ impl<T: UserModel, O: Output> AppState<T, O> {
 // -----------------------------------------------------------------------------
 //     - User model -
 // -----------------------------------------------------------------------------
+/// Creating a custom state by implementing `UserModel`.
+///
+/// ```
+/// use anathema::runtime::{UserModel, Event};
+/// use anathema::templates::DataCtx;
+/// use anathema::widgets::WidgetContainer;
+/// struct State {
+///     current_value: usize,
+///     data: DataCtx,
+/// }
+///
+/// impl UserModel for State {
+///     type Message = usize;
+///
+///     fn event(&mut self, event: Event<Self::Message>, root_widget: &mut WidgetContainer) {
+///         if let Some(value) = event.user() {
+///             self.current_value = value;
+///         }
+///     }
+///
+///     fn data(&mut self) -> &mut DataCtx {
+///         &mut self.data
+///     }
+/// }
+/// ```
 pub trait UserModel {
     type Message: Send + Sync + 'static;
 

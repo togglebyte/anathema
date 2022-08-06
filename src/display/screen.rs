@@ -134,7 +134,7 @@ impl Screen {
     pub fn restore(&mut self, mut output: impl Write) -> Result<()> {
         disable_raw_mode()?;
         output.execute(LeaveAlternateScreen)?;
-        #[cfg(not(target_os="windows"))]
+        #[cfg(not(target_os = "windows"))]
         output.execute(DisableMouseCapture)?;
         output.execute(cursor::Show)?;
         Ok(())

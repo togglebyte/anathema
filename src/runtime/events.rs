@@ -1,5 +1,6 @@
 use crate::display::events::read;
 use crate::display::{ScreenPos, Size};
+use crate::templates::WidgetNode;
 
 use super::appstate::Receiver;
 use super::appstate::Sender;
@@ -13,6 +14,7 @@ pub enum Event<T> {
     Mouse(MouseEvent),
     Resize(Size),
     User(T),
+    ReplaceWidgets(Vec<WidgetNode>),
     Quit,
 }
 
