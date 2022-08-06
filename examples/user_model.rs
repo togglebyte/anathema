@@ -92,7 +92,7 @@ impl UserModel for State {
         }
 
         // Scrolling the mouse wheel changes the brush
-        if let Some(_) = event.mouse_scroll_up() {
+        if let Some(_) = event.scroll_up() {
             match self.brush {
                 'X' => self.brush = 'Y',
                 'Y' => self.brush = 'Z',
