@@ -47,13 +47,14 @@ impl Widget for Alignment {
     }
 
     fn layout(&mut self, ctx: LayoutCtx) -> Size {
+        let constraints = ctx.padded_constraints();
         // -----------------------------------------------------------------------------
         //     - Layout child -
         // -----------------------------------------------------------------------------
         match self.child.as_mut() {
             Some(child) => {
-                let _child_size = child.layout(ctx.constraints, ctx.force_layout);
-                Size::new(ctx.constraints.max_width, ctx.constraints.max_height)
+                let _child_size = child.layout(constraints, ctx.force_layout);
+                Size::new(constraints.max_width, constraints.max_height)
             }
             None => Size::ZERO,
         }
@@ -80,7 +81,7 @@ impl Widget for Alignment {
                 Align::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
             };
 
-            child.position(ctx.pos + child_offset);
+            child.position(ctx.padded_position() + child_offset);
         }
     }
 

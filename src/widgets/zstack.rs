@@ -76,12 +76,6 @@ impl Widget for ZStack {
         if let Some(min_height) = self.min_height {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
-        if let Some(min_width) = self.min_width {
-            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
-        }
-        if let Some(min_height) = self.min_height {
-            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
-        }
         if let Some(width) = self.width {
             ctx.constraints.make_width_tight(width);
         }

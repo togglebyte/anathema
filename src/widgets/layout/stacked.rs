@@ -3,7 +3,7 @@ use crate::widgets::ctx::{LayoutCtx, PositionCtx};
 use crate::widgets::{Spacer, WidgetContainer};
 
 pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
-    let _max_height = ctx.constraints.max_height;
+    let constraints = ctx.padded_constraints();
 
     let mut height = 0;
     let mut width = 0;
@@ -14,7 +14,7 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
             continue;
         }
 
-        let size = widget.layout(ctx.constraints, ctx.force_layout);
+        let size = widget.layout(constraints, ctx.force_layout);
 
         width = width.max(size.width);
         height = height.max(size.height);
@@ -25,6 +25,6 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
 
 pub fn position(widgets: &mut [WidgetContainer], ctx: PositionCtx) {
     for widget in widgets {
-        widget.position(ctx.pos);
+        widget.position(ctx.padded_position());
     }
 }

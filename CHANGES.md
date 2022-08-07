@@ -7,10 +7,11 @@
       `min-height`.
     * Convenient `String` access on the `Text` widget via
       `get_text_mut(span_index)` and `get_text(span_index)`.
+    * BUGFIX: Padding for `ZStack` and `Alignment` is now working.
 * 0.1.2
     * `WidgetContainer::by_id` is made more ergonomic and can now called with a
       string slice now.
     * BUGFIX: Disabling mouse capture by default under `Windows` caused a panic,
-      this is no longer done.
+      this was fixed by not disabling mouse capture on Windows by default.
     * `metrics` is now a feature (turned on by default), that always updates the
       context with the last frame numbers.
