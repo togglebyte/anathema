@@ -232,7 +232,7 @@ impl Widget for Border {
     }
 
     fn layout(&mut self, mut ctx: LayoutCtx) -> Size {
-        // If there is a min width / height, make sure the minimum constraints 
+        // If there is a min width / height, make sure the minimum constraints
         // are matching these
         if let Some(min_width) = self.min_width {
             ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);

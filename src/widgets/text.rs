@@ -247,12 +247,7 @@ impl Widget for Text {
         let strings = text_layout.layout(string);
 
         let height = strings.len().min(ctx.constraints.max_height);
-        let width = strings
-            .iter()
-            .map(|s| s.width())
-            .max()
-            .unwrap_or(0)
-            .min(ctx.constraints.max_width);
+        let width = strings.iter().map(|s| s.width()).max().unwrap_or(0).min(ctx.constraints.max_width);
 
         Size { width, height }
     }

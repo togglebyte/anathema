@@ -126,7 +126,7 @@ impl UserModel for State {
 
         // Paint or erase when the mouse is dragged
         if let Some((screen_pos, btn, _modifiers)) = event.mouse_drag() {
-            let widget = root.by_id(&NodeId::Value(Value::from("canvas"))).unwrap();
+            let widget = root.by_id("canvas").unwrap();
             if let Some(pos) = widget.screen_to_local(screen_pos) {
                 let canvas = widget.to::<Canvas>();
 
@@ -153,7 +153,7 @@ fn main() {
     let mut runtime = Runtime::new();
     runtime.output_cfg.enable_mouse = true;
     runtime.output_cfg.alt_screen = false;
-    let state = State::new(runtime.tx());
+    let state = State::new(runtime.sender());
 
     if let Err(e) = runtime.with_usermodel(TEMPLATE, state) {
         eprintln!("{e}");

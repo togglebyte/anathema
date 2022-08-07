@@ -155,7 +155,7 @@ impl<T: Send + Sync + 'static> Events<T> {
         Self { tx: event_tx, event_rx }
     }
 
-    pub fn tx(&self) -> Sender<T> {
+    pub fn sender(&self) -> Sender<T> {
         self.tx.clone()
     }
 

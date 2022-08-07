@@ -111,8 +111,8 @@ impl<T: Send + Sync + 'static> Runtime<T> {
 
     /// Get an instance of the `Sender<T>`.
     /// This is used to pass events to the runtime.
-    pub fn tx(&self) -> Sender<T> {
-        self.events.tx()
+    pub fn sender(&self) -> Sender<T> {
+        self.events.sender()
     }
 
     /// Start the runtime with a custom user model.
@@ -146,7 +146,7 @@ impl<T: Send + Sync + 'static> Runtime<T> {
     where
         F: FnMut(Event<T>, &mut WidgetContainer, &mut DataCtx, &mut Sender<T>),
     {
-        let tx = self.tx();
+        let tx = self.sender();
         let state = DefaultState { tx, data: initial, f };
         self.with_usermodel(template, state)?;
         Ok(())
