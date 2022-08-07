@@ -16,7 +16,7 @@ templates = ["widgets"]
 runtime = ["templates"]
 metrics = []
 
-logging = ["log"]
+log = ["dep:log"]
 flume = ["dep:flume"]
 serde-json = ["serde_json"]
 
