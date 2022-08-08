@@ -9,7 +9,7 @@ static TEMPLATE: &'static str = r#"
 vstack [padding-left: 2, padding-right: 2, padding: 1]:
     hstack:
 
-        // colours
+        // Colours
         // -------
         for [data: {{ colors }}, binding: color]:
             border [id: {{ color.id }}, width: 4, height: 3, background: {{ color.color }}, foreground: {{ color.selected }}]:
@@ -18,6 +18,11 @@ vstack [padding-left: 2, padding-right: 2, padding: 1]:
         // --------------
         border [height: 3]:
             text: "brush: {{ brush }}"
+
+        // Help
+        // ----
+        spacer:
+        text: "Scroll mouse wheel up to cycle brushes"
 
     // Canvas to draw on
     // -----------------
@@ -66,7 +71,7 @@ impl State {
     // Create a new instanc of the `State`.
     // Assign a character to the brush and setup the colors
     fn new(tx: Sender<()>) -> Self {
-        let brush = 'X';
+        let brush = '░';
         let colors = vec![
             ColorItem { color: Color::White, selected: Color::White, id: 0 },
             ColorItem { color: Color::Red, selected: Color::Black, id: 1 },
@@ -94,9 +99,10 @@ impl UserModel for State {
         // Scrolling the mouse wheel changes the brush
         if let Some(_) = event.scroll_up() {
             match self.brush {
-                'X' => self.brush = 'Y',
-                'Y' => self.brush = 'Z',
-                'Z' => self.brush = 'X',
+                '░' => self.brush = '▒',
+                '▒' => self.brush = '▓',
+                '▓' => self.brush = '█',
+                '█' => self.brush = '░',
                 _ => {}
             }
             self.data.insert("brush", self.brush.to_string());
