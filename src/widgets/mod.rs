@@ -17,12 +17,12 @@ pub(crate) mod canvas;
 pub(crate) mod expanded;
 pub(crate) mod hstack;
 pub(crate) mod position;
-// pub(crate) mod scrollview;
 pub(crate) mod spacer;
 pub(crate) mod text;
 pub(crate) mod vstack;
 pub(crate) mod zstack;
 
+#[cfg(test)]
 pub mod testing;
 
 pub use animation::{Animation, AnimationCtx};

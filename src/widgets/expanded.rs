@@ -96,7 +96,7 @@ impl Widget for Expand {
 
     fn layout(&mut self, ctx: LayoutCtx) -> Size {
         let mut size = match self.child {
-            Some(ref mut child) => child.layout(ctx.constraints, ctx.force_layout),
+            Some(ref mut child) => child.layout(ctx.padded_constraints(), ctx.force_layout),
             None => Size::ZERO,
         };
 
@@ -114,7 +114,7 @@ impl Widget for Expand {
 
     fn position(&mut self, ctx: PositionCtx) {
         if let Some(c) = self.child.as_mut() {
-            c.position(ctx.pos)
+            c.position(ctx.padded_position())
         }
     }
 
@@ -169,7 +169,8 @@ impl Widget for Expand {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::widgets::{Border, Constraints};
+    use crate::widgets::testing::test_widget;
+    use crate::widgets::{Border, BorderStyle, Constraints, Padding, Sides, Text};
 
     fn expand_border(dir: Option<Direction>) -> WidgetContainer {
         let mut parent = Border::thick(None, None).into_container(NodeId::auto());
@@ -177,6 +178,12 @@ mod test {
         parent.add_child(expand);
         parent.layout(Constraints::new(10, 10), false);
         parent
+    }
+
+    fn test_expand(expanded: WidgetContainer, expected: &str) {
+        let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
+        border.child = Some(expanded);
+        test_widget(border, expected);
     }
 
     #[test]
@@ -202,5 +209,36 @@ mod test {
         let mut expand = Expand::new(None, None).into_container(NodeId::auto());
         expand.update(Attributes::new("italic", true));
         assert!(expand.to::<Expand>().style.attributes.contains(crate::display::Attributes::ITALIC));
+    }
+
+    #[test]
+    fn fill() {
+        let mut expand = Expand::new(None, None);
+        expand.fill = "hello".into();
+        let expand = expand.into_container(NodeId::auto());
+
+        let expected = r#"
+            ┌───────┐
+            │hellohe│
+            │hellohe│
+            └───────┘
+        "#;
+        test_expand(expand, expected);
+    }
+
+    #[test]
+    fn padding() {
+        let expand = Expand::new(None, None);
+        let mut expand = expand.into_container(NodeId::auto());
+        expand.padding = Padding::new(1);
+        expand.add_child(Text::with_text("xyz").into_container(NodeId::auto()));
+        let expected = r#"
+            ┌───────┐
+            │       │
+            │ xyz   │
+            │       │
+            └───────┘
+        "#;
+        test_expand(expand, expected);
     }
 }

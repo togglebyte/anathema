@@ -15,13 +15,13 @@ pub struct IncludeCache(HashMap<String, Vec<WidgetNode>>);
 #[derive(Debug)]
 pub struct NodeCtx<'cache> {
     include_cache: &'cache mut IncludeCache,
-    pub(crate) include_level: usize,
+    pub(crate) include_depth: usize,
 }
 
 impl<'cache> NodeCtx<'cache> {
     /// Create a new instance of a `NodeCtx`.
     pub fn new(include_cache: &'cache mut IncludeCache) -> Self {
-        Self { include_cache, include_level: 0 }
+        Self { include_cache, include_depth: 0 }
     }
 
     pub(crate) fn includes(&mut self, path: String) -> Result<Vec<WidgetNode>> {

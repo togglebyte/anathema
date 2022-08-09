@@ -9,7 +9,7 @@ pub mod template;
 pub mod widget;
 
 static DEFAULT_VALUE: &Value = &Value::String(String::new());
-const MAX_INCLUDE_LEVEL: usize = 42;
+const MAX_INCLUDE_DEPTH: usize = 42;
 
 // -----------------------------------------------------------------------------
 //     - Node kind -
@@ -209,13 +209,13 @@ pub(super) fn to_nodes(
         Statement::For { binding, data, template } => for_loop(data_ctx, node_ctx, binding, data, template),
         Statement::If { cond, children, elses } => if_statement(data_ctx, node_ctx, cond, children, elses),
         Statement::Include { path } => {
-            if node_ctx.include_level > MAX_INCLUDE_LEVEL {
+            if node_ctx.include_depth > MAX_INCLUDE_DEPTH {
                 return Ok(vec![]);
             }
 
             let path_buffer = path.path(data_ctx);
             let widget_nodes = node_ctx.includes(path_buffer).unwrap();
-            node_ctx.include_level += 1;
+            node_ctx.include_depth += 1;
             super::to_nodes(&widget_nodes, data_ctx, node_ctx)
         }
         Statement::Node { children } => widget_node_to_nodes(widget_node, children, data_ctx, node_ctx),
