@@ -3,7 +3,7 @@ use crate::display::Size;
 use super::{expanded, spacers};
 use super::{Constraints, Padding};
 use crate::widgets::ctx::{LayoutCtx, PositionCtx};
-use crate::widgets::{Axis, WidgetContainer};
+use crate::widgets::{Direction, WidgetContainer};
 use crate::widgets::{Expand, Spacer};
 
 pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
@@ -38,13 +38,17 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx) -> Size {
             ctx.force_layout,
             Padding::ZERO,
         ),
-        Axis::Horizontal,
+        Direction::Horizontal,
     );
 
     height = height.max(expanded_size.height);
 
-    let spacers_size =
-        spacers::layout(widgets, Constraints::new(max_width - used_width, height), ctx.force_layout, Axis::Horizontal);
+    let spacers_size = spacers::layout(
+        widgets,
+        Constraints::new(max_width - used_width, height),
+        ctx.force_layout,
+        Direction::Horizontal,
+    );
 
     Size::new(used_width + expanded_size.width + spacers_size.width, height) + ctx.padding_size()
 }

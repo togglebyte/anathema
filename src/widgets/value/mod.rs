@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::display::Color;
 
-use super::{Align, Axis, BorderStyle, Sides, TextAlignment, Wrap};
+use super::{Align, BorderStyle, Direction, Sides, TextAlignment, Wrap};
 use crate::widgets::Display;
 
 #[cfg(feature = "serde-json")]
@@ -112,8 +112,8 @@ impl Easing {
 pub enum Value {
     /// Alignment.
     Alignment(Align),
-    /// Axis or direction.
-    Axis(Axis),
+    /// Direction.
+    Direction(Direction),
     /// Boolean.
     Bool(bool),
     /// Border style, used with the [`crate::Border`] widget.
@@ -196,7 +196,7 @@ macro_rules! impl_from_val {
 }
 
 impl_from_val!(Align, Alignment);
-impl_from_val!(Axis, Axis);
+impl_from_val!(Direction, Direction);
 impl_from_val!(bool, Bool);
 impl_from_val!(BorderStyle, BorderStyle);
 impl_from_val!(Color, Color);
@@ -212,7 +212,7 @@ impl fmt::Display for Value {
         match self {
             Self::Empty => write!(f, ""),
             Self::Alignment(val) => write!(f, "{}", val),
-            Self::Axis(val) => write!(f, "{:?}", val),
+            Self::Direction(val) => write!(f, "{:?}", val),
             Self::Bool(val) => write!(f, "{}", val),
             Self::BorderStyle(val) => write!(f, "{:?}", val),
             Self::Color(val) => write!(f, "{:?}", val),

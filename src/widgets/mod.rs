@@ -17,7 +17,7 @@ pub(crate) mod canvas;
 pub(crate) mod expanded;
 pub(crate) mod hstack;
 pub(crate) mod position;
-pub(crate) mod scrollview;
+// pub(crate) mod scrollview;
 pub(crate) mod spacer;
 pub(crate) mod text;
 pub(crate) mod vstack;
@@ -43,16 +43,12 @@ pub enum Display {
     Exclude,
 }
 
-/// Axis or direction
+/// Direction
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Axis {
+pub enum Direction {
     Horizontal,
     Vertical,
 }
-
-/// An alias for [`Axis`].
-/// See [`Axis`] for documentation
-pub type Direction = Axis;
 
 // -----------------------------------------------------------------------------
 //     - Export all widgets -
@@ -66,7 +62,6 @@ pub use {
     expanded::Expand,
     hstack::HStack,
     position::{HorzEdge, Position, VertEdge},
-    scrollview::ScrollView,
     spacer::Spacer,
     text::{Text, TextAlignment, TextSpan},
     vstack::VStack,

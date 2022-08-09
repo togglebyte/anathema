@@ -1,12 +1,12 @@
 use super::Constraints;
 use crate::display::Size;
-use crate::widgets::{Axis, Spacer, WidgetContainer};
+use crate::widgets::{Direction, Spacer, WidgetContainer};
 
 pub fn layout(
     spacers: &mut [WidgetContainer],
     mut constraints: Constraints,
     force_layout: bool,
-    direction: Axis,
+    direction: Direction,
 ) -> Size {
     let mut size = Size::ZERO;
     let count = spacers.iter_mut().filter(|c| c.kind() == Spacer::KIND).count();
@@ -15,8 +15,8 @@ pub fn layout(
     }
 
     match direction {
-        Axis::Horizontal => constraints.max_width /= count,
-        Axis::Vertical => constraints.max_height /= count,
+        Direction::Horizontal => constraints.max_width /= count,
+        Direction::Vertical => constraints.max_height /= count,
     };
     constraints.min_width = constraints.max_width;
     constraints.min_height = constraints.max_height;
@@ -30,11 +30,11 @@ pub fn layout(
         let s = spacer.layout(constraints, force_layout);
 
         match direction {
-            Axis::Horizontal => {
+            Direction::Horizontal => {
                 size.width += s.width;
                 size.height = size.height.max(s.height);
             }
-            Axis::Vertical => {
+            Direction::Vertical => {
                 size.height += s.height;
                 size.width = size.width.max(s.width);
             }

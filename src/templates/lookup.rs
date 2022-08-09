@@ -6,8 +6,8 @@ use super::error::{Error, Result};
 use super::nodes::{Kind, Node};
 
 use crate::widgets::{
-    fields, Align, Alignment, Animation, Axis, Border, Canvas, Expand, HStack, Position, ScrollView, Spacer, Text,
-    TextSpan, VStack, Value, Widget, WidgetContainer, ZStack,
+    fields, Align, Alignment, Animation, Border, Canvas, Expand, HStack, Position, Spacer, Text, TextSpan, VStack,
+    Value, Widget, WidgetContainer, ZStack,
 };
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
@@ -94,7 +94,6 @@ impl Default for WidgetLookup {
         inst.register("position", &position_widget);
         inst.register("spacer", &spacer_widget);
         inst.register("text", &text_widget);
-        inst.register("scrollview", &scrollview_widget);
         inst.register("vstack", &vstack_widget);
         inst.register("hstack", &hstack_widget);
         inst.register("zstack", &zstack_widget);
@@ -126,28 +125,6 @@ fn alignment_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContaine
         alignment.add_child(child);
     }
     Ok(alignment.into_container(node.id()))
-}
-
-// -----------------------------------------------------------------------------
-//     - Scroll view -
-// -----------------------------------------------------------------------------
-fn scrollview_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
-    let attribs = &node.attributes;
-
-    let mut scrollview = ScrollView::new(
-        attribs.max_children(),
-        attribs.axis().unwrap_or(Axis::Vertical),
-        attribs.offset(),
-        attribs.auto_scroll(),
-        attribs.reverse(),
-    );
-
-    for child in &node.children {
-        let child = lookup.make(child)?;
-        scrollview.add_child(child);
-    }
-
-    Ok(scrollview.into_container(node.id()))
 }
 
 // -----------------------------------------------------------------------------

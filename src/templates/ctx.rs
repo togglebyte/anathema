@@ -1,7 +1,7 @@
 use std::collections::hash_map::{Entry, HashMap};
 
 use crate::display::Color;
-use crate::widgets::{Align, Axis, BorderStyle, Display, Number, Path, Sides, Value, Wrap};
+use crate::widgets::{Align, BorderStyle, Direction, Display, Number, Path, Sides, Value, Wrap};
 
 use super::error::Result;
 use super::WidgetNode;
@@ -227,7 +227,7 @@ impl DataCtx {
 
     // Get mutable references, also insert a diff
     mut_ref_push_diff!(get_alignment_mut, Align, Alignment);
-    mut_ref_push_diff!(get_axis_mut, Axis, Axis);
+    mut_ref_push_diff!(get_direction_mut, Direction, Direction);
     mut_ref_push_diff!(get_bool_mut, bool, Bool);
     mut_ref_push_diff!(get_border_style_mut, BorderStyle, BorderStyle);
     mut_ref_push_diff!(get_color_mut, Color, Color);
@@ -240,7 +240,7 @@ impl DataCtx {
 
     // Get reference
     get_ref!(get_alignment, Align, Alignment);
-    get_ref!(get_axis, Axis, Axis);
+    get_ref!(get_direction, Direction, Direction);
     get_ref!(get_bool, bool, Bool);
     get_ref!(get_border_style, BorderStyle, BorderStyle);
     get_ref!(get_color, Color, Color);

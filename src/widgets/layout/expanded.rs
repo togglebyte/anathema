@@ -2,9 +2,9 @@ use crate::display::Size;
 
 use super::Constraints;
 use crate::widgets::ctx::LayoutCtx;
-use crate::widgets::{Axis, Expand, WidgetContainer};
+use crate::widgets::{Direction, Expand, WidgetContainer};
 
-pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Axis) -> Size {
+pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Direction) -> Size {
     let mut expansions = widgets.iter_mut().filter(|c| c.kind() == Expand::KIND).collect::<Vec<_>>();
     let factors = expansions.iter_mut().map(|w| w.to::<Expand>().factor).sum::<usize>() as f32;
 
@@ -17,7 +17,7 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Axis) 
     for expanded_widget in expansions {
         let factor = expanded_widget.to::<Expand>().factor as f32;
         let constraints = match direction {
-            Axis::Horizontal => {
+            Direction::Horizontal => {
                 let width_per_factor = ctx.constraints.max_width as f32 / factors;
                 let mut constraints =
                     Constraints::new((width_per_factor * factor).round() as usize, ctx.constraints.max_height);
@@ -29,7 +29,7 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Axis) 
                 constraints.min_width = constraints.max_width;
                 constraints
             }
-            Axis::Vertical => {
+            Direction::Vertical => {
                 let height_per_factor = ctx.constraints.max_height as f32 / factors;
                 let mut constraints =
                     Constraints::new(ctx.constraints.max_width, (height_per_factor * factor).round() as usize);
@@ -46,11 +46,11 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Axis) 
         let widget_size = expanded_widget.layout(constraints, ctx.force_layout);
 
         match direction {
-            Axis::Horizontal => {
+            Direction::Horizontal => {
                 size.width += widget_size.width;
                 size.height = size.height.max(widget_size.height);
             }
-            Axis::Vertical => {
+            Direction::Vertical => {
                 size.width = size.width.max(widget_size.width);
                 size.height += widget_size.height;
             }

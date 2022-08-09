@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::display::Color;
 
 use crate::widgets::{fields, Attribute};
-use crate::widgets::{Align, Axis, BorderStyle, Display, Sides, TextAlignment, Wrap};
+use crate::widgets::{Align, BorderStyle, Direction, Display, Sides, TextAlignment, Wrap};
 use crate::widgets::{Easing, Fragment, Number, Path, Value};
 
 use crate::templates::ctx::SubContext;
@@ -333,9 +333,9 @@ impl<'src> Parser<'src> {
                         "centre" | "center" => Ok(Value::Alignment(Align::Centre)),
                         _ => Err(Error::invalid_attribute(start..start + val.len(), self.src, left, Some(val))),
                     },
-                    fields::AXIS | fields::DIRECTION => match val {
-                        "horizontal" | "horz" => Ok(Value::Axis(Axis::Horizontal)),
-                        "vertical" | "vert" => Ok(Value::Axis(Axis::Vertical)),
+                    fields::DIRECTION => match val {
+                        "horizontal" | "horz" => Ok(Value::Direction(Direction::Horizontal)),
+                        "vertical" | "vert" => Ok(Value::Direction(Direction::Vertical)),
                         _ => Err(Error::invalid_attribute(start..start + val.len(), self.src, left, Some(val))),
                     },
                     fields::BORDER_STYLE => match val {
@@ -623,11 +623,15 @@ mod test {
     use crate::templates::parser::error::ErrorKind;
     use crate::widgets::Attributes;
 
-    fn parse_attributes(template: &str) -> Attributes {
+    fn try_parse_attributes(template: &str) -> Result<Attributes> {
         let lexer = Lexer::new(template);
         let mut parser = Parser::new(lexer);
-        let TemplateNode { attributes, .. } = parser.next().unwrap().map(|(_, tn)| tn).unwrap();
-        attributes
+        let TemplateNode { attributes, .. } = parser.next().unwrap().map(|(_, tn)| tn)?;
+        Ok(attributes)
+    }
+
+    fn parse_attributes(template: &str) -> Attributes {
+        try_parse_attributes(template).unwrap()
     }
 
     #[test]
@@ -748,5 +752,109 @@ mod test {
         let mut parser = Parser::new(lexer);
         let err = parser.next().unwrap().unwrap_err();
         assert!(matches!(err.kind, ErrorKind::UnexpectedEnd));
+    }
+
+    #[test]
+    fn quoted_attribute() {
+        let attribs = parse_attributes("widget [attrib: \"hello, world\"]:");
+        assert_eq!(&attribs["attrib"].to_string(), "hello, world");
+    }
+
+    #[test]
+    fn parse_bool() {
+        let attribs = parse_attributes("widget [is_true: true]:");
+        assert_eq!(attribs["is_true"].to_bool(), Some(true));
+    }
+
+    #[test]
+    fn parse_empty_attribs() {
+        let attribs = parse_attributes("widget []:");
+        assert!(attribs.is_empty());
+    }
+
+    #[test]
+    fn alignment() {
+        let attribs = parse_attributes("widget [align: top-right]:");
+        assert_eq!(attribs.alignment(), Some(Align::TopRight));
+    }
+
+    #[test]
+    fn parse_colours() {
+        let attribs =
+            parse_attributes("widget [background: red, foreground: blue, col: green, res: reset, rgb: #0A0B0C]:");
+        assert_eq!(attribs.background(), Some(Color::Red));
+        assert_eq!(attribs.foreground(), Some(Color::Blue));
+        assert_eq!(attribs.get_color("col"), Some(Color::Green));
+        assert_eq!(attribs.get_color("res"), Some(Color::Reset));
+        assert_eq!(attribs.get_color("rgb"), Some(Color::Rgb { r: 10, g: 11, b: 12 }));
+    }
+
+    #[test]
+    fn directions() {
+        let attribs = parse_attributes("widget [direction: horz]:");
+        assert_eq!(attribs.direction(), Some(Direction::Horizontal));
+
+        let attribs = parse_attributes("widget [direction: horizontal]:");
+        assert_eq!(attribs.direction(), Some(Direction::Horizontal));
+
+        let attribs = parse_attributes("widget [direction: vert]:");
+        assert_eq!(attribs.direction(), Some(Direction::Vertical));
+
+        let attribs = parse_attributes("widget [direction: vertical]:");
+        assert_eq!(attribs.direction(), Some(Direction::Vertical));
+    }
+
+    #[test]
+    fn displays() {
+        let attribs = parse_attributes("widget [display: show]:");
+        assert_eq!(attribs.display(), Display::Show);
+
+        let attribs = parse_attributes("widget [display: hide]:");
+        assert_eq!(attribs.display(), Display::Hide);
+
+        let attribs = parse_attributes("widget [display: exclude]:");
+        assert_eq!(attribs.display(), Display::Exclude);
+    }
+
+    #[test]
+    fn border_styles() {
+        let attribs = parse_attributes("border [border-style: thick]:");
+        assert_eq!(attribs.border_style(), &BorderStyle::Thick);
+
+        let attribs = parse_attributes("border [border-style: thin]:");
+        assert_eq!(attribs.border_style(), &BorderStyle::Thin);
+
+        let attribs = parse_attributes("border [border-style: \"01234567\"]:");
+        assert_eq!(attribs.border_style(), &BorderStyle::Custom("01234567".to_string()));
+    }
+
+    #[test]
+    fn word_wrap() {
+        let attribs = parse_attributes("text [wrap: word]:");
+        assert_eq!(attribs.word_wrap(), Wrap::Word);
+
+        let attribs = parse_attributes("text [wrap: no-wrap]:");
+        assert_eq!(attribs.word_wrap(), Wrap::NoWrap);
+
+        let attribs = parse_attributes("text [wrap: break]:");
+        assert_eq!(attribs.word_wrap(), Wrap::Break);
+    }
+
+    #[test]
+    fn whitespace_attribs() {
+        // Trim start
+        assert_eq!(parse_attributes("text [trim-start: true]:").trim_start(), true);
+        assert_eq!(parse_attributes("text:").trim_start(), true);
+        assert_eq!(parse_attributes("text [trim-start: false]:").trim_start(), false);
+
+        // Trim end
+        assert_eq!(parse_attributes("text [trim-end: true]:").trim_end(), true);
+        assert_eq!(parse_attributes("text:").trim_end(), true);
+        assert_eq!(parse_attributes("text [trim-end: false]:").trim_end(), false);
+
+        // Collapse spaces
+        assert_eq!(parse_attributes("text [collapse-spaces: true]:").collapse_spaces(), true);
+        assert_eq!(parse_attributes("text:").collapse_spaces(), true);
+        assert_eq!(parse_attributes("text [collapse-spaces: false]:").collapse_spaces(), false);
     }
 }

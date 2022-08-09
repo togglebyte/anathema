@@ -5,7 +5,7 @@ use crate::display::{Color, Style};
 
 use super::value::Path;
 use super::value::{Easing, Value};
-use super::{Align, Axis, BorderStyle, Display, NodeId, Padding, Sides, TextAlignment, Wrap};
+use super::{Align, BorderStyle, Direction, Display, NodeId, Padding, Sides, TextAlignment, Wrap};
 
 // -----------------------------------------------------------------------------
 //     - Attribute names -
@@ -14,7 +14,6 @@ pub mod fields {
     pub const ANIMATE: &str = "animate";
     pub const ALIGNMENT: &str = "align";
     pub const AUTO_SCROLL: &str = "auto-scroll";
-    pub const AXIS: &str = "axis";
     pub const BACKGROUND: &str = "background";
     pub const BINDING: &str = "binding";
     pub const BORDER_CHARS: &str = "border-chars";
@@ -61,6 +60,14 @@ pub mod fields {
 #[derive(Debug, Clone)]
 pub struct Attributes {
     pub(crate) inner: HashMap<String, Value>,
+}
+
+impl std::ops::Index<&str> for Attributes {
+    type Output = Value;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        &self.inner[index]
+    }
 }
 
 impl From<Vec<Attribute<'_>>> for Attributes {
@@ -226,16 +233,9 @@ impl Attributes {
         self.get_bool(fields::REVERSE).unwrap_or(false)
     }
 
-    pub fn axis(&self) -> Option<Axis> {
-        match self.value(fields::AXIS) {
-            Some(Value::Axis(val)) => Some(*val),
-            None | Some(_) => None,
-        }
-    }
-
-    pub fn direction(&self) -> Option<Axis> {
+    pub fn direction(&self) -> Option<Direction> {
         match self.value(fields::DIRECTION) {
-            Some(Value::Axis(val)) => Some(*val),
+            Some(Value::Direction(val)) => Some(*val),
             None | Some(_) => None,
         }
     }
@@ -498,207 +498,6 @@ pub struct Attribute<'src> {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::template::{Lexer, Parser};
-    // use crate::testing::root_from_template;
-    // use crate::Size;
-    // use proptest::prelude::*;
-
-    // fn attribs(template: &str) -> Attributes {
-    //     let lexer = Lexer::new(template);
-    //     let mut parser = Parser::new(lexer);
-    //     parser.next().unwrap().unwrap().attributes
-    // }
-
-    // #[test]
-    // fn parse_quoted_value() {
-    //     let mut attributes = attribs("container [attrib:\"with,commas,and space\"]:");
-    //     assert_eq!(attributes.inner.len(), 1);
-
-    //     let actual = attributes.get_value("attrib");
-    //     let expected = Some(Value::String("with,commas,and space".into()));
-    //     assert_eq!(expected, actual);
-    // }
-
-    // #[test]
-    // fn parse_value_bool() {
-    //     let attributes = attribs("text [is_true:true]: \"\"");
-    //     assert_eq!(attributes.inner.len(), 1);
-
-    //     let attributes = attribs("row [is_true:true,   is_false   : false]:");
-    //     assert_eq!(attributes.inner.len(), 2);
-
-    //     let actual = attributes.value("is_true").unwrap();
-    //     let expected = Value::Bool(true);
-    //     assert_eq!(&expected, actual);
-
-    //     let actual = attributes.value("is_false").unwrap();
-    //     let expected = Value::Bool(false);
-    //     assert_eq!(&expected, actual);
-    // }
-
-    // #[test]
-    // fn empty_attributes() {
-    //     let attributes = attribs("container []:");
-    //     assert!(attributes.is_empty());
-
-    //     let attributes = attribs("text: 'there are: \"no attributes\"'");
-    //     assert!(attributes.is_empty());
-    // }
-
-    // #[test]
-    // fn text_align() {
-    //     let attributes = attribs("text [text-align: centre]: 'a bc'");
-    //     let actual = attributes.value("text-align").unwrap();
-    //     let expected = Value::TextAlignment(TextAlignment::Centre);
-    //     assert_eq!(expected, *actual);
-    // }
-
-    // #[test]
-    // fn colours() {
-    //     let attributes =
-    //         attribs("container [background: red, foreground: blue, col: green, res: reset, rgb: #0A0B0C]:");
-    //     let background = attributes.background().unwrap();
-    //     let foreground = attributes.foreground().unwrap();
-    //     let green = attributes.value("col").unwrap().to_color().unwrap();
-    //     let reset = attributes.value("res").unwrap().to_color().unwrap();
-    //     let rgb = attributes.value("rgb").unwrap().to_color().unwrap();
-
-    //     assert_eq!(background, Color::Red);
-    //     assert_eq!(foreground, Color::Blue);
-    //     assert_eq!(green, Color::Green);
-    //     assert_eq!(reset, Color::Reset);
-    //     assert_eq!(rgb, Color::Rgb { r: 10, g: 11, b: 12 });
-    // }
-
-    // #[test]
-    // fn alignment() {
-    //     let attributes = attribs("container [align: top-right]:");
-    //     let expected = attributes.alignment().unwrap();
-    //     let actual = Align::TopRight;
-    //     assert_eq!(expected, actual);
-    // }
-
-    // #[test]
-    // fn name() {
-    //     let mut attributes = attribs("text [name: \"bob\"]:");
-    //     let expected = attributes.name().unwrap();
-    //     let actual = "bob";
-    //     assert_eq!(expected, actual);
-    // }
-
-    // #[test]
-    // fn axis() {
-    //     let axis = [
-    //         (Axis::Horizontal, "horz"),
-    //         (Axis::Horizontal, "horizontal"),
-    //         (Axis::Vertical, "vert"),
-    //         (Axis::Vertical, "vertical"),
-    //     ];
-
-    //     for (val, text) in axis {
-    //         let attributes = attribs(&format!("viewport [axis: {text}]:"));
-    //         let expected = attributes.axis().unwrap();
-    //         let actual = val;
-    //         assert_eq!(expected, actual);
-    //     }
-    // }
-
-    // #[test]
-    // fn sides() {
-    //     let sides = [
-    //         (Sides::ALL, "all"),
-    //         (Sides::LEFT, "left"),
-    //         (Sides::TOP, "top"),
-    //         (Sides::RIGHT, "right"),
-    //         (Sides::BOTTOM, "bottom"),
-    //         (Sides::LEFT | Sides::RIGHT, "left | right"),
-    //         (Sides::TOP | Sides::BOTTOM, "top|bottom"),
-    //         (Sides::TOP | Sides::LEFT | Sides::BOTTOM, "top | left | bottom"),
-    //     ];
-
-    //     for (val, text) in sides {
-    //         let attributes = attribs(&format!("border [sides: {text}]:"));
-    //         let expected = attributes.sides();
-    //         let actual = val;
-    //         assert_eq!(expected, actual);
-    //     }
-    // }
-
-    // #[test]
-    // fn text_with_no_attributes() {
-    //     let template = r#"text: "[no attribute here]""#;
-    //     let attributes = attribs(template);
-    //     assert!(attributes.is_empty());
-    // }
-
-    // #[test]
-    // fn display() {
-    //     let actual = attribs("container [display: exclude]:").display();
-    //     let expected = Display::Exclude;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("container [display: hide]:").display();
-    //     let expected = Display::Hide;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("container [display: show]:").display();
-    //     let expected = Display::Show;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("container:").display();
-    //     let expected = Display::Show;
-    //     assert_eq!(expected, actual);
-    // }
-
-    // #[test]
-    // fn border_style() {
-    //     let actual = attribs("border [border-style: thick]").border_style().clone();
-    //     let expected = BorderStyle::Thick;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("border [border-style: thin]").border_style().clone();
-    //     let expected = BorderStyle::Thin;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("border").border_style().clone();
-    //     let expected = BorderStyle::Thin;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("border [border-style: 'abcd1234']").border_style().clone();
-    //     let expected = BorderStyle::Custom("abcd1234".to_string());
-    //     assert_eq!(expected, actual);
-    // }
-
-    // #[test]
-    // fn word_wrap() {
-    //     let actual = attribs("text [wrap: word]").word_wrap();
-    //     let expected = Wrap::Word;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("text [wrap: no-wrap]").word_wrap();
-    //     let expected = Wrap::NoWrap;
-    //     assert_eq!(expected, actual);
-
-    //     let actual = attribs("text [wrap: break]").word_wrap();
-    //     let expected = Wrap::Break;
-    //     assert_eq!(expected, actual);
-    // }
-
-    // #[test]
-    // fn whitespace_attributes() {
-    //     assert_eq!(attribs("text [trim-start: true]").trim_start(), true);
-    //     assert_eq!(attribs("text").trim_start(), true);
-    //     assert_eq!(attribs("text [trim-start: false]").trim_start(), false);
-
-    //     assert_eq!(attribs("text [trim-end: true]").trim_end(), true);
-    //     assert_eq!(attribs("text").trim_end(), true);
-    //     assert_eq!(attribs("text [trim-end: false]").trim_end(), false);
-
-    //     assert_eq!(attribs("text [collapse-spaces: true]").collapse_spaces(), true);
-    //     assert_eq!(attribs("text").collapse_spaces(), true);
-    //     assert_eq!(attribs("text [collapse-spaces: false]").collapse_spaces(), false);
-    // }
 
     // // -----------------------------------------------------------------------------
     // //     - prop tests -
