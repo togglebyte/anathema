@@ -204,7 +204,7 @@ impl<'src> Parser<'src> {
                     self.consume_next();
                     break;
                 }
-                Some(Ok(Token(TokenKind::Comma, _))) => {
+                Some(Ok(Token(TokenKind::Comma | TokenKind::Whitespace(_) | TokenKind::Newline, _))) => {
                     self.consume_next();
                     continue;
                 }
@@ -213,8 +213,6 @@ impl<'src> Parser<'src> {
 
             let attribs = self.parse_attribute()?;
             attributes.push(attribs);
-
-            self.consume_whitespace();
         }
 
         Ok(attributes)
@@ -856,5 +854,41 @@ mod test {
         assert_eq!(parse_attributes("text [collapse-spaces: true]:").collapse_spaces(), true);
         assert_eq!(parse_attributes("text:").collapse_spaces(), true);
         assert_eq!(parse_attributes("text [collapse-spaces: false]:").collapse_spaces(), false);
+    }
+
+    #[test]
+    fn parse_multiline_widgets() {
+        let template_1 = r#"
+        widget [
+        key: value
+        ]:"#;
+
+        let template_2 = r#"
+        widget [ key: value
+        ]:"#;
+
+        let template_3 = r#"
+        widget [ 
+        key: value ]:"#;
+
+        let template_4 = r#"
+        widget [
+            key: value,
+            another_key: 123
+        ]:"#;
+
+        let template_5 = r#"
+        widget [
+            ,key: value
+            ,another_key: 123
+        ]:"#;
+
+        let templates = [template_1, template_2, template_3, template_4, template_5];
+
+        for t in templates {
+            let lexer = Lexer::new(t);
+            let mut parser = Parser::new(lexer);
+            parser.next().unwrap().unwrap();
+        }
     }
 }
