@@ -1,10 +1,9 @@
 use crate::display::Size;
 
-use super::Pos;
-use super::{fields, Attributes};
+use super::{fields, Pos};
 use crate::widgets::Align;
 
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
 /// See [`Align`](crate::layout::Align) for more information.
@@ -112,8 +111,10 @@ impl Widget for Alignment {
         None
     }
 
-    fn update(&mut self, attributes: Attributes) {
-        attributes.has(fields::ALIGNMENT).then(|| self.alignment = attributes.alignment().unwrap_or(Align::Left));
+    fn update(&mut self, ctx: UpdateCtx) {
+        ctx.attributes
+            .has(fields::ALIGNMENT)
+            .then(|| self.alignment = ctx.attributes.alignment().unwrap_or(Align::Left));
     }
 }
 

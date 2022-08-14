@@ -135,16 +135,16 @@ pub struct Events<T> {
 }
 
 impl<T: Send + Sync + 'static> Events<T> {
-    #[cfg(feature = "with-flume")]
+    #[cfg(feature = "flume")]
     pub fn bounded(cap: usize) -> Self {
         let (tx, rx) = flume::bounded(cap);
         Self::new(tx, rx)
     }
 
     pub fn unbounded() -> Self {
-        #[cfg(feature = "with-flume")]
+        #[cfg(feature = "flume")]
         let (tx, rx) = flume::unbounded();
-        #[cfg(not(feature = "with-flume"))]
+        #[cfg(not(feature = "flume"))]
         let (tx, rx) = std::sync::mpsc::channel();
         Self::new(tx, rx)
     }

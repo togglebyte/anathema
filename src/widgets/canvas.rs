@@ -1,8 +1,8 @@
 use crate::display::{Buffer, ScreenPos, Size, Style};
 
 use super::LocalPos;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::widgets::{fields, Attributes};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
+use crate::widgets::fields;
 
 #[derive(Debug)]
 enum CanvasState {
@@ -149,7 +149,7 @@ impl Widget for Canvas {
         None
     }
 
-    fn update(&mut self, attributes: Attributes) {
+    fn update(&mut self, ctx: UpdateCtx) {
         let buf = match &mut self.state {
             CanvasState::Unsized => return,
             CanvasState::Sized(buf) => buf,
@@ -157,12 +157,12 @@ impl Widget for Canvas {
 
         let mut size = buf.size();
 
-        if attributes.has(fields::WIDTH) {
-            attributes.width().map(|width| size.width = width);
+        if ctx.attributes.has(fields::WIDTH) {
+            ctx.attributes.width().map(|width| size.width = width);
         }
 
-        if attributes.has(fields::HEIGHT) {
-            attributes.height().map(|height| size.height = height);
+        if ctx.attributes.has(fields::HEIGHT) {
+            ctx.attributes.height().map(|height| size.height = height);
         }
 
         if buf.size() != size {

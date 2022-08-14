@@ -1,8 +1,7 @@
 use crate::display::Size;
 
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
 use crate::widgets::layout::horizontal;
-use crate::widgets::Attributes;
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -68,7 +67,7 @@ impl Widget for HStack {
         if let Some(min_height) = self.min_height {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
-        horizontal::layout(&mut self.children, ctx)
+        horizontal::layout(&mut self.children, ctx, false)
     }
 
     fn position(&mut self, ctx: PositionCtx) {
@@ -98,11 +97,11 @@ impl Widget for HStack {
         None
     }
 
-    fn update(&mut self, attr: Attributes) {
-        if let Some(width) = attr.width() {
+    fn update(&mut self, ctx: UpdateCtx) {
+        if let Some(width) = ctx.attributes.width() {
             self.width = Some(width);
         }
-        if let Some(height) = attr.height() {
+        if let Some(height) = ctx.attributes.height() {
             self.height = Some(height);
         }
     }

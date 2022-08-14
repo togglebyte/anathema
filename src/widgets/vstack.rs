@@ -1,8 +1,7 @@
 use crate::display::Size;
 
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
 use crate::widgets::layout::vertical;
-use crate::widgets::Attributes;
 
 /// A widget that lays out its children vertically.
 /// ```text
@@ -38,10 +37,10 @@ pub struct VStack {
     pub width: Option<usize>,
     /// If a height is provided then the layout constraints will be tight for height
     pub height: Option<usize>,
-    /// The minimum width of the border. This will force the minimum constrained width to expand to
+    /// The minimum width. This will force the minimum constrained width to expand to
     /// this value.
     pub min_width: Option<usize>,
-    /// The minimum height of the border. This will force the minimum constrained height to expand to
+    /// The minimum height. This will force the minimum constrained height to expand to
     /// this value.
     pub min_height: Option<usize>,
 }
@@ -75,7 +74,9 @@ impl Widget for VStack {
         if let Some(min_height) = self.min_height {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
-        vertical::layout(&mut self.children, ctx)
+        let size = vertical::layout(&mut self.children, ctx, false);
+
+        size
     }
 
     fn position(&mut self, ctx: PositionCtx) {
@@ -105,11 +106,11 @@ impl Widget for VStack {
         None
     }
 
-    fn update(&mut self, attr: Attributes) {
-        if let Some(width) = attr.width() {
+    fn update(&mut self, ctx: UpdateCtx) {
+        if let Some(width) = ctx.attributes.width() {
             self.width = Some(width);
         }
-        if let Some(height) = attr.height() {
+        if let Some(height) = ctx.attributes.height() {
             self.height = Some(height);
         }
     }

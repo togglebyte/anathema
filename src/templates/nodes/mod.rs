@@ -97,7 +97,7 @@ fn for_loop(
             for value in values {
                 let sub_ctx = data_ctx.sub(&binding, value.clone());
                 for t in template {
-                    nodes.extend(to_nodes(t, &sub_ctx, node_ctx)?);
+                    nodes.extend(to_nodes(&t, &sub_ctx, node_ctx)?);
                 }
             }
 

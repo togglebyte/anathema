@@ -6,8 +6,8 @@ use super::error::{Error, Result};
 use super::nodes::{Kind, Node};
 
 use crate::widgets::{
-    fields, Align, Alignment, Animation, Border, Canvas, Expand, HStack, Position, Spacer, Text, TextSpan, VStack,
-    Value, Widget, WidgetContainer, ZStack,
+    fields, Align, Alignment, Animation, Border, Canvas, Direction, Expand, HStack, Position, Spacer, Text, TextSpan,
+    VStack, Value, Viewport, Widget, WidgetContainer, ZStack,
 };
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
@@ -91,11 +91,12 @@ impl Default for WidgetLookup {
         inst.register("border", &border_widget);
         inst.register("canvas", &canvas_widget);
         inst.register("expand", &expand_widget);
+        inst.register("hstack", &hstack_widget);
         inst.register("position", &position_widget);
         inst.register("spacer", &spacer_widget);
         inst.register("text", &text_widget);
+        inst.register("viewport", &viewport_widget);
         inst.register("vstack", &vstack_widget);
-        inst.register("hstack", &hstack_widget);
         inst.register("zstack", &zstack_widget);
 
         inst
@@ -260,6 +261,19 @@ fn expand_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> 
 
     let widget = widget.into_container(node.id());
     Ok(widget)
+}
+
+fn viewport_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
+    let offset = node.attributes.offset();
+    let direction = node.attributes.direction().unwrap_or(Direction::Vertical);
+    let mut widget = Viewport::new(offset, direction);
+
+    for child in &node.children {
+        let child = lookup.make(child)?;
+        widget.children.push(child);
+    }
+
+    Ok(widget.into_container(node.id()))
 }
 
 #[cfg(test)]

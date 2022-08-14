@@ -33,9 +33,19 @@ impl Constraints {
         Self { min_width: 0, min_height: 0, max_width: usize::MAX, max_height: usize::MAX }
     }
 
-    /// Returns true if both width and height are unbounded.
+    /// Returns true if the width and height is unbounded.
     pub fn is_unbounded(&self) -> bool {
-        self.max_width == usize::MAX && self.max_height == usize::MAX && self.min_width == 0 && self.min_height == 0
+        self.is_width_unbounded() && self.is_height_unbounded()
+    }
+
+    /// Returns true if the width is unbounded.
+    pub fn is_width_unbounded(&self) -> bool {
+        self.max_width == usize::MAX
+    }
+
+    /// Returns true if the height is unbounded.
+    pub fn is_height_unbounded(&self) -> bool {
+        self.max_height == usize::MAX
     }
 
     /// Create new tight constraints.
@@ -100,6 +110,16 @@ impl Constraints {
     pub fn make_height_tight(&mut self, height: usize) {
         self.max_height = self.max_height.min(height);
         self.min_height = self.max_height;
+    }
+
+    /// Make the width unbounded
+    pub fn make_width_unbounded(&mut self) {
+        self.max_width = usize::MAX;
+    }
+
+    /// Make the height unbounded
+    pub fn make_height_unbounded(&mut self) {
+        self.max_height = usize::MAX;
     }
 
     /// Fit the width inside the constraint.

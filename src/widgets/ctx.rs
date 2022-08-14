@@ -3,7 +3,7 @@ use std::ops::Deref;
 use unicode_width::UnicodeWidthChar;
 
 use super::layout::{Constraints, Padding};
-use super::{Align, LocalPos, Pos, Region};
+use super::{Align, Attributes, LocalPos, Pos, Region};
 use crate::display::{Screen, ScreenPos, Size, Style};
 
 #[derive(Debug, Copy, Clone)]
@@ -30,7 +30,7 @@ impl WithSize {
 pub struct PaintCtx<'screen, S> {
     screen: &'screen mut Screen,
     pub clip: Option<&'screen Region>,
-    state: S,
+    pub(crate) state: S,
 }
 
 impl<'screen> Deref for PaintCtx<'screen, WithSize> {
@@ -225,6 +225,18 @@ impl PositionCtx {
             let padding = self.padding;
             Pos::new(self.pos.x + padding.left as i32, self.pos.y + padding.top as i32)
         }
+    }
+}
+
+pub struct UpdateCtx {
+    pub attributes: Attributes,
+    pub pos: Pos,
+    pub size: Size,
+}
+
+impl UpdateCtx {
+    pub fn new(attributes: Attributes, pos: Pos, size: Size) -> Self {
+        Self { attributes, pos, size }
     }
 }
 

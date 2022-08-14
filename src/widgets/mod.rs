@@ -11,23 +11,25 @@ mod layout;
 mod value;
 mod widget;
 
-pub(crate) mod alignment;
-pub(crate) mod border;
-pub(crate) mod canvas;
-pub(crate) mod expanded;
-pub(crate) mod hstack;
-pub(crate) mod position;
-pub(crate) mod spacer;
-pub(crate) mod text;
-pub(crate) mod vstack;
-pub(crate) mod zstack;
+// Widgets
+mod alignment;
+mod border;
+mod canvas;
+mod expanded;
+mod hstack;
+mod position;
+mod spacer;
+mod text;
+mod viewport;
+mod vstack;
+mod zstack;
 
 #[cfg(test)]
 pub mod testing;
 
 pub use animation::{Animation, AnimationCtx};
 pub use attributes::{fields, Attribute, Attributes};
-pub use ctx::{LayoutCtx, PaintCtx, PositionCtx, Unsized, WithSize};
+pub use ctx::{LayoutCtx, PaintCtx, PositionCtx, Unsized, UpdateCtx, WithSize};
 pub use id::NodeId;
 pub use value::{Easing, Fragment, Number, Path, Value};
 pub use widget::{Widget, WidgetContainer};
@@ -54,16 +56,17 @@ pub enum Direction {
 //     - Export all widgets -
 // -----------------------------------------------------------------------------
 pub use layout::text::Wrap;
-pub use layout::{Align, Constraints, Padding};
+pub use layout::{Align, Constraints, HorzEdge, Offset, Padding, VertEdge};
 pub use {
     alignment::Alignment,
     border::{Border, BorderStyle, Sides},
     canvas::Canvas,
     expanded::Expand,
     hstack::HStack,
-    position::{HorzEdge, Position, VertEdge},
+    position::Position,
     spacer::Spacer,
     text::{Text, TextAlignment, TextSpan},
+    viewport::Viewport,
     vstack::VStack,
     zstack::ZStack,
 };

@@ -1,8 +1,7 @@
 use crate::display::Size;
 
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
 use crate::widgets::layout::stacked;
-use crate::widgets::Attributes;
 
 /// Unlike the [`HStack`](crate::HStack) or the [`VStack`](crate::VStack) the [`ZStack`] draws the
 /// children on top of each other.
@@ -112,11 +111,11 @@ impl Widget for ZStack {
         None
     }
 
-    fn update(&mut self, attr: Attributes) {
-        if let Some(width) = attr.width() {
+    fn update(&mut self, ctx: UpdateCtx) {
+        if let Some(width) = ctx.attributes.width() {
             self.width = Some(width);
         }
-        if let Some(height) = attr.height() {
+        if let Some(height) = ctx.attributes.height() {
             self.height = Some(height);
         }
     }

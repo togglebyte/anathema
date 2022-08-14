@@ -1,10 +1,15 @@
 use crate::display::Size;
 
-use super::Pos;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::widgets::attributes::{fields, Attributes};
+use super::{
+    HorzEdge, LayoutCtx, NodeId, PaintCtx, Pos, PositionCtx, UpdateCtx, VertEdge, Widget, WidgetContainer, WithSize,
+};
+use crate::widgets::attributes::fields;
 
-/// Position on the horizontal axis.
+/// If the horizontal edge is set to `Right` the widget will expand to fill all available space
+/// on the horizontal axis.
+/// Same is true if the `VertEdge::Bottom` is set.
+///
+/// Position on the horizontal axis:
 /// Left 0 would mean the left edge of the widget is positioned at the `left` value.
 /// Right 0 would mean the right edge of the widget is positioned at the `right` value, where zero
 /// is closest to the right.
@@ -13,16 +18,8 @@ use crate::widgets::attributes::{fields, Attributes};
 /// ┌─┐                 ┌─┐
 /// │1│                 │2│
 /// └─┘                 └─┘
-/// ```
-#[derive(Debug, Clone, Copy)]
-pub enum HorzEdge {
-    /// Position to the left
-    Left(i32),
-    /// Position to the right
-    Right(i32),
-}
-
-/// Position on the vertical axis.
+///
+/// Position on the vertical axis:
 /// Top 0 would mean the top edge of the child is positioned at `top` value.
 /// Bottom 0 would mean the bottom edge of the child is positioned at the `bottom` value, where
 /// zero is closest to the bottom.
@@ -39,17 +36,7 @@ pub enum HorzEdge {
 /// | │2       │
 /// | └────────┘
 /// ```
-#[derive(Debug, Clone, Copy)]
-pub enum VertEdge {
-    /// Position at the top
-    Top(i32),
-    /// Position at the bottom
-    Bottom(i32),
-}
-
-/// If the horizontal edge is set to `Right` the widget will expand to fill all available space
-/// on the horizontal axis.
-/// Same is true if the `VertEdge::Bottom` is set.
+/// ```
 #[derive(Debug)]
 pub struct Position {
     /// Child widget
@@ -170,13 +157,13 @@ impl Widget for Position {
         None
     }
 
-    fn update(&mut self, attributes: Attributes) {
-        for (k, _) in &attributes {
+    fn update(&mut self, ctx: UpdateCtx) {
+        for (k, _) in &ctx.attributes {
             match k.as_str() {
-                fields::LEFT => self.horz_edge = HorzEdge::Left(attributes.left().unwrap_or(0)),
-                fields::RIGHT => self.horz_edge = HorzEdge::Right(attributes.right().unwrap_or(0)),
-                fields::TOP => self.vert_edge = VertEdge::Top(attributes.top().unwrap_or(0)),
-                fields::BOTTOM => self.vert_edge = VertEdge::Bottom(attributes.bottom().unwrap_or(0)),
+                fields::LEFT => self.horz_edge = HorzEdge::Left(ctx.attributes.left().unwrap_or(0)),
+                fields::RIGHT => self.horz_edge = HorzEdge::Right(ctx.attributes.right().unwrap_or(0)),
+                fields::TOP => self.vert_edge = VertEdge::Top(ctx.attributes.top().unwrap_or(0)),
+                fields::BOTTOM => self.vert_edge = VertEdge::Bottom(ctx.attributes.bottom().unwrap_or(0)),
                 _ => {}
             }
         }

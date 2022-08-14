@@ -1,5 +1,3 @@
-//! Things
-#![deny(missing_docs)]
 use std::fmt::{self, Display};
 
 mod constraints;
@@ -123,5 +121,34 @@ impl Display for Align {
             Self::TopLeft => write!(f, "top-left"),
             Self::Centre => write!(f, "centre"),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum HorzEdge {
+    /// Position to the left
+    Left(i32),
+    /// Position to the right
+    Right(i32),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum VertEdge {
+    /// Position at the top
+    Top(i32),
+    /// Position at the bottom
+    Bottom(i32),
+}
+
+/// Offset can be both horizontal and / or vertical.
+#[derive(Debug)]
+pub struct Offset {
+    pub h_edge: Option<HorzEdge>,
+    pub v_edge: Option<VertEdge>,
+}
+
+impl Offset {
+    pub fn new() -> Self {
+        Self { h_edge: None, v_edge: None }
     }
 }

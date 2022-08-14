@@ -1,7 +1,6 @@
 use crate::display::Size;
 
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::widgets::Attributes;
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
 
 /// Expand to fill in all available space.
 ///
@@ -53,5 +52,5 @@ impl Widget for Spacer {
         None
     }
 
-    fn update(&mut self, _: Attributes) {}
+    fn update(&mut self, _: UpdateCtx) {}
 }

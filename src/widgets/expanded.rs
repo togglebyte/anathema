@@ -1,8 +1,8 @@
 use crate::display::{Size, Style};
 
 use super::{Direction, LocalPos};
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::widgets::{fields, Attributes};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
+use crate::widgets::fields;
 
 const DEFAULT_FACTOR: usize = 1;
 
@@ -154,12 +154,12 @@ impl Widget for Expand {
         None
     }
 
-    fn update(&mut self, attributes: Attributes) {
-        attributes.update_style(&mut self.style);
-        for (k, _) in &attributes {
+    fn update(&mut self, ctx: UpdateCtx) {
+        ctx.attributes.update_style(&mut self.style);
+        for (k, _) in &ctx.attributes {
             match k.as_str() {
-                fields::DIRECTION => self.direction = attributes.direction(),
-                fields::FACTOR => self.factor = attributes.factor().unwrap_or(DEFAULT_FACTOR),
+                fields::DIRECTION => self.direction = ctx.attributes.direction(),
+                fields::FACTOR => self.factor = ctx.attributes.factor().unwrap_or(DEFAULT_FACTOR),
                 _ => {}
             }
         }

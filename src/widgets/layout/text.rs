@@ -482,4 +482,12 @@ C
         let output = layout.layout(input).into_iter().map(|s| s.to_string()).collect::<Vec<String>>().join("\n");
         assert_eq!(output, text);
     }
+
+    #[test]
+    fn split_on_invalid_char_boundary() {
+        let input = AntString::new(["✨🍅✨"]);
+        let (left, right) = input.split_at(1);
+
+        let x = left;
+    }
 }

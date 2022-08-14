@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::display::{Color, ScreenPos, Size, Style};
 
 use super::attributes::{fields, Attributes};
-use super::ctx::{LayoutCtx, PaintCtx, PositionCtx, Unsized, WithSize};
+use super::ctx::{LayoutCtx, PaintCtx, PositionCtx, Unsized, UpdateCtx, WithSize};
 use super::id::NodeId;
 use super::layout::{Constraints, Padding};
 use super::{AnimationCtx, Display, LocalPos, Pos, Region};
@@ -61,8 +61,8 @@ impl Widget for Box<dyn Widget> {
         self.as_mut().remove_child(child_id)
     }
 
-    fn update(&mut self, attributes: Attributes) {
-        self.as_mut().update(attributes);
+    fn update(&mut self, ctx: UpdateCtx) {
+        self.as_mut().update(ctx);
     }
 }
 
@@ -110,7 +110,7 @@ pub trait Widget: std::fmt::Debug + Send + Sync + 'static {
 
     fn remove_child(&mut self, child_id: &NodeId) -> Option<WidgetContainer>;
 
-    fn update(&mut self, attributes: Attributes);
+    fn update(&mut self, ctx: UpdateCtx);
 }
 
 /// The `WidgetContainer` has to go through three steps before it can be displayed:
@@ -206,7 +206,8 @@ impl WidgetContainer {
             }
         }
 
-        self.inner.update(attributes);
+        let ctx = UpdateCtx::new(attributes, self.pos, self.size);
+        self.inner.update(ctx);
     }
 
     pub fn layout(&mut self, mut constraints: Constraints, force_layout: bool) -> Size {
@@ -251,7 +252,6 @@ impl WidgetContainer {
         }
 
         let mut ctx = ctx.into_sized(self.size, self.pos);
-
         self.paint_background(&mut ctx);
         self.inner.paint(ctx);
     }
@@ -390,7 +390,8 @@ impl WidgetContainer {
             self.padding.bottom = bottom;
         }
 
-        self.inner.update(attributes);
+        let ctx = UpdateCtx::new(attributes, self.pos, self.size);
+        self.inner.update(ctx);
     }
 }
 

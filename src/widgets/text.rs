@@ -3,10 +3,10 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use crate::antstring::AntString;
 use crate::display::{Size, Style};
 use crate::widgets::layout::text::TextLayout;
-use crate::widgets::{fields, Attributes, Wrap};
+use crate::widgets::{fields, Wrap};
 
 use super::LocalPos;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
 
 /// Text alignment aligns the text inside its parent.
 ///
@@ -299,22 +299,22 @@ impl Widget for Text {
         None
     }
 
-    fn update(&mut self, attributes: Attributes) {
-        if attributes.is_empty() {
+    fn update(&mut self, ctx: UpdateCtx) {
+        if ctx.attributes.is_empty() {
             return;
         }
 
         if let Some(span) = self.spans.first_mut() {
-            attributes.update_style(&mut span.style);
+            ctx.attributes.update_style(&mut span.style);
         }
 
-        for (k, _) in &attributes {
+        for (k, _) in &ctx.attributes {
             match k.as_str() {
-                fields::TRIM_START => self.trim_start = attributes.trim_start(),
-                fields::TRIM_END => self.trim_end = attributes.trim_end(),
-                fields::COLLAPSE_SPACES => self.collapse_spaces = attributes.collapse_spaces(),
-                fields::WRAP => self.word_wrap = attributes.word_wrap(),
-                fields::TEXT_ALIGN => self.text_alignment = attributes.text_alignment(),
+                fields::TRIM_START => self.trim_start = ctx.attributes.trim_start(),
+                fields::TRIM_END => self.trim_end = ctx.attributes.trim_end(),
+                fields::COLLAPSE_SPACES => self.collapse_spaces = ctx.attributes.collapse_spaces(),
+                fields::WRAP => self.word_wrap = ctx.attributes.word_wrap(),
+                fields::TEXT_ALIGN => self.text_alignment = ctx.attributes.text_alignment(),
                 _ => {}
             }
         }

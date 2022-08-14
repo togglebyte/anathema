@@ -3,8 +3,8 @@ use unicode_width::UnicodeWidthChar;
 use crate::display::{Size, Style};
 
 use super::LocalPos;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::widgets::{fields, Attributes};
+use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
+use crate::widgets::fields;
 
 const DEFAULT_SLIM_EDGES: [char; 8] = ['┌', '─', '┐', '│', '┘', '─', '└', '│'];
 const DEFAULT_THICK_EDGES: [char; 8] = ['╔', '═', '╗', '║', '╝', '═', '╚', '║'];
@@ -286,7 +286,11 @@ impl Widget for Border {
                 if ctx.constraints.is_height_tight() {
                     size.height = ctx.constraints.max_height;
                 }
-                size
+
+                Size {
+                    width: size.width.min(ctx.constraints.max_width),
+                    height: size.height.min(ctx.constraints.max_height),
+                }
             }
             None => {
                 let mut size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
@@ -434,14 +438,14 @@ impl Widget for Border {
         None
     }
 
-    fn update(&mut self, attributes: Attributes) {
-        attributes.update_style(&mut self.style);
-        for (k, _) in &attributes {
+    fn update(&mut self, ctx: UpdateCtx) {
+        ctx.attributes.update_style(&mut self.style);
+        for (k, _) in &ctx.attributes {
             match k.as_str() {
-                fields::WIDTH => self.width = attributes.width(),
-                fields::HEIGHT => self.height = attributes.height(),
-                fields::BORDER_STYLE => self.edges = attributes.border_style().edges(),
-                fields::SIDES => self.sides = attributes.sides(),
+                fields::WIDTH => self.width = ctx.attributes.width(),
+                fields::HEIGHT => self.height = ctx.attributes.height(),
+                fields::BORDER_STYLE => self.edges = ctx.attributes.border_style().edges(),
+                fields::SIDES => self.sides = ctx.attributes.sides(),
                 _ => {}
             }
         }
