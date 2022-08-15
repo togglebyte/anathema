@@ -7,6 +7,7 @@
     * Convenient `String` access on the `Text` widget via
       `get_text_mut(span_index)` and `get_text(span_index)`.
     * BUGFIX: Padding for `ZStack`, `Alignment` and `Expanded` is now working.
+    * BUGFIX: padding on `HStack`
     * Rename feature "with-flume" to "flume"
 * 0.1.2
     * `WidgetContainer::by_id` is made more ergonomic and can now called with a
