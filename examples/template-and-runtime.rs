@@ -1,7 +1,7 @@
 use anathema::runtime::{Event, Runtime};
 use anathema::templates::DataCtx;
 
-static TEMPLATE: &'static str = r#"
+static TEMPLATE: &str = r#"
 border:
     text: "I would like a hot cup of tea"
 "#;

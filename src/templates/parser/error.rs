@@ -121,7 +121,7 @@ impl Display for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
     UnterminatedString,
     UnterminatedElement,

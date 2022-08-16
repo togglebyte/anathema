@@ -5,7 +5,7 @@ use anathema::runtime::{Event, Runtime, Sender, UserModel};
 use anathema::templates::DataCtx;
 use anathema::widgets::{Canvas, NodeId, Value, WidgetContainer};
 
-static TEMPLATE: &'static str = r#"
+static TEMPLATE: &str = r#"
 vstack [padding-left: 2, padding-right: 2, padding: 1]:
     hstack:
 
@@ -41,12 +41,12 @@ struct ColorItem {
     id: u64,
 }
 
-impl Into<Value> for ColorItem {
-    fn into(self) -> Value {
+impl From<ColorItem> for Value {
+    fn from(color: ColorItem) -> Value {
         let mut hm = HashMap::new();
-        hm.insert("id".to_string(), self.id.into());
-        hm.insert("selected".to_string(), self.selected.into());
-        hm.insert("color".to_string(), self.color.into());
+        hm.insert("id".to_string(), color.id.into());
+        hm.insert("selected".to_string(), color.selected.into());
+        hm.insert("color".to_string(), color.color.into());
         Value::Map(hm)
     }
 }
@@ -97,7 +97,7 @@ impl UserModel for State {
         }
 
         // Scrolling the mouse wheel changes the brush
-        if let Some(_) = event.scroll_up() {
+        if event.scroll_up().is_some() {
             match self.brush {
                 '░' => self.brush = '▒',
                 '▒' => self.brush = '▓',

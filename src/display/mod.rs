@@ -55,7 +55,7 @@ pub mod events {
 }
 
 /// Size
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Size {
     /// Width
     pub width: usize,

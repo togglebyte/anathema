@@ -124,7 +124,7 @@ impl Display for Align {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HorzEdge {
     /// Position to the left
     Left(i32),
@@ -132,7 +132,7 @@ pub enum HorzEdge {
     Right(i32),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VertEdge {
     /// Position at the top
     Top(i32),
@@ -141,14 +141,14 @@ pub enum VertEdge {
 }
 
 /// Offset can be both horizontal and / or vertical.
-#[derive(Debug)]
-pub struct Offset {
-    pub h_edge: Option<HorzEdge>,
-    pub v_edge: Option<VertEdge>,
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Offset {
+    Vertical(VertEdge),
+    Horizontal(HorzEdge),
 }
 
-impl Offset {
-    pub fn new() -> Self {
-        Self { h_edge: None, v_edge: None }
+impl Default for Offset {
+    fn default() -> Self {
+        Self::Vertical(VertEdge::Top(0))
     }
 }

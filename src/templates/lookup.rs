@@ -6,8 +6,8 @@ use super::error::{Error, Result};
 use super::nodes::{Kind, Node};
 
 use crate::widgets::{
-    fields, Align, Alignment, Animation, Border, Canvas, Direction, Expand, HStack, Position, Spacer, Text, TextSpan,
-    VStack, Value, Viewport, Widget, WidgetContainer, ZStack,
+    fields, Align, Alignment, Animation, Border, Canvas, Expand, HStack, Position, Spacer, Text, TextSpan, VStack,
+    Value, Viewport, Widget, WidgetContainer, ZStack,
 };
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
@@ -265,8 +265,7 @@ fn expand_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> 
 
 fn viewport_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
     let offset = node.attributes.offset();
-    let direction = node.attributes.direction().unwrap_or(Direction::Vertical);
-    let mut widget = Viewport::new(offset, direction);
+    let mut widget = Viewport::new(offset.unwrap_or_default());
 
     for child in &node.children {
         let child = lookup.make(child)?;

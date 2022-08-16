@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use super::{fields, Direction, LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, VertEdge, WithSize};
+use super::{HorzEdge, LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, VertEdge, WithSize};
 use crate::display::Size;
 use crate::widgets::layout::{horizontal, vertical};
 use crate::widgets::{Offset, Widget, WidgetContainer};
@@ -8,39 +8,42 @@ use crate::widgets::{Offset, Widget, WidgetContainer};
 #[derive(Debug)]
 pub struct Viewport {
     pub offset: Offset,
-    pub direction: Direction,
     pub children: Vec<WidgetContainer>,
+    pub clamp_vertical: bool,
+    pub clamp_horizontal: bool,
 }
 
 impl Viewport {
     const KIND: &'static str = "Viewport";
 
-    pub fn new(offset: Offset, direction: Direction) -> Self {
-        Self { offset, children: vec![], direction }
+    pub fn new(offset: Offset) -> Self {
+        Self { offset, children: vec![], clamp_horizontal: true, clamp_vertical: true }
     }
 
+    /// Swap the current edge to the opposite edge, updating the offset so the content isn't
+    /// repositioned.
+    ///
+    /// This is useful to "freeze" scrolling behaviour.
     pub fn swap_edges(&mut self, size: Size) {
-        let total_child_height = self.children.iter().map(|c| c.size.height).sum::<usize>() as i32;
-        let start = total_child_height - size.height as i32;
-
-        match self.offset.v_edge {
-            Some(VertEdge::Top(offset)) => {
-                let new_offset = -(offset + start);
-                self.offset.v_edge = Some(VertEdge::Bottom(new_offset));
-                #[cfg(feature = "log")]
-                {
-                    log::info!("swapping from top to bottom, from {offset} to {new_offset} (start: {start})");
+        match self.offset {
+            Offset::Vertical(edge @ VertEdge::Top(offset) | edge @ VertEdge::Bottom(offset)) => {
+                let total_child_height = self.children.iter().map(|c| c.size.height).sum::<usize>() as i32;
+                let start = total_child_height - size.height as i32;
+                let new_offset = start - offset;
+                match edge {
+                    VertEdge::Top(_) => self.offset = Offset::Vertical(VertEdge::Bottom(new_offset)),
+                    VertEdge::Bottom(_) => self.offset = Offset::Vertical(VertEdge::Top(new_offset)),
                 }
             }
-            Some(VertEdge::Bottom(offset)) => {
-                let new_offset = offset + start;
-                self.offset.v_edge = Some(VertEdge::Top(new_offset));
-                #[cfg(feature = "log")]
-                {
-                    log::info!("swapping from bottom to top, from {offset} to {new_offset} (start: {start})");
+            Offset::Horizontal(edge @ HorzEdge::Left(offset) | edge @ HorzEdge::Right(offset)) => {
+                let total_child_width = self.children.iter().map(|c| c.size.width).sum::<usize>() as i32;
+                let start = total_child_width - size.width as i32;
+                let new_offset = start - offset;
+                match edge {
+                    HorzEdge::Left(_) => self.offset = Offset::Horizontal(HorzEdge::Right(new_offset)),
+                    HorzEdge::Right(_) => self.offset = Offset::Horizontal(HorzEdge::Left(new_offset)),
                 }
             }
-            None => {}
         }
     }
 }
@@ -56,46 +59,69 @@ impl Widget for Viewport {
 
     fn layout(&mut self, ctx: LayoutCtx) -> Size {
         let mut child_ctx = ctx;
-        match self.direction {
-            Direction::Horizontal => child_ctx.constraints.make_width_unbounded(),
-            Direction::Vertical => child_ctx.constraints.make_height_unbounded(),
+        match self.offset {
+            Offset::Vertical(_) => child_ctx.constraints.make_height_unbounded(),
+            Offset::Horizontal(_) => child_ctx.constraints.make_width_unbounded(),
         }
 
-        // Make sure at least one axis is bounded
-        assert!(!ctx.constraints.is_unbounded());
-
-        // Layout children with one unbounded axis
-        let size = match self.direction {
-            Direction::Horizontal => horizontal::layout(&mut self.children, child_ctx, true),
-            Direction::Vertical => vertical::layout(&mut self.children, child_ctx, true),
+        let size = match self.offset {
+            Offset::Vertical(_) => vertical::layout(&mut self.children, child_ctx, true),
+            Offset::Horizontal(_) => horizontal::layout(&mut self.children, child_ctx, true),
         };
 
         Size { width: size.width.min(ctx.constraints.max_width), height: size.height.min(ctx.constraints.max_height) }
     }
 
     fn position(&mut self, mut ctx: PositionCtx) {
-        // TODO: swap the edges around and calculate the offset to freeze scroll
-        match self.offset.v_edge {
-            Some(VertEdge::Top(offset)) => ctx.pos.y += offset,
-            Some(VertEdge::Bottom(offset)) => {
-                let total_child_height = self.children.iter().map(|c| c.size.height).sum::<usize>();
-                let start = total_child_height - ctx.size.height;
-                ctx.pos.y -= start as i32 + offset;
+        match self.offset {
+            Offset::Vertical(VertEdge::Top(mut offset)) => {
+                if self.clamp_vertical {
+                    let total_child_height = self.children.iter().map(|c| c.size.height).sum::<usize>() as i32;
+                    let start = total_child_height - ctx.size.height as i32;
+                    offset = offset.clamp(0, start);
+                }
+
+                ctx.pos.y -= offset;
             }
-            None => {}
+            Offset::Vertical(VertEdge::Bottom(mut offset)) => {
+                let total_child_height = self.children.iter().map(|c| c.size.height).sum::<usize>() as i32;
+                let start = total_child_height - ctx.size.height as i32;
+
+                if self.clamp_vertical {
+                    offset = offset.clamp(0, start);
+                }
+
+                ctx.pos.y -= start - offset;
+            }
+            Offset::Horizontal(HorzEdge::Left(mut offset)) => {
+                if self.clamp_horizontal {
+                    let total_child_width = self.children.iter().map(|c| c.size.width).sum::<usize>() as i32;
+                    let start = total_child_width - ctx.size.width as i32;
+                    offset = offset.clamp(0, start);
+                }
+
+                ctx.pos.x -= offset;
+            }
+            Offset::Horizontal(HorzEdge::Right(mut offset)) => {
+                let total_child_width = self.children.iter().map(|c| c.size.width).sum::<usize>() as i32;
+                let start = total_child_width - ctx.size.width as i32;
+
+                if self.clamp_horizontal {
+                    offset = offset.clamp(0, start);
+                }
+
+                ctx.pos.x -= start - offset;
+            }
         }
-        match self.direction {
-            Direction::Vertical => vertical::position(&mut self.children, ctx),
-            Direction::Horizontal => horizontal::position(&mut self.children, ctx),
+
+        match self.offset {
+            Offset::Vertical(_) => vertical::position(&mut self.children, ctx),
+            Offset::Horizontal(_) => horizontal::position(&mut self.children, ctx),
         }
     }
 
     fn paint(&mut self, mut ctx: PaintCtx<'_, WithSize>) {
         let clip = ctx.create_region();
-        #[cfg(feature = "log")]
-        {
-            // log::info!("height: {}", ctx.local_size.height);
-        }
         for child in self.children.iter_mut() {
             let ctx = ctx.sub_context(Some(&clip));
             child.paint(ctx);
@@ -118,49 +144,8 @@ impl Widget for Viewport {
     }
 
     fn update(&mut self, ctx: UpdateCtx) {
-        if ctx.attributes.has(fields::V_OFFSET_EDGE) {
-            let val = match self.offset.v_edge {
-                None => 0,
-                Some(VertEdge::Top(val) | VertEdge::Bottom(val)) => val,
-            };
-
-            match ctx.attributes.get_str(fields::V_OFFSET_EDGE) {
-                Some(fields::TOP) => {
-                    if let Some(VertEdge::Bottom(_)) = self.offset.v_edge {
-                        self.swap_edges(ctx.size);
-                    } else {
-                        self.offset.v_edge = Some(VertEdge::Top(val));
-                        #[cfg(feature = "log")]
-                        {
-                            log::info!("updating offset (top)");
-                        }
-                    }
-                }
-                Some(fields::BOTTOM) => {
-                    if let Some(VertEdge::Top(_)) = self.offset.v_edge {
-                        self.swap_edges(ctx.size);
-                    } else {
-                        self.offset.v_edge = Some(VertEdge::Bottom(val));
-                        #[cfg(feature = "log")]
-                        {
-                            log::info!("updating offset (bottom)");
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if ctx.attributes.has(fields::V_OFFSET) {
-            match self.offset.v_edge {
-                None => {
-                    self.offset.v_edge =
-                        Some(VertEdge::Top(ctx.attributes.get_signed_int(fields::V_OFFSET).unwrap_or(0) as i32))
-                }
-                Some(VertEdge::Top(ref mut val) | VertEdge::Bottom(ref mut val)) => {
-                    *val = ctx.attributes.get_signed_int(fields::V_OFFSET).unwrap_or(0) as i32
-                }
-            }
+        if let Some(offset) = ctx.attributes.offset() {
+            self.offset = offset;
         }
     }
 }
@@ -168,4 +153,128 @@ impl Widget for Viewport {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::widgets::testing::{test_widget, test_widget_container};
+    use crate::widgets::{Border, BorderStyle, Sides, Text};
+
+    fn viewport(child_range: std::ops::Range<usize>) -> Viewport {
+        let offset = Offset::default();
+        let mut viewport = Viewport::new(offset);
+
+        for val in child_range {
+            let child = Text::with_text(format!("{val}")).into_container(NodeId::auto());
+            viewport.children.push(child);
+        }
+
+        viewport
+    }
+
+    fn test_viewport(viewport: Viewport, expected: &str) -> WidgetContainer {
+        let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
+        border.child = Some(viewport.into_container(NodeId::Value("viewport".into())));
+        test_widget(border, expected)
+    }
+
+    #[test]
+    fn change_offset_from_top() {
+        let mut viewport = viewport(0..4);
+        viewport.offset = Offset::Vertical(VertEdge::Top(1));
+
+        test_viewport(
+            viewport,
+            r#"
+            ┌───┐
+            │1  │
+            │2  │
+            │3  │
+            └───┘
+            "#,
+        );
+    }
+
+    #[test]
+    fn change_offset_from_bottom() {
+        let mut viewport = viewport(0..5);
+        viewport.offset = Offset::Vertical(VertEdge::Bottom(1));
+
+        test_viewport(
+            viewport,
+            r#"
+            ┌───┐
+            │1  │
+            │2  │
+            │3  │
+            └───┘
+            "#,
+        );
+    }
+
+    #[test]
+    fn edge_swap() {
+        let mut viewport = viewport(0..10);
+        viewport.offset = Offset::Vertical(VertEdge::Bottom(0));
+
+        let mut root = test_viewport(
+            viewport,
+            r#"
+            ┌───┐
+            │7  │
+            │8  │
+            │9  │
+            └───┘
+            "#,
+        );
+
+        for _ in 0..3 {
+            let viewport = root.by_id("viewport").unwrap();
+            let size = viewport.size;
+            viewport.to::<Viewport>().swap_edges(size);
+
+            root = test_widget_container(
+                root,
+                r#"
+            ┌───┐
+            │7  │
+            │8  │
+            │9  │
+            └───┘
+            "#,
+            );
+        }
+    }
+
+    #[test]
+    fn clamp_offset_negative() {
+        let mut viewport = viewport(0..4);
+        viewport.clamp_vertical = true;
+        viewport.offset = Offset::Vertical(VertEdge::Top(-100));
+
+        test_viewport(
+            viewport,
+            r#"
+            ┌───┐
+            │0  │
+            │1  │
+            │2  │
+            └───┘
+            "#,
+        );
+    }
+
+    #[test]
+    fn clamp_offset_positive() {
+        let mut viewport = viewport(0..4);
+        viewport.clamp_vertical = true;
+        viewport.offset = Offset::Vertical(VertEdge::Top(100));
+
+        test_viewport(
+            viewport,
+            r#"
+            ┌───┐
+            │1  │
+            │2  │
+            │3  │
+            └───┘
+            "#,
+        );
+    }
 }

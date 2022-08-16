@@ -30,7 +30,7 @@ use super::Color;
 /// else:
 ///     text: "is false"
 /// ```
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct Style {
     /// Foreground colour.
     pub fg: Option<Color>,

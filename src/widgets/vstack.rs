@@ -74,9 +74,8 @@ impl Widget for VStack {
         if let Some(min_height) = self.min_height {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
-        let size = vertical::layout(&mut self.children, ctx, false);
 
-        size
+        vertical::layout(&mut self.children, ctx, false)
     }
 
     fn position(&mut self, ctx: PositionCtx) {

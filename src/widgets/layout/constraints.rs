@@ -2,7 +2,7 @@ use crate::display::Size;
 
 /// `Constraints` are used to ensure that a widget doesn't size it self outside of a set of given bounds.
 /// A constraint can be tight, meaning then minimum and maximum width / height are the same.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Constraints {
     /// Minimum width.
     pub min_width: usize,

@@ -456,7 +456,7 @@ impl Widget for Border {
 mod test {
     use super::*;
     use crate::widgets::testing::test_widget;
-    use crate::widgets::Constraints;
+    use crate::widgets::{Attributes, Constraints};
 
     fn test_border(sides: Sides, expected: &str) {
         test_widget(Border::new(&BorderStyle::Thin, sides, None, None), expected);

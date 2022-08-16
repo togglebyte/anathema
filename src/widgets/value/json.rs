@@ -79,6 +79,11 @@ fn value_from_json_string(s: String) -> Value {
         return Value::Wrap(wrap);
     }
 
+    // Try offset
+    if let Some(offset) = offset_from_str(&s) {
+        return Value::Offset(offset);
+    }
+
     Value::String(s)
 }
 

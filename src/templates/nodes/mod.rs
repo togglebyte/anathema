@@ -97,7 +97,7 @@ fn for_loop(
             for value in values {
                 let sub_ctx = data_ctx.sub(&binding, value.clone());
                 for t in template {
-                    nodes.extend(to_nodes(&t, &sub_ctx, node_ctx)?);
+                    nodes.extend(to_nodes(t, &sub_ctx, node_ctx)?);
                 }
             }
 
@@ -269,8 +269,7 @@ mod test {
     use crate::widgets::Path;
 
     fn ctx(val: &Value) -> DataCtx {
-        let ctx = DataCtx::with_value("path", val.clone());
-        ctx
+        DataCtx::with_value("path", val.clone())
     }
 
     fn attributes() -> Attributes {

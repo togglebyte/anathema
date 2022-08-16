@@ -619,7 +619,7 @@ fn parse_path(lexer: &mut Peekable<Lexer<'_>>, ident: &str) -> Result<Path> {
 mod test {
     use super::*;
     use crate::templates::parser::error::ErrorKind;
-    use crate::widgets::{Attributes, HorzEdge, VertEdge};
+    use crate::widgets::Attributes;
 
     fn try_parse_attributes(template: &str) -> Result<Attributes> {
         let lexer = Lexer::new(template);
@@ -841,39 +841,19 @@ mod test {
     #[test]
     fn whitespace_attribs() {
         // Trim start
-        assert_eq!(parse_attributes("text [trim-start: true]:").trim_start(), true);
-        assert_eq!(parse_attributes("text:").trim_start(), true);
-        assert_eq!(parse_attributes("text [trim-start: false]:").trim_start(), false);
+        assert!(parse_attributes("text [trim-start: true]:").trim_start());
+        assert!(parse_attributes("text:").trim_start());
+        assert!(!parse_attributes("text [trim-start: false]:").trim_start());
 
         // Trim end
-        assert_eq!(parse_attributes("text [trim-end: true]:").trim_end(), true);
-        assert_eq!(parse_attributes("text:").trim_end(), true);
-        assert_eq!(parse_attributes("text [trim-end: false]:").trim_end(), false);
+        assert!(parse_attributes("text [trim-end: true]:").trim_end());
+        assert!(parse_attributes("text:").trim_end());
+        assert!(!parse_attributes("text [trim-end: false]:").trim_end());
 
         // Collapse spaces
-        assert_eq!(parse_attributes("text [collapse-spaces: true]:").collapse_spaces(), true);
-        assert_eq!(parse_attributes("text:").collapse_spaces(), true);
-        assert_eq!(parse_attributes("text [collapse-spaces: false]:").collapse_spaces(), false);
-    }
-
-    #[test]
-    fn offsets() {
-        let left = parse_attributes("widget [h-offset: 23, h-offset-edge: left]:").offset();
-        let right = parse_attributes("widget [h-offset: 23, h-offset-edge: right]:").offset();
-        let top = parse_attributes("widget [v-offset: 23, v-offset-edge: top]:").offset();
-        let bottom = parse_attributes("widget [v-offset: 23, v-offset-edge: bottom]:").offset();
-
-        assert_eq!(left.h_edge.unwrap(), HorzEdge::Left(23));
-        assert_eq!(right.h_edge.unwrap(), HorzEdge::Right(23));
-        assert_eq!(top.v_edge.unwrap(), VertEdge::Top(23));
-        assert_eq!(bottom.v_edge.unwrap(), VertEdge::Bottom(23));
-
-        let bottom_right =
-            parse_attributes("widget [v-offset: 23, v-offset-edge: bottom, h-offset: 2, h-offset-edge: right]:")
-                .offset();
-
-        assert_eq!(bottom_right.v_edge.unwrap(), VertEdge::Bottom(23));
-        assert_eq!(bottom_right.h_edge.unwrap(), HorzEdge::Right(2));
+        assert!(parse_attributes("text [collapse-spaces: true]:").collapse_spaces());
+        assert!(parse_attributes("text:").collapse_spaces());
+        assert!(!parse_attributes("text [collapse-spaces: false]:").collapse_spaces());
     }
 
     #[test]

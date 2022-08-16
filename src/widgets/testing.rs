@@ -3,11 +3,12 @@ use crate::display::{Screen, ScreenPos, Size};
 use super::layout::Constraints;
 use super::{NodeId, PaintCtx, Pos, Widget, WidgetContainer};
 
-pub fn test_widget(widget: impl Widget, expected: &str) {
-    test_widget_container(widget.into_container(NodeId::auto()), expected)
+pub fn test_widget(widget: impl Widget, expected: &str) -> WidgetContainer {
+    let container = widget.into_container(NodeId::auto());
+    test_widget_container(container, expected)
 }
 
-pub fn test_widget_container(mut widget: WidgetContainer, expected: &str) {
+pub fn test_widget_container(mut widget: WidgetContainer, expected: &str) -> WidgetContainer {
     let lines = expected
         .lines()
         .filter_map(|s| {
@@ -64,4 +65,6 @@ pub fn test_widget_container(mut widget: WidgetContainer, expected: &str) {
             }
         }
     }
+
+    widget
 }

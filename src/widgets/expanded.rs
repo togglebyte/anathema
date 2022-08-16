@@ -170,7 +170,7 @@ impl Widget for Expand {
 mod test {
     use super::*;
     use crate::widgets::testing::test_widget;
-    use crate::widgets::{Border, BorderStyle, Constraints, Padding, Sides, Text};
+    use crate::widgets::{Attributes, Border, BorderStyle, Constraints, Padding, Sides, Text};
 
     fn expand_border(dir: Option<Direction>) -> WidgetContainer {
         let mut parent = Border::thick(None, None).into_container(NodeId::auto());

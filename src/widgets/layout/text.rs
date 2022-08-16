@@ -4,7 +4,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 static WORD_BOUNDARIES: &[char] = &[' ', '\n'];
 
 /// Word wrapping.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Wrap {
     /// Output the text on a single line
     NoWrap,
@@ -486,8 +486,6 @@ C
     #[test]
     fn split_on_invalid_char_boundary() {
         let input = AntString::new(["✨🍅✨"]);
-        let (left, right) = input.split_at(1);
-
-        let x = left;
+        let (_left, _right) = input.split_at(1);
     }
 }

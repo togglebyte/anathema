@@ -5,9 +5,7 @@ use crate::display::{Color, Style};
 
 use super::value::Path;
 use super::value::{Easing, Value};
-use super::{
-    Align, BorderStyle, Direction, Display, HorzEdge, NodeId, Offset, Padding, Sides, TextAlignment, VertEdge, Wrap,
-};
+use super::{Align, BorderStyle, Direction, Display, NodeId, Offset, Padding, Sides, TextAlignment, Wrap};
 
 // -----------------------------------------------------------------------------
 //     - Attribute names -
@@ -29,8 +27,6 @@ pub mod fields {
     pub const FILL: &str = "fill";
     pub const FOREGROUND: &str = "foreground";
     pub const HEIGHT: &str = "height";
-    pub const H_OFFSET: &str = "h-offset";
-    pub const H_OFFSET_EDGE: &str = "h-offset-edge";
     pub const ID: &str = "id";
     pub const LEFT: &str = "left";
     pub const MAX_CHILDREN: &str = "max-children";
@@ -54,8 +50,6 @@ pub mod fields {
     pub const TOP: &str = "top";
     pub const TRIM_END: &str = "trim-end";
     pub const TRIM_START: &str = "trim-start";
-    pub const V_OFFSET: &str = "v-offset";
-    pub const V_OFFSET_EDGE: &str = "v-offset-edge";
     pub const WIDTH: &str = "width";
     pub const WRAP: &str = "wrap";
 }
@@ -167,27 +161,10 @@ impl Attributes {
         self.get_int(fields::MAX_HEIGHT).map(|i| i as usize)
     }
 
-    pub fn offset(&self) -> Offset {
-        let h_offset = self.get_signed_int(fields::H_OFFSET).unwrap_or(0) as i32;
-        let v_offset = self.get_signed_int(fields::V_OFFSET).unwrap_or(0) as i32;
-
-        let h_offset_edge = match self.get_str(fields::H_OFFSET_EDGE) {
-            Some(fields::LEFT) => Some(HorzEdge::Left(h_offset)),
-            Some(fields::RIGHT) => Some(HorzEdge::Right(h_offset)),
+    pub fn offset(&self) -> Option<Offset> {
+        match self.value(fields::OFFSET) {
+            Some(Value::Offset(offset)) => Some(*offset),
             _ => None,
-        };
-
-        let v_offset_edge = match self.get_str(fields::V_OFFSET_EDGE) {
-            Some(fields::TOP) => Some(VertEdge::Top(v_offset)),
-            Some(fields::BOTTOM) => Some(VertEdge::Bottom(v_offset)),
-            _ => None,
-        };
-
-        match (h_offset_edge, v_offset_edge) {
-            (Some(h), Some(v)) => Offset { h_edge: Some(h), v_edge: Some(v) },
-            (None, Some(v)) => Offset { h_edge: None, v_edge: Some(v) },
-            (Some(h), None) => Offset { h_edge: Some(h), v_edge: None },
-            (None, None) => Offset::new(),
         }
     }
 

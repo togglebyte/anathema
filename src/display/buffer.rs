@@ -170,7 +170,7 @@ impl Buffer {
 impl Buffer {
     fn cell_at(&self, x: usize, y: usize) -> Cell {
         let index = y * self.size.width as usize + x;
-        *&self.inner[index]
+        self.inner[index]
     }
 
     pub fn char_at(&self, x: usize, y: usize) -> char {

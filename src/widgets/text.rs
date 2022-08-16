@@ -23,7 +23,7 @@ use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetC
 /// ```
 ///
 /// The text will only align it self within the parent widget.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TextAlignment {
     /// Align the to the left inside the parent
     Left,
@@ -352,7 +352,7 @@ mod test {
     use crate::display::Screen;
     use crate::widgets::testing::test_widget;
     use crate::widgets::Constraints;
-    use crate::widgets::{Align, Alignment, Border, BorderStyle, Padding, Pos, Sides};
+    use crate::widgets::{Align, Alignment, Attributes, Border, BorderStyle, Padding, Pos, Sides};
 
     fn test_text(text: impl Widget, expected: &str) {
         let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
@@ -524,8 +524,7 @@ mod test {
     fn word_wrap_no_space() {
         let constraint = Constraints::new(8, None);
         let text = "helloxhowareyou";
-        let mut text_widget = Text::default();
-        text_widget.spans = vec![TextSpan::new(text)];
+        let mut text_widget = Text { spans: vec![TextSpan::new(text)], ..Default::default() };
         let actual = text_widget.layout(LayoutCtx::new(constraint, false, Padding::ZERO));
         let expected = Size::new(8, 2);
         assert_eq!(actual, expected);
@@ -556,17 +555,17 @@ mod test {
         let mut screen = Screen::new(&mut vec![], Size::ZERO).unwrap();
 
         let mut text = Text::with_text("hi");
-        assert_eq!(text.needs_layout(), true);
-        assert_eq!(text.needs_paint(), true);
+        assert!(text.needs_layout());
+        assert!(text.needs_paint());
 
         text.layout(LayoutCtx::new(Constraints::unbounded(), false, Padding::ZERO));
         text.paint(PaintCtx::new(&mut screen, None).into_sized(Size::ZERO, Pos::ZERO));
-        assert_eq!(text.needs_layout(), false);
-        assert_eq!(text.needs_paint(), false);
+        assert!(!text.needs_layout());
+        assert!(!text.needs_paint());
 
         text.add_span("change");
-        assert_eq!(text.needs_layout(), true);
-        assert_eq!(text.needs_paint(), true);
+        assert!(text.needs_layout());
+        assert!(text.needs_paint());
     }
 
     #[test]

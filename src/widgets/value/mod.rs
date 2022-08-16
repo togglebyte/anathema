@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::display::Color;
 
-use super::{Align, BorderStyle, Direction, Sides, TextAlignment, Wrap};
+use super::{Align, BorderStyle, Direction, Offset, Sides, TextAlignment, Wrap};
 use crate::widgets::Display;
 
 #[cfg(feature = "serde-json")]
@@ -78,7 +78,7 @@ impl fmt::Display for Number {
 }
 
 /// Transition easing function.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Easing {
     /// Linear easing function. This is the default one.
     Linear,
@@ -134,6 +134,8 @@ pub enum Value {
     Number(Number),
     /// Border sides (determine which sides should be drawn).
     Sides(Sides),
+    /// Offset (vertical / horizontal edges and offsets)
+    Offset(Offset),
     /// String.
     String(String),
     /// Fragments .
@@ -206,6 +208,7 @@ impl_from_val!(Sides, Sides);
 impl_from_val!(String, String);
 impl_from_val!(TextAlignment, TextAlignment);
 impl_from_val!(Wrap, Wrap);
+impl_from_val!(Offset, Offset);
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -232,6 +235,7 @@ impl fmt::Display for Value {
             Self::String(val) => write!(f, "{}", val),
             Self::TextAlignment(val) => write!(f, "{:?}", val),
             Self::Wrap(val) => write!(f, "{:?}", val),
+            Self::Offset(val) => write!(f, "{:?}", val),
             Self::Transition(val, duration, easing) => write!(f, "animate {val} over {duration:?} ms ({easing:?})"),
         }
     }

@@ -1,7 +1,7 @@
 use std::collections::hash_map::{Entry, HashMap};
 
 use crate::display::Color;
-use crate::widgets::{Align, BorderStyle, Direction, Display, Number, Path, Sides, Value, Wrap};
+use crate::widgets::{Align, BorderStyle, Direction, Display, Number, Offset, Path, Sides, Value, Wrap};
 
 use super::error::Result;
 use super::WidgetNode;
@@ -237,6 +237,7 @@ impl DataCtx {
     mut_ref_push_diff!(get_string_mut, String, String);
     mut_ref_push_diff!(get_wrap_mut, Wrap, Wrap);
     mut_ref_push_diff!(get_list_mut, Vec<Value>, List);
+    mut_ref_push_diff!(get_offset_mut, Offset, Offset);
 
     // Get reference
     get_ref!(get_alignment, Align, Alignment);
@@ -250,6 +251,7 @@ impl DataCtx {
     get_ref!(get_string, String, String);
     get_ref!(get_wrap, Wrap, Wrap);
     get_ref!(get_list, Vec<Value>, List);
+    get_ref!(get_offset, Offset, Offset);
 }
 
 #[cfg(test)]
