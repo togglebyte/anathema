@@ -5,17 +5,25 @@ use crate::display::Size;
 use crate::widgets::layout::{horizontal, vertical};
 use crate::widgets::{Offset, Widget, WidgetContainer};
 
+/// A viewport where the children can be rendered with an offset.
 #[derive(Debug)]
 pub struct Viewport {
+    /// Offset, either vertical or horizontal
     pub offset: Offset,
+    /// Children
     pub children: Vec<WidgetContainer>,
+    /// Clamp the vertical space, meaning the edge of the content can not surpass the edge of the
+    /// visible space.
     pub clamp_vertical: bool,
+    /// Clamp the horizontal space, meaning the edge of the content can not surpass the edge of the
+    /// visible space.
     pub clamp_horizontal: bool,
 }
 
 impl Viewport {
     const KIND: &'static str = "Viewport";
 
+    /// Create a new instance of a [`Viewport`]
     pub fn new(offset: Offset) -> Self {
         Self { offset, children: vec![], clamp_horizontal: true, clamp_vertical: true }
     }
