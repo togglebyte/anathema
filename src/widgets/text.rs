@@ -185,10 +185,8 @@ impl Widget for Text {
         let string_slices = self
             .spans
             .iter_mut()
-            .map(|span| {
-                let span = span.to::<TextSpan>();
-                (&span.style, span.text.as_str())
-            })
+            .map(WidgetContainer::to::<TextSpan>)
+            .map(|span| (&span.style, span.text.as_str()))
             .collect::<Vec<(&Style, &str)>>();
         let string = AntString::with_annotations(&string_slices);
 
