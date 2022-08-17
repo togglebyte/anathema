@@ -146,6 +146,7 @@ impl WidgetContainer {
 
     pub fn to<T: 'static>(&mut self) -> &mut T {
         let kind = self.inner.kind();
+
         match self.inner.as_any().downcast_mut::<T>() {
             Some(t) => t,
             None => panic!("invalid widget type, found `{kind}`"),

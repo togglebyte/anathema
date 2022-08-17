@@ -3,10 +3,10 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use crate::antstring::AntString;
 use crate::display::{Size, Style};
 use crate::widgets::layout::text::TextLayout;
-use crate::widgets::{fields, Wrap};
 
-use super::LocalPos;
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize};
+use super::{
+    fields, LayoutCtx, LocalPos, NodeId, PaintCtx, PositionCtx, UpdateCtx, Widget, WidgetContainer, WithSize, Wrap,
+};
 
 /// Text alignment aligns the text inside its parent.
 ///
@@ -51,7 +51,7 @@ pub enum TextAlignment {
 /// Note: Spans, unlike other widgets, does not require a widget id
 ///
 /// A `Text` widget will be as wide as its text.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Text {
     /// Trim any white space from the start of the string. Note that if `collapse_spaces` is `true`
     /// then all but one space will be trimmed from the start of the text.
@@ -77,7 +77,7 @@ pub struct Text {
     pub text_alignment: TextAlignment,
     /// Represents chunks of text that can have its own style. This makes it possible to style
     /// different parts of the same text.
-    pub spans: Vec<TextSpan>,
+    pub spans: Vec<WidgetContainer>,
 
     max_width: usize,
     previous_width: usize,
@@ -124,47 +124,23 @@ impl Text {
         inst
     }
 
+    /// Create an instance of an unstyled `TextSpan` and add that as a widget container
+    pub fn add_span(&mut self, text: impl AsRef<str>) {
+        let span: TextSpan = text.into();
+        self.spans.push(span.into_container(NodeId::auto()));
+    }
+
     /// Replace the first text `Span` with some new text.
     /// If there are no `Span`s one will be inserted
     pub fn set_text(&mut self, text: impl AsRef<str>) {
         if !self.spans.is_empty() {
             let mut span = self.spans.remove(0);
             self.spans.clear();
-            span.text = text.as_ref().to_string();
-            self.spans.push(span);
+            span.to::<TextSpan>().text = text.as_ref().to_string();
         } else {
-            let span = TextSpan::new(text);
-            self.spans.push(span);
-        }
+            self.spans.push(TextSpan::new(text).into_container(NodeId::auto()));
+        };
 
-        self.needs_layout = true;
-        self.needs_paint = true;
-    }
-
-    /// When diffing two text widgets, only update the spans that have changed.
-    /// There should be no need to use this outside of the templates project.
-    pub fn update_span(&mut self, index: usize, text: Option<String>, style: Option<Style>) {
-        if text.is_none() && style.is_none() {
-            return;
-        }
-
-        let span = &mut self.spans[index];
-
-        if let Some(text) = text {
-            span.text = text;
-        }
-
-        if let Some(style) = style {
-            span.style = style;
-        }
-
-        self.needs_layout = true;
-        self.needs_paint = true;
-    }
-
-    /// Add another text span
-    pub fn add_span(&mut self, span: impl Into<TextSpan>) {
-        self.spans.push(span.into());
         self.needs_layout = true;
         self.needs_paint = true;
     }
@@ -179,27 +155,7 @@ impl Text {
     /// # }
     /// ```
     pub fn get_text_mut(&mut self, index: usize) -> Option<&mut String> {
-        self.spans.get_mut(index).map(|span| &mut span.text)
-    }
-
-    /// Get a reference to the inner span's String
-    /// ```
-    /// # use anathema::widgets::{Text, WidgetContainer};
-    /// # fn run(root: &mut WidgetContainer) -> Option<()> {
-    ///     let text = root.by_id("the-text")?.to::<Text>().get_text(0)?;
-    /// #   Some(())
-    /// # }
-    /// ```
-    pub fn get_text(&self, index: usize) -> Option<&String> {
-        self.spans.get(index).map(|span| &span.text)
-    }
-}
-
-impl<T: Into<String>> From<T> for Text {
-    fn from(text: T) -> Self {
-        let mut s = Self::new();
-        s.add_span(text.into());
-        s
+        self.spans.get_mut(index).map(|span| &mut span.to::<TextSpan>().text)
     }
 }
 
@@ -229,8 +185,14 @@ impl Widget for Text {
         self.needs_layout = false;
         self.max_width = ctx.constraints.max_width;
 
-        let string_slices =
-            self.spans.iter().map(|span| (&span.style, span.text.as_str())).collect::<Vec<(&Style, &str)>>();
+        let string_slices = self
+            .spans
+            .iter_mut()
+            .map(|span| {
+                let span = span.to::<TextSpan>();
+                (&span.style, span.text.as_str())
+            })
+            .collect::<Vec<(&Style, &str)>>();
         let string = AntString::with_annotations(&string_slices);
 
         self.previous_width = string.width();
@@ -254,7 +216,14 @@ impl Widget for Text {
 
     fn paint(&mut self, mut ctx: PaintCtx<'_, WithSize>) {
         self.needs_paint = false;
-        let texts = self.spans.iter().map(|span| (&span.style, span.text.as_str())).collect::<Vec<(&Style, &str)>>();
+        let texts = self
+            .spans
+            .iter_mut()
+            .map(|span| {
+                let span = span.to::<TextSpan>();
+                (&span.style, span.text.as_str())
+            })
+            .collect::<Vec<(&Style, &str)>>();
 
         if texts.is_empty() {
             return;
@@ -290,12 +259,20 @@ impl Widget for Text {
     fn position(&mut self, _ctx: PositionCtx) {}
 
     fn children(&mut self) -> Vec<&mut WidgetContainer> {
-        vec![]
+        self.spans.iter_mut().collect()
     }
 
-    fn add_child(&mut self, _: WidgetContainer) {}
+    fn add_child(&mut self, span: WidgetContainer) {
+        if span.kind() == TextSpan::KIND {
+            self.spans.push(span);
+        }
+    }
 
-    fn remove_child(&mut self, _: &NodeId) -> Option<WidgetContainer> {
+    fn remove_child(&mut self, child_id: &NodeId) -> Option<WidgetContainer> {
+        if let Some(pos) = self.spans.iter().position(|c| c.id.eq(child_id)) {
+            return Some(self.spans.remove(pos));
+        }
+
         None
     }
 
@@ -305,6 +282,7 @@ impl Widget for Text {
         }
 
         if let Some(span) = self.spans.first_mut() {
+            let span = span.to::<TextSpan>();
             ctx.attributes.update_style(&mut span.style);
         }
 
@@ -334,6 +312,8 @@ pub struct TextSpan {
 }
 
 impl TextSpan {
+    const KIND: &'static str = "TextSpan";
+
     /// Create a new instance of a text span
     pub fn new(text: impl AsRef<str>) -> Self {
         Self { text: text.as_ref().to_owned(), style: Style::new() }
@@ -343,6 +323,38 @@ impl TextSpan {
 impl<S: AsRef<str>> From<S> for TextSpan {
     fn from(s: S) -> Self {
         Self::new(s)
+    }
+}
+
+impl Widget for TextSpan {
+    fn kind(&self) -> &'static str {
+        Self::KIND
+    }
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn layout(&mut self, _: LayoutCtx) -> Size {
+        Size::ZERO
+    }
+
+    fn position(&mut self, _: PositionCtx) {}
+
+    fn paint(&mut self, _: PaintCtx<'_, WithSize>) {}
+
+    fn children(&mut self) -> Vec<&mut WidgetContainer> {
+        vec![]
+    }
+
+    fn add_child(&mut self, _: WidgetContainer) {}
+
+    fn remove_child(&mut self, _: &NodeId) -> Option<WidgetContainer> {
+        None
+    }
+
+    fn update(&mut self, ctx: UpdateCtx) {
+        ctx.attributes.update_style(&mut self.style);
     }
 }
 
@@ -364,8 +376,7 @@ mod test {
     fn qwerty_party_word_wrap() {
         let constraint = Constraints::new(8, None);
         let text = "hello how are you";
-        let mut text_widget = Text::default();
-        text_widget.add_span(TextSpan::new(text));
+        let mut text_widget = Text::with_text(text);
         let actual = text_widget.layout(LayoutCtx::new(constraint, false, Padding::ZERO));
         let expected = Size::new(7, 3);
         assert_eq!(actual, expected);
@@ -436,9 +447,9 @@ mod test {
     #[test]
     fn char_wrap_layout_multiple_spans() {
         let mut text = Text::with_text("one");
-        text.spans.push("two".into());
-        text.spans.push(" three".into());
-        text.spans.push(" four ".into());
+        text.add_span("two");
+        text.add_span(" three");
+        text.add_span(" four ");
         test_text(
             text,
             r#"
@@ -524,7 +535,7 @@ mod test {
     fn word_wrap_no_space() {
         let constraint = Constraints::new(8, None);
         let text = "helloxhowareyou";
-        let mut text_widget = Text { spans: vec![TextSpan::new(text)], ..Default::default() };
+        let mut text_widget = Text::with_text(text);
         let actual = text_widget.layout(LayoutCtx::new(constraint, false, Padding::ZERO));
         let expected = Size::new(8, 2);
         assert_eq!(actual, expected);
@@ -572,7 +583,7 @@ mod test {
     fn style_changes_via_attributes() {
         let mut text = Text::with_text("first span").into_container(NodeId::auto());
         text.update(Attributes::new("italic", true));
-        let span = &text.to::<Text>().spans[0];
+        let span = &text.to::<Text>().spans[0].to::<TextSpan>();
         assert!(span.style.attributes.contains(crate::display::Attributes::ITALIC));
     }
 }

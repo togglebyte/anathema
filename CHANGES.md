@@ -1,5 +1,6 @@
 * 0.2.0
     * `ScrollView` widget was removed
+    * `Viewport` widget was added
     * `DataCtx` now has `get_ref` counter part to `get_mut`.
     * `Border` has an optional `min-width` and `min-height`.
     * `VStack` / `HStack` and `ZStack` now have an optional `min-width` and
@@ -9,6 +10,7 @@
     * BUGFIX: Padding for `ZStack`, `Alignment` and `Expanded` is now working.
     * BUGFIX: padding on `HStack`
     * Rename feature "with-flume" to "flume"
+    * `TextSpan`s are now handled like any other widget
 * 0.1.2
     * `WidgetContainer::by_id` is made more ergonomic and can now called with a
       string slice now.

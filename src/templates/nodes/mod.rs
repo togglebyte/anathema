@@ -39,7 +39,7 @@ impl Node {
     pub(crate) fn ident(&self) -> &str {
         match self.kind {
             Kind::Node { ref ident } => ident,
-            Kind::Span(_) => "text",
+            Kind::Span(_) => "span",
         }
     }
 

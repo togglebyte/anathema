@@ -1,8 +1,7 @@
 use std::iter::zip;
 
-use crate::display::Style;
 use crate::templates::WidgetLookup;
-use crate::widgets::{Attributes, NodeId, WidgetContainer};
+use crate::widgets::{Attributes, NodeId, TextSpan, WidgetContainer};
 
 use super::{Kind, Node};
 
@@ -32,35 +31,12 @@ pub(crate) struct Insert {
 pub(crate) struct Diff {
     pub id: NodeId,
     pub attributes: Attributes,
-    pub span_diff: Vec<SpanDiff>,
+    pub text: Option<String>,
 }
 
 impl Diff {
     fn is_change(&self) -> bool {
-        self.attributes.is_empty() && self.span_diff.is_empty()
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct SpanDiff {
-    index: usize,
-    text: Option<String>,
-    style: Option<Style>,
-}
-
-impl SpanDiff {
-    pub(crate) fn new(index: usize, new_text: &str, old_text: &str, attribs: Attributes) -> Option<Self> {
-        let text = if new_text != old_text { Some(new_text.to_string()) } else { None };
-
-        let style = if !attribs.is_empty() { Some(attribs.style()) } else { None };
-
-        if text.is_none() && style.is_none() {
-            return None;
-        }
-
-        let inst = Self { index, text, style };
-
-        Some(inst)
+        self.attributes.is_empty()
     }
 }
 
@@ -110,16 +86,13 @@ impl Changes {
         for change in self.changes {
             let id = change.id;
             if let Some(node) = root.by_id(&id) {
-                // Update nodes
+                // Update node attributes
                 if !change.attributes.is_empty() {
                     node.update(change.attributes);
                 }
 
-                if !change.span_diff.is_empty() {
-                    let text_widget = node.to::<crate::widgets::Text>();
-                    for diff in change.span_diff {
-                        text_widget.update_span(diff.index, diff.text, diff.style);
-                    }
+                if let (Some(text), Some(widget)) = (change.text, node.try_to::<TextSpan>()) {
+                    widget.text = text;
                 }
             }
         }
@@ -196,24 +169,13 @@ pub fn diff(new: &Node, mut old: Node) -> Changes {
 
     if new.id == old.id {
         let diff_attribs = new.attributes.diff(&old.attributes);
-        let mut diff = Diff { id: new.id.clone(), attributes: diff_attribs, span_diff: vec![] };
+        let text = match (&old.kind, &new.kind) {
+            (Kind::Span(a), Kind::Span(b)) if a != b => Some(b.clone()),
+            _ => None,
+        };
 
-        // Text diff
-        if let ("text", "text") = (new.ident(), old.ident()) {
-            for (idx, (new_span, old_span)) in std::iter::zip(&new.children, old.children).enumerate() {
-                if let (Kind::Span(ref new_text), Kind::Span(old_text)) = (&new_span.kind, old_span.kind) {
-                    let span_attribs = new_span.attributes.diff(&old_span.attributes);
-                    if old_text.ne(new_text) {
-                        if let Some(span_diff) = SpanDiff::new(idx, new_text, &old_text, span_attribs) {
-                            diff.span_diff.push(span_diff);
-                        }
-                    }
-                }
-            }
+        let diff = Diff { id: new.id.clone(), attributes: diff_attribs, text };
 
-            changeset.changed(diff);
-            return changeset;
-        }
         changeset.changed(diff);
     } else {
         changeset.new_root = Some(new.id());

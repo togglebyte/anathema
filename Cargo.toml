@@ -10,7 +10,7 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [features]
-default = ["runtime", "metrics"]
+default = ["runtime"]
 widgets = []
 templates = ["widgets"]
 runtime = ["templates"]

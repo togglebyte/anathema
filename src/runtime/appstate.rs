@@ -1,12 +1,13 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
-use crate::display::{Screen, Size};
+use crate::display::Screen;
+
 use crate::templates::diff;
 use crate::templates::{
     build_widget_tree, to_nodes, DataCtx, IncludeCache, Node, NodeCtx, SubContext, WidgetLookup, WidgetNode,
 };
-use crate::widgets::{Constraints, PaintCtx, Pos, Value, WidgetContainer};
+use crate::widgets::{Constraints, PaintCtx, Pos, WidgetContainer};
 
 use super::error::{Error, Result};
 use super::Output;
@@ -35,7 +36,11 @@ pub enum Run {
     Quit,
 }
 
-fn extra_context(size: Size, metrics: &Metrics) -> Value {
+#[cfg(feature = "metrics")]
+fn extra_context(size: crate::display::Size, metrics: &Metrics) -> crate::widgets::Value {
+    use crate::widgets::Value;
+    use std::collections::HashMap;
+
     let mut hm = HashMap::new();
     let size = HashMap::from([
         ("width".to_string(), Value::from(size.width as u64)),

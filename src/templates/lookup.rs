@@ -56,7 +56,7 @@ impl WidgetLookup {
 // -----------------------------------------------------------------------------
 //     - Text -
 // -----------------------------------------------------------------------------
-pub fn text_widget(node: &Node, _: &WidgetLookup) -> Result<WidgetContainer> {
+pub fn text_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
     let attribs = &node.attributes;
 
     let mut widget = Text::new();
@@ -66,19 +66,24 @@ pub fn text_widget(node: &Node, _: &WidgetLookup) -> Result<WidgetContainer> {
     widget.word_wrap = attribs.word_wrap();
     widget.text_alignment = attribs.text_alignment();
 
-    // All the spans
-    for text_child in &node.children {
-        let attribs = &text_child.attributes;
-
-        let text = match &text_child.kind {
-            Kind::Span(text) => text,
-            Kind::Node { .. } => return Err(Error::InvalidTextWidget),
-        };
-
-        let mut span = TextSpan::new(text);
-        span.style = attribs.style();
-        widget.add_span(span);
+    for child in &node.children {
+        let child = lookup.make(child)?;
+        widget.spans.push(child);
     }
+
+    Ok(widget.into_container(node.id()))
+}
+
+pub fn span_widget(node: &Node, _: &WidgetLookup) -> Result<WidgetContainer> {
+    let attribs = &node.attributes;
+
+    let text = match &node.kind {
+        Kind::Span(text) => text,
+        Kind::Node { .. } => return Err(Error::InvalidTextWidget),
+    };
+
+    let mut widget = TextSpan::new(text);
+    widget.style = attribs.style();
 
     Ok(widget.into_container(node.id()))
 }
@@ -95,6 +100,7 @@ impl Default for WidgetLookup {
         inst.register("position", &position_widget);
         inst.register("spacer", &spacer_widget);
         inst.register("text", &text_widget);
+        inst.register("span", &span_widget);
         inst.register("viewport", &viewport_widget);
         inst.register("vstack", &vstack_widget);
         inst.register("zstack", &zstack_widget);
