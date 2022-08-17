@@ -133,11 +133,10 @@ impl Text {
     /// Update the text of the first `TextSpan` with new text, without changing attributes or `NodeId`.
     /// If there are no `TextSpan` one will be created and inserted.
     pub fn set_text(&mut self, text: impl Into<String>) {
-        if !self.spans.is_empty() {
-            self.spans.first_mut().map(|span| span.to::<TextSpan>().text = text.into());
-        } else {
-            self.spans.push(TextSpan::new(text).into_container(NodeId::auto()));
-        };
+        match self.spans.first_mut() {
+            Some(first) => first.to::<TextSpan>().text = text.into(),
+            None => self.spans.push(TextSpan::new(text).into_container(NodeId::auto())),
+        }
 
         self.needs_layout = true;
         self.needs_paint = true;
