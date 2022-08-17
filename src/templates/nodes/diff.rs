@@ -85,6 +85,7 @@ impl Changes {
                     node.update(change.attributes);
                 }
 
+                // Text diff
                 if let (Some(text), Some(widget)) = (change.text, node.try_to::<TextSpan>()) {
                     widget.text = text;
                 }

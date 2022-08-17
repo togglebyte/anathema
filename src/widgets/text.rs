@@ -118,25 +118,23 @@ impl Text {
     }
 
     /// Create an instance of a `Text` widget with some inital unstyled text
-    pub fn with_text(text: impl AsRef<str>) -> Self {
+    pub fn with_text(text: impl Into<String>) -> Self {
         let mut inst = Self::new();
         inst.set_text(text);
         inst
     }
 
-    /// Create an instance of an unstyled `TextSpan` and add that as a widget container
-    pub fn add_span(&mut self, text: impl AsRef<str>) {
-        let span: TextSpan = text.into();
+    /// Create an instance of an unstyled `TextSpan` and add that as a child widget
+    pub fn add_span(&mut self, text: impl Into<String>) {
+        let span: TextSpan = text.into().into();
         self.spans.push(span.into_container(NodeId::auto()));
     }
 
-    /// Replace the first text `Span` with some new text.
-    /// If there are no `Span`s one will be inserted
-    pub fn set_text(&mut self, text: impl AsRef<str>) {
+    /// Update the text of the first `TextgSpan` with new text, without changing attributes or `NodeId`.
+    /// If there are no `TextSpan` one will be created and inserted.
+    pub fn set_text(&mut self, text: impl Into<String>) {
         if !self.spans.is_empty() {
-            let mut span = self.spans.remove(0);
-            self.spans.clear();
-            span.to::<TextSpan>().text = text.as_ref().to_string();
+            self.spans.first_mut().map(|span| span.to::<TextSpan>().text = text.into());
         } else {
             self.spans.push(TextSpan::new(text).into_container(NodeId::auto()));
         };
@@ -315,12 +313,12 @@ impl TextSpan {
     const KIND: &'static str = "TextSpan";
 
     /// Create a new instance of a text span
-    pub fn new(text: impl AsRef<str>) -> Self {
-        Self { text: text.as_ref().to_owned(), style: Style::new() }
+    pub fn new(text: impl Into<String>) -> Self {
+        Self { text: text.into(), style: Style::new() }
     }
 }
 
-impl<S: AsRef<str>> From<S> for TextSpan {
+impl<S: Into<String>> From<S> for TextSpan {
     fn from(s: S) -> Self {
         Self::new(s)
     }
