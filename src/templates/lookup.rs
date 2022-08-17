@@ -75,15 +75,13 @@ pub fn text_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer
 }
 
 pub fn span_widget(node: &Node, _: &WidgetLookup) -> Result<WidgetContainer> {
-    let attribs = &node.attributes;
-
     let text = match &node.kind {
         Kind::Span(text) => text,
         Kind::Node { .. } => return Err(Error::InvalidTextWidget),
     };
 
     let mut widget = TextSpan::new(text);
-    widget.style = attribs.style();
+    widget.style = node.attributes.style();
 
     Ok(widget.into_container(node.id()))
 }
@@ -113,8 +111,7 @@ impl Default for WidgetLookup {
 //     - Alignment -
 // -----------------------------------------------------------------------------
 fn alignment_widget(node: &Node, lookup: &WidgetLookup) -> Result<WidgetContainer> {
-    let attribs = &node.attributes;
-    let (align, duration_easing) = match attribs.get_value(fields::ALIGNMENT) {
+    let (align, duration_easing) = match node.attributes.get_value(fields::ALIGNMENT) {
         Some(Value::Alignment(align)) => (align, None),
         Some(Value::Transition(value, duration, easing)) => match value.as_ref() {
             Value::Alignment(ref align) => (*align, Some((duration, easing))),
