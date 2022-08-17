@@ -121,7 +121,7 @@ impl Changes {
     }
 
     fn changed(&mut self, diff: Diff) {
-        if !diff.attributes.is_empty() {
+        if !diff.attributes.is_empty() || diff.text.is_some() {
             self.changes.push(diff);
         }
     }
