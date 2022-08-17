@@ -34,12 +34,6 @@ pub(crate) struct Diff {
     pub text: Option<String>,
 }
 
-impl Diff {
-    fn is_change(&self) -> bool {
-        self.attributes.is_empty()
-    }
-}
-
 /// A set of changes produced by comparing two node trees
 #[derive(Debug)]
 pub struct Changes {
@@ -126,7 +120,7 @@ impl Changes {
     }
 
     fn changed(&mut self, diff: Diff) {
-        if !diff.is_change() {
+        if !diff.attributes.is_empty() {
             self.changes.push(diff);
         }
     }
