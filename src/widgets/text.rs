@@ -130,7 +130,7 @@ impl Text {
         self.spans.push(span.into_container(NodeId::auto()));
     }
 
-    /// Update the text of the first `TextgSpan` with new text, without changing attributes or `NodeId`.
+    /// Update the text of the first `TextSpan` with new text, without changing attributes or `NodeId`.
     /// If there are no `TextSpan` one will be created and inserted.
     pub fn set_text(&mut self, text: impl Into<String>) {
         if !self.spans.is_empty() {
