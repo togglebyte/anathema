@@ -13,6 +13,7 @@ mod keywords {
 }
 
 static ID_EXCEMPT: &[&str] = &["span", "for", "if", "else", "elif", "include"];
+static DEFAULT_BINDING: &str = "item";
 
 #[derive(Debug, Clone)]
 pub(super) enum Statement {
@@ -64,7 +65,7 @@ pub(crate) fn to_widget_nodes(node_tree: Vec<TemplateNode<'_>>, needs_id: bool) 
             keywords::FOR => {
                 let binding = match node.attributes.get_value("binding") {
                     Some(binding @ Value::String(_)) => binding,
-                    _ => return Err(Error::BindingInvalidString),
+                    _ => Value::String(DEFAULT_BINDING.into()),
                 };
 
                 // Make sure `data` is a collection
