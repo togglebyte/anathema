@@ -4,6 +4,12 @@ use super::Constraints;
 use crate::widgets::ctx::LayoutCtx;
 use crate::widgets::{Direction, Expand, WidgetContainer};
 
+/// Distributes the total size over a list of weights
+///
+/// It uses the [Huntington-Hill method](https://en.wikipedia.org/wiki/Huntington%E2%80%93Hill_method)
+///
+/// Panics when called with more weights than the total number of available size.
+/// Allocates a minimum of one to each weight.
 fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     assert!(total > weights.len());
     let mut indexed = weights.iter().copied().enumerate().map(|(i, w)| (i, w, 1usize)).collect::<Vec<_>>();
