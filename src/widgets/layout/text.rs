@@ -497,7 +497,7 @@ C
         // Since even the first char in the input is larger
         // than the maximum width nothing can be returned.
         let input = AntString::new(["✨🍅✨"]);
-        let mut layout = TextLayout::new(Wrap::Word, 1);
+        let layout = TextLayout::new(Wrap::Word, 1);
         let output = layout.layout(input);
 
         assert!(output.is_empty());
