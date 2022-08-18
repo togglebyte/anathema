@@ -5,7 +5,26 @@ use crate::widgets::ctx::LayoutCtx;
 use crate::widgets::{Direction, Expand, WidgetContainer};
 
 fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
-    todo!()
+    assert!(total > weights.len());
+    let mut indexed = weights.iter().copied().enumerate().map(|(i, w)| (i, w, 1usize)).collect::<Vec<_>>();
+    total -= weights.len();
+
+    fn pop(n: &mut usize) -> bool {
+        if let Some(nn) = n.checked_sub(1) {
+            *n = nn;
+            true
+        } else {
+            false
+        }
+    }
+
+    while pop(&mut total) {
+        indexed.sort_by_cached_key(|&(_, w, r)| (((w as f64) / ((r * (r + 1)) as f64).sqrt()) * -10000.) as isize);
+        indexed[0].2 += 1;
+    }
+
+    indexed.sort_by_key(|&(i, ..)| i);
+    indexed.into_iter().map(|(_, _, r)| r).collect()
 }
 
 pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, direction: Direction) -> Size {
