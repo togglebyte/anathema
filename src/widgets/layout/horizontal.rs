@@ -56,12 +56,13 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, ignore_spacers_an
     let mut width = used_width + expanded_size.width + spacers_size.width;
     width = width.max(ctx.constraints.min_width).min(ctx.constraints.max_width);
 
-    Size::new(width, height) + ctx.padding_size()
+    Size::new(width, height)
 }
 
 pub fn position(widgets: &mut [WidgetContainer], mut ctx: PositionCtx) {
+    let mut pos = ctx.padded_position();
     for widget in widgets {
-        widget.position(ctx.padded_position());
-        ctx.pos.x += widget.size.width as i32;
+        widget.position(pos);
+        pos.x += widget.size.width as i32;
     }
 }
