@@ -59,7 +59,7 @@ pub fn layout(widgets: &mut [WidgetContainer], ctx: LayoutCtx, ignore_spacers_an
     Size::new(width, height)
 }
 
-pub fn position(widgets: &mut [WidgetContainer], mut ctx: PositionCtx) {
+pub fn position(widgets: &mut [WidgetContainer], ctx: PositionCtx) {
     let mut pos = ctx.padded_position();
     for widget in widgets {
         widget.position(pos);
