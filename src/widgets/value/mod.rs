@@ -154,21 +154,47 @@ impl From<&str> for Value {
     }
 }
 
-impl From<u64> for Value {
-    fn from(v: u64) -> Self {
-        Value::Number(Number::Unsigned(v))
-    }
+// Implement `From` for an unsigned integer
+macro_rules! from_int {
+    ($int:ty) => {
+        impl From<$int> for Value {
+            fn from(v: $int) -> Self {
+                Value::Number(Number::Unsigned(v as u64))
+            }
+        }
+    };
 }
 
-impl From<i64> for Value {
-    fn from(v: i64) -> Self {
-        Value::Number(Number::Signed(v))
-    }
+// Implement `From` for a signed integer
+macro_rules! from_signed_int {
+    ($int:ty) => {
+        impl From<$int> for Value {
+            fn from(v: $int) -> Self {
+                Value::Number(Number::Signed(v as i64))
+            }
+        }
+    };
 }
+
+from_int!(u64);
+from_int!(u32);
+from_int!(u16);
+from_int!(u8);
+
+from_signed_int!(i64);
+from_signed_int!(i32);
+from_signed_int!(i16);
+from_signed_int!(i8);
 
 impl From<f64> for Value {
     fn from(v: f64) -> Self {
         Value::Number(Number::Float(v))
+    }
+}
+
+impl From<f32> for Value {
+    fn from(v: f32) -> Self {
+        Value::Number(Number::Float(v as f64))
     }
 }
 

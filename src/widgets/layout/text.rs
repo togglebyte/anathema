@@ -207,7 +207,7 @@ impl TextLayout {
             let (mut left, right) = input.split_at(end_of_string);
 
             // If the end is at index zero there is no
-            // way of splitting the string. This likely means the string doesn't fit 
+            // way of splitting the string. This likely means the string doesn't fit
             // the required size.
             //
             // In this case we return an empty string.
