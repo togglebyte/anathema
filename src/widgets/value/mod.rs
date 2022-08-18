@@ -176,11 +176,13 @@ macro_rules! from_signed_int {
     };
 }
 
+from_int!(usize);
 from_int!(u64);
 from_int!(u32);
 from_int!(u16);
 from_int!(u8);
 
+from_signed_int!(isize);
 from_signed_int!(i64);
 from_signed_int!(i32);
 from_signed_int!(i16);
