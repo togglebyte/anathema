@@ -11,6 +11,8 @@
     * BUGFIX: padding on `HStack`
     * Rename feature "with-flume" to "flume"
     * `TextSpan`s are now handled like any other widget
+    * renamed `DataCtx::set` to `DataCtx::set_silent`
+    * renamed `DataCtx::insert` to `DataCtx::set`
 * 0.1.2
     * `WidgetContainer::by_id` is made more ergonomic and can now called with a
       string slice now.

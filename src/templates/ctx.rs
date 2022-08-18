@@ -52,14 +52,14 @@ impl<'ctx> SubContext<'ctx> {
         Self { inner: ctx, sub: DataCtx::empty() }
     }
 
-    pub fn insert(&mut self, key: &str, value: impl Into<Value>) {
-        self.sub.insert(key, value);
+    pub fn set(&mut self, key: &str, value: impl Into<Value>) {
+        self.sub.set(key, value);
     }
 
     /// Clone self and generate a new sub context with the new values
     pub fn sub(&self, key: &str, value: Value) -> Self {
         let mut sub = self.sub.clone();
-        sub.insert(key, value);
+        sub.set(key, value);
         Self { inner: self.inner, sub }
     }
 
@@ -110,14 +110,14 @@ impl DataCtx {
     /// Create a new data context with a given key / value.
     pub fn with_value(key: &str, value: impl Into<Value>) -> Self {
         let mut ctx = Self { values: HashMap::new(), diff: Vec::new() };
-        ctx.insert(key, value.into());
+        ctx.set(key, value.into());
         ctx
     }
 
     /// Insert a hashmap
     pub fn insert_map(&mut self, map: HashMap<String, Value>) {
         for (key, value) in map {
-            self.insert(&key, value);
+            self.set(&key, value);
         }
     }
 
@@ -151,14 +151,14 @@ impl DataCtx {
 
     /// Insert a key / value into the data context.
     /// This will add the key to the diff lookup.
-    pub fn insert(&mut self, key: &str, value: impl Into<Value>) {
+    pub fn set(&mut self, key: &str, value: impl Into<Value>) {
         let value = value.into();
-        self.set(key, value);
+        self.set_silent(key, value);
         self.diff.push(key.into());
     }
 
     /// Set a value without generating a diff insert.
-    pub fn set(&mut self, key: &str, value: impl Into<Value>) {
+    pub fn set_silent(&mut self, key: &str, value: impl Into<Value>) {
         let value = value.into();
         self.values.insert(key.to_string(), value);
     }
@@ -262,7 +262,7 @@ mod test {
     fn lookup_by_path() {
         let mut ctx = DataCtx::empty();
         let user: HashMap<String, Value> = HashMap::from([("name".to_string(), Value::String("bill".to_string()))]);
-        ctx.insert("user", Value::Map(user));
+        ctx.set("user", Value::Map(user));
 
         let mut path = Path::new("user");
         path.child = Some(Box::new(Path::new("name")));

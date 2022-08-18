@@ -79,8 +79,8 @@ impl State {
         ];
 
         let mut data = DataCtx::empty();
-        data.insert("brush", brush.to_string());
-        data.insert("colors", colors.clone());
+        data.set("brush", brush.to_string());
+        data.set("colors", colors.clone());
         Self { tx, data, selected_color: 0, brush, colors }
     }
 }
@@ -105,7 +105,7 @@ impl UserModel for State {
                 '█' => self.brush = '░',
                 _ => {}
             }
-            self.data.insert("brush", self.brush.to_string());
+            self.data.set("brush", self.brush.to_string());
         }
 
         // Select color by finding the widget under the cursor
@@ -121,7 +121,7 @@ impl UserModel for State {
                                 c.selected = Color::Black;
                             }
                         });
-                        self.data.insert("colors", self.colors.clone());
+                        self.data.set("colors", self.colors.clone());
                         false
                     }
                     None => true,
