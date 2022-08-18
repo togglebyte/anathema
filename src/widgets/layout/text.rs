@@ -206,6 +206,15 @@ impl TextLayout {
 
             let (mut left, right) = input.split_at(end_of_string);
 
+            // If the end is at index zero there is no
+            // way of splitting the string. This likely means the string doesn't fit 
+            // the required size.
+            //
+            // In this case we return an empty string.
+            if end_of_string == 0 {
+                break;
+            }
+
             input = right;
             trim_trailing_control_chars(&mut left);
 
@@ -485,7 +494,12 @@ C
 
     #[test]
     fn split_on_invalid_char_boundary() {
+        // Since even the first char in the input is larger
+        // than the maximum width nothing can be returned.
         let input = AntString::new(["✨🍅✨"]);
-        let (_left, _right) = input.split_at(1);
+        let mut layout = TextLayout::new(Wrap::Word, 1);
+        let output = layout.layout(input);
+
+        assert!(output.is_empty());
     }
 }
