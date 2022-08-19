@@ -4,7 +4,7 @@ A TUI library with a custom template language and runtime
 
 [Getting started](https://togglebyte.github.io/anathema-guide/)
 
-```
+```yml
 hstack [width: 40, height: 10]:
     // Left pane
     expand [factor: 1]:
