@@ -10,6 +10,12 @@ use super::WidgetNode;
 #[derive(Debug, Default)]
 pub struct IncludeCache(HashMap<String, Vec<WidgetNode>>);
 
+impl IncludeCache {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+}
+
 /// Track the include depth and maintain the include cache to prevent
 /// multiple reads from disk.
 #[derive(Debug)]

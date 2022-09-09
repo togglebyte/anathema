@@ -215,7 +215,7 @@ impl<T: UserModel, O: Output> AppState<T, O> {
     fn rebuild_widgets(&mut self, force_rebuild: bool) -> Result<()> {
         let ctx = self.user_model.data();
         #[cfg(feature = "metrics")]
-        ctx.insert("context", extra_context(self.screen.size(), &self.metrics));
+        ctx.set("context", extra_context(self.screen.size(), &self.metrics));
 
         if !ctx.diff().is_empty() || force_rebuild {
             let sub_context = SubContext::new(ctx);
