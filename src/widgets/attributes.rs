@@ -375,44 +375,41 @@ impl Attributes {
 
     pub fn take_style(&self) -> Attributes {
         let mut attributes = Attributes::empty();
-        // let mut inst = Style::new();
-        // inst.fg = self.foreground();
-        // inst.bg = self.background();
 
-        if let Some(color) = self.get_color("foreground") {
+        if let Some(color) = self.value("foreground").cloned() {
             attributes.set("foreground", color);
         }
 
-        if let Some(color) = self.get_color("background") {
+        if let Some(color) = self.value("background").cloned() {
             attributes.set("background", color);
         }
 
-        if let Some(true) = self.get_bool("bold") {
-            attributes.set("bold", true);
+        if let Some(bold) = self.value("bold").cloned() {
+            attributes.set("bold", bold);
         }
 
-        if let Some(true) = self.get_bool("italic") {
-            attributes.set("italic", true);
+        if let Some(italic) = self.value("italic").cloned() {
+            attributes.set("italic", italic);
         }
 
-        if let Some(true) = self.get_bool("dim") {
-            attributes.set("dim", true);
+        if let Some(dim) = self.value("dim").cloned() {
+            attributes.set("dim", dim);
         }
 
-        if let Some(true) = self.get_bool("underlined") {
-            attributes.set("underline", true);
+        if let Some(underlined) = self.value("underlined").cloned() {
+            attributes.set("underline", underlined);
         }
 
-        if let Some(true) = self.get_bool("overlined") {
-            attributes.set("overlined", true);
+        if let Some(overlined) = self.value("overlined").cloned() {
+            attributes.set("overlined", overlined);
         }
 
-        if let Some(true) = self.get_bool("inverse") {
-            attributes.set("inverse", true);
+        if let Some(inverse) = self.value("inverse").cloned() {
+            attributes.set("inverse", inverse);
         }
 
-        if let Some(true) = self.get_bool("crossed-out") {
-            attributes.set("crossed-out", true);
+        if let Some(crossed_out) = self.value("crossed-out").cloned() {
+            attributes.set("crossed-out", crossed_out);
         }
 
         attributes

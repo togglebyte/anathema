@@ -196,7 +196,6 @@ fn widget_node_to_nodes(
         NodeId::Value(Value::Fragments(ref fragments)) => NodeId::Value(fragments_to_values(fragments, data_ctx)),
         id => id,
     };
-
     Ok(vec![Node { id, kind, attributes, children: nodes }])
 }
 
