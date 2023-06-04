@@ -1,0 +1,10 @@
+[package]
+name = "anathema-string"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+proptest = "1.0.0"
+unicode-width = { workspace = true }

@@ -1,10 +1,5 @@
-#![warn(rust_2018_idioms)]
-
-pub(crate) mod antstring;
-pub mod display;
-#[cfg(feature = "runtime")]
-pub mod runtime;
-#[cfg(feature = "templates")]
-pub mod templates;
-#[cfg(feature = "widgets")]
-pub mod widgets;
+pub use anathema_render as render;
+pub use anathema_runtime as runtime;
+pub use anathema_widgets as widgets;
+pub use anathema_compiler as compiler;
+pub use anathema_vm as vm;

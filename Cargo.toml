@@ -2,31 +2,27 @@
 name = "anathema"
 version = "0.2.0"
 edition = "2021"
-rust-version = "1.62"
-license = "MIT"
-description = "Text User Interface library (TUI) with a template language and runtime"
-documentation = "https://togglebyte.github.io/anathema-guide/"
-homepage = "https://github.com/togglebyte/anathema"
-repository = "https://github.com/togglebyte/anathema"
-
-[features]
-default = ["runtime"]
-widgets = []
-templates = ["widgets"]
-runtime = ["templates"]
-metrics = []
-
-log = ["dep:log"]
-flume = ["dep:flume"]
-serde-json = ["dep:serde_json"]
 
 [dependencies]
-bitflags = "1.3.2"
-crossterm = "0.24.0"
-flume = { version = "0.10.14", optional = true }
-log = { version = "0.4.17", optional = true }
-serde_json = { version = "1.0.83", optional = true }
-unicode-width = "0.1.9"
+anathema-compiler = { path = "./anathema-compiler" }
+anathema-render = { path = "./anathema-render" }
+anathema-runtime = { path = "./anathema-runtime" }
+anathema-string = { path = "./anathema-string" }
+anathema-vm = { path = "./anathema-vm" }
+anathema-widgets = { path = "./anathema-widgets" }
 
-[dev-dependencies]
-proptest = "1.0.0"
+[workspace.dependencies]
+unicode-width = "0.1.10"
+crossterm = "0.25.0"
+bitflags = "1.3.2"
+thiserror = "1.0.40"
+
+[workspace]
+members = [
+    "anathema-compiler",
+    "anathema-render",
+    "anathema-runtime",
+    "anathema-string",
+    "anathema-vm",
+    "anathema-widgets",
+]

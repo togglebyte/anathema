@@ -1,6 +1,5 @@
-edition = "2021"
-max_width = 120
-# max_width = 80
-use_small_heuristics = "Max"
 use_field_init_shorthand = true
-match_arm_leading_pipes = "Preserve"
+imports_granularity = "Module"
+group_imports = "StdExternalCrate"
+format_code_in_doc_comments = true
+reorder_impl_items = true
