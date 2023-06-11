@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::layout::vertical;
 use crate::lookup::WidgetFactory;
 use crate::template::Template;
-use crate::values::SomeThing;
+use crate::values::ValuesAttributes;
 use crate::{AnyWidget, TextPath, Widget, PositionCtx, WidgetContainer, PaintCtx, WithSize};
 
 /// A widget that lays out its children vertically.
@@ -114,7 +114,7 @@ pub(crate) struct VstackFactory;
 impl WidgetFactory for VstackFactory {
     fn make(
         &self,
-        values: SomeThing<'_, '_>,
+        values: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let width = values.width();

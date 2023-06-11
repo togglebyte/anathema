@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::gen::store::Store;
 use crate::template::Template;
 use crate::text::{TextFactory, SpanFactory};
-use crate::values::{Layout, SomeThing};
+use crate::values::{Layout, ValuesAttributes};
 use crate::viewport::ViewportFactory;
 use crate::widget::AnyWidget;
 use crate::{Attributes, TextPath, Value, Widget, WidgetContainer};
@@ -17,7 +17,7 @@ const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 pub trait WidgetFactory {
     fn make(
         &self,
-        store: SomeThing<'_, '_>,
+        store: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>>;
 }
@@ -41,7 +41,7 @@ impl Lookup {
                     .0
                     .get(ident)
                     .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
-                let something = SomeThing::new(values, attributes);
+                let something = ValuesAttributes::new(values, attributes);
                 let widget = factory.make(something, text.as_ref())?;
                 Ok(WidgetContainer::new(widget, children))
             }

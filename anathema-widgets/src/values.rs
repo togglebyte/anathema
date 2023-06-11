@@ -873,12 +873,12 @@ impl Value {
     }
 }
 
-pub struct SomeThing<'a, 'parent> {
+pub struct ValuesAttributes<'a, 'parent> {
     values: &'a Store<'parent>,
     attributes: &'a Attributes,
 }
 
-impl<'a, 'parent> SomeThing<'a, 'parent> {
+impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
     pub fn new(values: &'a Store<'parent>, attributes: &'a Attributes) -> Self {
         Self { values, attributes }
     }

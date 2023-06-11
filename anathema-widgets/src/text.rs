@@ -7,7 +7,7 @@ use crate::error::Result;
 use crate::gen::generator::Generator;
 use crate::layout::text::{Entry, Range, TextLayout};
 use crate::lookup::WidgetFactory;
-use crate::values::SomeThing;
+use crate::values::ValuesAttributes;
 use crate::{AnyWidget, TextAlignment, TextPath};
 
 // -----------------------------------------------------------------------------
@@ -272,7 +272,7 @@ pub(crate) struct TextFactory;
 impl WidgetFactory for TextFactory {
     fn make(
         &self,
-        values: SomeThing<'_, '_>,
+        values: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let mut widget = Text::new();
@@ -291,7 +291,7 @@ pub(crate) struct SpanFactory;
 impl WidgetFactory for SpanFactory {
     fn make(
         &self,
-        values: SomeThing<'_, '_>,
+        values: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let mut widget = TextSpan::new();

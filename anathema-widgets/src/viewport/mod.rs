@@ -7,7 +7,7 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::generator::Generator;
 use crate::lookup::WidgetFactory;
-use crate::values::{Layout, SomeThing};
+use crate::values::{Layout, ValuesAttributes};
 use crate::{AnyWidget, Direction, Offset, TextPath, Value, Widget, WidgetContainer};
 
 mod layout;
@@ -94,7 +94,7 @@ pub(crate) struct ViewportFactory;
 impl WidgetFactory for ViewportFactory {
     fn make(
         &self,
-        values: SomeThing<'_, '_>,
+        values: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let data_source = values.get_attrib("source").map(|v| v.to_owned());

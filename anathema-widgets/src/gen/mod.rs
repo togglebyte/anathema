@@ -9,9 +9,6 @@ pub(crate) mod store;
 #[cfg(test)]
 pub mod testing;
 
-// -----------------------------------------------------------------------------
-//   - Value reference -
-// -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub enum ValueRef<'parent> {
     Owned(Value),

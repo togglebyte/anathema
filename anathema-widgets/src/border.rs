@@ -7,7 +7,7 @@ use crate::error::Result;
 use crate::gen::generator::Generator;
 use crate::lookup::WidgetFactory;
 use crate::values::{
-    Layout, SomeThing, BORDER_EDGE_BOTTOM, BORDER_EDGE_BOTTOM_LEFT, BORDER_EDGE_BOTTOM_RIGHT,
+    Layout, ValuesAttributes, BORDER_EDGE_BOTTOM, BORDER_EDGE_BOTTOM_LEFT, BORDER_EDGE_BOTTOM_RIGHT,
     BORDER_EDGE_LEFT, BORDER_EDGE_RIGHT, BORDER_EDGE_TOP, BORDER_EDGE_TOP_LEFT,
     BORDER_EDGE_TOP_RIGHT, DEFAULT_SLIM_EDGES, DEFAULT_THICK_EDGES,
 };
@@ -392,7 +392,7 @@ pub(crate) struct BorderFactory;
 impl WidgetFactory for BorderFactory {
     fn make(
         &self,
-        values: SomeThing<'_, '_>,
+        values: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let border_style = values.border_style();
