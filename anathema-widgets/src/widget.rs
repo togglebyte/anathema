@@ -26,7 +26,9 @@ use crate::values::Layout;
 pub trait Widget {
     /// This should only be used for debugging, as there
     /// is nothing preventing one widget from having the same `kind` as another
-    fn kind(&self) -> &'static str;
+    fn kind(&self) -> &'static str {
+        "[widget]"
+    }
 
     // -----------------------------------------------------------------------------
     //     - Layout -
@@ -42,8 +44,6 @@ pub trait Widget {
 }
 
 pub trait AnyWidget {
-    fn type_id(&self) -> std::any::TypeId;
-
     fn as_any_ref(&self) -> &dyn Any;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -88,10 +88,6 @@ impl Widget for Box<dyn AnyWidget> {
 }
 
 impl<T: Widget + 'static> AnyWidget for T {
-    fn type_id(&self) -> std::any::TypeId {
-        Any::type_id(self)
-    }
-
     fn as_any_ref(&self) -> &dyn Any {
         self
     }
