@@ -8,7 +8,6 @@ use super::layout::{Constraints, Padding};
 use super::{Align, LocalPos, Pos, Region};
 use crate::gen::store::Store;
 use crate::template::Template;
-use crate::values::Layout;
 use crate::{Lookup, Value, WidgetContainer};
 
 #[derive(Debug, Default)]

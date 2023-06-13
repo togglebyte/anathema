@@ -15,7 +15,7 @@ enum State<'tpl, 'parent> {
         body: &'tpl [Template],
         binding: &'parent str,
         collection: &'parent [Value],
-        value: Index,
+        value_index: Index,
     },
 }
 
@@ -54,7 +54,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
     pub(super) fn reverse(&mut self) {
         self.index.reverse();
 
-        if let State::Loop { value, .. } = &mut self.state {
+        if let State::Loop { value_index: value, .. } = &mut self.state {
             value.reverse();
         }
 
@@ -66,7 +66,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
     pub(super) fn flip(&mut self) {
         self.index.flip();
 
-        if let State::Loop { value, .. } = &mut self.state {
+        if let State::Loop { value_index: value, .. } = &mut self.state {
             value.flip();
         }
 
@@ -75,12 +75,12 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
         }
     }
 
-    pub(crate) fn next_template(&mut self, values: &mut Store<'parent>) -> Option<&'tpl Template> {
+    pub(crate) fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer<'tpl>>> {
         loop {
             match self
                 .inner
                 .as_mut()
-                .and_then(|scope| scope.next_template(values))
+                .and_then(|scope| scope.next(values))
             {
                 next @ Some(_) => break next,
                 None => self.inner = None,
@@ -92,7 +92,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                     let expr = &self.expressions[index];
 
                     match expr {
-                        Expression::Node(template) => break Some(*template),
+                        Expression::Node(template) => break Some(self.factory.exec(template, values)),
                         Expression::For {
                             body,
                             binding,
@@ -102,7 +102,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                                 body,
                                 collection,
                                 binding,
-                                value: Index::new(self.index.dir, collection.len()),
+                                value_index: Index::new(self.index.dir, collection.len()),
                             };
                         }
                         Expression::Block(templates) => {
@@ -115,7 +115,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                     body,
                     binding,
                     collection,
-                    value,
+                    value_index: value,
                 } => {
                     let value = match value.next() {
                         Some(idx) => &collection[idx],
@@ -125,21 +125,13 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                         }
                     };
 
-                    values.set(Cow::Borrowed(binding), value.into());
+                    values.set(Cow::Borrowed(binding), ValueRef::Borrowed(value));
 
                     let scope = Scope::new(body, self.factory, values, self.index.dir);
                     self.inner = Some(Box::new(scope));
                 }
             }
         }
-    }
-
-    pub(crate) fn next(
-        &mut self,
-        values: &mut Store<'parent>,
-    ) -> Option<Result<WidgetContainer<'tpl>>> {
-        self.next_template(values)
-            .map(|template| self.factory.exec(template, values))
     }
 }
 

@@ -7,8 +7,7 @@ use crate::error::Result;
 use crate::gen::generator::Generator;
 use crate::gen::store::Store;
 use crate::gen::ValueRef;
-use crate::values::{Layout, Scoped};
-use crate::{Constraints, Direction, Offset, Value, WidgetContainer};
+use crate::{Constraints, Direction, Value, WidgetContainer};
 
 #[derive(Debug, Copy, Clone)]
 enum Fix {
@@ -17,7 +16,6 @@ enum Fix {
 }
 
 pub(super) struct ViewportLayout<'widget, 'tpl, 'parent> {
-    offset: Offset,
     layout: LayoutCtx<'widget, 'tpl, 'parent>,
     constraints: Constraints,
     binding: &'widget str,
@@ -29,7 +27,6 @@ pub(super) struct ViewportLayout<'widget, 'tpl, 'parent> {
 
 impl<'widget, 'tpl, 'parent> ViewportLayout<'widget, 'tpl, 'parent> {
     pub fn new(
-        offset: Offset,
         mut layout: LayoutCtx<'widget, 'tpl, 'parent>,
         binding: &'widget str,
     ) -> Self {
@@ -39,7 +36,6 @@ impl<'widget, 'tpl, 'parent> ViewportLayout<'widget, 'tpl, 'parent> {
 
         Self {
             layout,
-            offset,
             binding,
             constraints,
             max_height,

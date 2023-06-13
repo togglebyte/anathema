@@ -19,13 +19,13 @@ pub(crate) mod gen;
 // Widgets
 // mod canvas;
 // mod expand;
-// mod hstack;
 // mod position;
 // mod spacer;
 // mod zstack;
 
 // mod alignment;
 mod border;
+mod hstack;
 mod lookup;
 mod text;
 mod viewport;
@@ -85,18 +85,18 @@ impl Direction {
 //     - Export all widgets -
 // -----------------------------------------------------------------------------
 pub use layout::text::Wrap;
-pub use layout::{Align, Constraints, HorzEdge, Offset, Padding, VertEdge};
+pub use layout::{Align, Constraints, HorzEdge, Padding, VertEdge};
 
 // pub use crate::alignment::Alignment;
 pub use crate::border::Border;
 // pub use crate::canvas::Canvas;
 // pub use crate::expand::Expand;
-// pub use crate::hstack::HStack;
+pub use crate::hstack::HStack;
 // pub use crate::position::Position;
 // pub use crate::spacer::Spacer;
 pub use crate::text::{Text, TextSpan};
 pub use crate::viewport::Viewport;
-// pub use crate::vstack::VStack;
+pub use crate::vstack::VStack;
 // pub use crate::zstack::ZStack;
 
 // -----------------------------------------------------------------------------

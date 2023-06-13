@@ -12,6 +12,10 @@ pub enum Error {
     #[error("unregistered widget: {0}")]
     UnregisteredWidget(String),
 
+    #[error("insufficient layout space available")]
+    InsufficientSpaceAvailble,
+
+    /// IO error
     #[error("{0}")]
     Io(#[from] std::io::Error)
 }

@@ -7,8 +7,8 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::generator::Generator;
 use crate::lookup::WidgetFactory;
-use crate::values::{Layout, ValuesAttributes};
-use crate::{AnyWidget, Direction, Offset, TextPath, Value, Widget, WidgetContainer};
+use crate::values::ValuesAttributes;
+use crate::{AnyWidget, Direction, TextPath, Value, Widget, WidgetContainer};
 
 mod layout;
 mod position;
@@ -16,8 +16,6 @@ mod position;
 /// A viewport where the children can be rendered with an offset.
 #[derive(Debug)]
 pub struct Viewport {
-    /// Offset
-    pub offset: Offset,
     /// Clamp the vertical space, meaning the edge of the content can not surpass the edge of the
     /// visible space.
     pub clamp_vertical: bool,
@@ -28,27 +26,16 @@ pub struct Viewport {
     /// `Direction::Forward` is the default, and keeps the scroll position on the first child.
     /// `Direction::Backward` keeps the scroll position on the last child.
     pub direction: Direction,
-
-    data_source: Option<Value>,
-    binding: String,
 }
 
 impl Viewport {
     const KIND: &'static str = "Viewport";
 
     /// Create a new instance of a [`Viewport`]
-    pub fn new(
-        data_source: Option<Value>,
-        binding: Option<String>,
-        offset: Offset,
-        direction: Direction,
-    ) -> Self {
+    pub fn new(direction: Direction) -> Self {
         Self {
-            offset,
             clamp_horizontal: true,
             clamp_vertical: true,
-            data_source,
-            binding: binding.unwrap_or("item".to_string()),
             direction,
         }
     }
@@ -60,14 +47,7 @@ impl Widget for Viewport {
     }
 
     fn layout<'tpl, 'parent>(&mut self, layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        let list = match &self.data_source {
-            Some(Value::List(list)) => list.as_slice(),
-            _ => &[],
-        };
-
-        let mut viewport_layout = ViewportLayout::new(self.offset, layout, &self.binding);
-
-        viewport_layout.layout(list, self.direction)
+        panic!()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
@@ -100,13 +80,8 @@ impl WidgetFactory for ViewportFactory {
         let data_source = values.get_attrib("source").map(|v| v.to_owned());
         let binding = values.get_attrib("binding").map(|v| v.to_string());
         let item = values.get_int("item").unwrap_or(0) as usize;
-        let offset = values.get_signed_int("offset").unwrap_or(0) as isize;
-        let offset = Offset {
-            element: item,
-            cell: offset,
-        };
         let direction = values.direction().unwrap_or(Direction::Forward);
-        let widget = Viewport::new(data_source, binding, offset, direction);
+        let widget = Viewport::new(direction);
         Ok(Box::new(widget))
     }
 }

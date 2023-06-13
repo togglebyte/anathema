@@ -15,6 +15,8 @@ pub struct Constraints {
 }
 
 impl Constraints {
+    pub const ZERO: Self = Self { min_width: 0, min_height: 0, max_width: 0, max_height: 0 };
+
     /// Create a set of constraints with a given max width / height.
     /// If `None` is passed for either `max_width` and / or `max_height` then this is qualified as
     /// "unbounded" constraints.

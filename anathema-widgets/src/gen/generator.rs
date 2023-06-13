@@ -38,9 +38,4 @@ impl<'tpl, 'parent> Generator<'tpl, 'parent> {
     ) -> Option<Result<WidgetContainer<'tpl>>> {
         self.scope.next(values)
     }
-
-    #[deprecated(note = "this is stupid, don't do this, instead slice value collections")]
-    pub fn skip(&mut self, iter_count: usize, values: &mut Store<'parent>) {
-        (0..iter_count).for_each(|_| drop(self.scope.next_template(values)));
-    }
 }

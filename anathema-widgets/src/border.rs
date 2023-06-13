@@ -3,15 +3,15 @@ use unicode_width::UnicodeWidthChar;
 
 use super::{LocalPos, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::contexts::LayoutCtx;
-use crate::error::Result;
+use crate::error::{Result, Error};
 use crate::gen::generator::Generator;
 use crate::lookup::WidgetFactory;
 use crate::values::{
-    Layout, ValuesAttributes, BORDER_EDGE_BOTTOM, BORDER_EDGE_BOTTOM_LEFT, BORDER_EDGE_BOTTOM_RIGHT,
+    ValuesAttributes, BORDER_EDGE_BOTTOM, BORDER_EDGE_BOTTOM_LEFT, BORDER_EDGE_BOTTOM_RIGHT,
     BORDER_EDGE_LEFT, BORDER_EDGE_RIGHT, BORDER_EDGE_TOP, BORDER_EDGE_TOP_LEFT,
     BORDER_EDGE_TOP_RIGHT, DEFAULT_SLIM_EDGES, DEFAULT_THICK_EDGES,
 };
-use crate::{AnyWidget, Attributes, BorderStyle, DataCtx, Sides, TextPath};
+use crate::{AnyWidget, Attributes, BorderStyle, DataCtx, Sides, TextPath, Constraints};
 
 /// Draw a border around an element.
 ///
@@ -182,6 +182,10 @@ impl Widget for Border {
             layout.constraints.make_height_tight(height);
         }
 
+        if layout.constraints == Constraints::ZERO {
+            return Ok(Size::ZERO);
+        }
+
         let border_size = self.border_size();
 
         let mut values = layout.values.next();
@@ -192,24 +196,28 @@ impl Widget for Border {
                 let mut constraints = layout.padded_constraints();
 
                 // Shrink the constraint for the child to fit inside the border
-                constraints.max_width = constraints.max_width.saturating_sub(border_size.width);
-                if constraints.max_width == 0 {
-                    return Ok(Size::ZERO);
-                }
+                constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
+                    Some(w) => w,
+                    None => return Err(Error::InsufficientSpaceAvailble)
+                };
+
+                constraints.max_height = match constraints.max_height.checked_sub(border_size.height) {
+                    Some(h) => h,
+                    None => return Err(Error::InsufficientSpaceAvailble)
+                };
 
                 if constraints.min_width > constraints.max_width {
                     constraints.min_width = constraints.max_width;
                 }
 
-                constraints.max_height = constraints.max_height.saturating_sub(border_size.height);
-                if constraints.max_height == 0 {
-                    return Ok(Size::ZERO);
-                }
                 if constraints.min_height > constraints.max_height {
                     constraints.min_height = constraints.max_height;
                 }
 
-                let values = values.next();
+                if constraints.max_width == 0 || constraints.max_height == 0 {
+                    return Err(Error::InsufficientSpaceAvailble);
+                }
+
                 let mut size = widget.layout(constraints, &values, layout.lookup)?
                     + border_size
                     + layout.padding_size();
@@ -237,8 +245,7 @@ impl Widget for Border {
                 }
             }
             None => {
-                let mut size =
-                    Size::new(layout.constraints.min_width, layout.constraints.min_height);
+                let mut size = Size::new(layout.constraints.min_width, layout.constraints.min_height);
                 if layout.constraints.is_width_tight() {
                     size.width = layout.constraints.max_width;
                 }
@@ -248,6 +255,10 @@ impl Widget for Border {
                 size
             }
         };
+
+        if size == Size::ZERO {
+            return Err(Error::InsufficientSpaceAvailble);
+        }
 
         Ok(size)
     }

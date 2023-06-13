@@ -5,10 +5,12 @@ use crate::border::BorderFactory;
 use crate::contexts::DataCtx;
 use crate::error::{Error, Result};
 use crate::gen::store::Store;
+use crate::hstack::HStackFactory;
 use crate::template::Template;
 use crate::text::{TextFactory, SpanFactory};
-use crate::values::{Layout, ValuesAttributes};
+use crate::values::ValuesAttributes;
 use crate::viewport::ViewportFactory;
+use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
 use crate::{Attributes, TextPath, Value, Widget, WidgetContainer};
 
@@ -57,6 +59,8 @@ impl Default for Lookup {
         inner.insert("span".to_string(), Box::new(SpanFactory));
         inner.insert("text".to_string(), Box::new(TextFactory));
         inner.insert("viewport".to_string(), Box::new(ViewportFactory));
+        inner.insert("vstack".to_string(), Box::new(VStackFactory));
+        inner.insert("hstack".to_string(), Box::new(HStackFactory));
         Self(inner)
     }
 }

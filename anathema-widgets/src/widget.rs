@@ -13,7 +13,6 @@ use crate::error::Result;
 use crate::gen::store::Store;
 use crate::lookup::Lookup;
 use crate::template::Template;
-use crate::values::Layout;
 
 // Layout:
 // 1. Receive constraints

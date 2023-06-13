@@ -2,11 +2,12 @@ use anathema_render::Size;
 
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::layout::vertical;
+use crate::layout::vertical::Vertical;
+use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::template::Template;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, Widget, PositionCtx, WidgetContainer, PaintCtx, WithSize};
+use crate::{AnyWidget, PaintCtx, PositionCtx, TextPath, Widget, WidgetContainer, WithSize};
 
 /// A widget that lays out its children vertically.
 /// ```text
@@ -65,27 +66,29 @@ impl Widget for VStack {
         "VStack"
     }
 
-    fn layout<'tpl, 'parent>(&mut self, mut layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
         if let Some(width) = self.width {
-            layout.constraints.make_width_tight(width);
+            ctx.constraints.make_width_tight(width);
         }
         if let Some(height) = self.height {
-            layout.constraints.make_height_tight(height);
+            ctx.constraints.make_height_tight(height);
         }
         if let Some(min_width) = self.min_width {
-            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
         }
         if let Some(min_height) = self.min_height {
-            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
-        panic!()
-        // vertical::layout()
+        Layouts::new(ctx).layout(Vertical)?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-        panic!()
-        // vertical::position(ctx, children)
+        let mut pos = ctx.padded_position();
+        for widget in children {
+            widget.position(pos);
+            pos.y += widget.size.height as i32;
+        }
     }
 
     fn paint<'gen, 'ctx>(
@@ -109,9 +112,9 @@ impl Widget for VStack {
     // }
 }
 
-pub(crate) struct VstackFactory;
+pub(crate) struct VStackFactory;
 
-impl WidgetFactory for VstackFactory {
+impl WidgetFactory for VStackFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,

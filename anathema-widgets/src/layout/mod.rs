@@ -1,14 +1,48 @@
 use std::fmt::{self, Display};
+use crate::error::Result;
 
 mod constraints;
 
 // pub(crate) mod expand;
-// pub(crate) mod horizontal;
+pub(crate) mod horizontal;
 // pub(crate) mod spacers;
 pub(crate) mod text;
 pub(crate) mod vertical;
 
+use anathema_render::Size;
 pub use constraints::Constraints;
+
+use crate::{contexts::LayoutCtx, gen::generator::Generator};
+
+pub trait Layout {
+    fn layout<'widget, 'tpl, 'parent>(&mut self, ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>, size: &mut Size) -> Result<()>;
+}
+
+// -----------------------------------------------------------------------------
+//   - Layouts -
+// -----------------------------------------------------------------------------
+pub struct Layouts<'widget, 'tpl, 'parent> {
+    ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+    size: Size,
+}
+
+impl<'widget, 'tpl, 'parent> Layouts<'widget, 'tpl, 'parent> {
+    pub fn new(ctx: LayoutCtx<'widget, 'tpl, 'parent>) -> Self {
+        Self {
+            ctx,
+            size: Size::ZERO,
+        }
+    }
+
+    pub fn layout<T: Layout>(mut self, mut layout: T) -> Result<Self> {
+        let size = layout.layout(&mut self.ctx, &mut self.size)?;
+        Ok(self)
+    }
+
+    pub fn size(self) -> Result<Size> {
+        Ok(self.size)
+    }
+}
 
 /// Represents the padding of a widget.
 /// Padding is not applicable to `text:` widgets.
@@ -137,20 +171,4 @@ pub enum VertEdge {
     Top(i32),
     /// Position at the bottom
     Bottom(i32),
-}
-
-/// Offset can be both horizontal and / or vertical.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Offset {
-    pub element: usize,
-    pub cell: isize,
-}
-
-impl Default for Offset {
-    fn default() -> Self {
-        Self {
-            element: 0,
-            cell: 0,
-        }
-    }
 }

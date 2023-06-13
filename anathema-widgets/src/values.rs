@@ -10,7 +10,7 @@ use anathema_render::{Size, Style};
 use crate::gen::store::Store;
 use crate::gen::ValueRef;
 use crate::{
-    fields, Align, Attributes, Axis, Color, DataCtx, Direction, Display, Offset, Padding, Path,
+    fields, Align, Attributes, Axis, Color, DataCtx, Direction, Display, Padding, Path,
     TextPath, Wrap,
 };
 // use crate::{
@@ -92,19 +92,19 @@ bitflags::bitflags! {
 /// The style of the border.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BorderStyle {
-    ///```text
+    /// ```text
     /// ┌─────┐
     /// │hello│
     /// └─────┘
     /// ```
     Thin,
-    ///```text
+    /// ```text
     /// ╔═════╗
     /// ║hello║
     /// ╚═════╝
     /// ```
     Thick,
-    ///```text
+    /// ```text
     /// 0111112
     /// 7hello3
     /// 6555554
@@ -127,250 +127,6 @@ impl BorderStyle {
         }
     }
 }
-
-/// Draw a border around an element.
-///
-/// The border will size it self around the child if it has one.
-///
-/// If a width and / or a height is provided then the border will produce tight constraints
-/// for the child.
-///
-/// If a border has no size (width and height) and no child then nothing will be rendered.
-///
-/// To render a border with no child provide a width and a height.
-#[derive(Debug)]
-pub struct Border {
-    /// Which sides of the border should be rendered.
-    pub sides: Sides,
-    /// All the characters for the border, starting from the top left moving clockwise.
-    /// This means the top-left corner is `edges[0]`, the top if `edges[1]` and the top right is
-    /// `edges[2]` etc.
-    pub edges: [char; 8],
-    /// The width of the border. This will make the constraints tight for the width.
-    pub width: Option<usize>,
-    /// The height of the border. This will make the constraints tight for the height.
-    pub height: Option<usize>,
-    /// The minimum width of the border. This will force the minimum constrained width to expand to
-    /// this value.
-    pub min_width: Option<usize>,
-    /// The minimum height of the border. This will force the minimum constrained height to expand to
-    /// this value.
-    pub min_height: Option<usize>,
-    /// The style of the border.
-    pub style: Style,
-}
-
-// #[derive(Debug)]
-// pub enum ValueRef<'a> {
-//     Owned(Value),
-//     Borrowed(&'a Value),
-//     Slice(&'a [Value]),
-// }
-
-// impl<'a> fmt::Display for ValueRef<'a> {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self {
-//             Self::Owned(v) | &Self::Borrowed(v) => write!(f, "{v}"),
-//             Self::Slice(values) => values.iter().try_for_each(|v| write!(f, "{v}")),
-//         }
-//     }
-// }
-
-// impl<'a> ValueRef<'a> {
-//     fn borrowed(&self) -> ValueRef<'_> {
-//         match self {
-//             Self::Owned(val) => ValueRef::Borrowed(val),
-//             Self::Borrowed(val) => ValueRef::Borrowed(*val),
-//             Self::Slice(val) => ValueRef::Slice(*val),
-//         }
-//     }
-
-//     pub fn value(&self) -> Option<&'a Value> {
-//         match self {
-//             Self::Borrowed(val) => Some(*val),
-//             Self::Owned(_) | Self::Slice(_) => None,
-//         }
-//     }
-
-//     pub fn slice(&self) -> Option<&'a [Value]> {
-//         match self {
-//             Self::Borrowed(Value::List(list)) => Some(list),
-//             Self::Slice(list) => Some(list),
-//             Self::Borrowed(_) | Self::Owned(_) => None,
-//         }
-//     }
-// }
-
-// -----------------------------------------------------------------------------
-//   - Scoped -
-// -----------------------------------------------------------------------------
-#[derive(Debug, Default)]
-pub struct Scoped<'parent>(HashMap<&'parent str, &'parent Value>);
-
-impl<'parent> Scoped<'parent> {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-}
-
-// -----------------------------------------------------------------------------
-//   - Layout -
-// -----------------------------------------------------------------------------
-#[derive(Debug, Default)]
-pub struct Layout<'parent>(HashMap<Cow<'parent, str>, ValueRef<'parent>>);
-
-impl<'parent> Layout<'parent> {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn insert(&mut self, key: Cow<'parent, str>, value: ValueRef<'parent>) {
-        self.0.insert(key, value);
-    }
-
-    pub fn by_key(&self, key: &str) -> Option<&ValueRef<'parent>> {
-        self.0.get(key)
-    }
-
-    pub fn set(&mut self, key: Cow<'parent, str>, val: ValueRef<'parent>) {
-        self.0.insert(key, val);
-    }
-}
-
-// impl<'parent> From<&Scoped<'parent>> for Layout<'parent> {
-//     fn from(scope: &Scoped<'parent>) -> Self {
-//         let mut layout = Layout::new();
-
-//         for (k, v) in &scope.0 {
-//             layout.0.insert(Cow::Borrowed(k), ValueRef::Borrowed(v));
-//         }
-
-//         layout
-//     }
-// }
-
-// // -----------------------------------------------------------------------------
-// //   - Values -
-// // -----------------------------------------------------------------------------
-// #[derive(Debug)]
-// pub struct Values<'parent, S> {
-//     root: &'parent HashMap<String, Value>,
-//     parent: Option<&'parent Values<'parent, Layout<'parent>>>,
-//     state: S,
-// }
-
-// // -----------------------------------------------------------------------------
-// //   - Values<Layout> -
-// // -----------------------------------------------------------------------------
-// impl<'parent> Values<'parent, Layout<'parent>> {
-//     /// Make self into the parent, and produce scoped values
-//     pub fn scoped(&self) -> Values<'_, Scoped<'_>> {
-//         Values {
-//             root: self.root,
-//             parent: Some(self),
-//             state: Scoped::new(),
-//         }
-//     }
-
-//     /// Makes `self` into the parent of a new `Values`,
-//     /// making it possible to access the values from the parent
-//     pub fn child(&self) -> Values<'_, Layout<'_>> {
-//         Values {
-//             root: self.root,
-//             parent: Some(self),
-//             state: Layout::new(),
-//         }
-//     }
-
-//     /// Shadow an existing value
-//     pub fn shadow(&mut self, key: Cow<'parent, str>, value: ValueRef<'parent>) {
-//         self.state.insert(key, value);
-//     }
-// }
-
-// // -----------------------------------------------------------------------------
-// //   - Values<Scoped> -
-// // -----------------------------------------------------------------------------
-// impl<'parent> Values<'parent, Scoped<'parent>> {
-//     pub fn layout(&self) -> Values<'_, Layout<'_>> {
-//         Values {
-//             root: self.root,
-//             parent: self.parent,
-//             state: Layout::from(&self.state),
-//         }
-//     }
-
-//     pub fn new(root: &'parent HashMap<String, Value>) -> Self {
-//         Self {
-//             root,
-//             parent: None,
-//             state: Scoped::new(),
-//         }
-//     }
-
-//     pub(crate) fn scope_value(&mut self, key: &'parent str, value: &'parent Value) {
-//         self.state.0.insert(key, value);
-//     }
-
-//     pub(crate) fn get_scoped(&self, key: &str) -> Option<ValueRef<'parent>> {
-//         self.state
-//             .0
-//             .get(key)
-//             .map(|v| ValueRef::Borrowed(v))
-//             .or_else(|| self.parent_get(key))
-//     }
-
-//     pub(crate) fn lookup_scoped(&self, path: &Path) -> Option<ValueRef<'parent>> {
-//         match path {
-//             Path::Index(_) => unreachable!("the first part of a path can never be an index"),
-//             Path::Key(key) => self.get_scoped(key),
-//             Path::Composite(left, right) => {
-//                 let value = match &**left {
-//                     Path::Key(key) => self.get_scoped(key)?,
-//                     Path::Index(_) => unreachable!("the first part of a path can never be an index"),
-//                     Path::Composite(..) => unreachable!("the lhs of a composite path can never be anything other than a key or an index"),
-//                 };
-//                 Some(ValueRef::Borrowed(composite_value_lookup(
-//                     right,
-//                     value.value()?,
-//                 )?))
-//             }
-//         }
-//     }
-// }
-
-//impl<'parent, T: std::fmt::Debug> Values<'parent, T> {
-//    // Get a value reference,
-//    // could also be a slice, which is why it's not possible
-//    // to return a reference to a `Value` directly.
-//    //
-//    // This can only get from the parent or above.
-//    pub(crate) fn parent_get(&self, key: &str) -> Option<ValueRef<'parent>> {
-//        self.parent
-//            .and_then(|parent| parent.state.0.get(key).map(|v| v.borrowed()))
-//            .or_else(|| self.parent.and_then(|p| p.parent_get(key)))
-//            .or_else(|| self.root.get(key).map(ValueRef::Borrowed))
-//    }
-
-//    pub fn parent_lookup(&self, path: &Path) -> Option<ValueRef<'parent>> {
-//        match path {
-//            Path::Index(_) => unreachable!("the first part of a path can never be an index"),
-//            Path::Key(key) => self.parent_get(key),
-//            Path::Composite(left, right) => {
-//                let value = match &**left {
-//                    Path::Key(key) => self.parent_get(key)?,
-//                    Path::Index(_) => unreachable!("the first part of a path can never be an index"),
-//                    Path::Composite(..) => unreachable!("the lhs of a composite path can never be anything other than a key or an index"),
-//                };
-
-//                Some(ValueRef::Borrowed(composite_value_lookup(
-//                    right,
-//                    value.value()?,
-//                )?))
-//            }
-//        }
-//    }
-//}
 
 /// A `Fragment` can be either a [`Path`] or a `String`.
 /// `Fragment`s are usually part of a list to represent a single string value.
@@ -469,8 +225,6 @@ pub enum Value {
     Number(Number),
     /// Border sides (determine which sides should be drawn).
     Sides(Sides),
-    /// Offset (vertical / horizontal edges and offsets)
-    Offset(Offset),
     /// String: this is only available from the user data context.
     /// Strings generated from the parser is accessible only throught he `Text` lookup.
     String(String),
@@ -593,7 +347,6 @@ impl_from_val!(Sides, Sides);
 impl_from_val!(String, String);
 impl_from_val!(TextAlignment, TextAlignment);
 impl_from_val!(Wrap, Wrap);
-impl_from_val!(Offset, Offset);
 
 macro_rules! impl_try_from {
     ($ret:tt, $variant:ident) => {
@@ -621,7 +374,6 @@ impl_try_from!(Sides, Sides);
 impl_try_from!(String, String);
 impl_try_from!(TextAlignment, TextAlignment);
 impl_try_from!(Wrap, Wrap);
-impl_try_from!(Offset, Offset);
 
 macro_rules! try_from_int {
     ($int:ty) => {
@@ -695,7 +447,6 @@ impl fmt::Display for Value {
             Self::String(val) => write!(f, "{}", val),
             Self::TextAlignment(val) => write!(f, "{:?}", val),
             Self::Wrap(val) => write!(f, "{:?}", val),
-            Self::Offset(val) => write!(f, "{:?}", val),
             Self::Transition(val, duration, easing) => {
                 write!(f, "animate {val} over {duration:?} ms ({easing:?})")
             }
@@ -874,12 +625,13 @@ impl Value {
 }
 
 pub struct ValuesAttributes<'a, 'parent> {
-    values: &'a Store<'parent>,
+    pub values: &'a Store<'parent>,
     attributes: &'a Attributes,
 }
 
 impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
     pub fn new(values: &'a Store<'parent>, attributes: &'a Attributes) -> Self {
+        let x = values.get("x");
         Self { values, attributes }
     }
 
@@ -1143,13 +895,6 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
 
     pub fn auto_scroll(&self) -> bool {
         self.get_bool(fields::AUTO_SCROLL).unwrap_or(false)
-    }
-
-    pub fn offset(&self) -> Option<Offset> {
-        match *self.get_attrib(fields::OFFSET)? {
-            Value::Offset(offset) => Some(offset),
-            _ => None,
-        }
     }
 
     pub fn word_wrap(&self) -> Wrap {

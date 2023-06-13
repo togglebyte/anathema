@@ -4,12 +4,38 @@ use std::fmt;
 use std::hash::Hash;
 
 use super::ValueRef;
-use crate::values::Layout;
 use crate::{DataCtx, Value};
+
+// -----------------------------------------------------------------------------
+//   - Layout -
+// -----------------------------------------------------------------------------
+#[derive(Debug)]
+// TODO: rename this to something less stupid
+pub struct Layout<'parent>(HashMap<Cow<'parent, str>, ValueRef<'parent>>);
+
+impl<'parent> Layout<'parent> {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn insert(&mut self, key: Cow<'parent, str>, value: ValueRef<'parent>) {
+        self.0.insert(key, value);
+    }
+
+    pub fn by_key(&self, key: &str) -> Option<&ValueRef<'parent>> {
+        self.0.get(key)
+    }
+
+    pub fn set(&mut self, key: Cow<'parent, str>, val: ValueRef<'parent>) {
+        self.0.insert(key, val);
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 //   - Store -
 // -----------------------------------------------------------------------------
+#[derive(Debug)]
 pub struct Store<'parent> {
     root: &'parent DataCtx,
     parent: Option<&'parent Store<'parent>>,
@@ -29,7 +55,7 @@ impl<'parent> Store<'parent> {
         Store {
             root: self.root,
             parent: Some(&self),
-            inner: Layout::default(),
+            inner: Layout::new(),
         }
     }
 
