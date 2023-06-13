@@ -1,10 +1,16 @@
 use anathema_render::Size;
 
 use super::{
-    HorzEdge, LayoutCtx, NodeId, PaintCtx, Pos, PositionCtx, VertEdge, Widget,
-    WidgetContainer, WithSize,
+    HorzEdge, NodeId, PaintCtx, Pos, PositionCtx, VertEdge, Widget, WidgetContainer, WithSize,
 };
 use crate::attributes::fields;
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::layout::Layouts;
+use crate::layout::single::Single;
+use crate::lookup::WidgetFactory;
+use crate::values::ValuesAttributes;
+use crate::{AnyWidget, TextPath};
 
 /// If the horizontal edge is set to `Right` the widget will expand to fill all available space
 /// on the horizontal axis.
@@ -85,83 +91,86 @@ impl Default for Position {
     }
 }
 
-// impl Widget for Position {
-//     fn kind(&self) -> &'static str {
-//         Self::KIND
-//     }
+impl Widget for Position {
+    fn kind(&self) -> &'static str {
+        Self::KIND
+    }
 
-//     fn as_any_ref(&self) -> &dyn std::any::Any {
-//         self
-//     }
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+        let mut layout = Layouts::new(ctx).layout(Single)?;
+        if let HorzEdge::Right(_) = self.horz_edge {
+            layout = layout.expand_horz();
+        }
+        if let VertEdge::Bottom(_) = self.vert_edge {
+            layout = layout.expand_vert();
+        }
+        layout.size()
+    }
 
-//     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-//         self
-//     }
+    fn position<'gen, 'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+        let child = match children.first_mut() {
+            Some(c) => c,
+            None => return,
+        };
 
-//     fn layout<'gen: 'ctx, 'ctx, 'container>(&mut self, ctx: LayoutCtx<'gen, 'ctx>, children: &mut Children<'gen>) -> Size {
-//         panic!()
-//         // match self.child.as_mut() {
-//         //     Some(child) => {
-//         //         let mut size = child.layout(ctx.constraints, ctx.force_layout);
-//         //         if let HorzEdge::Right(_) = self.horz_edge {
-//         //             size.width = ctx.constraints.max_width;
-//         //         }
-//         //         if let VertEdge::Bottom(_) = self.vert_edge {
-//         //             size.height = ctx.constraints.max_height;
-//         //         }
-//         //         size
-//         //     }
-//         //     None => Size::ZERO,
-//         // }
-//     }
+        let x = match self.horz_edge {
+            HorzEdge::Left(x) => x,
+            HorzEdge::Right(x) => ctx.size.width as i32 - x - child.size.width as i32,
+        };
 
-//     fn position<'gen: 'ctx, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-//         panic!()
-//         // let child = match self.child.as_mut() {
-//         //     Some(c) => c,
-//         //     None => return,
-//         // };
+        let y = match self.vert_edge {
+            VertEdge::Top(y) => y,
+            VertEdge::Bottom(y) => ctx.size.height as i32 - y - child.size.height as i32,
+        };
 
-//         // let x = match self.horz_edge {
-//         //     HorzEdge::Left(x) => x,
-//         //     HorzEdge::Right(x) => ctx.size.width as i32 - x - child.size.width as i32,
-//         // };
+        ctx.pos += Pos::new(x, y);
+        child.position(ctx.pos);
+    }
 
-//         // let y = match self.vert_edge {
-//         //     VertEdge::Top(y) => y,
-//         //     VertEdge::Bottom(y) => ctx.size.height as i32 - y - child.size.height as i32,
-//         // };
+    //     // fn update(&mut self, ctx: UpdateCtx) {
+    //     //     for (k, _) in &ctx.attributes {
+    //     //         match k.as_str() {
+    //     //             fields::LEFT => self.horz_edge = HorzEdge::Left(ctx.attributes.left().unwrap_or(0)),
+    //     //             fields::RIGHT => {
+    //     //                 self.horz_edge = HorzEdge::Right(ctx.attributes.right().unwrap_or(0))
+    //     //             }
+    //     //             fields::TOP => self.vert_edge = VertEdge::Top(ctx.attributes.top().unwrap_or(0)),
+    //     //             fields::BOTTOM => {
+    //     //                 self.vert_edge = VertEdge::Bottom(ctx.attributes.bottom().unwrap_or(0))
+    //     //             }
+    //     //             _ => {}
+    //     //         }
+    //     //     }
+    //     // }
+}
 
-//         // ctx.pos += Pos::new(x, y);
-//         // child.position(ctx.pos);
-//     }
+pub(crate) struct PositionFactory;
 
-//     fn paint<'gen: 'ctx, 'ctx>(&mut self, ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'gen>]) {
-//         panic!()
-//         // let child = match self.child.as_mut() {
-//         //     Some(c) => c,
-//         //     None => return,
-//         // };
+impl WidgetFactory for PositionFactory {
+    fn make(
+        &self,
+        values: ValuesAttributes<'_, '_>,
+        text: Option<&TextPath>,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let horz_edge = match values.left() {
+            Some(left) => HorzEdge::Left(left),
+            None => match values.right() {
+                Some(right) => HorzEdge::Right(right),
+                None => HorzEdge::Left(0),
+            },
+        };
 
-//         // child.paint(ctx.to_unsized());
-//     }
-
-//     // fn update(&mut self, ctx: UpdateCtx) {
-//     //     for (k, _) in &ctx.attributes {
-//     //         match k.as_str() {
-//     //             fields::LEFT => self.horz_edge = HorzEdge::Left(ctx.attributes.left().unwrap_or(0)),
-//     //             fields::RIGHT => {
-//     //                 self.horz_edge = HorzEdge::Right(ctx.attributes.right().unwrap_or(0))
-//     //             }
-//     //             fields::TOP => self.vert_edge = VertEdge::Top(ctx.attributes.top().unwrap_or(0)),
-//     //             fields::BOTTOM => {
-//     //                 self.vert_edge = VertEdge::Bottom(ctx.attributes.bottom().unwrap_or(0))
-//     //             }
-//     //             _ => {}
-//     //         }
-//     //     }
-//     // }
-// }
+        let vert_edge = match values.top() {
+            Some(top) => VertEdge::Top(top),
+            None => match values.bottom() {
+                Some(bottom) => VertEdge::Bottom(bottom),
+                None => VertEdge::Top(0),
+            },
+        };
+        let mut widget = Position::new(horz_edge, vert_edge);
+        Ok(Box::new(widget))
+    }
+}
 
 #[cfg(test)]
 mod test {

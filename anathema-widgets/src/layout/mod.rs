@@ -9,6 +9,7 @@ pub(crate) mod horizontal;
 pub(crate) mod text;
 pub(crate) mod vertical;
 pub(crate) mod stacked;
+pub(crate) mod single;
 
 use anathema_render::Size;
 pub use constraints::Constraints;
@@ -38,6 +39,16 @@ impl<'widget, 'tpl, 'parent> Layouts<'widget, 'tpl, 'parent> {
     pub fn layout<T: Layout>(mut self, mut layout: T) -> Result<Self> {
         let size = layout.layout(&mut self.ctx, &mut self.size)?;
         Ok(self)
+    }
+
+    pub fn expand_horz(mut self) -> Self {
+        self.size.width = self.ctx.constraints.max_width;
+        self
+    }
+
+    pub fn expand_vert(mut self) -> Self {
+        self.size.height = self.ctx.constraints.max_height;
+        self
     }
 
     pub fn size(self) -> Result<Size> {

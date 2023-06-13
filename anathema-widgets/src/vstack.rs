@@ -91,17 +91,6 @@ impl Widget for VStack {
         }
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
-        for child in children {
-            let ctx = ctx.sub_context(None);
-            child.paint(ctx);
-        }
-    }
-
     // fn update(&mut self, ctx: UpdateCtx) {
     //     if let Some(width) = ctx.attributes.width() {
     //         self.width = Some(width);

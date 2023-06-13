@@ -1,8 +1,11 @@
 use anathema_render::Size;
 
-use crate::WidgetContainer;
-
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WithSize};
+use super::{NodeId, PaintCtx, PositionCtx, Widget, WithSize};
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::{WidgetContainer, TextPath, AnyWidget};
+use crate::lookup::WidgetFactory;
+use crate::values::ValuesAttributes;
 
 /// Expand to fill in all available space.
 ///
@@ -23,30 +26,40 @@ impl Spacer {
     pub const KIND: &'static str = "Spacer";
 }
 
-// impl Widget for Spacer {
-//     fn kind(&self) -> &'static str {
-//         Self::KIND
-//     }
+impl Widget for Spacer {
+    fn kind(&self) -> &'static str {
+        Self::KIND
+    }
 
-//     fn as_any_ref(&self) -> &dyn std::any::Any {
-//         self
-//     }
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+        debug_assert!(
+            ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
+            "the layout context needs to be tight for a spacer"
+        );
 
-//     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-//         self
-//     }
+        Ok(Size::new(ctx.constraints.min_width, ctx.constraints.min_height))
+    }
 
-//     fn layout(&mut self, ctx: LayoutCtx, children: &mut Vec<WidgetContainer<'_>>) -> Size {
-//         debug_assert!(
-//             ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
-//             "the layout context needs to be tight for a spacer"
-//         );
-//         Size::new(ctx.constraints.min_width, ctx.constraints.min_height)
-//     }
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {}
 
-//     fn position(&mut self, _: PositionCtx) {}
+    fn paint<'gen, 'ctx>(
+        &mut self,
+        mut ctx: PaintCtx<'_, WithSize>,
+        children: &mut [WidgetContainer<'gen>],
+    ) {
+    }
 
-//     fn paint(&mut self, _ctx: PaintCtx<'_, WithSize>) {}
+    //     // fn update(&mut self, _: UpdateCtx) {}
+}
 
-//     // fn update(&mut self, _: UpdateCtx) {}
-// }
+pub(crate) struct SpacerFactory;
+
+impl WidgetFactory for SpacerFactory {
+    fn make(
+        &self,
+        values: ValuesAttributes<'_, '_>,
+        text: Option<&TextPath>,
+    ) -> Result<Box<dyn AnyWidget>> {
+        Ok(Box::new(Spacer))
+    }
+}

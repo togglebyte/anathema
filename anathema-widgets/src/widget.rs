@@ -39,7 +39,12 @@ pub trait Widget {
     /// of the children.
     fn position<'tpl>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'tpl>]);
 
-    fn paint<'tpl>(&mut self, ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'tpl>]);
+    fn paint<'tpl>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'tpl>]) {
+        for child in children {
+            let ctx = ctx.sub_context(None);
+            child.paint(ctx);
+        }
+    }
 }
 
 pub trait AnyWidget {

@@ -6,8 +6,10 @@ use crate::contexts::DataCtx;
 use crate::error::{Error, Result};
 use crate::gen::store::Store;
 use crate::hstack::HStackFactory;
+use crate::position::PositionFactory;
+use crate::spacer::SpacerFactory;
 use crate::template::Template;
-use crate::text::{TextFactory, SpanFactory};
+use crate::text::{SpanFactory, TextFactory};
 use crate::values::ValuesAttributes;
 use crate::viewport::ViewportFactory;
 use crate::vstack::VStackFactory;
@@ -57,11 +59,13 @@ impl Default for Lookup {
     fn default() -> Self {
         let mut inner = HashMap::<_, Box<dyn WidgetFactory>>::new();
         inner.insert("border".to_string(), Box::new(BorderFactory));
+        inner.insert("hstack".to_string(), Box::new(HStackFactory));
+        inner.insert("position".to_string(), Box::new(PositionFactory));
+        inner.insert("spacer".to_string(), Box::new(SpacerFactory));
         inner.insert("span".to_string(), Box::new(SpanFactory));
         inner.insert("text".to_string(), Box::new(TextFactory));
         inner.insert("viewport".to_string(), Box::new(ViewportFactory));
         inner.insert("vstack".to_string(), Box::new(VStackFactory));
-        inner.insert("hstack".to_string(), Box::new(HStackFactory));
         inner.insert("zstack".to_string(), Box::new(ZStackFactory));
         Self(inner)
     }
