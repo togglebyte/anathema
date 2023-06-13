@@ -8,6 +8,7 @@ pub(crate) mod horizontal;
 // pub(crate) mod spacers;
 pub(crate) mod text;
 pub(crate) mod vertical;
+pub(crate) mod stacked;
 
 use anathema_render::Size;
 pub use constraints::Constraints;

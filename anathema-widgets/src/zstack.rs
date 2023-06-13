@@ -1,9 +1,13 @@
 use anathema_render::Size;
 
-use super::{
-    LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize,
-};
-use crate::layout::stacked;
+use super::{NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use crate::{TextPath, AnyWidget};
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::layout::stacked::Stacked;
+use crate::layout::Layouts;
+use crate::lookup::WidgetFactory;
+use crate::values::ValuesAttributes;
 
 /// Unlike the [`HStack`](crate::HStack) or the [`VStack`](crate::VStack) the [`ZStack`] draws the
 /// children on top of each other.
@@ -64,55 +68,69 @@ impl ZStack {
     }
 }
 
-// impl Widget for ZStack {
-//     fn kind(&self) -> &'static str {
-//         "ZStack"
-//     }
+impl Widget for ZStack {
+    fn kind(&self) -> &'static str {
+        "ZStack"
+    }
 
-//     fn as_any_ref(&self) -> &dyn std::any::Any {
-//         self
-//     }
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+        if let Some(min_width) = self.min_width {
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+        }
+        if let Some(min_height) = self.min_height {
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+        }
+        if let Some(width) = self.width {
+            ctx.constraints.make_width_tight(width);
+        }
+        if let Some(height) = self.height {
+            ctx.constraints.make_height_tight(height);
+        }
 
-//     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-//         self
-//     }
+        Layouts::new(ctx).layout(Stacked)?.size()
+    }
 
-//     fn layout(&mut self, ctx: LayoutCtx, children: &mut Vec<WidgetContainer<'_>>) -> Size {
-//         panic!()
-//         // if let Some(min_width) = self.min_width {
-//         //     ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
-//         // }
-//         // if let Some(min_height) = self.min_height {
-//         //     ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
-//         // }
-//         // if let Some(width) = self.width {
-//         //     ctx.constraints.make_width_tight(width);
-//         // }
-//         // if let Some(height) = self.height {
-//         //     ctx.constraints.make_height_tight(height);
-//         // }
-//         // stacked::layout(&mut self.children, ctx)
-//     }
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+        for widget in children {
+            widget.position(ctx.padded_position());
+        }
+    }
 
-//     fn position(&mut self, ctx: PositionCtx) {
-//         panic!()
-//         // stacked::position(&mut self.children, ctx)
-//     }
+    fn paint<'gen, 'ctx>(
+        &mut self,
+        mut ctx: PaintCtx<'_, WithSize>,
+        children: &mut [WidgetContainer<'gen>],
+    ) {
+        for child in children {
+            let ctx = ctx.sub_context(None);
+            child.paint(ctx);
+        }
+    }
 
-//     fn paint(&mut self, mut ctx: PaintCtx<'_, WithSize>) {
-//         panic!()
-//         // for child in self.children.iter_mut() {
-//         //     let ctx = ctx.sub_context(None);
-//         //     child.paint(ctx);
-//         // }
-//     }
 
-//     // fn update(&mut self, ctx: UpdateCtx) {
-//     //     if let Some(width) = ctx.attributes.width() {
-//     //         self.width = Some(width);
-//     //     }
-//     //     if let Some(height) = ctx.attributes.height() {
-//     //         self.height = Some(height);
-//     //     }
-//     // }
-// }
+    // fn update(&mut self, ctx: UpdateCtx) {
+    //     if let Some(width) = ctx.attributes.width() {
+    //         self.width = Some(width);
+    //     }
+    //     if let Some(height) = ctx.attributes.height() {
+    //         self.height = Some(height);
+    //     }
+    // }
+}
+
+pub(crate) struct ZStackFactory;
+
+impl WidgetFactory for ZStackFactory {
+    fn make(
+        &self,
+        values: ValuesAttributes<'_, '_>,
+        text: Option<&TextPath>,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let width = values.width();
+        let height = values.height();
+        let mut widget = ZStack::new(width, height);
+        widget.min_width = values.min_width();
+        widget.min_height = values.min_height();
+        Ok(Box::new(widget))
+    }
+}

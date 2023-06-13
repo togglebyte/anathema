@@ -12,6 +12,7 @@ use crate::values::ValuesAttributes;
 use crate::viewport::ViewportFactory;
 use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
+use crate::zstack::ZStackFactory;
 use crate::{Attributes, TextPath, Value, Widget, WidgetContainer};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
@@ -61,6 +62,7 @@ impl Default for Lookup {
         inner.insert("viewport".to_string(), Box::new(ViewportFactory));
         inner.insert("vstack".to_string(), Box::new(VStackFactory));
         inner.insert("hstack".to_string(), Box::new(HStackFactory));
+        inner.insert("zstack".to_string(), Box::new(ZStackFactory));
         Self(inner)
     }
 }

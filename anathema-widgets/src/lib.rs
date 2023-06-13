@@ -21,7 +21,6 @@ pub(crate) mod gen;
 // mod expand;
 // mod position;
 // mod spacer;
-// mod zstack;
 
 // mod alignment;
 mod border;
@@ -30,6 +29,7 @@ mod lookup;
 mod text;
 mod viewport;
 mod vstack;
+mod zstack;
 
 pub struct WidgetLookup;
 
@@ -97,7 +97,7 @@ pub use crate::hstack::HStack;
 pub use crate::text::{Text, TextSpan};
 pub use crate::viewport::Viewport;
 pub use crate::vstack::VStack;
-// pub use crate::zstack::ZStack;
+pub use crate::zstack::ZStack;
 
 // -----------------------------------------------------------------------------
 //     - Pos -
