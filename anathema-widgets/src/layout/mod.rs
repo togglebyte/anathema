@@ -1,11 +1,11 @@
 use std::fmt::{self, Display};
-use crate::error::Result;
+use crate::{error::Result, Axis};
 
 mod constraints;
 
-// pub(crate) mod expand;
+pub(crate) mod expand;
 pub(crate) mod horizontal;
-// pub(crate) mod spacers;
+pub(crate) mod spacers;
 pub(crate) mod text;
 pub(crate) mod vertical;
 pub(crate) mod stacked;
@@ -23,21 +23,34 @@ pub trait Layout {
 // -----------------------------------------------------------------------------
 //   - Layouts -
 // -----------------------------------------------------------------------------
-pub struct Layouts<'widget, 'tpl, 'parent> {
+pub struct Layouts<'widget, 'tpl, 'parent, T> {
     ctx: LayoutCtx<'widget, 'tpl, 'parent>,
     size: Size,
+    layout: T,
 }
 
-impl<'widget, 'tpl, 'parent> Layouts<'widget, 'tpl, 'parent> {
-    pub fn new(ctx: LayoutCtx<'widget, 'tpl, 'parent>) -> Self {
+impl<'widget, 'tpl, 'parent, T: Layout> Layouts<'widget, 'tpl, 'parent, T> {
+    pub fn new(layout: T, ctx: LayoutCtx<'widget, 'tpl, 'parent>) -> Self {
         Self {
             ctx,
             size: Size::ZERO,
+            layout,
         }
     }
 
-    pub fn layout<T: Layout>(mut self, mut layout: T) -> Result<Self> {
-        let size = layout.layout(&mut self.ctx, &mut self.size)?;
+    pub fn layout(mut self) -> Result<Self> {
+        self.layout.layout(&mut self.ctx, &mut self.size)?;
+        Ok(self)
+    }
+
+    pub fn layout_spacers(mut self, axis: Axis) -> Result<Self> {
+        self.ctx.constraints.max_width -= self.size.width;
+        self.ctx.constraints.max_height -= self.size.height;
+        let size = spacers::layout(&mut self.ctx, axis)?;
+        match axis {
+            Axis::Vertical => self.size.height += size.height,
+            Axis::Horizontal => self.size.width += size.width,
+        }
         Ok(self)
     }
 

@@ -87,7 +87,7 @@ impl Widget for ZStack {
             ctx.constraints.make_height_tight(height);
         }
 
-        Layouts::new(ctx).layout(Stacked)?.size()
+        Layouts::new(Stacked, ctx).layout()?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {

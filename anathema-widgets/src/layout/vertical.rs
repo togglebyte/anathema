@@ -4,7 +4,7 @@ use super::{Constraints, Layout, Padding};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::{Result, Error};
 use crate::gen::generator::Generator;
-use crate::{Axis, WidgetContainer};
+use crate::{Axis, WidgetContainer, Spacer};
 
 pub struct Vertical;
 
@@ -26,10 +26,12 @@ impl Layout for Vertical {
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
             let index = ctx.children.len();
             ctx.children.push(widget);
-            // // Ignore spacers
-            // if widget.kind() == Spacer::KIND {
-            //     continue;
-            // }
+            let widget = &mut ctx.children[index];
+
+            // Ignore spacers
+            if widget.kind() == Spacer::KIND {
+                continue;
+            }
 
             // // Ignore expanded
             // if widget.kind() == Expand::KIND {
@@ -38,7 +40,7 @@ impl Layout for Vertical {
 
             let constraints = Constraints::new(constraints.max_width, max_height - used_height);
 
-            let size = match ctx.children[index].layout(constraints, &values, ctx.lookup) {
+            let size = match widget.layout(constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,

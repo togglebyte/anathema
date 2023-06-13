@@ -1,8 +1,7 @@
 use anathema_render::Size;
 
 use super::Constraints;
-use crate::ctx::LayoutCtx;
-use crate::{Axis, Expand, WidgetContainer, WidgetLookup};
+use crate::{Axis, WidgetContainer, WidgetLookup};
 
 /// Distributes the total size over a list of weights
 ///
@@ -34,7 +33,7 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 // pub fn layout<'gen: 'ctx, 'ctx>(widgets: &mut [WidgetContainer<'gen>], constraints: Constraints, ctx: &Context, lookup: &'gen WidgetLookup<'_>, direction: Direction) -> Size {
-//     let mut expansions = widgets.iter_mut().filter(|c| c.kind() == Expand::KIND).collect::<Vec<_>>();
+    // let mut expansions = ctx.children.iter_mut().filter(|c| c.kind() == Expand::KIND).collect::<Vec<_>>();
 //     let factors = expansions.iter().map(|w| w.to_ref::<Expand>().factor).collect::<Vec<_>>();
 
 //     let mut size = Size::ZERO;

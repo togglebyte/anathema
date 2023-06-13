@@ -2,9 +2,9 @@ use anathema_render::Size;
 
 use super::{Constraints, Layout, Padding};
 use crate::contexts::{LayoutCtx, PositionCtx};
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-use crate::{Axis, WidgetContainer};
+use crate::{Axis, WidgetContainer, Spacer};
 
 pub struct Horizontal;
 
@@ -26,10 +26,12 @@ impl Layout for Horizontal {
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
             let index = ctx.children.len();
             ctx.children.push(widget);
-            //     // Ignore spacers
-            //     if widget.kind() == Spacer::KIND {
-            //         continue;
-            //     }
+            let widget = &mut ctx.children[index];
+
+            // Ignore spacers
+            if widget.kind() == Spacer::KIND {
+                continue;
+            }
 
             //     // Ignore expanded widgets
             //     if widget.kind() == Expand::KIND {
@@ -38,7 +40,7 @@ impl Layout for Horizontal {
 
             let constraints = Constraints::new(max_width - used_width, constraints.max_height);
 
-            let size = match ctx.children[index].layout(constraints, &values, ctx.lookup) {
+            let size = match widget.layout(constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,
