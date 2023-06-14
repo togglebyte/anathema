@@ -1,8 +1,13 @@
 use anathema_render::{Size, Style};
 
-use super::{Axis, LocalPos};
-use super::{LayoutCtx, NodeId, PaintCtx, PositionCtx, Widget, WithSize};
-use crate::{fields, WidgetContainer};
+use super::{Axis, LocalPos, NodeId, PaintCtx, PositionCtx, Widget, WithSize};
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::layout::single::Single;
+use crate::layout::Layouts;
+use crate::lookup::WidgetFactory;
+use crate::values::ValuesAttributes;
+use crate::{fields, AnyWidget, TextPath, WidgetContainer};
 
 const DEFAULT_FACTOR: usize = 1;
 
@@ -52,11 +57,10 @@ const DEFAULT_FACTOR: usize = 1;
 /// let right = root.by_id(&right_id).unwrap();
 /// assert_eq!(right.size().width, 6);
 /// ```
-///
 #[derive(Debug)]
 pub struct Expand {
     /// The direction to expand in.
-    pub direction: Option<Axis>,
+    pub axis: Option<Axis>,
     /// Fill the space by repeating the characters.
     pub fill: String,
     /// The style of the expansion.
@@ -69,87 +73,97 @@ impl Expand {
     pub const KIND: &'static str = "Expand";
 
     /// Create a new instance of an `Expand` widget.
-    pub fn new(factor: impl Into<Option<usize>>, direction: impl Into<Option<Axis>>) -> Self {
+    pub fn new(factor: impl Into<Option<usize>>, direction: impl Into<Option<Axis>>, fill: impl Into<Option<String>>) -> Self {
         let factor = factor.into();
-        let direction = direction.into();
+        let axis = direction.into();
 
         Self {
             factor: factor.unwrap_or(DEFAULT_FACTOR),
-            direction,
-            fill: String::new(),
+            axis,
+            fill: fill.into().unwrap_or(String::new()),
             style: Style::new(),
         }
     }
 }
 
-// impl Widget for Expand {
-//     fn kind(&self) -> &'static str {
-//         Self::KIND
-//     }
+impl Widget for Expand {
+    fn kind(&self) -> &'static str {
+        Self::KIND
+    }
 
-//     fn as_any_ref(&self) -> &dyn std::any::Any {
-//         self
-//     }
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+        let mut size = Layouts::new(Single, &mut ctx).layout()?.size()?;
 
-//     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-//         self
-//     }
+        match self.axis {
+            Some(Axis::Horizontal) => size.width = ctx.constraints.max_width,
+            Some(Axis::Vertical) => size.height = ctx.constraints.max_height,
+            None => {
+                size.width = ctx.constraints.max_width;
+                size.height = ctx.constraints.max_height;
+            }
+        }
 
-//     fn layout<'gen: 'ctx, 'ctx>(&mut self, mut ctx: LayoutCtx<'gen, 'ctx>, children: &mut Children<'gen>) -> Size {
+        Ok(size)
+    }
 
-//         // The `Expand` widget can only have one child
-//         let mut size = match children.next(&mut ctx.gen) {
-//             Some(ref mut child) => child.layout(ctx.padded_constraints(), ctx.ctx, ctx.lookup),
-//             None => Size::ZERO,
-//         };
+    fn position<'gen, 'ctx>(
+        &mut self,
+        mut ctx: PositionCtx,
+        children: &mut [WidgetContainer<'gen>],
+    ) {
+        if let Some(c) = children.first_mut() {
+            c.position(ctx.padded_position())
+        }
+    }
 
-//         match self.direction {
-//             Some(Direction::Horizontal) => size.width = ctx.constraints.max_width,
-//             Some(Direction::Vertical) => size.height = ctx.constraints.max_height,
-//             None => {
-//                 size.width = ctx.constraints.max_width;
-//                 size.height = ctx.constraints.max_height;
-//             }
-//         }
+    fn paint<'gen, 'ctx>(
+        &mut self,
+        mut ctx: PaintCtx<'_, WithSize>,
+        children: &mut [WidgetContainer<'gen>],
+    ) {
+        if !self.fill.is_empty() {
+            for y in 0..ctx.local_size.height {
+                let mut used_width = 0;
+                loop {
+                    let pos = LocalPos::new(used_width, y);
+                    let Some(p) = ctx.print(&self.fill, self.style, pos) else { break };
+                    used_width += p.x - used_width;
+                }
+            }
+        }
 
-//         size
-//     }
+        if let Some(child) = children.first_mut() {
+            let ctx = ctx.sub_context(None);
+            child.paint(ctx);
+        }
+    }
 
-//     fn position<'gen: 'ctx, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-//         if let Some(c) = children.first_mut() {
-//             c.position(ctx.padded_position())
-//         }
-//     }
+    //     // fn update(&mut self, ctx: UpdateCtx) {
+    //     //     ctx.attributes.update_style(&mut self.style);
+    //     //     for (k, _) in &ctx.attributes {
+    //     //         match k.as_str() {
+    //     //             fields::DIRECTION => self.direction = ctx.attributes.direction(),
+    //     //             fields::FACTOR => self.factor = ctx.attributes.factor().unwrap_or(DEFAULT_FACTOR),
+    //     //             _ => {}
+    //     //         }
+    //     //     }
+    //     // }
+}
 
-//     fn paint<'gen: 'ctx, 'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'gen>]) {
-//         if !self.fill.is_empty() {
-//             for y in 0..ctx.local_size.height {
-//                 let mut used_width = 0;
-//                 loop {
-//                     let pos = LocalPos::new(used_width, y);
-//                     let Some(p) = ctx.print(&self.fill, self.style, pos) else { break };
-//                     used_width += p.x - used_width;
-//                 }
-//             }
-//         }
+pub(crate) struct ExpandFactory;
 
-//         if let Some(child) = children.first_mut() {
-//             let ctx = ctx.sub_context(None);
-//             child.paint(ctx);
-//         }
-//     }
-
-// //     // fn update(&mut self, ctx: UpdateCtx) {
-// //     //     ctx.attributes.update_style(&mut self.style);
-// //     //     for (k, _) in &ctx.attributes {
-// //     //         match k.as_str() {
-// //     //             fields::DIRECTION => self.direction = ctx.attributes.direction(),
-// //     //             fields::FACTOR => self.factor = ctx.attributes.factor().unwrap_or(DEFAULT_FACTOR),
-// //     //             _ => {}
-// //     //         }
-// //     //     }
-// //     // }
-// }
+impl WidgetFactory for ExpandFactory {
+    fn make(
+        &self,
+        values: ValuesAttributes<'_, '_>,
+        text: Option<&TextPath>,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let axis = values.axis();
+        let factor = values.factor();
+        let fill = values.fill().map(|s| s.to_string());
+        Ok(Box::new(Expand::new(factor, axis, fill)))
+    }
+}
 
 #[cfg(test)]
 mod test {

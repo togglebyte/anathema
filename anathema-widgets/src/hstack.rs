@@ -7,7 +7,7 @@ use crate::layout::horizontal::Horizontal;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, Axis};
+use crate::{AnyWidget, Axis, TextPath};
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -73,10 +73,7 @@ impl Widget for HStack {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Horizontal, ctx)
-            .layout()?
-            .layout_spacers(Axis::Horizontal)?
-            .size()
+        Layouts::new(Horizontal, &mut ctx).layout()?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
@@ -84,17 +81,6 @@ impl Widget for HStack {
         for widget in children {
             widget.position(pos);
             pos.x += widget.size.width as i32;
-        }
-    }
-
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
-        for child in children {
-            let ctx = ctx.sub_context(None);
-            child.paint(ctx);
         }
     }
 

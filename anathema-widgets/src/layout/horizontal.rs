@@ -1,10 +1,10 @@
 use anathema_render::Size;
 
-use super::{Constraints, Layout, Padding};
+use super::{expand, spacers, Constraints, Layout, Padding};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-use crate::{Axis, WidgetContainer, Spacer};
+use crate::{Axis, Expand, Spacer, WidgetContainer};
 
 pub struct Horizontal;
 
@@ -33,10 +33,10 @@ impl Layout for Horizontal {
                 continue;
             }
 
-            //     // Ignore expanded widgets
-            //     if widget.kind() == Expand::KIND {
-            //         continue;
-            //     }
+            // Ignore expanded widgets
+            if widget.kind() == Expand::KIND {
+                continue;
+            }
 
             let constraints = Constraints::new(max_width - used_width, constraints.max_height);
 
@@ -54,13 +54,23 @@ impl Layout for Horizontal {
             }
         }
 
+        if !ctx.constraints.is_width_unbounded() {
+            ctx.constraints.max_width -= used_width;
+
+            let expanded_size = expand::layout(ctx, Axis::Horizontal)?;
+            height = height.max(expanded_size.height);
+            used_width += expanded_size.width;
+
+            ctx.constraints.max_height = height;
+            let spacer_size = spacers::layout(ctx, Axis::Horizontal)?;
+            used_width += spacer_size.width;
+        }
+
         height = height.max(ctx.constraints.min_height) + ctx.padding.top + ctx.padding.bottom;
         height = height.min(ctx.constraints.max_height);
         size.height = size.height.max(height);
 
-        used_width = used_width
-            .max(ctx.constraints.min_width)
-            .min(ctx.constraints.max_width);
+        used_width = used_width.max(ctx.constraints.min_width);
 
         size.width = size.width.max(used_width);
 

@@ -23,34 +23,23 @@ pub trait Layout {
 // -----------------------------------------------------------------------------
 //   - Layouts -
 // -----------------------------------------------------------------------------
-pub struct Layouts<'widget, 'tpl, 'parent, T> {
-    ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+pub struct Layouts<'ctx, 'widget, 'tpl, 'parent, T> {
+    ctx: &'ctx mut LayoutCtx<'widget, 'tpl, 'parent>,
     size: Size,
     layout: T,
 }
 
-impl<'widget, 'tpl, 'parent, T: Layout> Layouts<'widget, 'tpl, 'parent, T> {
-    pub fn new(layout: T, ctx: LayoutCtx<'widget, 'tpl, 'parent>) -> Self {
+impl<'ctx, 'widget, 'tpl, 'parent, T: Layout> Layouts<'ctx, 'widget, 'tpl, 'parent, T> {
+    pub fn new(layout: T, ctx: &'ctx mut LayoutCtx<'widget, 'tpl, 'parent>) -> Self {
         Self {
             ctx,
-            size: Size::ZERO,
             layout,
+            size: Size::ZERO,
         }
     }
 
     pub fn layout(mut self) -> Result<Self> {
-        self.layout.layout(&mut self.ctx, &mut self.size)?;
-        Ok(self)
-    }
-
-    pub fn layout_spacers(mut self, axis: Axis) -> Result<Self> {
-        self.ctx.constraints.max_width -= self.size.width;
-        self.ctx.constraints.max_height -= self.size.height;
-        let size = spacers::layout(&mut self.ctx, axis)?;
-        match axis {
-            Axis::Vertical => self.size.height += size.height,
-            Axis::Horizontal => self.size.width += size.width,
-        }
+        self.layout.layout(self.ctx, &mut self.size)?;
         Ok(self)
     }
 

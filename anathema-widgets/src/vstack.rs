@@ -7,7 +7,7 @@ use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::template::Template;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, PaintCtx, PositionCtx, TextPath, Widget, WidgetContainer, WithSize, Axis};
+use crate::{AnyWidget, Axis, PaintCtx, PositionCtx, TextPath, Widget, WidgetContainer, WithSize};
 
 /// A widget that lays out its children vertically.
 /// ```text
@@ -80,10 +80,7 @@ impl Widget for VStack {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Vertical, ctx)
-            .layout()?
-            .layout_spacers(Axis::Vertical)?
-            .size()
+        Layouts::new(Vertical, &mut ctx).layout()?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {

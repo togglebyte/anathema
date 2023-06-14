@@ -1,7 +1,9 @@
 use anathema_render::Size;
 
 use super::Constraints;
-use crate::{Axis, WidgetContainer, WidgetLookup};
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::{Axis, Expand, WidgetContainer, WidgetLookup};
 
 /// Distributes the total size over a list of weights
 ///
@@ -11,7 +13,12 @@ use crate::{Axis, WidgetContainer, WidgetLookup};
 /// Allocates a minimum of one to each weight.
 fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     assert!(total > weights.len());
-    let mut indexed = weights.iter().copied().enumerate().map(|(i, w)| (i, w, 1usize)).collect::<Vec<_>>();
+    let mut indexed = weights
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(i, w)| (i, w, 1usize))
+        .collect::<Vec<_>>();
     total -= weights.len();
 
     fn pop(n: &mut usize) -> bool {
@@ -24,7 +31,9 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     }
 
     while pop(&mut total) {
-        indexed.sort_by_cached_key(|&(_, w, r)| (((w as f64) / ((r * (r + 1)) as f64).sqrt()) * -10000.) as isize);
+        indexed.sort_by_cached_key(|&(_, w, r)| {
+            (((w as f64) / ((r * (r + 1)) as f64).sqrt()) * -10000.) as isize
+        });
         indexed[0].2 += 1;
     }
 
@@ -32,53 +41,61 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     indexed.into_iter().map(|(_, _, r)| r).collect()
 }
 
-// pub fn layout<'gen: 'ctx, 'ctx>(widgets: &mut [WidgetContainer<'gen>], constraints: Constraints, ctx: &Context, lookup: &'gen WidgetLookup<'_>, direction: Direction) -> Size {
-    // let mut expansions = ctx.children.iter_mut().filter(|c| c.kind() == Expand::KIND).collect::<Vec<_>>();
-//     let factors = expansions.iter().map(|w| w.to_ref::<Expand>().factor).collect::<Vec<_>>();
+pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, axis: Axis) -> Result<Size> {
+    let mut expansions = ctx
+        .children
+        .iter_mut()
+        .filter(|c| c.kind() == Expand::KIND)
+        .collect::<Vec<_>>();
 
-//     let mut size = Size::ZERO;
+    let factors = expansions
+        .iter()
+        .map(|w| w.to_ref::<Expand>().factor)
+        .collect::<Vec<_>>();
 
-//     if factors.is_empty() {
-//         return size;
-//     }
+    let mut size = Size::ZERO;
 
-//     // Distribute the available space
-//     let sizes = match direction {
-//         Direction::Horizontal => distribute_size(&factors, constraints.max_width),
-//         Direction::Vertical => distribute_size(&factors, constraints.max_height),
-//     };
+    if factors.is_empty() {
+        return Ok(size);
+    }
 
-//     for (sub_size, expanded_widget) in std::iter::zip(sizes, expansions) {
-//         let constraints = match direction {
-//             Direction::Horizontal => {
-//                 let mut constraints = Constraints::new(sub_size, constraints.max_height);
+    // Distribute the available space
+    let sizes = match axis {
+        Axis::Horizontal => distribute_size(&factors, ctx.constraints.max_width),
+        Axis::Vertical => distribute_size(&factors, ctx.constraints.max_height),
+    };
 
-//                 // Ensure that the rounding doesn't push the constraint outside of the max width
-//                 constraints.min_width = constraints.max_width;
-//                 constraints
-//             }
-//             Direction::Vertical => {
-//                 let mut constraints = Constraints::new(constraints.max_width, sub_size);
+    for (sub_size, expanded_widget) in std::iter::zip(sizes, expansions) {
+        let constraints = match axis {
+            Axis::Horizontal => {
+                let mut constraints = Constraints::new(sub_size, ctx.constraints.max_height);
 
-//                 // Ensure that the rounding doesn't push the constraint outside of the max height
-//                 constraints.min_height = constraints.max_height;
-//                 constraints
-//             }
-//         };
+                // Ensure that the rounding doesn't push the constraint outside of the max width
+                constraints.min_width = constraints.max_width;
+                constraints
+            }
+            Axis::Vertical => {
+                let mut constraints = Constraints::new(ctx.constraints.max_width, sub_size);
 
-//         let widget_size = expanded_widget.layout(constraints, ctx, lookup);
+                // Ensure that the rounding doesn't push the constraint outside of the max height
+                constraints.min_height = constraints.max_height;
+                constraints
+            }
+        };
 
-//         match direction {
-//             Direction::Horizontal => {
-//                 size.width += widget_size.width;
-//                 size.height = size.height.max(widget_size.height);
-//             }
-//             Direction::Vertical => {
-//                 size.width = size.width.max(widget_size.width);
-//                 size.height += widget_size.height;
-//             }
-//         }
-//     }
+        let widget_size = expanded_widget.layout(constraints, ctx.values, ctx.lookup)?;
 
-//     size
-// }
+        match axis {
+            Axis::Horizontal => {
+                size.width += widget_size.width;
+                size.height = size.height.max(widget_size.height);
+            }
+            Axis::Vertical => {
+                size.width = size.width.max(widget_size.width);
+                size.height += widget_size.height;
+            }
+        }
+    }
+
+    Ok(size)
+}

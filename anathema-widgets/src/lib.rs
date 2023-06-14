@@ -18,10 +18,10 @@ mod widget;
 
 // Widgets
 // mod canvas;
-// mod expand;
 
 // mod alignment;
 mod border;
+mod expand;
 mod hstack;
 mod lookup;
 mod position;
@@ -90,7 +90,7 @@ pub use layout::{Align, Constraints, HorzEdge, Padding, VertEdge};
 // pub use crate::alignment::Alignment;
 pub use crate::border::Border;
 // pub use crate::canvas::Canvas;
-// pub use crate::expand::Expand;
+pub use crate::expand::Expand;
 pub use crate::hstack::HStack;
 pub use crate::position::Position;
 pub use crate::spacer::Spacer;

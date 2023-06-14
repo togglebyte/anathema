@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::border::BorderFactory;
 use crate::contexts::DataCtx;
 use crate::error::{Error, Result};
+use crate::expand::ExpandFactory;
 use crate::gen::store::Store;
 use crate::hstack::HStackFactory;
 use crate::position::PositionFactory;
@@ -47,8 +48,12 @@ impl Lookup {
                     .get(ident)
                     .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
                 let something = ValuesAttributes::new(values, attributes);
+                let background = something.background();
                 let widget = factory.make(something, text.as_ref())?;
-                Ok(WidgetContainer::new(widget, children))
+                let mut container = WidgetContainer::new(widget, children);
+                container.background = background;
+                // TODO: add padding to the container
+                Ok(container)
             }
             _ => panic!("there should only ever be nodes here, not {:?}", template),
         }
@@ -59,6 +64,7 @@ impl Default for Lookup {
     fn default() -> Self {
         let mut inner = HashMap::<_, Box<dyn WidgetFactory>>::new();
         inner.insert("border".to_string(), Box::new(BorderFactory));
+        inner.insert("expand".to_string(), Box::new(ExpandFactory));
         inner.insert("hstack".to_string(), Box::new(HStackFactory));
         inner.insert("position".to_string(), Box::new(PositionFactory));
         inner.insert("spacer".to_string(), Box::new(SpacerFactory));

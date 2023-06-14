@@ -26,11 +26,6 @@ pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, axis: Axis) -> Result<Size> {
     ctx.constraints.min_height = ctx.constraints.max_height;
 
     for spacer in ctx.children.iter_mut().filter(|c| c.kind() == Spacer::KIND) {
-        // Ignore all widgets that aren't spacers
-        if spacer.kind() != Spacer::KIND {
-            continue;
-        }
-
         let s = spacer.layout(ctx.constraints, ctx.values, ctx.lookup)?;
 
         match axis {

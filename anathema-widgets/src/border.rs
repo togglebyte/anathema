@@ -3,7 +3,7 @@ use unicode_width::UnicodeWidthChar;
 
 use super::{LocalPos, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::contexts::LayoutCtx;
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
 use crate::lookup::WidgetFactory;
 use crate::values::{
@@ -11,7 +11,7 @@ use crate::values::{
     BORDER_EDGE_LEFT, BORDER_EDGE_RIGHT, BORDER_EDGE_TOP, BORDER_EDGE_TOP_LEFT,
     BORDER_EDGE_TOP_RIGHT, DEFAULT_SLIM_EDGES, DEFAULT_THICK_EDGES,
 };
-use crate::{AnyWidget, Attributes, BorderStyle, DataCtx, Sides, TextPath, Constraints};
+use crate::{AnyWidget, Attributes, BorderStyle, Constraints, DataCtx, Sides, TextPath};
 
 /// Draw a border around an element.
 ///
@@ -198,13 +198,13 @@ impl Widget for Border {
                 // Shrink the constraint for the child to fit inside the border
                 constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
                     Some(w) => w,
-                    None => return Err(Error::InsufficientSpaceAvailble)
+                    None => return Err(Error::InsufficientSpaceAvailble),
                 };
 
                 constraints.max_height = match constraints.max_height.checked_sub(border_size.height) {
-                    Some(h) => h,
-                    None => return Err(Error::InsufficientSpaceAvailble)
-                };
+                        Some(h) => h,
+                        None => return Err(Error::InsufficientSpaceAvailble),
+                    };
 
                 if constraints.min_width > constraints.max_width {
                     constraints.min_width = constraints.max_width;
@@ -245,7 +245,8 @@ impl Widget for Border {
                 }
             }
             None => {
-                let mut size = Size::new(layout.constraints.min_width, layout.constraints.min_height);
+                let mut size =
+                    Size::new(layout.constraints.min_width, layout.constraints.min_height);
                 if layout.constraints.is_width_tight() {
                     size.width = layout.constraints.max_width;
                 }
