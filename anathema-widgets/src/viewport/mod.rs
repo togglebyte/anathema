@@ -6,9 +6,12 @@ use super::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::generator::Generator;
+use crate::layout::Layouts;
+use crate::layout::horizontal::Horizontal;
+use crate::layout::vertical::Vertical;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Direction, TextPath, Value, Widget, WidgetContainer};
+use crate::{AnyWidget, Direction, TextPath, Value, Widget, WidgetContainer, Axis};
 
 mod layout;
 mod position;
@@ -16,6 +19,8 @@ mod position;
 /// A viewport where the children can be rendered with an offset.
 #[derive(Debug)]
 pub struct Viewport {
+    /// Line / cell offset
+    pub offset: usize,
     /// Clamp the vertical space, meaning the edge of the content can not surpass the edge of the
     /// visible space.
     pub clamp_vertical: bool,
@@ -26,17 +31,21 @@ pub struct Viewport {
     /// `Direction::Forward` is the default, and keeps the scroll position on the first child.
     /// `Direction::Backward` keeps the scroll position on the last child.
     pub direction: Direction,
+    /// Vertical or horizontal
+    pub axis: Axis,
 }
 
 impl Viewport {
     const KIND: &'static str = "Viewport";
 
     /// Create a new instance of a [`Viewport`]
-    pub fn new(direction: Direction) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: Option<usize>) -> Self {
         Self {
+            offset: offset.unwrap_or(0),
             clamp_horizontal: true,
             clamp_vertical: true,
             direction,
+            axis,
         }
     }
 }
@@ -46,13 +55,26 @@ impl Widget for Viewport {
         Self::KIND
     }
 
-    fn layout<'tpl, 'parent>(&mut self, layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        panic!()
+    fn layout<'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
+        match self.axis {
+            Axis::Vertical => {
+                ctx.constraints.unbound_height();
+                Layouts::new(Vertical, &mut ctx).layout()?.size()
+            }
+            Axis::Horizontal => {
+                ctx.constraints.unbound_width();
+                Layouts::new(Horizontal, &mut ctx).layout()?.size()
+            }
+        }
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-        let position = Position::new(self.direction);
-        position.position(ctx, children);
+        let mut pos = ctx.padded_position();
+        // let count = children.len();
+        for widget in children {
+            widget.position(pos);
+            pos.y += widget.size.height as i32;
+        }
     }
 
     fn paint<'gen, 'ctx>(
@@ -81,7 +103,9 @@ impl WidgetFactory for ViewportFactory {
         let binding = values.get_attrib("binding").map(|v| v.to_string());
         let item = values.get_int("item").unwrap_or(0) as usize;
         let direction = values.direction().unwrap_or(Direction::Forward);
-        let widget = Viewport::new(direction);
+        let axis = values.axis().unwrap_or(Axis::Vertical);
+        let offset = values.offset();
+        let widget = Viewport::new(direction, axis, offset);
         Ok(Box::new(widget))
     }
 }
