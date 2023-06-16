@@ -1,4 +1,10 @@
-use crate::Align;
+use anathema_render::Size;
+
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::layout::Layouts;
+use crate::layout::single::Single;
+use crate::{Align, Widget, Pos, PositionCtx, WidgetContainer};
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
 /// See [`Align`](crate::layout::Align) for more information.
@@ -29,84 +35,51 @@ impl Default for Alignment {
     }
 }
 
-// impl Widget for Alignment {
-//     fn kind(&self) -> &'static str {
-//         Self::KIND
-//     }
+impl Widget for Alignment {
+    fn kind(&self) -> &'static str {
+        Self::KIND
+    }
 
-//     fn as_any_ref(&self) -> &dyn std::any::Any {
-//         self
-//     }
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+        // TODO: should alignment ALWAYS expand the size, even if there is no child widget?
+        Layouts::new(Single, &mut ctx).layout()?
+            .expand_horz()
+            .expand_vert()
+            .size()
+    }
 
-//     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-//         self
-//     }
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+        let mut pos = ctx.padded_position();
+            if let Some(child) = children.first_mut() {
+                let alignment = self.alignment;
 
-//     fn layout<'gen: 'ctx, 'ctx, 'container>(
-//         &mut self,
-//         ctx: LayoutCtx<'gen, 'ctx>,
-//         children: &mut Children<'gen>,
-//     ) -> Size {
-//         panic!()
-//         // let constraints = ctx.padded_constraints();
-//         // // -----------------------------------------------------------------------------
-//         // //     - Layout child -
-//         // // -----------------------------------------------------------------------------
-//         // match self.child.as_mut() {
-//         //     Some(child) => {
-//         //         let _child_size = child.layout(constraints, ctx.force_layout);
-//         //         Size::new(constraints.max_width, constraints.max_height)
-//         //     }
-//         //     None => Size::ZERO,
-//         // }
-//     }
+                let width = ctx.size.width as i32;
+                let height = ctx.size.height as i32;
+                let child_width = child.size.width as i32;
+                let child_height = child.size.height as i32;
 
-//     fn position<'gen: 'ctx, 'ctx>(
-//         &mut self,
-//         ctx: PositionCtx,
-//         children: &mut [WidgetContainer<'gen>],
-//     ) {
-//         // if let Some(child) = self.child.as_mut() {
-//         //     let alignment = self.alignment;
+                let child_offset = match alignment {
+                    Align::TopLeft => Pos::ZERO,
+                    Align::Top => Pos::new(width / 2 - child_width / 2, 0),
+                    Align::TopRight => Pos::new(width - child_width, 0),
+                    Align::Right => Pos::new(width - child_width, height / 2 - child_height / 2),
+                    Align::BottomRight => Pos::new(width - child_width, height - child_height),
+                    Align::Bottom => Pos::new(width / 2 - child_width / 2, height - child_height),
+                    Align::BottomLeft => Pos::new(0, height - child_height),
+                    Align::Left => Pos::new(0, height / 2 - child_height / 2),
+                    Align::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
+                };
 
-//         //     let width = ctx.size.width as i32;
-//         //     let height = ctx.size.height as i32;
-//         //     let child_width = child.size.width as i32;
-//         //     let child_height = child.size.height as i32;
+                child.position(ctx.padded_position() + child_offset);
+            }
+        }
 
-//         //     let child_offset = match alignment {
-//         //         Align::TopLeft => Pos::ZERO,
-//         //         Align::Top => Pos::new(width / 2 - child_width / 2, 0),
-//         //         Align::TopRight => Pos::new(width - child_width, 0),
-//         //         Align::Right => Pos::new(width - child_width, height / 2 - child_height / 2),
-//         //         Align::BottomRight => Pos::new(width - child_width, height - child_height),
-//         //         Align::Bottom => Pos::new(width / 2 - child_width / 2, height - child_height),
-//         //         Align::BottomLeft => Pos::new(0, height - child_height),
-//         //         Align::Left => Pos::new(0, height / 2 - child_height / 2),
-//         //         Align::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
-//         //     };
-
-//         //     child.position(ctx.padded_position() + child_offset);
-//         // }
-//     }
-
-//     fn paint<'gen: 'ctx, 'ctx>(
-//         &mut self,
-//         ctx: PaintCtx<'_, WithSize>,
-//         children: &mut [WidgetContainer<'gen>],
-//     ) {
-//         // if let Some(child) = self.child.as_mut() {
-//         //     let ctx = ctx.to_unsized();
-//         //     child.paint(ctx);
-//         // }
-//     }
-
-//     // fn update(&mut self, ctx: UpdateCtx) {
-//     //     ctx.attributes
-//     //         .has(fields::ALIGNMENT)
-//     //         .then(|| self.alignment = ctx.attributes.alignment().unwrap_or(Align::Left));
-//     // }
-// }
+    //     // fn update(&mut self, ctx: UpdateCtx) {
+    //     //     ctx.attributes
+    //     //         .has(fields::ALIGNMENT)
+    //     //         .then(|| self.alignment = ctx.attributes.alignment().unwrap_or(Align::Left));
+    //     // }
+}
 
 #[cfg(test)]
 mod test {

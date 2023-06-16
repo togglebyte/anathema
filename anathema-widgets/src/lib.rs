@@ -19,7 +19,7 @@ mod widget;
 // Widgets
 // mod canvas;
 
-// mod alignment;
+mod alignment;
 mod border;
 mod expand;
 mod hstack;
@@ -87,7 +87,7 @@ impl Direction {
 pub use layout::text::Wrap;
 pub use layout::{Align, Constraints, HorzEdge, Padding, VertEdge};
 
-// pub use crate::alignment::Alignment;
+pub use crate::alignment::Alignment;
 pub use crate::border::Border;
 // pub use crate::canvas::Canvas;
 pub use crate::expand::Expand;

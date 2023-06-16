@@ -96,6 +96,7 @@ mod test {
         let mut index = Index::new(Direction::Forward, 2);
         index.flip();
         assert_eq!(1, index.next().unwrap());
+        assert_eq!(0, index.next().unwrap());
     }
 
     #[test]

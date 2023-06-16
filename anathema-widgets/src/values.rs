@@ -13,9 +13,6 @@ use crate::{
     fields, Align, Attributes, Axis, Color, DataCtx, Direction, Display, Padding, Path,
     TextPath, Wrap,
 };
-// use crate::{
-//     Align, Axis, BorderStyle, Color, Direction, Display, Offset, Path, Sides, TextAlignment, Wrap,
-// };
 
 #[cfg(feature = "serde-json")]
 pub mod json;

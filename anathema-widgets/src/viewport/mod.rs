@@ -8,6 +8,7 @@ use crate::error::Result;
 use crate::gen::generator::Generator;
 use crate::layout::Layouts;
 use crate::layout::horizontal::Horizontal;
+use crate::layout::many::Many;
 use crate::layout::vertical::Vertical;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
@@ -56,24 +57,18 @@ impl Widget for Viewport {
     }
 
     fn layout<'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        match self.axis {
-            Axis::Vertical => {
-                ctx.constraints.unbound_height();
-                Layouts::new(Vertical, &mut ctx).layout()?.size()
-            }
-            Axis::Horizontal => {
-                ctx.constraints.unbound_width();
-                Layouts::new(Horizontal, &mut ctx).layout()?.size()
-            }
-        }
+        Layouts::new(Many::new(self.direction, self.axis, self.offset), &mut ctx).layout()?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         let mut pos = ctx.padded_position();
-        // let count = children.len();
+        let offset = self.offset;
         for widget in children {
             widget.position(pos);
-            pos.y += widget.size.height as i32;
+            match self.axis {
+                Axis::Horizontal => pos.x += widget.size.width as i32,
+                Axis::Vertical => pos.y += widget.size.height as i32,
+            }
         }
     }
 

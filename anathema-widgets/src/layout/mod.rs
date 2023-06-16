@@ -1,23 +1,31 @@
 use std::fmt::{self, Display};
-use crate::{error::Result, Axis};
+
+use crate::error::Result;
+use crate::Axis;
 
 mod constraints;
 
 pub(crate) mod expand;
 pub(crate) mod horizontal;
+pub(crate) mod many;
+pub(crate) mod single;
 pub(crate) mod spacers;
+pub(crate) mod stacked;
 pub(crate) mod text;
 pub(crate) mod vertical;
-pub(crate) mod stacked;
-pub(crate) mod single;
 
 use anathema_render::Size;
 pub use constraints::Constraints;
 
-use crate::{contexts::LayoutCtx, gen::generator::Generator};
+use crate::contexts::LayoutCtx;
+use crate::gen::generator::Generator;
 
 pub trait Layout {
-    fn layout<'widget, 'tpl, 'parent>(&mut self, ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>, size: &mut Size) -> Result<()>;
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        size: &mut Size,
+    ) -> Result<()>;
 }
 
 // -----------------------------------------------------------------------------
@@ -98,7 +106,12 @@ impl Padding {
 
     /// Create a new instance padding
     pub const fn new(padding: usize) -> Self {
-        Self { top: padding, right: padding, bottom: padding, left: padding }
+        Self {
+            top: padding,
+            right: padding,
+            bottom: padding,
+            left: padding,
+        }
     }
 
     /// Return the current padding and set the padding to zero

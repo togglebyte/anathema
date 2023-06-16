@@ -28,8 +28,14 @@ impl<'tpl, 'parent> Generator<'tpl, 'parent> {
         }
     }
 
+    /// Reverse the generator from its current position
     pub fn reverse(&mut self) {
         self.scope.reverse();
+    }
+
+    /// Flip the generator to start from the end and change direction.
+    pub fn flip(&mut self) {
+        self.scope.flip();
     }
 
     pub fn next(
