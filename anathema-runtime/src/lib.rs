@@ -50,14 +50,14 @@ impl Runtime {
     pub fn run(mut self) -> Result<()> {
         self.screen.clear_all(&mut self.output)?;
 
-        // loop {
+        loop {
             self.views()?;
 
             self.screen.render(&mut self.output)?;
 
             thread::sleep(Duration::from_millis(500));
             self.screen.erase();
-        // }
+        }
             Ok(())
     }
 }

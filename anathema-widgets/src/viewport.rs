@@ -55,6 +55,7 @@ impl Widget for Viewport {
         let many = Many::new(self.direction, self.axis, self.offset);
         let mut layout = Layouts::new(many, &mut ctx);
         layout.layout()?;
+        self.offset = layout.layout.offset();
         layout.size()
     }
 

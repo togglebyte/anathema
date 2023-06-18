@@ -127,18 +127,18 @@ impl Layout for Many {
                 continue;
             }
 
-            let mut size = match widget.layout(max_constraints, &values, ctx.lookup) {
+            let mut widget_size = match widget.layout(max_constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,
             };
 
-            if self.offset.skip(&mut size) {
+            if self.offset.skip(&mut widget_size) {
                 continue;
             }
 
             ctx.children.push(widget);
-            used_size.apply(size);
+            used_size.apply(widget_size);
 
             if used_size.empty() {
                 break;
