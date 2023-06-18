@@ -1,7 +1,5 @@
 use anathema_render::Size;
 
-use self::layout::ViewportLayout;
-use self::position::Position;
 use super::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
@@ -14,14 +12,11 @@ use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
 use crate::{AnyWidget, Axis, Direction, TextPath, Value, Widget, WidgetContainer, Region, Pos};
 
-mod layout;
-mod position;
-
 /// A viewport where the children can be rendered with an offset.
 #[derive(Debug)]
 pub struct Viewport {
     /// Line / cell offset
-    pub offset: isize,
+    pub offset: i32,
     /// Clamp the vertical space, meaning the edge of the content can not surpass the edge of the
     /// visible space.
     pub clamp_vertical: bool,
@@ -40,7 +35,7 @@ impl Viewport {
     const KIND: &'static str = "Viewport";
 
     /// Create a new instance of a [`Viewport`]
-    pub fn new(direction: Direction, axis: Axis, offset: Option<isize>) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: Option<i32>) -> Self {
         Self {
             offset: offset.unwrap_or(0),
             clamp_horizontal: true,
@@ -60,7 +55,7 @@ impl Widget for Viewport {
         let many = Many::new(self.direction, self.axis, self.offset);
         let mut layout = Layouts::new(many, &mut ctx);
         layout.layout()?;
-        self.offset = layout.layout.offset;
+        self.offset = layout.layout.offset();
         let size = layout.size()?;
         Ok(size)
     }
@@ -70,8 +65,8 @@ impl Widget for Viewport {
         let offset = -self.offset;
 
         match self.axis {
-            Axis::Horizontal => pos.x += offset as i32,
-            Axis::Vertical => pos.y += offset as i32,
+            Axis::Horizontal => pos.x += offset,
+            Axis::Vertical => pos.y += offset,
         }
 
         for widget in children {

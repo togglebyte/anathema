@@ -709,8 +709,8 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
         self.get_int(fields::FACTOR).map(|i| i as usize)
     }
 
-    pub fn offset(&self) -> Option<isize> {
-        self.get_signed_int(fields::OFFSET).map(|i| i as isize)
+    pub fn offset(&self) -> Option<i32> {
+        self.get_signed_int(fields::OFFSET).map(|i| i as i32)
     }
 
     pub fn fill(&self) -> Option<Cow<'_, str>> {

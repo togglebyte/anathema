@@ -6,21 +6,98 @@ use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
 use crate::{Axis, Constraints, Direction, Expand, Spacer};
 
+struct SizeMod {
+    inner: Size,
+    max_size: Size,
+    axis: Axis,
+}
+
+impl SizeMod {
+    const fn new(max_size: Size, axis: Axis) -> Self {
+        Self {
+            inner: Size::ZERO,
+            max_size,
+            axis,
+        }
+    }
+
+    fn apply(&mut self, size: Size) {
+        match self.axis {
+            Axis::Vertical => {
+                self.inner.width = self.inner.width.max(size.width);
+                self.inner.height = (self.inner.height + size.height).min(self.max_size.height);
+            }
+            Axis::Horizontal => {
+                self.inner.height = self.inner.height.max(size.height);
+                self.inner.width = (self.inner.width + size.width).min(self.max_size.width);
+            }
+        }
+    }
+
+    // TODO: rename this
+    fn empty(&self) -> bool {
+        match self.axis {
+            Axis::Horizontal => self.inner.width >= self.max_size.width,
+            Axis::Vertical => self.inner.height >= self.max_size.height,
+        }
+    }
+}
+
+struct Offset {
+    axis: Axis,
+    inner: i32,
+    enabled: bool,
+}
+
+impl Offset {
+    fn skip(&mut self, size: &mut Size) -> bool {
+        let height = size.height as i32;
+        let width = size.width as i32;
+        match self.axis {
+            Axis::Vertical if self.enabled && self.inner >= height => {
+                self.inner -= height;
+                true
+            }
+            Axis::Vertical if self.enabled => {
+                self.enabled = false;
+                size.height -= self.inner as usize;
+                false
+            }
+            Axis::Horizontal if self.enabled && self.inner >= width => {
+                self.inner -= width;
+                true
+            }
+            Axis::Horizontal if self.enabled => {
+                self.enabled = false;
+                size.width -= self.inner as usize;
+                false
+            }
+            _ => false,
+        }
+    }
+}
+
 pub struct Many {
-    pub offset: isize,
     pub direction: Direction,
     pub axis: Axis,
-    offsetting: bool,
+    offset: Offset,
 }
 
 impl Many {
-    pub fn new(direction: Direction, axis: Axis, offset: isize) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: i32) -> Self {
         Self {
             direction,
             axis,
-            offset,
-            offsetting: true,
+            offset: Offset {
+                axis,
+                inner: offset,
+                enabled: true,
+            },
         }
+    }
+
+    pub fn offset(&self) -> i32 {
+        self.offset.inner
     }
 }
 
@@ -33,91 +110,62 @@ impl Layout for Many {
         let mut values = ctx.values.next();
         let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
         let max_constraints = ctx.padded_constraints();
-        let mut used_size = Size::ZERO;
+
+        let mut used_size = SizeMod::new(
+            Size::new(max_constraints.max_width, max_constraints.max_height),
+            self.axis,
+        );
 
         if let Direction::Backward = self.direction {
             gen.flip();
         }
 
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
-            let index = ctx.children.len();
-            ctx.children.push(widget);
-            let widget = &mut ctx.children[index];
-
             // Ignore spacers
-            if widget.kind() == Spacer::KIND {
+            if  [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
+                ctx.children.push(widget);
                 continue;
             }
 
-            // Ignore expanded
-            if widget.kind() == Expand::KIND {
-                continue;
-            }
-
-            let size = match widget.layout(max_constraints, &values, ctx.lookup) {
+            let mut size = match widget.layout(max_constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,
             };
 
-            match self.axis {
-                Axis::Vertical => {
-                    if self.offsetting {
-                        if self.offset >= size.height as isize {
-                            self.offset -= size.height as isize;
-                            ctx.children.remove(index);
-                            continue
-                        } else {
-                            self.offsetting = false;
-                            used_size.width = used_size.width.max(size.width);
-                            used_size.height = (used_size.height + size.height - self.offset as usize).min(max_constraints.max_height);
-                        }
-                    } else {
-                        used_size.width = used_size.width.max(size.width);
-                        used_size.height = (used_size.height + size.height).min(max_constraints.max_height);
-                    }
+            if self.offset.skip(&mut size) {
+                continue;
+            }
 
-                    if used_size.height >= max_constraints.max_height {
-                        break;
-                    }
-                }
-                Axis::Horizontal => {
-                    if self.offsetting {
-                        if self.offset >= size.width as isize {
-                            self.offset -= size.width as isize;
-                            ctx.children.remove(index);
-                            continue
-                        } else {
-                            self.offsetting = false;
-                            used_size.width = (used_size.width + size.width - self.offset as usize).min(max_constraints.max_width);
-                            used_size.height = used_size.height.max(size.height);
-                        }
-                    } else {
-                        used_size.width = (used_size.width + size.width).min(max_constraints.max_width);
-                        used_size.height = used_size.height.max(size.height);
-                    }
+            ctx.children.push(widget);
+            used_size.apply(size);
 
-                    if used_size.width >= max_constraints.max_width {
-                        break;
-                    }
-                }
+            if used_size.empty() {
+                break;
             }
         }
 
         match self.axis {
             Axis::Vertical => {
                 size.width += ctx.padding.left + ctx.padding.right;
-                size.width = size.width.max(used_size.width);
+                size.width = size.width.max(used_size.inner.width);
                 size.height = size
                     .height
-                    .max(used_size.height)
+                    .max(used_size.inner.height)
                     .max(max_constraints.min_height);
             }
             Axis::Horizontal => {
                 size.height += ctx.padding.left + ctx.padding.right;
-                size.height = size.height.max(used_size.height);
-                size.width = size.width.max(used_size.width).max(max_constraints.min_width);
+                size.height = size.height.max(used_size.inner.height);
+                size.width = size
+                    .width
+                    .max(used_size.inner.width)
+                    .max(max_constraints.min_width);
             }
+        }
+
+        if let Direction::Backward = self.direction {
+            ctx.children.reverse();
         }
 
         Ok(())
