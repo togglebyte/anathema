@@ -292,8 +292,10 @@ impl Widget for Border {
     ) {
         // Draw the child
         let border_size = self.border_size();
+
         if let Some(child) = children.first_mut() {
             let mut clipping_region = ctx.create_region();
+
             clipping_region.to.x -= border_size.width as i32 / 2;
             clipping_region.to.y -= border_size.height as i32 / 2;
 

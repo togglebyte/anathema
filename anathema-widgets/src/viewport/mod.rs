@@ -6,13 +6,13 @@ use super::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::generator::Generator;
-use crate::layout::Layouts;
 use crate::layout::horizontal::Horizontal;
 use crate::layout::many::Many;
 use crate::layout::vertical::Vertical;
+use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Direction, TextPath, Value, Widget, WidgetContainer, Axis};
+use crate::{AnyWidget, Axis, Direction, TextPath, Value, Widget, WidgetContainer, Region, Pos};
 
 mod layout;
 mod position;
@@ -21,7 +21,7 @@ mod position;
 #[derive(Debug)]
 pub struct Viewport {
     /// Line / cell offset
-    pub offset: usize,
+    pub offset: isize,
     /// Clamp the vertical space, meaning the edge of the content can not surpass the edge of the
     /// visible space.
     pub clamp_vertical: bool,
@@ -40,7 +40,7 @@ impl Viewport {
     const KIND: &'static str = "Viewport";
 
     /// Create a new instance of a [`Viewport`]
-    pub fn new(direction: Direction, axis: Axis, offset: Option<usize>) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: Option<isize>) -> Self {
         Self {
             offset: offset.unwrap_or(0),
             clamp_horizontal: true,
@@ -57,12 +57,23 @@ impl Widget for Viewport {
     }
 
     fn layout<'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        Layouts::new(Many::new(self.direction, self.axis, self.offset), &mut ctx).layout()?.size()
+        let many = Many::new(self.direction, self.axis, self.offset);
+        let mut layout = Layouts::new(many, &mut ctx);
+        layout.layout()?;
+        self.offset = layout.layout.offset;
+        let size = layout.size()?;
+        Ok(size)
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         let mut pos = ctx.padded_position();
-        let offset = self.offset;
+        let offset = -self.offset;
+
+        match self.axis {
+            Axis::Horizontal => pos.x += offset as i32,
+            Axis::Vertical => pos.y += offset as i32,
+        }
+
         for widget in children {
             widget.position(pos);
             match self.axis {
@@ -72,15 +83,10 @@ impl Widget for Viewport {
         }
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'tpl>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'tpl>]) {
+        let region = ctx.create_region();
         for child in children {
-            let ctx = ctx.sub_context(None);
-            // TODO: do we even need the clipping region here?
-            // let ctx = ctx.sub_context(Some(&clip));
+            let ctx = ctx.sub_context(Some(&region));
             child.paint(ctx);
         }
     }

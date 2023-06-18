@@ -97,12 +97,13 @@ impl Widget for Position {
     }
 
     fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
-        let mut layout = Layouts::new(Single, &mut ctx).layout()?;
+        let mut layout = Layouts::new(Single, &mut ctx);
+        layout.layout()?;
         if let HorzEdge::Right(_) = self.horz_edge {
-            layout = layout.expand_horz();
+            layout.expand_horz();
         }
         if let VertEdge::Bottom(_) = self.vert_edge {
-            layout = layout.expand_vert();
+            layout.expand_vert();
         }
         layout.size()
     }

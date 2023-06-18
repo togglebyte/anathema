@@ -286,6 +286,14 @@ impl Region {
 
     /// Check if a region is entirely contained within this region
     pub const fn contains(&self, pos: Pos) -> bool {
-        pos.x >= self.from.x && pos.y >= self.from.y && pos.x < self.to.x && pos.y < self.to.y
+        pos.x >= self.from.x && pos.y >= self.from.y && pos.x <= self.to.x && pos.y <= self.to.y
+    }
+
+    /// Constrain a region to fit within another region
+    pub fn constrain(&mut self, other: &Region) {
+        self.from.x = self.from.x.max(other.from.x);
+        self.from.y = self.from.y.max(other.from.y);
+        self.to.x = self.to.x.min(other.to.x);
+        self.to.y = self.to.y.min(other.to.y);
     }
 }

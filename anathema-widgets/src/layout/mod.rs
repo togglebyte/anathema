@@ -32,9 +32,9 @@ pub trait Layout {
 //   - Layouts -
 // -----------------------------------------------------------------------------
 pub struct Layouts<'ctx, 'widget, 'tpl, 'parent, T> {
-    ctx: &'ctx mut LayoutCtx<'widget, 'tpl, 'parent>,
-    size: Size,
-    layout: T,
+    pub ctx: &'ctx mut LayoutCtx<'widget, 'tpl, 'parent>,
+    pub size: Size,
+    pub layout: T,
 }
 
 impl<'ctx, 'widget, 'tpl, 'parent, T: Layout> Layouts<'ctx, 'widget, 'tpl, 'parent, T> {
@@ -46,22 +46,22 @@ impl<'ctx, 'widget, 'tpl, 'parent, T: Layout> Layouts<'ctx, 'widget, 'tpl, 'pare
         }
     }
 
-    pub fn layout(mut self) -> Result<Self> {
+    pub fn layout(&mut self) -> Result<&mut Self> {
         self.layout.layout(self.ctx, &mut self.size)?;
         Ok(self)
     }
 
-    pub fn expand_horz(mut self) -> Self {
+    pub fn expand_horz(&mut self) -> &mut Self {
         self.size.width = self.ctx.constraints.max_width;
         self
     }
 
-    pub fn expand_vert(mut self) -> Self {
+    pub fn expand_vert(&mut self) -> &mut Self {
         self.size.height = self.ctx.constraints.max_height;
         self
     }
 
-    pub fn size(self) -> Result<Size> {
+    pub fn size(&self) -> Result<Size> {
         Ok(self.size)
     }
 }

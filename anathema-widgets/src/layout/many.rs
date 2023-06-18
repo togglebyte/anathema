@@ -7,17 +7,19 @@ use crate::gen::generator::Generator;
 use crate::{Axis, Constraints, Direction, Expand, Spacer};
 
 pub struct Many {
-    offset: usize,
-    direction: Direction,
-    axis: Axis,
+    pub offset: isize,
+    pub direction: Direction,
+    pub axis: Axis,
+    offsetting: bool,
 }
 
 impl Many {
-    pub fn new(direction: Direction, axis: Axis, offset: usize) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: isize) -> Self {
         Self {
             direction,
             axis,
-            offset
+            offset,
+            offsetting: true,
         }
     }
 }
@@ -30,7 +32,7 @@ impl Layout for Many {
     ) -> Result<()> {
         let mut values = ctx.values.next();
         let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
-        let constraints = ctx.padded_constraints();
+        let max_constraints = ctx.padded_constraints();
         let mut used_size = Size::ZERO;
 
         if let Direction::Backward = self.direction {
@@ -52,18 +54,7 @@ impl Layout for Many {
                 continue;
             }
 
-            let constraints = match self.axis {
-                Axis::Vertical => Constraints::new(
-                    constraints.max_width,
-                    constraints.max_height - used_size.height,
-                ),
-                Axis::Horizontal => Constraints::new(
-                    constraints.max_width - used_size.width,
-                    constraints.max_height,
-                ),
-            };
-
-            let size = match widget.layout(constraints, &values, ctx.lookup) {
+            let size = match widget.layout(max_constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,
@@ -71,28 +62,42 @@ impl Layout for Many {
 
             match self.axis {
                 Axis::Vertical => {
-                    used_size.width = used_size.width.max(size.width);
-                    used_size.height = (used_size.height + size.height).min(constraints.max_height);
-
-                    self.offset = self.offset.saturating_sub(size.height);
-                    if self.offset > 0 {
-                        ctx.children.remove(index);
+                    if self.offsetting {
+                        if self.offset >= size.height as isize {
+                            self.offset -= size.height as isize;
+                            ctx.children.remove(index);
+                            continue
+                        } else {
+                            self.offsetting = false;
+                            used_size.width = used_size.width.max(size.width);
+                            used_size.height = (used_size.height + size.height - self.offset as usize).min(max_constraints.max_height);
+                        }
+                    } else {
+                        used_size.width = used_size.width.max(size.width);
+                        used_size.height = (used_size.height + size.height).min(max_constraints.max_height);
                     }
 
-                    if used_size.width >= constraints.max_width {
+                    if used_size.height >= max_constraints.max_height {
                         break;
                     }
                 }
                 Axis::Horizontal => {
-                    used_size.width = (used_size.width + size.width).min(constraints.max_width);
-                    used_size.height = used_size.height.max(size.height);
-
-                    self.offset = self.offset.saturating_sub(size.width);
-                    if self.offset > 0 {
-                        ctx.children.remove(index);
+                    if self.offsetting {
+                        if self.offset >= size.width as isize {
+                            self.offset -= size.width as isize;
+                            ctx.children.remove(index);
+                            continue
+                        } else {
+                            self.offsetting = false;
+                            used_size.width = (used_size.width + size.width - self.offset as usize).min(max_constraints.max_width);
+                            used_size.height = used_size.height.max(size.height);
+                        }
+                    } else {
+                        used_size.width = (used_size.width + size.width).min(max_constraints.max_width);
+                        used_size.height = used_size.height.max(size.height);
                     }
 
-                    if used_size.height >= constraints.max_height {
+                    if used_size.width >= max_constraints.max_width {
                         break;
                     }
                 }
@@ -103,12 +108,15 @@ impl Layout for Many {
             Axis::Vertical => {
                 size.width += ctx.padding.left + ctx.padding.right;
                 size.width = size.width.max(used_size.width);
-                size.height = size.height.max(used_size.height).max(constraints.min_height);
+                size.height = size
+                    .height
+                    .max(used_size.height)
+                    .max(max_constraints.min_height);
             }
             Axis::Horizontal => {
                 size.height += ctx.padding.left + ctx.padding.right;
                 size.height = size.height.max(used_size.height);
-                size.width = size.width.max(used_size.width).max(constraints.min_width);
+                size.width = size.width.max(used_size.width).max(max_constraints.min_width);
             }
         }
 

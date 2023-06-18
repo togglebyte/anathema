@@ -21,6 +21,10 @@ impl DataCtx {
     pub fn by_key(&self, key: &str) -> Option<&Value> {
         self.0.get(key)
     }
+
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value> {
+        self.0.get_mut(key)
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -151,13 +155,19 @@ impl<'screen> PaintCtx<'screen, WithSize> {
     }
 
     pub fn create_region(&self) -> Region {
-        Region::new(
+        let mut region = Region::new(
             self.global_pos,
             Pos::new(
                 self.global_pos.x + self.local_size.width as i32,
                 self.global_pos.y + self.local_size.height as i32,
             ),
-        )
+        );
+
+        if let Some(existing) = self.clip {
+            region.constrain(existing);
+        }
+
+        region
     }
 
     fn clip(&self, local_pos: LocalPos, clip: &Region) -> bool {
@@ -199,6 +209,7 @@ impl<'screen> PaintCtx<'screen, WithSize> {
     }
 
     pub fn print(&mut self, s: &str, style: Style, mut pos: LocalPos) -> Option<LocalPos> {
+        let x = s;
         for c in s.chars() {
             let p = self.put(c, style, pos)?;
             pos = p;
@@ -237,7 +248,10 @@ impl<'screen> PaintCtx<'screen, WithSize> {
         }
 
         // 3. Place the char
-        let screen_pos = self.translate_to_screen(input_pos)?;
+        let screen_pos = match self.translate_to_screen(input_pos) {
+            Some(pos) => pos,
+            None => return Some(next)
+        };
         self.screen.put(c, style, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)
