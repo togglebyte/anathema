@@ -284,9 +284,12 @@ impl Region {
         true
     }
 
-    /// Check if a region is entirely contained within this region
-    pub const fn contains(&self, pos: Pos) -> bool {
-        pos.x >= self.from.x && pos.y >= self.from.y && pos.x <= self.to.x && pos.y <= self.to.y
+    /// Check if a region contains a position
+    pub fn contains(&self, pos: Pos) -> bool {
+        pos.x >= self.from.x && 
+        pos.x <= self.to.x && 
+        pos.y >= self.from.y && 
+        pos.y <= self.to.y
     }
 
     /// Constrain a region to fit within another region

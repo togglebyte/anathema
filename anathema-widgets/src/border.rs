@@ -296,9 +296,6 @@ impl Widget for Border {
         if let Some(child) = children.first_mut() {
             let mut clipping_region = ctx.create_region();
 
-            clipping_region.to.x -= border_size.width as i32 / 2;
-            clipping_region.to.y -= border_size.height as i32 / 2;
-
             let child_ctx = ctx.sub_context(Some(&clipping_region));
 
             child.paint(child_ctx);

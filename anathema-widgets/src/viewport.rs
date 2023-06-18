@@ -61,7 +61,16 @@ impl Widget for Viewport {
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         let mut pos = ctx.padded_position();
-        let offset = -self.offset;
+        if let Direction::Backward = self.direction {
+            match self.axis {
+                Axis::Horizontal => pos.x += ctx.size.width as i32,
+                Axis::Vertical => pos.y +=  ctx.size.height as i32,
+            }
+        }
+        let offset = match self.direction {
+            Direction::Forward => -self.offset,
+            Direction::Backward => self.offset,
+        };
 
         match self.axis {
             Axis::Horizontal => pos.x += offset,
@@ -69,10 +78,21 @@ impl Widget for Viewport {
         }
 
         for widget in children {
-            widget.position(pos);
-            match self.axis {
-                Axis::Horizontal => pos.x += widget.size.width as i32,
-                Axis::Vertical => pos.y += widget.size.height as i32,
+            if let Direction::Forward = self.direction {
+                widget.position(pos);
+            }
+            match self.direction {
+                Direction::Forward => match self.axis {
+                    Axis::Horizontal => pos.x += widget.size.width as i32,
+                    Axis::Vertical => pos.y += widget.size.height as i32,
+                },
+                Direction::Backward => match self.axis {
+                    Axis::Horizontal => pos.x -= widget.size.width as i32,
+                    Axis::Vertical => pos.y -= widget.size.height as i32,
+                },
+            }
+            if let Direction::Backward = self.direction {
+                widget.position(pos);
             }
         }
     }

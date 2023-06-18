@@ -47,6 +47,7 @@ struct Offset {
     axis: Axis,
     inner: i32,
     enabled: bool,
+    direction: Direction,
 }
 
 impl Offset {
@@ -92,6 +93,7 @@ impl Many {
                 axis,
                 inner: offset,
                 enabled: true,
+                direction,
             },
         }
     }
@@ -165,7 +167,7 @@ impl Layout for Many {
         }
 
         if let Direction::Backward = self.direction {
-            ctx.children.reverse();
+            // ctx.children.reverse();
         }
 
         Ok(())
