@@ -10,7 +10,7 @@ use crate::layout::vertical::Vertical;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Axis, Direction, TextPath, Value, Widget, WidgetContainer, Region, Pos};
+use crate::{AnyWidget, Axis, Direction, Pos, Region, TextPath, Value, Widget, WidgetContainer};
 
 /// A viewport where the children can be rendered with an offset.
 #[derive(Debug)]
@@ -55,9 +55,7 @@ impl Widget for Viewport {
         let many = Many::new(self.direction, self.axis, self.offset);
         let mut layout = Layouts::new(many, &mut ctx);
         layout.layout()?;
-        self.offset = layout.layout.offset();
-        let size = layout.size()?;
-        Ok(size)
+        layout.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
@@ -78,7 +76,11 @@ impl Widget for Viewport {
         }
     }
 
-    fn paint<'tpl>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'tpl>]) {
+    fn paint<'tpl>(
+        &mut self,
+        mut ctx: PaintCtx<'_, WithSize>,
+        children: &mut [WidgetContainer<'tpl>],
+    ) {
         let region = ctx.create_region();
         for child in children {
             let ctx = ctx.sub_context(Some(&region));

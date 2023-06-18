@@ -60,7 +60,7 @@ impl Offset {
             }
             Axis::Vertical if self.enabled => {
                 self.enabled = false;
-                size.height -= self.inner as usize;
+                size.height = (size.height as i32 - self.inner) as usize;
                 false
             }
             Axis::Horizontal if self.enabled && self.inner >= width => {
@@ -69,7 +69,7 @@ impl Offset {
             }
             Axis::Horizontal if self.enabled => {
                 self.enabled = false;
-                size.width -= self.inner as usize;
+                size.width = (size.width as i32 - self.inner) as usize;
                 false
             }
             _ => false,
