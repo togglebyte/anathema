@@ -112,7 +112,7 @@ impl Widget for Expand {
         children: &mut [WidgetContainer<'gen>],
     ) {
         if let Some(c) = children.first_mut() {
-            c.position(ctx.padded_position())
+            c.position(ctx.pos)
         }
     }
 

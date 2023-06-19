@@ -116,12 +116,12 @@ impl Widget for Position {
 
         let x = match self.horz_edge {
             HorzEdge::Left(x) => x,
-            HorzEdge::Right(x) => ctx.size.width as i32 - x - child.size.width as i32,
+            HorzEdge::Right(x) => ctx.inner_size.width as i32 - x - child.outer_size().width as i32,
         };
 
         let y = match self.vert_edge {
             VertEdge::Top(y) => y,
-            VertEdge::Bottom(y) => ctx.size.height as i32 - y - child.size.height as i32,
+            VertEdge::Bottom(y) => ctx.inner_size.height as i32 - y - child.outer_size().height as i32,
         };
 
         ctx.pos += Pos::new(x, y);

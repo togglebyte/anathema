@@ -160,40 +160,40 @@ impl Widget for Border {
         Self::KIND
     }
 
-    fn layout<'tpl, 'parent>(&mut self, mut layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
+    fn layout<'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
         // If there is a min width / height, make sure the minimum constraints
         // are matching these
         if let Some(min_width) = self.min_width {
-            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
+            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
         }
 
         if let Some(min_height) = self.min_height {
-            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
+            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
         // If there is a width / height then make the constraints tight
         // around the size. This will modify the size to fit within the
         // constraints first.
         if let Some(width) = self.width {
-            layout.constraints.make_width_tight(width);
+            ctx.constraints.make_width_tight(width);
         }
 
         if let Some(height) = self.height {
-            layout.constraints.make_height_tight(height);
+            ctx.constraints.make_height_tight(height);
         }
 
-        if layout.constraints == Constraints::ZERO {
+        if ctx.constraints == Constraints::ZERO {
             return Ok(Size::ZERO);
         }
 
         let border_size = self.border_size();
 
-        let mut values = layout.values.next();
-        let mut gen = Generator::new(layout.templates, layout.lookup, &mut values);
+        let mut values = ctx.values.next();
+        let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
 
         let size = match gen.next(&mut values).transpose()? {
             Some(mut widget) => {
-                let mut constraints = layout.padded_constraints();
+                let mut constraints = ctx.padded_constraints();
 
                 // Shrink the constraint for the child to fit inside the border
                 constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
@@ -218,11 +218,11 @@ impl Widget for Border {
                     return Err(Error::InsufficientSpaceAvailble);
                 }
 
-                let mut size = widget.layout(constraints, &values, layout.lookup)?
+                let mut size = widget.layout(constraints, &values, ctx.lookup)?
                     + border_size
-                    + layout.padding_size();
+                    + ctx.padding_size();
 
-                layout.children.push(widget);
+                ctx.children.push(widget);
 
                 if let Some(min_width) = self.min_width {
                     size.width = size.width.max(min_width);
@@ -232,26 +232,27 @@ impl Widget for Border {
                     size.height = size.height.max(min_height);
                 }
 
-                if layout.constraints.is_width_tight() {
-                    size.width = layout.constraints.max_width;
+                if ctx.constraints.is_width_tight() {
+                    size.width = ctx.constraints.max_width;
                 }
-                if layout.constraints.is_height_tight() {
-                    size.height = layout.constraints.max_height;
+
+                if ctx.constraints.is_height_tight() {
+                    size.height = ctx.constraints.max_height;
                 }
 
                 Size {
-                    width: size.width.min(layout.constraints.max_width),
-                    height: size.height.min(layout.constraints.max_height),
+                    width: size.width.min(ctx.constraints.max_width),
+                    height: size.height.min(ctx.constraints.max_height),
                 }
             }
             None => {
                 let mut size =
-                    Size::new(layout.constraints.min_width, layout.constraints.min_height);
-                if layout.constraints.is_width_tight() {
-                    size.width = layout.constraints.max_width;
+                    Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
+                if ctx.constraints.is_width_tight() {
+                    size.width = ctx.constraints.max_width;
                 }
-                if layout.constraints.is_height_tight() {
-                    size.height = layout.constraints.max_height;
+                if ctx.constraints.is_height_tight() {
+                    size.height = ctx.constraints.max_height;
                 }
                 size
             }
@@ -282,7 +283,7 @@ impl Widget for Border {
             ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as i32;
         }
 
-        child.position(ctx.padded_position());
+        child.position(ctx.pos);
     }
 
     fn paint<'gen, 'ctx>(

@@ -77,10 +77,10 @@ impl Widget for HStack {
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-        let mut pos = ctx.padded_position();
+        let mut pos = ctx.pos;
         for widget in children {
             widget.position(pos);
-            pos.x += widget.size.width as i32;
+            pos.x += widget.outer_size().width as i32;
         }
     }
 

@@ -156,11 +156,11 @@ pub struct WidgetContainer<'tpl> {
     pub(crate) display: Display,
     pub(crate) padding: Padding,
     pub(crate) animation: AnimationCtx,
-    pub(crate) size: Size,
     pub(crate) templates: &'tpl [Template],
     pub(crate) children: Vec<WidgetContainer<'tpl>>,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
+    size: Size,
 }
 
 impl<'tpl> WidgetContainer<'tpl> {
@@ -175,20 +175,6 @@ impl<'tpl> WidgetContainer<'tpl> {
             background: None,
             padding: Padding::ZERO,
             animation: AnimationCtx::new(),
-        }
-    }
-
-    pub fn new_from_widget(&self, inner: Box<dyn AnyWidget>) -> Self {
-        Self {
-            background: self.background,
-            display: self.display,
-            padding: self.padding,
-            animation: self.animation.clone(),
-            size: Size::ZERO,
-            templates: self.templates,
-            children: vec![],
-            inner,
-            pos: self.pos,
         }
     }
 
@@ -233,8 +219,15 @@ impl<'tpl> WidgetContainer<'tpl> {
         Some(res)
     }
 
-    pub fn size(&self) -> Size {
+    pub fn outer_size(&self) -> Size {
         self.size
+    }
+
+    pub fn inner_size(&self) -> Size {
+        Size::new(
+            self.size.width - (self.padding.left + self.padding.right),
+            self.size.height - (self.padding.top + self.padding.bottom),
+        )
     }
 
     pub fn region(&self) -> Region {
@@ -286,6 +279,8 @@ impl<'tpl> WidgetContainer<'tpl> {
 
                 let size = self.inner.layout(layout_args)?;
                 self.size = size;
+                self.size.width += padding.left + padding.right;
+                self.size.height += padding.top + padding.bottom;
             }
         }
 
@@ -295,12 +290,19 @@ impl<'tpl> WidgetContainer<'tpl> {
     pub fn position(&mut self, pos: Pos) {
         self.animation.update_pos(self.pos, pos);
         self.pos = self.animation.get_pos().unwrap_or(pos);
+
         let padding = self
             .animation
             .get_value(fields::PADDING)
             .map(|p| Padding::new(p as usize))
             .unwrap_or(self.padding);
-        let ctx = PositionCtx::new(self.pos, self.size, padding);
+
+        let pos = Pos::new(
+            self.pos.x + self.padding.left as i32,
+            self.pos.y + self.padding.top as i32,
+        );
+
+        let ctx = PositionCtx::new(pos, self.inner_size());
         self.inner.position(ctx, &mut self.children);
     }
 
@@ -309,8 +311,16 @@ impl<'tpl> WidgetContainer<'tpl> {
             return;
         }
 
-        let mut ctx = ctx.into_sized(self.size, self.pos);
+        // Paint the background without the padding, 
+        // using the outer size and current pos.
+        let mut ctx = ctx.into_sized(self.outer_size(), self.pos);
         self.paint_background(&mut ctx);
+
+        let pos = Pos::new(
+            self.pos.x + self.padding.left as i32,
+            self.pos.y + self.padding.top as i32,
+        );
+        ctx.update(self.inner_size(), pos);
         self.inner.paint(ctx, &mut self.children);
     }
 

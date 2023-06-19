@@ -16,7 +16,7 @@ use crate::viewport::ViewportFactory;
 use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
 use crate::zstack::ZStackFactory;
-use crate::{Attributes, TextPath, Value, Widget, WidgetContainer};
+use crate::{Attributes, TextPath, Value, Widget, WidgetContainer, Padding};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 
@@ -47,11 +47,13 @@ impl Lookup {
                     .0
                     .get(ident)
                     .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
-                let something = ValuesAttributes::new(values, attributes);
-                let background = something.background();
-                let widget = factory.make(something, text.as_ref())?;
+                let values = ValuesAttributes::new(values, attributes);
+                let background = values.background();
+                let padding = values.padding_all().unwrap_or_else(|| Padding::ZERO);
+                let widget = factory.make(values, text.as_ref())?;
                 let mut container = WidgetContainer::new(widget, children);
                 container.background = background;
+                container.padding = padding;
                 // TODO: add padding to the container
                 Ok(container)
             }

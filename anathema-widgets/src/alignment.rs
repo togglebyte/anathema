@@ -49,14 +49,14 @@ impl Widget for Alignment {
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-        let mut pos = ctx.padded_position();
+        let mut pos = ctx.pos;
             if let Some(child) = children.first_mut() {
                 let alignment = self.alignment;
 
-                let width = ctx.size.width as i32;
-                let height = ctx.size.height as i32;
-                let child_width = child.size.width as i32;
-                let child_height = child.size.height as i32;
+                let width = ctx.inner_size.width as i32;
+                let height = ctx.inner_size.height as i32;
+                let child_width = child.outer_size().width as i32;
+                let child_height = child.outer_size().height as i32;
 
                 let child_offset = match alignment {
                     Align::TopLeft => Pos::ZERO,
@@ -70,7 +70,7 @@ impl Widget for Alignment {
                     Align::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
                 };
 
-                child.position(ctx.padded_position() + child_offset);
+                child.position(ctx.pos + child_offset);
             }
         }
 

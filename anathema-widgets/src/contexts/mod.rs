@@ -59,7 +59,7 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
     }
 
     pub fn padded_constraints(&self) -> Constraints {
-        if !self.padding.no_padding() {
+        if self.padding != Padding::ZERO {
             let padding = self.padding;
             let mut constraints = self.constraints;
 
@@ -80,7 +80,7 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
     }
 
     pub fn padding_size(&self) -> Size {
-        if !self.padding.no_padding() {
+        if self.padding != Padding::ZERO {
             let padding = self.padding;
             Size::new(padding.left + padding.right, padding.top + padding.bottom)
         } else {
@@ -154,12 +154,17 @@ impl<'screen> PaintCtx<'screen, WithSize> {
         PaintCtx::new(self.screen, self.clip)
     }
 
+    pub fn update(&mut self, new_size: Size, new_pos: Pos) {
+        self.state.local_size = new_size;
+        self.state.global_pos = new_pos;
+    }
+
     pub fn create_region(&self) -> Region {
         let mut region = Region::new(
             self.global_pos,
             Pos::new(
-                self.global_pos.x + self.local_size.width as i32,
-                self.global_pos.y + self.local_size.height as i32,
+                self.global_pos.x + self.local_size.width as i32 - 1,
+                self.global_pos.y + self.local_size.height as i32 - 1,
             ),
         );
 
@@ -331,30 +336,16 @@ impl<'screen> PaintCtx<'screen, WithSize> {
 #[derive(Debug, Copy, Clone)]
 pub struct PositionCtx {
     pub pos: Pos,
-    pub size: Size,
+    pub inner_size: Size,
     pub alignment: Option<Align>,
-    padding: Padding,
 }
 
 impl PositionCtx {
-    pub fn new(pos: Pos, size: Size, padding: Padding) -> Self {
+    pub fn new(pos: Pos, inner_size: Size) -> Self {
         Self {
             pos,
-            size,
+            inner_size,
             alignment: None,
-            padding,
-        }
-    }
-
-    pub fn padded_position(&self) -> Pos {
-        if self.padding.no_padding() {
-            self.pos
-        } else {
-            let padding = self.padding;
-            Pos::new(
-                self.pos.x + padding.left as i32,
-                self.pos.y + padding.top as i32,
-            )
         }
     }
 }

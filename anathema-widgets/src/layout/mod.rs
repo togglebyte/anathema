@@ -120,11 +120,6 @@ impl Padding {
         std::mem::swap(&mut padding, self);
         padding
     }
-
-    /// Returns true if all sides are zero
-    pub const fn no_padding(&self) -> bool {
-        self.top + self.bottom + self.left + self.right == 0
-    }
 }
 
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is

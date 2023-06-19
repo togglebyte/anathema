@@ -141,9 +141,9 @@ impl Layout for Horizontal {
 // }
 
 pub fn position(ctx: PositionCtx, children: &mut [WidgetContainer<'_>]) {
-    let mut pos = ctx.padded_position();
+    let mut pos = ctx.pos;
     for widget in children {
         widget.position(pos);
-        pos.x += widget.size.width as i32;
+        pos.x += widget.outer_size().width as i32;
     }
 }

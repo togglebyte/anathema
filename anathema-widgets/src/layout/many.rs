@@ -149,7 +149,6 @@ impl Layout for Many {
 
         match self.axis {
             Axis::Vertical => {
-                size.width += ctx.padding.left + ctx.padding.right;
                 size.width = size.width.max(used_size.inner.width);
                 size.height = size
                     .height
@@ -157,7 +156,6 @@ impl Layout for Many {
                     .max(max_constraints.min_height);
             }
             Axis::Horizontal => {
-                size.height += ctx.padding.left + ctx.padding.right;
                 size.height = size.height.max(used_size.inner.height);
                 size.width = size
                     .width

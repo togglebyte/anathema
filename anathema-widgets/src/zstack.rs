@@ -92,7 +92,7 @@ impl Widget for ZStack {
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         for widget in children {
-            widget.position(ctx.padded_position());
+            widget.position(ctx.pos);
         }
     }
 
