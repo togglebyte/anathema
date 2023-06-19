@@ -33,7 +33,9 @@ mod zstack;
 
 pub struct WidgetLookup;
 
-#[cfg(test)]
+// TODO: test only, or should this be available
+//       under a "test" feature flag maybe
+// #[cfg(test)]
 pub mod testing;
 
 pub use anathema_render::Color;

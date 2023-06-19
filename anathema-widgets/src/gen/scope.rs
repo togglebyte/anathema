@@ -202,25 +202,4 @@ mod test {
         scope.inner.reverse();
         assert_eq!("0", scope.next_assume_text());
     }
-
-    #[test]
-    fn skip() {
-        // Skipping:
-        // * set the slice 
-        //
-        // text
-        // text
-        // for x in y
-        //     text
-        // text
-
-//         let (values, mut setup) = for_loop(200);
-//         let mut scope = setup.scope();
-//         scope.inner.skip(190);
-
-//         assert_eq!("190", scope.next_assume_text());
-//         assert_eq!("191", scope.next_assume_text());
-//         scope.inner.reverse();
-//         assert_eq!("190", scope.next_assume_text());
-    }
 }

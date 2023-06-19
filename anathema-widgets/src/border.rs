@@ -423,101 +423,137 @@ impl WidgetFactory for BorderFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::test_widget;
+    use crate::testing::{test_widget, FakeTerm};
     use crate::Lookup;
 
-    fn test_border(sides: Sides, expected: &str) {
-        let lookup = Lookup::default();
-        let border = Border::new(&BorderStyle::Thin, sides, None, None);
-        let border = WidgetContainer::new(Box::new(border), &[]);
-        test_widget(border, &lookup, expected);
+    fn test_border(border: Border, expected: FakeTerm) {
+        let widget = WidgetContainer::new(Box::new(border), &[]);
+        test_widget(widget, expected);
     }
 
     #[test]
     fn border() {
+        let border = Border::new(&BorderStyle::Thin, Sides::ALL, 5, 4);
         test_border(
-            Sides::ALL,
+            border,
+            FakeTerm::from_str(
             r#"
-            ┌───┐
-            │   │
-            │   │
-            └───┘
+            ╔═] Fake term [══════╗
+            ║┌───┐               ║
+            ║│   │               ║
+            ║│   │               ║
+            ║└───┘               ║
+            ║                    ║
+            ║                    ║
+            ╚════════════════════╝
             "#,
+            )
         );
     }
 
     #[test]
     fn border_top() {
+        let border = Border::new(&BorderStyle::Thin, Sides::TOP, 5, 2);
         test_border(
-            Sides::TOP,
+            border,
+            FakeTerm::from_str(
             r#"
-            ─────
+            ╔═] Fake term [══╗
+            ║─────           ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            )
         );
     }
 
     #[test]
     fn border_top_bottom() {
+        let border = Border::new(&BorderStyle::Thin, Sides::TOP | Sides::BOTTOM, 5, 4);
         test_border(
-            Sides::TOP | Sides::BOTTOM,
+            border,
+            FakeTerm::from_str(
             r#"
-            ─────
-            ─────
+            ╔═] Fake term [══╗
+            ║─────           ║
+            ║                ║
+            ║                ║
+            ║─────           ║
+            ╚════════════════╝
             "#,
+            )
         );
     }
 
     #[test]
     fn border_left() {
+        let border = Border::new(&BorderStyle::Thin, Sides::LEFT, 1, 2);
         test_border(
-            Sides::LEFT,
+            border,
+            FakeTerm::from_str(
             r#"
-            │
-            │
+            ╔═] Fake term [══╗
+            ║│               ║
+            ║│               ║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            )
         );
     }
 
     #[test]
     fn border_right() {
+        let border = Border::new(&BorderStyle::Thin, Sides::RIGHT, 3, 2);
         test_border(
-            Sides::RIGHT,
+            border,
+            FakeTerm::from_str(
             r#"
-                │
-                │
+            ╔═] Fake term [══╗
+            ║  │             ║
+            ║  │             ║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            )
+        );
+    }
+
+    #[test]
+    fn border_top_left() {
+        let border = Border::new(&BorderStyle::Thin, Sides::TOP | Sides::LEFT, 4, 3);
+        test_border(
+            border,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [══╗
+            ║┌───            ║
+            ║│               ║
+            ║│               ║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            )
         );
     }
 
     #[test]
     fn border_bottom_right() {
+        let border = Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, 4, 3);
         test_border(
-            Sides::TOP | Sides::LEFT,
+            border,
+            FakeTerm::from_str(
             r#"
-            ┌───
-            │   
-            │   
+            ╔═] Fake term [══╗
+            ║   │            ║
+            ║   │            ║
+            ║───┘            ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            )
         );
     }
-
-    // #[test]
-    // fn style_changes_via_attributes() {
-    //     let mut border = Border::thick(10, 3);
-    //     border.update(Attributes::new("italic", true));
-    //     assert!(border.to_mut::<Border>().style.attributes.contains(anathema_render::Attributes::ITALIC));
-    // }
-
-    //     #[test]
-    //     fn min_width_height() {
-    //         let mut border = Border::thick(10, 3);
-    //         border.min_width = Some(10);
-    //         border.min_height = Some(3);
-    //         let lookup = WidgetLookup::default();
-    //         let ctx = Context::new();
-    //         let mut border = WidgetContainer::new(Box::new(border), &[]);
-    //         border.layout(Constraints::unbounded(), &ctx, &lookup);
-    //         let actual = border.size();
-    //         assert_eq!(Size::new(10, 3), actual);
-    //     }
 }

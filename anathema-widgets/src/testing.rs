@@ -1,70 +1,93 @@
-use crate::Lookup;
+use std::iter::zip;
+
+use anathema_render::{Screen, Size, ScreenPos};
 
 use super::WidgetContainer;
+use crate::gen::store::Store;
+use crate::{Constraints, DataCtx, Lookup, PaintCtx};
 
-pub fn test_widget<'a>(widget: WidgetContainer<'a>, lookup: &'a Lookup, expected: &str) -> WidgetContainer<'a> {
-    test_widget_container(widget, lookup, expected)
+// -----------------------------------------------------------------------------
+//   - Here be (hacky) dragons -
+//   What you are about to see here might cause you to scream and run away.
+//
+//   This exists to make tests readable.
+//   Before you judge me too hard, know that I am a loving father,
+//   I care for two bunnies that roam free in my house (eating the wiring),
+//   I give to charity when I can, and I always try to help others
+//   as much as possible.
+//
+//   No thought has gone into making this code nice, readable, or efficient.
+//   There is but one purpose of this code: to easily write readable tests.
+//
+//   Knowing this you are now free to judge me...
+// -----------------------------------------------------------------------------
+
+pub struct FakeTerm {
+    screen: Screen,
+    size: Size,
+    rows: Vec<String>,
 }
 
-pub fn test_widget_container<'a>(_: WidgetContainer<'a>, _: &'a Lookup, _: &str) -> WidgetContainer<'a> {
-    panic!("this is awful");
+impl FakeTerm {
+    pub fn from_str(s: &str) -> Self {
+        let mut size = Size::ZERO;
 
-    // let lines = expected
-    //     .lines()
-    //     .filter_map(|s| {
-    //         let s = s.trim();
-    //         match s.len() {
-    //             0 => None,
-    //             _ => Some(s),
-    //         }
-    //     })
-    //     .collect::<Vec<_>>();
-    // let expected = lines.join("\n");
+        let mut lines = s.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
+        let mut expected = vec![];
+        let mut collect = false;
+        for line in lines {
+            if line.contains("] Fake term [") {
+                size.width = line.chars().count() - 2;
+                collect = true;
+                continue;
+            }
+            if line.starts_with('║') && line.ends_with('║') {
+                size.height += 1;
+                if collect {
+                    let mut l = line.chars().skip(1).collect::<String>();
+                    l.pop();
+                    expected.push(l);
+                }
+            }
+        }
 
-    // // The size of the screen
-    // let width = lines.iter().map(|s| s.chars().count()).max().unwrap();
-    // let height = lines.len();
-    // let size = Size::new(width, height);
+        Self::new(size, expected)
+    }
 
-    // // Screen setup
-    // let mut screen = Screen::new(&mut vec![], size).unwrap();
-    // let paint_ctx = PaintCtx::new(&mut screen, None);
+    pub fn new(size: Size, rows: Vec<String>) -> Self {
+        let screen = Screen::new(size);
+        Self {
+            screen,
+            size,
+            rows,
+        }
+    }
+}
 
-    // // Layout and paint
-    // let mut constraints = Constraints::new(size.width, size.height);
-    // constraints.make_width_tight(constraints.max_width);
-    // constraints.make_height_tight(constraints.max_height);
-    // let _size = widget.layout(constraints, &Context::new(), &lookup);
+pub fn test_widget(widget: WidgetContainer<'_>, expected: FakeTerm) {
+    test_widget_container(widget, expected)
+}
 
-    // widget.position(Pos::ZERO);
-    // widget.paint(paint_ctx);
+pub fn test_widget_container(mut widget: WidgetContainer<'_>, mut expected: FakeTerm) {
+    let constraints = Constraints::new(Some(expected.size.width), Some(expected.size.height));
+    let lookup = Lookup::default();
+    let data = DataCtx::default();
+    let store = Store::new(&data);
+    widget.layout(constraints, &store, &lookup).unwrap();
 
-    // // Build up the actual value, this is helpful if the test
-    // // fails, as it's possible to display the actual outcome
-    // let mut actual = String::new();
-    // for (y, line) in lines.iter().enumerate() {
-    //     for (x, _) in line.chars().enumerate() {
-    //         let pos = ScreenPos::new(x as u16, y as u16);
-    //         if let Some((buffer_value, _)) = screen.get(pos) {
-    //             actual.push(buffer_value);
-    //         } else {
-    //             actual.push(' ');
-    //         }
-    //     }
-    //     actual.push('\n');
-    // }
+    let ctx = PaintCtx::new(&mut expected.screen, None);
+    widget.paint(ctx);
 
-    // for (y, line) in lines.into_iter().enumerate() {
-    //     for (x, c) in line.chars().enumerate() {
-    //         let pos = ScreenPos::new(x as u16, y as u16);
-    //         let buffer_value = screen.get(pos);
+    let expected_rows = expected.rows.iter();
+    for (y, row) in expected_rows.enumerate() {
+        for (x, c) in row.chars().enumerate() {
+            let pos = ScreenPos::new(x as u16, y as u16);
+            match expected.screen.get(pos).map(|(c, _)| c) {
+                Some(buffer_char) => assert_eq!(c, buffer_char, "expected \"{c}\", found \"{buffer_char}\""),
+                None if c == ' ' => continue,
+                None => panic!("expected {c}, found nothing"),
+            }
 
-    //         match buffer_value {
-    //             Some((buf_char, _)) => assert_eq!(buf_char, c, "\nexpected:\n{}\nfound:\n{}", expected, actual),
-    //             None => assert_eq!(c, ' ', "expected:\n{}\nfound:\n{}", expected, actual),
-    //         }
-    //     }
-    // }
-
-    // widget
+        }
+    }
 }

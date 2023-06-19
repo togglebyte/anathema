@@ -36,7 +36,7 @@ pub struct LayoutCtx<'widget, 'tpl, 'parent> {
     pub constraints: Constraints,
     pub padding: Padding,
     pub children: &'widget mut Vec<WidgetContainer<'tpl>>,
-    pub lookup: &'tpl Lookup,
+    pub lookup: &'widget Lookup,
 }
 
 impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
@@ -46,7 +46,7 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
         constraints: Constraints,
         padding: Padding,
         children: &'widget mut Vec<WidgetContainer<'tpl>>,
-        lookup: &'tpl Lookup,
+        lookup: &'widget Lookup,
     ) -> Self {
         Self {
             templates,
@@ -376,7 +376,7 @@ mod test {
     fn put() {
         // Put a character on screen
         let size = Size::new(10, 5);
-        let mut screen = Screen::new(&mut vec![], size).unwrap();
+        let mut screen = Screen::new(size);
         let global_pos = Pos::new(3, 2);
         let mut ctx = PaintCtx::new(&mut screen, None).into_sized(Size::new(2, 2), global_pos);
 
@@ -390,7 +390,7 @@ mod test {
     fn clip() {
         // Put a character on screen
         let size = Size::new(25, 25);
-        let mut screen = Screen::new(&mut vec![], size).unwrap();
+        let mut screen = Screen::new(size);
         let global_pos = Pos::new(1, 1);
         let clipping_region = Region::new(global_pos, Pos::new(3, 3));
         let mut ctx = PaintCtx::new(&mut screen, Some(&clipping_region))
@@ -420,7 +420,7 @@ mod test {
         // Given a screen size of 1 x 1 and a paint context of 20 x 20
         // drawing outside of the 1 x 1 space should do nothing.
         let size = Size::new(1, 1);
-        let mut screen = Screen::new(&mut vec![], size).unwrap();
+        let mut screen = Screen::new(size);
         let mut ctx = PaintCtx::new(&mut screen, None).into_sized(Size::new(2, 2), Pos::ZERO);
 
         // Inside context, outside screen

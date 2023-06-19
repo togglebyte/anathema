@@ -1,13 +1,14 @@
 use std::io::{Result, Write};
 
-use super::buffer::{diff, draw_changes, Buffer};
-use super::{ScreenPos, Size, Style};
 use crossterm::event::DisableMouseCapture;
 use crossterm::style::{Color, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use crossterm::{cursor, ExecutableCommand, QueueableCommand};
+
+use super::buffer::{diff, draw_changes, Buffer};
+use super::{ScreenPos, Size, Style};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
 pub struct Screen {
@@ -17,14 +18,22 @@ pub struct Screen {
 }
 
 impl Screen {
+    /// Hide the cursor
+    pub fn hide_cursor(mut output: impl Write) -> Result<()> {
+        output.queue(cursor::Hide)?;
+        Ok(())
+    }
+
     /// Create a new instance of a screen.
     /// The `output` should be a mutable reference to whatever this screen renders to.
     /// The `output` is used initially to move the cursor and hide it.
-    pub fn new(mut output: impl Write, size: impl Into<Size>) -> Result<Self> {
+    pub fn new(size: impl Into<Size>) -> Self {
         let size: Size = size.into();
-        output.queue(cursor::Hide)?;
-        let inst = Self { old_buffer: Buffer::new(size), new_buffer: Buffer::new(size) };
-        Ok(inst)
+        let inst = Self {
+            old_buffer: Buffer::new(size),
+            new_buffer: Buffer::new(size),
+        };
+        inst
     }
 
     /// Access to the current buffer

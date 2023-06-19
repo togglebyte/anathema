@@ -20,7 +20,8 @@ impl Runtime {
         let mut stdout = stdout();
         let (width, height) = size()?;
         let constraints = Constraints::new(Some(width as usize), Some(height as usize));
-        let screen = Screen::new(&mut stdout, (width, height))?;
+        Screen::hide_cursor(&mut stdout)?;
+        let screen = Screen::new((width, height));
         let lookup = Lookup::default();
 
         let inst = Self {

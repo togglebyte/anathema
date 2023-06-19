@@ -248,7 +248,7 @@ impl<'tpl> WidgetContainer<'tpl> {
         &mut self,
         mut constraints: Constraints,
         values: &Store<'_>,
-        lookup: &'tpl Lookup,
+        lookup: &Lookup,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
