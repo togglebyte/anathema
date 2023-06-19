@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use crate::alignment::AlignmentFactory;
 use crate::border::BorderFactory;
 use crate::contexts::DataCtx;
 use crate::error::{Error, Result};
@@ -65,6 +66,7 @@ impl Lookup {
 impl Default for Lookup {
     fn default() -> Self {
         let mut inner = HashMap::<_, Box<dyn WidgetFactory>>::new();
+        inner.insert("alignment".to_string(), Box::new(AlignmentFactory));
         inner.insert("border".to_string(), Box::new(BorderFactory));
         inner.insert("expand".to_string(), Box::new(ExpandFactory));
         inner.insert("hstack".to_string(), Box::new(HStackFactory));

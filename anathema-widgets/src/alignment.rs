@@ -2,9 +2,11 @@ use anathema_render::Size;
 
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::layout::Layouts;
 use crate::layout::single::Single;
-use crate::{Align, Widget, Pos, PositionCtx, WidgetContainer};
+use crate::layout::Layouts;
+use crate::lookup::WidgetFactory;
+use crate::values::ValuesAttributes;
+use crate::{Align, Pos, PositionCtx, Widget, WidgetContainer, TextPath, AnyWidget};
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
 /// See [`Align`](crate::layout::Align) for more information.
@@ -42,7 +44,8 @@ impl Widget for Alignment {
 
     fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
         // TODO: should alignment ALWAYS expand the size, even if there is no child widget?
-        Layouts::new(Single, &mut ctx).layout()?
+        Layouts::new(Single, &mut ctx)
+            .layout()?
             .expand_horz()
             .expand_vert()
             .size()
@@ -50,35 +53,51 @@ impl Widget for Alignment {
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         let mut pos = ctx.pos;
-            if let Some(child) = children.first_mut() {
-                let alignment = self.alignment;
+        if let Some(child) = children.first_mut() {
+            let alignment = self.alignment;
 
-                let width = ctx.inner_size.width as i32;
-                let height = ctx.inner_size.height as i32;
-                let child_width = child.outer_size().width as i32;
-                let child_height = child.outer_size().height as i32;
+            let width = ctx.inner_size.width as i32;
+            let height = ctx.inner_size.height as i32;
+            let child_width = child.outer_size().width as i32;
+            let child_height = child.outer_size().height as i32;
 
-                let child_offset = match alignment {
-                    Align::TopLeft => Pos::ZERO,
-                    Align::Top => Pos::new(width / 2 - child_width / 2, 0),
-                    Align::TopRight => Pos::new(width - child_width, 0),
-                    Align::Right => Pos::new(width - child_width, height / 2 - child_height / 2),
-                    Align::BottomRight => Pos::new(width - child_width, height - child_height),
-                    Align::Bottom => Pos::new(width / 2 - child_width / 2, height - child_height),
-                    Align::BottomLeft => Pos::new(0, height - child_height),
-                    Align::Left => Pos::new(0, height / 2 - child_height / 2),
-                    Align::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
-                };
+            let child_offset = match alignment {
+                Align::TopLeft => Pos::ZERO,
+                Align::Top => Pos::new(width / 2 - child_width / 2, 0),
+                Align::TopRight => Pos::new(width - child_width, 0),
+                Align::Right => Pos::new(width - child_width, height / 2 - child_height / 2),
+                Align::BottomRight => Pos::new(width - child_width, height - child_height),
+                Align::Bottom => Pos::new(width / 2 - child_width / 2, height - child_height),
+                Align::BottomLeft => Pos::new(0, height - child_height),
+                Align::Left => Pos::new(0, height / 2 - child_height / 2),
+                Align::Centre => {
+                    Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2)
+                }
+            };
 
-                child.position(ctx.pos + child_offset);
-            }
+            child.position(ctx.pos + child_offset);
         }
+    }
 
     //     // fn update(&mut self, ctx: UpdateCtx) {
     //     //     ctx.attributes
     //     //         .has(fields::ALIGNMENT)
     //     //         .then(|| self.alignment = ctx.attributes.alignment().unwrap_or(Align::Left));
     //     // }
+}
+
+pub(crate) struct AlignmentFactory;
+
+impl WidgetFactory for AlignmentFactory {
+    fn make(
+        &self,
+        values: ValuesAttributes<'_, '_>,
+        text: Option<&TextPath>,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let align = values.alignment().unwrap_or(Align::TopLeft);
+        let widget = Alignment::new(align);
+        Ok(Box::new(widget))
+    }
 }
 
 #[cfg(test)]
