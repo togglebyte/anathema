@@ -35,6 +35,7 @@ impl FakeTerm {
         let mut lines = s.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let mut expected = vec![];
         let mut collect = false;
+
         for line in lines {
             if line.contains("] Fake term [") {
                 size.width = line.chars().count() - 2;
@@ -83,7 +84,7 @@ pub fn test_widget_container(mut widget: WidgetContainer<'_>, mut expected: Fake
         for (x, c) in row.chars().enumerate() {
             let pos = ScreenPos::new(x as u16, y as u16);
             match expected.screen.get(pos).map(|(c, _)| c) {
-                Some(buffer_char) => assert_eq!(c, buffer_char, "expected \"{c}\", found \"{buffer_char}\""),
+                Some(buffer_char) => assert_eq!(c, buffer_char, "in fake term \"{c}\", in buffer \"{buffer_char}\", pos: {pos:?}"),
                 None if c == ' ' => continue,
                 None => panic!("expected {c}, found nothing"),
             }

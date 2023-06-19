@@ -147,10 +147,7 @@ impl Widget for Text {
     }
 
     fn layout<'tpl, 'parent>(&mut self, layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        let max_size = Size::new(
-            layout.constraints.max_width,
-            layout.constraints.max_height,
-        );
+        let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
 
@@ -308,142 +305,146 @@ impl WidgetFactory for SpanFactory {
 mod test {
     use super::*;
     use crate::template::Template;
-    use crate::testing::test_widget;
+    use crate::testing::{test_widget, FakeTerm};
     use crate::{fields, Attributes, Border, BorderStyle, Lookup, Sides, TextPath};
 
-    fn test_text(text: &str, attributes: Attributes, expected: &str) {
-        panic!()
-        // let border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
-        // let text_template = WidgetTemplate {
-        //     kind: TemplateKind::Node {
-        //         ident: "text".to_string(),
-        //         attributes,
-        //         text: Some(TextPath::String(text.to_string())),
-        //     },
-        //     children: vec![],
-        // };
-        // let children = [text_template];
-        // let border = WidgetContainer::new(Box::new(border), &children);
-        // let lookup = WidgetLookup::default();
-        // test_widget(border, &lookup, expected);
+    fn span(text: &str) -> Template {
+        Template::Node {
+            ident: "span".into(),
+            attributes: Attributes::empty(),
+            text: Some(TextPath::from(text)),
+            children: vec![],
+        }
     }
 
-    // #[test]
-    // fn qwerty_party_word_wrap() {
-    //     let constraint = Constraints::new(8, None);
-    //     let text = "hello how are you";
-    //     let mut text_widget = Text::with_text(text);
-    //     let actual = text_widget.layout(LayoutCtx::new(constraint, false, Padding::ZERO));
-    //     let expected = Size::new(7, 3);
-    //     assert_eq!(actual, expected);
-    // }
+    fn test_text(text: Text, expected: FakeTerm) {
+        let widget = WidgetContainer::new(Box::new(text), &[]);
+        test_widget(widget, expected);
+    }
 
     #[test]
     fn word_wrap_excessive_space() {
         test_text(
-            "hello      how are     you",
-            Attributes::empty(),
-            r#"
-            ┌────────┐
-            │hello   │
-            │how are │
-            │you     │
-            └────────┘
+            Text::with_text("hello      how are     you"),
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║hello      how  ║
+            ║are     you     ║
+            ║                ║
+            ║                ║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            ),
         );
     }
 
     #[test]
     fn word_wrap() {
         test_text(
-            "hello how are you",
-            Attributes::empty(),
-            r#"
-            ┌────────┐
-            │hello   │
-            │how are │
-            │you     │
-            └────────┘
+            Text::with_text("hello how are you"),
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║hello how are   ║
+            ║you             ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            ),
         );
     }
 
     #[test]
     fn no_word_wrap() {
-        let attributes = Attributes::new(fields::WRAP, Wrap::Overflow);
+        let mut text = Text::with_text("hello how are you");
+        text.word_wrap = Wrap::Overflow;
         test_text(
-            "hello how are you",
-            attributes,
-            r#"
-            ┌───────┐
-            │hello h│
-            │       │
-            │       │
-            └───────┘
+            text,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║hello how are yo║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            ),
         );
     }
 
     #[test]
     fn break_word_wrap() {
-        let attributes = Attributes::new(fields::WRAP, Wrap::WordBreak);
+        let mut text = Text::with_text("hellohowareyoudoing");
+        text.word_wrap = Wrap::WordBreak;
         test_text(
-            "hellohowareyou",
-            attributes,
-            r#"
-            ┌───────┐
-            │helloho│
-            │wareyou│
-            │       │
-            └───────┘
+            text,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║hellohowareyoudo║
+            ║ing             ║
+            ║                ║
+            ╚════════════════╝
             "#,
+            ),
         );
     }
 
-    // #[test]
-    // fn char_wrap_layout_multiple_spans() {
-    //     let mut text = Text::with_text("one");
-    //     text.add_span("two");
-    //     text.add_span(" three");
-    //     text.add_span(" four ");
-    //     test_text(
-    //         text,
-    //         r#"
-    //         ┌──────────┐
-    //         │onetwo    │
-    //         │three four│
-    //         └──────────┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn char_wrap_layout_multiple_spans() {
+        let mut text = Text::with_text("one");
+        let spans = [span("two"), span(" averylongword"), span(" bunny ")];
+        let widget = WidgetContainer::new(Box::new(text), &spans);
+        test_widget(
+            widget,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═════╗
+            ║onetwo             ║
+            ║averylongword bunny║
+            ║                   ║
+            ╚═══════════════════╝
+            "#,
+            ),
+        );
+    }
 
     #[test]
     fn right_alignment() {
-        let attributes = Attributes::new(fields::TEXT_ALIGN, TextAlignment::Right);
+        let mut text = Text::with_text("a one xxxxxxxxxxxxxxxxxx");
+        text.text_alignment = TextAlignment::Right;
         test_text(
-            "a one xxxxxxxx",
-            attributes,
-            r#"
-            ┌────────┐
-            │   a one│
-            │xxxxxxxx│
-            └────────┘
+            text,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [════╗
+            ║             a one║
+            ║xxxxxxxxxxxxxxxxxx║
+            ║                  ║
+            ╚══════════════════╝
             "#,
+            ),
         );
     }
 
     #[test]
     fn centre_alignment() {
-        let attributes = Attributes::new(fields::TEXT_ALIGN, TextAlignment::Centre);
+        let mut text = Text::with_text("a one xxxxxxxxxxxxxxxxxx");
+        text.text_alignment = TextAlignment::Centre;
         test_text(
-            "a one xxxxxxxxx",
-            attributes,
-            r#"
-            ┌─────────┐
-            │  a one  │
-            │xxxxxxxxx│
-            └─────────┘
+            text,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [════╗
+            ║       a one      ║
+            ║xxxxxxxxxxxxxxxxxx║
+            ║                  ║
+            ╚══════════════════╝
             "#,
+            ),
         );
     }
 }
