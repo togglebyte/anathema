@@ -242,10 +242,6 @@ impl TextLayout {
 
             match state {
                 State::ExceedingCharWidth | State::MaxWidth | State::Newline => {
-                    if c.is_whitespace() {
-                        self.current_width -= char_width;
-                    }
-
                     self.longest_line = self.longest_line.max(self.current_width);
                     self.current_width = 0;
                     self.lines.range(byte, i);
