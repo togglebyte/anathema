@@ -4,7 +4,7 @@ use anathema_render::{Screen, Size, ScreenPos};
 
 use super::WidgetContainer;
 use crate::gen::store::Store;
-use crate::{Constraints, DataCtx, Lookup, PaintCtx};
+use crate::{Constraints, DataCtx, Lookup, PaintCtx, Pos};
 
 // -----------------------------------------------------------------------------
 //   - Here be (hacky) dragons -
@@ -70,12 +70,17 @@ pub fn test_widget(widget: WidgetContainer<'_>, expected: FakeTerm) {
 }
 
 pub fn test_widget_container(mut widget: WidgetContainer<'_>, mut expected: FakeTerm) {
+    // Layout
     let constraints = Constraints::new(Some(expected.size.width), Some(expected.size.height));
     let lookup = Lookup::default();
     let data = DataCtx::default();
     let store = Store::new(&data);
     widget.layout(constraints, &store, &lookup).unwrap();
 
+    // Position
+    widget.position(Pos::ZERO);
+
+    // Paint
     let ctx = PaintCtx::new(&mut expected.screen, None);
     widget.paint(ctx);
 

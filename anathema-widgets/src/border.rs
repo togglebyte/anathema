@@ -424,7 +424,6 @@ impl WidgetFactory for BorderFactory {
 mod test {
     use super::*;
     use crate::testing::{test_widget, FakeTerm};
-    use crate::Lookup;
 
     fn test_border(border: Border, expected: FakeTerm) {
         let widget = WidgetContainer::new(Box::new(border), &[]);

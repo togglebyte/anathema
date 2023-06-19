@@ -6,10 +6,14 @@ use crate::layout::single::Single;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{Align, Pos, PositionCtx, Widget, WidgetContainer, TextPath, AnyWidget};
+use crate::{
+    Align, AnyWidget, PaintCtx, Pos, PositionCtx, TextPath, Widget, WidgetContainer, WithSize,
+};
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
 /// See [`Align`](crate::layout::Align) for more information.
+///
+/// If the alignment has no children it will be zero sized.
 ///
 /// ```
 /// use anathema_widgets::{Align, Alignment};
@@ -43,12 +47,14 @@ impl Widget for Alignment {
     }
 
     fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
-        // TODO: should alignment ALWAYS expand the size, even if there is no child widget?
-        Layouts::new(Single, &mut ctx)
-            .layout()?
-            .expand_horz()
-            .expand_vert()
-            .size()
+        let mut layout = Layouts::new(Single, &mut ctx);
+        layout.layout()?;
+        let size = layout.size()?;
+        if size == Size::ZERO {
+            Ok(Size::ZERO)
+        } else {
+            layout.expand_horz().expand_vert().size()
+        }
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
@@ -102,154 +108,189 @@ impl WidgetFactory for AlignmentFactory {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::testing::test_widget;
-    // use crate::Constraints;
-    // use crate::{Border, BorderStyle, Padding, Sides, Text};
+    use super::*;
+    use crate::gen::store::Store;
+    use crate::template::Template;
+    use crate::testing::{test_widget, FakeTerm};
+    use crate::{Attributes, Constraints, DataCtx, Lookup, Padding};
 
-    // fn align_widget(align: Align, expected: &str) {
-    //     let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
-    //     let mut alignment = Alignment::new(align);
-    //     alignment.child = Some(Text::with_text("xx").into_container(NodeId::anon()));
-    //     border.child = Some(alignment.into_container(NodeId::anon()));
-    //     test_widget(border, expected);
-    // }
+    fn align_widget(align: Align, expected: FakeTerm) {
+        let text = Template::Node {
+            ident: "text".into(),
+            attributes: Attributes::empty(),
+            text: Some(TextPath::from("AB")),
+            children: vec![],
+        };
 
-    // #[test]
-    // fn align_top_left() {
-    //     align_widget(
-    //         Align::TopLeft,
-    //         r#"
-    //         ┌────────┐
-    //         │xx      │
-    //         │        │
-    //         │        │
-    //         │        │
-    //         └────────┘
-    //     "#,
-    //     );
-    // }
+        let alignment = Alignment::new(align);
+        let children = [text];
+        let widget = WidgetContainer::new(Box::new(alignment), &children);
+        test_widget(widget, expected);
+    }
 
-    // #[test]
-    // fn align_top() {
-    //     align_widget(
-    //         Align::Top,
-    //         r#"
-    //         ┌────────┐
-    //         │   xx   │
-    //         │        │
-    //         │        │
-    //         │        │
-    //         └────────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_top_left() {
+        align_widget(
+            Align::TopLeft,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║AB              ║
+            ║                ║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_top_right() {
-    //     align_widget(
-    //         Align::TopRight,
-    //         r#"
-    //         ┌────────┐
-    //         │      xx│
-    //         │        │
-    //         │        │
-    //         │        │
-    //         └────────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_top() {
+        align_widget(
+            Align::Top,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══════╗
+            ║         AB         ║
+            ║                    ║
+            ║                    ║
+            ╚════════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_right() {
-    //     align_widget(
-    //         Align::Right,
-    //         r#"
-    //         ┌──────┐
-    //         │      │
-    //         │    xx│
-    //         │      │
-    //         └──────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_top_right() {
+        align_widget(
+            Align::TopRight,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║              AB║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_bottom_right() {
-    //     align_widget(
-    //         Align::BottomRight,
-    //         r#"
-    //         ┌──────┐
-    //         │      │
-    //         │      │
-    //         │    xx│
-    //         └──────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_right() {
+        align_widget(
+            Align::Right,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║              AB║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_bottom() {
-    //     align_widget(
-    //         Align::Bottom,
-    //         r#"
-    //         ┌──────┐
-    //         │      │
-    //         │      │
-    //         │  xx  │
-    //         └──────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_bottom_right() {
+        align_widget(
+            Align::BottomRight,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║                ║
+            ║              AB║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_bottom_left() {
-    //     align_widget(
-    //         Align::BottomLeft,
-    //         r#"
-    //         ┌──────┐
-    //         │      │
-    //         │      │
-    //         │xx    │
-    //         └──────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_bottom() {
+        align_widget(
+            Align::Bottom,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║                ║
+            ║       AB       ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_left() {
-    //     align_widget(
-    //         Align::Left,
-    //         r#"
-    //         ┌──────┐
-    //         │      │
-    //         │xx    │
-    //         │      │
-    //         └──────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_bottom_left() {
+        align_widget(
+            Align::BottomLeft,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║                ║
+            ║AB              ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn align_centre() {
-    //     align_widget(
-    //         Align::Centre,
-    //         r#"
-    //         ┌──────┐
-    //         │      │
-    //         │  xx  │
-    //         │      │
-    //         └──────┘
-    //     "#,
-    //     );
-    // }
+    #[test]
+    fn align_left() {
+        align_widget(
+            Align::Left,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║AB              ║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn unconstrained_alignment_without_child() {
-    //     let mut alignment = Alignment::default();
-    //     let constraints = Constraints::unbounded();
-    //     let actual = alignment.layout(LayoutCtx::new(constraints, false, Padding::ZERO));
-    //     let expected = Size::ZERO;
-    //     assert_eq!(expected, actual);
-    // }
+    #[test]
+    fn align_centre() {
+        align_widget(
+            Align::Centre,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║       AB       ║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn unconstrained_alignment_without_child() {
+        let constraints = Constraints::unbounded();
+        let lookup = Lookup::default();
+        let mut children = vec![];
+        let data = DataCtx::default();
+        let store = Store::new(&data);
+        let ctx = LayoutCtx::new(
+            &[],
+            &store,
+            constraints,
+            Padding::ZERO,
+            &mut children,
+            &lookup,
+        );
+        let mut alignment = Alignment::default();
+        let actual = alignment.layout(ctx).unwrap();
+        let expected = Size::ZERO;
+        assert_eq!(expected, actual);
+    }
 }
