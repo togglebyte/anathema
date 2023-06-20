@@ -40,7 +40,10 @@ pub enum Template {
 }
 
 impl Template {
-    pub fn to_expression<'tpl: 'parent, 'parent>(&'tpl self, values: &Store<'parent>) -> Expression<'tpl, 'parent> {
+    pub fn to_expression<'tpl: 'parent, 'parent>(
+        &'tpl self,
+        values: &Store<'parent>,
+    ) -> Expression<'tpl, 'parent> {
         match &self {
             Template::Node { .. } => Expression::Node(&self),
             Template::For {
@@ -96,10 +99,14 @@ pub fn template_text(text: impl Into<TextPath>) -> Template {
     }
 }
 
-pub fn template(ident: impl Into<String>, children: Vec<Template>) -> Template {
+pub fn template(
+    ident: impl Into<String>,
+    attributes: impl Into<Attributes>,
+    children: Vec<Template>,
+) -> Template {
     Template::Node {
         ident: ident.into(),
-        attributes: Attributes::empty(),
+        attributes: attributes.into(),
         text: None,
         children,
     }
@@ -123,7 +130,11 @@ pub fn template(ident: impl Into<String>, children: Vec<Template>) -> Template {
 //     }
 // }
 
-pub fn template_for(binding: impl Into<String>, data: impl Into<Value>, body: impl Into<Vec<Template>>) -> Template {
+pub fn template_for(
+    binding: impl Into<String>,
+    data: impl Into<Value>,
+    body: impl Into<Vec<Template>>,
+) -> Template {
     Template::For {
         binding: binding.into(),
         body: body.into(),

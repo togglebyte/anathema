@@ -126,7 +126,7 @@ mod test {
 
     fn children(count: usize) -> Vec<Template> {
         (0..count)
-            .map(|i| template("border", vec![template_text(i.to_string())]))
+            .map(|i| template("border", (), vec![template_text(i.to_string())]))
             .collect()
     }
 

@@ -168,6 +168,7 @@ impl WidgetFactory for ExpandFactory {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{Border, Attributes, HStack};
     use crate::template::{template, template_text, Template};
     use crate::testing::{test_widget, FakeTerm};
 
@@ -184,37 +185,70 @@ mod test {
         test_widget(widget, expected);
     }
 
+    #[test]
+    fn expand_border() {
+        let border = Border::thin(None, None);
+        let expand = vec![template("expand", (), vec![])];
+        test_expand(
+            border,
+            &expand,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─────────────┐║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║└─────────────┘║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
+
     // #[test]
-    // fn expand_border() {
+    // fn expand_horz_with_factors() {
+    //     // template("hstack",
+    //     //     expand [factor: 1]
+    //     //         border
+    //     //     expand [factor: 2]
+    //     //         border
+
+    //     let stack = HStack::new(None, None);
+    //     let body = vec![
+    //         template("expand", [("factor", 1)], vec![
+    //             template("border", [], vec![
+    //                 template("expand", [], vec![])
+    //             ])
+    //         ]),
+    //         template("expand", ["factor", 2], vec![
+    //             template("border", [], vec![
+    //                 template("expand", [], vec![])
+    //             ])
+    //         ]),
+    //     ];
+
     //     let border = Border::thin(None, None);
-    //     let expand = vec![template("expand", vec![])];
-    //     test_hstack(
+    //     let mut attrs = Attributes::empty();
+    //     attrs.set(fields::FACTOR, 2);
+    //     let expand = vec![template("expand", attrs, vec![])];
+    //     test_expand(
     //         border,
     //         &expand,
     //         FakeTerm::from_str(
     //         r#"
     //         ╔═] Fake term [═╗
-    //         ║┌─┐┌─┐┌─┐      ║
-    //         ║│0││1││2│      ║
-    //         ║└─┘└─┘└─┘      ║
-    //         ║               ║
-    //         ║               ║
+    //         ║┌─────────────┐║
+    //         ║│             │║
+    //         ║│             │║
+    //         ║│             │║
+    //         ║│             │║
+    //         ║└─────────────┘║
     //         ╚═══════════════╝
     //         "#,
     //         )
     //     );
-    // }
-
-    // #[test]
-    // fn expand_inner() {
-    //     let parent = expand_border(None);
-    //     assert_eq!(Size::new(10, 10), parent.size);
-    // }
-
-    // #[test]
-    // fn expand_inner_horz() {
-    //     let parent = expand_border(Some(Direction::Horizontal));
-    //     assert_eq!(Size::new(10, 2), parent.size);
     // }
 
     // #[test]

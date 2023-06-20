@@ -81,6 +81,23 @@ impl From<Vec<Attribute<'_>>> for Attributes {
     }
 }
 
+impl From<()> for Attributes {
+    fn from(src: ()) -> Self {
+        Self::empty()
+    }
+}
+
+impl<const N: usize, K: Into<String>, T: Into<Value>> From<[(K, T); N]> for Attributes {
+    fn from(src: [(K, T); N]) -> Self {
+        let mut attributes = Self::empty();
+        for (k, v) in src {
+            attributes.set(k, v);
+        }
+
+        attributes
+    }
+}
+
 impl Attributes {
     pub fn empty() -> Self {
         Self {
@@ -117,8 +134,8 @@ impl Attributes {
         self.inner.get(name)
     }
 
-    pub fn set(&mut self, name: impl AsRef<str>, value: impl Into<Value>) {
-        self.inner.insert(name.as_ref().into(), value.into());
+    pub fn set(&mut self, name: impl Into<String>, value: impl Into<Value>) {
+        self.inner.insert(name.into(), value.into());
     }
 }
 
