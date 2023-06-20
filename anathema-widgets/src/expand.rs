@@ -17,10 +17,10 @@ const DEFAULT_FACTOR: usize = 1;
 /// To only expand in one direction, set the `direction` of the `Expand` widget.
 ///
 /// A [`Direction`] can be set when creating a new widget
-/// ```ignore
-/// use anathema_widgets::{Expand, Direction};
-/// let horizontal = Expand::new(2, Direction::Horizontal);
-/// let vertical = Expand::new(5, Direction::Vertical);
+/// ```
+/// use anathema_widgets::{Expand, Axis};
+/// let horizontal = Expand::new(2, Axis::Horizontal, None);
+/// let vertical = Expand::new(5, Axis::Vertical, None);
 /// ```
 ///
 /// The total available space is divided between the `Expand` widgets and multiplied by the
@@ -29,8 +29,8 @@ const DEFAULT_FACTOR: usize = 1;
 /// ```ignore
 /// # use anathema_widgets::{NodeId, HStack, Constraints, Widget};
 /// use anathema_widgets::Expand;
-/// let left = Expand::new(2, None);
-/// let right = Expand::new(3, None);
+/// let left = Expand::new(2, None, None);
+/// let right = Expand::new(3, None, None);
 /// # let left = left.into_container(NodeId::anon());
 /// # let right = right.into_container(NodeId::anon());
 /// # let left_id = left.id();
@@ -167,9 +167,9 @@ impl WidgetFactory for ExpandFactory {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::testing::test_widget;
-    // use crate::{Attributes, Border, BorderStyle, Constraints, Padding, Sides, Text};
+    use super::*;
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
 
     // fn expand_border(dir: Option<Direction>) -> WidgetContainer {
     //     let mut parent = Border::thick(None, None).into_container(NodeId::anon());
@@ -179,10 +179,30 @@ mod test {
     //     parent
     // }
 
-    // fn test_expand(expanded: WidgetContainer, expected: &str) {
-    //     let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
-    //     border.child = Some(expanded);
-    //     test_widget(border, expected);
+    fn test_expand(widget: impl Widget + 'static, children: &[Template], expected: FakeTerm) {
+        let widget = WidgetContainer::new(Box::new(widget), children);
+        test_widget(widget, expected);
+    }
+
+    // #[test]
+    // fn expand_border() {
+    //     let border = Border::thin(None, None);
+    //     let expand = vec![template("expand", vec![])];
+    //     test_hstack(
+    //         border,
+    //         &expand,
+    //         FakeTerm::from_str(
+    //         r#"
+    //         ╔═] Fake term [═╗
+    //         ║┌─┐┌─┐┌─┐      ║
+    //         ║│0││1││2│      ║
+    //         ║└─┘└─┘└─┘      ║
+    //         ║               ║
+    //         ║               ║
+    //         ╚═══════════════╝
+    //         "#,
+    //         )
+    //     );
     // }
 
     // #[test]

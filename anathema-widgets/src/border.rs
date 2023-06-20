@@ -246,8 +246,7 @@ impl Widget for Border {
                 }
             }
             None => {
-                let mut size =
-                    Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
+                let mut size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
                 if ctx.constraints.is_width_tight() {
                     size.width = ctx.constraints.max_width;
                 }
@@ -257,10 +256,6 @@ impl Widget for Border {
                 size
             }
         };
-
-        if size == Size::ZERO {
-            return Err(Error::InsufficientSpaceAvailble);
-        }
 
         Ok(size)
     }
@@ -423,7 +418,7 @@ impl WidgetFactory for BorderFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::{testing::{test_widget, FakeTerm}, template::template_text};
 
     fn test_border(border: Border, expected: FakeTerm) {
         let widget = WidgetContainer::new(Box::new(border), &[]);
@@ -436,7 +431,7 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══════╗
             ║┌───┐               ║
             ║│   │               ║
@@ -446,7 +441,7 @@ mod test {
             ║                    ║
             ╚════════════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -456,13 +451,13 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══╗
             ║─────           ║
             ║                ║
             ╚════════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -472,7 +467,7 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══╗
             ║─────           ║
             ║                ║
@@ -480,7 +475,7 @@ mod test {
             ║─────           ║
             ╚════════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -490,7 +485,7 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══╗
             ║│               ║
             ║│               ║
@@ -498,7 +493,7 @@ mod test {
             ║                ║
             ╚════════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -508,7 +503,7 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══╗
             ║  │             ║
             ║  │             ║
@@ -516,7 +511,7 @@ mod test {
             ║                ║
             ╚════════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -526,7 +521,7 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══╗
             ║┌───            ║
             ║│               ║
@@ -534,7 +529,7 @@ mod test {
             ║                ║
             ╚════════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -544,7 +539,7 @@ mod test {
         test_border(
             border,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [══╗
             ║   │            ║
             ║   │            ║
@@ -552,7 +547,66 @@ mod test {
             ║                ║
             ╚════════════════╝
             "#,
-            )
+            ),
+        );
+    }
+
+    #[test]
+    fn unsized_empty_border() {
+        let border = Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, None, None);
+        test_border(
+            border,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══╗
+            ║                ║
+            ║                ║
+            ║                ║
+            ║                ║
+            ╚════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn sized_by_child() {
+        let border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
+        let body = [template_text("hello world")];
+        let widget = WidgetContainer::new(Box::new(border), &body);
+        test_widget(
+            widget, 
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [════╗
+            ║┌───────────┐     ║
+            ║│hello world│     ║
+            ║└───────────┘     ║
+            ║                  ║
+            ╚══════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn fixed_size() {
+        let border = Border::new(&BorderStyle::Thin, Sides::ALL, 7, 4);
+        let body = [template_text("hello world")];
+        let widget = WidgetContainer::new(Box::new(border), &body);
+        test_widget(
+            widget, 
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═══╗
+            ║┌─────┐          ║
+            ║│hello│          ║
+            ║│world│          ║
+            ║└─────┘          ║
+            ║                 ║
+            ╚═════════════════╝
+            "#,
+            ),
         );
     }
 }
