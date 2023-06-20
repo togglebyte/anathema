@@ -466,7 +466,7 @@ mod test {
 
         assert_eq!(
             attribs.get("ansi").and_then(Value::to_color).unwrap(),
-            Color::Ansi(123)
+            Color::AnsiValue(123)
         );
     }
 
