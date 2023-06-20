@@ -27,7 +27,7 @@ impl VirtualMachine {
 #[cfg(test)]
 mod test {
     use anathema_compiler::compile;
-    use anathema_widgets::TemplateKind;
+    use anathema_widgets::template::Template;
 
     use super::*;
 
@@ -37,15 +37,7 @@ mod test {
         let vm = VirtualMachine::new(instructions, consts);
         let vstack_gen = vm.exec().unwrap().remove(0);
 
-        assert!(matches!(
-            vstack_gen,
-            Template {
-                kind: TemplateKind::Node { .. },
-                ..
-            }
-        ));
-
-        let TemplateKind::Node { ident, .. } = vstack_gen.kind else { panic!("wrong kind") };
+        let Template::Node { ident, .. } = vstack_gen else { panic!("wrong kind") };
 
         assert_eq!(ident, "vstack");
     }
@@ -62,14 +54,11 @@ mod test {
 
         assert!(matches!(
             for_loop,
-            Template {
-                kind: TemplateKind::For { .. },
-                ..
-            }
+            Template::Loop { .. }
         ));
 
-        let TemplateKind::Node { ident, .. } = for_loop.children.remove(0).kind else { panic!("wrong kind") };
+        let Template::Loop { binding, .. } = for_loop else { panic!("wrong kind") };
 
-        assert_eq!(ident, "border");
+        assert_eq!(binding, "x");
     }
 }

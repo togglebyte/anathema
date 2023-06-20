@@ -44,7 +44,7 @@ impl<'vm> Scope<'vm> {
                     let body = self.instructions.drain(..size).collect();
                     let id = node_id.clone();
                     let body = Scope::new(body, &self.consts).exec(id.clone())?;
-                    let template = Template::For {
+                    let template = Template::Loop {
                         binding,
                         data,
                         body,
