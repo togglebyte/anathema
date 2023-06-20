@@ -420,16 +420,11 @@ mod test {
     use super::*;
     use crate::{testing::{test_widget, FakeTerm}, template::template_text};
 
-    fn test_border(border: Border, expected: FakeTerm) {
-        let widget = WidgetContainer::new(Box::new(border), &[]);
-        test_widget(widget, expected);
-    }
-
     #[test]
     fn border() {
-        let border = Border::new(&BorderStyle::Thin, Sides::ALL, 5, 4);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::ALL, 5, 4),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗
@@ -447,9 +442,9 @@ mod test {
 
     #[test]
     fn border_top() {
-        let border = Border::new(&BorderStyle::Thin, Sides::TOP, 5, 2);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::TOP, 5, 2),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -463,9 +458,9 @@ mod test {
 
     #[test]
     fn border_top_bottom() {
-        let border = Border::new(&BorderStyle::Thin, Sides::TOP | Sides::BOTTOM, 5, 4);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::TOP | Sides::BOTTOM, 5, 4),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -481,9 +476,9 @@ mod test {
 
     #[test]
     fn border_left() {
-        let border = Border::new(&BorderStyle::Thin, Sides::LEFT, 1, 2);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::LEFT, 1, 2),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -499,9 +494,9 @@ mod test {
 
     #[test]
     fn border_right() {
-        let border = Border::new(&BorderStyle::Thin, Sides::RIGHT, 3, 2);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::RIGHT, 3, 2),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -517,9 +512,9 @@ mod test {
 
     #[test]
     fn border_top_left() {
-        let border = Border::new(&BorderStyle::Thin, Sides::TOP | Sides::LEFT, 4, 3);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::TOP | Sides::LEFT, 4, 3),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -535,9 +530,9 @@ mod test {
 
     #[test]
     fn border_bottom_right() {
-        let border = Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, 4, 3);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, 4, 3),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -553,9 +548,9 @@ mod test {
 
     #[test]
     fn unsized_empty_border() {
-        let border = Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, None, None);
-        test_border(
-            border,
+        test_widget(
+            Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, None, None),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -571,11 +566,10 @@ mod test {
 
     #[test]
     fn sized_by_child() {
-        let border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
         let body = [template_text("hello world")];
-        let widget = WidgetContainer::new(Box::new(border), &body);
         test_widget(
-            widget, 
+            Border::new(&BorderStyle::Thin, Sides::ALL, None, None), 
+            &body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
@@ -591,11 +585,10 @@ mod test {
 
     #[test]
     fn fixed_size() {
-        let border = Border::new(&BorderStyle::Thin, Sides::ALL, 7, 4);
         let body = [template_text("hello world")];
-        let widget = WidgetContainer::new(Box::new(border), &body);
         test_widget(
-            widget, 
+            Border::new(&BorderStyle::Thin, Sides::ALL, 7, 4), 
+            &body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═══╗

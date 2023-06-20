@@ -4,7 +4,8 @@ use anathema_render::{Screen, Size, ScreenPos};
 
 use super::WidgetContainer;
 use crate::gen::store::Store;
-use crate::{Constraints, DataCtx, Lookup, PaintCtx, Pos};
+use crate::template::Template;
+use crate::{Constraints, DataCtx, Lookup, PaintCtx, Pos, Widget};
 
 // -----------------------------------------------------------------------------
 //   - Here be (hacky) dragons -
@@ -65,7 +66,8 @@ impl FakeTerm {
     }
 }
 
-pub fn test_widget(widget: WidgetContainer<'_>, expected: FakeTerm) {
+pub fn test_widget(widget: impl Widget + 'static, children: &[Template], expected: FakeTerm) {
+    let widget = WidgetContainer::new(Box::new(widget), children);
     test_widget_container(widget, expected)
 }
 

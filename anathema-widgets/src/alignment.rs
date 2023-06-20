@@ -116,11 +116,9 @@ mod test {
 
     fn align_widget(align: Align, expected: FakeTerm) {
         let text = template_text("AB");
-
         let alignment = Alignment::new(align);
-        let children = [text];
-        let widget = WidgetContainer::new(Box::new(alignment), &children);
-        test_widget(widget, expected);
+        let body = [text];
+        test_widget(alignment, &body, expected);
     }
 
     #[test]

@@ -99,6 +99,15 @@ pub fn template_text(text: impl Into<TextPath>) -> Template {
     }
 }
 
+pub fn template_span(text: impl Into<TextPath>) -> Template {
+    Template::Node {
+        ident: "span".into(),
+        attributes: Attributes::empty(),
+        text: Some(text.into()),
+        children: vec![],
+    }
+}
+
 pub fn template(
     ident: impl Into<String>,
     attributes: impl Into<Attributes>,

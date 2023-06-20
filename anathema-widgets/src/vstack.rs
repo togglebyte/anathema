@@ -130,16 +130,11 @@ mod test {
             .collect()
     }
 
-    fn test_vstack(vstack: VStack, children: &[Template], expected: FakeTerm) {
-        let widget = WidgetContainer::new(Box::new(vstack), children);
-        test_widget(widget, expected);
-    }
-
     #[test]
     fn only_vstack() {
         let body = children(3);
         let mut vstack = VStack::new(None, None);
-        test_vstack(
+        test_widget(
             vstack,
             &body,
             FakeTerm::from_str(
@@ -164,7 +159,7 @@ mod test {
     fn fixed_height_stack() {
         let body = children(10);
         let mut vstack = VStack::new(None, 6);
-        test_vstack(
+        test_widget(
             vstack,
             &body,
             FakeTerm::from_str(

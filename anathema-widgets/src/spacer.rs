@@ -63,3 +63,38 @@ impl WidgetFactory for SpacerFactory {
         Ok(Box::new(Spacer))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{Attributes, HStack, VStack};
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
+
+    #[test]
+    fn space_out_hstack() {
+        let hstack = HStack::new(None, None);
+        let body = [
+            template_text("left"),
+            template("spacer", (), vec![]),
+            template_text("right"),
+        ];
+        test_widget(
+            hstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║left      right║
+            ║               ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
+
+}

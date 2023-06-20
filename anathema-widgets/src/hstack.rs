@@ -123,16 +123,11 @@ mod test {
             .collect()
     }
 
-    fn test_hstack(hstack: HStack, children: &[Template], expected: FakeTerm) {
-        let widget = WidgetContainer::new(Box::new(hstack), children);
-        test_widget(widget, expected);
-    }
-
     #[test]
     fn only_hstack() {
-        let body = children(3);
         let mut hstack = HStack::new(None, None);
-        test_hstack(
+        let body = children(3);
+        test_widget(
             hstack,
             &body,
             FakeTerm::from_str(
@@ -151,9 +146,9 @@ mod test {
 
     #[test]
     fn fixed_width_stack() {
-        let body = children(10);
         let mut hstack = HStack::new(6, None);
-        test_hstack(
+        let body = children(10);
+        test_widget(
             hstack,
             &body,
             FakeTerm::from_str(

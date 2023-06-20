@@ -144,15 +144,10 @@ mod test {
             .collect()
     }
 
-    fn test_viewport(viewport: Viewport, children: &[Template], expected: FakeTerm) {
-        let widget = WidgetContainer::new(Box::new(viewport), children);
-        test_widget(widget, expected);
-    }
-
     #[test]
     fn vertical_viewport() {
         let body = children(10);
-        test_viewport(
+        test_widget(
             Viewport::new(Direction::Forward, Axis::Vertical, 0),
             &body,
             FakeTerm::from_str(
@@ -173,7 +168,7 @@ mod test {
     #[test]
     fn horizontal_viewport() {
         let body = children(10);
-        test_viewport(
+        test_widget(
             Viewport::new(Direction::Forward, Axis::Horizontal, 0),
             &body,
             FakeTerm::from_str(
@@ -194,7 +189,7 @@ mod test {
     #[test]
     fn vertical_viewport_reversed() {
         let body = children(10);
-        test_viewport(
+        test_widget(
             Viewport::new(Direction::Backward, Axis::Vertical, 0),
             &body,
             FakeTerm::from_str(
@@ -215,7 +210,7 @@ mod test {
     #[test]
     fn horizontal_viewport_reversed() {
         let body = children(10);
-        test_viewport(
+        test_widget(
             Viewport::new(Direction::Backward, Axis::Horizontal, 0),
             &body,
             FakeTerm::from_str(
@@ -236,7 +231,7 @@ mod test {
     #[test]
     fn vertical_forward_offset() {
         let body = children(10);
-        test_viewport(
+        test_widget(
             Viewport::new(Direction::Forward, Axis::Vertical, 2),
             &body,
             FakeTerm::from_str(
@@ -257,7 +252,7 @@ mod test {
     #[test]
     fn horizontal_forward_offset() {
         let body = children(10);
-        test_viewport(
+        test_widget(
             Viewport::new(Direction::Forward, Axis::Horizontal, 2),
             &body,
             FakeTerm::from_str(

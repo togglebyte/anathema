@@ -304,28 +304,15 @@ impl WidgetFactory for SpanFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::Template;
+    use crate::template::{Template, template_span};
     use crate::testing::{test_widget, FakeTerm};
     use crate::{fields, Attributes, Border, BorderStyle, Lookup, Sides, TextPath};
 
-    fn span(text: &str) -> Template {
-        Template::Node {
-            ident: "span".into(),
-            attributes: Attributes::empty(),
-            text: Some(TextPath::from(text)),
-            children: vec![],
-        }
-    }
-
-    fn test_text(text: Text, expected: FakeTerm) {
-        let widget = WidgetContainer::new(Box::new(text), &[]);
-        test_widget(widget, expected);
-    }
-
     #[test]
     fn word_wrap_excessive_space() {
-        test_text(
+        test_widget(
             Text::with_text("hello      how are     you"),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -343,8 +330,9 @@ mod test {
 
     #[test]
     fn word_wrap() {
-        test_text(
+        test_widget(
             Text::with_text("hello how are you"),
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -361,8 +349,9 @@ mod test {
     fn no_word_wrap() {
         let mut text = Text::with_text("hello how are you");
         text.word_wrap = Wrap::Overflow;
-        test_text(
+        test_widget(
             text,
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -379,8 +368,9 @@ mod test {
     fn break_word_wrap() {
         let mut text = Text::with_text("hellohowareyoudoing");
         text.word_wrap = Wrap::WordBreak;
-        test_text(
+        test_widget(
             text,
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -395,11 +385,14 @@ mod test {
 
     #[test]
     fn char_wrap_layout_multiple_spans() {
-        let mut text = Text::with_text("one");
-        let spans = [span("two"), span(" averylongword"), span(" bunny ")];
-        let widget = WidgetContainer::new(Box::new(text), &spans);
+        let body = [
+            template_span("two"), 
+            template_span(" averylongword"), 
+            template_span(" bunny ")
+        ];
         test_widget(
-            widget,
+            Text::with_text("one"),
+            &body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═════╗
@@ -416,8 +409,9 @@ mod test {
     fn right_alignment() {
         let mut text = Text::with_text("a one xxxxxxxxxxxxxxxxxx");
         text.text_alignment = TextAlignment::Right;
-        test_text(
+        test_widget(
             text,
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
@@ -434,8 +428,9 @@ mod test {
     fn centre_alignment() {
         let mut text = Text::with_text("a one xxxxxxxxxxxxxxxxxx");
         text.text_alignment = TextAlignment::Centre;
-        test_text(
+        test_widget(
             text,
+            &[],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
