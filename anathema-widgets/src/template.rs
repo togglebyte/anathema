@@ -31,7 +31,7 @@ pub enum Template {
         text: Option<TextPath>,
         children: Vec<Template>,
     },
-    For {
+    Loop {
         binding: String,
         data: Value,
         body: Vec<Template>,
@@ -46,7 +46,7 @@ impl Template {
     ) -> Expression<'tpl, 'parent> {
         match &self {
             Template::Node { .. } => Expression::Node(&self),
-            Template::For {
+            Template::Loop {
                 binding,
                 data,
                 body,
@@ -144,7 +144,7 @@ pub fn template_for(
     data: impl Into<Value>,
     body: impl Into<Vec<Template>>,
 ) -> Template {
-    Template::For {
+    Template::Loop {
         binding: binding.into(),
         body: body.into(),
         data: data.into(),
