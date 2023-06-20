@@ -9,7 +9,8 @@
 //! # }
 //! use anathema_render::{Screen, Size, Style, ScreenPos, Color};
 //! let mut output = stdout();
-//! let mut screen = Screen::new(&mut output, (80u16, 50u16)).unwrap();
+//! Screen::hide_cursor(&mut output).unwrap();
+//! let mut screen = Screen::new((80u16, 50u16));
 //!
 //! // Clear the screen first
 //! screen.clear_all(&mut output);

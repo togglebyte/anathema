@@ -157,7 +157,7 @@ mod test {
     use crate::Style;
 
     fn make_screen(size: Size, buffer: &mut Vec<u8>) -> Screen {
-        let mut screen = Screen::new(buffer, size).unwrap();
+        let mut screen = Screen::new(size);
         for y in 0..size.height {
             let c = y.to_string().chars().next().unwrap();
             for x in 0..size.width {
