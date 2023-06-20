@@ -110,17 +110,12 @@ impl WidgetFactory for AlignmentFactory {
 mod test {
     use super::*;
     use crate::gen::store::Store;
-    use crate::template::Template;
+    use crate::template::{Template, template_text};
     use crate::testing::{test_widget, FakeTerm};
     use crate::{Attributes, Constraints, DataCtx, Lookup, Padding};
 
     fn align_widget(align: Align, expected: FakeTerm) {
-        let text = Template::Node {
-            ident: "text".into(),
-            attributes: Attributes::empty(),
-            text: Some(TextPath::from("AB")),
-            children: vec![],
-        };
+        let text = template_text("AB");
 
         let alignment = Alignment::new(align);
         let children = [text];

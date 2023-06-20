@@ -35,9 +35,9 @@ impl Viewport {
     const KIND: &'static str = "Viewport";
 
     /// Create a new instance of a [`Viewport`]
-    pub fn new(direction: Direction, axis: Axis, offset: Option<i32>) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: impl Into<Option<i32>>) -> Self {
         Self {
-            offset: offset.unwrap_or(0),
+            offset: offset.into().unwrap_or(0),
             clamp_horizontal: true,
             clamp_vertical: true,
             direction,
@@ -52,7 +52,7 @@ impl Widget for Viewport {
     }
 
     fn layout<'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        let many = Many::new(self.direction, self.axis, self.offset);
+        let many = Many::new(self.direction, self.axis, self.offset, true);
         let mut layout = Layouts::new(many, &mut ctx);
         layout.layout()?;
         self.offset = layout.layout.offset();
@@ -64,9 +64,10 @@ impl Widget for Viewport {
         if let Direction::Backward = self.direction {
             match self.axis {
                 Axis::Horizontal => pos.x += ctx.inner_size.width as i32,
-                Axis::Vertical => pos.y +=  ctx.inner_size.height as i32,
+                Axis::Vertical => pos.y += ctx.inner_size.height as i32,
             }
         }
+
         let offset = match self.direction {
             Direction::Forward => -self.offset,
             Direction::Backward => self.offset,
@@ -133,129 +134,144 @@ impl WidgetFactory for ViewportFactory {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::testing::{test_widget, test_widget_container};
-    // use crate::{Border, BorderStyle, Sides, Text};
+    use super::*;
 
-    // fn viewport(child_range: std::ops::Range<usize>) -> Viewport {
-    //     let offset = Offset::default();
-    //     let mut viewport = Viewport::new(offset);
+    use crate::{template::{template, template_text, Template}, testing::{FakeTerm, test_widget}};
 
-    //     for val in child_range {
-    //         let child = Text::with_text(format!("{val}")).into_container(NodeId::anon());
-    //         viewport.children.push(child);
-    //     }
+    fn children(count: usize) -> Vec<Template> {
+        (0..count)
+            .map(|i| template("border", vec![template_text(i.to_string())]))
+            .collect()
+    }
 
-    //     viewport
-    // }
+    fn test_viewport(viewport: Viewport, children: &[Template], expected: FakeTerm) {
+        let widget = WidgetContainer::new(Box::new(viewport), children);
+        test_widget(widget, expected);
+    }
 
-    // fn test_viewport(viewport: Viewport, expected: &str) -> WidgetContainer {
-    //     let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
-    //     border.child = Some(viewport.into_container(NodeId::Value("viewport".into())));
-    //     test_widget(border, expected)
-    // }
+    #[test]
+    fn vertical_viewport() {
+        let body = children(10);
+        test_viewport(
+            Viewport::new(Direction::Forward, Axis::Vertical, 0),
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐            ║
+            ║│0│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│1│            ║
+            ║└─┘            ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    // #[test]
-    // fn change_offset_from_top() {
-    //     let mut viewport = viewport(0..4);
-    //     viewport.offset = Offset::Vertical(VertEdge::Top(1));
+    #[test]
+    fn horizontal_viewport() {
+        let body = children(10);
+        test_viewport(
+            Viewport::new(Direction::Forward, Axis::Horizontal, 0),
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐┌─┐┌─┐┌─┐┌─┐║
+            ║│0││1││2││3││4│║
+            ║└─┘└─┘└─┘└─┘└─┘║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    //     test_viewport(
-    //         viewport,
-    //         r#"
-    //         ┌───┐
-    //         │1  │
-    //         │2  │
-    //         │3  │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn vertical_viewport_reversed() {
+        let body = children(10);
+        test_viewport(
+            Viewport::new(Direction::Backward, Axis::Vertical, 0),
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐            ║
+            ║│8│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│9│            ║
+            ║└─┘            ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    // #[test]
-    // fn change_offset_from_bottom() {
-    //     let mut viewport = viewport(0..5);
-    //     viewport.offset = Offset::Vertical(VertEdge::Bottom(1));
+    #[test]
+    fn horizontal_viewport_reversed() {
+        let body = children(10);
+        test_viewport(
+            Viewport::new(Direction::Backward, Axis::Horizontal, 0),
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐┌─┐┌─┐┌─┐┌─┐║
+            ║│5││6││7││8││9│║
+            ║└─┘└─┘└─┘└─┘└─┘║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    //     test_viewport(
-    //         viewport,
-    //         r#"
-    //         ┌───┐
-    //         │1  │
-    //         │2  │
-    //         │3  │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn vertical_forward_offset() {
+        let body = children(10);
+        test_viewport(
+            Viewport::new(Direction::Forward, Axis::Vertical, 2),
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│1│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│2│            ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    // #[test]
-    // fn edge_swap() {
-    //     let mut viewport = viewport(0..10);
-    //     viewport.offset = Offset::Vertical(VertEdge::Bottom(0));
-
-    //     let mut root = test_viewport(
-    //         viewport,
-    //         r#"
-    //         ┌───┐
-    //         │7  │
-    //         │8  │
-    //         │9  │
-    //         └───┘
-    //         "#,
-    //     );
-
-    //     for _ in 0..3 {
-    //         let viewport = root.by_id("viewport").unwrap();
-    //         let size = viewport.size;
-    //         viewport.to_mut::<Viewport>().swap_edges(size);
-
-    //         root = test_widget_container(
-    //             root,
-    //             r#"
-    //         ┌───┐
-    //         │7  │
-    //         │8  │
-    //         │9  │
-    //         └───┘
-    //         "#,
-    //         );
-    //     }
-    // }
-
-    // #[test]
-    // fn clamp_offset_negative() {
-    //     let mut viewport = viewport(0..4);
-    //     viewport.clamp_vertical = true;
-    //     viewport.offset = Offset::Vertical(VertEdge::Top(-100));
-
-    //     test_viewport(
-    //         viewport,
-    //         r#"
-    //         ┌───┐
-    //         │0  │
-    //         │1  │
-    //         │2  │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
-
-    // #[test]
-    // fn clamp_offset_positive() {
-    //     let mut viewport = viewport(0..4);
-    //     viewport.clamp_vertical = true;
-    //     viewport.offset = Offset::Vertical(VertEdge::Top(100));
-
-    //     test_viewport(
-    //         viewport,
-    //         r#"
-    //         ┌───┐
-    //         │1  │
-    //         │2  │
-    //         │3  │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn horizontal_forward_offset() {
+        let body = children(10);
+        test_viewport(
+            Viewport::new(Direction::Forward, Axis::Horizontal, 2),
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┐┌─┐┌─┐┌─┐┌─┐┌─║
+            ║││1││2││3││4││5║
+            ║┘└─┘└─┘└─┘└─┘└─║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 }

@@ -96,6 +96,15 @@ pub fn template_text(text: impl Into<TextPath>) -> Template {
     }
 }
 
+pub fn template(ident: impl Into<String>, children: Vec<Template>) -> Template {
+    Template::Node {
+        ident: ident.into(),
+        attributes: Attributes::empty(),
+        text: None,
+        children,
+    }
+}
+
 // pub fn template_if(cond: Value, body: Vec<Template>) -> Template {
 //     Template {
 //         kind: Kind::If(cond, None),

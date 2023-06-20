@@ -266,10 +266,7 @@ impl Region {
     pub const ZERO: Self = Self::new(Pos::ZERO, Pos::ZERO);
 
     /// Create a new instance of a region.
-    /// The `from` should be less than or equal to the `to` field.
     pub const fn new(from: Pos, to: Pos) -> Self {
-        debug_assert!(from.x <= to.x);
-        debug_assert!(from.y <= to.y);
         Self { from, to }
     }
 

@@ -82,10 +82,11 @@ pub struct Many {
     pub direction: Direction,
     pub axis: Axis,
     offset: Offset,
+    unconstrained: bool,
 }
 
 impl Many {
-    pub fn new(direction: Direction, axis: Axis, offset: i32) -> Self {
+    pub fn new(direction: Direction, axis: Axis, offset: i32, unconstrained: bool) -> Self {
         Self {
             direction,
             axis,
@@ -95,6 +96,7 @@ impl Many {
                 enabled: true,
                 direction,
             },
+            unconstrained,
         }
     }
 
@@ -124,12 +126,23 @@ impl Layout for Many {
 
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
             // Ignore spacers
-            if  [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
+            if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
                 ctx.children.push(widget);
                 continue;
             }
 
-            let mut widget_size = match widget.layout(max_constraints, &values, ctx.lookup) {
+            let widget_constraints = {
+                let mut constraints = max_constraints;
+                if self.unconstrained {
+                    match self.axis {
+                        Axis::Vertical => constraints.unbound_height(),
+                        Axis::Horizontal => constraints.unbound_width(),
+                    }
+                }
+                constraints
+            };
+
+            let mut widget_size = match widget.layout(widget_constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,
@@ -162,10 +175,6 @@ impl Layout for Many {
                     .max(used_size.inner.width)
                     .max(max_constraints.min_width);
             }
-        }
-
-        if let Direction::Backward = self.direction {
-            // ctx.children.reverse();
         }
 
         Ok(())

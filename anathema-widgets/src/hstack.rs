@@ -110,3 +110,64 @@ impl WidgetFactory for HStackFactory {
         Ok(Box::new(widget))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
+
+    fn children(count: usize) -> Vec<Template> {
+        (0..count)
+            .map(|i| template("border", vec![template_text(i.to_string())]))
+            .collect()
+    }
+
+    fn test_hstack(hstack: HStack, children: &[Template], expected: FakeTerm) {
+        let widget = WidgetContainer::new(Box::new(hstack), children);
+        test_widget(widget, expected);
+    }
+
+    #[test]
+    fn only_hstack() {
+        let body = children(3);
+        let mut hstack = HStack::new(None, None);
+        test_hstack(
+            hstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐┌─┐┌─┐      ║
+            ║│0││1││2│      ║
+            ║└─┘└─┘└─┘      ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
+
+    #[test]
+    fn fixed_width_stack() {
+        let body = children(10);
+        let mut hstack = HStack::new(6, None);
+        test_hstack(
+            hstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐┌─┐         ║
+            ║│0││1│         ║
+            ║└─┘└─┘         ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
+}

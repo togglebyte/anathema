@@ -120,49 +120,68 @@ impl WidgetFactory for VStackFactory {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::testing::test_widget;
-    // use crate::{Border, BorderStyle, Sides, Text};
+    use super::*;
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
 
-    // fn test_vstack(col: impl Widget, expected: &str) {
-    //     let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
-    //     border.child = Some(col.into_container(NodeId::Auto(0)));
-    //     test_widget(border, expected);
-    // }
+    fn children(count: usize) -> Vec<Template> {
+        (0..count)
+            .map(|i| template("border", vec![template_text(i.to_string())]))
+            .collect()
+    }
 
-    // #[test]
-    // fn only_vstack() {
-    //     let mut vstack = VStack::new(None, None);
-    //     vstack.add_child(Text::with_text("0").into_container(NodeId::Auto(0)));
-    //     vstack.add_child(Text::with_text("1").into_container(NodeId::Auto(1)));
-    //     vstack.add_child(Text::with_text("2").into_container(NodeId::Auto(2)));
-    //     test_vstack(
-    //         vstack,
-    //         r#"
-    //         ┌───────┐
-    //         │0      │
-    //         │1      │
-    //         │2      │
-    //         └───────┘
-    //         "#,
-    //     );
-    // }
+    fn test_vstack(vstack: VStack, children: &[Template], expected: FakeTerm) {
+        let widget = WidgetContainer::new(Box::new(vstack), children);
+        test_widget(widget, expected);
+    }
 
-    // // #[test]
-    // // fn fixed_height_stack() {
-    // //     let mut vstack = VStack::new(None, 2);
-    // //     vstack.add_child(Text::with_text("0").into_container(NodeId::Auto(0)));
-    // //     vstack.add_child(Text::with_text("1").into_container(NodeId::Auto(1)));
-    // //     vstack.add_child(Text::with_text("2").into_container(NodeId::Auto(2)));
-    // //     test_vstack(
-    // //         vstack,
-    // //         r#"
-    // //         ┌───────┐
-    // //         │0      │
-    // //         │1      │
-    // //         │       │
-    // //         └───────┘
-    // //         "#,
-    // //     );
-    // // }
+    #[test]
+    fn only_vstack() {
+        let body = children(3);
+        let mut vstack = VStack::new(None, None);
+        test_vstack(
+            vstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐            ║
+            ║│0│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│1│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│2│            ║
+            ║└─┘            ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
+
+    #[test]
+    fn fixed_height_stack() {
+        let body = children(10);
+        let mut vstack = VStack::new(None, 6);
+        test_vstack(
+            vstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─┐            ║
+            ║│0│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│1│            ║
+            ║└─┘            ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 }
