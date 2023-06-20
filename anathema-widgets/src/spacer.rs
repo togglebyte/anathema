@@ -97,4 +97,58 @@ mod test {
         );
     }
 
+    #[test]
+    fn space_out_vstack() {
+        let hstack = VStack::new(None, None);
+        let body = [
+            template_text("top"),
+            template("spacer", (), vec![]),
+            template_text("bottom"),
+        ];
+        test_widget(
+            hstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║top            ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ║bottom         ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
+
+    #[test]
+    fn centre_using_spacers() {
+        let hstack = VStack::new(None, None);
+        let body = [
+            template_text("top"),
+            template("spacer", (), vec![]),
+            template_text("centre"),
+            template("spacer", (), vec![]),
+            template_text("bottom"),
+        ];
+        test_widget(
+            hstack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║top            ║
+            ║               ║
+            ║               ║
+            ║centre         ║
+            ║               ║
+            ║               ║
+            ║bottom         ║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 }
