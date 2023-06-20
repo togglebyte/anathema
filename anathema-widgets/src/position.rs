@@ -181,71 +181,85 @@ impl WidgetFactory for PositionFactory {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::testing::test_widget;
-    // use crate::{Border, BorderStyle, Sides, Text};
+    use super::*;
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
+    use crate::Expand;
 
-    // fn test_position(h_edge: HorzEdge, v_edge: VertEdge, expected: &str) {
-    //     let mut root = Border::new(&BorderStyle::Thin, Sides::ALL, None, None);
-    //     let mut position = Position::new(h_edge, v_edge);
-    //     position.add_child(Text::with_text("x").into_container(NodeId::anon()));
-    //     root.add_child(position.into_container(NodeId::anon()));
-    //     test_widget(root, expected);
-    // }
+    #[test]
+    fn top_left() {
+        let body = [template_text("top left")];
 
-    // #[test]
-    // fn top_left() {
-    //     test_position(
-    //         HorzEdge::Left(0),
-    //         VertEdge::Top(0),
-    //         r#"
-    //         ┌───┐
-    //         │x  │
-    //         │   │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+        test_widget(
+            Position::new(HorzEdge::Left(0), VertEdge::Top(0)),
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║top left       ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn top_right() {
-    //     test_position(
-    //         HorzEdge::Right(0),
-    //         VertEdge::Top(0),
-    //         r#"
-    //         ┌───┐
-    //         │  x│
-    //         │   │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn top_right() {
+        let body = [template_text("top right")];
+        test_widget(
+            Position::new(HorzEdge::Right(0), VertEdge::Top(0)),
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║      top right║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn bottom_right() {
-    //     test_position(
-    //         HorzEdge::Right(0),
-    //         VertEdge::Bottom(0),
-    //         r#"
-    //         ┌───┐
-    //         │   │
-    //         │  x│
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn bottom_right() {
+        let body = [template_text("bottom right")];
+        test_widget(
+            Position::new(HorzEdge::Right(0), VertEdge::Bottom(0)),
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║               ║
+            ║               ║
+            ║               ║
+            ║   bottom right║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn bottom_left() {
-    //     test_position(
-    //         HorzEdge::Left(0),
-    //         VertEdge::Bottom(0),
-    //         r#"
-    //         ┌───┐
-    //         │   │
-    //         │x  │
-    //         └───┘
-    //         "#,
-    //     );
-    // }
+    #[test]
+    fn bottom_left() {
+        let body = [template_text("bottom left")];
+        test_widget(
+            Position::new(HorzEdge::Left(0), VertEdge::Bottom(0)),
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║               ║
+            ║               ║
+            ║               ║
+            ║bottom left    ║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 }

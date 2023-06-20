@@ -33,28 +33,50 @@ impl StdError for Error {}
 impl Error {
     pub(crate) fn unterminated_string(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.start, src);
-        Self { line, col, src: src.to_string(), kind: ErrorKind::UnterminatedString }
+        Self {
+            line,
+            col,
+            src: src.to_string(),
+            kind: ErrorKind::UnterminatedString,
+        }
     }
 
     pub(crate) fn invalid_number(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.end, src);
-        Self { line, col, src: src.to_string(), kind: ErrorKind::InvalidNumber }
+        Self {
+            line,
+            col,
+            src: src.to_string(),
+            kind: ErrorKind::InvalidNumber,
+        }
     }
 
     pub(crate) fn invalid_hex_value(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.end, src);
-        Self { line, col, src: src.to_string(), kind: ErrorKind::InvalidHexValue }
+        Self {
+            line,
+            col,
+            src: src.to_string(),
+            kind: ErrorKind::InvalidHexValue,
+        }
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let start_line = self.line;
-        let lines = self.src.lines().enumerate().skip(start_line.saturating_sub(2)).take(3);
+        let lines = self
+            .src
+            .lines()
+            .enumerate()
+            .skip(start_line.saturating_sub(2))
+            .take(3);
 
         let msg = match &self.kind {
             ErrorKind::UnterminatedString => "unterminated string".to_string(),
-            ErrorKind::UnterminatedAttributes => "unterminated attributes (missing `]`)".to_string(),
+            ErrorKind::UnterminatedAttributes => {
+                "unterminated attributes (missing `]`)".to_string()
+            }
             ErrorKind::UnterminatedElement => "unterminated element".to_string(),
             ErrorKind::InvalidToken { expected } => {
                 format!("invalid token. expected: {expected}")
@@ -63,7 +85,9 @@ impl Display for Error {
             ErrorKind::InvalidHexValue => "invalid hex value".to_string(),
             ErrorKind::UnexpectedEnd => "unexpected end".to_string(),
             ErrorKind::TrailingPipe => "trailing pipe character".to_string(),
-            ErrorKind::InvalidUnindent => "unindent does not match previous indentation levels".to_string(),
+            ErrorKind::InvalidUnindent => {
+                "unindent does not match previous indentation levels".to_string()
+            }
         };
 
         writeln!(f, "error on line {start_line}: {msg}")?;

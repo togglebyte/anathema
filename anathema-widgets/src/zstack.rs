@@ -133,3 +133,59 @@ impl WidgetFactory for ZStackFactory {
         Ok(Box::new(widget))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
+
+    #[test]
+    fn border_title() {
+        let zstack = ZStack::new(None, None);
+        let body = [
+            template("border", (), [template("expand", (), [])]),
+            template("position", [("left", 2)], [template_text(" [title] ")]),
+        ];
+
+        test_widget(
+            zstack,
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══════╗
+            ║┌─ [title] ────────┐║
+            ║│                  │║
+            ║│                  │║
+            ║│                  │║
+            ║└──────────────────┘║
+            ╚════════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn place_on_top() {
+        let zstack = ZStack::new(None, None);
+        let body = [
+            template_text("000"),
+            template_text("11"),
+            template_text("2"),
+        ];
+
+        test_widget(
+            zstack,
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══════╗
+            ║210                 ║
+            ║                    ║
+            ║                    ║
+            ╚════════════════════╝
+            "#,
+            ),
+        );
+    }
+}

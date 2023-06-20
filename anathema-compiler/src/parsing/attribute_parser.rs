@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use anathema_render::Color;
 use anathema_widgets::{
-    fields, Align, BorderStyle, Axis, Display, Easing, Number, Path, Sides, TextAlignment,
-    TextPath, Value, Wrap, Direction,
+    fields, Align, Axis, BorderStyle, Direction, Display, Easing, Number, Path, Sides,
+    TextAlignment, TextPath, Value, Wrap,
 };
 
 use super::parser::{parse_path, parse_to_fragments};
@@ -62,9 +62,9 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                     fields::AXIS => match val {
                         "horizontal" | "horz" => Ok(Value::Axis(Axis::Horizontal)),
                         "vertical" | "vert" => Ok(Value::Axis(Axis::Vertical)),
-                        _ => Err(self.lexer.error(ErrorKind::InvalidToken {
-                            expected: "axis",
-                        })),
+                        _ => Err(self
+                            .lexer
+                            .error(ErrorKind::InvalidToken { expected: "axis" })),
                     },
                     fields::BORDER_STYLE => match val {
                         "thick" => Ok(Value::BorderStyle(BorderStyle::Thick)),
@@ -83,9 +83,9 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                     fields::DIRECTION => match val {
                         "forward" => Ok(Value::Direction(Direction::Forward)),
                         "backward" => Ok(Value::Direction(Direction::Backward)),
-                        _ => Err(self.lexer.error(ErrorKind::InvalidToken {
-                            expected: "axis",
-                        })),
+                        _ => Err(self
+                            .lexer
+                            .error(ErrorKind::InvalidToken { expected: "axis" })),
                     },
                     fields::SIDES => {
                         let mut sides = self.parse_side(val)?;
@@ -383,9 +383,7 @@ mod test {
         let src = "\"hello, world\"";
 
         let mut lexer = Lexer::new(src);
-        let output = AttributeParser::new(&mut lexer)
-            .parse("attrib")
-            .unwrap();
+        let output = AttributeParser::new(&mut lexer).parse("attrib").unwrap();
         let Value::String(text) = output else { panic!() };
 
         assert_eq!(text, "hello, world");

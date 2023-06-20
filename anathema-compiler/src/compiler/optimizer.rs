@@ -7,12 +7,28 @@ enum ControlFlow {
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub(crate) enum Expression {
-    If { cond: usize, size: usize },
-    Else { cond: Option<usize>, size: usize },
-    For { data: usize, binding: usize, size: usize },
+    If {
+        cond: usize,
+        size: usize,
+    },
+    Else {
+        cond: Option<usize>,
+        size: usize,
+    },
+    For {
+        data: usize,
+        binding: usize,
+        size: usize,
+    },
     LoadText(usize),
-    LoadAttribute { key: usize, value: usize },
-    Node { ident: usize, scope_size: usize },
+    LoadAttribute {
+        key: usize,
+        value: usize,
+    },
+    Node {
+        ident: usize,
+        scope_size: usize,
+    },
 }
 
 pub(crate) struct Optimizer {
@@ -23,7 +39,11 @@ pub(crate) struct Optimizer {
 
 impl Optimizer {
     pub(crate) fn new(input: Vec<ParseExpr>) -> Self {
-        Self { output: vec![], input, ep: 0 }
+        Self {
+            output: vec![],
+            input,
+            ep: 0,
+        }
     }
 
     // -----------------------------------------------------------------------------
@@ -53,10 +73,12 @@ impl Optimizer {
                     self.opt_control_flow(ControlFlow::Else(cond));
                     continue;
                 }
-                ParseExpr::ScopeStart => unreachable!("this should not happen as scopes are consumed by other expressions"),
+                ParseExpr::ScopeStart => unreachable!(
+                    "this should not happen as scopes are consumed by other expressions"
+                ),
                 &ParseExpr::For { data, binding } => {
                     self.opt_for(data, binding);
-                    continue
+                    continue;
                 }
                 &ParseExpr::Node(ident_index) => {
                     let start = self.output.len();
@@ -75,7 +97,7 @@ impl Optimizer {
                                 text_and_attributes += 1;
                                 self.ep += 1;
                             }
-                            _ => break
+                            _ => break,
                         }
                     }
 
@@ -84,14 +106,21 @@ impl Optimizer {
                             self.opt_scope();
                             self.output.len() - start - text_and_attributes
                         }
-                        _ => 0
-
+                        _ => 0,
                     };
-                    self.output.insert(start, Expression::Node { ident: ident_index, scope_size: child_scope_size });
-                    continue
+                    self.output.insert(
+                        start,
+                        Expression::Node {
+                            ident: ident_index,
+                            scope_size: child_scope_size,
+                        },
+                    );
+                    continue;
                 }
                 &ParseExpr::LoadText(index) => Expression::LoadText(index),
-                &ParseExpr::LoadAttribute { key, value } => Expression::LoadAttribute { key, value },
+                &ParseExpr::LoadAttribute { key, value } => {
+                    Expression::LoadAttribute { key, value }
+                }
                 ParseExpr::EOF => continue, // noop, we don't care about EOF
                 ParseExpr::ScopeEnd => unreachable!("scopes are consumed by `opt_scope`"),
             };
@@ -147,7 +176,14 @@ impl Optimizer {
         let start = self.output.len();
         self.opt_scope();
         let end = self.output.len();
-        self.output.insert(start, Expression::For { data, binding, size: end - start });
+        self.output.insert(
+            start,
+            Expression::For {
+                data,
+                binding,
+                size: end - start,
+            },
+        );
     }
 
     fn remove_empty_if_else_for(&mut self) {
@@ -188,8 +224,20 @@ mod test {
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 1
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
     }
 
     #[test]
@@ -200,7 +248,13 @@ mod test {
             ";
         let mut expressions = parse(src);
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
     }
 
     #[test]
@@ -213,9 +267,27 @@ mod test {
             ";
         let mut expressions = parse(src);
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
-        assert_eq!(expressions.remove(0), Expression::Else { cond: None, size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Else {
+                cond: None,
+                size: 1
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
     }
 
     #[test]
@@ -227,10 +299,35 @@ mod test {
             b
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::Node{ ident: 0, scope_size: 0 });
-        assert_eq!(expressions.remove(0), Expression::For { data: 0, binding: 1, size: 2 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 1, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::For {
+                data: 0,
+                binding: 1,
+                size: 2
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 1,
+                scope_size: 0
+            }
+        );
     }
 
     #[test]
@@ -243,7 +340,13 @@ mod test {
         let mut expressions = parse(src);
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 2 });
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
     }
 
     #[test]
@@ -260,11 +363,35 @@ mod test {
         ";
         let mut expressions = parse(src);
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 2 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 1, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 1,
+                scope_size: 0
+            }
+        );
     }
 
     #[test]
@@ -274,7 +401,13 @@ mod test {
         x
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
         assert!(expressions.is_empty());
     }
 
@@ -288,8 +421,20 @@ mod test {
         ";
         let mut expressions = parse(src);
         assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
         assert!(expressions.is_empty());
     }
 
@@ -301,7 +446,13 @@ mod test {
             x
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
         assert!(expressions.is_empty());
     }
 
@@ -314,7 +465,13 @@ mod test {
             x
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 0
+            }
+        );
         assert!(expressions.is_empty());
     }
 
@@ -325,10 +482,25 @@ mod test {
                 span ""
         "#;
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 0, scope_size: 2 });
-        assert_eq!(expressions.remove(0), Expression::LoadAttribute { key: 1, value: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0,
+                scope_size: 2
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::LoadAttribute { key: 1, value: 0 }
+        );
         assert_eq!(expressions.remove(0), Expression::LoadText(0));
-        assert_eq!(expressions.remove(0), Expression::Node { ident: 2, scope_size: 0 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 2,
+                scope_size: 0
+            }
+        );
         assert_eq!(expressions.remove(0), Expression::LoadText(0));
         assert!(expressions.is_empty());
     }

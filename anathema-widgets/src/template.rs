@@ -111,13 +111,13 @@ pub fn template_span(text: impl Into<TextPath>) -> Template {
 pub fn template(
     ident: impl Into<String>,
     attributes: impl Into<Attributes>,
-    children: Vec<Template>,
+    children: impl Into<Vec<Template>>,
 ) -> Template {
     Template::Node {
         ident: ident.into(),
         attributes: attributes.into(),
         text: None,
-        children,
+        children: children.into(),
     }
 }
 

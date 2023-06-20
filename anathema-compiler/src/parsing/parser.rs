@@ -1,9 +1,9 @@
 use anathema_widgets::{Fragment, Number, Path, TextPath};
 
 use super::attribute_parser::AttributeParser;
-use crate::Constants;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token};
+use crate::Constants;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
@@ -27,7 +27,12 @@ impl<'src> Lexer<'src> {
     // -----------------------------------------------------------------------------
     pub(super) fn error(&self, kind: ErrorKind) -> Error {
         let (line, col) = src_line_no(self.current_pos, self.src);
-        Error { line, col, src: self.src.to_string(), kind }
+        Error {
+            line,
+            col,
+            src: self.src.to_string(),
+            kind,
+        }
     }
 
     // -----------------------------------------------------------------------------
@@ -81,7 +86,9 @@ impl<'src> Lexer<'src> {
     pub(super) fn read_ident(&mut self) -> Result<&'src str> {
         match self.next() {
             Ok(Token(Kind::Ident(ident), _)) => Ok(ident),
-            Ok(_) => Err(self.error(ErrorKind::InvalidToken { expected: "identifier" })),
+            Ok(_) => Err(self.error(ErrorKind::InvalidToken {
+                expected: "identifier",
+            })),
             Err(e) => Err(e),
         }
     }
@@ -208,7 +215,9 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         }
 
         let indent = match indent {
-            Some(indent) if indent < self.base_indent => return Err(self.lexer.error(ErrorKind::InvalidUnindent)),
+            Some(indent) if indent < self.base_indent => {
+                return Err(self.lexer.error(ErrorKind::InvalidUnindent))
+            }
             Some(indent) => Some(indent - self.base_indent),
             None => None,
         };
@@ -417,9 +426,9 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             match kind {
                 Kind::Newline | Kind::String(_) | Kind::LBracket | Kind::EOF => {}
                 _ => {
-                    return Err(self
-                        .lexer
-                        .error(ErrorKind::InvalidToken { expected: "either a new line, `[` or text" }))
+                    return Err(self.lexer.error(ErrorKind::InvalidToken {
+                        expected: "either a new line, `[` or text",
+                    }))
                 }
             }
         }
@@ -457,7 +466,9 @@ impl<'src, 'consts> Parser<'src, 'consts> {
                 self.lexer.consume(false, true);
                 Ok(None)
             }
-            _ => Err(self.lexer.error(ErrorKind::InvalidToken { expected: "new line" })),
+            _ => Err(self.lexer.error(ErrorKind::InvalidToken {
+                expected: "new line",
+            })),
         };
 
         self.next_state();
@@ -560,7 +571,9 @@ pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
 
         match lexer.next() {
             Ok(Token(Kind::Ident(ident), _)) => path = path.compose(Path::Key(ident.to_owned())),
-            Ok(Token(Kind::Number(Number::Unsigned(num)), _)) => path = path.compose(Path::Index(num as usize)),
+            Ok(Token(Kind::Number(Number::Unsigned(num)), _)) => {
+                path = path.compose(Path::Index(num as usize))
+            }
             _ => {} // TODO: this should return an error: InvalidPath
         }
     }
@@ -598,7 +611,11 @@ mod test {
     #[test]
     fn parse_attributes() {
         let src = "a [a: a]";
-        let expected = vec![Expression::Node(0), Expression::LoadAttribute { key: 0, value: 0 }, Expression::EOF];
+        let expected = vec![
+            Expression::Node(0),
+            Expression::LoadAttribute { key: 0, value: 0 },
+            Expression::EOF,
+        ];
 
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
@@ -607,7 +624,11 @@ mod test {
     #[test]
     fn parse_text() {
         let src = "a 'a'      \n\n//some comments \n    ";
-        let expected = vec![Expression::Node(0), Expression::LoadText(0), Expression::EOF];
+        let expected = vec![
+            Expression::Node(0),
+            Expression::LoadText(0),
+            Expression::EOF,
+        ];
 
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
@@ -670,9 +691,21 @@ mod test {
 
         assert_eq!(instructions.remove(0), Expression::Node(0));
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::For { data: 0, binding: 0 });
+        assert_eq!(
+            instructions.remove(0),
+            Expression::For {
+                data: 0,
+                binding: 0
+            }
+        );
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::For { data: 0, binding: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Expression::For {
+                data: 0,
+                binding: 1
+            }
+        );
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
         assert_eq!(instructions.remove(0), Expression::Node(0));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
@@ -693,7 +726,13 @@ mod test {
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
         assert_eq!(instructions.remove(0), Expression::Node(1));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-        assert_eq!(instructions.remove(0), Expression::For { data: 0, binding: 0 });
+        assert_eq!(
+            instructions.remove(0),
+            Expression::For {
+                data: 0,
+                binding: 0
+            }
+        );
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
         assert_eq!(instructions.remove(0), Expression::Node(1));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
@@ -787,8 +826,14 @@ mod test {
     #[test]
     fn parse_invalid_token_after_text() {
         let src = "a 'a' 'b'";
-        let expected =
-            Error { kind: ErrorKind::InvalidToken { expected: "new line" }, line: 1, col: 7, src: src.to_string() };
+        let expected = Error {
+            kind: ErrorKind::InvalidToken {
+                expected: "new line",
+            },
+            line: 1,
+            col: 7,
+            src: src.to_string(),
+        };
         let actual = parse_err(src).remove(0);
         assert_eq!(expected, actual);
     }

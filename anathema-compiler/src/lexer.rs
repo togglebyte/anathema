@@ -56,7 +56,12 @@ pub struct Lexer<'src> {
 
 impl<'src> Lexer<'src> {
     pub fn new(src: &'src str) -> Self {
-        Self { chars: src.char_indices().peekable(), src, next: None, current_pos: 0 }
+        Self {
+            chars: src.char_indices().peekable(),
+            src,
+            next: None,
+            current_pos: 0,
+        }
     }
 
     pub fn next(&mut self) -> Result<Token<'src>> {
@@ -168,7 +173,12 @@ impl<'src> Lexer<'src> {
                         }
                     }
                 }
-                None => break Err(Error::unterminated_string(start_index..self.src.len(), self.src)),
+                None => {
+                    break Err(Error::unterminated_string(
+                        start_index..self.src.len(),
+                        self.src,
+                    ))
+                }
                 _ => {} // consume chars
             }
         }
@@ -178,7 +188,8 @@ impl<'src> Lexer<'src> {
         let mut end = index;
         let mut parse_float = &self.src[index..=index] == ".";
 
-        let signed = &self.src[index..=index] == "-" || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
+        let signed = &self.src[index..=index] == "-"
+            || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
 
         while let Some((e, c @ ('0'..='9' | '-' | '.' | '+'))) = self.chars.peek() {
             if *c == '.' {
@@ -334,7 +345,11 @@ mod test {
 
     #[test]
     fn double_char_token() {
-        let inputs = [("//", Kind::Comment), ("{{", Kind::LDoubleCurly), ("}}", Kind::RDoubleCurly)];
+        let inputs = [
+            ("//", Kind::Comment),
+            ("{{", Kind::LDoubleCurly),
+            ("}}", Kind::RDoubleCurly),
+        ];
 
         for (input, expected) in inputs {
             let actual = token_kind(input);
@@ -377,7 +392,12 @@ mod test {
 
     #[test]
     fn floats() {
-        let inputs = [("0.1", 0.1f64), ("-.1", -0.1), ("1.", 1.0), ("100.5", 100.5)];
+        let inputs = [
+            ("0.1", 0.1f64),
+            ("-.1", -0.1),
+            ("1.", 1.0),
+            ("100.5", 100.5),
+        ];
 
         for (input, number) in inputs {
             let actual = token_kind(input);
@@ -390,7 +410,10 @@ mod test {
     fn strings() {
         let inputs = [
             ("'single quote string'", "single quote string"),
-            ("'single quote\n string with newline char'", "single quote\n string with newline char"),
+            (
+                "'single quote\n string with newline char'",
+                "single quote\n string with newline char",
+            ),
             ("\"double quote string\"", "double quote string"),
             ("\"double 'single inside'\"", "double 'single inside'"),
             ("'single \"double inside\"'", "single \"double inside\""),

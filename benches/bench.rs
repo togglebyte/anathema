@@ -22,7 +22,8 @@ fn old(b: &mut Bencher) {
     let sub_ctx = SubContext::new(&data);
 
     b.iter(|| {
-        let nodes = anathema::templates::to_nodes(&nodes, &sub_ctx, &mut node_ctx, NodeId::Auto(0)).unwrap();
+        let nodes = anathema::templates::to_nodes(&nodes, &sub_ctx, &mut node_ctx, NodeId::Auto(0))
+            .unwrap();
         nodes
     });
 }
