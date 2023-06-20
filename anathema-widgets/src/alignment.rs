@@ -6,9 +6,7 @@ use crate::layout::single::Single;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{
-    Align, AnyWidget, Pos, PositionCtx, TextPath, Widget, WidgetContainer,
-};
+use crate::{Align, AnyWidget, Pos, PositionCtx, TextPath, Widget, WidgetContainer};
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
 /// See [`Align`](crate::layout::Align) for more information.
@@ -58,7 +56,6 @@ impl Widget for Alignment {
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-        let _pos = ctx.pos;
         if let Some(child) = children.first_mut() {
             let alignment = self.alignment;
 
@@ -110,7 +107,7 @@ impl WidgetFactory for AlignmentFactory {
 mod test {
     use super::*;
     use crate::gen::store::Store;
-    use crate::template::{template_text};
+    use crate::template::template_text;
     use crate::testing::{test_widget, FakeTerm};
     use crate::{Constraints, DataCtx, Lookup, Padding};
 

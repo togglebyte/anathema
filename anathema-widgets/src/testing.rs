@@ -1,5 +1,3 @@
-
-
 use anathema_render::{Screen, ScreenPos, Size};
 
 use super::WidgetContainer;

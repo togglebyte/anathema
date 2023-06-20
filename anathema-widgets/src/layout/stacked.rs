@@ -1,10 +1,9 @@
 use anathema_render::Size;
 
-use super::{Layout};
-use crate::contexts::{LayoutCtx};
+use super::Layout;
+use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-
 
 pub struct Stacked;
 

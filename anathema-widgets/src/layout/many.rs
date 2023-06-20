@@ -1,6 +1,6 @@
 use anathema_render::Size;
 
-use super::{Layout, expand, spacers};
+use super::{expand, spacers, Layout};
 use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;

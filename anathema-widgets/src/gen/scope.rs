@@ -146,7 +146,6 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
 mod test {
     use std::iter::zip;
 
-    
     use crate::gen::testing::*;
     use crate::template::*;
     use crate::{Text, TextPath};

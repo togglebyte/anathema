@@ -1,9 +1,6 @@
 use anathema_render::Size;
 
-use super::{
-    HorzEdge, Pos, PositionCtx, VertEdge, Widget, WidgetContainer,
-};
-
+use super::{HorzEdge, Pos, PositionCtx, VertEdge, Widget, WidgetContainer};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::single::Single;
@@ -182,9 +179,8 @@ impl WidgetFactory for PositionFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::{template_text};
+    use crate::template::template_text;
     use crate::testing::{test_widget, FakeTerm};
-    
 
     #[test]
     fn top_left() {

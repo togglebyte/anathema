@@ -110,11 +110,7 @@ impl Widget for Expand {
         Ok(size)
     }
 
-    fn position<'gen, 'ctx>(
-        &mut self,
-        ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         if let Some(c) = children.first_mut() {
             c.position(ctx.pos)
         }

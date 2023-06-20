@@ -3,10 +3,7 @@ use anathema_render::Size;
 use super::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-
-
 use crate::layout::many::Many;
-
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
@@ -121,9 +118,6 @@ impl WidgetFactory for ViewportFactory {
         values: ValuesAttributes<'_, '_>,
         _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
-        let _data_source = values.get_attrib("source").map(|v| v.to_owned());
-        let _binding = values.get_attrib("binding").map(|v| v.to_string());
-        let _item = values.get_int("item").unwrap_or(0) as usize;
         let direction = values.direction().unwrap_or(Direction::Forward);
         let axis = values.axis().unwrap_or(Axis::Vertical);
         let offset = values.offset();

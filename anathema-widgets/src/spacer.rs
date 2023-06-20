@@ -43,7 +43,7 @@ impl Widget for Spacer {
         ))
     }
 
-    fn position<'gen, 'ctx>(&mut self, _ctx: PositionCtx, _children: &mut [WidgetContainer<'gen>]) {}
+    fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {}
 
     fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {}
 }
@@ -53,7 +53,7 @@ pub(crate) struct SpacerFactory;
 impl WidgetFactory for SpacerFactory {
     fn make(
         &self,
-        _values: ValuesAttributes<'_, '_>,
+        _: ValuesAttributes<'_, '_>,
         _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         Ok(Box::new(Spacer))
@@ -62,7 +62,7 @@ impl WidgetFactory for SpacerFactory {
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::template::{template, template_text};
     use crate::testing::{test_widget, FakeTerm};
     use crate::{HStack, VStack};

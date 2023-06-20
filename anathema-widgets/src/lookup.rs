@@ -1,9 +1,7 @@
-
 use std::collections::HashMap;
 
 use crate::alignment::AlignmentFactory;
 use crate::border::BorderFactory;
-
 use crate::error::{Error, Result};
 use crate::expand::ExpandFactory;
 use crate::gen::store::Store;
@@ -61,7 +59,11 @@ impl Lookup {
         }
     }
 
-    pub fn register(&mut self, ident: impl Into<String>, factory: Box<dyn WidgetFactory>) -> Result<()> {
+    pub fn register(
+        &mut self,
+        ident: impl Into<String>,
+        factory: Box<dyn WidgetFactory>,
+    ) -> Result<()> {
         let ident = ident.into();
         if RESERVED_NAMES.contains(&ident.as_str()) {
             return Err(Error::ReservedName(ident));

@@ -2,7 +2,6 @@ use std::fmt::{self, Display};
 
 use crate::error::Result;
 
-
 mod constraints;
 
 pub(crate) mod expand;
@@ -18,7 +17,6 @@ use anathema_render::Size;
 pub use constraints::Constraints;
 
 use crate::contexts::LayoutCtx;
-
 
 pub trait Layout {
     fn layout<'widget, 'tpl, 'parent>(

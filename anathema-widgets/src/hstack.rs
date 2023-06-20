@@ -7,7 +7,7 @@ use crate::layout::horizontal::Horizontal;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, Direction};
+use crate::{AnyWidget, Direction, TextPath};
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -73,7 +73,9 @@ impl Widget for HStack {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Horizontal::new(Direction::Forward), &mut ctx).layout()?.size()
+        Layouts::new(Horizontal::new(Direction::Forward), &mut ctx)
+            .layout()?
+            .size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {

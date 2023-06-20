@@ -82,7 +82,7 @@ impl From<Vec<Attribute<'_>>> for Attributes {
 }
 
 impl From<()> for Attributes {
-    fn from(_src: ()) -> Self {
+    fn from(_: ()) -> Self {
         Self::empty()
     }
 }

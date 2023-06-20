@@ -288,8 +288,6 @@ impl Widget for Border {
         children: &mut [WidgetContainer<'gen>],
     ) {
         // Draw the child
-        let _border_size = self.border_size();
-
         if let Some(child) = children.first_mut() {
             let clipping_region = ctx.create_region();
 
