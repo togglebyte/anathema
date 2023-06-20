@@ -1,6 +1,6 @@
 use anathema_render::Size;
 
-use super::{NodeId, PaintCtx, PositionCtx, Widget, WithSize};
+use super::{PaintCtx, PositionCtx, Widget, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::lookup::WidgetFactory;
@@ -31,7 +31,7 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout(&mut self, ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
         debug_assert!(
             ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
             "the layout context needs to be tight for a spacer"
@@ -43,7 +43,7 @@ impl Widget for Spacer {
         ))
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {}
+    fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {}
 
     fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {}
 }
@@ -53,8 +53,8 @@ pub(crate) struct SpacerFactory;
 impl WidgetFactory for SpacerFactory {
     fn make(
         &self,
-        values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: ValuesAttributes<'_, '_>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         Ok(Box::new(Spacer))
     }
@@ -62,10 +62,10 @@ impl WidgetFactory for SpacerFactory {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::template::{template, template_text, Template};
+
+    use crate::template::{template, template_text};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::{Attributes, HStack, VStack};
+    use crate::{HStack, VStack};
 
     #[test]
     fn space_out_hstack() {

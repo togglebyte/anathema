@@ -1,13 +1,13 @@
 use anathema_render::{Size, Style};
 
-use super::{Axis, LocalPos, NodeId, PaintCtx, PositionCtx, Widget, WithSize};
+use super::{Axis, LocalPos, PaintCtx, PositionCtx, Widget, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::single::Single;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{fields, AnyWidget, TextPath, WidgetContainer};
+use crate::{AnyWidget, TextPath, WidgetContainer};
 
 const DEFAULT_FACTOR: usize = 1;
 
@@ -110,11 +110,7 @@ impl Widget for Expand {
         Ok(size)
     }
 
-    fn position<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
         if let Some(c) = children.first_mut() {
             c.position(ctx.pos)
         }
@@ -160,7 +156,7 @@ impl WidgetFactory for ExpandFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let axis = values.axis();
         let factor = values.factor();
@@ -172,9 +168,9 @@ impl WidgetFactory for ExpandFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::{template, template_text, Template};
+    use crate::template::{template, template_text};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::{Attributes, Border, HStack, VStack};
+    use crate::{Border, HStack, VStack};
 
     #[test]
     fn expand_border() {

@@ -8,7 +8,7 @@ use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::id::NodeId;
 use super::layout::{Constraints, Padding};
 use super::{AnimationCtx, Color, Display, LocalPos, Pos, Region};
-use crate::contexts::{DataCtx, LayoutCtx};
+use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::store::Store;
 use crate::lookup::Lookup;
@@ -294,12 +294,6 @@ impl<'tpl> WidgetContainer<'tpl> {
     pub fn position(&mut self, pos: Pos) {
         self.animation.update_pos(self.pos, pos);
         self.pos = self.animation.get_pos().unwrap_or(pos);
-
-        let padding = self
-            .animation
-            .get_value(fields::PADDING)
-            .map(|p| Padding::new(p as usize))
-            .unwrap_or(self.padding);
 
         let pos = Pos::new(
             self.pos.x + self.padding.left as i32,

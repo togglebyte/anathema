@@ -1,4 +1,3 @@
-use super::expressions::Expression;
 use super::scope::Scope;
 use super::store::Store;
 use crate::error::Result;

@@ -1,9 +1,7 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::alignment::AlignmentFactory;
 use crate::border::BorderFactory;
-use crate::contexts::DataCtx;
 use crate::error::{Error, Result};
 use crate::expand::ExpandFactory;
 use crate::gen::store::Store;
@@ -17,7 +15,7 @@ use crate::viewport::ViewportFactory;
 use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
 use crate::zstack::ZStackFactory;
-use crate::{Attributes, Padding, TextPath, Value, Widget, WidgetContainer};
+use crate::{Padding, TextPath, WidgetContainer};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 
@@ -55,11 +53,29 @@ impl Lookup {
                 let mut container = WidgetContainer::new(widget, children);
                 container.background = background;
                 container.padding = padding;
-                // TODO: add padding to the container
                 Ok(container)
             }
             _ => panic!("there should only ever be nodes here, not {:?}", template),
         }
+    }
+
+    pub fn register(
+        &mut self,
+        ident: impl Into<String>,
+        factory: Box<dyn WidgetFactory>,
+    ) -> Result<()> {
+        let ident = ident.into();
+        if RESERVED_NAMES.contains(&ident.as_str()) {
+            return Err(Error::ReservedName(ident));
+        }
+
+        if self.0.contains_key(&ident) {
+            return Err(Error::ExistingName(ident));
+        }
+
+        self.0.insert(ident, factory);
+
+        Ok(())
     }
 }
 
@@ -81,140 +97,6 @@ impl Default for Lookup {
     }
 }
 
-// // -----------------------------------------------------------------------------
-// //     - Alignment -
-// // -----------------------------------------------------------------------------
-// // fn alignment_widget<'gen>(
-// //     node: &'gen WidgetTemplate,
-// //     lookup: &WidgetLookup,
-// // ) -> Result<Box<dyn Widget>> {
-// //     panic!()
-// //     // let (align, duration_easing) = match node.attributes.get_value(fields::ALIGNMENT) {
-// //     //     Some(Value::Alignment(align)) => (align, None),
-// //     //     Some(Value::Transition(value, duration, easing)) => match value.as_ref() {
-// //     //         Value::Alignment(ref align) => (*align, Some((duration, easing))),
-// //     //         _ => (Align::TopLeft, Some((duration, easing))),
-// //     //     },
-// //     //     _ => (Align::TopLeft, None),
-// //     // };
-
-// //     // let mut alignment = Alignment::new(align);
-// //     // if let Some(child) = node.children.first() {
-// //     //     let mut child = lookup.make(child)?;
-// //     //     if let Some((duration, easing)) = duration_easing {
-// //     //         child.animation.set_position(duration, easing);
-// //     //     }
-// //     //     alignment.add_child(child);
-// //     // }
-// //     // Ok(alignment.into_container(node.id()))
-// // }
-
-// // // -----------------------------------------------------------------------------
-// // //     - ZStack -
-// // // -----------------------------------------------------------------------------
-// // fn zstack_widget<'gen, 'ctx>(
-// //     node: &'gen WidgetTemplate,
-// //     lookup: &WidgetLookup,
-// // ) -> Result<WidgetContainer<'gen>> {
-// //     panic!()
-// //     // let mut widget = ZStack::new(node.attributes.width(), node.attributes.height());
-// //     // widget.min_width = node.attributes.min_width();
-// //     // widget.min_height = node.attributes.min_height();
-
-// //     // for child in &node.children {
-// //     //     let child = lookup.make(child)?;
-// //     //     widget.children.push(child);
-// //     // }
-
-// //     // Ok(widget.into_container(node.id()))
-// // }
-
-// // // -----------------------------------------------------------------------------
-// // //     - HStack -
-// // // -----------------------------------------------------------------------------
-// // fn hstack_widget<'gen, 'ctx>(values: ValueLookup<'gen, 'ctx>) -> Result<Box<dyn Widget>> {
-// //     let width = values.width();
-// //     let height = values.height();
-// //     let mut widget = HStack::new(width, height);
-// //     widget.min_width = values.min_width();
-// //     widget.min_height = values.min_height();
-// //     // Ok(Box::new(widget))
-// //     panic!()
-// // }
-
-// // // -----------------------------------------------------------------------------
-// // //     - VStack -
-// // // -----------------------------------------------------------------------------
-// // fn vstack_widget(values: ValueLookup<'_>) -> Result<Box<dyn AnyWidget>> {
-// //     let width = values.width();
-// //     let height = values.height();
-// //     let mut widget = VStack::new(width, height);
-// //     widget.min_width = values.min_width();
-// //     widget.min_height = values.min_height();
-// //     // Ok(Box::new(widget))
-// //     panic!()
-// // }
-
-// // // -----------------------------------------------------------------------------
-// // //     - Spacer -
-// // // -----------------------------------------------------------------------------
-// // fn spacer_widget<'gen, 'ctx>(
-// //     node: &'gen WidgetTemplate,
-// //     _lookup: &WidgetLookup,
-// // ) -> Result<WidgetContainer<'gen>> {
-// //     panic!()
-// //     // Ok(Spacer.into_container(node.id()))
-// // }
-
-// // // -----------------------------------------------------------------------------
-// // //     - Position -
-// // // -----------------------------------------------------------------------------
-// // fn position_widget<'gen, 'ctx>(
-// //     node: &'gen WidgetTemplate,
-// //     lookup: &WidgetLookup,
-// // ) -> Result<WidgetContainer<'gen>> {
-// //     panic!()
-// //     // let attribs = &node.attributes;
-
-// //     // let horz_edge = match attribs.left() {
-// //     //     Some(left) => HorzEdge::Left(left),
-// //     //     None => match attribs.right() {
-// //     //         Some(right) => HorzEdge::Right(right),
-// //     //         None => HorzEdge::Left(0),
-// //     //     },
-// //     // };
-
-// //     // let vert_edge = match attribs.top() {
-// //     //     Some(top) => VertEdge::Top(top),
-// //     //     None => match attribs.bottom() {
-// //     //         Some(bottom) => VertEdge::Bottom(bottom),
-// //     //         None => VertEdge::Top(0),
-// //     //     },
-// //     // };
-
-// //     // let mut widget = Position::new(horz_edge, vert_edge);
-// //     // if let Some(child) = node.children.first() {
-// //     //     widget.child = Some(lookup.make(child)?);
-// //     // }
-// //     // Ok(widget.into_container(node.id()))
-// // }
-
-// // -----------------------------------------------------------------------------
-// //     - Border -
-// // -----------------------------------------------------------------------------
-// fn border_widget(values: ValueLookup<'_>) -> Result<Box<dyn AnyWidget>> {
-//     let border_style = values.border_style();
-//     let sides = values.sides();
-//     let width = values.width();
-//     let height = values.height();
-
-//     let mut widget = Border::new(&*border_style, sides, width, height);
-//     widget.min_width = values.min_width();
-//     widget.min_height = values.min_height();
-//     widget.style = values.style();
-//     Ok(Box::new(widget))
-// }
-
 // // // -----------------------------------------------------------------------------
 // // //     - Canvas -
 // // // -----------------------------------------------------------------------------
@@ -227,34 +109,6 @@ impl Default for Lookup {
 // //     // let widget = Canvas::new(attribs.width(), attribs.height());
 // //     // Ok(widget.into_container(node.id()))
 // // }
-
-// // // -----------------------------------------------------------------------------
-// // //     - Expand -
-// // // -----------------------------------------------------------------------------
-// // fn expand_widget<'gen, 'ctx>(values: ValueLookup<'gen, 'ctx>) -> Result<Box<dyn Widget>> {
-// //     let direction = values.direction();
-// //     let factor = values.factor();
-// //     let mut widget = Expand::new(factor, direction);
-// //     widget.style = values.style();
-
-// //     if let Some(fill) = values.fill() {
-// //         widget.fill = fill.to_string();
-// //     }
-
-// //     // Ok(Box::new(widget))
-// //     panic!()
-// // }
-
-// fn viewport_widget(values: ValueLookup<'_>) -> Result<Box<dyn AnyWidget>> {
-//     let data_source = values.get_attrib("source").map(|v| v.to_owned());
-//     let binding = values.get_attrib("binding").map(|v| v.to_string());
-//     let item = values.get_int("item").unwrap_or(0) as usize;
-//     let offset = values.get_signed_int("offset").unwrap_or(0) as isize;
-//     let offset = Offset { element: item, cell: offset };
-//     let direction = values.direction().unwrap_or(Direction::Forward);
-//     let widget = Viewport::new(data_source, binding, offset, direction);
-//     Ok(Box::new(widget))
-// }
 
 // fn item_widget(_: ValueLookup<'_>) -> Result<Box<dyn AnyWidget>> {
 //     Ok(Box::new(Item))

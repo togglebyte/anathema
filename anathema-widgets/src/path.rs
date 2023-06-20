@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt;
 
 use crate::gen::store::Store;

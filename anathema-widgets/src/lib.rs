@@ -7,7 +7,7 @@ mod animation;
 mod attributes;
 mod contexts;
 pub mod error;
-pub(crate) mod gen;
+mod gen;
 mod id;
 mod layout;
 mod path;
@@ -35,7 +35,6 @@ pub struct WidgetLookup;
 
 // TODO: test only, or should this be available
 //       under a "test" feature flag maybe
-// #[cfg(test)]
 pub mod testing;
 
 pub use anathema_render::Color;
@@ -47,6 +46,7 @@ pub use widget::{AnyWidget, Widget, WidgetContainer};
 
 pub use crate::animation::{Animation, AnimationCtx};
 pub use crate::attributes::{fields, Attribute, Attributes};
+pub use crate::gen::generator::Generator;
 pub use crate::path::{Path, TextPath};
 
 /// Determine how a widget should be displayed and laid out

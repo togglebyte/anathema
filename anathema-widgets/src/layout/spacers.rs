@@ -1,12 +1,11 @@
 use anathema_render::Size;
 
-use super::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{Axis, Spacer, WidgetContainer};
+use crate::{Axis, Spacer};
 
 pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, axis: Axis) -> Result<Size> {
-    let mut size = Size::ZERO;
+    let mut final_size = Size::ZERO;
     let count = ctx
         .children
         .iter()
@@ -14,7 +13,7 @@ pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, axis: Axis) -> Result<Size> {
         .count();
 
     if count == 0 {
-        return Ok(size);
+        return Ok(final_size);
     }
 
     match axis {
@@ -26,19 +25,19 @@ pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, axis: Axis) -> Result<Size> {
     ctx.constraints.min_height = ctx.constraints.max_height;
 
     for spacer in ctx.children.iter_mut().filter(|c| c.kind() == Spacer::KIND) {
-        let s = spacer.layout(ctx.constraints, ctx.values, ctx.lookup)?;
+        let size = spacer.layout(ctx.constraints, ctx.values, ctx.lookup)?;
 
         match axis {
             Axis::Horizontal => {
-                size.width += s.width;
-                size.height = size.height.max(s.height);
+                final_size.width += size.width;
+                final_size.height = final_size.height.max(size.height);
             }
             Axis::Vertical => {
-                size.height += s.height;
-                size.width = size.width.max(s.width);
+                final_size.height += size.height;
+                final_size.width = final_size.width.max(size.width);
             }
         }
     }
 
-    Ok(size)
+    Ok(final_size)
 }

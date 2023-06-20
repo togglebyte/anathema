@@ -1,13 +1,13 @@
 use anathema_render::Size;
 
-use super::{NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{PositionCtx, Widget, WidgetContainer};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::horizontal::Horizontal;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Axis, TextPath};
+use crate::{AnyWidget, Direction, TextPath};
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -61,10 +61,10 @@ impl Widget for HStack {
 
     fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
         if let Some(width) = self.width {
-            ctx.constraints.make_width_tight(width);
+            ctx.constraints.max_width = ctx.constraints.max_width.min(width);
         }
         if let Some(height) = self.height {
-            ctx.constraints.make_height_tight(height);
+            ctx.constraints.max_height = ctx.constraints.max_height.min(height);
         }
         if let Some(min_width) = self.min_width {
             ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
@@ -73,7 +73,9 @@ impl Widget for HStack {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Horizontal, &mut ctx).layout()?.size()
+        Layouts::new(Horizontal::new(Direction::Forward), &mut ctx)
+            .layout()?
+            .size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
@@ -100,7 +102,7 @@ impl WidgetFactory for HStackFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let width = values.width();
         let height = values.height();
@@ -125,7 +127,7 @@ mod test {
 
     #[test]
     fn only_hstack() {
-        let mut hstack = HStack::new(None, None);
+        let hstack = HStack::new(None, None);
         let body = children(3);
         test_widget(
             hstack,
@@ -146,7 +148,7 @@ mod test {
 
     #[test]
     fn fixed_width_stack() {
-        let mut hstack = HStack::new(6, None);
+        let hstack = HStack::new(6, None);
         let body = children(10);
         test_widget(
             hstack,

@@ -1,10 +1,9 @@
 use anathema_render::Size;
 
-use super::{Constraints, Layout, Padding};
-use crate::contexts::{LayoutCtx, PositionCtx};
+use super::Layout;
+use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-use crate::{Axis, WidgetContainer};
 
 pub struct Single;
 
@@ -18,7 +17,7 @@ impl Layout for Single {
         let mut values = ctx.values.next();
         let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
 
-        if let Some(mut widget) = gen.next(&mut values).transpose()? {
+        if let Some(widget) = gen.next(&mut values).transpose()? {
             ctx.children.push(widget);
             *size = match ctx.children[0].layout(constraints, &values, ctx.lookup) {
                 Ok(s) => s,

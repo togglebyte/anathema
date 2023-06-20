@@ -1,7 +1,3 @@
-use std::borrow::Cow;
-
-use super::store::Store;
-use super::ValueRef;
 use crate::template::Template;
 use crate::Value;
 

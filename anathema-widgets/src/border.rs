@@ -9,9 +9,9 @@ use crate::lookup::WidgetFactory;
 use crate::values::{
     ValuesAttributes, BORDER_EDGE_BOTTOM, BORDER_EDGE_BOTTOM_LEFT, BORDER_EDGE_BOTTOM_RIGHT,
     BORDER_EDGE_LEFT, BORDER_EDGE_RIGHT, BORDER_EDGE_TOP, BORDER_EDGE_TOP_LEFT,
-    BORDER_EDGE_TOP_RIGHT, DEFAULT_SLIM_EDGES, DEFAULT_THICK_EDGES,
+    BORDER_EDGE_TOP_RIGHT,
 };
-use crate::{AnyWidget, Attributes, BorderStyle, Constraints, DataCtx, Sides, TextPath};
+use crate::{AnyWidget, BorderStyle, Constraints, Sides, TextPath};
 
 /// Draw a border around an element.
 ///
@@ -288,10 +288,8 @@ impl Widget for Border {
         children: &mut [WidgetContainer<'gen>],
     ) {
         // Draw the child
-        let border_size = self.border_size();
-
         if let Some(child) = children.first_mut() {
-            let mut clipping_region = ctx.create_region();
+            let clipping_region = ctx.create_region();
 
             let child_ctx = ctx.sub_context(Some(&clipping_region));
 
@@ -401,7 +399,7 @@ impl WidgetFactory for BorderFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let border_style = values.border_style();
         let sides = values.sides();

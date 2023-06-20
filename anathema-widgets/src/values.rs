@@ -5,13 +5,11 @@ use std::f32::consts::PI;
 use std::fmt::{self, Write};
 use std::time::Duration;
 
-use anathema_render::{Size, Style};
+use anathema_render::Style;
 
 use crate::gen::store::Store;
-use crate::gen::ValueRef;
 use crate::{
-    fields, Align, Attributes, Axis, Color, DataCtx, Direction, Display, Padding, Path, TextPath,
-    Wrap,
+    fields, Align, Attributes, Axis, Color, Direction, Display, Padding, Path, TextPath, Wrap,
 };
 
 /// Text alignment aligns the text inside its parent.
@@ -625,7 +623,6 @@ pub struct ValuesAttributes<'a, 'parent> {
 
 impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
     pub fn new(values: &'a Store<'parent>, attributes: &'a Attributes) -> Self {
-        let x = values.get("x");
         Self { values, attributes }
     }
 

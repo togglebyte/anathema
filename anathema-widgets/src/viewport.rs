@@ -3,14 +3,11 @@ use anathema_render::Size;
 use super::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::gen::generator::Generator;
-use crate::layout::horizontal::Horizontal;
 use crate::layout::many::Many;
-use crate::layout::vertical::Vertical;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Axis, Direction, Pos, Region, TextPath, Value, Widget, WidgetContainer};
+use crate::{AnyWidget, Axis, Direction, TextPath, Widget, WidgetContainer};
 
 /// A viewport where the children can be rendered with an offset.
 #[derive(Debug)]
@@ -119,11 +116,8 @@ impl WidgetFactory for ViewportFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
-        let data_source = values.get_attrib("source").map(|v| v.to_owned());
-        let binding = values.get_attrib("binding").map(|v| v.to_string());
-        let item = values.get_int("item").unwrap_or(0) as usize;
         let direction = values.direction().unwrap_or(Direction::Forward);
         let axis = values.axis().unwrap_or(Axis::Vertical);
         let offset = values.offset();

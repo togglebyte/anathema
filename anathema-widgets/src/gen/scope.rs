@@ -146,16 +146,15 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
 mod test {
     use std::iter::zip;
 
-    use super::*;
     use crate::gen::testing::*;
     use crate::template::*;
-    use crate::{DataCtx, Text, TextPath};
+    use crate::{Text, TextPath};
 
     fn for_loop(size: usize) -> (Vec<String>, TestSetup) {
         let text = crate::TextPath::fragment("x");
         let values = (0..size).map(|v| v.to_string()).collect::<Vec<_>>();
         let for_loop = template_for("x", values.clone(), [template_text(text)]);
-        let mut setup = TestSetup::new().template(for_loop);
+        let setup = TestSetup::new().template(for_loop);
         (values, setup)
     }
 
@@ -181,7 +180,7 @@ mod test {
     #[test]
     fn generate_loop() {
         let (values, mut setup) = for_loop(5);
-        let mut scope = setup.scope();
+        let scope = setup.scope();
 
         for (a, b) in zip(values, scope) {
             assert_eq!(a, b.to_ref::<Text>().text);
@@ -201,7 +200,7 @@ mod test {
 
     #[test]
     fn reverse_loop() {
-        let (values, mut setup) = for_loop(2);
+        let (_values, mut setup) = for_loop(2);
         let mut scope = setup.scope();
 
         assert_eq!("0", scope.next_assume_text());
