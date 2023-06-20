@@ -168,7 +168,7 @@ impl WidgetFactory for ExpandFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Border, Attributes, HStack};
+    use crate::{Border, Attributes, HStack, VStack};
     use crate::template::{template, template_text, Template};
     use crate::testing::{test_widget, FakeTerm};
 
@@ -207,91 +207,181 @@ mod test {
         );
     }
 
-    // #[test]
-    // fn expand_horz_with_factors() {
-    //     // template("hstack",
-    //     //     expand [factor: 1]
-    //     //         border
-    //     //     expand [factor: 2]
-    //     //         border
+    #[test]
+    fn expand_horz_with_factors() {
+        let stack = HStack::new(None, None);
+        let body = vec![
+            template("expand", [("factor", 1)], vec![
+                template("border", (), vec![
+                    template("expand", (), vec![])
+                ])
+            ]),
+            template("expand", [("factor", 2)], vec![
+                template("border", (), vec![
+                    template("expand", (), vec![])
+                ])
+            ]),
+        ];
 
-    //     let stack = HStack::new(None, None);
-    //     let body = vec![
-    //         template("expand", [("factor", 1)], vec![
-    //             template("border", [], vec![
-    //                 template("expand", [], vec![])
-    //             ])
-    //         ]),
-    //         template("expand", ["factor", 2], vec![
-    //             template("border", [], vec![
-    //                 template("expand", [], vec![])
-    //             ])
-    //         ]),
-    //     ];
+        test_expand(
+            stack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌───┐┌────────┐║
+            ║│   ││        │║
+            ║│   ││        │║
+            ║│   ││        │║
+            ║│   ││        │║
+            ║└───┘└────────┘║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    //     let border = Border::thin(None, None);
-    //     let mut attrs = Attributes::empty();
-    //     attrs.set(fields::FACTOR, 2);
-    //     let expand = vec![template("expand", attrs, vec![])];
-    //     test_expand(
-    //         border,
-    //         &expand,
-    //         FakeTerm::from_str(
-    //         r#"
-    //         ╔═] Fake term [═╗
-    //         ║┌─────────────┐║
-    //         ║│             │║
-    //         ║│             │║
-    //         ║│             │║
-    //         ║│             │║
-    //         ║└─────────────┘║
-    //         ╚═══════════════╝
-    //         "#,
-    //         )
-    //     );
-    // }
+    #[test]
+    fn expand_vert_with_factors() {
+        let stack = VStack::new(None, None);
+        let body = vec![
+            template("expand", [("factor", 1)], vec![
+                template("border", (), vec![
+                    template("expand", (), vec![])
+                ])
+            ]),
+            template("expand", [("factor", 2)], vec![
+                template("border", (), vec![
+                    template("expand", (), vec![])
+                ])
+            ]),
+        ];
 
-    // #[test]
-    // fn expand_inner_vert() {
-    //     let parent = expand_border(Some(Direction::Vertical));
-    //     assert_eq!(Size::new(2, 10), parent.size);
-    // }
+        test_expand(
+            stack,
+            &body,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [═╗
+            ║┌─────────────┐║
+            ║│             │║
+            ║└─────────────┘║
+            ║┌─────────────┐║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║└─────────────┘║
+            ╚═══════════════╝
+            "#,
+            )
+        );
+    }
 
-    // #[test]
-    // fn style_changes_via_attributes() {
-    //     let mut expand = Expand::new(None, None).into_container(NodeId::anon());
-    //     expand.update(Attributes::new("italic", true));
-    //     assert!(expand.to_mut::<Expand>().style.attributes.contains(anathema_render::Attributes::ITALIC));
-    // }
+    #[test]
+    fn expand_horz() {
+        let border = Border::thin(None, None);
+        let expand = vec![
+            template("expand", [("axis", Axis::Horizontal)], vec![
+                template_text("A cup of tea please"),
+            ])
+        ];
+        test_expand(
+            border,
+            &expand,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [════════════════╗
+            ║┌────────────────────────────┐║
+            ║│A cup of tea please         │║
+            ║└────────────────────────────┘║
+            ║                              ║
+            ║                              ║
+            ╚══════════════════════════════╝
+            "#,
+            )
+        );
+    }
 
-    // #[test]
-    // fn fill() {
-    //     let mut expand = Expand::new(None, None);
-    //     expand.fill = "hello".into();
-    //     let expand = expand.into_container(NodeId::anon());
+    #[test]
+    fn expand_vert() {
+        let border = Border::thin(None, None);
+        let expand = vec![
+            template("expand", [("axis", Axis::Vertical)], vec![
+                template_text("A cup of tea please"),
+            ])
+        ];
+        test_expand(
+            border,
+            &expand,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [════════════════╗
+            ║┌───────────────────┐         ║
+            ║│A cup of tea please│         ║
+            ║│                   │         ║
+            ║│                   │         ║
+            ║│                   │         ║
+            ║│                   │         ║
+            ║└───────────────────┘         ║
+            ╚══════════════════════════════╝
+            "#,
+            )
+        );
+    }
 
-    //     let expected = r#"
-    //         ┌───────┐
-    //         │hellohe│
-    //         │hellohe│
-    //         └───────┘
-    //     "#;
-    //     test_expand(expand, expected);
-    // }
+    #[test]
+    fn expand_all() {
+        let border = Border::thin(None, None);
+        let expand = vec![
+            template("expand", (), vec![
+                template_text("A cup of tea please"),
+            ])
+        ];
+        test_expand(
+            border,
+            &expand,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [════════════════╗
+            ║┌────────────────────────────┐║
+            ║│A cup of tea please         │║
+            ║│                            │║
+            ║│                            │║
+            ║│                            │║
+            ║│                            │║
+            ║└────────────────────────────┘║
+            ╚══════════════════════════════╝
+            "#,
+            )
+        );
+    }
 
-    // #[test]
-    // fn padding() {
-    //     let expand = Expand::new(None, None);
-    //     let mut expand = expand.into_container(NodeId::anon());
-    //     expand.padding = Padding::new(1);
-    //     expand.add_child(Text::with_text("xyz").into_container(NodeId::anon()));
-    //     let expected = r#"
-    //         ┌───────┐
-    //         │       │
-    //         │ xyz   │
-    //         │       │
-    //         └───────┘
-    //     "#;
-    //     test_expand(expand, expected);
-    // }
+    #[test]
+    fn expand_with_padding() {
+        let border = Border::thin(None, None);
+        let expand = vec![
+            template("expand", [("padding", 1)], vec![
+                template_text("A cup of tea please"),
+            ])
+        ];
+        test_expand(
+            border,
+            &expand,
+            FakeTerm::from_str(
+            r#"
+            ╔═] Fake term [════════════════╗
+            ║┌────────────────────────────┐║
+            ║│                            │║
+            ║│ A cup of tea please        │║
+            ║│                            │║
+            ║│                            │║
+            ║│                            │║
+            ║│                            │║
+            ║└────────────────────────────┘║
+            ╚══════════════════════════════╝
+            "#,
+            )
+        );
+    }
 }
