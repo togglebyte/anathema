@@ -214,7 +214,7 @@ impl<'screen> PaintCtx<'screen, WithSize> {
     }
 
     pub fn print(&mut self, s: &str, style: Style, mut pos: LocalPos) -> Option<LocalPos> {
-        let x = s;
+        let _x = s;
         for c in s.chars() {
             let p = self.put(c, style, pos)?;
             pos = p;

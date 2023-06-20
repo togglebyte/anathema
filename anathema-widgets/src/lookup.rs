@@ -1,9 +1,9 @@
-use std::borrow::Cow;
+
 use std::collections::HashMap;
 
 use crate::alignment::AlignmentFactory;
 use crate::border::BorderFactory;
-use crate::contexts::DataCtx;
+
 use crate::error::{Error, Result};
 use crate::expand::ExpandFactory;
 use crate::gen::store::Store;
@@ -17,7 +17,7 @@ use crate::viewport::ViewportFactory;
 use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
 use crate::zstack::ZStackFactory;
-use crate::{Attributes, Padding, TextPath, Value, Widget, WidgetContainer};
+use crate::{Padding, TextPath, WidgetContainer};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 

@@ -1,11 +1,11 @@
 use anathema_render::Size;
 
 use super::many::Many;
-use super::{expand, spacers, Constraints, Layout, Padding};
-use crate::contexts::{LayoutCtx, PositionCtx};
-use crate::error::{Error, Result};
-use crate::gen::generator::Generator;
-use crate::{Axis, Direction, Expand, Spacer, WidgetContainer};
+use super::{Layout};
+use crate::contexts::{LayoutCtx};
+use crate::error::{Result};
+
+use crate::{Axis, Direction};
 
 #[derive(Debug)]
 pub struct Vertical(Many);

@@ -1,9 +1,9 @@
 use anathema_render::Size;
 
-use super::Constraints;
+
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{Axis, Spacer, WidgetContainer};
+use crate::{Axis, Spacer};
 
 pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, axis: Axis) -> Result<Size> {
     let mut final_size = Size::ZERO;

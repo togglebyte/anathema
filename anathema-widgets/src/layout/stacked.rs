@@ -1,10 +1,10 @@
 use anathema_render::Size;
 
-use super::{Constraints, Layout, Padding};
-use crate::contexts::{LayoutCtx, PositionCtx};
+use super::{Layout};
+use crate::contexts::{LayoutCtx};
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-use crate::{Axis, WidgetContainer};
+
 
 pub struct Stacked;
 
@@ -21,7 +21,7 @@ impl Layout for Stacked {
         let mut values = ctx.values.next();
         let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
 
-        while let Some(mut widget) = gen.next(&mut values).transpose()? {
+        while let Some(widget) = gen.next(&mut values).transpose()? {
             let index = ctx.children.len();
             ctx.children.push(widget);
             // Ignore spacers

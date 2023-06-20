@@ -7,7 +7,7 @@ use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
 use crate::{
-    Align, AnyWidget, PaintCtx, Pos, PositionCtx, TextPath, Widget, WidgetContainer, WithSize,
+    Align, AnyWidget, Pos, PositionCtx, TextPath, Widget, WidgetContainer,
 };
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
@@ -58,7 +58,7 @@ impl Widget for Alignment {
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
-        let mut pos = ctx.pos;
+        let _pos = ctx.pos;
         if let Some(child) = children.first_mut() {
             let alignment = self.alignment;
 
@@ -98,7 +98,7 @@ impl WidgetFactory for AlignmentFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let align = values.alignment().unwrap_or(Align::TopLeft);
         let widget = Alignment::new(align);
@@ -110,9 +110,9 @@ impl WidgetFactory for AlignmentFactory {
 mod test {
     use super::*;
     use crate::gen::store::Store;
-    use crate::template::{template_text, Template};
+    use crate::template::{template_text};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::{Attributes, Constraints, DataCtx, Lookup, Padding};
+    use crate::{Constraints, DataCtx, Lookup, Padding};
 
     fn align_widget(align: Align, expected: FakeTerm) {
         let text = template_text("AB");

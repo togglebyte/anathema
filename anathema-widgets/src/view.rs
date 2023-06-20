@@ -25,7 +25,7 @@ pub trait View {
         let mut frame = vec![];
         let mut values = Store::new(self.ctx());
 
-        let layout_args = LayoutCtx::new(
+        let _layout_args = LayoutCtx::new(
             self.templates(),
             &values,
             constraints,

@@ -1,6 +1,6 @@
 use anathema_render::Size;
 
-use super::{NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::stacked::Stacked;
@@ -123,7 +123,7 @@ impl WidgetFactory for ZStackFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let width = values.width();
         let height = values.height();
@@ -137,7 +137,7 @@ impl WidgetFactory for ZStackFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::{template, template_text, Template};
+    use crate::template::{template, template_text};
     use crate::testing::{test_widget, FakeTerm};
 
     #[test]

@@ -55,7 +55,6 @@ struct Offset {
     axis: Axis,
     inner: i32,
     enabled: bool,
-    direction: Direction,
 }
 
 impl Offset {
@@ -103,7 +102,6 @@ impl Many {
                 axis,
                 inner: offset,
                 enabled: true,
-                direction,
             },
             unconstrained,
         }

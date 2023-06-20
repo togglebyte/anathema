@@ -5,9 +5,9 @@ use crate::error::Result;
 use crate::layout::vertical::Vertical;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
-use crate::template::Template;
+
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Axis, PaintCtx, PositionCtx, TextPath, Widget, WidgetContainer, WithSize, Direction};
+use crate::{AnyWidget, PositionCtx, TextPath, Widget, WidgetContainer, Direction};
 
 /// A widget that lays out its children vertically.
 /// ```text
@@ -107,7 +107,7 @@ impl WidgetFactory for VStackFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let width = values.width();
         let height = values.height();
@@ -133,7 +133,7 @@ mod test {
     #[test]
     fn only_vstack() {
         let body = children(3);
-        let mut vstack = VStack::new(None, None);
+        let vstack = VStack::new(None, None);
         test_widget(
             vstack,
             &body,
@@ -158,7 +158,7 @@ mod test {
     #[test]
     fn fixed_height_stack() {
         let body = children(10);
-        let mut vstack = VStack::new(None, 6);
+        let vstack = VStack::new(None, 6);
         test_widget(
             vstack,
             &body,

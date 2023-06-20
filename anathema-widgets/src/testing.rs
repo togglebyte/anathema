@@ -1,4 +1,4 @@
-use std::iter::zip;
+
 
 use anathema_render::{Screen, ScreenPos, Size};
 
@@ -33,7 +33,7 @@ impl FakeTerm {
     pub fn from_str(s: &str) -> Self {
         let mut size = Size::ZERO;
 
-        let mut lines = s.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
+        let lines = s.lines().map(|l| l.trim()).filter(|l| !l.is_empty());
         let mut expected = vec![];
         let mut collect = false;
 

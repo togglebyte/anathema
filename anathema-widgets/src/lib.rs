@@ -7,7 +7,7 @@ mod animation;
 mod attributes;
 mod contexts;
 pub mod error;
-pub(crate) mod gen;
+mod gen;
 mod id;
 mod layout;
 mod path;
@@ -46,6 +46,7 @@ pub use widget::{AnyWidget, Widget, WidgetContainer};
 
 pub use crate::animation::{Animation, AnimationCtx};
 pub use crate::attributes::{fields, Attribute, Attributes};
+pub use crate::gen::generator::Generator;
 pub use crate::path::{Path, TextPath};
 
 /// Determine how a widget should be displayed and laid out

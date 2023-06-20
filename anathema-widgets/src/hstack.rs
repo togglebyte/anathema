@@ -1,13 +1,13 @@
 use anathema_render::Size;
 
-use super::{NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
+use super::{PositionCtx, Widget, WidgetContainer};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::horizontal::Horizontal;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Axis, TextPath, Direction};
+use crate::{AnyWidget, TextPath, Direction};
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -100,7 +100,7 @@ impl WidgetFactory for HStackFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let width = values.width();
         let height = values.height();
@@ -125,7 +125,7 @@ mod test {
 
     #[test]
     fn only_hstack() {
-        let mut hstack = HStack::new(None, None);
+        let hstack = HStack::new(None, None);
         let body = children(3);
         test_widget(
             hstack,
@@ -146,7 +146,7 @@ mod test {
 
     #[test]
     fn fixed_width_stack() {
-        let mut hstack = HStack::new(6, None);
+        let hstack = HStack::new(6, None);
         let body = children(10);
         test_widget(
             hstack,

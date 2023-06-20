@@ -37,16 +37,6 @@ impl TestSetup {
         self
     }
 
-    pub fn run<F>(self, f: F)
-    where
-        for<'parent> F: FnOnce(Scope<'_, 'parent>, &mut Store<'parent>),
-    {
-        let factory = Lookup::default();
-        let mut store = Store::new(&self.root);
-        let mut scope = Scope::new(&self.templates, &factory, &mut store, Direction::Forward);
-        f(scope, &mut store);
-    }
-
     pub fn scope<'a>(&'a mut self) -> TestScope<'a> {
         let mut store = Store::new(&self.root);
         let inner = Scope::new(

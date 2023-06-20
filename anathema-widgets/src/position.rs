@@ -1,9 +1,9 @@
 use anathema_render::Size;
 
 use super::{
-    HorzEdge, NodeId, PaintCtx, Pos, PositionCtx, VertEdge, Widget, WidgetContainer, WithSize,
+    HorzEdge, Pos, PositionCtx, VertEdge, Widget, WidgetContainer,
 };
-use crate::attributes::fields;
+
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::single::Single;
@@ -157,7 +157,7 @@ impl WidgetFactory for PositionFactory {
     fn make(
         &self,
         values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let horz_edge = match values.left() {
             Some(left) => HorzEdge::Left(left),
@@ -174,7 +174,7 @@ impl WidgetFactory for PositionFactory {
                 None => VertEdge::Top(0),
             },
         };
-        let mut widget = Position::new(horz_edge, vert_edge);
+        let widget = Position::new(horz_edge, vert_edge);
         Ok(Box::new(widget))
     }
 }
@@ -182,9 +182,9 @@ impl WidgetFactory for PositionFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::{template, template_text, Template};
+    use crate::template::{template_text};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::Expand;
+    
 
     #[test]
     fn top_left() {

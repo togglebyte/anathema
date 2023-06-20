@@ -299,9 +299,9 @@ impl WidgetFactory for SpanFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::{template_span, Template};
+    use crate::template::{template_span};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::{fields, Attributes, Border, BorderStyle, Lookup, Sides, TextPath};
+    
 
     #[test]
     fn word_wrap_excessive_space() {
