@@ -39,7 +39,11 @@ pub trait Widget {
     /// of the children.
     fn position<'tpl>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'tpl>]);
 
-    fn paint<'tpl>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer<'tpl>]) {
+    fn paint<'tpl>(
+        &mut self,
+        mut ctx: PaintCtx<'_, WithSize>,
+        children: &mut [WidgetContainer<'tpl>],
+    ) {
         for child in children {
             let ctx = ctx.sub_context(None);
             child.paint(ctx);
@@ -311,7 +315,7 @@ impl<'tpl> WidgetContainer<'tpl> {
             return;
         }
 
-        // Paint the background without the padding, 
+        // Paint the background without the padding,
         // using the outer size and current pos.
         let mut ctx = ctx.into_sized(self.outer_size(), self.pos);
         self.paint_background(&mut ctx);

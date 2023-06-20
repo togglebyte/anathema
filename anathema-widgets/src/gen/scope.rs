@@ -54,7 +54,10 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
     pub(super) fn reverse(&mut self) {
         self.index.reverse();
 
-        if let State::Loop { value_index: value, .. } = &mut self.state {
+        if let State::Loop {
+            value_index: value, ..
+        } = &mut self.state
+        {
             value.reverse();
         }
 
@@ -66,7 +69,10 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
     pub(super) fn flip(&mut self) {
         self.index.flip();
 
-        if let State::Loop { value_index: value, .. } = &mut self.state {
+        if let State::Loop {
+            value_index: value, ..
+        } = &mut self.state
+        {
             value.flip();
         }
 
@@ -75,13 +81,12 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
         }
     }
 
-    pub(crate) fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer<'tpl>>> {
+    pub(crate) fn next(
+        &mut self,
+        values: &mut Store<'parent>,
+    ) -> Option<Result<WidgetContainer<'tpl>>> {
         loop {
-            match self
-                .inner
-                .as_mut()
-                .and_then(|scope| scope.next(values))
-            {
+            match self.inner.as_mut().and_then(|scope| scope.next(values)) {
                 next @ Some(_) => break next,
                 None => self.inner = None,
             }
@@ -92,7 +97,9 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                     let expr = &self.expressions[index];
 
                     match expr {
-                        Expression::Node(template) => break Some(self.factory.exec(template, values)),
+                        Expression::Node(template) => {
+                            break Some(self.factory.exec(template, values))
+                        }
                         Expression::For {
                             body,
                             binding,

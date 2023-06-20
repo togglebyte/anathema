@@ -135,8 +135,8 @@ impl WidgetFactory for ViewportFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use crate::{template::{template, template_text, Template}, testing::{FakeTerm, test_widget}};
+    use crate::template::{template, template_text, Template};
+    use crate::testing::{test_widget, FakeTerm};
 
     fn children(count: usize) -> Vec<Template> {
         (0..count)
@@ -151,7 +151,7 @@ mod test {
             Viewport::new(Direction::Forward, Axis::Vertical, 0),
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─┐            ║
             ║│0│            ║
@@ -161,7 +161,7 @@ mod test {
             ║└─┘            ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -172,7 +172,7 @@ mod test {
             Viewport::new(Direction::Forward, Axis::Horizontal, 0),
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─┐┌─┐┌─┐┌─┐┌─┐║
             ║│0││1││2││3││4│║
@@ -182,7 +182,7 @@ mod test {
             ║               ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -193,7 +193,7 @@ mod test {
             Viewport::new(Direction::Backward, Axis::Vertical, 0),
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─┐            ║
             ║│8│            ║
@@ -203,7 +203,7 @@ mod test {
             ║└─┘            ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -214,7 +214,7 @@ mod test {
             Viewport::new(Direction::Backward, Axis::Horizontal, 0),
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─┐┌─┐┌─┐┌─┐┌─┐║
             ║│5││6││7││8││9│║
@@ -224,7 +224,7 @@ mod test {
             ║               ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -235,7 +235,7 @@ mod test {
             Viewport::new(Direction::Forward, Axis::Vertical, 2),
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║└─┘            ║
             ║┌─┐            ║
@@ -245,7 +245,7 @@ mod test {
             ║│2│            ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -256,7 +256,7 @@ mod test {
             Viewport::new(Direction::Forward, Axis::Horizontal, 2),
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┐┌─┐┌─┐┌─┐┌─┐┌─║
             ║││1││2││3││4││5║
@@ -266,7 +266,7 @@ mod test {
             ║               ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 }

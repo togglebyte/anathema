@@ -131,7 +131,7 @@ mod test {
             hstack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─┐┌─┐┌─┐      ║
             ║│0││1││2│      ║
@@ -140,7 +140,7 @@ mod test {
             ║               ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -152,7 +152,7 @@ mod test {
             hstack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─┐┌─┐         ║
             ║│0││1│         ║
@@ -162,7 +162,7 @@ mod test {
             ║               ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 }

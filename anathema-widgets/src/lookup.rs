@@ -17,7 +17,7 @@ use crate::viewport::ViewportFactory;
 use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
 use crate::zstack::ZStackFactory;
-use crate::{Attributes, TextPath, Value, Widget, WidgetContainer, Padding};
+use crate::{Attributes, Padding, TextPath, Value, Widget, WidgetContainer};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 

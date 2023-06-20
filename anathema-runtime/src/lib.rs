@@ -3,8 +3,8 @@ use std::thread;
 use std::time::Duration;
 
 use anathema_render::{size, Screen};
-use anathema_widgets::view::View;
 use anathema_widgets::error::Result;
+use anathema_widgets::view::View;
 use anathema_widgets::{Constraints, Lookup};
 
 pub struct Runtime {
@@ -59,6 +59,6 @@ impl Runtime {
             thread::sleep(Duration::from_millis(500));
             self.screen.erase();
         }
-            Ok(())
+        Ok(())
     }
 }

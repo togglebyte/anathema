@@ -1,8 +1,8 @@
 use std::ops::{Add, Mul, Sub};
 use std::time::Duration;
 
-use crate::values::Easing;
 use super::Pos;
+use crate::values::Easing;
 
 /// The animation context holds the animation for the [`crate::WidgetContainer`].
 #[derive(Debug, Clone)]
@@ -47,7 +47,10 @@ impl AnimationCtx {
     }
 
     pub(super) fn new() -> Self {
-        Self { transitions: vec![], position: None }
+        Self {
+            transitions: vec![],
+            position: None,
+        }
     }
 
     pub(super) fn update_dst(&mut self, key: &str, val: f32) -> bool {
@@ -82,7 +85,10 @@ impl AnimationCtx {
     }
 
     pub(super) fn get_value(&self, key: &str) -> Option<f32> {
-        self.transitions.iter().find(|(k, _)| k.eq(key)).and_then(|(_, a)| a.get_value())
+        self.transitions
+            .iter()
+            .find(|(k, _)| k.eq(key))
+            .and_then(|(_, a)| a.get_value())
     }
 }
 
@@ -101,7 +107,13 @@ impl<T: PartialEq> Animation<T> {
     /// Create a new animation given a [`Duration`] and [`Easing`].
     /// A new animation will not progress until a source and destination has been set.
     pub fn new(duration: Duration, easing: Easing) -> Self {
-        Self { src: None, dst: None, duration, elapsed: Duration::new(0, 0), easing }
+        Self {
+            src: None,
+            dst: None,
+            duration,
+            elapsed: Duration::new(0, 0),
+            easing,
+        }
     }
 
     /// Set the destination value.
@@ -140,7 +152,12 @@ impl<T: PartialEq> Animation<T> {
 
 impl<T> Animation<T>
 where
-    T: std::fmt::Debug + Copy + PartialEq + Add<Output = T> + Sub<Output = T> + Mul<f32, Output = T>,
+    T: std::fmt::Debug
+        + Copy
+        + PartialEq
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<f32, Output = T>,
 {
     fn get_value(&self) -> Option<T> {
         if !self.active() {

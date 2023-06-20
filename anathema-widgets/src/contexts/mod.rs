@@ -255,7 +255,7 @@ impl<'screen> PaintCtx<'screen, WithSize> {
         // 3. Place the char
         let screen_pos = match self.translate_to_screen(input_pos) {
             Some(pos) => pos,
-            None => return Some(next)
+            None => return Some(next),
         };
         self.screen.put(c, style, screen_pos);
 

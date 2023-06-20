@@ -52,10 +52,7 @@ mod test {
         let vm = VirtualMachine::new(instructions, consts);
         let mut for_loop = vm.exec().unwrap().remove(0);
 
-        assert!(matches!(
-            for_loop,
-            Template::Loop { .. }
-        ));
+        assert!(matches!(for_loop, Template::Loop { .. }));
 
         let Template::Loop { binding, .. } = for_loop else { panic!("wrong kind") };
 

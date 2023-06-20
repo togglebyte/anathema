@@ -304,7 +304,7 @@ impl WidgetFactory for SpanFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::template::{Template, template_span};
+    use crate::template::{template_span, Template};
     use crate::testing::{test_widget, FakeTerm};
     use crate::{fields, Attributes, Border, BorderStyle, Lookup, Sides, TextPath};
 
@@ -386,9 +386,9 @@ mod test {
     #[test]
     fn char_wrap_layout_multiple_spans() {
         let body = [
-            template_span("two"), 
-            template_span(" averylongword"), 
-            template_span(" bunny ")
+            template_span("two"),
+            template_span(" averylongword"),
+            template_span(" bunny "),
         ];
         test_widget(
             Text::with_text("one"),

@@ -10,12 +10,9 @@ use anathema_render::{Size, Style};
 use crate::gen::store::Store;
 use crate::gen::ValueRef;
 use crate::{
-    fields, Align, Attributes, Axis, Color, DataCtx, Direction, Display, Padding, Path,
-    TextPath, Wrap,
+    fields, Align, Attributes, Axis, Color, DataCtx, Direction, Display, Padding, Path, TextPath,
+    Wrap,
 };
-
-#[cfg(feature = "serde-json")]
-pub mod json;
 
 /// Text alignment aligns the text inside its parent.
 ///

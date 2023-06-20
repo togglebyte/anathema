@@ -1,13 +1,13 @@
 use anathema_render::Size;
 
 use super::{NodeId, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::{TextPath, AnyWidget};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::layout::stacked::Stacked;
 use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
+use crate::{AnyWidget, TextPath};
 
 /// Unlike the [`HStack`](crate::HStack) or the [`VStack`](crate::VStack) the [`ZStack`] draws the
 /// children on top of each other.
@@ -106,7 +106,6 @@ impl Widget for ZStack {
             child.paint(ctx);
         }
     }
-
 
     // fn update(&mut self, ctx: UpdateCtx) {
     //     if let Some(width) = ctx.attributes.width() {

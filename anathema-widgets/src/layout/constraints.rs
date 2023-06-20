@@ -15,7 +15,12 @@ pub struct Constraints {
 }
 
 impl Constraints {
-    pub const ZERO: Self = Self { min_width: 0, min_height: 0, max_width: 0, max_height: 0 };
+    pub const ZERO: Self = Self {
+        min_width: 0,
+        min_height: 0,
+        max_width: 0,
+        max_height: 0,
+    };
 
     /// Create a set of constraints with a given max width / height.
     /// If `None` is passed for either `max_width` and / or `max_height` then this is qualified as
@@ -27,12 +32,22 @@ impl Constraints {
     pub fn new(max_width: impl Into<Option<usize>>, max_height: impl Into<Option<usize>>) -> Self {
         let max_width = max_width.into().unwrap_or(usize::MAX);
         let max_height = max_height.into().unwrap_or(usize::MAX);
-        Self { min_width: 0, min_height: 0, max_width, max_height }
+        Self {
+            min_width: 0,
+            min_height: 0,
+            max_width,
+            max_height,
+        }
     }
 
     /// Create unbounded constraints.
     pub fn unbounded() -> Self {
-        Self { min_width: 0, min_height: 0, max_width: usize::MAX, max_height: usize::MAX }
+        Self {
+            min_width: 0,
+            min_height: 0,
+            max_width: usize::MAX,
+            max_height: usize::MAX,
+        }
     }
 
     /// Create unbounded height
@@ -62,7 +77,12 @@ impl Constraints {
 
     /// Create new tight constraints.
     pub fn tight(width: usize, height: usize) -> Self {
-        Self { min_width: width, min_height: height, max_width: width, max_height: height }
+        Self {
+            min_width: width,
+            min_height: height,
+            max_width: width,
+            max_height: height,
+        }
     }
 
     /// Returns true if the `min_width` and `max_width` are the same.
@@ -159,8 +179,9 @@ impl Constraints {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use anathema_render::Size;
+
+    use super::*;
 
     #[test]
     fn shrink_constrained_size() {
@@ -187,7 +208,12 @@ mod test {
         let mut constraint_a = Constraints::new(10, 10);
         let constraint_b = Constraints::new(15, 9);
         constraint_a.fit_constraints(&constraint_b);
-        let expected = Constraints { min_width: 0, min_height: 0, max_width: 10, max_height: 9 };
+        let expected = Constraints {
+            min_width: 0,
+            min_height: 0,
+            max_width: 10,
+            max_height: 9,
+        };
         assert_eq!(expected, constraint_a);
     }
 
@@ -198,7 +224,12 @@ mod test {
         let mut constraint_b = Constraints::new(15, 9);
         constraint_b.min_height = 5;
         constraint_a.fit_constraints(&constraint_b);
-        let expected = Constraints { min_width: 2, min_height: 5, max_width: 10, max_height: 9 };
+        let expected = Constraints {
+            min_width: 2,
+            min_height: 5,
+            max_width: 10,
+            max_height: 9,
+        };
         assert_eq!(expected, constraint_a);
     }
 
@@ -209,7 +240,12 @@ mod test {
         constraint_b.min_width = 12;
 
         constraint_a.fit_constraints(&constraint_b);
-        let expected = Constraints { min_width: 10, min_height: 9, max_width: 10, max_height: 9 };
+        let expected = Constraints {
+            min_width: 10,
+            min_height: 9,
+            max_width: 10,
+            max_height: 9,
+        };
         assert_eq!(expected, constraint_a);
     }
 

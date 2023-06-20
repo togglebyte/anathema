@@ -110,7 +110,7 @@ impl WidgetFactory for AlignmentFactory {
 mod test {
     use super::*;
     use crate::gen::store::Store;
-    use crate::template::{Template, template_text};
+    use crate::template::{template_text, Template};
     use crate::testing::{test_widget, FakeTerm};
     use crate::{Attributes, Constraints, DataCtx, Lookup, Padding};
 

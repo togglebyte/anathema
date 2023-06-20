@@ -17,5 +17,5 @@ pub enum Error {
 
     /// IO error
     #[error("{0}")]
-    Io(#[from] std::io::Error)
+    Io(#[from] std::io::Error),
 }

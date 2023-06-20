@@ -7,7 +7,7 @@
 //! # fn stdout() -> Vec<u8> {
 //! #     vec![0u8; 80*50]
 //! # }
-//! use anathema_render::{Screen, Size, Style, ScreenPos, Color};
+//! use anathema_render::{Color, Screen, ScreenPos, Size, Style};
 //! let mut output = stdout();
 //! Screen::hide_cursor(&mut output).unwrap();
 //! let mut screen = Screen::new((80u16, 50u16));
@@ -37,11 +37,12 @@ mod style;
 // -----------------------------------------------------------------------------
 //     - Re-exports -
 // -----------------------------------------------------------------------------
-pub use crate::buffer::Buffer;
-pub use crate::style::{Attributes, Style};
 pub use crossterm::style::Color;
 pub use crossterm::terminal::size;
 pub use screen::Screen;
+
+pub use crate::buffer::Buffer;
+pub use crate::style::{Attributes, Style};
 
 /// Size
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -78,7 +79,10 @@ impl Add for Size {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        Self { width: self.width + other.width, height: self.height + other.height }
+        Self {
+            width: self.width + other.width,
+            height: self.height + other.height,
+        }
     }
 }
 
@@ -86,7 +90,10 @@ impl Sub for Size {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        Self { width: self.width - other.width, height: self.height - other.height }
+        Self {
+            width: self.width - other.width,
+            height: self.height - other.height,
+        }
     }
 }
 

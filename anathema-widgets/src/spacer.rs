@@ -3,9 +3,9 @@ use anathema_render::Size;
 use super::{NodeId, PaintCtx, PositionCtx, Widget, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{WidgetContainer, TextPath, AnyWidget};
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
+use crate::{AnyWidget, TextPath, WidgetContainer};
 
 /// Expand to fill in all available space.
 ///
@@ -37,19 +37,15 @@ impl Widget for Spacer {
             "the layout context needs to be tight for a spacer"
         );
 
-        Ok(Size::new(ctx.constraints.min_width, ctx.constraints.min_height))
+        Ok(Size::new(
+            ctx.constraints.min_width,
+            ctx.constraints.min_height,
+        ))
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {}
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
-    }
-
-    //     // fn update(&mut self, _: UpdateCtx) {}
+    fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {}
 }
 
 pub(crate) struct SpacerFactory;
@@ -67,9 +63,9 @@ impl WidgetFactory for SpacerFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Attributes, HStack, VStack};
     use crate::template::{template, template_text, Template};
     use crate::testing::{test_widget, FakeTerm};
+    use crate::{Attributes, HStack, VStack};
 
     #[test]
     fn space_out_hstack() {
@@ -83,7 +79,7 @@ mod test {
             hstack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║left      right║
             ║               ║
@@ -93,7 +89,7 @@ mod test {
             ║               ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -109,7 +105,7 @@ mod test {
             hstack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║top            ║
             ║               ║
@@ -119,7 +115,7 @@ mod test {
             ║bottom         ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -137,7 +133,7 @@ mod test {
             hstack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║top            ║
             ║               ║
@@ -148,7 +144,7 @@ mod test {
             ║bottom         ║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 }

@@ -4,7 +4,7 @@ use super::{expand, spacers, Constraints, Layout, Padding};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-use crate::{Axis, Expand, Spacer, WidgetContainer, Direction};
+use crate::{Axis, Direction, Expand, Spacer, WidgetContainer};
 
 #[derive(Debug, Default)]
 pub struct Vertical;

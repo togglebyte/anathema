@@ -27,7 +27,15 @@ impl NodeId {
 
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.iter().map(ToString::to_string).collect::<Vec<_>>().join("::"))
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("::")
+        )
     }
 }
 

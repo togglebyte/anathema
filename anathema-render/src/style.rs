@@ -1,6 +1,8 @@
 use std::io::{Result, Write};
 
-use crossterm::style::{Attribute as CrossAttrib, Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
+use crossterm::style::{
+    Attribute as CrossAttrib, Color, SetAttribute, SetBackgroundColor, SetForegroundColor,
+};
 use crossterm::QueueableCommand;
 
 /// The style for a cell in a [`crate::Buffer`]
@@ -40,7 +42,11 @@ pub struct Style {
 impl Style {
     /// Create a new instance of a `Style`:
     pub const fn new() -> Self {
-        Self { fg: None, bg: None, attributes: Attributes::empty() }
+        Self {
+            fg: None,
+            bg: None,
+            attributes: Attributes::empty(),
+        }
     }
 
     pub(crate) fn write(&self, w: &mut impl Write) -> Result<()> {

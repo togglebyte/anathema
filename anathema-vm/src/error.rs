@@ -6,4 +6,3 @@ pub enum Error {
     #[error("compiler error: {0}")]
     CompilerError(#[from] anathema_compiler::error::Error),
 }
-

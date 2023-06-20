@@ -201,7 +201,8 @@ impl Widget for Border {
                     None => return Err(Error::InsufficientSpaceAvailble),
                 };
 
-                constraints.max_height = match constraints.max_height.checked_sub(border_size.height) {
+                constraints.max_height =
+                    match constraints.max_height.checked_sub(border_size.height) {
                         Some(h) => h,
                         None => return Err(Error::InsufficientSpaceAvailble),
                     };
@@ -418,7 +419,8 @@ impl WidgetFactory for BorderFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{testing::{test_widget, FakeTerm}, template::template_text};
+    use crate::template::template_text;
+    use crate::testing::{test_widget, FakeTerm};
 
     #[test]
     fn border() {
@@ -568,7 +570,7 @@ mod test {
     fn sized_by_child() {
         let body = [template_text("hello world")];
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::ALL, None, None), 
+            Border::new(&BorderStyle::Thin, Sides::ALL, None, None),
             &body,
             FakeTerm::from_str(
                 r#"
@@ -587,7 +589,7 @@ mod test {
     fn fixed_size() {
         let body = [template_text("hello world")];
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::ALL, 7, 4), 
+            Border::new(&BorderStyle::Thin, Sides::ALL, 7, 4),
             &body,
             FakeTerm::from_str(
                 r#"

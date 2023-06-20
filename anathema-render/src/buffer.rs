@@ -5,8 +5,7 @@ use crossterm::style::Print;
 use crossterm::{cursor, QueueableCommand};
 use unicode_width::UnicodeWidthChar;
 
-use super::Style;
-use super::{ScreenPos, Size};
+use super::{ScreenPos, Size, Style};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {
@@ -18,15 +17,24 @@ impl Cell {
     pub(crate) fn empty() -> Self {
         // It's important to reset the colours as there
         // might be residual colors from previous draw.
-        Self { style: Style::reset(), inner: CellState::Empty }
+        Self {
+            style: Style::reset(),
+            inner: CellState::Empty,
+        }
     }
 
     fn continuation(style: Style) -> Self {
-        Self { style, inner: CellState::Continuation }
+        Self {
+            style,
+            inner: CellState::Continuation,
+        }
     }
 
     pub(crate) fn new(c: char, style: Style) -> Self {
-        Self { style, inner: CellState::Occupied(c) }
+        Self {
+            style,
+            inner: CellState::Occupied(c),
+        }
     }
 }
 
@@ -60,7 +68,10 @@ impl Buffer {
     /// Crate a new `Buffer` with a given size.
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
-        Self { inner: vec![Cell::empty(); (size.width * size.height) as usize], size }
+        Self {
+            inner: vec![Cell::empty(); (size.width * size.height) as usize],
+            size,
+        }
     }
 
     /// The size of the `Buffer`
@@ -135,7 +146,10 @@ impl Buffer {
             // we can set the continuation cell to `Empty`.
             if pos.x < self.size.width as u16 {
                 if let Some(2..) = c.width() {
-                    self.put(Cell::continuation(cell.style), ScreenPos::new(pos.x + 1, pos.y));
+                    self.put(
+                        Cell::continuation(cell.style),
+                        ScreenPos::new(pos.x + 1, pos.y),
+                    );
                 }
             }
         }
@@ -234,7 +248,10 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer) -> Result<Vec<(ScreenPos, Option<
 // -----------------------------------------------------------------------------
 //     - Draw changes -
 // -----------------------------------------------------------------------------
-pub(crate) fn draw_changes(mut w: impl Write, changes: Vec<(ScreenPos, Option<Style>, Change)>) -> Result<()> {
+pub(crate) fn draw_changes(
+    mut w: impl Write,
+    changes: Vec<(ScreenPos, Option<Style>, Change)>,
+) -> Result<()> {
     let mut last_y = None;
     let mut next_cell_x = None;
 

@@ -2,12 +2,11 @@ use anathema_render::Size;
 
 use super::{Constraints, Layout, Padding};
 use crate::contexts::{LayoutCtx, PositionCtx};
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
 use crate::{Axis, WidgetContainer};
 
 pub struct Stacked;
-
 
 //     let constraints = ctx.padded_constraints();
 
@@ -27,7 +26,6 @@ pub struct Stacked;
 //     }
 
 //     Size::new(width, height)
-
 
 impl Layout for Stacked {
     fn layout<'widget, 'tpl, 'parent>(
@@ -153,4 +151,3 @@ pub fn position(ctx: PositionCtx, children: &mut [WidgetContainer<'_>]) {
         pos.y += widget.outer_size().height as i32;
     }
 }
-

@@ -1,6 +1,6 @@
 use std::iter::zip;
 
-use anathema_render::{Screen, Size, ScreenPos};
+use anathema_render::{Screen, ScreenPos, Size};
 
 use super::WidgetContainer;
 use crate::gen::store::Store;
@@ -58,11 +58,7 @@ impl FakeTerm {
 
     pub fn new(size: Size, rows: Vec<String>) -> Self {
         let screen = Screen::new(size);
-        Self {
-            screen,
-            size,
-            rows,
-        }
+        Self { screen, size, rows }
     }
 }
 
@@ -91,11 +87,13 @@ pub fn test_widget_container(mut widget: WidgetContainer<'_>, mut expected: Fake
         for (x, c) in row.chars().enumerate() {
             let pos = ScreenPos::new(x as u16, y as u16);
             match expected.screen.get(pos).map(|(c, _)| c) {
-                Some(buffer_char) => assert_eq!(c, buffer_char, "in fake term \"{c}\", in buffer \"{buffer_char}\", pos: {pos:?}"),
+                Some(buffer_char) => assert_eq!(
+                    c, buffer_char,
+                    "in fake term \"{c}\", in buffer \"{buffer_char}\", pos: {pos:?}"
+                ),
                 None if c == ' ' => continue,
                 None => panic!("expected {c}, found nothing"),
             }
-
         }
     }
 }

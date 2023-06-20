@@ -18,7 +18,7 @@ const DEFAULT_FACTOR: usize = 1;
 ///
 /// A [`Direction`] can be set when creating a new widget
 /// ```
-/// use anathema_widgets::{Expand, Axis};
+/// use anathema_widgets::{Axis, Expand};
 /// let horizontal = Expand::new(2, Axis::Horizontal, None);
 /// let vertical = Expand::new(5, Axis::Vertical, None);
 /// ```
@@ -73,7 +73,11 @@ impl Expand {
     pub const KIND: &'static str = "Expand";
 
     /// Create a new instance of an `Expand` widget.
-    pub fn new(factor: impl Into<Option<usize>>, direction: impl Into<Option<Axis>>, fill: impl Into<Option<String>>) -> Self {
+    pub fn new(
+        factor: impl Into<Option<usize>>,
+        direction: impl Into<Option<Axis>>,
+        fill: impl Into<Option<String>>,
+    ) -> Self {
         let factor = factor.into();
         let axis = direction.into();
 
@@ -168,9 +172,9 @@ impl WidgetFactory for ExpandFactory {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{Border, Attributes, HStack, VStack};
     use crate::template::{template, template_text, Template};
     use crate::testing::{test_widget, FakeTerm};
+    use crate::{Attributes, Border, HStack, VStack};
 
     #[test]
     fn expand_border() {
@@ -180,7 +184,7 @@ mod test {
             border,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─────────────┐║
             ║│             │║
@@ -190,7 +194,7 @@ mod test {
             ║└─────────────┘║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -198,23 +202,23 @@ mod test {
     fn expand_horz_with_factors() {
         let stack = HStack::new(None, None);
         let body = [
-            template("expand", [("factor", 1)], vec![
-                template("border", (), vec![
-                    template("expand", (), vec![])
-                ])
-            ]),
-            template("expand", [("factor", 2)], vec![
-                template("border", (), vec![
-                    template("expand", (), vec![])
-                ])
-            ]),
+            template(
+                "expand",
+                [("factor", 1)],
+                vec![template("border", (), vec![template("expand", (), vec![])])],
+            ),
+            template(
+                "expand",
+                [("factor", 2)],
+                vec![template("border", (), vec![template("expand", (), vec![])])],
+            ),
         ];
 
         test_widget(
             stack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌───┐┌────────┐║
             ║│   ││        │║
@@ -224,7 +228,7 @@ mod test {
             ║└───┘└────────┘║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
@@ -232,23 +236,23 @@ mod test {
     fn expand_vert_with_factors() {
         let stack = VStack::new(None, None);
         let body = [
-            template("expand", [("factor", 1)], vec![
-                template("border", (), vec![
-                    template("expand", (), vec![])
-                ])
-            ]),
-            template("expand", [("factor", 2)], vec![
-                template("border", (), vec![
-                    template("expand", (), vec![])
-                ])
-            ]),
+            template(
+                "expand",
+                [("factor", 1)],
+                vec![template("border", (), vec![template("expand", (), vec![])])],
+            ),
+            template(
+                "expand",
+                [("factor", 2)],
+                vec![template("border", (), vec![template("expand", (), vec![])])],
+            ),
         ];
 
         test_widget(
             stack,
             &body,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [═╗
             ║┌─────────────┐║
             ║│             │║
@@ -261,23 +265,23 @@ mod test {
             ║└─────────────┘║
             ╚═══════════════╝
             "#,
-            )
+            ),
         );
     }
 
     #[test]
     fn expand_horz() {
         let border = Border::thin(None, None);
-        let expand = [
-            template("expand", [("axis", Axis::Horizontal)], vec![
-                template_text("A cup of tea please"),
-            ])
-        ];
+        let expand = [template(
+            "expand",
+            [("axis", Axis::Horizontal)],
+            vec![template_text("A cup of tea please")],
+        )];
         test_widget(
             border,
             &expand,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [════════════════╗
             ║┌────────────────────────────┐║
             ║│A cup of tea please         │║
@@ -286,23 +290,23 @@ mod test {
             ║                              ║
             ╚══════════════════════════════╝
             "#,
-            )
+            ),
         );
     }
 
     #[test]
     fn expand_vert() {
         let border = Border::thin(None, None);
-        let expand = [
-            template("expand", [("axis", Axis::Vertical)], vec![
-                template_text("A cup of tea please"),
-            ])
-        ];
+        let expand = [template(
+            "expand",
+            [("axis", Axis::Vertical)],
+            vec![template_text("A cup of tea please")],
+        )];
         test_widget(
             border,
             &expand,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [════════════════╗
             ║┌───────────────────┐         ║
             ║│A cup of tea please│         ║
@@ -313,23 +317,23 @@ mod test {
             ║└───────────────────┘         ║
             ╚══════════════════════════════╝
             "#,
-            )
+            ),
         );
     }
 
     #[test]
     fn expand_all() {
         let border = Border::thin(None, None);
-        let expand = [
-            template("expand", (), vec![
-                template_text("A cup of tea please"),
-            ])
-        ];
+        let expand = [template(
+            "expand",
+            (),
+            vec![template_text("A cup of tea please")],
+        )];
         test_widget(
             border,
             &expand,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [════════════════╗
             ║┌────────────────────────────┐║
             ║│A cup of tea please         │║
@@ -340,23 +344,23 @@ mod test {
             ║└────────────────────────────┘║
             ╚══════════════════════════════╝
             "#,
-            )
+            ),
         );
     }
 
     #[test]
     fn expand_with_padding() {
         let border = Border::thin(None, None);
-        let expand = [
-            template("expand", [("padding", 1)], vec![
-                template_text("A cup of tea please"),
-            ])
-        ];
+        let expand = [template(
+            "expand",
+            [("padding", 1)],
+            vec![template_text("A cup of tea please")],
+        )];
         test_widget(
             border,
             &expand,
             FakeTerm::from_str(
-            r#"
+                r#"
             ╔═] Fake term [════════════════╗
             ║┌────────────────────────────┐║
             ║│                            │║
@@ -368,7 +372,7 @@ mod test {
             ║└────────────────────────────┘║
             ╚══════════════════════════════╝
             "#,
-            )
+            ),
         );
     }
 }

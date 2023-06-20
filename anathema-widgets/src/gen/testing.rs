@@ -2,7 +2,7 @@ use super::generator::Direction;
 use super::scope::Scope;
 use super::store::Store;
 use crate::template::Template;
-use crate::{Lookup, DataCtx, Value, WidgetContainer};
+use crate::{DataCtx, Lookup, Value, WidgetContainer};
 
 pub struct TestSetup {
     templates: Vec<Template>,

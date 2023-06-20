@@ -6,8 +6,8 @@ use super::{
 use crate::attributes::fields;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::layout::Layouts;
 use crate::layout::single::Single;
+use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::values::ValuesAttributes;
 use crate::{AnyWidget, TextPath};
@@ -108,7 +108,11 @@ impl Widget for Position {
         layout.size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'gen, 'ctx>(
+        &mut self,
+        mut ctx: PositionCtx,
+        children: &mut [WidgetContainer<'gen>],
+    ) {
         let child = match children.first_mut() {
             Some(c) => c,
             None => return,
@@ -121,7 +125,9 @@ impl Widget for Position {
 
         let y = match self.vert_edge {
             VertEdge::Top(y) => y,
-            VertEdge::Bottom(y) => ctx.inner_size.height as i32 - y - child.outer_size().height as i32,
+            VertEdge::Bottom(y) => {
+                ctx.inner_size.height as i32 - y - child.outer_size().height as i32
+            }
         };
 
         ctx.pos += Pos::new(x, y);

@@ -2,7 +2,7 @@ use anathema_render::Size;
 
 use super::{Constraints, Layout, Padding};
 use crate::contexts::{LayoutCtx, PositionCtx};
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
 use crate::{Axis, WidgetContainer};
 

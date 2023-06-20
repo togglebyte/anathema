@@ -1,7 +1,8 @@
-use std::{fmt, borrow::Cow};
+use std::borrow::Cow;
+use std::fmt;
 
-use crate::{Fragment, Value, gen::store::Store};
-
+use crate::gen::store::Store;
+use crate::{Fragment, Value};
 
 // Values can only come from the supplied value,
 // meaning the supplied value is either a vector of values or a hashmap
@@ -31,7 +32,7 @@ pub enum Path {
     /// The key is an index to an ident inside `Constants`
     Key(String),
     /// Index in a collection
-    // TODO: when do we need the index? If not let's bin it, because 
+    // TODO: when do we need the index? If not let's bin it, because
     // it's causing grief over at the tokenizer (a.1.2 = a, fullstop, float(1.2))
     Index(usize),
     Composite(Box<Path>, Box<Path>),

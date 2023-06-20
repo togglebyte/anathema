@@ -177,8 +177,8 @@ impl TextLayout {
 
     pub fn size(&self) -> Size {
         Size {
-            width: self.longest_line.max(self.current_width), 
-            height: self.line_count
+            width: self.longest_line.max(self.current_width),
+            height: self.line_count,
         }
     }
 
@@ -189,7 +189,7 @@ impl TextLayout {
             State::Newline
         } else if self.current_width + char_width > self.max_size.width {
             match self.word_boundary.take() {
-                Some(_) if c.is_whitespace()=> State::MaxWidth,
+                Some(_) if c.is_whitespace() => State::MaxWidth,
                 Some(wb) => State::WordBoundary(wb, wb.entry_index == self.lines.inner.len()),
                 None => State::MaxWidth,
             }
@@ -206,7 +206,7 @@ impl TextLayout {
             if self.current_width + char_width > self.max_size.width {
                 self.lines.range(0, i);
                 self.lines.current_slice += 1;
-                return
+                return;
             }
             self.current_width += char_width;
         }
@@ -299,13 +299,11 @@ impl TextLayout {
             }
 
             // Consume excess whitespace.
-            // This is only applicable during `Normal` 
+            // This is only applicable during `Normal`
             // word wrapping.
             if let Wrap::Normal = self.wrap {
                 match state {
-                    State::ExceedingCharWidth
-                    | State::MaxWidth
-                    | State::Newline => {
+                    State::ExceedingCharWidth | State::MaxWidth | State::Newline => {
                         while let Some((idx, ch)) = chars.next_if(|(_, c)| c.is_whitespace()) {
                             byte = idx + ch.len_utf8();
                         }
@@ -546,4 +544,3 @@ mod test {
         assert_eq!(strings.len(), 1);
     }
 }
-

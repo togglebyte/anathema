@@ -22,7 +22,11 @@ pub struct Generator<'tpl, 'parent> {
 }
 
 impl<'tpl, 'parent> Generator<'tpl, 'parent> {
-    pub fn new(templates: &'tpl [Template], factory: &'parent Lookup, values: &mut Store<'parent>) -> Self {
+    pub fn new(
+        templates: &'tpl [Template],
+        factory: &'parent Lookup,
+        values: &mut Store<'parent>,
+    ) -> Self {
         Self {
             scope: Scope::new(templates, factory, values, Direction::Forward),
         }
@@ -38,10 +42,7 @@ impl<'tpl, 'parent> Generator<'tpl, 'parent> {
         self.scope.flip();
     }
 
-    pub fn next(
-        &mut self,
-        values: &mut Store<'parent>,
-    ) -> Option<Result<WidgetContainer<'tpl>>> {
+    pub fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer<'tpl>>> {
         self.scope.next(values)
     }
 }

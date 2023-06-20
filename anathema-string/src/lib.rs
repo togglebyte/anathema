@@ -20,16 +20,13 @@
 //! for (color, c) in string.annotated_chars() {
 //!     eprintln!("{c} [{color:?}]");
 //! }
-//!
 //! ```
 //!
 //! To use [`AntString::find`] and [`AntString::contains`]
 //! import `antstring::{Find, Contains}`.
 use std::fmt;
 use std::iter::Rev;
-use std::str::Bytes as StdBytes;
-use std::str::CharIndices as StdCharIndices;
-use std::str::Chars as StdChars;
+use std::str::{Bytes as StdBytes, CharIndices as StdCharIndices, Chars as StdChars};
 
 use unicode_width::UnicodeWidthStr;
 
@@ -38,10 +35,9 @@ mod find;
 mod fromrange;
 mod sealed;
 
-use fromrange::FromRange;
-
 pub use contains::Contains;
 pub use find::Find;
+use fromrange::FromRange;
 
 // -----------------------------------------------------------------------------
 //     - Magic string -
@@ -64,7 +60,9 @@ impl<'a> AntString<'a, ()> {
 impl<'a, T> AntString<'a, T> {
     /// Create a new instance of a `AntString` from tuples of annotations and string slices.
     pub fn with_annotations(inner: impl AsRef<[(&'a T, &'a str)]>) -> Self {
-        Self { inner: inner.as_ref().to_owned() }
+        Self {
+            inner: inner.as_ref().to_owned(),
+        }
     }
 
     /// The total length of the string in bytes
@@ -107,7 +105,9 @@ impl<'a, T> AntString<'a, T> {
 
     /// Get a substring
     pub fn get(&self, range: impl FromRange) -> Self {
-        let mut substring = Self { inner: self.inner.clone() };
+        let mut substring = Self {
+            inner: self.inner.clone(),
+        };
         substring.truncate(range);
         substring
     }
@@ -204,7 +204,13 @@ impl<'a, T> AntString<'a, T> {
         let mut byte_index = 0;
 
         // If the first character is not a whitespace character then bail
-        if !self.inner.get(0).and_then(|(_, s)| s.chars().next()).unwrap_or(' ').is_whitespace() {
+        if !self
+            .inner
+            .get(0)
+            .and_then(|(_, s)| s.chars().next())
+            .unwrap_or(' ')
+            .is_whitespace()
+        {
             return;
         }
 
@@ -230,7 +236,14 @@ impl<'a, T> AntString<'a, T> {
 
         let mut byte_index = self.len();
         // If the last character is not a whitespace character then bail
-        if !self.inner.iter().last().and_then(|(_, s)| s.chars().last()).unwrap_or(' ').is_whitespace() {
+        if !self
+            .inner
+            .iter()
+            .last()
+            .and_then(|(_, s)| s.chars().last())
+            .unwrap_or(' ')
+            .is_whitespace()
+        {
             return;
         }
 
@@ -275,7 +288,12 @@ impl<'a, T> AntString<'a, T> {
     pub fn truncate(&mut self, range: impl FromRange) {
         let len = self.len();
         let (start, end) = range.into_start_end(len);
-        assert!(len >= end, "byte index: {} is out of bounds of `{}`", len, self);
+        assert!(
+            len >= end,
+            "byte index: {} is out of bounds of `{}`",
+            len,
+            self
+        );
 
         // Truncate the end
         let (slice_index, end) = self.index(end);
@@ -307,7 +325,12 @@ impl<'a, T> AntString<'a, T> {
             return None;
         }
 
-        let last_char = self.inner.iter().rev().next().and_then(|(_, s)| s.chars().last())?;
+        let last_char = self
+            .inner
+            .iter()
+            .rev()
+            .next()
+            .and_then(|(_, s)| s.chars().last())?;
         let remove = last_char.len_utf8();
         let to = self.len() - remove;
         self.truncate(..to);
@@ -334,7 +357,9 @@ impl<'a, T> AntString<'a, T> {
 impl<'a, T> AntString<'a, T> {
     /// An iterator over the characters of the inner string slices
     #[must_use]
-    pub fn annotated_chars(&'a self) -> AnnotatedChars<'a, impl Iterator<Item = &'a (&'a T, &'a str)>, T> {
+    pub fn annotated_chars(
+        &'a self,
+    ) -> AnnotatedChars<'a, impl Iterator<Item = &'a (&'a T, &'a str)>, T> {
         AnnotatedChars::new(self.inner.iter())
     }
 }
@@ -393,7 +418,9 @@ where
     T: Iterator<Item = &'a (&'a U, &'a str)>,
 {
     fn new(mut inner: T) -> Self {
-        let current = inner.next().map(|(annotation, slice)| (*annotation, slice.chars()));
+        let current = inner
+            .next()
+            .map(|(annotation, slice)| (*annotation, slice.chars()));
         Self { inner, current }
     }
 }
@@ -409,7 +436,10 @@ where
         match current.next() {
             Some(s) => Some((annotation, s)),
             None => {
-                self.current = self.inner.next().map(|(annotation, s)| (*annotation, s.chars()));
+                self.current = self
+                    .inner
+                    .next()
+                    .map(|(annotation, s)| (*annotation, s.chars()));
                 let (annotation, current) = self.current.as_mut()?;
                 current.next().map(|c| (*annotation, c))
             }
@@ -521,8 +551,14 @@ pub struct CharIndices<'a, T> {
 
 impl<'a, T: Iterator<Item = &'a str>> CharIndices<'a, T> {
     fn new(mut inner: T) -> Self {
-        let current = inner.next().map(|slice| (slice.len(), slice.char_indices()));
-        Self { inner, current, offset: 0 }
+        let current = inner
+            .next()
+            .map(|slice| (slice.len(), slice.char_indices()));
+        Self {
+            inner,
+            current,
+            offset: 0,
+        }
     }
 }
 
@@ -536,7 +572,10 @@ impl<'a, T: Iterator<Item = &'a str>> Iterator for CharIndices<'a, T> {
             Some((i, c)) => Some((i + self.offset, c)),
             None => {
                 self.offset += *next_offset;
-                self.current = self.inner.next().map(|slice| (slice.len(), slice.char_indices()));
+                self.current = self
+                    .inner
+                    .next()
+                    .map(|slice| (slice.len(), slice.char_indices()));
                 let (_, ref mut iter) = self.current.as_mut()?;
                 iter.next().map(|(i, c)| (i + self.offset, c))
             }
@@ -580,8 +619,9 @@ impl<'a, T> Iterator for Lines<'a, T> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     prop_compose! {
         fn string_and_len()(input in any::<String>())
