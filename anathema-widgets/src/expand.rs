@@ -172,14 +172,6 @@ mod test {
     use crate::template::{template, template_text, Template};
     use crate::testing::{test_widget, FakeTerm};
 
-    // fn expand_border(dir: Option<Direction>) -> WidgetContainer {
-    //     let mut parent = Border::thick(None, None).into_container(NodeId::anon());
-    //     let expand = Expand::new(None, dir).into_container(NodeId::anon());
-    //     parent.add_child(expand);
-    //     parent.layout(Constraints::new(10, 10), false);
-    //     parent
-    // }
-
     #[test]
     fn expand_border() {
         let border = Border::thin(None, None);
