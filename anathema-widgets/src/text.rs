@@ -46,15 +46,6 @@ pub struct Text {
 
 impl Default for Text {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Text {
-    pub const KIND: &'static str = "Text";
-
-    /// Create a new instance of a `Text` widget
-    pub fn new() -> Self {
         Self {
             text: String::new(),
             style: Style::new(),
@@ -63,10 +54,14 @@ impl Text {
             layout: TextLayout::ZERO,
         }
     }
+}
 
-    /// Create an instance of a `Text` widget with some inital unstyled text
-    pub fn with_text(text: impl Into<String>) -> Self {
-        let mut inst = Self::new();
+impl Text {
+    pub const KIND: &'static str = "Text";
+
+    /// Create a new instance of a `Text` widget
+    pub fn new(text: impl Into<String>) -> Self {
+        let mut inst = Self::default();
         inst.set_text(text);
         inst
     }
@@ -272,7 +267,7 @@ impl WidgetFactory for TextFactory {
         values: ValuesAttributes<'_, '_>,
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
-        let mut widget = Text::new();
+        let mut widget = Text::default();
         widget.word_wrap = values.word_wrap();
         widget.text_alignment = values.text_alignment();
         widget.style = values.style();
@@ -311,7 +306,7 @@ mod test {
     #[test]
     fn word_wrap_excessive_space() {
         test_widget(
-            Text::with_text("hello      how are     you"),
+            Text::new("hello      how are     you"),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -331,7 +326,7 @@ mod test {
     #[test]
     fn word_wrap() {
         test_widget(
-            Text::with_text("hello how are you"),
+            Text::new("hello how are you"),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -347,7 +342,7 @@ mod test {
 
     #[test]
     fn no_word_wrap() {
-        let mut text = Text::with_text("hello how are you");
+        let mut text = Text::new("hello how are you");
         text.word_wrap = Wrap::Overflow;
         test_widget(
             text,
@@ -366,7 +361,7 @@ mod test {
 
     #[test]
     fn break_word_wrap() {
-        let mut text = Text::with_text("hellohowareyoudoing");
+        let mut text = Text::new("hellohowareyoudoing");
         text.word_wrap = Wrap::WordBreak;
         test_widget(
             text,
@@ -391,7 +386,7 @@ mod test {
             template_span(" bunny "),
         ];
         test_widget(
-            Text::with_text("one"),
+            Text::new("one"),
             &body,
             FakeTerm::from_str(
                 r#"
@@ -407,7 +402,7 @@ mod test {
 
     #[test]
     fn right_alignment() {
-        let mut text = Text::with_text("a one xxxxxxxxxxxxxxxxxx");
+        let mut text = Text::new("a one xxxxxxxxxxxxxxxxxx");
         text.text_alignment = TextAlignment::Right;
         test_widget(
             text,
@@ -426,7 +421,7 @@ mod test {
 
     #[test]
     fn centre_alignment() {
-        let mut text = Text::with_text("a one xxxxxxxxxxxxxxxxxx");
+        let mut text = Text::new("a one xxxxxxxxxxxxxxxxxx");
         text.text_alignment = TextAlignment::Centre;
         test_widget(
             text,

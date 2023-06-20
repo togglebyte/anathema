@@ -7,7 +7,7 @@ use crate::layout::Layouts;
 use crate::lookup::WidgetFactory;
 use crate::template::Template;
 use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Axis, PaintCtx, PositionCtx, TextPath, Widget, WidgetContainer, WithSize};
+use crate::{AnyWidget, Axis, PaintCtx, PositionCtx, TextPath, Widget, WidgetContainer, WithSize, Direction};
 
 /// A widget that lays out its children vertically.
 /// ```text
@@ -68,10 +68,10 @@ impl Widget for VStack {
 
     fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
         if let Some(width) = self.width {
-            ctx.constraints.make_width_tight(width);
+            ctx.constraints.max_width = ctx.constraints.max_width.min(width);
         }
         if let Some(height) = self.height {
-            ctx.constraints.make_height_tight(height);
+            ctx.constraints.max_height = ctx.constraints.max_height.min(height);
         }
         if let Some(min_width) = self.min_width {
             ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
@@ -80,7 +80,7 @@ impl Widget for VStack {
             ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Vertical, &mut ctx).layout()?.size()
+        Layouts::new(Vertical::new(Direction::Forward), &mut ctx).layout()?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {

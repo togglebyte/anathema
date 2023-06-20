@@ -1,6 +1,6 @@
 use anathema_render::Size;
 
-use super::Layout;
+use super::{Layout, expand, spacers};
 use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
@@ -41,8 +41,16 @@ impl SizeMod {
             Axis::Vertical => self.inner.height >= self.max_size.height,
         }
     }
+
+    fn to_constraints(&self) -> Constraints {
+        Constraints::new(
+            self.max_size.width - self.inner.width,
+            self.max_size.height - self.inner.height,
+        )
+    }
 }
 
+#[derive(Debug)]
 struct Offset {
     axis: Axis,
     inner: i32,
@@ -78,6 +86,7 @@ impl Offset {
     }
 }
 
+#[derive(Debug)]
 pub struct Many {
     pub direction: Direction,
     pub axis: Axis,
@@ -158,6 +167,17 @@ impl Layout for Many {
             if used_size.empty() {
                 break;
             }
+        }
+
+        // Apply spacer and expand if the layout is unconstrained
+        if !self.unconstrained {
+            ctx.constraints = used_size.to_constraints();
+            let expanded_size = expand::layout(ctx, self.axis)?;
+            used_size.apply(expanded_size);
+
+            ctx.constraints = used_size.to_constraints();
+            let expanded_size = spacers::layout(ctx, self.axis)?;
+            used_size.apply(expanded_size);
         }
 
         match self.axis {
