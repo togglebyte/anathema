@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::time::Duration;
 
-use crate::values::{Easing, Value};
+use crate::values::Value;
 
 // -----------------------------------------------------------------------------
 //     - Attribute names -
@@ -109,17 +108,6 @@ impl Attributes {
         let mut inner = Self::empty();
         inner.set(key, value.into());
         inner
-    }
-
-    /// Get all transitions except `Alignment`
-    /// as alignment affects the child rather than self.
-    pub fn transitions(&self) -> impl Iterator<Item = (&str, f32, Duration, Easing)> {
-        self.inner.iter().filter_map(|(k, v)| match v {
-            Value::Transition(val, duration, easing) if k != fields::ALIGNMENT => val
-                .to_signed_int()
-                .map(|val| (k.as_ref(), val as f32, *duration, *easing)),
-            _ => None,
-        })
     }
 
     pub fn has(&self, key: &str) -> bool {

@@ -3,11 +3,10 @@ use std::ops::{Deref, DerefMut};
 
 use anathema_render::{ScreenPos, Size, Style};
 
-use super::attributes::fields;
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::id::NodeId;
 use super::layout::{Constraints, Padding};
-use super::{AnimationCtx, Color, Display, LocalPos, Pos, Region};
+use super::{Color, Display, LocalPos, Pos, Region};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::store::Store;
@@ -159,9 +158,8 @@ pub struct WidgetContainer<'tpl> {
     pub(crate) background: Option<Color>,
     pub(crate) display: Display,
     pub(crate) padding: Padding,
-    pub(crate) animation: AnimationCtx,
     pub(crate) templates: &'tpl [Template],
-    pub(crate) children: Vec<WidgetContainer<'tpl>>,
+    pub children: Vec<WidgetContainer<'tpl>>,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
     size: Size,
@@ -178,7 +176,6 @@ impl<'tpl> WidgetContainer<'tpl> {
             pos: Pos::ZERO,
             background: None,
             padding: Padding::ZERO,
-            animation: AnimationCtx::new(),
         }
     }
 
@@ -250,41 +247,26 @@ impl<'tpl> WidgetContainer<'tpl> {
 
     pub fn layout<'parent>(
         &mut self,
-        mut constraints: Constraints,
+        constraints: Constraints,
         values: &Store<'_>,
         lookup: &Lookup,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let padding = self
-                    .animation
-                    .get_value(fields::PADDING)
-                    .map(|p| Padding::new(p as usize))
-                    .unwrap_or(self.padding);
-
-                self.animation
-                    .update_dst(fields::MAX_WIDTH, constraints.max_width as f32);
-
-                constraints.max_width = self
-                    .animation
-                    .get_value(fields::MAX_WIDTH)
-                    .map(|val| val as usize)
-                    .unwrap_or(constraints.max_width);
-
                 let layout_args = LayoutCtx::new(
                     self.templates,
                     values,
                     constraints,
-                    padding,
+                    self.padding,
                     &mut self.children,
                     lookup,
                 );
 
                 let size = self.inner.layout(layout_args)?;
                 self.size = size;
-                self.size.width += padding.left + padding.right;
-                self.size.height += padding.top + padding.bottom;
+                self.size.width += self.padding.left + self.padding.right;
+                self.size.height += self.padding.top + self.padding.bottom;
             }
         }
 
@@ -292,8 +274,7 @@ impl<'tpl> WidgetContainer<'tpl> {
     }
 
     pub fn position(&mut self, pos: Pos) {
-        self.animation.update_pos(self.pos, pos);
-        self.pos = self.animation.get_pos().unwrap_or(pos);
+        self.pos = pos;
 
         let pos = Pos::new(
             self.pos.x + self.padding.left as i32,

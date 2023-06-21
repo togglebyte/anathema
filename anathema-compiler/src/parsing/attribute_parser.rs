@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use anathema_render::Color;
 use anathema_widgets::{
-    fields, Align, Axis, BorderStyle, Direction, Display, Easing, Number, Path, Sides,
-    TextAlignment, TextPath, Value, Wrap,
+    fields, Align, Axis, BorderStyle, Direction, Display, Number, Path, Sides, TextAlignment,
+    TextPath, Value, Wrap,
 };
 
 use super::parser::{parse_path, parse_to_fragments};
@@ -37,7 +37,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                 // SAFETY: this could not possible be anything else!
                 _ => unsafe { std::hint::unreachable_unchecked() },
             },
-            Kind::Ident(fields::ANIMATE) => self.try_parse_animate(),
             Kind::Ident(val) if val.starts_with("ansi") => match val[4..].parse::<u8>() {
                 Ok(ansi_val) => Ok(Value::Color(Color::AnsiValue(ansi_val))),
                 Err(_e) => Err(self.lexer.error(ErrorKind::InvalidNumber)),
@@ -195,70 +194,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                 .error(ErrorKind::InvalidToken { expected: "sides" })),
         }
     }
-
-    // -----------------------------------------------------------------------------
-    //     - Animation -
-    //     TODO: The error reporting should be improved
-    // -----------------------------------------------------------------------------
-    fn try_parse_animate(&mut self) -> Result<Value> {
-        // Consume open bracket
-        if !self.lexer.consume_if(Kind::LParen)? {
-            return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "(" }));
-        }
-
-        let value = self.parse(fields::ANIMATE)?;
-
-        self.lexer.consume(true, false);
-
-        // Consume comma
-        if !self.lexer.consume_if(Kind::Comma)? {
-            return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "," }));
-        }
-
-        self.lexer.consume(true, false);
-
-        // Seconds
-        let ms = match self.lexer.next() {
-            Ok(Token(Kind::Number(Number::Unsigned(seconds)), _)) => seconds,
-            _ => {
-                return Err(self.lexer.error(ErrorKind::InvalidToken {
-                    expected: "numerical value",
-                }))
-            }
-        };
-
-        self.lexer.consume(true, false);
-
-        // If the next token is a comma then that's the easing function
-        let easing = if self.lexer.consume_if(Kind::Comma)? {
-            self.lexer.consume(true, false);
-            let ident = self.lexer.read_ident()?;
-            match ident {
-                "linear" => Easing::Linear,
-                "ease-in" => Easing::EaseIn,
-                "ease-out" => Easing::EaseOut,
-                "ease-inout" => Easing::EaseInOut,
-                _ => {
-                    return Err(self
-                        .lexer
-                        .error(ErrorKind::InvalidToken { expected: "easing" }))
-                }
-            }
-        } else {
-            Easing::Linear
-        };
-
-        // Consume closed bracket
-        if !self.lexer.consume_if(Kind::RParen)? {
-            return Err(self.lexer.error(ErrorKind::InvalidToken { expected: ")" }));
-        }
-
-        Ok(Value::Transition(
-            Box::new(value),
-            Duration::from_millis(ms),
-            easing,
-        ))
-    }
 }
 
 #[cfg(test)]
@@ -325,34 +260,6 @@ mod test {
             .to_sides()
             .unwrap();
         assert_eq!(Sides::LEFT | Sides::TOP, sides);
-    }
-
-    #[test]
-    fn transition_with_easing() {
-        let transition = parse_value("position [left: animate(10, 2000, ease-in)]", fields::LEFT);
-
-        assert_eq!(
-            transition,
-            Value::Transition(
-                Box::new(Value::Number(Number::Unsigned(10))),
-                Duration::from_millis(2000),
-                Easing::EaseIn
-            )
-        );
-    }
-
-    #[test]
-    fn transition_default_easing() {
-        let transition = parse_value("position [left: animate(10, 2000)]", fields::LEFT);
-
-        assert_eq!(
-            transition,
-            Value::Transition(
-                Box::new(Value::Number(Number::Unsigned(10))),
-                Duration::from_millis(2000),
-                Easing::Linear
-            )
-        );
     }
 
     #[test]

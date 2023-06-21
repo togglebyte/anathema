@@ -1,9 +1,7 @@
 // #![deny(missing_docs)]
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::f32::consts::PI;
 use std::fmt::{self, Write};
-use std::time::Duration;
 
 use anathema_render::Style;
 
@@ -158,35 +156,35 @@ impl fmt::Display for Number {
     }
 }
 
-/// Transition easing function.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Easing {
-    /// Linear easing function. This is the default one.
-    Linear,
-    /// Ease in.
-    EaseIn,
-    /// Ease out.
-    EaseOut,
-    /// Ease in and out.
-    EaseInOut,
-}
+// /// Transition easing function.
+// #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+// pub enum Easing {
+//     /// Linear easing function. This is the default one.
+//     Linear,
+//     /// Ease in.
+//     EaseIn,
+//     /// Ease out.
+//     EaseOut,
+//     /// Ease in and out.
+//     EaseInOut,
+// }
 
-impl Default for Easing {
-    fn default() -> Self {
-        Self::Linear
-    }
-}
+// impl Default for Easing {
+//     fn default() -> Self {
+//         Self::Linear
+//     }
+// }
 
-impl Easing {
-    pub(crate) fn apply(&self, time: f32) -> f32 {
-        match self {
-            Self::Linear => time,
-            Self::EaseIn => 1.0 - (time * PI / 2.0).cos(),
-            Self::EaseOut => ((time * PI) / 2.0).sin(),
-            Self::EaseInOut => -((PI * time).cos() - 1.0) / 2.0,
-        }
-    }
-}
+// impl Easing {
+//     pub(crate) fn apply(&self, time: f32) -> f32 {
+//         match self {
+//             Self::Linear => time,
+//             Self::EaseIn => 1.0 - (time * PI / 2.0).cos(),
+//             Self::EaseOut => ((time * PI) / 2.0).sin(),
+//             Self::EaseInOut => -((PI * time).cos() - 1.0) / 2.0,
+//         }
+//     }
+// }
 
 /// A value.
 #[derive(Debug, PartialEq, Clone)]
@@ -226,8 +224,6 @@ pub enum Value {
     TextAlignment(TextAlignment),
     /// Word wrapping.
     Wrap(Wrap),
-    /// A transition.
-    Transition(Box<Value>, Duration, Easing),
 }
 
 // Implement `From` for an unsigned integer
@@ -439,9 +435,6 @@ impl fmt::Display for Value {
             Self::String(val) => write!(f, "{}", val),
             Self::TextAlignment(val) => write!(f, "{:?}", val),
             Self::Wrap(val) => write!(f, "{:?}", val),
-            Self::Transition(val, duration, easing) => {
-                write!(f, "animate {val} over {duration:?} ms ({easing:?})")
-            }
         }
     }
 }
@@ -497,12 +490,6 @@ impl Value {
             Self::Number(Number::Signed(val)) => Some(*val),
             Self::Number(Number::Unsigned(val)) => Some(*val as i64),
             Self::Number(Number::Float(val)) => Some(*val as i64),
-            Self::Transition(value, _, _) => match value.as_ref() {
-                Self::Number(Number::Signed(val)) => Some(*val),
-                Self::Number(Number::Unsigned(val)) => Some(*val as i64),
-                Self::Number(Number::Float(val)) => Some(*val as i64),
-                _ => None,
-            },
             _ => None,
         }
     }
@@ -517,12 +504,6 @@ impl Value {
             Self::Number(Number::Signed(val)) if *val >= 0 => Some(*val as u64),
             Self::Number(Number::Unsigned(val)) => Some(*val),
             Self::Number(Number::Float(val)) if *val >= 0.0 => Some(*val as u64),
-            Self::Transition(value, _, _) => match value.as_ref() {
-                Self::Number(Number::Signed(val)) if *val >= 0 => Some(*val as u64),
-                Self::Number(Number::Unsigned(val)) => Some(*val),
-                Self::Number(Number::Float(val)) if *val >= 0.0 => Some(*val as u64),
-                _ => None,
-            },
             _ => None,
         }
     }
@@ -535,10 +516,6 @@ impl Value {
     pub fn to_float(&self) -> Option<f64> {
         match self {
             Self::Number(Number::Float(val)) => Some(*val),
-            Self::Transition(value, _, _) => match value.as_ref() {
-                Self::Number(Number::Float(val)) if *val >= 0.0 => Some(*val),
-                _ => None,
-            },
             _ => None,
         }
     }
@@ -804,10 +781,6 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
     pub fn alignment(&self) -> Option<Align> {
         match &*self.get_attrib(fields::ALIGNMENT)? {
             Value::Alignment(val) => Some(*val),
-            Value::Transition(val, _, _) => match val.as_ref() {
-                Value::Alignment(ref val) => Some(*val),
-                _ => None,
-            },
             _ => None,
         }
     }

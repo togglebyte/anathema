@@ -3,7 +3,6 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::ScreenPos;
 
-mod animation;
 mod attributes;
 mod contexts;
 pub mod error;
@@ -13,7 +12,6 @@ mod layout;
 mod path;
 pub mod template;
 mod values;
-pub mod view;
 mod widget;
 
 // Widgets
@@ -41,12 +39,12 @@ pub use anathema_render::Color;
 pub use contexts::{DataCtx, PaintCtx, PositionCtx, Unsized, WithSize};
 pub use id::{Id, NodeId};
 pub use lookup::Lookup;
-pub use values::{BorderStyle, Easing, Fragment, Number, Sides, TextAlignment, Value};
+pub use values::{BorderStyle, Fragment, Number, Sides, TextAlignment, Value};
 pub use widget::{AnyWidget, Widget, WidgetContainer};
 
-pub use crate::animation::{Animation, AnimationCtx};
 pub use crate::attributes::{fields, Attribute, Attributes};
 pub use crate::gen::generator::Generator;
+pub use crate::gen::store::Store;
 pub use crate::path::{Path, TextPath};
 
 /// Determine how a widget should be displayed and laid out
