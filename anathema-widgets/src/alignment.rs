@@ -44,9 +44,9 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout()?;
+        layout.layout(children)?;
         let size = layout.size()?;
         if size == Size::ZERO {
             Ok(Size::ZERO)
@@ -275,11 +275,10 @@ mod test {
             &store,
             constraints,
             Padding::ZERO,
-            &mut children,
             &lookup,
         );
         let mut alignment = Alignment::default();
-        let actual = alignment.layout(ctx).unwrap();
+        let actual = alignment.layout(ctx, &mut children).unwrap();
         let expected = Size::ZERO;
         assert_eq!(expected, actual);
     }

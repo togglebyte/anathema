@@ -93,9 +93,9 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout()?;
+        layout.layout(children)?;
         if let HorzEdge::Right(_) = self.horz_edge {
             layout.expand_horz();
         }

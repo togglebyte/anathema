@@ -141,15 +141,15 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn layout<'tpl, 'parent>(&mut self, layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
+    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+        let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
 
         self.layout.process(self.text.as_str());
 
-        let mut values = layout.values.next();
-        let mut gen = Generator::new(layout.templates, layout.lookup, &mut values);
+        let mut values = ctx.values.next();
+        let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
         while let Some(mut span) = gen.next(&mut values).transpose()? {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
@@ -158,7 +158,7 @@ impl Widget for Text {
 
             let Some(inner_span) = span.try_to_mut::<TextSpan>() else { continue };
             self.layout.process(inner_span.text.as_str());
-            layout.children.push(span);
+            children.push(span);
         }
 
         Ok(self.layout.size())
@@ -241,7 +241,7 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, _: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout(&mut self, ctx: LayoutCtx<'_, '_, '_>, _: &mut Vec<WidgetContainer<'_>>) -> Result<Size> {
         unreachable!("layout should never be called directly on a span");
     }
 

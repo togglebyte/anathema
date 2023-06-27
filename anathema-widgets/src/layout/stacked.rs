@@ -1,6 +1,7 @@
 use anathema_render::Size;
 
 use super::Layout;
+use crate::WidgetContainer;
 use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
@@ -11,6 +12,7 @@ impl Layout for Stacked {
     fn layout<'widget, 'tpl, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
         size: &mut Size,
     ) -> Result<()> {
         let mut width = 0;
@@ -21,8 +23,8 @@ impl Layout for Stacked {
         let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
 
         while let Some(widget) = gen.next(&mut values).transpose()? {
-            let index = ctx.children.len();
-            ctx.children.push(widget);
+            let index = children.len();
+            children.push(widget);
             // Ignore spacers
             // if widget.kind() == Spacer::KIND {
             //     continue;
@@ -33,7 +35,7 @@ impl Layout for Stacked {
             //     continue;
             // }
 
-            let size = match ctx.children[index].layout(constraints, &values, ctx.lookup) {
+            let size = match children[index].layout(constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,

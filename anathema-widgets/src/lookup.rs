@@ -49,10 +49,12 @@ impl Lookup {
                 let values = ValuesAttributes::new(values, attributes);
                 let background = values.background();
                 let padding = values.padding_all().unwrap_or_else(|| Padding::ZERO);
+                let display = values.display();
                 let widget = factory.make(values, text.as_ref())?;
                 let mut container = WidgetContainer::new(widget, children);
                 container.background = background;
                 container.padding = padding;
+                container.display = display;
                 Ok(container)
             }
             _ => panic!("there should only ever be nodes here, not {:?}", template),

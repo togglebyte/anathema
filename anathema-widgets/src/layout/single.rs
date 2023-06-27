@@ -1,6 +1,7 @@
 use anathema_render::Size;
 
 use super::Layout;
+use crate::WidgetContainer;
 use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
@@ -11,6 +12,7 @@ impl Layout for Single {
     fn layout<'widget, 'tpl, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
         size: &mut Size,
     ) -> Result<()> {
         let constraints = ctx.padded_constraints();
@@ -18,8 +20,8 @@ impl Layout for Single {
         let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
 
         if let Some(widget) = gen.next(&mut values).transpose()? {
-            ctx.children.push(widget);
-            *size = match ctx.children[0].layout(constraints, &values, ctx.lookup) {
+            children.push(widget);
+            *size = match children[0].layout(constraints, &values, ctx.lookup) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => return Ok(()),
                 err @ Err(_) => err?,

@@ -85,7 +85,7 @@ impl Direction {
 //     - Export all widgets -
 // -----------------------------------------------------------------------------
 pub use layout::text::Wrap;
-pub use layout::{Align, Constraints, HorzEdge, Padding, VertEdge};
+pub use layout::{Align, Constraints, HorzEdge, Padding, VertEdge, Many};
 
 pub use crate::alignment::Alignment;
 pub use crate::border::Border;

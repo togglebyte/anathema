@@ -95,8 +95,8 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
-        let mut size = Layouts::new(Single, &mut ctx).layout()?.size()?;
+    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+        let mut size = Layouts::new(Single, &mut ctx).layout(children)?.size()?;
 
         match self.axis {
             Some(Axis::Horizontal) => size.width = ctx.constraints.max_width,
@@ -344,6 +344,7 @@ mod test {
         );
     }
 
+
     #[test]
     fn expand_with_padding() {
         let border = Border::thin(None, None);
@@ -363,6 +364,45 @@ mod test {
             ║│ A cup of tea please        │║
             ║│                            │║
             ║│                            │║
+            ║│                            │║
+            ║│                            │║
+            ║└────────────────────────────┘║
+            ╚══════════════════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn expanding_inside_vstack() {
+        let vstack = VStack::new(None, None);
+        let body = [
+            template("border", (), [
+                template("hstack", (), [
+                    template_text("A cup of tea please"),
+                    template("spacer", (), []),
+                ]),
+            ]),
+            template("expand", (), [
+                template("border", (), [
+                    template("expand", (), [
+                        template_text("Hello world")
+                    ])
+                ])
+            ])
+        ];
+
+        test_widget(
+            vstack,
+            &body,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [════════════════╗
+            ║┌────────────────────────────┐║
+            ║│A cup of tea please         │║
+            ║└────────────────────────────┘║
+            ║┌────────────────────────────┐║
+            ║│Hello world                 │║
             ║│                            │║
             ║│                            │║
             ║└────────────────────────────┘║

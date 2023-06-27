@@ -1,5 +1,6 @@
 use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
+use std::thread;
 
 use anathema_render::{size, Screen};
 use anathema_widgets::error::Result;
@@ -95,7 +96,7 @@ impl<'tpl> Runtime<'tpl> {
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
             self.timings.render = now.elapsed();
-            // thread::sleep(Duration::from_millis(500));
+            thread::sleep(Duration::from_millis(500));
             self.screen.erase();
 
             counter += 1;
@@ -104,8 +105,8 @@ impl<'tpl> Runtime<'tpl> {
             }
         }
 
-        eprintln!("{:#?}", self.timings);
-        eprintln!("count: {}", count(&self.current_frame));
+        // eprintln!("{:#?}", self.timings);
+        // eprintln!("count: {}", count(&self.current_frame));
         Ok(())
     }
 }

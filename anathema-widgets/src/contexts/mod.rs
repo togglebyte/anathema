@@ -30,12 +30,12 @@ impl DataCtx {
 // -----------------------------------------------------------------------------
 //   - Layout -
 // -----------------------------------------------------------------------------
+#[derive(Copy, Clone)]
 pub struct LayoutCtx<'widget, 'tpl, 'parent> {
     pub templates: &'tpl [Template],
     pub values: &'widget Store<'parent>,
     pub constraints: Constraints,
     pub padding: Padding,
-    pub children: &'widget mut Vec<WidgetContainer<'tpl>>,
     pub lookup: &'widget Lookup,
 }
 
@@ -45,7 +45,6 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
         values: &'widget Store<'parent>,
         constraints: Constraints,
         padding: Padding,
-        children: &'widget mut Vec<WidgetContainer<'tpl>>,
         lookup: &'widget Lookup,
     ) -> Self {
         Self {
@@ -53,7 +52,6 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
             values,
             constraints,
             padding,
-            children,
             lookup,
         }
     }

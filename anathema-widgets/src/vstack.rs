@@ -65,7 +65,7 @@ impl Widget for VStack {
         "VStack"
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
         if let Some(width) = self.width {
             ctx.constraints.max_width = ctx.constraints.max_width.min(width);
         }
@@ -80,7 +80,7 @@ impl Widget for VStack {
         }
 
         Layouts::new(Vertical::new(Direction::Forward), &mut ctx)
-            .layout()?
+            .layout(children)?
             .size()
     }
 
