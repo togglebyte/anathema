@@ -78,6 +78,8 @@ where
     }
 
     fn layout(&mut self) -> Result<()> {
+        // TODO: diffing!
+        self.current_frame.clear();
         let mut values = Store::new(&self.ctx);
         let mut widgets = Generator::new(&self.templates, &self.lookup, &mut values);
         while let Some(mut widget) = widgets.next(&mut values).transpose()? {
@@ -123,8 +125,8 @@ where
 
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
-            self.timings.render = now.elapsed();
             self.screen.erase();
+            self.timings.render = now.elapsed();
         }
     }
 }

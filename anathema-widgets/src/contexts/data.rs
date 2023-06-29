@@ -1,7 +1,6 @@
 
 use std::collections::HashMap;
 
-use crate::values::{ValueTryIntoMut, ValueTryIntoRef};
 use crate::{Value};
 
 #[derive(Debug, Default)]
@@ -22,15 +21,15 @@ impl DataCtx {
 
     pub fn get_mut<T: 'static>(&mut self, key: &str) -> Option<&mut T>
     where
-        for<'a> Value: ValueTryIntoMut<'a, T>,
+        for<'a> &'a mut Value: TryInto<&'a mut T>,
     {
-        self.0.get_mut(key)?.try_into_type_mut()
+        self.0.get_mut(key)?.try_into().ok()
     }
 
     pub fn get_ref<T: 'static>(&self, key: &str) -> Option<&T>
     where
-        for<'a> Value: ValueTryIntoRef<'a, T>,
+        for<'a> &'a Value: TryInto<&'a T>,
     {
-        self.0.get(key)?.try_into_type_ref()
+        self.0.get(key)?.try_into().ok()
     }
 }
