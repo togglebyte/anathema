@@ -1,31 +1,17 @@
-use std::collections::HashMap;
+
 use std::ops::Deref;
 
 use anathema_render::{Screen, ScreenPos, Size, Style};
 use unicode_width::UnicodeWidthChar;
 
+pub use self::data::DataCtx;
 use super::layout::{Constraints, Padding};
 use super::{Align, LocalPos, Pos, Region};
 use crate::gen::store::Store;
 use crate::template::Template;
-use crate::{Lookup, Value};
+use crate::{Lookup};
 
-#[derive(Debug, Default)]
-pub struct DataCtx(pub HashMap<String, Value>);
-
-impl DataCtx {
-    pub fn insert(&mut self, key: impl Into<String>, value: impl Into<Value>) {
-        self.0.insert(key.into(), value.into());
-    }
-
-    pub fn by_key(&self, key: &str) -> Option<&Value> {
-        self.0.get(key)
-    }
-
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value> {
-        self.0.get_mut(key)
-    }
-}
+mod data;
 
 // -----------------------------------------------------------------------------
 //   - Layout -

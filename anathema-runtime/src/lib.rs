@@ -104,7 +104,7 @@ where
 
         'run: loop {
             while let Some(event) = self.event_receiver.next() {
-                if let events::Event::Quit = self.events.event(event, &mut self.current_frame) {
+                if let events::Event::Quit = self.events.event(event, &mut self.ctx, &mut self.current_frame) {
                     break 'run Ok(());
                 }
             }

@@ -5,10 +5,13 @@ use std::fmt::{self, Write};
 
 use anathema_render::Style;
 
+pub use self::into::{ValueTryIntoRef, ValueTryIntoMut};
 use crate::gen::store::Store;
 use crate::{
     fields, Align, Attributes, Axis, Color, Direction, Display, Padding, Path, TextPath, Wrap,
 };
+
+mod into;
 
 /// Text alignment aligns the text inside its parent.
 ///
@@ -155,36 +158,6 @@ impl fmt::Display for Number {
         }
     }
 }
-
-// /// Transition easing function.
-// #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-// pub enum Easing {
-//     /// Linear easing function. This is the default one.
-//     Linear,
-//     /// Ease in.
-//     EaseIn,
-//     /// Ease out.
-//     EaseOut,
-//     /// Ease in and out.
-//     EaseInOut,
-// }
-
-// impl Default for Easing {
-//     fn default() -> Self {
-//         Self::Linear
-//     }
-// }
-
-// impl Easing {
-//     pub(crate) fn apply(&self, time: f32) -> f32 {
-//         match self {
-//             Self::Linear => time,
-//             Self::EaseIn => 1.0 - (time * PI / 2.0).cos(),
-//             Self::EaseOut => ((time * PI) / 2.0).sin(),
-//             Self::EaseInOut => -((PI * time).cos() - 1.0) / 2.0,
-//         }
-//     }
-// }
 
 /// A value.
 #[derive(Debug, PartialEq, Clone)]
