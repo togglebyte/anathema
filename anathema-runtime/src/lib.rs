@@ -7,6 +7,7 @@ use anathema_widgets::template::Template;
 use anathema_widgets::{
     Constraints, DataCtx, Generator, Lookup, PaintCtx, Pos, Store, WidgetContainer,
 };
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 use crate::events::{EventProvider, Events};
 
@@ -33,6 +34,13 @@ pub struct Runtime<'tpl, E, ER> {
     event_receiver: ER,
 }
 
+impl<E, ER> Drop for Runtime<'_, E, ER> {
+    fn drop(&mut self) {
+        let _ = Screen::show_cursor(&mut self.output);
+        let _ = disable_raw_mode();
+    }
+}
+
 impl<'tpl, E, ER> Runtime<'tpl, E, ER>
 where
     E: Events,
@@ -44,6 +52,8 @@ where
         events: E,
         event_receiver: ER,
     ) -> Result<Self> {
+        enable_raw_mode()?;
+
         let mut stdout = stdout();
         let (width, height) = size()?;
         let constraints = Constraints::new(Some(width as usize), Some(height as usize));
@@ -92,9 +102,11 @@ where
     pub fn run(mut self) -> Result<()> {
         self.screen.clear_all(&mut self.output)?;
 
-        loop {
+        'run: loop {
             while let Some(event) = self.event_receiver.next() {
-                self.events.event(event, &mut self.current_frame);
+                if let events::Event::Quit = self.events.event(event, &mut self.current_frame) {
+                    break 'run Ok(());
+                }
             }
 
             let now = Instant::now();

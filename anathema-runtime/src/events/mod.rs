@@ -11,6 +11,7 @@ pub mod flume;
 #[derive(Debug, Copy, Clone)]
 pub enum Event {
     Noop,
+    Quit,
     Blur,
     Focus,
     KeyPress(KeyCode, KeyModifiers, KeyEventState),
@@ -68,19 +69,19 @@ impl From<CTEvent> for Event {
 }
 
 pub trait Events {
-    fn event(&mut self, event: Event, tree: &mut Vec<WidgetContainer<'_>>);
+    fn event(&mut self, event: Event, tree: &mut Vec<WidgetContainer<'_>>) -> Event;
 }
 
 pub struct DefaultEvents<F>(pub F)
 where
-    F: FnMut(Event, &mut Vec<WidgetContainer<'_>>);
+    F: FnMut(Event, &mut Vec<WidgetContainer<'_>>) -> Event;
 
 impl<F> Events for DefaultEvents<F>
 where
-    F: FnMut(Event, &mut Vec<WidgetContainer<'_>>),
+    F: FnMut(Event, &mut Vec<WidgetContainer<'_>>) -> Event,
 {
-    fn event(&mut self, event: Event, tree: &mut Vec<WidgetContainer<'_>>) {
-        (self.0)(event, tree);
+    fn event(&mut self, event: Event, tree: &mut Vec<WidgetContainer<'_>>) -> Event {
+        (self.0)(event, tree)
     }
 }
 
