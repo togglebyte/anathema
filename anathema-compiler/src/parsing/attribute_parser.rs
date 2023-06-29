@@ -1,8 +1,6 @@
-use std::time::Duration;
-
 use anathema_render::Color;
 use anathema_widgets::{
-    fields, Align, Axis, BorderStyle, Direction, Display, Number, Path, Sides, TextAlignment,
+    fields, Align, Axis, BorderStyle, Direction, Display, Path, Sides, TextAlignment,
     TextPath, Value, Wrap,
 };
 

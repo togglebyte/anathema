@@ -1,6 +1,5 @@
 use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
-use std::thread;
 
 use anathema_render::{size, Screen};
 use anathema_widgets::error::Result;
@@ -8,6 +7,10 @@ use anathema_widgets::template::Template;
 use anathema_widgets::{
     Constraints, DataCtx, Generator, Lookup, PaintCtx, Pos, Store, WidgetContainer,
 };
+
+use crate::events::{EventProvider, Events};
+
+pub mod events;
 
 #[derive(Debug, Default)]
 struct Timings {
@@ -17,20 +20,30 @@ struct Timings {
     render: Duration,
 }
 
-pub struct Runtime<'tpl> {
+pub struct Runtime<'tpl, E, ER> {
     templates: &'tpl [Template],
     screen: Screen,
     output: Stdout,
     lookup: Lookup,
     constraints: Constraints,
-    last_frame: Vec<WidgetContainer<'tpl>>,
     current_frame: Vec<WidgetContainer<'tpl>>,
     ctx: DataCtx,
     timings: Timings,
+    events: E,
+    event_receiver: ER,
 }
 
-impl<'tpl> Runtime<'tpl> {
-    pub fn new(templates: &'tpl [Template], ctx: DataCtx) -> Result<Self> {
+impl<'tpl, E, ER> Runtime<'tpl, E, ER>
+where
+    E: Events,
+    ER: EventProvider,
+{
+    pub fn new(
+        templates: &'tpl [Template],
+        ctx: DataCtx,
+        events: E,
+        event_receiver: ER,
+    ) -> Result<Self> {
         let mut stdout = stdout();
         let (width, height) = size()?;
         let constraints = Constraints::new(Some(width as usize), Some(height as usize));
@@ -44,10 +57,11 @@ impl<'tpl> Runtime<'tpl> {
             lookup,
             constraints,
             templates,
-            last_frame: vec![],
             current_frame: vec![],
             ctx,
             timings: Default::default(),
+            events,
+            event_receiver,
         };
 
         Ok(inst)
@@ -77,12 +91,14 @@ impl<'tpl> Runtime<'tpl> {
 
     pub fn run(mut self) -> Result<()> {
         self.screen.clear_all(&mut self.output)?;
-        let mut counter = 0;
 
         loop {
-            // self.update();
+            while let Some(event) = self.event_receiver.next() {
+                self.events.event(event, &mut self.current_frame);
+            }
+
             let now = Instant::now();
-            self.layout();
+            self.layout()?;
             self.timings.layout = now.elapsed();
 
             let now = Instant::now();
@@ -96,26 +112,7 @@ impl<'tpl> Runtime<'tpl> {
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
             self.timings.render = now.elapsed();
-            thread::sleep(Duration::from_millis(500));
             self.screen.erase();
-
-            counter += 1;
-            if counter > 1 {
-                break;
-            }
         }
-
-        // eprintln!("{:#?}", self.timings);
-        // eprintln!("count: {}", count(&self.current_frame));
-        Ok(())
     }
-}
-
-fn count(w: &[WidgetContainer<'_>]) -> usize {
-    let mut c = w.len();
-    for wc in w {
-        c += count(&wc.children);
-    }
-
-    c
 }

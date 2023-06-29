@@ -141,7 +141,7 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(&mut self, ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
@@ -241,7 +241,7 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, ctx: LayoutCtx<'_, '_, '_>, _: &mut Vec<WidgetContainer<'_>>) -> Result<Size> {
+    fn layout(&mut self, _ctx: LayoutCtx<'_, '_, '_>, _: &mut Vec<WidgetContainer<'_>>) -> Result<Size> {
         unreachable!("layout should never be called directly on a span");
     }
 

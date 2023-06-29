@@ -8,7 +8,7 @@ use super::layout::{Constraints, Padding};
 use super::{Align, LocalPos, Pos, Region};
 use crate::gen::store::Store;
 use crate::template::Template;
-use crate::{Lookup, Value, WidgetContainer};
+use crate::{Lookup, Value};
 
 #[derive(Debug, Default)]
 pub struct DataCtx(pub HashMap<String, Value>);

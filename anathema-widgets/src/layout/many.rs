@@ -121,7 +121,7 @@ impl Many {
 impl Layout for Many {
     fn layout<'widget, 'tpl, 'parent>(
         &mut self,
-        mut ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
         children: &mut Vec<WidgetContainer<'tpl>>,
         size: &mut Size,
     ) -> Result<()> {
