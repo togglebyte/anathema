@@ -1,4 +1,3 @@
-
 use std::ops::Deref;
 
 use anathema_render::{Screen, ScreenPos, Size, Style};
@@ -9,7 +8,7 @@ use super::layout::{Constraints, Padding};
 use super::{Align, LocalPos, Pos, Region};
 use crate::gen::store::Store;
 use crate::template::Template;
-use crate::{Lookup};
+use crate::Lookup;
 
 mod data;
 

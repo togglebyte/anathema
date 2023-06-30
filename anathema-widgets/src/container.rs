@@ -133,17 +133,6 @@ impl Widget for Container {
         }
         None
     }
-
-    fn update(&mut self, attributes: Attributes) {
-        for (k, _) in &attributes {
-            match k.as_str() {
-                fields::WIDTH => self.width = attributes.width(),
-                fields::HEIGHT => self.height = attributes.height(),
-                fields::BACKGROUND => self.background = attributes.background(),
-                _ => {}
-            }
-        }
-    }
 }
 
 #[cfg(test)]

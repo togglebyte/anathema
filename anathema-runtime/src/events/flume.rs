@@ -20,5 +20,3 @@ impl EventProvider for FlumeEventProvider {
         self.rx.recv().ok()
     }
 }
-
-

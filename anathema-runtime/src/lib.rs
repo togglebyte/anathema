@@ -1,27 +1,24 @@
 use std::io::{stdout, Stdout};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use anathema_render::{size, Screen};
+use anathema_render::{size, Screen, Size};
 use anathema_widgets::error::Result;
 use anathema_widgets::template::Template;
 use anathema_widgets::{
     Constraints, DataCtx, Generator, Lookup, PaintCtx, Pos, Store, WidgetContainer,
 };
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use events::Event;
 
+use self::meta::Meta;
 use crate::events::{EventProvider, Events};
 
 pub mod events;
-
-#[derive(Debug, Default)]
-struct Timings {
-    layout: Duration,
-    position: Duration,
-    paint: Duration,
-    render: Duration,
-}
+mod meta;
 
 pub struct Runtime<'tpl, E, ER> {
+    pub enable_meta: bool,
+    meta: Meta,
     templates: &'tpl [Template],
     screen: Screen,
     output: Stdout,
@@ -29,7 +26,6 @@ pub struct Runtime<'tpl, E, ER> {
     constraints: Constraints,
     current_frame: Vec<WidgetContainer<'tpl>>,
     ctx: DataCtx,
-    timings: Timings,
     events: E,
     event_receiver: ER,
 }
@@ -55,23 +51,24 @@ where
         enable_raw_mode()?;
 
         let mut stdout = stdout();
-        let (width, height) = size()?;
-        let constraints = Constraints::new(Some(width as usize), Some(height as usize));
+        let size: Size = size()?.into();
+        let constraints = Constraints::new(Some(size.width), Some(size.height));
         Screen::hide_cursor(&mut stdout)?;
-        let screen = Screen::new((width, height));
+        let screen = Screen::new(size);
         let lookup = Lookup::default();
 
         let inst = Self {
             output: stdout,
+            meta: Meta::new(size),
             screen,
             lookup,
             constraints,
             templates,
             current_frame: vec![],
             ctx,
-            timings: Default::default(),
             events,
             event_receiver,
+            enable_meta: false,
         };
 
         Ok(inst)
@@ -106,27 +103,49 @@ where
 
         'run: loop {
             while let Some(event) = self.event_receiver.next() {
-                if let events::Event::Quit = self.events.event(event, &mut self.ctx, &mut self.current_frame) {
-                    break 'run Ok(());
+                let event = self
+                    .events
+                    .event(event, &mut self.ctx, &mut self.current_frame);
+                match event {
+                    Event::Resize(width, height) => {
+                        let size = Size::from((width, height));
+                        self.screen.erase();
+                        self.screen.render(&mut self.output)?;
+                        self.screen.resize(size);
+
+                        self.constraints.max_width = size.width;
+                        self.constraints.max_height = size.height;
+
+                        self.meta.size = size;
+                    }
+                    Event::Blur => self.meta.focus = false,
+                    Event::Focus => self.meta.focus = true,
+                    Event::Quit => break 'run Ok(()),
+                    _ => {}
                 }
             }
 
-            let now = Instant::now();
+            let total = Instant::now();
             self.layout()?;
-            self.timings.layout = now.elapsed();
+            self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
             self.position();
-            self.timings.position = now.elapsed();
+            self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
             self.paint();
-            self.timings.paint = now.elapsed();
+            self.meta.timings.paint = now.elapsed();
 
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
+            self.meta.timings.render = now.elapsed();
+            self.meta.timings.total = total.elapsed();
             self.screen.erase();
-            self.timings.render = now.elapsed();
+
+            if self.enable_meta {
+                self.meta.update(&mut self.ctx, &self.current_frame);
+            }
         }
     }
 }

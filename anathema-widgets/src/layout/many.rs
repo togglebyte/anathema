@@ -44,14 +44,13 @@ impl SizeMod {
 
     fn to_constraints(&self) -> Constraints {
         match self.axis {
-            Axis::Horizontal => Constraints::new(
-                self.max_size.width - self.inner.width,
-                self.max_size.height,
-            ),
+            Axis::Horizontal => {
+                Constraints::new(self.max_size.width - self.inner.width, self.max_size.height)
+            }
             Axis::Vertical => Constraints::new(
                 self.max_size.width,
                 self.max_size.height - self.inner.height,
-            )
+            ),
         }
     }
 }

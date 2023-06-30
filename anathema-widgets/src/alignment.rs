@@ -44,7 +44,11 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
         layout.layout(children)?;
         let size = layout.size()?;
@@ -81,12 +85,6 @@ impl Widget for Alignment {
             child.position(ctx.pos + child_offset);
         }
     }
-
-    //     // fn update(&mut self, ctx: UpdateCtx) {
-    //     //     ctx.attributes
-    //     //         .has(fields::ALIGNMENT)
-    //     //         .then(|| self.alignment = ctx.attributes.alignment().unwrap_or(Align::Left));
-    //     // }
 }
 
 pub(crate) struct AlignmentFactory;
@@ -270,13 +268,7 @@ mod test {
         let mut children = vec![];
         let data = DataCtx::default();
         let store = Store::new(&data);
-        let ctx = LayoutCtx::new(
-            &[],
-            &store,
-            constraints,
-            Padding::ZERO,
-            &lookup,
-        );
+        let ctx = LayoutCtx::new(&[], &store, constraints, Padding::ZERO, &lookup);
         let mut alignment = Alignment::default();
         let actual = alignment.layout(ctx, &mut children).unwrap();
         let expected = Size::ZERO;

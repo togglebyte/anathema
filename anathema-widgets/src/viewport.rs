@@ -48,7 +48,11 @@ impl Widget for Viewport {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         let many = Many::new(self.direction, self.axis, self.offset, true);
         let mut layout = Layouts::new(many, &mut ctx);
         layout.layout(children)?;

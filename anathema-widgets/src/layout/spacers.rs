@@ -4,12 +4,13 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::{Axis, Spacer, WidgetContainer};
 
-pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, children: &mut Vec<WidgetContainer<'_>>, axis: Axis) -> Result<Size> {
+pub fn layout(
+    ctx: &mut LayoutCtx<'_, '_, '_>,
+    children: &mut Vec<WidgetContainer<'_>>,
+    axis: Axis,
+) -> Result<Size> {
     let mut final_size = Size::ZERO;
-    let count = children
-        .iter()
-        .filter(|c| c.kind() == Spacer::KIND)
-        .count();
+    let count = children.iter().filter(|c| c.kind() == Spacer::KIND).count();
 
     if count == 0 {
         return Ok(final_size);
@@ -26,7 +27,6 @@ pub fn layout(ctx: &mut LayoutCtx<'_, '_, '_>, children: &mut Vec<WidgetContaine
             constraints.min_height = constraints.max_height;
         }
     };
-
 
     for spacer in children.iter_mut().filter(|c| c.kind() == Spacer::KIND) {
         let size = spacer.layout(constraints, ctx.values, ctx.lookup)?;

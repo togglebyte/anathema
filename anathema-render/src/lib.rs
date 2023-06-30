@@ -45,7 +45,7 @@ pub use crate::buffer::Buffer;
 pub use crate::style::{Attributes, Style};
 
 /// Size
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Size {
     /// Width
     pub width: usize,

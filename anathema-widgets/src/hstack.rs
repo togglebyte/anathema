@@ -59,7 +59,11 @@ impl Widget for HStack {
         "HStack"
     }
 
-    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         if let Some(width) = self.width {
             ctx.constraints.max_width = ctx.constraints.max_width.min(width);
         }
@@ -85,15 +89,6 @@ impl Widget for HStack {
             pos.x += widget.outer_size().width as i32;
         }
     }
-
-    // fn update(&mut self, ctx: UpdateCtx) {
-    //     if let Some(width) = ctx.attributes.width() {
-    //         self.width = Some(width);
-    //     }
-    //     if let Some(height) = ctx.attributes.height() {
-    //         self.height = Some(height);
-    //     }
-    // }
 }
 
 pub(crate) struct HStackFactory;

@@ -132,27 +132,6 @@ impl Canvas {
 //             }
 //         }
 //     }
-
-//     // fn update(&mut self, ctx: UpdateCtx) {
-//     //     let buf = match &mut self.state {
-//     //         CanvasState::Unsized => return,
-//     //         CanvasState::Sized(buf) => buf,
-//     //     };
-
-//     //     let mut size = buf.size();
-
-//     //     if ctx.attributes.has(fields::WIDTH) {
-//     //         ctx.attributes.width().map(|width| size.width = width);
-//     //     }
-
-//     //     if ctx.attributes.has(fields::HEIGHT) {
-//     //         ctx.attributes.height().map(|height| size.height = height);
-//     //     }
-
-//     //     if buf.size() != size {
-//     //         buf.resize(size);
-//     //     }
-//     // }
 // }
 
 #[cfg(test)]

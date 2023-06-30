@@ -1,7 +1,6 @@
-
 use std::collections::HashMap;
 
-use crate::{Value};
+use crate::Value;
 
 #[derive(Debug, Default)]
 pub struct DataCtx(pub HashMap<String, Value>);

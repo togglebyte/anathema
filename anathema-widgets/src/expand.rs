@@ -95,7 +95,11 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'widget, 'tpl, 'parent>, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         let mut size = Layouts::new(Single, &mut ctx).layout(children)?.size()?;
 
         match self.axis {
@@ -137,17 +141,6 @@ impl Widget for Expand {
             child.paint(ctx);
         }
     }
-
-    //     // fn update(&mut self, ctx: UpdateCtx) {
-    //     //     ctx.attributes.update_style(&mut self.style);
-    //     //     for (k, _) in &ctx.attributes {
-    //     //         match k.as_str() {
-    //     //             fields::DIRECTION => self.direction = ctx.attributes.direction(),
-    //     //             fields::FACTOR => self.factor = ctx.attributes.factor().unwrap_or(DEFAULT_FACTOR),
-    //     //             _ => {}
-    //     //         }
-    //     //     }
-    //     // }
 }
 
 pub(crate) struct ExpandFactory;
@@ -344,7 +337,6 @@ mod test {
         );
     }
 
-
     #[test]
     fn expand_with_padding() {
         let border = Border::thin(None, None);
@@ -377,19 +369,27 @@ mod test {
     fn expanding_inside_vstack() {
         let vstack = VStack::new(None, None);
         let body = [
-            template("border", (), [
-                template("hstack", (), [
-                    template_text("A cup of tea please"),
-                    template("spacer", (), []),
-                ]),
-            ]),
-            template("expand", (), [
-                template("border", (), [
-                    template("expand", (), [
-                        template_text("Hello world")
-                    ])
-                ])
-            ])
+            template(
+                "border",
+                (),
+                [template(
+                    "hstack",
+                    (),
+                    [
+                        template_text("A cup of tea please"),
+                        template("spacer", (), []),
+                    ],
+                )],
+            ),
+            template(
+                "expand",
+                (),
+                [template(
+                    "border",
+                    (),
+                    [template("expand", (), [template_text("Hello world")])],
+                )],
+            ),
         ];
 
         test_widget(

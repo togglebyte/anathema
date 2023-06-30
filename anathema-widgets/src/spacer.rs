@@ -31,7 +31,11 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(&mut self, ctx: LayoutCtx<'_, '_, '_>, _children: &mut Vec<WidgetContainer<'_>>) -> Result<Size> {
+    fn layout(
+        &mut self,
+        ctx: LayoutCtx<'_, '_, '_>,
+        _children: &mut Vec<WidgetContainer<'_>>,
+    ) -> Result<Size> {
         // debug_assert!(
         //     ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
         //     "the layout context needs to be tight for a spacer"
@@ -65,18 +69,20 @@ mod test {
 
     use crate::template::{template, template_text};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::{VStack, Border};
+    use crate::{Border, VStack};
 
     #[test]
     fn space_out_hstack() {
         let border = Border::thin(None, None);
-        let body = [
-            template("hstack", (), [
+        let body = [template(
+            "hstack",
+            (),
+            [
                 template_text("left"),
                 template("spacer", (), vec![]),
                 template_text("right"),
-            ])
-        ];
+            ],
+        )];
         test_widget(
             border,
             &body,
