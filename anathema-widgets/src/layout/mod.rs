@@ -1,6 +1,8 @@
 use std::fmt::{self, Display};
 
+pub use self::many::Many;
 use crate::error::Result;
+use crate::WidgetContainer;
 
 mod constraints;
 
@@ -22,6 +24,7 @@ pub trait Layout {
     fn layout<'widget, 'tpl, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
         size: &mut Size,
     ) -> Result<()>;
 }
@@ -44,8 +47,8 @@ impl<'ctx, 'widget, 'tpl, 'parent, T: Layout> Layouts<'ctx, 'widget, 'tpl, 'pare
         }
     }
 
-    pub fn layout(&mut self) -> Result<&mut Self> {
-        self.layout.layout(self.ctx, &mut self.size)?;
+    pub fn layout(&mut self, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<&mut Self> {
+        self.layout.layout(self.ctx, children, &mut self.size)?;
         Ok(self)
     }
 

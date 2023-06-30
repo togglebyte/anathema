@@ -1,58 +1,82 @@
 use std::io::{stdout, Stdout};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use anathema_render::{size, Screen};
+use anathema_render::{size, Screen, Size};
 use anathema_widgets::error::Result;
 use anathema_widgets::template::Template;
 use anathema_widgets::{
     Constraints, DataCtx, Generator, Lookup, PaintCtx, Pos, Store, WidgetContainer,
 };
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use events::Event;
 
-#[derive(Debug, Default)]
-struct Timings {
-    layout: Duration,
-    position: Duration,
-    paint: Duration,
-    render: Duration,
-}
+use self::meta::Meta;
+use crate::events::{EventProvider, Events};
 
-pub struct Runtime<'tpl> {
+pub mod events;
+mod meta;
+
+pub struct Runtime<'tpl, E, ER> {
+    pub enable_meta: bool,
+    meta: Meta,
     templates: &'tpl [Template],
     screen: Screen,
     output: Stdout,
     lookup: Lookup,
     constraints: Constraints,
-    last_frame: Vec<WidgetContainer<'tpl>>,
     current_frame: Vec<WidgetContainer<'tpl>>,
     ctx: DataCtx,
-    timings: Timings,
+    events: E,
+    event_receiver: ER,
 }
 
-impl<'tpl> Runtime<'tpl> {
-    pub fn new(templates: &'tpl [Template], ctx: DataCtx) -> Result<Self> {
+impl<E, ER> Drop for Runtime<'_, E, ER> {
+    fn drop(&mut self) {
+        let _ = Screen::show_cursor(&mut self.output);
+        let _ = disable_raw_mode();
+    }
+}
+
+impl<'tpl, E, ER> Runtime<'tpl, E, ER>
+where
+    E: Events,
+    ER: EventProvider,
+{
+    pub fn new(
+        templates: &'tpl [Template],
+        ctx: DataCtx,
+        events: E,
+        event_receiver: ER,
+    ) -> Result<Self> {
+        enable_raw_mode()?;
+
         let mut stdout = stdout();
-        let (width, height) = size()?;
-        let constraints = Constraints::new(Some(width as usize), Some(height as usize));
+        let size: Size = size()?.into();
+        let constraints = Constraints::new(Some(size.width), Some(size.height));
         Screen::hide_cursor(&mut stdout)?;
-        let screen = Screen::new((width, height));
+        let screen = Screen::new(size);
         let lookup = Lookup::default();
 
         let inst = Self {
             output: stdout,
+            meta: Meta::new(size),
             screen,
             lookup,
             constraints,
             templates,
-            last_frame: vec![],
             current_frame: vec![],
             ctx,
-            timings: Default::default(),
+            events,
+            event_receiver,
+            enable_meta: false,
         };
 
         Ok(inst)
     }
 
     fn layout(&mut self) -> Result<()> {
+        // TODO: diffing!
+        self.current_frame.clear();
         let mut values = Store::new(&self.ctx);
         let mut widgets = Generator::new(&self.templates, &self.lookup, &mut values);
         while let Some(mut widget) = widgets.next(&mut values).transpose()? {
@@ -76,45 +100,52 @@ impl<'tpl> Runtime<'tpl> {
 
     pub fn run(mut self) -> Result<()> {
         self.screen.clear_all(&mut self.output)?;
-        let mut counter = 0;
 
-        loop {
-            // self.update();
-            let now = Instant::now();
-            self.layout();
-            self.timings.layout = now.elapsed();
+        'run: loop {
+            while let Some(event) = self.event_receiver.next() {
+                let event = self
+                    .events
+                    .event(event, &mut self.ctx, &mut self.current_frame);
+                match event {
+                    Event::Resize(width, height) => {
+                        let size = Size::from((width, height));
+                        self.screen.erase();
+                        self.screen.render(&mut self.output)?;
+                        self.screen.resize(size);
+
+                        self.constraints.max_width = size.width;
+                        self.constraints.max_height = size.height;
+
+                        self.meta.size = size;
+                    }
+                    Event::Blur => self.meta.focus = false,
+                    Event::Focus => self.meta.focus = true,
+                    Event::Quit => break 'run Ok(()),
+                    _ => {}
+                }
+            }
+
+            let total = Instant::now();
+            self.layout()?;
+            self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
             self.position();
-            self.timings.position = now.elapsed();
+            self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
             self.paint();
-            self.timings.paint = now.elapsed();
+            self.meta.timings.paint = now.elapsed();
 
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
-            self.timings.render = now.elapsed();
-            // thread::sleep(Duration::from_millis(500));
+            self.meta.timings.render = now.elapsed();
+            self.meta.timings.total = total.elapsed();
             self.screen.erase();
 
-            counter += 1;
-            if counter > 1 {
-                break;
+            if self.enable_meta {
+                self.meta.update(&mut self.ctx, &self.current_frame);
             }
         }
-
-        eprintln!("{:#?}", self.timings);
-        eprintln!("count: {}", count(&self.current_frame));
-        Ok(())
     }
-}
-
-fn count(w: &[WidgetContainer<'_>]) -> usize {
-    let mut c = w.len();
-    for wc in w {
-        c += count(&wc.children);
-    }
-
-    c
 }

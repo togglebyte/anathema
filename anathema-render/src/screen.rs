@@ -24,6 +24,12 @@ impl Screen {
         Ok(())
     }
 
+    /// Show the cursor
+    pub fn show_cursor(mut output: impl Write) -> Result<()> {
+        output.queue(cursor::Show)?;
+        Ok(())
+    }
+
     /// Create a new instance of a screen.
     /// The `output` should be a mutable reference to whatever this screen renders to.
     /// The `output` is used initially to move the cursor and hide it.

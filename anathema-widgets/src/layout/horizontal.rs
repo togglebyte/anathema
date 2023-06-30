@@ -4,7 +4,7 @@ use super::many::Many;
 use super::Layout;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{Axis, Direction};
+use crate::{Axis, Direction, WidgetContainer};
 
 pub struct Horizontal(Many);
 
@@ -19,8 +19,9 @@ impl Layout for Horizontal {
     fn layout<'widget, 'tpl, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
         size: &mut Size,
     ) -> Result<()> {
-        self.0.layout(ctx, size)
+        self.0.layout(ctx, children, size)
     }
 }

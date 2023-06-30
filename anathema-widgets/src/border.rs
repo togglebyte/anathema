@@ -160,7 +160,11 @@ impl Widget for Border {
         Self::KIND
     }
 
-    fn layout<'tpl, 'parent>(&mut self, mut ctx: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         // If there is a min width / height, make sure the minimum constraints
         // are matching these
         if let Some(min_width) = self.min_width {
@@ -223,7 +227,7 @@ impl Widget for Border {
                     + border_size
                     + ctx.padding_size();
 
-                ctx.children.push(widget);
+                children.push(widget);
 
                 if let Some(min_width) = self.min_width {
                     size.width = size.width.max(min_width);
@@ -378,19 +382,6 @@ impl Widget for Border {
             }
         }
     }
-
-    // fn update(&mut self, ctx: UpdateCtx) {
-    //     ctx.attributes.update_style(&mut self.style);
-    //     for (k, _) in &ctx.attributes {
-    //         match k.as_str() {
-    //             fields::WIDTH => self.width = ctx.attributes.width(),
-    //             fields::HEIGHT => self.height = ctx.attributes.height(),
-    //             fields::BORDER_STYLE => self.edges = ctx.attributes.border_style().edges(),
-    //             fields::SIDES => self.sides = ctx.attributes.sides(),
-    //             _ => {}
-    //         }
-    //     }
-    // }
 }
 
 pub(crate) struct BorderFactory;

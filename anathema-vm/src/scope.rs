@@ -80,7 +80,7 @@ impl<'vm> Scope<'vm> {
                     let template = Template::ControlFlow(control_flow);
                     nodes.push(template);
                 }
-                Instruction::Else { cond, size } => {
+                Instruction::Else { .. } => {
                     unreachable!("the `Else` instructions are consumed inside the `If` instruction")
                 }
                 // {

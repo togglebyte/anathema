@@ -1,9 +1,7 @@
-use std::time::Duration;
-
 use anathema_render::Color;
 use anathema_widgets::{
-    fields, Align, Axis, BorderStyle, Direction, Display, Number, Path, Sides, TextAlignment,
-    TextPath, Value, Wrap,
+    fields, Align, Axis, BorderStyle, Direction, Display, Path, Sides, TextAlignment, TextPath,
+    Value, Wrap,
 };
 
 use super::parser::{parse_path, parse_to_fragments};

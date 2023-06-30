@@ -156,36 +156,6 @@ impl fmt::Display for Number {
     }
 }
 
-// /// Transition easing function.
-// #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-// pub enum Easing {
-//     /// Linear easing function. This is the default one.
-//     Linear,
-//     /// Ease in.
-//     EaseIn,
-//     /// Ease out.
-//     EaseOut,
-//     /// Ease in and out.
-//     EaseInOut,
-// }
-
-// impl Default for Easing {
-//     fn default() -> Self {
-//         Self::Linear
-//     }
-// }
-
-// impl Easing {
-//     pub(crate) fn apply(&self, time: f32) -> f32 {
-//         match self {
-//             Self::Linear => time,
-//             Self::EaseIn => 1.0 - (time * PI / 2.0).cos(),
-//             Self::EaseOut => ((time * PI) / 2.0).sin(),
-//             Self::EaseInOut => -((PI * time).cos() - 1.0) / 2.0,
-//         }
-//     }
-// }
-
 /// A value.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -286,20 +256,13 @@ impl From<f32> for Value {
     }
 }
 
-impl<T: Into<Value>, U: Into<Value>> From<(T, U)> for Value {
-    fn from(tup: (T, U)) -> Self {
-        let (value_a, value_b) = (tup.0.into(), tup.1.into());
-        let hm = HashMap::from([("0".to_string(), value_a), ("1".to_string(), value_b)]);
-        Value::Map(hm)
-    }
-}
-
-impl<K: Into<String>, V: Into<Value>> From<HashMap<K, V>> for Value {
-    fn from(v: HashMap<K, V>) -> Self {
-        let values = v.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
-        Value::Map(values)
-    }
-}
+// impl<T: Into<Value>, U: Into<Value>> From<(T, U)> for Value {
+//     fn from(tup: (T, U)) -> Self {
+//         let (value_a, value_b) = (tup.0.into(), tup.1.into());
+//         let hm = HashMap::from([("0".to_string(), value_a), ("1".to_string(), value_b)]);
+//         Value::Map(hm)
+//     }
+// }
 
 impl From<&str> for Value {
     fn from(v: &str) -> Self {
@@ -335,15 +298,27 @@ impl_from_val!(Sides, Sides);
 impl_from_val!(String, String);
 impl_from_val!(TextAlignment, TextAlignment);
 impl_from_val!(Wrap, Wrap);
+impl_from_val!(HashMap<String, Value>, Map);
 
 macro_rules! impl_try_from {
-    ($ret:tt, $variant:ident) => {
-        impl<'a> std::convert::TryFrom<&'a Value> for &'a $ret {
+    ($ret:ty, $variant:ident) => {
+        impl<'a> TryFrom<&'a Value> for &'a $ret {
             type Error = ();
 
             fn try_from(value: &'a Value) -> std::result::Result<Self, Self::Error> {
                 match value {
                     Value::$variant(ref a) => Ok(a),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl<'a> TryFrom<&'a mut Value> for &'a mut $ret {
+            type Error = ();
+
+            fn try_from(value: &'a mut Value) -> std::result::Result<Self, Self::Error> {
+                match value {
+                    Value::$variant(ref mut a) => Ok(a),
                     _ => Err(()),
                 }
             }
@@ -362,15 +337,27 @@ impl_try_from!(Sides, Sides);
 impl_try_from!(String, String);
 impl_try_from!(TextAlignment, TextAlignment);
 impl_try_from!(Wrap, Wrap);
+impl_try_from!(HashMap<String, Value>, Map);
 
 macro_rules! try_from_int {
     ($int:ty) => {
-        impl std::convert::TryFrom<&Value> for $int {
+        impl<'a> std::convert::TryFrom<&'a Value> for &'a $int {
             type Error = ();
 
-            fn try_from(value: &Value) -> std::result::Result<Self, Self::Error> {
+            fn try_from(value: &'a Value) -> std::result::Result<Self, Self::Error> {
                 match value {
-                    Value::Number(Number::Unsigned(a)) => Ok(*a as $int),
+                    Value::Number(Number::Unsigned(ref num)) => Ok(num),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl<'a> std::convert::TryFrom<&'a mut Value> for &'a mut $int {
+            type Error = ();
+
+            fn try_from(value: &'a mut Value) -> std::result::Result<Self, Self::Error> {
+                match value {
+                    Value::Number(Number::Unsigned(ref mut num)) => Ok(num),
                     _ => Err(()),
                 }
             }
@@ -378,20 +365,27 @@ macro_rules! try_from_int {
     };
 }
 
-try_from_int!(usize);
 try_from_int!(u64);
-try_from_int!(u32);
-try_from_int!(u16);
-try_from_int!(u8);
 
 macro_rules! try_from_signed_int {
     ($int:ty) => {
-        impl std::convert::TryFrom<&Value> for $int {
+        impl<'a> std::convert::TryFrom<&'a Value> for &'a $int {
             type Error = ();
 
-            fn try_from(value: &Value) -> std::result::Result<Self, Self::Error> {
+            fn try_from(value: &'a Value) -> std::result::Result<Self, Self::Error> {
                 match value {
-                    Value::Number(Number::Signed(a)) => Ok(*a as $int),
+                    Value::Number(Number::Signed(ref num)) => Ok(num),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl<'a> std::convert::TryFrom<&'a mut Value> for &'a mut $int {
+            type Error = ();
+
+            fn try_from(value: &'a mut Value) -> std::result::Result<Self, Self::Error> {
+                match value {
+                    Value::Number(Number::Signed(ref mut num)) => Ok(num),
                     _ => Err(()),
                 }
             }
@@ -399,11 +393,7 @@ macro_rules! try_from_signed_int {
     };
 }
 
-try_from_signed_int!(isize);
 try_from_signed_int!(i64);
-try_from_signed_int!(i32);
-try_from_signed_int!(i16);
-try_from_signed_int!(i8);
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

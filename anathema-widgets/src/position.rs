@@ -93,9 +93,13 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout()?;
+        layout.layout(children)?;
         if let HorzEdge::Right(_) = self.horz_edge {
             layout.expand_horz();
         }
@@ -130,22 +134,6 @@ impl Widget for Position {
         ctx.pos += Pos::new(x, y);
         child.position(ctx.pos);
     }
-
-    //     // fn update(&mut self, ctx: UpdateCtx) {
-    //     //     for (k, _) in &ctx.attributes {
-    //     //         match k.as_str() {
-    //     //             fields::LEFT => self.horz_edge = HorzEdge::Left(ctx.attributes.left().unwrap_or(0)),
-    //     //             fields::RIGHT => {
-    //     //                 self.horz_edge = HorzEdge::Right(ctx.attributes.right().unwrap_or(0))
-    //     //             }
-    //     //             fields::TOP => self.vert_edge = VertEdge::Top(ctx.attributes.top().unwrap_or(0)),
-    //     //             fields::BOTTOM => {
-    //     //                 self.vert_edge = VertEdge::Bottom(ctx.attributes.bottom().unwrap_or(0))
-    //     //             }
-    //     //             _ => {}
-    //     //         }
-    //     //     }
-    //     // }
 }
 
 pub(crate) struct PositionFactory;

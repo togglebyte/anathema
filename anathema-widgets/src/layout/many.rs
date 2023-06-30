@@ -4,7 +4,7 @@ use super::{expand, spacers, Layout};
 use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
 use crate::gen::generator::Generator;
-use crate::{Axis, Constraints, Direction, Expand, Spacer};
+use crate::{Axis, Constraints, Direction, Expand, Spacer, WidgetContainer};
 
 struct SizeMod {
     inner: Size,
@@ -43,10 +43,15 @@ impl SizeMod {
     }
 
     fn to_constraints(&self) -> Constraints {
-        Constraints::new(
-            self.max_size.width - self.inner.width,
-            self.max_size.height - self.inner.height,
-        )
+        match self.axis {
+            Axis::Horizontal => {
+                Constraints::new(self.max_size.width - self.inner.width, self.max_size.height)
+            }
+            Axis::Vertical => Constraints::new(
+                self.max_size.width,
+                self.max_size.height - self.inner.height,
+            ),
+        }
     }
 }
 
@@ -116,6 +121,7 @@ impl Layout for Many {
     fn layout<'widget, 'tpl, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
         size: &mut Size,
     ) -> Result<()> {
         let mut values = ctx.values.next();
@@ -134,7 +140,7 @@ impl Layout for Many {
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
             // Ignore spacers
             if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
-                ctx.children.push(widget);
+                children.push(widget);
                 continue;
             }
 
@@ -159,7 +165,7 @@ impl Layout for Many {
                 continue;
             }
 
-            ctx.children.push(widget);
+            children.push(widget);
             used_size.apply(widget_size);
 
             if used_size.empty() {
@@ -169,13 +175,15 @@ impl Layout for Many {
 
         // Apply spacer and expand if the layout is unconstrained
         if !self.unconstrained {
-            ctx.constraints = used_size.to_constraints();
-            let expanded_size = expand::layout(ctx, self.axis)?;
+            let mut exp_ctx = *ctx;
+            exp_ctx.constraints = used_size.to_constraints();
+            let expanded_size = expand::layout(&mut exp_ctx, children, self.axis)?;
             used_size.apply(expanded_size);
 
-            ctx.constraints = used_size.to_constraints();
-            let expanded_size = spacers::layout(ctx, self.axis)?;
-            used_size.apply(expanded_size);
+            let mut space_ctx = *ctx;
+            space_ctx.constraints = used_size.to_constraints();
+            let spacer_size = spacers::layout(&mut space_ctx, children, self.axis)?;
+            used_size.apply(spacer_size);
         }
 
         match self.axis {

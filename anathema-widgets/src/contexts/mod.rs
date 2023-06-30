@@ -1,41 +1,26 @@
-use std::collections::HashMap;
 use std::ops::Deref;
 
 use anathema_render::{Screen, ScreenPos, Size, Style};
 use unicode_width::UnicodeWidthChar;
 
+pub use self::data::DataCtx;
 use super::layout::{Constraints, Padding};
 use super::{Align, LocalPos, Pos, Region};
 use crate::gen::store::Store;
 use crate::template::Template;
-use crate::{Lookup, Value, WidgetContainer};
+use crate::Lookup;
 
-#[derive(Debug, Default)]
-pub struct DataCtx(pub HashMap<String, Value>);
-
-impl DataCtx {
-    pub fn insert(&mut self, key: impl Into<String>, value: impl Into<Value>) {
-        self.0.insert(key.into(), value.into());
-    }
-
-    pub fn by_key(&self, key: &str) -> Option<&Value> {
-        self.0.get(key)
-    }
-
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value> {
-        self.0.get_mut(key)
-    }
-}
+mod data;
 
 // -----------------------------------------------------------------------------
 //   - Layout -
 // -----------------------------------------------------------------------------
+#[derive(Copy, Clone)]
 pub struct LayoutCtx<'widget, 'tpl, 'parent> {
     pub templates: &'tpl [Template],
     pub values: &'widget Store<'parent>,
     pub constraints: Constraints,
     pub padding: Padding,
-    pub children: &'widget mut Vec<WidgetContainer<'tpl>>,
     pub lookup: &'widget Lookup,
 }
 
@@ -45,7 +30,6 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
         values: &'widget Store<'parent>,
         constraints: Constraints,
         padding: Padding,
-        children: &'widget mut Vec<WidgetContainer<'tpl>>,
         lookup: &'widget Lookup,
     ) -> Self {
         Self {
@@ -53,7 +37,6 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
             values,
             constraints,
             padding,
-            children,
             lookup,
         }
     }

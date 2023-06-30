@@ -73,7 +73,11 @@ impl Widget for ZStack {
         "ZStack"
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
         if let Some(min_width) = self.min_width {
             ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
         }
@@ -87,7 +91,7 @@ impl Widget for ZStack {
             ctx.constraints.make_height_tight(height);
         }
 
-        Layouts::new(Stacked, &mut ctx).layout()?.size()
+        Layouts::new(Stacked, &mut ctx).layout(children)?.size()
     }
 
     fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
@@ -106,15 +110,6 @@ impl Widget for ZStack {
             child.paint(ctx);
         }
     }
-
-    // fn update(&mut self, ctx: UpdateCtx) {
-    //     if let Some(width) = ctx.attributes.width() {
-    //         self.width = Some(width);
-    //     }
-    //     if let Some(height) = ctx.attributes.height() {
-    //         self.height = Some(height);
-    //     }
-    // }
 }
 
 pub(crate) struct ZStackFactory;

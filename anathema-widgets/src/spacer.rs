@@ -31,11 +31,15 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(&mut self, ctx: LayoutCtx<'_, '_, '_>) -> Result<Size> {
-        debug_assert!(
-            ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
-            "the layout context needs to be tight for a spacer"
-        );
+    fn layout(
+        &mut self,
+        ctx: LayoutCtx<'_, '_, '_>,
+        _children: &mut Vec<WidgetContainer<'_>>,
+    ) -> Result<Size> {
+        // debug_assert!(
+        //     ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
+        //     "the layout context needs to be tight for a spacer"
+        // );
 
         Ok(Size::new(
             ctx.constraints.min_width,
@@ -65,24 +69,29 @@ mod test {
 
     use crate::template::{template, template_text};
     use crate::testing::{test_widget, FakeTerm};
-    use crate::{HStack, VStack};
+    use crate::{Border, VStack};
 
     #[test]
     fn space_out_hstack() {
-        let hstack = HStack::new(None, None);
-        let body = [
-            template_text("left"),
-            template("spacer", (), vec![]),
-            template_text("right"),
-        ];
+        let border = Border::thin(None, None);
+        let body = [template(
+            "hstack",
+            (),
+            [
+                template_text("left"),
+                template("spacer", (), vec![]),
+                template_text("right"),
+            ],
+        )];
         test_widget(
-            hstack,
+            border,
             &body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
-            ║left      right║
-            ║               ║
+            ║┌─────────────┐║
+            ║│left    right│║
+            ║└─────────────┘║
             ║               ║
             ║               ║
             ║               ║

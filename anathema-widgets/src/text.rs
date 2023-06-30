@@ -141,15 +141,19 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn layout<'tpl, 'parent>(&mut self, layout: LayoutCtx<'_, 'tpl, 'parent>) -> Result<Size> {
-        let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        ctx: LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
+        let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
 
         self.layout.process(self.text.as_str());
 
-        let mut values = layout.values.next();
-        let mut gen = Generator::new(layout.templates, layout.lookup, &mut values);
+        let mut values = ctx.values.next();
+        let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
         while let Some(mut span) = gen.next(&mut values).transpose()? {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
@@ -158,7 +162,7 @@ impl Widget for Text {
 
             let Some(inner_span) = span.try_to_mut::<TextSpan>() else { continue };
             self.layout.process(inner_span.text.as_str());
-            layout.children.push(span);
+            children.push(span);
         }
 
         Ok(self.layout.size())
@@ -189,31 +193,6 @@ impl Widget for Text {
         // NOTE: there is no need to position text as the text
         // is printed from the context position
     }
-
-    // fn update(&mut self, ctx: UpdateCtx) {
-    //     // if ctx.attributes.is_empty() {
-    //     //     return;
-    //     // }
-
-    //     // if let Some(span) = self.spans.first_mut() {
-    //     //     let span = span.to_mut::<TextSpan>();
-    //     //     ctx.attributes.update_style(&mut span.style);
-    //     // }
-
-    //     // for (k, _) in &ctx.attributes {
-    //     //     match k.as_str() {
-    //     //         fields::TRIM_START => self.trim_start = ctx.attributes.trim_start(),
-    //     //         fields::TRIM_END => self.trim_end = ctx.attributes.trim_end(),
-    //     //         fields::COLLAPSE_SPACES => self.collapse_spaces = ctx.attributes.collapse_spaces(),
-    //     //         fields::WRAP => self.word_wrap = ctx.attributes.word_wrap(),
-    //     //         fields::TEXT_ALIGN => self.text_alignment = ctx.attributes.text_alignment(),
-    //     //         _ => {}
-    //     //     }
-    //     // }
-
-    //     // self.needs_layout = true;
-    //     // self.needs_paint = true;
-    // }
 }
 
 /// Represents a chunk of text with its own style
@@ -241,22 +220,23 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, _: LayoutCtx<'_, '_, '_>) -> Result<Size> {
-        unreachable!("layout should never be called directly on a span");
+    fn layout(
+        &mut self,
+        _ctx: LayoutCtx<'_, '_, '_>,
+        _: &mut Vec<WidgetContainer<'_>>,
+    ) -> Result<Size> {
+        panic!("layout should never be called directly on a span");
     }
 
     fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {
         // NOTE: there is no need to position text as the text is printed
         // from the context position
+        panic!("don't invoke position on the span directly.");
     }
 
     fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {
         panic!("don't invoke paint on the span directly.");
     }
-
-    // fn update(&mut self, ctx: UpdateCtx) {
-    //     ctx.attributes.update_style(&mut self.style);
-    // }
 }
 
 pub(crate) struct TextFactory;

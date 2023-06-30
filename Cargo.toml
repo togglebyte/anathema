@@ -7,7 +7,6 @@ edition = "2021"
 anathema-compiler = { path = "./anathema-compiler" }
 anathema-render = { path = "./anathema-render" }
 anathema-runtime = { path = "./anathema-runtime" }
-anathema-string = { path = "./anathema-string" }
 anathema-vm = { path = "./anathema-vm" }
 anathema-widgets = { path = "./anathema-widgets" }
 
@@ -22,7 +21,6 @@ members = [
     "anathema-compiler",
     "anathema-render",
     "anathema-runtime",
-    "anathema-string",
     "anathema-vm",
     "anathema-widgets",
 ]
