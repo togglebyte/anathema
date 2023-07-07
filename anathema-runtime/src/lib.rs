@@ -2,11 +2,11 @@ use std::io::{stdout, Stdout};
 use std::time::Instant;
 
 use anathema_render::{size, Screen, Size};
-use anathema_widgets::error::Result;
-use anathema_widgets::template::Template;
-use anathema_widgets::{
-    Constraints, DataCtx, Generator, Lookup, PaintCtx, Pos, Store, WidgetContainer,
-};
+use anathema_widget_core::contexts::{DataCtx, PaintCtx};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Constraints;
+use anathema_widget_core::template::Template;
+use anathema_widget_core::{Generator, Pos, Store, WidgetContainer};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
@@ -22,7 +22,6 @@ pub struct Runtime<'tpl, E, ER> {
     templates: &'tpl [Template],
     screen: Screen,
     output: Stdout,
-    lookup: Lookup,
     constraints: Constraints,
     current_frame: Vec<WidgetContainer<'tpl>>,
     ctx: DataCtx,
@@ -55,13 +54,11 @@ where
         let constraints = Constraints::new(Some(size.width), Some(size.height));
         Screen::hide_cursor(&mut stdout)?;
         let screen = Screen::new(size);
-        let lookup = Lookup::default();
 
         let inst = Self {
             output: stdout,
             meta: Meta::new(size),
             screen,
-            lookup,
             constraints,
             templates,
             current_frame: vec![],
@@ -78,9 +75,9 @@ where
         // TODO: diffing!
         self.current_frame.clear();
         let mut values = Store::new(&self.ctx);
-        let mut widgets = Generator::new(&self.templates, &self.lookup, &mut values);
+        let mut widgets = Generator::new(&self.templates, &mut values);
         while let Some(mut widget) = widgets.next(&mut values).transpose()? {
-            widget.layout(self.constraints, &values, &self.lookup)?;
+            widget.layout(self.constraints, &values)?;
             self.current_frame.push(widget);
         }
         Ok(())

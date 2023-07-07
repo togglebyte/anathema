@@ -1,9 +1,10 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::LayoutCtx;
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Axis, Constraints};
+use anathema_widget_core::WidgetContainer;
 
-use super::Constraints;
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
-use crate::{Axis, Expand, WidgetContainer};
+use crate::Expand;
 
 /// Distributes the total size over a list of weights
 ///
@@ -19,6 +20,7 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
         .enumerate()
         .map(|(i, w)| (i, w, 1usize))
         .collect::<Vec<_>>();
+
     total -= weights.len();
 
     fn pop(n: &mut usize) -> bool {
@@ -86,7 +88,7 @@ pub fn layout(
             }
         };
 
-        let widget_size = expanded_widget.layout(constraints, ctx.values, ctx.lookup)?;
+        let widget_size = expanded_widget.layout(constraints, ctx.values)?;
 
         match axis {
             Axis::Horizontal => {

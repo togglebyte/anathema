@@ -9,6 +9,7 @@ anathema-render = { path = "./anathema-render" }
 anathema-runtime = { path = "./anathema-runtime" }
 anathema-vm = { path = "./anathema-vm" }
 anathema-widgets = { path = "./anathema-widgets" }
+anathema-widget-core = { path = "./anathema-widget-core" }
 
 [workspace.dependencies]
 unicode-width = "0.1.10"
@@ -23,4 +24,5 @@ members = [
     "anathema-runtime",
     "anathema-vm",
     "anathema-widgets",
+    "anathema-widget-core",
 ]

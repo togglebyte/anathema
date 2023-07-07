@@ -42,9 +42,7 @@ pub mod fields {
     pub const POSITION: &str = "position";
     pub const REVERSE: &str = "reverse";
     pub const RIGHT: &str = "right";
-    pub const SIDES: &str = "sides";
     pub const TAB_STOP: &str = "tab";
-    pub const TEXT_ALIGN: &str = "text-align";
     pub const TOP: &str = "top";
     pub const TRIM_END: &str = "trim-end";
     pub const TRIM_START: &str = "trim-start";

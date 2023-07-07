@@ -122,7 +122,7 @@ impl Constraints {
 
     /// Make the width constraint tight.
     /// ```
-    /// # use anathema_widgets::Constraints;
+    /// # use anathema_widget_core::layout::Constraints;
     /// let mut constraints = Constraints::new(10, 10);
     /// constraints.make_width_tight(constraints.max_width);
     /// # assert_eq!(constraints.min_width, constraints.max_width);
@@ -134,7 +134,7 @@ impl Constraints {
 
     /// Make the height constraint tight.
     /// ```
-    /// # use anathema_widgets::Constraints;
+    /// # use anathema_widget_core::layout::Constraints;
     /// let mut constraints = Constraints::new(10, 10);
     /// constraints.make_height_tight(constraints.max_height);
     /// # assert_eq!(constraints.min_height, constraints.max_height);

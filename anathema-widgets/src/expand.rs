@@ -1,13 +1,12 @@
 use anathema_render::{Size, Style};
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Axis, Layouts};
+use anathema_widget_core::{
+    AnyWidget, LocalPos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{Axis, LocalPos, PaintCtx, PositionCtx, Widget, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::single::Single;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, WidgetContainer};
 
 const DEFAULT_FACTOR: usize = 1;
 
@@ -18,7 +17,8 @@ const DEFAULT_FACTOR: usize = 1;
 ///
 /// A [`Direction`] can be set when creating a new widget
 /// ```
-/// use anathema_widgets::{Axis, Expand};
+/// use anathema_widget_core::layout::Axis;
+/// use anathema_widgets::Expand;
 /// let horizontal = Expand::new(2, Axis::Horizontal, None);
 /// let vertical = Expand::new(5, Axis::Vertical, None);
 /// ```
@@ -130,7 +130,9 @@ impl Widget for Expand {
                 let mut used_width = 0;
                 loop {
                     let pos = LocalPos::new(used_width, y);
-                    let Some(p) = ctx.print(&self.fill, self.style, pos) else { break };
+                    let Some(p) = ctx.print(&self.fill, self.style, pos) else {
+                        break;
+                    };
                     used_width += p.x - used_width;
                 }
             }
@@ -160,10 +162,12 @@ impl WidgetFactory for ExpandFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::{template, template_text};
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::{template, template_text};
-    use crate::testing::{test_widget, FakeTerm};
     use crate::{Border, HStack, VStack};
+    use crate::testing::test_widget;
 
     #[test]
     fn expand_border() {

@@ -1,122 +1,13 @@
 // #![deny(missing_docs)]
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fmt::{self, Write};
+use std::fmt;
 
 use anathema_render::Style;
 
 use crate::gen::store::Store;
-use crate::{
-    fields, Align, Attributes, Axis, Color, Direction, Display, Padding, Path, TextPath, Wrap,
-};
-
-/// Text alignment aligns the text inside its parent.
-///
-/// Given a border with a width of nine and text alignment set to [`TextAlignment::Right`]:
-/// ```text
-/// ┌───────┐
-/// │I would│
-/// │ like a│
-/// │ lovely│
-/// │ cup of│
-/// │    tea│
-/// │ please│
-/// └───────┘
-/// ```
-///
-/// The text will only align it self within the parent widget.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum TextAlignment {
-    /// Align the to the left inside the parent
-    Left,
-    /// Align the text in the centre of the parent
-    Centre,
-    /// Align the to the right inside the parent
-    Right,
-}
-
-// -----------------------------------------------------------------------------
-//   - Border types -
-// -----------------------------------------------------------------------------
-pub const DEFAULT_SLIM_EDGES: [char; 8] = ['┌', '─', '┐', '│', '┘', '─', '└', '│'];
-pub const DEFAULT_THICK_EDGES: [char; 8] = ['╔', '═', '╗', '║', '╝', '═', '╚', '║'];
-
-// -----------------------------------------------------------------------------
-//     - Indices -
-//     Index into `DEFAULT_SLIM_EDGES` or `DEFAULT_THICK_EDGES`
-// -----------------------------------------------------------------------------
-pub const BORDER_EDGE_TOP_LEFT: usize = 0;
-pub const BORDER_EDGE_TOP: usize = 1;
-pub const BORDER_EDGE_TOP_RIGHT: usize = 2;
-pub const BORDER_EDGE_RIGHT: usize = 3;
-pub const BORDER_EDGE_BOTTOM_RIGHT: usize = 4;
-pub const BORDER_EDGE_BOTTOM: usize = 5;
-pub const BORDER_EDGE_BOTTOM_LEFT: usize = 6;
-pub const BORDER_EDGE_LEFT: usize = 7;
-
-// -----------------------------------------------------------------------------
-//     - Sides -
-// -----------------------------------------------------------------------------
-bitflags::bitflags! {
-    /// Border sides
-    /// ```
-    /// use anathema_widgets::Sides;
-    /// let sides = Sides::TOP | Sides::LEFT;
-    /// ```
-    pub struct Sides: u8 {
-        /// Empty
-        const EMPTY = 0x0;
-        /// Top border
-        const TOP = 0b0001;
-        /// Right border
-        const RIGHT = 0b0010;
-        /// Bottom border
-        const BOTTOM = 0b0100;
-        /// Left border
-        const LEFT = 0b1000;
-        /// All sides
-        const ALL = Self::TOP.bits | Self::RIGHT.bits | Self::BOTTOM.bits | Self::LEFT.bits;
-    }
-}
-
-/// The style of the border.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum BorderStyle {
-    /// ```text
-    /// ┌─────┐
-    /// │hello│
-    /// └─────┘
-    /// ```
-    Thin,
-    /// ```text
-    /// ╔═════╗
-    /// ║hello║
-    /// ╚═════╝
-    /// ```
-    Thick,
-    /// ```text
-    /// 0111112
-    /// 7hello3
-    /// 6555554
-    /// ```
-    Custom(String),
-}
-
-impl BorderStyle {
-    pub(crate) fn edges(&self) -> [char; 8] {
-        match self {
-            BorderStyle::Thin => DEFAULT_SLIM_EDGES,
-            BorderStyle::Thick => DEFAULT_THICK_EDGES,
-            BorderStyle::Custom(edge_string) => {
-                let mut edges = [' '; 8];
-                for (i, c) in edge_string.chars().take(8).enumerate() {
-                    edges[i] = c;
-                }
-                edges
-            }
-        }
-    }
-}
+use crate::layout::{Align, Axis, Direction, Padding};
+use crate::{fields, Attributes, Color, Display, Path, TextPath};
 
 /// A `Fragment` can be either a [`Path`] or a `String`.
 /// `Fragment`s are usually part of a list to represent a single string value.
@@ -165,8 +56,6 @@ pub enum Value {
     Axis(Axis),
     /// Boolean.
     Bool(bool),
-    /// Border style, used with the [`crate::Border`] widget.
-    BorderStyle(BorderStyle),
     /// A colour.
     Color(Color),
     /// A value lookup path.
@@ -183,17 +72,11 @@ pub enum Value {
     Map(HashMap<String, Value>),
     /// A number.
     Number(Number),
-    /// Border sides (determine which sides should be drawn).
-    Sides(Sides),
     /// String: this is only available from the user data context.
     /// Strings generated from the parser is accessible only throught he `Text` lookup.
     String(String),
     /// Fragments .
     Fragments(Vec<Fragment>),
-    /// Text alignment.
-    TextAlignment(TextAlignment),
-    /// Word wrapping.
-    Wrap(Wrap),
 }
 
 // Implement `From` for an unsigned integer
@@ -290,14 +173,10 @@ macro_rules! impl_from_val {
 impl_from_val!(Align, Alignment);
 impl_from_val!(Axis, Axis);
 impl_from_val!(bool, Bool);
-impl_from_val!(BorderStyle, BorderStyle);
 impl_from_val!(Color, Color);
 impl_from_val!(Display, Display);
 impl_from_val!(Number, Number);
-impl_from_val!(Sides, Sides);
 impl_from_val!(String, String);
-impl_from_val!(TextAlignment, TextAlignment);
-impl_from_val!(Wrap, Wrap);
 impl_from_val!(HashMap<String, Value>, Map);
 
 macro_rules! impl_try_from {
@@ -329,14 +208,10 @@ macro_rules! impl_try_from {
 impl_try_from!(Align, Alignment);
 impl_try_from!(Axis, Axis);
 impl_try_from!(bool, Bool);
-impl_try_from!(BorderStyle, BorderStyle);
 impl_try_from!(Color, Color);
 impl_try_from!(Display, Display);
 impl_try_from!(Number, Number);
-impl_try_from!(Sides, Sides);
 impl_try_from!(String, String);
-impl_try_from!(TextAlignment, TextAlignment);
-impl_try_from!(Wrap, Wrap);
 impl_try_from!(HashMap<String, Value>, Map);
 
 macro_rules! try_from_int {
@@ -402,7 +277,6 @@ impl fmt::Display for Value {
             Self::Alignment(val) => write!(f, "{}", val),
             Self::Axis(val) => write!(f, "{:?}", val),
             Self::Bool(val) => write!(f, "{}", val),
-            Self::BorderStyle(val) => write!(f, "{:?}", val),
             Self::Color(val) => write!(f, "{:?}", val),
             Self::DataBinding(val) => write!(f, "{:?}", val),
             Self::Display(val) => write!(f, "{:?}", val),
@@ -421,10 +295,7 @@ impl fmt::Display for Value {
                 Ok(())
             }
             Self::Number(val) => write!(f, "{}", val),
-            Self::Sides(val) => write!(f, "{:?}", val),
             Self::String(val) => write!(f, "{}", val),
-            Self::TextAlignment(val) => write!(f, "{:?}", val),
-            Self::Wrap(val) => write!(f, "{:?}", val),
         }
     }
 }
@@ -518,14 +389,6 @@ impl Value {
         }
     }
 
-    /// The value as an optional text alignment
-    pub fn to_text_align(&self) -> Option<TextAlignment> {
-        match self {
-            Self::TextAlignment(val) => Some(*val),
-            _ => None,
-        }
-    }
-
     /// The value as an optional color
     pub fn to_color(&self) -> Option<Color> {
         match self {
@@ -542,34 +405,10 @@ impl Value {
         }
     }
 
-    /// The value as `Border`
-    pub fn to_border(&self) -> Option<&BorderStyle> {
-        match self {
-            Self::BorderStyle(b) => Some(b),
-            _ => None,
-        }
-    }
-
     /// The value as `Display`
     pub fn to_display(&self) -> Option<Display> {
         match self {
             Self::Display(disp) => Some(*disp),
-            _ => None,
-        }
-    }
-
-    /// The value as `Wrap`
-    pub fn to_wrap(&self) -> Option<Wrap> {
-        match self {
-            Self::Wrap(wrap) => Some(*wrap),
-            _ => None,
-        }
-    }
-
-    /// The value as `Sides`
-    pub fn to_sides(&self) -> Option<Sides> {
-        match self {
-            Self::Sides(sides) => Some(*sides),
             _ => None,
         }
     }
@@ -589,28 +428,12 @@ pub struct ValuesAttributes<'a, 'parent> {
 }
 
 impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
-    pub fn new(values: &'a Store<'parent>, attributes: &'a Attributes) -> Self {
-        Self { values, attributes }
+    pub fn text_to_string(&self, text: &'a TextPath) -> Cow<'a, str> {
+        self.values.text_to_string(text)
     }
 
-    pub fn text_to_string(&self, text: &'a TextPath) -> Cow<'a, str> {
-        match text {
-            TextPath::Fragments(fragments) => {
-                let mut output = String::new();
-                for fragment in fragments {
-                    match fragment {
-                        Fragment::String(s) => output.push_str(s),
-                        Fragment::Data(path) => {
-                            let _ = path
-                                .lookup_value(self.values)
-                                .map(|val| write!(&mut output, "{val}"));
-                        }
-                    }
-                }
-                Cow::Owned(output)
-            }
-            TextPath::String(s) => Cow::from(s),
-        }
+    pub fn new(values: &'a Store<'parent>, attributes: &'a Attributes) -> Self {
+        Self { values, attributes }
     }
 
     pub fn get_bool(&self, name: &str) -> Option<bool> {
@@ -638,7 +461,9 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
 
     pub fn get_attrib(&self, key: &str) -> Option<&'a Value> {
         let value = self.attributes.get(key)?;
-        let Value::DataBinding(path) = value else { return Some(value) };
+        let Value::DataBinding(path) = value else {
+            return Some(value);
+        };
         path.lookup_value(self.values)
     }
 
@@ -779,20 +604,6 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
         self.get_int(fields::MAX_CHILDREN).map(|i| i as usize)
     }
 
-    pub fn sides(&self) -> Sides {
-        match self.get_attrib(fields::SIDES).as_deref() {
-            Some(Value::Sides(val)) => *val,
-            _ => Sides::ALL,
-        }
-    }
-
-    pub fn text_alignment(&self) -> TextAlignment {
-        match self.get_attrib(fields::TEXT_ALIGN).as_deref() {
-            Some(Value::TextAlignment(val)) => *val,
-            None | Some(_) => TextAlignment::Left,
-        }
-    }
-
     pub fn background(&self) -> Option<Color> {
         self.get_color(fields::BACKGROUND)
             .or_else(|| self.get_color(fields::BG))
@@ -855,24 +666,10 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
         self.get_bool(fields::AUTO_SCROLL).unwrap_or(false)
     }
 
-    pub fn word_wrap(&self) -> Wrap {
-        match self.get_attrib(fields::WRAP).as_deref() {
-            Some(Value::Wrap(wrap)) => *wrap,
-            None | Some(_) => Wrap::Normal,
-        }
-    }
-
     pub fn display(&self) -> Display {
         match self.get_attrib(fields::DISPLAY).as_deref() {
             Some(Value::Display(display)) => *display,
             None | Some(_) => Display::Show,
-        }
-    }
-
-    pub fn border_style(&self) -> Cow<'_, BorderStyle> {
-        match self.get_attrib(fields::BORDER_STYLE) {
-            Some(Value::BorderStyle(style)) => Cow::Borrowed(style),
-            None | Some(_) => Cow::Owned(BorderStyle::Thin),
         }
     }
 

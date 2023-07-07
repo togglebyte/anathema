@@ -1,12 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Align, Layouts};
+use anathema_widget_core::{
+    AnyWidget, Pos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::single::Single;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{Align, AnyWidget, Pos, PositionCtx, TextPath, Widget, WidgetContainer};
 
 /// Then `Alignment` widget "inflates" the parent to its maximum constraints
 /// See [`Align`](crate::layout::Align) for more information.
@@ -14,7 +14,8 @@ use crate::{Align, AnyWidget, Pos, PositionCtx, TextPath, Widget, WidgetContaine
 /// If the alignment has no children it will be zero sized.
 ///
 /// ```
-/// use anathema_widgets::{Align, Alignment};
+/// use anathema_widget_core::layout::Align;
+/// use anathema_widgets::Alignment;
 /// let alignment = Alignment::new(Align::TopRight);
 /// ```
 #[derive(Debug)]
@@ -30,12 +31,6 @@ impl Alignment {
     /// Create a new instance of an `Alignment` widget
     pub fn new(alignment: Align) -> Self {
         Self { alignment }
-    }
-}
-
-impl Default for Alignment {
-    fn default() -> Self {
-        Self::new(Align::Left)
     }
 }
 
@@ -59,7 +54,7 @@ impl Widget for Alignment {
         }
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'_>]) {
         if let Some(child) = children.first_mut() {
             let alignment = self.alignment;
 
@@ -103,11 +98,14 @@ impl WidgetFactory for AlignmentFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::contexts::DataCtx;
+    use anathema_widget_core::layout::{Constraints, Padding};
+    use anathema_widget_core::template::template_text;
+    use anathema_widget_core::testing::FakeTerm;
+    use anathema_widget_core::Store;
+
     use super::*;
-    use crate::gen::store::Store;
-    use crate::template::template_text;
-    use crate::testing::{test_widget, FakeTerm};
-    use crate::{Constraints, DataCtx, Lookup, Padding};
+    use crate::testing::test_widget;
 
     fn align_widget(align: Align, expected: FakeTerm) {
         let text = template_text("AB");
@@ -264,12 +262,11 @@ mod test {
     #[test]
     fn unconstrained_alignment_without_child() {
         let constraints = Constraints::unbounded();
-        let lookup = Lookup::default();
         let mut children = vec![];
         let data = DataCtx::default();
         let store = Store::new(&data);
-        let ctx = LayoutCtx::new(&[], &store, constraints, Padding::ZERO, &lookup);
-        let mut alignment = Alignment::default();
+        let ctx = LayoutCtx::new(&[], &store, constraints, Padding::ZERO);
+        let mut alignment = Alignment::new(Align::Left);
         let actual = alignment.layout(ctx, &mut children).unwrap();
         let expected = Size::ZERO;
         assert_eq!(expected, actual);

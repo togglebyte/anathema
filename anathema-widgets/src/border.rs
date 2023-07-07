@@ -1,17 +1,122 @@
 use anathema_render::{Size, Style};
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::{Error, Result};
+use anathema_widget_core::layout::Constraints;
+use anathema_widget_core::{
+    fields, AnyWidget, Generator, LocalPos, TextPath, Value, ValuesAttributes, Widget,
+    WidgetContainer, WidgetFactory,
+};
 use unicode_width::UnicodeWidthChar;
 
-use super::{LocalPos, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::{Error, Result};
-use crate::gen::generator::Generator;
-use crate::lookup::WidgetFactory;
-use crate::values::{
-    ValuesAttributes, BORDER_EDGE_BOTTOM, BORDER_EDGE_BOTTOM_LEFT, BORDER_EDGE_BOTTOM_RIGHT,
-    BORDER_EDGE_LEFT, BORDER_EDGE_RIGHT, BORDER_EDGE_TOP, BORDER_EDGE_TOP_LEFT,
-    BORDER_EDGE_TOP_RIGHT,
-};
-use crate::{AnyWidget, BorderStyle, Constraints, Sides, TextPath};
+// -----------------------------------------------------------------------------
+//     - Indices -
+//     Index into `DEFAULT_SLIM_EDGES` or `DEFAULT_THICK_EDGES`
+// -----------------------------------------------------------------------------
+pub const BORDER_EDGE_TOP_LEFT: usize = 0;
+pub const BORDER_EDGE_TOP: usize = 1;
+pub const BORDER_EDGE_TOP_RIGHT: usize = 2;
+pub const BORDER_EDGE_RIGHT: usize = 3;
+pub const BORDER_EDGE_BOTTOM_RIGHT: usize = 4;
+pub const BORDER_EDGE_BOTTOM: usize = 5;
+pub const BORDER_EDGE_BOTTOM_LEFT: usize = 6;
+pub const BORDER_EDGE_LEFT: usize = 7;
+
+// -----------------------------------------------------------------------------
+//     - Sides -
+// -----------------------------------------------------------------------------
+bitflags::bitflags! {
+    /// Border sides
+    /// ```
+    /// use anathema_widgets::Sides;
+    /// let sides = Sides::TOP | Sides::LEFT;
+    /// ```
+    pub struct Sides: u8 {
+        /// Empty
+        const EMPTY = 0x0;
+        /// Top border
+        const TOP = 0b0001;
+        /// Right border
+        const RIGHT = 0b0010;
+        /// Bottom border
+        const BOTTOM = 0b0100;
+        /// Left border
+        const LEFT = 0b1000;
+        /// All sides
+        const ALL = Self::TOP.bits | Self::RIGHT.bits | Self::BOTTOM.bits | Self::LEFT.bits;
+    }
+}
+
+impl From<&str> for Sides {
+    fn from(s: &str) -> Sides {
+        let mut sides = Sides::EMPTY;
+        for side in s.split('|').map(str::trim) {
+            match side {
+                "top" => sides |= Sides::TOP,
+                "right" => sides |= Sides::RIGHT,
+                "bottom" => sides |= Sides::BOTTOM,
+                "left" => sides |= Sides::LEFT,
+                "all" => sides |= Sides::ALL,
+                _ => {}
+            }
+        }
+        sides
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Border types -
+// -----------------------------------------------------------------------------
+pub const DEFAULT_SLIM_EDGES: [char; 8] = ['┌', '─', '┐', '│', '┘', '─', '└', '│'];
+pub const DEFAULT_THICK_EDGES: [char; 8] = ['╔', '═', '╗', '║', '╝', '═', '╚', '║'];
+
+/// The style of the border.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BorderStyle {
+    /// ```text
+    /// ┌─────┐
+    /// │hello│
+    /// └─────┘
+    /// ```
+    Thin,
+    /// ```text
+    /// ╔═════╗
+    /// ║hello║
+    /// ╚═════╝
+    /// ```
+    Thick,
+    /// ```text
+    /// 0111112
+    /// 7hello3
+    /// 6555554
+    /// ```
+    Custom(String),
+}
+
+impl From<&str> for BorderStyle {
+    fn from(s: &str) -> Self {
+        match s {
+            "thin" => Self::Thin,
+            "thick" => Self::Thick,
+            raw => Self::Custom(raw.to_string()),
+        }
+    }
+}
+
+impl BorderStyle {
+    pub fn edges(&self) -> [char; 8] {
+        match self {
+            BorderStyle::Thin => DEFAULT_SLIM_EDGES,
+            BorderStyle::Thick => DEFAULT_THICK_EDGES,
+            BorderStyle::Custom(edge_string) => {
+                let mut edges = [' '; 8];
+                for (i, c) in edge_string.chars().take(8).enumerate() {
+                    edges[i] = c;
+                }
+                edges
+            }
+        }
+    }
+}
 
 /// Draw a border around an element.
 ///
@@ -53,11 +158,10 @@ impl Border {
     ///
     ///```
     /// use anathema_widgets::{Border, BorderStyle, Sides};
-    /// let border_style = BorderStyle::Thin;
-    /// let border = Border::new(&border_style, Sides::ALL, None, None);
+    /// let border = Border::new(BorderStyle::Thin, Sides::ALL, None, None);
     /// ```
     pub fn new(
-        style: &BorderStyle,
+        style: BorderStyle,
         sides: Sides,
         width: impl Into<Option<usize>>,
         height: impl Into<Option<usize>>,
@@ -66,6 +170,7 @@ impl Border {
         let height = height.into();
 
         let edges = style.edges();
+
         Self {
             sides,
             edges,
@@ -79,12 +184,12 @@ impl Border {
 
     /// Create a "thin" border with an optional width and height
     pub fn thin(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self::new(&BorderStyle::Thin, Sides::ALL, width, height)
+        Self::new(BorderStyle::Thin, Sides::ALL, width, height)
     }
 
     /// Create a "thick" border with an optional width and height
     pub fn thick(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self::new(&BorderStyle::Thick, Sides::ALL, width, height)
+        Self::new(BorderStyle::Thick, Sides::ALL, width, height)
     }
 
     fn border_size(&self) -> Size {
@@ -151,7 +256,7 @@ impl Border {
 
 impl Default for Border {
     fn default() -> Self {
-        Self::new(&BorderStyle::Thin, Sides::ALL, None, None)
+        Self::new(BorderStyle::Thin, Sides::ALL, None, None)
     }
 }
 
@@ -193,7 +298,7 @@ impl Widget for Border {
         let border_size = self.border_size();
 
         let mut values = ctx.values.next();
-        let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
+        let mut gen = Generator::new(ctx.templates, &mut values);
 
         let size = match gen.next(&mut values).transpose()? {
             Some(mut widget) => {
@@ -223,7 +328,7 @@ impl Widget for Border {
                     return Err(Error::InsufficientSpaceAvailble);
                 }
 
-                let mut size = widget.layout(constraints, &values, ctx.lookup)?
+                let mut size = widget.layout(constraints, &values)?
                     + border_size
                     + ctx.padding_size();
 
@@ -392,12 +497,22 @@ impl WidgetFactory for BorderFactory {
         values: ValuesAttributes<'_, '_>,
         _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
-        let border_style = values.border_style();
-        let sides = values.sides();
+        let border_style = values
+            .get_attrib(fields::BORDER_STYLE)
+            .and_then(Value::to_str)
+            .map(From::from)
+            .unwrap_or(BorderStyle::Thin);
+
+        let sides = values
+            .get_attrib(fields::BORDER_STYLE)
+            .and_then(Value::to_str)
+            .map(From::from)
+            .unwrap_or(Sides::ALL);
+
         let width = values.width();
         let height = values.height();
 
-        let mut widget = Border::new(&*border_style, sides, width, height);
+        let mut widget = Border::new(border_style, sides, width, height);
         widget.min_width = values.min_width();
         widget.min_height = values.min_height();
         widget.style = values.style();
@@ -407,14 +522,16 @@ impl WidgetFactory for BorderFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::template_text;
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::template_text;
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     #[test]
-    fn border() {
+    fn thin_border() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::ALL, 5, 4),
+            Border::new(BorderStyle::Thin, Sides::ALL, 5, 4),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -432,9 +549,54 @@ mod test {
     }
 
     #[test]
+    fn thick_border() {
+        test_widget(
+            Border::new(BorderStyle::Thick, Sides::ALL, 5, 4),
+            &[],
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══════╗
+            ║╔═══╗               ║
+            ║║   ║               ║
+            ║║   ║               ║
+            ║╚═══╝               ║
+            ║                    ║
+            ║                    ║
+            ╚════════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn custom_border() {
+        test_widget(
+            Border::new(
+                BorderStyle::Custom("01234567".to_string()),
+                Sides::ALL,
+                5,
+                4,
+            ),
+            &[],
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [══════╗
+            ║01112               ║
+            ║7   3               ║
+            ║7   3               ║
+            ║65554               ║
+            ║                    ║
+            ║                    ║
+            ╚════════════════════╝
+            "#,
+            ),
+        );
+    }
+
+    #[test]
     fn border_top() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::TOP, 5, 2),
+            Border::new(BorderStyle::Thin, Sides::TOP, 5, 2),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -450,7 +612,7 @@ mod test {
     #[test]
     fn border_top_bottom() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::TOP | Sides::BOTTOM, 5, 4),
+            Border::new(BorderStyle::Thin, Sides::TOP | Sides::BOTTOM, 5, 4),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -468,7 +630,7 @@ mod test {
     #[test]
     fn border_left() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::LEFT, 1, 2),
+            Border::new(BorderStyle::Thin, Sides::LEFT, 1, 2),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -486,7 +648,7 @@ mod test {
     #[test]
     fn border_right() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::RIGHT, 3, 2),
+            Border::new(BorderStyle::Thin, Sides::RIGHT, 3, 2),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -504,7 +666,7 @@ mod test {
     #[test]
     fn border_top_left() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::TOP | Sides::LEFT, 4, 3),
+            Border::new(BorderStyle::Thin, Sides::TOP | Sides::LEFT, 4, 3),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -522,7 +684,7 @@ mod test {
     #[test]
     fn border_bottom_right() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, 4, 3),
+            Border::new(BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, 4, 3),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -540,7 +702,7 @@ mod test {
     #[test]
     fn unsized_empty_border() {
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, None, None),
+            Border::new(BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, None, None),
             &[],
             FakeTerm::from_str(
                 r#"
@@ -559,7 +721,7 @@ mod test {
     fn sized_by_child() {
         let body = [template_text("hello world")];
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::ALL, None, None),
+            Border::new(BorderStyle::Thin, Sides::ALL, None, None),
             &body,
             FakeTerm::from_str(
                 r#"
@@ -578,7 +740,7 @@ mod test {
     fn fixed_size() {
         let body = [template_text("hello world")];
         test_widget(
-            Border::new(&BorderStyle::Thin, Sides::ALL, 7, 4),
+            Border::new(BorderStyle::Thin, Sides::ALL, 7, 4),
             &body,
             FakeTerm::from_str(
                 r#"

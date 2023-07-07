@@ -1,13 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::{
+    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::stacked::Stacked;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath};
 
 /// Unlike the [`HStack`](crate::HStack) or the [`VStack`](crate::VStack) the [`ZStack`] draws the
 /// children on top of each other.
@@ -131,9 +130,11 @@ impl WidgetFactory for ZStackFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::{template, template_text};
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::{template, template_text};
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     #[test]
     fn border_title() {

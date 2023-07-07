@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anathema_compiler::Constants;
-use anathema_widgets::{Path, Value};
+use anathema_widget_core::{Path, Value};
 
 use crate::NodeGen;
 

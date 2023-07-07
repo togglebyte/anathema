@@ -2,7 +2,7 @@ use super::scope::Scope;
 use super::store::Store;
 use crate::error::Result;
 use crate::template::Template;
-use crate::{Lookup, WidgetContainer};
+use crate::WidgetContainer;
 
 // -----------------------------------------------------------------------------
 //   - Direction -
@@ -23,11 +23,10 @@ pub struct Generator<'tpl, 'parent> {
 impl<'tpl, 'parent> Generator<'tpl, 'parent> {
     pub fn new(
         templates: &'tpl [Template],
-        factory: &'parent Lookup,
         values: &mut Store<'parent>,
     ) -> Self {
         Self {
-            scope: Scope::new(templates, factory, values, Direction::Forward),
+            scope: Scope::new(templates, values, Direction::Forward),
         }
     }
 

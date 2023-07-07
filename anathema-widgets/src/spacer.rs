@@ -1,11 +1,9 @@
 use anathema_render::Size;
-
-use super::{PaintCtx, PositionCtx, Widget, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, WidgetContainer};
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::{
+    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
 /// Expand to fill in all available space.
 ///
@@ -67,9 +65,11 @@ impl WidgetFactory for SpacerFactory {
 #[cfg(test)]
 mod test {
 
-    use crate::template::{template, template_text};
-    use crate::testing::{test_widget, FakeTerm};
+    use anathema_widget_core::template::{template, template_text};
+    use anathema_widget_core::testing::FakeTerm;
+
     use crate::{Border, VStack};
+    use crate::testing::test_widget;
 
     #[test]
     fn space_out_hstack() {

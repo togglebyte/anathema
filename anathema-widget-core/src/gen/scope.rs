@@ -7,7 +7,7 @@ use super::store::Store;
 use super::ValueRef;
 use crate::error::Result;
 use crate::template::Template;
-use crate::{Lookup, Value, WidgetContainer};
+use crate::{Factory, Value, WidgetContainer};
 
 enum State<'tpl, 'parent> {
     Block,
@@ -27,13 +27,11 @@ pub struct Scope<'tpl, 'parent> {
     state: State<'tpl, 'parent>,
     inner: Option<Box<Scope<'tpl, 'parent>>>,
     index: Index,
-    factory: &'parent Lookup,
 }
 
 impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
     pub(crate) fn new(
         templates: &'tpl [Template],
-        factory: &'parent Lookup,
         values: &Store<'parent>,
         dir: Direction,
     ) -> Self {
@@ -47,7 +45,6 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
             expressions,
             inner: None,
             state: State::Block,
-            factory,
         }
     }
 
@@ -98,7 +95,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
 
                     match expr {
                         Expression::Node(template) => {
-                            break Some(self.factory.exec(template, values))
+                            break Some(Factory::exec(template, values))
                         }
                         Expression::For {
                             body,
@@ -113,7 +110,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                             };
                         }
                         Expression::Block(templates) => {
-                            let scope = Scope::new(templates, self.factory, values, self.index.dir);
+                            let scope = Scope::new(templates, values, self.index.dir);
                             self.inner = Some(Box::new(scope));
                         }
                     }
@@ -134,7 +131,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
 
                     values.set(Cow::Borrowed(binding), ValueRef::Borrowed(value));
 
-                    let scope = Scope::new(body, self.factory, values, self.index.dir);
+                    let scope = Scope::new(body, values, self.index.dir);
                     self.inner = Some(Box::new(scope));
                 }
             }
@@ -148,12 +145,12 @@ mod test {
 
     use crate::gen::testing::*;
     use crate::template::*;
-    use crate::{Text, TextPath};
+    use crate::TextPath;
 
     fn for_loop(size: usize) -> (Vec<String>, TestSetup) {
         let text = crate::TextPath::fragment("x");
         let values = (0..size).map(|v| v.to_string()).collect::<Vec<_>>();
-        let for_loop = template_for("x", values.clone(), [template_text(text)]);
+        let for_loop = template_for("x", values.clone(), [test_template(text)]);
         let setup = TestSetup::new().template(for_loop);
         (values, setup)
     }
@@ -169,12 +166,12 @@ mod test {
     fn generate_single_widget() {
         let text = TextPath::fragment("beverage");
 
-        let mut setup = TestSetup::with_templates([template_text(text)]).set("beverage", "tea");
+        let mut setup = TestSetup::with_templates([test_template(text)]).set("beverage", "tea");
         let mut scope = setup.scope();
 
         let text = scope.next_unchecked();
-        let text = text.to_ref::<Text>();
-        assert_eq!(text.text, "tea");
+        let text = text.to_ref::<TestWidget>();
+        assert_eq!(&text.0, "tea");
     }
 
     #[test]
@@ -183,7 +180,7 @@ mod test {
         let scope = setup.scope();
 
         for (a, b) in zip(values, scope) {
-            assert_eq!(a, b.to_ref::<Text>().text);
+            assert_eq!(a, b.to_ref::<TestWidget>().0);
         }
     }
 
@@ -194,7 +191,7 @@ mod test {
         scope.inner.flip();
 
         for (a, b) in zip(values.into_iter().rev(), scope) {
-            assert_eq!(a, b.to_ref::<Text>().text);
+            assert_eq!(a, b.to_ref::<TestWidget>().0);
         }
     }
 

@@ -1,6 +1,6 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_widgets::template::Template;
-use anathema_widgets::NodeId;
+use anathema_widget_core::template::Template;
+use anathema_widget_core::NodeId;
 
 use crate::error::Result;
 use crate::scope::Scope;
@@ -27,7 +27,7 @@ impl VirtualMachine {
 #[cfg(test)]
 mod test {
     use anathema_compiler::compile;
-    use anathema_widgets::template::Template;
+    use anathema_widget_core::template::Template;
 
     use super::*;
 

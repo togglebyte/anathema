@@ -1,13 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge};
+use anathema_widget_core::{
+    AnyWidget, Pos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{HorzEdge, Pos, PositionCtx, VertEdge, Widget, WidgetContainer};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::single::Single;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath};
 
 /// If the horizontal edge is set to `Right` the widget will expand to fill all available space
 /// on the horizontal axis.
@@ -166,9 +165,11 @@ impl WidgetFactory for PositionFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::template_text;
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::template_text;
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     #[test]
     fn top_left() {

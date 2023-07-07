@@ -1,4 +1,4 @@
-use anathema_widgets::{TextPath, Value};
+use anathema_widget_core::{TextPath, Value};
 
 mod attribute_parser;
 pub(crate) mod parser;

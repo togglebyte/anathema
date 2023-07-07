@@ -1,6 +1,6 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_widgets::template::{Cond, ControlFlow, Template};
-use anathema_widgets::{Attributes, NodeId, TextPath};
+use anathema_widget_core::template::{Cond, ControlFlow, Template};
+use anathema_widget_core::{Attributes, NodeId, TextPath};
 
 use crate::error::Result;
 
@@ -65,7 +65,10 @@ impl<'vm> Scope<'vm> {
                     });
 
                     loop {
-                        let Some(&Instruction::Else { cond, size }) = self.instructions.get(0) else { break };
+                        let Some(&Instruction::Else { cond, size }) = self.instructions.get(0)
+                        else {
+                            break;
+                        };
                         let id = node_id.clone();
                         let cond = cond.map(|c| self.consts.lookup_attrib(c).cloned().unwrap()); // TODO: Look at For
                         let body = self.instructions.drain(..size).collect();
@@ -83,27 +86,6 @@ impl<'vm> Scope<'vm> {
                 Instruction::Else { .. } => {
                     unreachable!("the `Else` instructions are consumed inside the `If` instruction")
                 }
-                // {
-                //     let id = node_id.clone();
-                //     let cond = cond.map(|c| self.consts.lookup_attrib(c).cloned().unwrap()); // TODO: Look at For
-                //     let body = self.instructions.drain(..size).collect();
-                //     let children = Scope::new(body, &self.consts).exec(id.clone())?;
-
-                //     let kind = match cond {
-                //         Some(cond) => Kind::If(cond, None),
-                //         None => Kind::Else
-                //     };
-
-                //     // this has to be an if-expr
-                //     let if_inst = nodes.last_mut();
-                //     match if_inst {
-                //         Some(Template { kind: Kind::If(_, else_template), .. }) => {}
-                //         _ => panic!("oh my"),
-                //     }
-
-                //     let template = Template { kind, children };
-                //     nodes.push(template);
-                // }
                 Instruction::LoadAttribute { .. } | Instruction::LoadText(_) => {
                     unreachable!("these instructions are only loaded in the `node` function")
                 }

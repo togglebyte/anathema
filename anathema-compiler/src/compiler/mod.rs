@@ -6,7 +6,6 @@ mod optimizer;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Instruction {
-    // Condition lookup, size of the body, true jump offset = jump to instruction after if body
     If {
         cond: usize,
         size: usize,

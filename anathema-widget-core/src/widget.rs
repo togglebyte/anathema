@@ -10,7 +10,6 @@ use super::{Color, Display, LocalPos, Pos, Region};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::store::Store;
-use crate::lookup::Lookup;
 use crate::template::Template;
 
 // Layout:
@@ -269,13 +268,11 @@ impl<'tpl> WidgetContainer<'tpl> {
         &mut self,
         constraints: Constraints,
         values: &Store<'_>,
-        lookup: &Lookup,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let layout_args =
-                    LayoutCtx::new(self.templates, values, constraints, self.padding, lookup);
+                let layout_args = LayoutCtx::new(self.templates, values, constraints, self.padding);
                 let size = self.inner.layout(layout_args, &mut self.children)?;
                 self.size = size;
                 self.size.width += self.padding.left + self.padding.right;

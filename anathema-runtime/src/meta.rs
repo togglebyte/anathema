@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use anathema_render::Size;
-use anathema_widgets::{DataCtx, Number, Value, WidgetContainer};
+use anathema_widget_core::contexts::DataCtx;
+use anathema_widget_core::{Number, Value, WidgetContainer};
 
 const META: &'static str = "_meta";
 const TIMINGS: &'static str = "timings";

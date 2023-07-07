@@ -4,11 +4,10 @@ use anathema_render::{Screen, ScreenPos, Size, Style};
 use unicode_width::UnicodeWidthChar;
 
 pub use self::data::DataCtx;
-use super::layout::{Constraints, Padding};
-use super::{Align, LocalPos, Pos, Region};
+use crate::layout::{Constraints, Padding, Align};
 use crate::gen::store::Store;
 use crate::template::Template;
-use crate::Lookup;
+use crate::{Pos, Region, LocalPos};
 
 mod data;
 
@@ -21,7 +20,6 @@ pub struct LayoutCtx<'widget, 'tpl, 'parent> {
     pub values: &'widget Store<'parent>,
     pub constraints: Constraints,
     pub padding: Padding,
-    pub lookup: &'widget Lookup,
 }
 
 impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
@@ -30,14 +28,12 @@ impl<'widget, 'tpl, 'parent> LayoutCtx<'widget, 'tpl, 'parent> {
         values: &'widget Store<'parent>,
         constraints: Constraints,
         padding: Padding,
-        lookup: &'widget Lookup,
     ) -> Self {
         Self {
             templates,
             values,
             constraints,
             padding,
-            lookup,
         }
     }
 

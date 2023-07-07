@@ -1,8 +1,10 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::LayoutCtx;
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Axis;
+use anathema_widget_core::WidgetContainer;
 
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
-use crate::{Axis, Spacer, WidgetContainer};
+use crate::Spacer;
 
 pub fn layout(
     ctx: &mut LayoutCtx<'_, '_, '_>,
@@ -29,7 +31,7 @@ pub fn layout(
     };
 
     for spacer in children.iter_mut().filter(|c| c.kind() == Spacer::KIND) {
-        let size = spacer.layout(constraints, ctx.values, ctx.lookup)?;
+        let size = spacer.layout(constraints, ctx.values)?;
 
         match axis {
             Axis::Horizontal => {

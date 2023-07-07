@@ -1,21 +1,66 @@
+use anathema_render::Size;
+use unicode_width::UnicodeWidthStr;
+
 use super::generator::Direction;
 use super::scope::Scope;
 use super::store::Store;
+use crate::contexts::{DataCtx, LayoutCtx, PositionCtx};
+use crate::error::Result;
 use crate::template::Template;
-use crate::{DataCtx, Lookup, Value, WidgetContainer};
+use crate::{
+    AnyWidget, Attributes, Factory, TextPath, Value, ValuesAttributes, Widget, WidgetContainer,
+    WidgetFactory,
+};
+
+pub struct TestWidget(pub String);
+
+impl Widget for TestWidget {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        _: LayoutCtx<'widget, 'tpl, 'parent>,
+        _: &mut Vec<WidgetContainer<'tpl>>,
+    ) -> Result<Size> {
+        Ok(Size::new(self.0.width(), 1))
+    }
+
+    fn position<'tpl>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'tpl>]) {}
+}
+
+struct TestWidgetFactory;
+
+impl WidgetFactory for TestWidgetFactory {
+    fn make(
+        &self,
+        store: ValuesAttributes<'_, '_>,
+        text: Option<&TextPath>,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let text = text
+            .map(|path| store.text_to_string(path).to_string())
+            .unwrap_or_else(String::new);
+        Ok(Box::new(TestWidget(text)))
+    }
+}
+
+pub fn test_template(text: impl Into<TextPath>) -> Template {
+    Template::Node {
+        ident: "testwidget".into(),
+        attributes: Attributes::empty(),
+        text: Some(text.into()),
+        children: vec![],
+    }
+}
 
 pub struct TestSetup {
     templates: Vec<Template>,
     root: DataCtx,
-    factory: Lookup,
 }
 
 impl TestSetup {
     pub fn new() -> Self {
+        Factory::register("testwidget", TestWidgetFactory);
         Self {
             templates: vec![],
             root: DataCtx::default(),
-            factory: Lookup::default(),
         }
     }
 
@@ -23,7 +68,6 @@ impl TestSetup {
         Self {
             templates: templates.into(),
             root: DataCtx::default(),
-            factory: Lookup::default(),
         }
     }
 
@@ -39,12 +83,7 @@ impl TestSetup {
 
     pub fn scope<'a>(&'a mut self) -> TestScope<'a> {
         let mut store = Store::new(&self.root);
-        let inner = Scope::new(
-            &self.templates,
-            &self.factory,
-            &mut store,
-            Direction::Forward,
-        );
+        let inner = Scope::new(&self.templates, &mut store, Direction::Forward);
 
         TestScope {
             values: store,
@@ -65,7 +104,7 @@ impl<'a> TestScope<'a> {
 
     pub fn next_assume_text(&mut self) -> String {
         let wc = self.next_unchecked();
-        wc.to_ref::<crate::Text>().text.to_string()
+        wc.to_ref::<TestWidget>().0.clone()
     }
 }
 

@@ -1,4 +1,4 @@
-use anathema_widgets::{Fragment, Number, Path, TextPath};
+use anathema_widget_core::{Fragment, Number, Path, TextPath};
 
 use super::attribute_parser::AttributeParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};

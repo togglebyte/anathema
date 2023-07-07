@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_widgets::Number;
+use anathema_widget_core::Number;
 
 use crate::error::{Error, Result};
 
@@ -18,6 +18,7 @@ pub(crate) enum Kind<'src> {
     In,
     If,
     Else,
+    View,
     Ident(&'src str),
     Newline,
     Number(Number),
@@ -232,6 +233,7 @@ impl<'src> Lexer<'src> {
             "in" => Kind::In,
             "if" => Kind::If,
             "else" => Kind::Else,
+            "view" => Kind::View,
             s => Kind::Ident(s),
         }
     }
