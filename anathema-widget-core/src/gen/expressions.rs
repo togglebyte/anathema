@@ -1,8 +1,11 @@
+use std::borrow::Cow;
+
 use crate::template::Template;
 use crate::Value;
 
 pub enum Expression<'tpl: 'parent, 'parent> {
     Node(&'tpl Template),
+    View(Cow<'parent, str>),
     For {
         body: &'tpl [Template],
         binding: &'parent str,

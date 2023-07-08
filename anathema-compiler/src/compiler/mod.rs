@@ -19,6 +19,7 @@ pub enum Instruction {
         data: usize,
         size: usize,
     },
+    View(usize),
     Node {
         ident: usize,
         scope_size: usize,
@@ -68,6 +69,7 @@ impl Compiler {
             self.ep += 1;
             match expr {
                 Expression::Node { ident, scope_size } => self.compile_node(*ident, *scope_size),
+                Expression::View(id) => self.compile_view(*id),
                 Expression::LoadText(index) => self.compile_text(*index),
                 Expression::LoadAttribute { key, value } => self.compile_attribute(*key, *value),
                 Expression::If { cond, size } => {
@@ -83,6 +85,11 @@ impl Compiler {
                 } => self.compile_for(*binding, *data, *size),
             }?;
         }
+        Ok(())
+    }
+
+    fn compile_view(&mut self, id: usize) -> Result<()> {
+        self.output.push(Instruction::View(id));
         Ok(())
     }
 

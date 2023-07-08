@@ -453,6 +453,12 @@ mod test {
     }
 
     #[test]
+    fn view() {
+        let input = "view";
+        assert_eq!(Kind::View, token_kind(input));
+    }
+
+    #[test]
     fn invalid_hex() {
         let inputs = ["#00", "#0000", "#1234567", "#FFX", "#F-A"];
 

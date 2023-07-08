@@ -9,6 +9,7 @@ use crate::Constants;
 pub enum Expression {
     LoadText(usize),
     LoadAttribute { key: usize, value: usize },
+    View(usize),
     Node(usize),
     For { data: usize, binding: usize },
     If(usize),
@@ -116,6 +117,7 @@ enum State {
     ExitScope,
     ParseFor,
     ParseIf,
+    ParseView,
     ParseIdent,
     ParseAttributes,
     ParseAttribute,
@@ -169,6 +171,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
                 State::EnterScope => self.enter_scope(),
                 State::ParseFor => self.parse_for(),
                 State::ParseIf => self.parse_if(),
+                State::ParseView => self.parse_view(),
                 State::ExitScope => self.exit_scope(),
                 State::ParseIdent => self.parse_ident(),
                 State::ParseAttributes => {
@@ -194,7 +197,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             State::EnterScope => self.state = State::ExitScope,
             State::ExitScope => self.state = State::ParseFor,
             State::ParseFor => self.state = State::ParseIf,
-            State::ParseIf => self.state = State::ParseIdent,
+            State::ParseIf => self.state = State::ParseView,
+            State::ParseView => self.state = State::ParseIdent,
             State::ParseIdent => self.state = State::ParseAttributes,
             State::ParseAttributes => self.state = State::ParseAttribute,
             State::ParseAttribute => self.state = State::ParseText,
@@ -352,6 +356,21 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
             self.next_state();
             Ok(Some(Expression::If(cond)))
+        } else {
+            self.next_state();
+            Ok(None)
+        }
+    }
+
+    fn parse_view(&mut self) -> Result<Option<Expression>> {
+        self.lexer.consume(true, false);
+        if self.lexer.consume_if(Kind::View)? {
+            self.lexer.consume(true, false);
+            let id = AttributeParser::new(&mut self.lexer).parse("")?;
+            let id = self.constants.store_attribute(id);
+            self.lexer.consume(true, false);
+            self.next_state();
+            Ok(Some(Expression::View(id)))
         } else {
             self.next_state();
             Ok(None)
@@ -796,6 +815,13 @@ mod test {
         assert_eq!(expressions.remove(0), Expression::ScopeStart);
         assert_eq!(expressions.remove(0), Expression::Node(2));
         assert_eq!(expressions.remove(0), Expression::ScopeEnd);
+    }
+
+    #[test]
+    fn parse_view() {
+        let src = "view 'mail'";
+        let mut expressions = parse_ok(src);
+        assert_eq!(expressions.remove(0), Expression::View(0));
     }
 
     #[test]

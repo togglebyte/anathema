@@ -37,7 +37,7 @@ impl<'parent> Layout<'parent> {
 #[derive(Debug)]
 // TODO: Rename this. It's a value store, but it needs a better name
 pub struct Store<'parent> {
-    root: &'parent DataCtx,
+    pub(crate) root: &'parent DataCtx,
     parent: Option<&'parent Store<'parent>>,
     pub inner: Layout<'parent>,
 }

@@ -6,6 +6,7 @@ use anathema_widget_core::contexts::{DataCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::template::Template;
+use anathema_widget_core::views::View;
 use anathema_widget_core::{Generator, Pos, Store, WidgetContainer};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
@@ -69,6 +70,10 @@ where
         };
 
         Ok(inst)
+    }
+
+    pub fn register_view(&mut self, name: impl Into<String>, view: impl View + 'static) {
+        self.ctx.views.register(name.into(), view);
     }
 
     fn layout(&mut self) -> Result<()> {

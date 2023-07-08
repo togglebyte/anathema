@@ -20,6 +20,7 @@ pub(crate) enum Expression {
         binding: usize,
         size: usize,
     },
+    View(usize),
     LoadText(usize),
     LoadAttribute {
         key: usize,
@@ -79,6 +80,10 @@ impl Optimizer {
                 &ParseExpr::For { data, binding } => {
                     self.opt_for(data, binding);
                     continue;
+                }
+                &ParseExpr::View(id) => {
+                    self.output.push(Expression::View(id));
+                    continue
                 }
                 &ParseExpr::Node(ident_index) => {
                     let start = self.output.len();

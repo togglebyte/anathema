@@ -4,16 +4,17 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use anathema_render::ScreenPos;
 
 mod attributes;
-pub mod contexts;
-pub mod error;
 mod gen;
 mod id;
-pub mod layout;
 mod lookup;
 mod path;
-pub mod template;
 mod values;
 mod widget;
+pub mod contexts;
+pub mod error;
+pub mod layout;
+pub mod template;
+pub mod views;
 
 // TODO: test only, or should this be available
 //       under a "test" feature flag maybe

@@ -94,8 +94,12 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                     let expr = &self.expressions[index];
 
                     match expr {
-                        Expression::Node(template) => {
-                            break Some(Factory::exec(template, values))
+                        Expression::Node(template) => break Some(Factory::exec(template, values)),
+                        Expression::View(id) => {
+                            let view = values.root.views.get(id).unwrap();
+                            let templates = view.templates();
+                            let scope = Scope::new(templates, values, self.index.dir);
+                            self.inner = Some(Box::new(scope));
                         }
                         Expression::For {
                             body,

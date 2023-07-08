@@ -29,6 +29,10 @@ impl<'vm> Scope<'vm> {
         loop {
             let instruction = self.instructions.remove(0);
             match instruction {
+                Instruction::View(id) => {
+                    let id = self.consts.lookup_attrib(id).cloned().unwrap(); // TODO: unwrap unwrap unwrap
+                    nodes.push(Template::View(id));
+                }
                 Instruction::Node { ident, scope_size } => {
                     let id = node_id.append(next);
                     next += 1;

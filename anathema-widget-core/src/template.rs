@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::gen::expressions::Expression;
 use crate::gen::store::Store;
 use crate::path::TextPath;
@@ -23,6 +25,7 @@ pub struct ControlFlow {
 /// generate widgets.
 #[derive(Debug)]
 pub enum Template {
+    View(Value),
     Node {
         ident: String,
         attributes: Attributes,
@@ -43,6 +46,22 @@ impl Template {
         values: &Store<'parent>,
     ) -> Expression<'tpl, 'parent> {
         match &self {
+            Template::View(id) => {
+                let id = match id {
+                    Value::String(s) => Cow::Borrowed(s.as_str()),
+                    Value::DataBinding(path) => {
+                        let val = path
+                            .lookup_value(values)
+                            .unwrap_or(&Value::Empty);
+                        match val {
+                            Value::String(s) => Cow::Borrowed(s.as_str()),
+                            _ => Cow::Owned(val.to_string()),
+                        }
+                    }
+                    _ => Cow::Owned(id.to_string()),
+                };
+                Expression::View(id)
+            }
             Template::Node { .. } => Expression::Node(&self),
             Template::Loop {
                 binding,
