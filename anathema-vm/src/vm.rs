@@ -1,6 +1,5 @@
 use anathema_compiler::{Constants, Instruction};
 use anathema_widget_core::template::Template;
-use anathema_widget_core::NodeId;
 
 use crate::error::Result;
 use crate::scope::Scope;
@@ -20,7 +19,7 @@ impl VirtualMachine {
 
     pub fn exec(self) -> Result<Vec<Template>> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
-        root_scope.exec(NodeId::empty())
+        root_scope.exec()
     }
 }
 
