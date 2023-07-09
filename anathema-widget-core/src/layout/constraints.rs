@@ -75,16 +75,6 @@ impl Constraints {
         self.max_height == usize::MAX
     }
 
-    /// Create new tight constraints.
-    pub fn tight(width: usize, height: usize) -> Self {
-        Self {
-            min_width: width,
-            min_height: height,
-            max_width: width,
-            max_height: height,
-        }
-    }
-
     /// Returns true if the `min_width` and `max_width` are the same.
     pub fn is_width_tight(&self) -> bool {
         self.max_width == self.min_width
@@ -93,31 +83,6 @@ impl Constraints {
     /// Returns true if the `min_height` and `max_height` are the same.
     pub fn is_height_tight(&self) -> bool {
         self.max_height == self.min_height
-    }
-
-    /// Constrain the size to fit inside the constraints.
-    pub fn constrain_size(&self, size: &mut Size) {
-        size.width = size.width.max(self.min_width);
-        size.height = size.height.max(self.min_height);
-        size.width = size.width.min(self.max_width);
-        size.height = size.height.min(self.max_height);
-    }
-
-    /// Change the constraints to fit within the `other` constraints.
-    pub fn fit_constraints(&mut self, other: &Constraints) {
-        self.min_width = self.min_width.max(other.min_width);
-        self.min_height = self.min_height.max(other.min_height);
-
-        self.max_width = self.max_width.min(other.max_width);
-        self.max_height = self.max_height.min(other.max_height);
-
-        if self.min_width > self.max_width {
-            self.min_width = self.max_width;
-        }
-
-        if self.min_height > self.max_height {
-            self.min_height = self.max_height;
-        }
     }
 
     /// Make the width constraint tight.
@@ -143,38 +108,6 @@ impl Constraints {
         self.max_height = self.max_height.min(height);
         self.min_height = self.max_height;
     }
-
-    /// Make the width unbounded
-    pub fn make_width_unbounded(&mut self) {
-        self.max_width = usize::MAX;
-    }
-
-    /// Make the height unbounded
-    pub fn make_height_unbounded(&mut self) {
-        self.max_height = usize::MAX;
-    }
-
-    /// Fit the width inside the constraint.
-    pub fn constrain_width(&self, width: &mut usize) {
-        if *width > self.max_width {
-            *width = self.max_width;
-        }
-
-        if self.min_width > *width {
-            *width = self.min_width;
-        }
-    }
-
-    /// Fit the height inside the constraint.
-    pub fn constrain_height(&self, height: &mut usize) {
-        if *height > self.max_height {
-            *height = self.max_height;
-        }
-
-        if self.min_height > *height {
-            *height = self.min_height;
-        }
-    }
 }
 
 #[cfg(test)]
@@ -182,104 +115,4 @@ mod test {
     use anathema_render::Size;
 
     use super::*;
-
-    #[test]
-    fn shrink_constrained_size() {
-        let mut size = Size::new(10, 10);
-        let expected = Size::new(9, 2);
-        let constraints = Constraints::new(9, 2);
-
-        constraints.constrain_size(&mut size);
-        assert_eq!(expected, size);
-    }
-
-    #[test]
-    fn grow_constrained_size() {
-        let mut size = Size::new(1, 1);
-        let expected = Size::new(10, 10);
-        let constraints = Constraints::tight(10, 10);
-
-        constraints.constrain_size(&mut size);
-        assert_eq!(expected, size);
-    }
-
-    #[test]
-    fn merge_constraints() {
-        let mut constraint_a = Constraints::new(10, 10);
-        let constraint_b = Constraints::new(15, 9);
-        constraint_a.fit_constraints(&constraint_b);
-        let expected = Constraints {
-            min_width: 0,
-            min_height: 0,
-            max_width: 10,
-            max_height: 9,
-        };
-        assert_eq!(expected, constraint_a);
-    }
-
-    #[test]
-    fn merge_constraints_with_min_values() {
-        let mut constraint_a = Constraints::new(10, 10);
-        constraint_a.min_width = 2;
-        let mut constraint_b = Constraints::new(15, 9);
-        constraint_b.min_height = 5;
-        constraint_a.fit_constraints(&constraint_b);
-        let expected = Constraints {
-            min_width: 2,
-            min_height: 5,
-            max_width: 10,
-            max_height: 9,
-        };
-        assert_eq!(expected, constraint_a);
-    }
-
-    #[test]
-    fn merge_constraints_with_lots_of_issues() {
-        let mut constraint_a = Constraints::tight(10, 10);
-        let mut constraint_b = Constraints::new(15, 9);
-        constraint_b.min_width = 12;
-
-        constraint_a.fit_constraints(&constraint_b);
-        let expected = Constraints {
-            min_width: 10,
-            min_height: 9,
-            max_width: 10,
-            max_height: 9,
-        };
-        assert_eq!(expected, constraint_a);
-    }
-
-    #[test]
-    fn constraint_fit_size() {
-        // Tight constraints
-        let mut size = Size::new(1, 1);
-        let constraints = Constraints::tight(10, 11);
-        constraints.constrain_width(&mut size.width);
-        constraints.constrain_height(&mut size.height);
-        assert_eq!(size.width, 10);
-        assert_eq!(size.height, 11);
-
-        // Min / max fit
-        let mut constraints = Constraints::new(10, 10);
-        constraints.min_width = 5;
-        constraints.min_height = 5;
-        let mut size = Size::new(12, 12);
-        constraints.constrain_width(&mut size.width);
-        constraints.constrain_height(&mut size.height);
-        assert_eq!(size.width, 10);
-        assert_eq!(size.height, 10);
-        let mut size = Size::ZERO;
-        constraints.constrain_width(&mut size.width);
-        constraints.constrain_height(&mut size.height);
-        assert_eq!(size.width, 5);
-        assert_eq!(size.height, 5);
-
-        // Unbounded constraints
-        let constraints = Constraints::unbounded();
-        let mut size = Size::new(123, 456);
-        constraints.constrain_width(&mut size.width);
-        constraints.constrain_height(&mut size.height);
-        assert_eq!(size.width, 123);
-        assert_eq!(size.height, 456);
-    }
 }

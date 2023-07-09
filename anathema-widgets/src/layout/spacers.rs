@@ -1,11 +1,33 @@
 use anathema_render::Size;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::Axis;
+use anathema_widget_core::layout::{Axis, Layout};
 use anathema_widget_core::WidgetContainer;
 
 use crate::Spacer;
 
+pub struct SpacerLayout;
+
+impl Layout for SpacerLayout {
+    fn layout<'widget, 'tpl, 'parent>(
+        &mut self,
+        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
+        children: &mut Vec<WidgetContainer<'tpl>>,
+        size: &mut Size,
+    ) -> Result<()> {
+        *size = Size::new(
+            ctx.constraints.min_width,
+            ctx.constraints.min_height,
+        );
+
+        Ok(())
+    }
+}
+
+/// Layout spacers.
+/// This is different to [`SpacerLayout`] which 
+/// does the layout of the children of a single [`Spacer`],
+/// whereas this does the layout of multiple [`Spacer`]s.
 pub fn layout(
     ctx: &mut LayoutCtx<'_, '_, '_>,
     children: &mut Vec<WidgetContainer<'_>>,

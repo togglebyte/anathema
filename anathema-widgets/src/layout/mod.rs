@@ -1,3 +1,4 @@
+pub mod border;
 pub mod expand;
 pub mod horizontal;
 pub mod many;

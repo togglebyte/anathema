@@ -1,9 +1,12 @@
 use anathema_render::Size;
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Layouts;
 use anathema_widget_core::{
     AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
 };
+
+use crate::layout::spacers::SpacerLayout;
 
 /// Expand to fill in all available space.
 ///
@@ -31,18 +34,17 @@ impl Widget for Spacer {
 
     fn layout(
         &mut self,
-        ctx: LayoutCtx<'_, '_, '_>,
-        _children: &mut Vec<WidgetContainer<'_>>,
+        mut ctx: LayoutCtx<'_, '_, '_>,
+        _: &mut Vec<WidgetContainer<'_>>,
     ) -> Result<Size> {
         // debug_assert!(
         //     ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
         //     "the layout context needs to be tight for a spacer"
         // );
 
-        Ok(Size::new(
-            ctx.constraints.min_width,
-            ctx.constraints.min_height,
-        ))
+        Layouts::new(SpacerLayout, &mut ctx)
+            .layout(&mut vec![])?
+            .size()
     }
 
     fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {}
@@ -68,8 +70,8 @@ mod test {
     use anathema_widget_core::template::{template, template_text};
     use anathema_widget_core::testing::FakeTerm;
 
-    use crate::{Border, VStack};
     use crate::testing::test_widget;
+    use crate::{Border, VStack};
 
     #[test]
     fn space_out_hstack() {
