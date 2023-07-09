@@ -62,12 +62,17 @@ impl FakeTerm {
     }
 }
 
-pub fn test_widget(widget: impl Widget + 'static, children: &[Template], expected: FakeTerm) {
-    let widget = WidgetContainer::new(Box::new(widget), children);
+pub fn test_widget(
+    widget: impl Widget + 'static,
+    children: impl Into<Vec<Template>>,
+    expected: FakeTerm,
+) {
+    let children = children.into();
+    let widget = WidgetContainer::new(Box::new(widget), children.into());
     test_widget_container(widget, expected)
 }
 
-pub fn test_widget_container(mut widget: WidgetContainer<'_>, mut expected: FakeTerm) {
+pub fn test_widget_container(mut widget: WidgetContainer, mut expected: FakeTerm) {
     // Layout
     let constraints = Constraints::new(Some(expected.size.width), Some(expected.size.height));
     let data = DataCtx::default();

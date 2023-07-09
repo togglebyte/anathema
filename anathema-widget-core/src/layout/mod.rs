@@ -14,10 +14,10 @@ use crate::error::Result;
 use crate::WidgetContainer;
 
 pub trait Layout {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()>;
 }
@@ -25,14 +25,14 @@ pub trait Layout {
 // -----------------------------------------------------------------------------
 //   - Layouts -
 // -----------------------------------------------------------------------------
-pub struct Layouts<'ctx, 'widget, 'tpl, 'parent, T> {
-    pub ctx: &'ctx mut LayoutCtx<'widget, 'tpl, 'parent>,
+pub struct Layouts<'ctx, 'widget, 'parent, T> {
+    pub ctx: &'ctx mut LayoutCtx<'widget, 'parent>,
     pub size: Size,
     pub layout: T,
 }
 
-impl<'ctx, 'widget, 'tpl, 'parent, T: Layout> Layouts<'ctx, 'widget, 'tpl, 'parent, T> {
-    pub fn new(layout: T, ctx: &'ctx mut LayoutCtx<'widget, 'tpl, 'parent>) -> Self {
+impl<'ctx, 'widget, 'parent, T: Layout> Layouts<'ctx, 'widget, 'parent, T> {
+    pub fn new(layout: T, ctx: &'ctx mut LayoutCtx<'widget, 'parent>) -> Self {
         Self {
             ctx,
             layout,
@@ -40,7 +40,7 @@ impl<'ctx, 'widget, 'tpl, 'parent, T: Layout> Layouts<'ctx, 'widget, 'tpl, 'pare
         }
     }
 
-    pub fn layout(&mut self, children: &mut Vec<WidgetContainer<'tpl>>) -> Result<&mut Self> {
+    pub fn layout(&mut self, children: &mut Vec<WidgetContainer>) -> Result<&mut Self> {
         self.layout.layout(self.ctx, children, &mut self.size)?;
         Ok(self)
     }

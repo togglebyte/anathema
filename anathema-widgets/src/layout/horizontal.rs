@@ -16,10 +16,10 @@ impl Horizontal {
 }
 
 impl Layout for Horizontal {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {
         self.0.layout(ctx, children, size)

@@ -66,8 +66,8 @@ impl Constants {
     }
 
     // TODO: calling this attribute is a bit misleading.
-    // an attribute on a node: `node [attribute: here]`, but this 
-    // does more than load attributes, it loads conditions for `if` and 
+    // an attribute on a node: `node [attribute: here]`, but this
+    // does more than load attributes, it loads conditions for `if` and
     // data bindings for `for`
     pub fn lookup_attrib(&self, index: usize) -> Option<&Value> {
         self.attribs.get(index)

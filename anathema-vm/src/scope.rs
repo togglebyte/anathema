@@ -51,7 +51,7 @@ impl<'vm> Scope<'vm> {
                     let template = Template::Loop {
                         binding,
                         data,
-                        body,
+                        body: body.into(),
                     };
 
                     nodes.push(template);
@@ -65,7 +65,7 @@ impl<'vm> Scope<'vm> {
                     let mut control_flow = vec![];
                     control_flow.push(ControlFlow {
                         cond: Cond::If(cond),
-                        body,
+                        body: body.into(),
                     });
 
                     loop {
@@ -80,7 +80,7 @@ impl<'vm> Scope<'vm> {
 
                         control_flow.push(ControlFlow {
                             cond: Cond::Else(cond),
-                            body,
+                            body: body.into(),
                         });
                     }
 
@@ -135,7 +135,7 @@ impl<'vm> Scope<'vm> {
             ident: ident.to_string(),
             attributes,
             text,
-            children,
+            children: children.into(),
         };
 
         Ok(node)

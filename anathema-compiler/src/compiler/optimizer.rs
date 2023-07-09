@@ -83,7 +83,7 @@ impl Optimizer {
                 }
                 &ParseExpr::View(id) => {
                     self.output.push(Expression::View(id));
-                    continue
+                    continue;
                 }
                 &ParseExpr::Node(ident_index) => {
                     let start = self.output.len();

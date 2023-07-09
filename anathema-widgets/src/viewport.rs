@@ -47,10 +47,10 @@ impl Widget for Viewport {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let many = Many::new(self.direction, self.axis, self.offset, true);
         let mut layout = Layouts::new(many, &mut ctx);
@@ -59,7 +59,7 @@ impl Widget for Viewport {
         layout.size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let mut pos = ctx.pos;
         if let Direction::Backward = self.direction {
             match self.axis {
@@ -100,11 +100,7 @@ impl Widget for Viewport {
         }
     }
 
-    fn paint<'tpl>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'tpl>],
-    ) {
+    fn paint(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         let region = ctx.create_region();
         for child in children {
             let ctx = ctx.sub_context(Some(&region));
@@ -148,7 +144,7 @@ mod test {
         let body = children(10);
         test_widget(
             Viewport::new(Direction::Forward, Axis::Vertical, 0),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -169,7 +165,7 @@ mod test {
         let body = children(10);
         test_widget(
             Viewport::new(Direction::Forward, Axis::Horizontal, 0),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -190,7 +186,7 @@ mod test {
         let body = children(10);
         test_widget(
             Viewport::new(Direction::Backward, Axis::Vertical, 0),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -211,7 +207,7 @@ mod test {
         let body = children(10);
         test_widget(
             Viewport::new(Direction::Backward, Axis::Horizontal, 0),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -232,7 +228,7 @@ mod test {
         let body = children(10);
         test_widget(
             Viewport::new(Direction::Forward, Axis::Vertical, 2),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -253,7 +249,7 @@ mod test {
         let body = children(10);
         test_widget(
             Viewport::new(Direction::Forward, Axis::Horizontal, 2),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

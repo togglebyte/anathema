@@ -94,7 +94,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             Kind::Colon
             | Kind::Comma
             | Kind::RDoubleCurly
-            | Kind::Pipe
             | Kind::Fullstop
             | Kind::LBracket
             | Kind::RBracket
@@ -371,6 +370,12 @@ mod test {
             attribs.get("ansi").and_then(Value::to_color).unwrap(),
             Color::AnsiValue(0),
         );
+    }
+
+    #[test]
+    fn ident_with_pipes() {
+        let values = parse_value("widget [meow: a|b|c]", "meow").to_string();
+        assert_eq!(values, "a|b|c");
     }
 
     #[test]

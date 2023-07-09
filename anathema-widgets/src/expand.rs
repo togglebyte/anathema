@@ -95,10 +95,10 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let mut size = Layouts::new(Single, &mut ctx).layout(children)?.size()?;
 
@@ -114,17 +114,13 @@ impl Widget for Expand {
         Ok(size)
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         if let Some(c) = children.first_mut() {
             c.position(ctx.pos)
         }
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         if !self.fill.is_empty() {
             for y in 0..ctx.local_size.height {
                 let mut used_width = 0;
@@ -166,8 +162,8 @@ mod test {
     use anathema_widget_core::testing::FakeTerm;
 
     use super::*;
-    use crate::{Border, HStack, VStack};
     use crate::testing::test_widget;
+    use crate::{Border, HStack, VStack};
 
     #[test]
     fn expand_border() {
@@ -175,7 +171,7 @@ mod test {
         let body = [template("expand", (), vec![])];
         test_widget(
             border,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -209,7 +205,7 @@ mod test {
 
         test_widget(
             stack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -243,7 +239,7 @@ mod test {
 
         test_widget(
             stack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -265,14 +261,14 @@ mod test {
     #[test]
     fn expand_horz() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             [("axis", Axis::Horizontal)],
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -290,14 +286,14 @@ mod test {
     #[test]
     fn expand_vert() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             [("axis", Axis::Vertical)],
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -317,14 +313,14 @@ mod test {
     #[test]
     fn expand_all() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             (),
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -344,14 +340,14 @@ mod test {
     #[test]
     fn expand_with_padding() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             [("padding", 1)],
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -398,7 +394,7 @@ mod test {
 
         test_widget(
             vstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗

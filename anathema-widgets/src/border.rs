@@ -1,15 +1,14 @@
 use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
-use anathema_widget_core::error::{Error, Result};
-use anathema_widget_core::layout::{Constraints, Layouts};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Layouts;
 use anathema_widget_core::{
-    fields, AnyWidget, Generator, LocalPos, TextPath, Value, ValuesAttributes, Widget,
-    WidgetContainer, WidgetFactory,
+    fields, AnyWidget, LocalPos, TextPath, Value, ValuesAttributes, Widget, WidgetContainer,
+    WidgetFactory,
 };
 use unicode_width::UnicodeWidthChar;
 
 use crate::layout::border::BorderLayout;
-use crate::layout::single::Single;
 
 // -----------------------------------------------------------------------------
 //     - Indices -
@@ -268,10 +267,10 @@ impl Widget for Border {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let border_layout = BorderLayout {
             min_height: self.min_height,
@@ -284,11 +283,7 @@ impl Widget for Border {
         layout.layout(children)?.size()
     }
 
-    fn position<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn position<'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let child = match children.first_mut() {
             Some(child) => child,
             None => return,
@@ -305,11 +300,7 @@ impl Widget for Border {
         child.position(ctx.pos);
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         // Draw the child
         if let Some(child) = children.first_mut() {
             let clipping_region = ctx.create_region();
@@ -446,7 +437,7 @@ mod test {
     fn thin_border() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::ALL, 5, 4),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗
@@ -466,7 +457,7 @@ mod test {
     fn thick_border() {
         test_widget(
             Border::new(BorderStyle::Thick, Sides::ALL, 5, 4),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗
@@ -491,7 +482,7 @@ mod test {
                 5,
                 4,
             ),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗
@@ -511,7 +502,7 @@ mod test {
     fn border_top() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::TOP, 5, 2),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -527,7 +518,7 @@ mod test {
     fn border_top_bottom() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::TOP | Sides::BOTTOM, 5, 4),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -545,7 +536,7 @@ mod test {
     fn border_left() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::LEFT, 1, 2),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -563,7 +554,7 @@ mod test {
     fn border_right() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::RIGHT, 3, 2),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -581,7 +572,7 @@ mod test {
     fn border_top_left() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::TOP | Sides::LEFT, 4, 3),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -599,7 +590,7 @@ mod test {
     fn border_bottom_right() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, 4, 3),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -617,7 +608,7 @@ mod test {
     fn unsized_empty_border() {
         test_widget(
             Border::new(BorderStyle::Thin, Sides::BOTTOM | Sides::RIGHT, None, None),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -636,7 +627,7 @@ mod test {
         let body = [template_text("hello world")];
         test_widget(
             Border::new(BorderStyle::Thin, Sides::ALL, None, None),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
@@ -655,7 +646,7 @@ mod test {
         let body = [template_text("hello world")];
         test_widget(
             Border::new(BorderStyle::Thin, Sides::ALL, 7, 4),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═══╗

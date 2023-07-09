@@ -16,15 +16,12 @@ pub enum Direction {
 // -----------------------------------------------------------------------------
 //   - Generator -
 // -----------------------------------------------------------------------------
-pub struct Generator<'tpl, 'parent> {
-    scope: Scope<'tpl, 'parent>,
+pub struct Generator<'parent> {
+    scope: Scope<'parent>,
 }
 
-impl<'tpl, 'parent> Generator<'tpl, 'parent> {
-    pub fn new(
-        templates: &'tpl [Template],
-        values: &mut Store<'parent>,
-    ) -> Self {
+impl<'parent> Generator<'parent> {
+    pub fn new(templates: &'parent [Template], values: &mut Store<'parent>) -> Self {
         Self {
             scope: Scope::new(templates, values, Direction::Forward),
         }
@@ -40,7 +37,7 @@ impl<'tpl, 'parent> Generator<'tpl, 'parent> {
         self.scope.flip();
     }
 
-    pub fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer<'tpl>>> {
+    pub fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer>> {
         self.scope.next(values)
     }
 }

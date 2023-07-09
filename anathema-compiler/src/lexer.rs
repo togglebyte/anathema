@@ -22,7 +22,6 @@ pub(crate) enum Kind<'src> {
     Ident(&'src str),
     Newline,
     Number(Number),
-    Pipe,
     Fullstop,
     LBracket,
     RBracket,
@@ -119,7 +118,6 @@ impl<'src> Lexer<'src> {
             (')', _) => Ok(Kind::RParen.to_token(index)),
             (':', _) => Ok(Kind::Colon.to_token(index)),
             (',', _) => Ok(Kind::Comma.to_token(index)),
-            ('|', _) => Ok(Kind::Pipe.to_token(index)),
             ('.', _) => Ok(Kind::Fullstop.to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
 
@@ -223,7 +221,8 @@ impl<'src> Lexer<'src> {
 
     fn take_ident(&mut self, index: usize) -> Kind<'src> {
         let mut end = index;
-        while let Some((e, 'a'..='z' | 'A'..='Z' | '-' | '_' | '0'..='9')) = self.chars.peek() {
+        while let Some((e, 'a'..='z' | 'A'..='Z' | '-' | '_' | '|' | '0'..='9')) = self.chars.peek()
+        {
             end = *e;
             self.chars.next();
         }
@@ -335,7 +334,6 @@ mod test {
             ("]", Kind::RBracket),
             (":", Kind::Colon),
             (",", Kind::Comma),
-            ("|", Kind::Pipe),
             ("\n", Kind::Newline),
         ];
 

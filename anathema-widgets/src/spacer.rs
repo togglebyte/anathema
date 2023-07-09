@@ -32,11 +32,7 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(
-        &mut self,
-        mut ctx: LayoutCtx<'_, '_, '_>,
-        _: &mut Vec<WidgetContainer<'_>>,
-    ) -> Result<Size> {
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_>, _: &mut Vec<WidgetContainer>) -> Result<Size> {
         // debug_assert!(
         //     ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
         //     "the layout context needs to be tight for a spacer"
@@ -47,9 +43,9 @@ impl Widget for Spacer {
             .size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {}
+    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {}
 
-    fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {}
+    fn paint<'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer]) {}
 }
 
 pub(crate) struct SpacerFactory;
@@ -87,7 +83,7 @@ mod test {
         )];
         test_widget(
             border,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -114,7 +110,7 @@ mod test {
         ];
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -142,7 +138,7 @@ mod test {
         ];
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

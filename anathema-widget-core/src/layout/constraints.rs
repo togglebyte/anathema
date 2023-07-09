@@ -1,5 +1,3 @@
-use anathema_render::Size;
-
 /// `Constraints` are used to ensure that a widget doesn't size it self outside of a set of given bounds.
 /// A constraint can be tight, meaning then minimum and maximum width / height are the same.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -111,8 +109,4 @@ impl Constraints {
 }
 
 #[cfg(test)]
-mod test {
-    use anathema_render::Size;
-
-    use super::*;
-}
+mod test {}

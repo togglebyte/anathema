@@ -3,24 +3,24 @@ use std::borrow::Cow;
 use crate::template::Template;
 use crate::Value;
 
-pub enum Expression<'tpl: 'parent, 'parent> {
-    Node(&'tpl Template),
+pub enum Expression<'parent> {
+    Node(&'parent Template),
     View(Cow<'parent, str>),
     For {
-        body: &'tpl [Template],
+        body: &'parent [Template],
         binding: &'parent str,
         collection: &'parent [Value],
     },
-    Block(&'tpl [Template]),
+    Block(&'parent [Template]),
 }
 
-impl<'tpl, 'parent> Expression<'tpl, 'parent> {
-    pub fn node(template: &'tpl Template) -> Self {
+impl<'parent> Expression<'parent> {
+    pub fn node(template: &'parent Template) -> Self {
         Self::Node(template)
     }
 
     pub fn for_loop(
-        body: &'tpl [Template],
+        body: &'parent [Template],
         binding: &'parent str,
         collection: &'parent [Value],
     ) -> Self {

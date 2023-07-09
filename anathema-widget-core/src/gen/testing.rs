@@ -15,15 +15,15 @@ use crate::{
 pub struct TestWidget(pub String);
 
 impl Widget for TestWidget {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        _: LayoutCtx<'widget, 'tpl, 'parent>,
-        _: &mut Vec<WidgetContainer<'tpl>>,
+        _: LayoutCtx<'widget, 'parent>,
+        _: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         Ok(Size::new(self.0.width(), 1))
     }
 
-    fn position<'tpl>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'tpl>]) {}
+    fn position<'tpl>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {}
 }
 
 struct TestWidgetFactory;
@@ -46,7 +46,7 @@ pub fn test_template(text: impl Into<TextPath>) -> Template {
         ident: "testwidget".into(),
         attributes: Attributes::empty(),
         text: Some(text.into()),
-        children: vec![],
+        children: std::sync::Arc::new([]),
     }
 }
 
@@ -57,7 +57,7 @@ pub struct TestSetup {
 
 impl TestSetup {
     pub fn new() -> Self {
-        Factory::register("testwidget", TestWidgetFactory);
+        let _ = Factory::register("testwidget", TestWidgetFactory);
         Self {
             templates: vec![],
             root: DataCtx::default(),
@@ -94,11 +94,11 @@ impl TestSetup {
 
 pub struct TestScope<'a> {
     values: Store<'a>,
-    pub inner: Scope<'a, 'a>,
+    pub inner: Scope<'a>,
 }
 
-impl<'a> TestScope<'a> {
-    pub fn next_unchecked(&mut self) -> WidgetContainer<'a> {
+impl TestScope<'_> {
+    pub fn next_unchecked(&mut self) -> WidgetContainer {
         self.inner.next(&mut self.values).unwrap().unwrap()
     }
 
@@ -108,8 +108,8 @@ impl<'a> TestScope<'a> {
     }
 }
 
-impl<'a> Iterator for TestScope<'a> {
-    type Item = WidgetContainer<'a>;
+impl Iterator for TestScope<'_> {
+    type Item = WidgetContainer;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next(&mut self.values).transpose().unwrap()

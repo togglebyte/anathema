@@ -13,10 +13,10 @@ pub struct BorderLayout {
 }
 
 impl Layout for BorderLayout {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {
         // If there is a min width / height, make sure the minimum constraints
@@ -47,7 +47,7 @@ impl Layout for BorderLayout {
         let border_size = self.border_size;
 
         let mut values = ctx.values.next();
-        let mut gen = Generator::new(ctx.templates, &mut values);
+        let mut gen = Generator::new(&ctx.templates, &mut values);
 
         *size = match gen.next(&mut values).transpose()? {
             Some(mut widget) => {
@@ -77,9 +77,8 @@ impl Layout for BorderLayout {
                     return Err(Error::InsufficientSpaceAvailble);
                 }
 
-                let mut size = widget.layout(constraints, &values)?
-                    + border_size
-                    + ctx.padding_size();
+                let mut size =
+                    widget.layout(constraints, &values)? + border_size + ctx.padding_size();
 
                 children.push(widget);
 

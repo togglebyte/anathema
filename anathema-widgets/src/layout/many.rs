@@ -119,14 +119,14 @@ impl Many {
 }
 
 impl Layout for Many {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {
         let mut values = ctx.values.next();
-        let mut gen = Generator::new(ctx.templates, &mut values);
+        let mut gen = Generator::new(&ctx.templates, &mut values);
         let max_constraints = ctx.padded_constraints();
 
         let mut used_size = SizeMod::new(

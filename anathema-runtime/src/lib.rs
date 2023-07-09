@@ -1,4 +1,5 @@
 use std::io::{stdout, Stdout};
+use std::sync::Arc;
 use std::time::Instant;
 
 use anathema_render::{size, Screen, Size};
@@ -17,33 +18,33 @@ use crate::events::{EventProvider, Events};
 pub mod events;
 mod meta;
 
-pub struct Runtime<'tpl, E, ER> {
+pub struct Runtime<E, ER> {
     pub enable_meta: bool,
     meta: Meta,
-    templates: &'tpl [Template],
+    templates: Arc<[Template]>,
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
-    current_frame: Vec<WidgetContainer<'tpl>>,
+    current_frame: Vec<WidgetContainer>,
     ctx: DataCtx,
     events: E,
     event_receiver: ER,
 }
 
-impl<E, ER> Drop for Runtime<'_, E, ER> {
+impl<E, ER> Drop for Runtime<E, ER> {
     fn drop(&mut self) {
         let _ = Screen::show_cursor(&mut self.output);
         let _ = disable_raw_mode();
     }
 }
 
-impl<'tpl, E, ER> Runtime<'tpl, E, ER>
+impl<E, ER> Runtime<E, ER>
 where
     E: Events,
     ER: EventProvider,
 {
     pub fn new(
-        templates: &'tpl [Template],
+        templates: impl Into<Arc<[Template]>>,
         ctx: DataCtx,
         events: E,
         event_receiver: ER,
@@ -61,7 +62,7 @@ where
             meta: Meta::new(size),
             screen,
             constraints,
-            templates,
+            templates: templates.into(),
             current_frame: vec![],
             ctx,
             events,

@@ -44,8 +44,8 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 pub fn layout(
-    ctx: &mut LayoutCtx<'_, '_, '_>,
-    children: &mut Vec<WidgetContainer<'_>>,
+    ctx: &mut LayoutCtx<'_, '_>,
+    children: &mut Vec<WidgetContainer>,
     axis: Axis,
 ) -> Result<Size> {
     let expansions = children

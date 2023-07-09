@@ -37,7 +37,9 @@ mod test {
         let vm = VirtualMachine::new(instructions, consts);
         let vstack_gen = vm.exec().unwrap().remove(0);
 
-        let Template::Node { ident, .. } = vstack_gen else { panic!("wrong kind") };
+        let Template::Node { ident, .. } = vstack_gen else {
+            panic!("wrong kind")
+        };
 
         assert_eq!(ident, "vstack");
     }
@@ -54,7 +56,9 @@ mod test {
 
         assert!(matches!(for_loop, Template::Loop { .. }));
 
-        let Template::Loop { binding, .. } = for_loop else { panic!("wrong kind") };
+        let Template::Loop { binding, .. } = for_loop else {
+            panic!("wrong kind")
+        };
 
         assert_eq!(binding, "x");
     }

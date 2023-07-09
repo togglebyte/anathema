@@ -39,10 +39,10 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
         layout.layout(children)?;
@@ -54,7 +54,7 @@ impl Widget for Alignment {
         }
     }
 
-    fn position(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'_>]) {
+    fn position(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         if let Some(child) = children.first_mut() {
             let alignment = self.alignment;
 
@@ -111,7 +111,7 @@ mod test {
         let text = template_text("AB");
         let alignment = Alignment::new(align);
         let body = [text];
-        test_widget(alignment, &body, expected);
+        test_widget(alignment, body, expected);
     }
 
     #[test]

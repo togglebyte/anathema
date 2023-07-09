@@ -7,10 +7,10 @@ use anathema_widget_core::{Generator, WidgetContainer};
 pub struct Stacked;
 
 impl Layout for Stacked {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {
         let mut width = 0;
@@ -18,7 +18,7 @@ impl Layout for Stacked {
 
         let constraints = ctx.padded_constraints();
         let mut values = ctx.values.next();
-        let mut gen = Generator::new(ctx.templates, &mut values);
+        let mut gen = Generator::new(&ctx.templates, &mut values);
 
         while let Some(widget) = gen.next(&mut values).transpose()? {
             let index = children.len();

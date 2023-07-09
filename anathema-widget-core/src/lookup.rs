@@ -13,7 +13,7 @@ use crate::{TextPath, WidgetContainer};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 
-pub trait WidgetFactory : Send + Sync {
+pub trait WidgetFactory: Send + Sync {
     fn make(
         &self,
         store: ValuesAttributes<'_, '_>,
@@ -29,7 +29,7 @@ impl Factory {
     pub fn exec<'tpl, 'parent>(
         template: &'tpl Template,
         values: &Store<'parent>,
-    ) -> Result<WidgetContainer<'tpl>> {
+    ) -> Result<WidgetContainer> {
         match &template {
             Template::Node {
                 ident,
@@ -49,7 +49,7 @@ impl Factory {
                 let widget = factory.make(values, text.as_ref())?;
                 drop(factories);
 
-                let mut container = WidgetContainer::new(widget, children);
+                let mut container = WidgetContainer::new(widget, children.clone());
                 container.background = background;
                 container.padding = padding;
                 container.display = display;
@@ -59,10 +59,7 @@ impl Factory {
         }
     }
 
-    pub fn register(
-        ident: impl Into<String>,
-        factory: impl WidgetFactory + 'static,
-    ) -> Result<()> {
+    pub fn register(ident: impl Into<String>, factory: impl WidgetFactory + 'static) -> Result<()> {
         let ident = ident.into();
         if RESERVED_NAMES.contains(&ident.as_str()) {
             return Err(Error::ReservedName(ident));

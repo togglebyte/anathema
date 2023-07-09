@@ -92,10 +92,10 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
         layout.layout(children)?;
@@ -108,11 +108,7 @@ impl Widget for Position {
         layout.size()
     }
 
-    fn position<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn position<'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let child = match children.first_mut() {
             Some(c) => c,
             None => return,
@@ -177,7 +173,7 @@ mod test {
 
         test_widget(
             Position::new(HorzEdge::Left(0), VertEdge::Top(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -196,7 +192,7 @@ mod test {
         let body = [template_text("top right")];
         test_widget(
             Position::new(HorzEdge::Right(0), VertEdge::Top(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -215,7 +211,7 @@ mod test {
         let body = [template_text("bottom right")];
         test_widget(
             Position::new(HorzEdge::Right(0), VertEdge::Bottom(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -234,7 +230,7 @@ mod test {
         let body = [template_text("bottom left")];
         test_widget(
             Position::new(HorzEdge::Left(0), VertEdge::Bottom(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

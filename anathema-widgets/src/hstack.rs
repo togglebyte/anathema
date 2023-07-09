@@ -58,10 +58,10 @@ impl Widget for HStack {
         "HStack"
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         if let Some(width) = self.width {
             ctx.constraints.max_width = ctx.constraints.max_width.min(width);
@@ -81,7 +81,7 @@ impl Widget for HStack {
             .size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let mut pos = ctx.pos;
         for widget in children {
             widget.position(pos);
@@ -127,7 +127,7 @@ mod test {
         let body = children(3);
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -148,7 +148,7 @@ mod test {
         let body = children(10);
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

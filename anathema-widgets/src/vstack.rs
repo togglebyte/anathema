@@ -65,10 +65,10 @@ impl Widget for VStack {
         "VStack"
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         if let Some(width) = self.width {
             ctx.constraints.max_width = ctx.constraints.max_width.min(width);
@@ -88,7 +88,7 @@ impl Widget for VStack {
             .size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let mut pos = ctx.pos;
         for widget in children {
             widget.position(pos);
@@ -134,7 +134,7 @@ mod test {
         let vstack = VStack::new(None, None);
         test_widget(
             vstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -159,7 +159,7 @@ mod test {
         let vstack = VStack::new(None, 6);
         test_widget(
             vstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

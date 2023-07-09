@@ -9,10 +9,10 @@ use crate::error::Result;
 use crate::template::Template;
 use crate::{Factory, Value, WidgetContainer};
 
-enum State<'tpl, 'parent> {
+enum State<'parent> {
     Block,
     Loop {
-        body: &'tpl [Template],
+        body: &'parent [Template],
         binding: &'parent str,
         collection: &'parent [Value],
         value_index: Index,
@@ -22,16 +22,16 @@ enum State<'tpl, 'parent> {
 // -----------------------------------------------------------------------------
 //   - Scope -
 // -----------------------------------------------------------------------------
-pub struct Scope<'tpl, 'parent> {
-    pub(crate) expressions: Vec<Expression<'tpl, 'parent>>,
-    state: State<'tpl, 'parent>,
-    inner: Option<Box<Scope<'tpl, 'parent>>>,
+pub struct Scope<'parent> {
+    pub(crate) expressions: Vec<Expression<'parent>>,
+    state: State<'parent>,
+    inner: Option<Box<Scope<'parent>>>,
     index: Index,
 }
 
-impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
+impl<'parent> Scope<'parent> {
     pub(crate) fn new(
-        templates: &'tpl [Template],
+        templates: &'parent [Template],
         values: &Store<'parent>,
         dir: Direction,
     ) -> Self {
@@ -41,7 +41,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
             .collect::<Vec<_>>();
 
         Self {
-            index: Index::new(dir, expressions.len()),
+            index: Index::new(dir, templates.len()),
             expressions,
             inner: None,
             state: State::Block,
@@ -78,10 +78,7 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
         }
     }
 
-    pub(crate) fn next(
-        &mut self,
-        values: &mut Store<'parent>,
-    ) -> Option<Result<WidgetContainer<'tpl>>> {
+    pub(crate) fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer>> {
         loop {
             match self.inner.as_mut().and_then(|scope| scope.next(values)) {
                 next @ Some(_) => break next,
@@ -96,10 +93,13 @@ impl<'tpl: 'parent, 'parent> Scope<'tpl, 'parent> {
                     match expr {
                         Expression::Node(template) => break Some(Factory::exec(template, values)),
                         Expression::View(id) => {
-                            // let view = values.root.views.get(id).unwrap();
-                            // let templates = view.templates();
-                            // let scope = Scope::new(templates, values, self.index.dir);
-                            // self.inner = Some(Box::new(scope));
+                            let view = match values.root.views.get(&*id) {
+                                Some(view) => view,
+                                None => continue,
+                            };
+                            let templates = view.templates();
+                            let scope = Scope::new(&templates, values, self.index.dir);
+                            self.inner = Some(Box::new(scope));
                         }
                         Expression::For {
                             body,
