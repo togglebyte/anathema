@@ -302,7 +302,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
         let ident = self.lexer.read_ident()?;
 
-        let index = self.constants.store_ident(ident);
+        let index = self.constants.store_string(ident);
         self.lexer.consume(true, false);
         self.next_state();
         Ok(Some(Expression::Node(index)))
@@ -322,10 +322,10 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             let _ = self.lexer.next();
             self.lexer.consume(true, false);
 
-            let binding = self.constants.store_ident(binding);
+            let binding = self.constants.store_string(binding);
 
             let data = AttributeParser::new(&mut self.lexer).parse("")?;
-            let data = self.constants.store_attribute(data);
+            let data = self.constants.store_value(data);
             self.lexer.consume(true, false);
 
             self.next_state();
@@ -351,7 +351,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             self.lexer.consume(true, false);
 
             let cond = AttributeParser::new(&mut self.lexer).parse("")?;
-            let cond = self.constants.store_attribute(cond);
+            let cond = self.constants.store_value(cond);
             self.lexer.consume(true, false);
 
             self.next_state();
@@ -367,7 +367,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         if self.lexer.consume_if(Kind::View)? {
             self.lexer.consume(true, false);
             let id = AttributeParser::new(&mut self.lexer).parse("")?;
-            let id = self.constants.store_attribute(id);
+            let id = self.constants.store_value(id);
             self.lexer.consume(true, false);
             self.next_state();
             Ok(Some(Expression::View(id)))
@@ -423,8 +423,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             return Err(self.lexer.error(ErrorKind::UnterminatedAttributes));
         }
 
-        let key = self.constants.store_ident(left);
-        let value = self.constants.store_attribute(right);
+        let key = self.constants.store_string(left);
+        let value = self.constants.store_value(right);
 
         Ok(Some(Expression::LoadAttribute { key, value }))
     }

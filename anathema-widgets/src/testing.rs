@@ -1,6 +1,6 @@
 use anathema_widget_core::template::Template;
-use anathema_widget_core::testing::{test_widget as core_test_widget, FakeTerm};
 use anathema_widget_core::Widget;
+use anathema_widget_core::testing::{test_widget as core_test_widget, FakeTerm};
 
 pub fn test_widget(
     widget: impl Widget + 'static,

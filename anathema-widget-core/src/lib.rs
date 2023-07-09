@@ -16,8 +16,7 @@ mod values;
 pub mod views;
 mod widget;
 
-// TODO: test only, or should this be available
-//       under a "test" feature flag maybe
+#[cfg(feature = "testing")]
 pub mod testing;
 
 pub use anathema_render::Color;

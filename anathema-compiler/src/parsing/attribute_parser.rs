@@ -162,8 +162,8 @@ mod test {
         for inst in instructions {
             match inst {
                 Expression::LoadAttribute { key, value } => {
-                    let key = consts.idents.get(key).unwrap();
-                    let value = consts.attribs.get(value).unwrap();
+                    let key = consts.strings.get(key).unwrap();
+                    let value = consts.vaules.get(value).unwrap();
                     attrs.set(key, value.clone());
                 }
                 _ => continue,

@@ -51,7 +51,7 @@ mod test {
         ";
         let (instructions, consts) = compile(src).unwrap();
         let vm = VirtualMachine::new(instructions, consts);
-        let mut for_loop = vm.exec().unwrap().remove(0);
+        let for_loop = vm.exec().unwrap().remove(0);
 
         assert!(matches!(for_loop, Template::Loop { .. }));
 

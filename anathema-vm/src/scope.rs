@@ -2,7 +2,7 @@ use anathema_compiler::{Constants, Instruction};
 use anathema_widget_core::template::{Cond, ControlFlow, Template};
 use anathema_widget_core::{Attributes, TextPath};
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 static FILE_BUG_REPORT: &str = "consts have been modified, this is a bug with Anathema, file a bug report please";
 
@@ -30,7 +30,7 @@ impl<'vm> Scope<'vm> {
             let instruction = self.instructions.remove(0);
             match instruction {
                 Instruction::View(id) => {
-                    let id = self.consts.lookup_attrib(id).cloned().expect(FILE_BUG_REPORT);
+                    let id = self.consts.lookup_value(id).cloned().expect(FILE_BUG_REPORT);
                     nodes.push(Template::View(id));
                 }
                 Instruction::Node { ident, scope_size } => {
@@ -41,8 +41,8 @@ impl<'vm> Scope<'vm> {
                     data,
                     size,
                 } => {
-                    let binding = self.consts.lookup_ident(binding).expect(FILE_BUG_REPORT).to_string();
-                    let data = self.consts.lookup_attrib(data).cloned().expect(FILE_BUG_REPORT);
+                    let binding = self.consts.lookup_string(binding).expect(FILE_BUG_REPORT).to_string();
+                    let data = self.consts.lookup_value(data).cloned().expect(FILE_BUG_REPORT);
                     let body = self.instructions.drain(..size).collect();
                     let body = Scope::new(body, &self.consts).exec()?;
                     let template = Template::Loop {
@@ -54,7 +54,7 @@ impl<'vm> Scope<'vm> {
                     nodes.push(template);
                 }
                 Instruction::If { cond, size } => {
-                    let cond = self.consts.lookup_attrib(cond).cloned().expect(FILE_BUG_REPORT);
+                    let cond = self.consts.lookup_value(cond).cloned().expect(FILE_BUG_REPORT);
                     let body = self.instructions.drain(..size).collect::<Vec<_>>();
                     let body = Scope::new(body, &self.consts).exec()?;
 
@@ -69,7 +69,7 @@ impl<'vm> Scope<'vm> {
                         else {
                             break;
                         };
-                        let cond = cond.map(|c| self.consts.lookup_attrib(c).cloned().expect(FILE_BUG_REPORT));
+                        let cond = cond.map(|c| self.consts.lookup_value(c).cloned().expect(FILE_BUG_REPORT));
                         let body = self.instructions.drain(..size).collect();
                         let body = Scope::new(body, &self.consts).exec()?;
 
@@ -99,7 +99,7 @@ impl<'vm> Scope<'vm> {
     }
 
     fn node(&mut self, ident: usize, scope_size: usize) -> Result<Template> {
-        let ident = self.consts.lookup_ident(ident).expect(FILE_BUG_REPORT);
+        let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = Attributes::empty();
         let mut text = None::<TextPath>;
@@ -108,8 +108,8 @@ impl<'vm> Scope<'vm> {
         loop {
             match self.instructions.get(ip) {
                 Some(Instruction::LoadAttribute { key, value }) => {
-                    let key = self.consts.lookup_ident(*key).expect(FILE_BUG_REPORT);
-                    let value = self.consts.lookup_attrib(*value).expect(FILE_BUG_REPORT);
+                    let key = self.consts.lookup_string(*key).expect(FILE_BUG_REPORT);
+                    let value = self.consts.lookup_value(*value).expect(FILE_BUG_REPORT);
                     attributes.set(key.to_string(), value.clone());
                 }
                 Some(Instruction::LoadText(i)) => text = self.consts.lookup_text(*i).cloned(),
