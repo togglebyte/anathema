@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 anathema-render = { path = "../anathema-render" }
+anathema-widget-core = { path = "../anathema-widget-core" }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }
-thiserror = { workspace = true }

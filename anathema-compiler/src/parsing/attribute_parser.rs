@@ -1,12 +1,10 @@
 use anathema_render::Color;
-use anathema_widgets::{
-    fields, Align, Axis, BorderStyle, Direction, Display, Path, Sides, TextAlignment, TextPath,
-    Value, Wrap,
-};
+use anathema_widget_core::layout::{Align, Axis, Direction};
+use anathema_widget_core::{fields, Display, Path, TextPath, Value};
 
 use super::parser::{parse_path, parse_to_fragments};
 use crate::error::{ErrorKind, Result};
-use crate::lexer::{Kind, Lexer, Token};
+use crate::lexer::{Kind, Lexer};
 
 pub(super) struct AttributeParser<'lexer, 'src> {
     lexer: &'lexer mut Lexer<'src>,
@@ -21,9 +19,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         let next = self.lexer.next()?.0;
 
         match next {
-            Kind::String(border_style) if left == fields::BORDER_STYLE => Ok(Value::BorderStyle(
-                BorderStyle::Custom(border_style.to_string()),
-            )),
             Kind::String(val) => match parse_to_fragments(val) {
                 TextPath::String(s) => Ok(Value::String(s)),
                 TextPath::Fragments(fragments) => Ok(Value::Fragments(fragments)),
@@ -63,11 +58,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                             .lexer
                             .error(ErrorKind::InvalidToken { expected: "axis" })),
                     },
-                    fields::BORDER_STYLE => match val {
-                        "thick" => Ok(Value::BorderStyle(BorderStyle::Thick)),
-                        "thin" => Ok(Value::BorderStyle(BorderStyle::Thin)),
-                        chars => Ok(Value::BorderStyle(BorderStyle::Custom(chars.to_string()))),
-                    },
                     fields::ID => Ok(Value::String(val.to_string())),
                     fields::DISPLAY => match val {
                         "show" => Ok(Value::Display(Display::Show)),
@@ -83,38 +73,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                         _ => Err(self
                             .lexer
                             .error(ErrorKind::InvalidToken { expected: "axis" })),
-                    },
-                    fields::SIDES => {
-                        let mut sides = self.parse_side(val)?;
-                        self.lexer.consume(true, true);
-                        while let Ok(true) = self.lexer.consume_if(Kind::Pipe) {
-                            self.lexer.consume(true, true);
-                            match self.lexer.next() {
-                                Ok(Token(Kind::Ident(ident), _)) => {
-                                    sides |= self.parse_side(ident)?;
-                                    self.lexer.consume(true, false);
-                                }
-                                _ => return Err(self.lexer.error(ErrorKind::TrailingPipe)),
-                            }
-                        }
-
-                        Ok(Value::Sides(sides))
-                    }
-                    fields::TEXT_ALIGN => match val {
-                        "centre" | "center" => Ok(Value::TextAlignment(TextAlignment::Centre)),
-                        "left" => Ok(Value::TextAlignment(TextAlignment::Left)),
-                        "right" => Ok(Value::TextAlignment(TextAlignment::Right)),
-                        _ => Err(self.lexer.error(ErrorKind::InvalidToken {
-                            expected: "text alignment",
-                        })),
-                    },
-                    fields::WRAP => match val {
-                        "overflow" => Ok(Value::Wrap(Wrap::Overflow)),
-                        "break" => Ok(Value::Wrap(Wrap::WordBreak)),
-                        "normal" => Ok(Value::Wrap(Wrap::Normal)),
-                        _ => Err(self
-                            .lexer
-                            .error(ErrorKind::InvalidToken { expected: "wrap" })),
                     },
                     _custom_attribute => match self.try_parse_color(val) {
                         Some(color) => Ok(Value::Color(color)),
@@ -136,7 +94,6 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             Kind::Colon
             | Kind::Comma
             | Kind::RDoubleCurly
-            | Kind::Pipe
             | Kind::Fullstop
             | Kind::LBracket
             | Kind::RBracket
@@ -149,6 +106,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             | Kind::In
             | Kind::If
             | Kind::Else
+            | Kind::View
             | Kind::EOF => Err(self.lexer.error(ErrorKind::InvalidToken { expected: "" })),
         }
     }
@@ -179,24 +137,11 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             _ => None,
         }
     }
-
-    fn parse_side(&self, input: &'src str) -> Result<Sides> {
-        match input {
-            "top" => Ok(Sides::TOP),
-            "right" => Ok(Sides::RIGHT),
-            "bottom" => Ok(Sides::BOTTOM),
-            "left" => Ok(Sides::LEFT),
-            "all" => Ok(Sides::ALL),
-            _ => Err(self
-                .lexer
-                .error(ErrorKind::InvalidToken { expected: "sides" })),
-        }
-    }
 }
 
 #[cfg(test)]
 mod test {
-    use anathema_widgets::{Attributes, Fragment};
+    use anathema_widget_core::{Attributes, Fragment};
 
     use super::*;
     use crate::lexer::Lexer;
@@ -253,17 +198,11 @@ mod test {
     }
 
     #[test]
-    fn sides() {
-        let sides = parse_value("widget [sides: left|top]", fields::SIDES)
-            .to_sides()
-            .unwrap();
-        assert_eq!(Sides::LEFT | Sides::TOP, sides);
-    }
-
-    #[test]
     fn string_fragments() {
         let text = parse_to_fragments("a{{b}}");
-        let TextPath::Fragments(fragments) = text else { panic!() };
+        let TextPath::Fragments(fragments) = text else {
+            panic!()
+        };
 
         assert_eq!(fragments[0], Fragment::String("a".into()));
         assert_eq!(fragments[1], Fragment::Data(Path::Key("b".to_string())));
@@ -289,7 +228,9 @@ mod test {
 
         let mut lexer = Lexer::new(src);
         let output = AttributeParser::new(&mut lexer).parse("attrib").unwrap();
-        let Value::String(text) = output else { panic!() };
+        let Value::String(text) = output else {
+            panic!()
+        };
 
         assert_eq!(text, "hello, world");
     }
@@ -401,33 +342,6 @@ mod test {
     }
 
     #[test]
-    fn border_styles() {
-        let attribs = parse_value("border [border-style: thick]", fields::BORDER_STYLE);
-        let border = attribs.to_border().unwrap();
-        assert_eq!(border, &BorderStyle::Thick);
-
-        let attribs = parse_value("border [border-style: thin]", fields::BORDER_STYLE);
-        let border = attribs.to_border().unwrap();
-        assert_eq!(border, &BorderStyle::Thin);
-
-        let attribs = parse_value("border [border-style: \"01234567\"]", fields::BORDER_STYLE);
-        let border = attribs.to_border().unwrap();
-        assert_eq!(border, &BorderStyle::Custom("01234567".to_string()));
-    }
-
-    #[test]
-    fn word_wrap() {
-        let value = parse_value("text [wrap: normal]", fields::WRAP);
-        assert_eq!(value.to_wrap().unwrap(), Wrap::Normal);
-
-        let value = parse_value("text [wrap: overflow]", fields::WRAP);
-        assert_eq!(value.to_wrap().unwrap(), Wrap::Overflow);
-
-        let value = parse_value("text [wrap: break]", fields::WRAP);
-        assert_eq!(value.to_wrap().unwrap(), Wrap::WordBreak);
-    }
-
-    #[test]
     fn whitespace_attribs() {
         // Trim start
         assert!(is_true("text [trim-start: true]", fields::TRIM_START));
@@ -456,6 +370,12 @@ mod test {
             attribs.get("ansi").and_then(Value::to_color).unwrap(),
             Color::AnsiValue(0),
         );
+    }
+
+    #[test]
+    fn ident_with_pipes() {
+        let values = parse_value("widget [meow: a|b|c]", "meow").to_string();
+        assert_eq!(values, "a|b|c");
     }
 
     #[test]

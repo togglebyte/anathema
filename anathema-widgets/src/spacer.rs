@@ -1,11 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::{
+    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{PaintCtx, PositionCtx, Widget, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, WidgetContainer};
+use crate::layout::spacers::SpacerLayout;
 
 /// Expand to fill in all available space.
 ///
@@ -31,25 +32,20 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(
-        &mut self,
-        ctx: LayoutCtx<'_, '_, '_>,
-        _children: &mut Vec<WidgetContainer<'_>>,
-    ) -> Result<Size> {
+    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_>, _: &mut Vec<WidgetContainer>) -> Result<Size> {
         // debug_assert!(
         //     ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
         //     "the layout context needs to be tight for a spacer"
         // );
 
-        Ok(Size::new(
-            ctx.constraints.min_width,
-            ctx.constraints.min_height,
-        ))
+        Layouts::new(SpacerLayout, &mut ctx)
+            .layout(&mut vec![])?
+            .size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {}
+    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {}
 
-    fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {}
+    fn paint<'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer]) {}
 }
 
 pub(crate) struct SpacerFactory;
@@ -67,8 +63,10 @@ impl WidgetFactory for SpacerFactory {
 #[cfg(test)]
 mod test {
 
-    use crate::template::{template, template_text};
-    use crate::testing::{test_widget, FakeTerm};
+    use anathema_widget_core::template::{template, template_text};
+    use anathema_widget_core::testing::FakeTerm;
+
+    use crate::testing::test_widget;
     use crate::{Border, VStack};
 
     #[test]
@@ -85,7 +83,7 @@ mod test {
         )];
         test_widget(
             border,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -112,7 +110,7 @@ mod test {
         ];
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -140,7 +138,7 @@ mod test {
         ];
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

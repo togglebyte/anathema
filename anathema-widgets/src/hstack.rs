@@ -1,13 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Direction, Layouts};
+use anathema_widget_core::{
+    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{PositionCtx, Widget, WidgetContainer};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::horizontal::Horizontal;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, Direction, TextPath};
 
 /// A widget that lays out its children horizontally.
 /// ```text
@@ -59,10 +58,10 @@ impl Widget for HStack {
         "HStack"
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         if let Some(width) = self.width {
             ctx.constraints.max_width = ctx.constraints.max_width.min(width);
@@ -82,7 +81,7 @@ impl Widget for HStack {
             .size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let mut pos = ctx.pos;
         for widget in children {
             widget.position(pos);
@@ -110,9 +109,11 @@ impl WidgetFactory for HStackFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::{template, template_text, Template};
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::{template, template_text, Template};
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     fn children(count: usize) -> Vec<Template> {
         (0..count)
@@ -126,7 +127,7 @@ mod test {
         let body = children(3);
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -147,7 +148,7 @@ mod test {
         let body = children(10);
         test_widget(
             hstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

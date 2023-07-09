@@ -1,25 +1,19 @@
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
-use crate::alignment::AlignmentFactory;
-use crate::border::BorderFactory;
+use parking_lot::RwLock;
+
 use crate::error::{Error, Result};
-use crate::expand::ExpandFactory;
 use crate::gen::store::Store;
-use crate::hstack::HStackFactory;
-use crate::position::PositionFactory;
-use crate::spacer::SpacerFactory;
+use crate::layout::Padding;
 use crate::template::Template;
-use crate::text::{SpanFactory, TextFactory};
 use crate::values::ValuesAttributes;
-use crate::viewport::ViewportFactory;
-use crate::vstack::VStackFactory;
 use crate::widget::AnyWidget;
-use crate::zstack::ZStackFactory;
-use crate::{Padding, TextPath, WidgetContainer};
+use crate::{TextPath, WidgetContainer};
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 
-pub trait WidgetFactory {
+pub trait WidgetFactory: Send + Sync {
     fn make(
         &self,
         store: ValuesAttributes<'_, '_>,
@@ -27,14 +21,15 @@ pub trait WidgetFactory {
     ) -> Result<Box<dyn AnyWidget>>;
 }
 
-pub struct Lookup(HashMap<String, Box<dyn WidgetFactory>>);
+static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = OnceLock::new();
 
-impl Lookup {
+pub struct Factory;
+
+impl Factory {
     pub fn exec<'tpl, 'parent>(
-        &self,
         template: &'tpl Template,
         values: &Store<'parent>,
-    ) -> Result<WidgetContainer<'tpl>> {
+    ) -> Result<WidgetContainer> {
         match &template {
             Template::Node {
                 ident,
@@ -42,16 +37,19 @@ impl Lookup {
                 text,
                 children,
             } => {
-                let factory = self
-                    .0
-                    .get(ident)
-                    .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
                 let values = ValuesAttributes::new(values, attributes);
                 let background = values.background();
                 let padding = values.padding_all().unwrap_or_else(|| Padding::ZERO);
                 let display = values.display();
+
+                let factories = FACTORIES.get_or_init(Default::default).read();
+                let factory = factories
+                    .get(ident)
+                    .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
                 let widget = factory.make(values, text.as_ref())?;
-                let mut container = WidgetContainer::new(widget, children);
+                drop(factories);
+
+                let mut container = WidgetContainer::new(widget, children.clone());
                 container.background = background;
                 container.padding = padding;
                 container.display = display;
@@ -61,41 +59,20 @@ impl Lookup {
         }
     }
 
-    pub fn register(
-        &mut self,
-        ident: impl Into<String>,
-        factory: Box<dyn WidgetFactory>,
-    ) -> Result<()> {
+    pub fn register(ident: impl Into<String>, factory: impl WidgetFactory + 'static) -> Result<()> {
         let ident = ident.into();
         if RESERVED_NAMES.contains(&ident.as_str()) {
             return Err(Error::ReservedName(ident));
         }
 
-        if self.0.contains_key(&ident) {
+        let mut factories = FACTORIES.get_or_init(Default::default).write();
+        if factories.contains_key(&ident) {
             return Err(Error::ExistingName(ident));
         }
 
-        self.0.insert(ident, factory);
+        factories.insert(ident, Box::new(factory));
 
         Ok(())
-    }
-}
-
-impl Default for Lookup {
-    fn default() -> Self {
-        let mut inner = HashMap::<_, Box<dyn WidgetFactory>>::new();
-        inner.insert("alignment".to_string(), Box::new(AlignmentFactory));
-        inner.insert("border".to_string(), Box::new(BorderFactory));
-        inner.insert("expand".to_string(), Box::new(ExpandFactory));
-        inner.insert("hstack".to_string(), Box::new(HStackFactory));
-        inner.insert("position".to_string(), Box::new(PositionFactory));
-        inner.insert("spacer".to_string(), Box::new(SpacerFactory));
-        inner.insert("span".to_string(), Box::new(SpanFactory));
-        inner.insert("text".to_string(), Box::new(TextFactory));
-        inner.insert("viewport".to_string(), Box::new(ViewportFactory));
-        inner.insert("vstack".to_string(), Box::new(VStackFactory));
-        inner.insert("zstack".to_string(), Box::new(ZStackFactory));
-        Self(inner)
     }
 }
 

@@ -1,14 +1,13 @@
 use anathema_render::{Size, Style};
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::{
+    AnyWidget, Generator, LocalPos, TextPath, Value, ValuesAttributes, Widget, WidgetContainer,
+    WidgetFactory,
+};
 use unicode_width::UnicodeWidthStr;
 
-use super::{LocalPos, PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize, Wrap};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
-use crate::gen::generator::Generator;
-use crate::layout::text::{Entry, Range, TextLayout};
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextAlignment, TextPath};
+use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 
 // -----------------------------------------------------------------------------
 //     - Text -
@@ -72,10 +71,10 @@ impl Text {
         self.text = text.into();
     }
 
-    fn text_and_style<'gen: 'a, 'a>(
+    fn text_and_style<'a>(
         &'a self,
         entry: &Entry,
-        children: &'a [WidgetContainer<'gen>],
+        children: &'a [WidgetContainer],
     ) -> (&'a str, Style) {
         let widget_index = match entry {
             Entry::All { index, .. } => index,
@@ -102,7 +101,7 @@ impl Text {
     fn paint_line(
         &self,
         range: &mut std::ops::Range<usize>,
-        children: &[WidgetContainer<'_>],
+        children: &[WidgetContainer],
         y: usize,
         ctx: &mut PaintCtx<'_, WithSize>,
     ) {
@@ -127,7 +126,9 @@ impl Text {
         for entry_index in range.clone() {
             let entry = &self.layout.lines.inner[entry_index];
             let (text, style) = self.text_and_style(entry, children);
-            let Some(new_pos) = ctx.print(text, style, pos) else { continue };
+            let Some(new_pos) = ctx.print(text, style, pos) else {
+                continue;
+            };
             pos = new_pos;
         }
 
@@ -141,10 +142,10 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
@@ -153,14 +154,16 @@ impl Widget for Text {
         self.layout.process(self.text.as_str());
 
         let mut values = ctx.values.next();
-        let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
+        let mut gen = Generator::new(&ctx.templates, &mut values);
         while let Some(mut span) = gen.next(&mut values).transpose()? {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
                 continue;
             }
 
-            let Some(inner_span) = span.try_to_mut::<TextSpan>() else { continue };
+            let Some(inner_span) = span.try_to_mut::<TextSpan>() else {
+                continue;
+            };
             self.layout.process(inner_span.text.as_str());
             children.push(span);
         }
@@ -168,11 +171,7 @@ impl Widget for Text {
         Ok(self.layout.size())
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         let mut y = 0;
         let mut range = 0..0;
         for entry in &self.layout.lines.inner {
@@ -189,7 +188,7 @@ impl Widget for Text {
         self.paint_line(&mut range, children, y, &mut ctx);
     }
 
-    fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {
         // NOTE: there is no need to position text as the text
         // is printed from the context position
     }
@@ -220,21 +219,16 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(
-        &mut self,
-        _ctx: LayoutCtx<'_, '_, '_>,
-        _: &mut Vec<WidgetContainer<'_>>,
-    ) -> Result<Size> {
+    fn layout(&mut self, _ctx: LayoutCtx<'_, '_>, _: &mut Vec<WidgetContainer>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
-    fn position<'gen, 'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer<'gen>]) {
-        // NOTE: there is no need to position text as the text is printed
-        // from the context position
+    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {
+        // NOTE: there is no need to position text as the text is printed from the context position
         panic!("don't invoke position on the span directly.");
     }
 
-    fn paint<'gen, 'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer<'gen>]) {
+    fn paint<'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer]) {
         panic!("don't invoke paint on the span directly.");
     }
 }
@@ -248,8 +242,19 @@ impl WidgetFactory for TextFactory {
         text: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let mut widget = Text::default();
-        widget.word_wrap = values.word_wrap();
-        widget.text_alignment = values.text_alignment();
+
+        widget.word_wrap = values
+            .get_attrib("wrap")
+            .and_then(Value::to_str)
+            .map(From::from)
+            .unwrap_or(Wrap::Normal);
+
+        widget.text_alignment = values
+            .get_attrib("text-align")
+            .and_then(Value::to_str)
+            .map(From::from)
+            .unwrap_or(TextAlignment::Left);
+
         widget.style = values.style();
         if let Some(text) = text {
             widget.text = values.text_to_string(text).to_string();
@@ -278,15 +283,17 @@ impl WidgetFactory for SpanFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::template_span;
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::template_span;
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     #[test]
     fn word_wrap_excessive_space() {
         test_widget(
             Text::new("hello      how are     you"),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -306,7 +313,7 @@ mod test {
     fn word_wrap() {
         test_widget(
             Text::new("hello how are you"),
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -325,7 +332,7 @@ mod test {
         text.word_wrap = Wrap::Overflow;
         test_widget(
             text,
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -344,7 +351,7 @@ mod test {
         text.word_wrap = Wrap::WordBreak;
         test_widget(
             text,
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -366,7 +373,7 @@ mod test {
         ];
         test_widget(
             Text::new("one"),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═════╗
@@ -385,7 +392,7 @@ mod test {
         text.text_alignment = TextAlignment::Right;
         test_widget(
             text,
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
@@ -404,7 +411,7 @@ mod test {
         text.text_alignment = TextAlignment::Centre;
         test_widget(
             text,
-            &[],
+            [],
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗

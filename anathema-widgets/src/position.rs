@@ -1,13 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge};
+use anathema_widget_core::{
+    AnyWidget, Pos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{HorzEdge, Pos, PositionCtx, VertEdge, Widget, WidgetContainer};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::single::Single;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath};
 
 /// If the horizontal edge is set to `Right` the widget will expand to fill all available space
 /// on the horizontal axis.
@@ -93,10 +92,10 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut ctx);
         layout.layout(children)?;
@@ -109,11 +108,7 @@ impl Widget for Position {
         layout.size()
     }
 
-    fn position<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn position<'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer]) {
         let child = match children.first_mut() {
             Some(c) => c,
             None => return,
@@ -166,9 +161,11 @@ impl WidgetFactory for PositionFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::template_text;
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::template_text;
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     #[test]
     fn top_left() {
@@ -176,7 +173,7 @@ mod test {
 
         test_widget(
             Position::new(HorzEdge::Left(0), VertEdge::Top(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -195,7 +192,7 @@ mod test {
         let body = [template_text("top right")];
         test_widget(
             Position::new(HorzEdge::Right(0), VertEdge::Top(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -214,7 +211,7 @@ mod test {
         let body = [template_text("bottom right")];
         test_widget(
             Position::new(HorzEdge::Right(0), VertEdge::Bottom(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -233,7 +230,7 @@ mod test {
         let body = [template_text("bottom left")];
         test_widget(
             Position::new(HorzEdge::Left(0), VertEdge::Bottom(0)),
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

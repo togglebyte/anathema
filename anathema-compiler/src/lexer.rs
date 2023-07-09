@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_widgets::Number;
+use anathema_widget_core::Number;
 
 use crate::error::{Error, Result};
 
@@ -18,10 +18,10 @@ pub(crate) enum Kind<'src> {
     In,
     If,
     Else,
+    View,
     Ident(&'src str),
     Newline,
     Number(Number),
-    Pipe,
     Fullstop,
     LBracket,
     RBracket,
@@ -118,7 +118,6 @@ impl<'src> Lexer<'src> {
             (')', _) => Ok(Kind::RParen.to_token(index)),
             (':', _) => Ok(Kind::Colon.to_token(index)),
             (',', _) => Ok(Kind::Comma.to_token(index)),
-            ('|', _) => Ok(Kind::Pipe.to_token(index)),
             ('.', _) => Ok(Kind::Fullstop.to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
 
@@ -222,7 +221,8 @@ impl<'src> Lexer<'src> {
 
     fn take_ident(&mut self, index: usize) -> Kind<'src> {
         let mut end = index;
-        while let Some((e, 'a'..='z' | 'A'..='Z' | '-' | '_' | '0'..='9')) = self.chars.peek() {
+        while let Some((e, 'a'..='z' | 'A'..='Z' | '-' | '_' | '|' | '0'..='9')) = self.chars.peek()
+        {
             end = *e;
             self.chars.next();
         }
@@ -232,6 +232,7 @@ impl<'src> Lexer<'src> {
             "in" => Kind::In,
             "if" => Kind::If,
             "else" => Kind::Else,
+            "view" => Kind::View,
             s => Kind::Ident(s),
         }
     }
@@ -333,7 +334,6 @@ mod test {
             ("]", Kind::RBracket),
             (":", Kind::Colon),
             (",", Kind::Comma),
-            ("|", Kind::Pipe),
             ("\n", Kind::Newline),
         ];
 
@@ -448,6 +448,12 @@ mod test {
             let actual = token_kind(input);
             assert_eq!(expected, actual);
         }
+    }
+
+    #[test]
+    fn view() {
+        let input = "view";
+        assert_eq!(Kind::View, token_kind(input));
     }
 
     #[test]

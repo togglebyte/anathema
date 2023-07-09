@@ -1,12 +1,14 @@
 use std::io::{stdout, Stdout};
+use std::sync::Arc;
 use std::time::Instant;
 
 use anathema_render::{size, Screen, Size};
-use anathema_widgets::error::Result;
-use anathema_widgets::template::Template;
-use anathema_widgets::{
-    Constraints, DataCtx, Generator, Lookup, PaintCtx, Pos, Store, WidgetContainer,
-};
+use anathema_widget_core::contexts::{DataCtx, PaintCtx};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Constraints;
+use anathema_widget_core::template::Template;
+use anathema_widget_core::views::View;
+use anathema_widget_core::{Generator, Pos, Store, WidgetContainer};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
@@ -16,34 +18,33 @@ use crate::events::{EventProvider, Events};
 pub mod events;
 mod meta;
 
-pub struct Runtime<'tpl, E, ER> {
+pub struct Runtime<E, ER> {
     pub enable_meta: bool,
     meta: Meta,
-    templates: &'tpl [Template],
+    templates: Arc<[Template]>,
     screen: Screen,
     output: Stdout,
-    lookup: Lookup,
     constraints: Constraints,
-    current_frame: Vec<WidgetContainer<'tpl>>,
+    current_frame: Vec<WidgetContainer>,
     ctx: DataCtx,
     events: E,
     event_receiver: ER,
 }
 
-impl<E, ER> Drop for Runtime<'_, E, ER> {
+impl<E, ER> Drop for Runtime<E, ER> {
     fn drop(&mut self) {
         let _ = Screen::show_cursor(&mut self.output);
         let _ = disable_raw_mode();
     }
 }
 
-impl<'tpl, E, ER> Runtime<'tpl, E, ER>
+impl<E, ER> Runtime<E, ER>
 where
     E: Events,
     ER: EventProvider,
 {
     pub fn new(
-        templates: &'tpl [Template],
+        templates: impl Into<Arc<[Template]>>,
         ctx: DataCtx,
         events: E,
         event_receiver: ER,
@@ -55,15 +56,13 @@ where
         let constraints = Constraints::new(Some(size.width), Some(size.height));
         Screen::hide_cursor(&mut stdout)?;
         let screen = Screen::new(size);
-        let lookup = Lookup::default();
 
         let inst = Self {
             output: stdout,
             meta: Meta::new(size),
             screen,
-            lookup,
             constraints,
-            templates,
+            templates: templates.into(),
             current_frame: vec![],
             ctx,
             events,
@@ -74,13 +73,17 @@ where
         Ok(inst)
     }
 
+    pub fn register_view(&mut self, name: impl Into<String>, view: impl View + 'static) {
+        self.ctx.views.register(name.into(), view);
+    }
+
     fn layout(&mut self) -> Result<()> {
         // TODO: diffing!
         self.current_frame.clear();
         let mut values = Store::new(&self.ctx);
-        let mut widgets = Generator::new(&self.templates, &self.lookup, &mut values);
+        let mut widgets = Generator::new(&self.templates, &mut values);
         while let Some(mut widget) = widgets.next(&mut values).transpose()? {
-            widget.layout(self.constraints, &values, &self.lookup)?;
+            widget.layout(self.constraints, &values)?;
             self.current_frame.push(widget);
         }
         Ok(())

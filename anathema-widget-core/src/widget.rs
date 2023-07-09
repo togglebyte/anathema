@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 
 use anathema_render::{ScreenPos, Size, Style};
 
@@ -10,7 +11,6 @@ use super::{Color, Display, LocalPos, Pos, Region};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::gen::store::Store;
-use crate::lookup::Lookup;
 use crate::template::Template;
 
 // Layout:
@@ -31,22 +31,18 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
     /// of the children.
-    fn position<'tpl>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'tpl>]);
+    fn position<'tpl>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]);
 
-    fn paint<'tpl>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'tpl>],
-    ) {
+    fn paint<'tpl>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         for child in children {
             let ctx = ctx.sub_context(None);
             child.paint(ctx);
@@ -59,24 +55,20 @@ pub trait AnyWidget {
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn layout_any<'widget, 'tpl, 'parent>(
+    fn layout_any<'widget, 'parent>(
         &mut self,
-        ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
-    fn position_any<'gen: 'ctx, 'ctx>(
-        &mut self,
-        ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    );
+    fn position_any(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]);
 
     fn paint_any<'gen: 'ctx, 'ctx>(
         &mut self,
         ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
+        children: &mut [WidgetContainer],
     );
 }
 
@@ -85,23 +77,19 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         self.deref_mut().layout_any(ctx, children)
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         self.deref_mut().position_any(ctx, children)
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint(&mut self, ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         self.deref_mut().paint_any(ctx, children)
     }
 }
@@ -115,10 +103,10 @@ impl<T: Widget + 'static> AnyWidget for T {
         self
     }
 
-    fn layout_any<'widget, 'tpl, 'parent>(
+    fn layout_any<'widget, 'parent>(
         &mut self,
-        ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         self.layout(ctx, children)
     }
@@ -127,18 +115,14 @@ impl<T: Widget + 'static> AnyWidget for T {
         self.kind()
     }
 
-    fn position_any<'gen: 'ctx, 'ctx>(
-        &mut self,
-        ctx: PositionCtx,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn position_any(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         self.position(ctx, children)
     }
 
     fn paint_any<'gen: 'ctx, 'ctx>(
         &mut self,
         ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
+        children: &mut [WidgetContainer],
     ) {
         self.paint(ctx, children)
     }
@@ -149,23 +133,19 @@ impl Widget for Box<dyn Widget> {
         self.as_ref().kind()
     }
 
-    fn layout<'tpl, 'parent>(
+    fn layout<'parent>(
         &mut self,
-        layout: LayoutCtx<'_, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        layout: LayoutCtx<'_, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         self.as_mut().layout(layout, children)
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         self.as_mut().position(ctx, children)
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'gen, 'ctx>(&mut self, ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         self.as_mut().paint(ctx, children)
     }
 }
@@ -174,19 +154,19 @@ impl Widget for Box<dyn Widget> {
 /// * [`layout`](Self::layout)
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
-pub struct WidgetContainer<'tpl> {
+pub struct WidgetContainer {
     pub(crate) background: Option<Color>,
     pub(crate) display: Display,
     pub(crate) padding: Padding,
-    pub(crate) templates: &'tpl [Template],
-    pub children: Vec<WidgetContainer<'tpl>>,
+    pub(crate) templates: Arc<[Template]>,
+    pub children: Vec<WidgetContainer>,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
     size: Size,
 }
 
-impl<'tpl> WidgetContainer<'tpl> {
-    pub fn new(inner: Box<dyn AnyWidget>, templates: &'tpl [Template]) -> Self {
+impl WidgetContainer {
+    pub fn new(inner: Box<dyn AnyWidget>, templates: Arc<[Template]>) -> Self {
         Self {
             templates,
             children: vec![],
@@ -269,13 +249,12 @@ impl<'tpl> WidgetContainer<'tpl> {
         &mut self,
         constraints: Constraints,
         values: &Store<'_>,
-        lookup: &Lookup,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout_args =
-                    LayoutCtx::new(self.templates, values, constraints, self.padding, lookup);
+                    LayoutCtx::new(&self.templates, values, constraints, self.padding);
                 let size = self.inner.layout(layout_args, &mut self.children)?;
                 self.size = size;
                 self.size.width += self.padding.left + self.padding.right;

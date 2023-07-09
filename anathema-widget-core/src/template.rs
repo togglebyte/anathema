@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::sync::Arc;
+
 use crate::gen::expressions::Expression;
 use crate::gen::store::Store;
 use crate::path::TextPath;
@@ -12,7 +15,7 @@ pub enum Cond {
 #[derive(Debug)]
 pub struct ControlFlow {
     pub cond: Cond,
-    pub body: Vec<Template>,
+    pub body: Arc<[Template]>,
 }
 
 // -----------------------------------------------------------------------------
@@ -23,26 +26,38 @@ pub struct ControlFlow {
 /// generate widgets.
 #[derive(Debug)]
 pub enum Template {
+    View(Value),
     Node {
         ident: String,
         attributes: Attributes,
         text: Option<TextPath>,
-        children: Vec<Template>,
+        children: Arc<[Template]>,
     },
     Loop {
         binding: String,
         data: Value,
-        body: Vec<Template>,
+        body: Arc<[Template]>,
     },
     ControlFlow(Vec<ControlFlow>),
 }
 
 impl Template {
-    pub fn to_expression<'tpl: 'parent, 'parent>(
-        &'tpl self,
-        values: &Store<'parent>,
-    ) -> Expression<'tpl, 'parent> {
+    pub fn to_expression<'parent>(&'parent self, values: &Store<'parent>) -> Expression<'_> {
         match &self {
+            Template::View(id) => {
+                let id = match id {
+                    Value::String(s) => Cow::Borrowed(s.as_str()),
+                    Value::DataBinding(path) => {
+                        let val = path.lookup_value(values).unwrap_or(&Value::Empty);
+                        match val {
+                            Value::String(s) => Cow::Borrowed(s.as_str()),
+                            _ => Cow::Owned(val.to_string()),
+                        }
+                    }
+                    _ => Cow::Owned(id.to_string()),
+                };
+                Expression::View(id)
+            }
             Template::Node { .. } => Expression::Node(&self),
             Template::Loop {
                 binding,
@@ -93,7 +108,7 @@ pub fn template_text(text: impl Into<TextPath>) -> Template {
         ident: "text".into(),
         attributes: Attributes::empty(),
         text: Some(text.into()),
-        children: vec![],
+        children: Arc::new([]),
     }
 }
 
@@ -102,7 +117,7 @@ pub fn template_span(text: impl Into<TextPath>) -> Template {
         ident: "span".into(),
         attributes: Attributes::empty(),
         text: Some(text.into()),
-        children: vec![],
+        children: Arc::new([]),
     }
 }
 
@@ -111,6 +126,7 @@ pub fn template(
     attributes: impl Into<Attributes>,
     children: impl Into<Vec<Template>>,
 ) -> Template {
+    let children = children.into();
     Template::Node {
         ident: ident.into(),
         attributes: attributes.into(),
@@ -142,6 +158,7 @@ pub fn template_for(
     data: impl Into<Value>,
     body: impl Into<Vec<Template>>,
 ) -> Template {
+    let body = body.into();
     Template::Loop {
         binding: binding.into(),
         body: body.into(),

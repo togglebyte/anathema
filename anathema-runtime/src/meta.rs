@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use anathema_render::Size;
-use anathema_widgets::{DataCtx, Number, Value, WidgetContainer};
+use anathema_widget_core::contexts::DataCtx;
+use anathema_widget_core::{Number, Value, WidgetContainer};
 
 const META: &'static str = "_meta";
 const TIMINGS: &'static str = "timings";
@@ -10,7 +11,7 @@ const SIZE: &'static str = "size";
 const FOCUS: &'static str = "focus";
 const COUNT: &'static str = "count";
 
-fn len_of_tree(widgets: &[WidgetContainer<'_>]) -> usize {
+fn len_of_tree(widgets: &[WidgetContainer]) -> usize {
     let mut count = widgets.len();
     for widget in widgets {
         count += len_of_tree(&widget.children);
@@ -68,7 +69,7 @@ impl Meta {
         );
     }
 
-    pub(super) fn update(&mut self, ctx: &mut DataCtx, frame: &[WidgetContainer<'_>]) {
+    pub(super) fn update(&mut self, ctx: &mut DataCtx, frame: &[WidgetContainer]) {
         match ctx.get_mut::<HashMap<String, Value>>(META) {
             None => {
                 let mut metamap = HashMap::new();
