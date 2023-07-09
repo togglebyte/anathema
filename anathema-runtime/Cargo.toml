@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anathema-widgets = { path = "../anathema-widgets" }
+anathema-widget-core = { path = "../anathema-widget-core" }
 anathema-render = { path = "../anathema-render" }
 flume = "0.10.14"
 crossterm = { workspace = true }

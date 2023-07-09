@@ -1,10 +1,10 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::LayoutCtx;
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Axis, Direction, Layout};
+use anathema_widget_core::WidgetContainer;
 
 use super::many::Many;
-use super::Layout;
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
-use crate::{Axis, Direction, WidgetContainer};
 
 pub struct Horizontal(Many);
 
@@ -16,10 +16,10 @@ impl Horizontal {
 }
 
 impl Layout for Horizontal {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {
         self.0.layout(ctx, children, size)

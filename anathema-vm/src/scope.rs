@@ -1,6 +1,6 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_widgets::template::{Cond, ControlFlow, Template};
-use anathema_widgets::{Attributes, NodeId, TextPath};
+use anathema_widget_core::template::{Cond, ControlFlow, Template};
+use anathema_widget_core::{Attributes, NodeId, TextPath};
 
 use crate::error::Result;
 
@@ -29,6 +29,10 @@ impl<'vm> Scope<'vm> {
         loop {
             let instruction = self.instructions.remove(0);
             match instruction {
+                Instruction::View(id) => {
+                    let id = self.consts.lookup_attrib(id).cloned().unwrap(); // TODO: unwrap unwrap unwrap
+                    nodes.push(Template::View(id));
+                }
                 Instruction::Node { ident, scope_size } => {
                     let id = node_id.append(next);
                     next += 1;
@@ -47,7 +51,7 @@ impl<'vm> Scope<'vm> {
                     let template = Template::Loop {
                         binding,
                         data,
-                        body,
+                        body: body.into(),
                     };
 
                     nodes.push(template);
@@ -61,11 +65,14 @@ impl<'vm> Scope<'vm> {
                     let mut control_flow = vec![];
                     control_flow.push(ControlFlow {
                         cond: Cond::If(cond),
-                        body,
+                        body: body.into(),
                     });
 
                     loop {
-                        let Some(&Instruction::Else { cond, size }) = self.instructions.get(0) else { break };
+                        let Some(&Instruction::Else { cond, size }) = self.instructions.get(0)
+                        else {
+                            break;
+                        };
                         let id = node_id.clone();
                         let cond = cond.map(|c| self.consts.lookup_attrib(c).cloned().unwrap()); // TODO: Look at For
                         let body = self.instructions.drain(..size).collect();
@@ -73,7 +80,7 @@ impl<'vm> Scope<'vm> {
 
                         control_flow.push(ControlFlow {
                             cond: Cond::Else(cond),
-                            body,
+                            body: body.into(),
                         });
                     }
 
@@ -83,27 +90,6 @@ impl<'vm> Scope<'vm> {
                 Instruction::Else { .. } => {
                     unreachable!("the `Else` instructions are consumed inside the `If` instruction")
                 }
-                // {
-                //     let id = node_id.clone();
-                //     let cond = cond.map(|c| self.consts.lookup_attrib(c).cloned().unwrap()); // TODO: Look at For
-                //     let body = self.instructions.drain(..size).collect();
-                //     let children = Scope::new(body, &self.consts).exec(id.clone())?;
-
-                //     let kind = match cond {
-                //         Some(cond) => Kind::If(cond, None),
-                //         None => Kind::Else
-                //     };
-
-                //     // this has to be an if-expr
-                //     let if_inst = nodes.last_mut();
-                //     match if_inst {
-                //         Some(Template { kind: Kind::If(_, else_template), .. }) => {}
-                //         _ => panic!("oh my"),
-                //     }
-
-                //     let template = Template { kind, children };
-                //     nodes.push(template);
-                // }
                 Instruction::LoadAttribute { .. } | Instruction::LoadText(_) => {
                     unreachable!("these instructions are only loaded in the `node` function")
                 }
@@ -149,7 +135,7 @@ impl<'vm> Scope<'vm> {
             ident: ident.to_string(),
             attributes,
             text,
-            children,
+            children: children.into(),
         };
 
         Ok(node)

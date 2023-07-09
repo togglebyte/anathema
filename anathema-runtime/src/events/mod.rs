@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use anathema_widgets::{DataCtx, WidgetContainer};
+use anathema_widget_core::contexts::DataCtx;
+use anathema_widget_core::WidgetContainer;
 use crossterm::event::{read, Event as CTEvent};
 pub use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,
@@ -69,28 +70,18 @@ impl From<CTEvent> for Event {
 }
 
 pub trait Events {
-    fn event(
-        &mut self,
-        event: Event,
-        ctx: &mut DataCtx,
-        tree: &mut Vec<WidgetContainer<'_>>,
-    ) -> Event;
+    fn event(&mut self, event: Event, ctx: &mut DataCtx, tree: &mut Vec<WidgetContainer>) -> Event;
 }
 
 pub struct DefaultEvents<F>(pub F)
 where
-    F: FnMut(Event, &mut DataCtx, &mut Vec<WidgetContainer<'_>>) -> Event;
+    F: FnMut(Event, &mut DataCtx, &mut Vec<WidgetContainer>) -> Event;
 
 impl<F> Events for DefaultEvents<F>
 where
-    F: FnMut(Event, &mut DataCtx, &mut Vec<WidgetContainer<'_>>) -> Event,
+    F: FnMut(Event, &mut DataCtx, &mut Vec<WidgetContainer>) -> Event,
 {
-    fn event(
-        &mut self,
-        event: Event,
-        ctx: &mut DataCtx,
-        tree: &mut Vec<WidgetContainer<'_>>,
-    ) -> Event {
+    fn event(&mut self, event: Event, ctx: &mut DataCtx, tree: &mut Vec<WidgetContainer>) -> Event {
         (self.0)(event, ctx, tree)
     }
 }

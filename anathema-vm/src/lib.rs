@@ -2,7 +2,7 @@ mod error;
 mod scope;
 mod vm;
 
-use anathema_widgets::template::Template;
+use anathema_widget_core::template::Template;
 pub use vm::VirtualMachine;
 
 use self::error::Result;

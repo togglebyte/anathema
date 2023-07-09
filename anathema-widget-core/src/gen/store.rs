@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fmt::Write;
 
 use super::ValueRef;
-use crate::{DataCtx, Value};
+use crate::contexts::DataCtx;
+use crate::{Fragment, TextPath, Value};
 
 // -----------------------------------------------------------------------------
 //   - Layout -
@@ -35,12 +37,32 @@ impl<'parent> Layout<'parent> {
 #[derive(Debug)]
 // TODO: Rename this. It's a value store, but it needs a better name
 pub struct Store<'parent> {
-    root: &'parent DataCtx,
+    pub(crate) root: &'parent DataCtx,
     parent: Option<&'parent Store<'parent>>,
     pub inner: Layout<'parent>,
 }
 
 impl<'parent> Store<'parent> {
+    pub fn text_to_string(&self, text: &'parent TextPath) -> Cow<'parent, str> {
+        match text {
+            TextPath::Fragments(fragments) => {
+                let mut output = String::new();
+                for fragment in fragments {
+                    match fragment {
+                        Fragment::String(s) => output.push_str(s),
+                        Fragment::Data(path) => {
+                            let _ = path
+                                .lookup_value(self)
+                                .map(|val| write!(&mut output, "{val}"));
+                        }
+                    }
+                }
+                Cow::Owned(output)
+            }
+            TextPath::String(s) => Cow::from(s),
+        }
+    }
+
     pub fn new(root: &'parent DataCtx) -> Self {
         Self {
             root,

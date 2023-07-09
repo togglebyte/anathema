@@ -9,5 +9,5 @@ edition = "2021"
 crossterm = { workspace = true }
 anathema-compiler = { path = "../anathema-compiler" }
 anathema-render = { path = "../anathema-render" }
-anathema-widgets = { path = "../anathema-widgets" }
+anathema-widget-core = { path = "../anathema-widget-core" }
 thiserror = { workspace = true }

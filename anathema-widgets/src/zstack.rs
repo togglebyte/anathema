@@ -1,13 +1,12 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::{
+    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{PaintCtx, PositionCtx, Widget, WidgetContainer, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::stacked::Stacked;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath};
 
 /// Unlike the [`HStack`](crate::HStack) or the [`VStack`](crate::VStack) the [`ZStack`] draws the
 /// children on top of each other.
@@ -73,10 +72,10 @@ impl Widget for ZStack {
         "ZStack"
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         if let Some(min_width) = self.min_width {
             ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
@@ -94,17 +93,13 @@ impl Widget for ZStack {
         Layouts::new(Stacked, &mut ctx).layout(children)?.size()
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         for widget in children {
             widget.position(ctx.pos);
         }
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         for child in children {
             let ctx = ctx.sub_context(None);
             child.paint(ctx);
@@ -131,9 +126,11 @@ impl WidgetFactory for ZStackFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::{template, template_text};
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::{template, template_text};
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
 
     #[test]
     fn border_title() {
@@ -145,7 +142,7 @@ mod test {
 
         test_widget(
             zstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗
@@ -171,7 +168,7 @@ mod test {
 
         test_widget(
             zstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗

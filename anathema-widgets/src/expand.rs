@@ -1,13 +1,12 @@
 use anathema_render::{Size, Style};
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Axis, Layouts};
+use anathema_widget_core::{
+    AnyWidget, LocalPos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+};
 
-use super::{Axis, LocalPos, PaintCtx, PositionCtx, Widget, WithSize};
-use crate::contexts::LayoutCtx;
-use crate::error::Result;
 use crate::layout::single::Single;
-use crate::layout::Layouts;
-use crate::lookup::WidgetFactory;
-use crate::values::ValuesAttributes;
-use crate::{AnyWidget, TextPath, WidgetContainer};
 
 const DEFAULT_FACTOR: usize = 1;
 
@@ -18,7 +17,8 @@ const DEFAULT_FACTOR: usize = 1;
 ///
 /// A [`Direction`] can be set when creating a new widget
 /// ```
-/// use anathema_widgets::{Axis, Expand};
+/// use anathema_widget_core::layout::Axis;
+/// use anathema_widgets::Expand;
 /// let horizontal = Expand::new(2, Axis::Horizontal, None);
 /// let vertical = Expand::new(5, Axis::Vertical, None);
 /// ```
@@ -95,10 +95,10 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        mut ctx: LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
         let mut size = Layouts::new(Single, &mut ctx).layout(children)?.size()?;
 
@@ -114,23 +114,21 @@ impl Widget for Expand {
         Ok(size)
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer<'gen>]) {
+    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
         if let Some(c) = children.first_mut() {
             c.position(ctx.pos)
         }
     }
 
-    fn paint<'gen, 'ctx>(
-        &mut self,
-        mut ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer<'gen>],
-    ) {
+    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
         if !self.fill.is_empty() {
             for y in 0..ctx.local_size.height {
                 let mut used_width = 0;
                 loop {
                     let pos = LocalPos::new(used_width, y);
-                    let Some(p) = ctx.print(&self.fill, self.style, pos) else { break };
+                    let Some(p) = ctx.print(&self.fill, self.style, pos) else {
+                        break;
+                    };
                     used_width += p.x - used_width;
                 }
             }
@@ -160,9 +158,11 @@ impl WidgetFactory for ExpandFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_widget_core::template::{template, template_text};
+    use anathema_widget_core::testing::FakeTerm;
+
     use super::*;
-    use crate::template::{template, template_text};
-    use crate::testing::{test_widget, FakeTerm};
+    use crate::testing::test_widget;
     use crate::{Border, HStack, VStack};
 
     #[test]
@@ -171,7 +171,7 @@ mod test {
         let body = [template("expand", (), vec![])];
         test_widget(
             border,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -205,7 +205,7 @@ mod test {
 
         test_widget(
             stack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -239,7 +239,7 @@ mod test {
 
         test_widget(
             stack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -261,14 +261,14 @@ mod test {
     #[test]
     fn expand_horz() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             [("axis", Axis::Horizontal)],
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -286,14 +286,14 @@ mod test {
     #[test]
     fn expand_vert() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             [("axis", Axis::Vertical)],
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -313,14 +313,14 @@ mod test {
     #[test]
     fn expand_all() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             (),
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -340,14 +340,14 @@ mod test {
     #[test]
     fn expand_with_padding() {
         let border = Border::thin(None, None);
-        let expand = [template(
+        let body = [template(
             "expand",
             [("padding", 1)],
             vec![template_text("A cup of tea please")],
         )];
         test_widget(
             border,
-            &expand,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗
@@ -394,7 +394,7 @@ mod test {
 
         test_widget(
             vstack,
-            &body,
+            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════════════════╗

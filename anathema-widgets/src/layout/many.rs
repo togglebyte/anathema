@@ -1,10 +1,11 @@
 use anathema_render::Size;
+use anathema_widget_core::contexts::LayoutCtx;
+use anathema_widget_core::error::{Error, Result};
+use anathema_widget_core::layout::{Axis, Constraints, Direction, Layout};
+use anathema_widget_core::{Generator, WidgetContainer};
 
-use super::{expand, spacers, Layout};
-use crate::contexts::LayoutCtx;
-use crate::error::{Error, Result};
-use crate::gen::generator::Generator;
-use crate::{Axis, Constraints, Direction, Expand, Spacer, WidgetContainer};
+use super::{expand, spacers};
+use crate::{Expand, Spacer};
 
 struct SizeMod {
     inner: Size,
@@ -118,14 +119,14 @@ impl Many {
 }
 
 impl Layout for Many {
-    fn layout<'widget, 'tpl, 'parent>(
+    fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'tpl, 'parent>,
-        children: &mut Vec<WidgetContainer<'tpl>>,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
+        children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {
         let mut values = ctx.values.next();
-        let mut gen = Generator::new(ctx.templates, ctx.lookup, &mut values);
+        let mut gen = Generator::new(&ctx.templates, &mut values);
         let max_constraints = ctx.padded_constraints();
 
         let mut used_size = SizeMod::new(
@@ -155,7 +156,7 @@ impl Layout for Many {
                 constraints
             };
 
-            let mut widget_size = match widget.layout(widget_constraints, &values, ctx.lookup) {
+            let mut widget_size = match widget.layout(widget_constraints, &values) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => break,
                 err @ Err(_) => err?,
