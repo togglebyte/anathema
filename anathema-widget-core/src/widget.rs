@@ -10,7 +10,7 @@ use super::layout::{Constraints, Padding};
 use super::{Color, Display, LocalPos, Pos, Region};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::gen::store::Store;
+use crate::gen::store::Values;
 use crate::template::Template;
 
 // Layout:
@@ -248,7 +248,7 @@ impl WidgetContainer {
     pub fn layout<'parent>(
         &mut self,
         constraints: Constraints,
-        values: &Store<'_>,
+        values: &Values<'_>,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,

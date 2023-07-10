@@ -27,7 +27,7 @@ pub use widget::{AnyWidget, Widget, WidgetContainer};
 
 pub use crate::attributes::{fields, Attribute, Attributes};
 pub use crate::gen::generator::Generator;
-pub use crate::gen::store::Store;
+pub use crate::gen::store::Values;
 pub use crate::path::{Path, TextPath};
 
 /// Determine how a widget should be displayed and laid out

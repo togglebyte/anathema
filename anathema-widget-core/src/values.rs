@@ -5,7 +5,7 @@ use std::fmt;
 
 use anathema_render::Style;
 
-use crate::gen::store::Store;
+use crate::gen::store::Values;
 use crate::layout::{Align, Axis, Direction, Padding};
 use crate::{fields, Attributes, Color, Display, Path, TextPath};
 
@@ -423,7 +423,7 @@ impl Value {
 }
 
 pub struct ValuesAttributes<'a, 'parent> {
-    pub values: &'a Store<'parent>,
+    pub values: &'a Values<'parent>,
     attributes: &'a Attributes,
 }
 
@@ -432,7 +432,7 @@ impl<'a, 'parent> ValuesAttributes<'a, 'parent> {
         self.values.text_to_string(text)
     }
 
-    pub fn new(values: &'a Store<'parent>, attributes: &'a Attributes) -> Self {
+    pub fn new(values: &'a Values<'parent>, attributes: &'a Attributes) -> Self {
         Self { values, attributes }
     }
 

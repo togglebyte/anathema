@@ -2,7 +2,7 @@ use anathema_render::{Screen, ScreenPos, Size};
 
 use super::WidgetContainer;
 use crate::contexts::{DataCtx, PaintCtx};
-use crate::gen::store::Store;
+use crate::gen::store::Values;
 use crate::layout::Constraints;
 use crate::template::Template;
 use crate::{Pos, Widget};
@@ -76,7 +76,7 @@ pub fn test_widget_container(mut widget: WidgetContainer, mut expected: FakeTerm
     // Layout
     let constraints = Constraints::new(Some(expected.size.width), Some(expected.size.height));
     let data = DataCtx::default();
-    let store = Store::new(&data);
+    let store = Values::new(&data);
     widget.layout(constraints, &store).unwrap();
 
     // Position

@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
-use crate::gen::store::Store;
+use crate::gen::store::Values;
 use crate::layout::Padding;
 use crate::template::Template;
 use crate::values::ValuesAttributes;
@@ -28,7 +28,7 @@ pub struct Factory;
 impl Factory {
     pub fn exec<'tpl, 'parent>(
         template: &'tpl Template,
-        values: &Store<'parent>,
+        values: &Values<'parent>,
     ) -> Result<WidgetContainer> {
         match &template {
             Template::Node {
