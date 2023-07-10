@@ -243,8 +243,6 @@ impl<'src, 'consts> Parser<'src, 'consts> {
                 }
                 // Indent is smaller than previous: close larger scopes
                 Some(&last) if indent < last => {
-                    // TODO: validation misssing
-
                     if indent > 0 && !self.open_scopes.iter().any(|s| indent.eq(s)) {
                         return Err(self.lexer.error(ErrorKind::InvalidUnindent));
                     }
@@ -593,7 +591,7 @@ pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
             Ok(Token(Kind::Number(Number::Unsigned(num)), _)) => {
                 path = path.compose(Path::Index(num as usize))
             }
-            _ => {} // TODO: this should return an error: InvalidPath
+            _ => return Err(lexer.error(ErrorKind::InvalidPath))
         }
     }
 
@@ -858,6 +856,19 @@ mod test {
             },
             line: 1,
             col: 7,
+            src: src.to_string(),
+        };
+        let actual = parse_err(src).remove(0);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_invalid_path() {
+        let src = "node [path: {{ a.-b.c }}]";
+        let expected = Error {
+            kind: ErrorKind::InvalidPath,
+            line: 1,
+            col: 17,
             src: src.to_string(),
         };
         let actual = parse_err(src).remove(0);
