@@ -41,7 +41,7 @@ use crate::layout::stacked::Stacked;
 /// Note that widgets are drawn in the order they are inserted.
 /// To make something like a dialogue box appear on top it would have to be the last child of the
 /// `ZStack`.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ZStack {
     /// Width
     pub width: Option<usize>,

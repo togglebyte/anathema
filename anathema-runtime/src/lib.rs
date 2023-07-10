@@ -8,7 +8,7 @@ use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::template::Template;
 use anathema_widget_core::views::View;
-use anathema_widget_core::{Generator, Pos, Store, WidgetContainer};
+use anathema_widget_core::{Generator, Pos, Values, WidgetContainer};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
@@ -80,7 +80,7 @@ where
     fn layout(&mut self) -> Result<()> {
         // TODO: diffing!
         self.current_frame.clear();
-        let mut values = Store::new(&self.ctx);
+        let mut values = Values::new(&self.ctx);
         let mut widgets = Generator::new(&self.templates, &mut values);
         while let Some(mut widget) = widgets.next(&mut values).transpose()? {
             widget.layout(self.constraints, &values)?;

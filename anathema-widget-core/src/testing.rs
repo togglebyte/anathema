@@ -63,7 +63,7 @@ impl FakeTerm {
 }
 
 pub fn test_widget(
-    widget: impl Widget + 'static,
+    widget: impl Widget + 'static + PartialEq,
     children: impl Into<Vec<Template>>,
     expected: FakeTerm,
 ) {

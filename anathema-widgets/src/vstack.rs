@@ -34,7 +34,7 @@ use crate::layout::vertical::Vertical;
 /// 2
 /// 3
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct VStack {
     /// If a width is provided then the layout constraints will be tight for width
     pub width: Option<usize>,

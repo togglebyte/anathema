@@ -130,7 +130,7 @@ impl BorderStyle {
 /// If a border has no size (width and height) and no child then nothing will be rendered.
 ///
 /// To render a border with no child provide a width and a height.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Border {
     /// Which sides of the border should be rendered.
     pub sides: Sides,

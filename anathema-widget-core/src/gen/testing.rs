@@ -12,6 +12,7 @@ use crate::{
     WidgetFactory,
 };
 
+#[derive(Debug, PartialEq)]
 pub struct TestWidget(pub String);
 
 impl Widget for TestWidget {

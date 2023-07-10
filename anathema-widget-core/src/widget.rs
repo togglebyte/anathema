@@ -55,6 +55,8 @@ pub trait AnyWidget {
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
+    fn any_eq(&self, other: &dyn Any) -> bool;
+
     fn layout_any<'widget, 'parent>(
         &mut self,
         ctx: LayoutCtx<'widget, 'parent>,
@@ -94,7 +96,14 @@ impl Widget for Box<dyn AnyWidget> {
     }
 }
 
-impl<T: Widget + 'static> AnyWidget for T {
+impl<T: Widget + 'static + PartialEq<T>> AnyWidget for T {
+    fn any_eq(&self, other: &dyn Any) -> bool {
+        match other.downcast_ref::<Self>() {
+            Some(rhs) => self.eq(rhs),
+            None => return false,
+        }
+    }
+
     fn as_any_ref(&self) -> &dyn Any {
         self
     }
@@ -163,6 +172,21 @@ pub struct WidgetContainer {
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
     size: Size,
+}
+
+impl PartialEq for WidgetContainer {
+    fn eq(&self, other: &Self) -> bool {
+        let lhs = &self.inner;
+        let rhs = &other.inner;
+
+        lhs.any_eq(rhs)
+            && self.background == other.background
+            && self.display == other.display
+            && self.padding == other.padding
+            && self.children == other.children
+            && self.pos == other.pos
+            && self.size == other.size
+    }
 }
 
 impl WidgetContainer {
