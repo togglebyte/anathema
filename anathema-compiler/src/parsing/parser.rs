@@ -591,7 +591,7 @@ pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
             Ok(Token(Kind::Number(Number::Unsigned(num)), _)) => {
                 path = path.compose(Path::Index(num as usize))
             }
-            _ => return Err(lexer.error(ErrorKind::InvalidPath))
+            _ => return Err(lexer.error(ErrorKind::InvalidPath)),
         }
     }
 

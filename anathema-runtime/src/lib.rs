@@ -12,8 +12,8 @@ use anathema_widget_core::{Generator, Pos, Values};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
-use self::meta::Meta;
 use self::frame::Frame;
+use self::meta::Meta;
 use crate::events::{EventProvider, Events};
 
 pub mod events;

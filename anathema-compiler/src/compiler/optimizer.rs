@@ -151,7 +151,10 @@ impl Optimizer {
         if let Some(ParseExpr::ScopeStart) = self.input.get(self.ep) {
             self.ep += 1; // consume ScopeStart
         } else {
-            panic!("invalid expression: {:?}, opt_scope should only be called on a scope", self.input.get(self.ep));
+            panic!(
+                "invalid expression: {:?}, opt_scope should only be called on a scope",
+                self.input.get(self.ep)
+            );
         };
 
         let start = self.ep;
