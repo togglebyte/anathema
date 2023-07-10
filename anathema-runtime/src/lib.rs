@@ -8,14 +8,16 @@ use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::template::Template;
 use anathema_widget_core::views::View;
-use anathema_widget_core::{Generator, Pos, Values, WidgetContainer};
+use anathema_widget_core::{Generator, Pos, Values};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
 use self::meta::Meta;
+use self::frame::Frame;
 use crate::events::{EventProvider, Events};
 
 pub mod events;
+mod frame;
 mod meta;
 
 pub struct Runtime<E, ER> {
@@ -25,7 +27,7 @@ pub struct Runtime<E, ER> {
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
-    current_frame: Vec<WidgetContainer>,
+    current_frame: Frame,
     ctx: DataCtx,
     events: E,
     event_receiver: ER,
@@ -63,7 +65,7 @@ where
             screen,
             constraints,
             templates: templates.into(),
-            current_frame: vec![],
+            current_frame: Frame::empty(),
             ctx,
             events,
             event_receiver,
@@ -78,14 +80,14 @@ where
     }
 
     fn layout(&mut self) -> Result<()> {
-        // TODO: diffing!
-        self.current_frame.clear();
         let mut values = Values::new(&self.ctx);
         let mut widgets = Generator::new(&self.templates, &mut values);
+        let mut frame = Frame::empty();
         while let Some(mut widget) = widgets.next(&mut values).transpose()? {
             widget.layout(self.constraints, &values)?;
-            self.current_frame.push(widget);
+            frame.push(widget);
         }
+        self.current_frame = frame;
         Ok(())
     }
 
@@ -108,7 +110,7 @@ where
             while let Some(event) = self.event_receiver.next() {
                 let event = self
                     .events
-                    .event(event, &mut self.ctx, &mut self.current_frame);
+                    .event(event, &mut self.ctx, &mut self.current_frame.inner);
                 match event {
                     Event::Resize(width, height) => {
                         let size = Size::from((width, height));

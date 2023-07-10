@@ -276,9 +276,8 @@ impl WidgetContainer {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let layout_args =
-                    LayoutCtx::new(&self.templates, values, constraints, self.padding);
-                let size = self.inner.layout(layout_args, &mut self.children)?;
+                let layout = LayoutCtx::new(&self.templates, values, constraints, self.padding);
+                let size = self.inner.layout(layout, &mut self.children)?;
                 self.size = size;
                 self.size.width += self.padding.left + self.padding.right;
                 self.size.height += self.padding.top + self.padding.bottom;
