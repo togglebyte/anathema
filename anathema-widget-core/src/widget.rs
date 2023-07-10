@@ -179,13 +179,12 @@ impl PartialEq for WidgetContainer {
         let lhs = &self.inner;
         let rhs = &other.inner;
 
-        lhs.any_eq(rhs)
-            && self.background == other.background
+        self.background == other.background
             && self.display == other.display
             && self.padding == other.padding
-            && self.children == other.children
             && self.pos == other.pos
             && self.size == other.size
+            && lhs.any_eq(rhs)
     }
 }
 
