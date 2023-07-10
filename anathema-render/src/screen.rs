@@ -162,7 +162,7 @@ mod test {
     use crate::buffer::Cell;
     use crate::Style;
 
-    fn make_screen(size: Size, buffer: &mut Vec<u8>) -> Screen {
+    fn make_screen(size: Size) -> Screen {
         let mut screen = Screen::new(size);
         for y in 0..size.height {
             let c = y.to_string().chars().next().unwrap();
@@ -178,7 +178,7 @@ mod test {
     fn render() {
         // Render a character
         let mut render_output = vec![];
-        let mut screen = make_screen(Size::new(1, 1), &mut render_output);
+        let mut screen = make_screen(Size::new(1, 1));
         screen.put('x', Style::reset(), ScreenPos::ZERO);
         screen.render(&mut render_output).unwrap();
 
@@ -191,7 +191,7 @@ mod test {
     fn erase_region() {
         // Erase a whole region, leaving all cells `empty`
         let mut render_output = vec![];
-        let mut screen = make_screen(Size::new(2, 2), &mut render_output);
+        let mut screen = make_screen(Size::new(2, 2));
         screen.render(&mut render_output).unwrap();
 
         screen.erase_region(ScreenPos::new(1, 1), Size::new(1, 1));
@@ -207,7 +207,7 @@ mod test {
     fn clear_all() {
         // Clear the entire screen, as well as the buffers
         let mut render_output = vec![];
-        let mut screen = make_screen(Size::new(1, 1), &mut render_output);
+        let mut screen = make_screen(Size::new(1, 1));
         screen.clear_all(&mut render_output).unwrap();
         let actual = screen.new_buffer.inner[0];
         assert_eq!(Cell::empty(), actual);
@@ -217,7 +217,7 @@ mod test {
     #[should_panic(expected = "index out of bounds: the len is 1 but the index is 4")]
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
-        let mut screen = make_screen(Size::new(1, 1), &mut vec![]);
+        let mut screen = make_screen(Size::new(1, 1));
         screen.put('x', Style::reset(), ScreenPos::new(2, 2));
         screen.render(&mut vec![]).unwrap();
     }

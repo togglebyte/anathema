@@ -35,8 +35,7 @@ impl SizeMod {
         }
     }
 
-    // TODO: rename this
-    fn empty(&self) -> bool {
+    fn no_space_left(&self) -> bool {
         match self.axis {
             Axis::Horizontal => self.inner.width >= self.max_size.width,
             Axis::Vertical => self.inner.height >= self.max_size.height,
@@ -139,7 +138,7 @@ impl Layout for Many {
         }
 
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
-            // Ignore spacers
+            // Ignore spacers and expanders
             if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
                 children.push(widget);
                 continue;
@@ -169,7 +168,7 @@ impl Layout for Many {
             children.push(widget);
             used_size.apply(widget_size);
 
-            if used_size.empty() {
+            if used_size.no_space_left() {
                 break;
             }
         }

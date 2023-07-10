@@ -19,7 +19,7 @@ use crate::layout::spacers::SpacerLayout;
 ///
 /// In an `VStack` the spacer will always expand to have the same width as the child with the most
 /// width.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Spacer;
 
 impl Spacer {

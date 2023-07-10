@@ -18,7 +18,7 @@ use crate::layout::single::Single;
 /// use anathema_widgets::Alignment;
 /// let alignment = Alignment::new(Align::TopRight);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Alignment {
     /// The alignment
     pub alignment: Align,
@@ -102,7 +102,7 @@ mod test {
     use anathema_widget_core::layout::{Constraints, Padding};
     use anathema_widget_core::template::template_text;
     use anathema_widget_core::testing::FakeTerm;
-    use anathema_widget_core::Store;
+    use anathema_widget_core::Values;
 
     use super::*;
     use crate::testing::test_widget;
@@ -264,7 +264,7 @@ mod test {
         let constraints = Constraints::unbounded();
         let mut children = vec![];
         let data = DataCtx::default();
-        let store = Store::new(&data);
+        let store = Values::new(&data);
         let ctx = LayoutCtx::new(&[], &store, constraints, Padding::ZERO);
         let mut alignment = Alignment::new(Align::Left);
         let actual = alignment.layout(ctx, &mut children).unwrap();

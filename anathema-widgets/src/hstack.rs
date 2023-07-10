@@ -27,7 +27,7 @@ use crate::layout::horizontal::Horizontal;
 /// ```text
 /// 1234
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct HStack {
     /// If a width is provided then the layout constraints will be tight for width
     pub width: Option<usize>,

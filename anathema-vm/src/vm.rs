@@ -1,6 +1,5 @@
 use anathema_compiler::{Constants, Instruction};
 use anathema_widget_core::template::Template;
-use anathema_widget_core::NodeId;
 
 use crate::error::Result;
 use crate::scope::Scope;
@@ -20,7 +19,7 @@ impl VirtualMachine {
 
     pub fn exec(self) -> Result<Vec<Template>> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
-        root_scope.exec(NodeId::empty())
+        root_scope.exec()
     }
 }
 
@@ -52,7 +51,7 @@ mod test {
         ";
         let (instructions, consts) = compile(src).unwrap();
         let vm = VirtualMachine::new(instructions, consts);
-        let mut for_loop = vm.exec().unwrap().remove(0);
+        let for_loop = vm.exec().unwrap().remove(0);
 
         assert!(matches!(for_loop, Template::Loop { .. }));
 

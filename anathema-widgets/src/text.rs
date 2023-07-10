@@ -195,7 +195,7 @@ impl Widget for Text {
 }
 
 /// Represents a chunk of text with its own style
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TextSpan {
     /// The text
     pub text: String,

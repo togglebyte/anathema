@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::gen::store::Store;
+use crate::gen::store::Values;
 use crate::{Fragment, Value};
 
 // Values can only come from the supplied value,
@@ -54,9 +54,9 @@ impl fmt::Display for Path {
 }
 
 impl Path {
-    pub fn lookup_value<'parent>(&self, values: &Store<'parent>) -> Option<&'parent Value> {
+    pub fn lookup_value<'parent>(&self, values: &Values<'parent>) -> Option<&'parent Value> {
         match self {
-            Self::Key(key) => values.get_borrowed(key.as_str()),
+            Self::Key(key) => values.get_borrowed_value(key.as_str()),
             Self::Composite(left, right) => {
                 let left = left.lookup_value(values)?;
                 composite_value_lookup(right, left)

@@ -3,7 +3,7 @@ use unicode_width::UnicodeWidthStr;
 
 use super::generator::Direction;
 use super::scope::Scope;
-use super::store::Store;
+use super::store::Values;
 use crate::contexts::{DataCtx, LayoutCtx, PositionCtx};
 use crate::error::Result;
 use crate::template::Template;
@@ -12,6 +12,7 @@ use crate::{
     WidgetFactory,
 };
 
+#[derive(Debug, PartialEq)]
 pub struct TestWidget(pub String);
 
 impl Widget for TestWidget {
@@ -82,7 +83,7 @@ impl TestSetup {
     }
 
     pub fn scope<'a>(&'a mut self) -> TestScope<'a> {
-        let mut store = Store::new(&self.root);
+        let mut store = Values::new(&self.root);
         let inner = Scope::new(&self.templates, &mut store, Direction::Forward);
 
         TestScope {
@@ -93,7 +94,7 @@ impl TestSetup {
 }
 
 pub struct TestScope<'a> {
-    values: Store<'a>,
+    values: Values<'a>,
     pub inner: Scope<'a>,
 }
 

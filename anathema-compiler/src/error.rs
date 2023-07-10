@@ -82,6 +82,7 @@ impl Display for Error {
                 format!("invalid token. expected: {expected}")
             }
             ErrorKind::InvalidNumber => "invalid number".to_string(),
+            ErrorKind::InvalidPath => "invalid path".to_string(),
             ErrorKind::InvalidHexValue => "invalid hex value".to_string(),
             ErrorKind::UnexpectedEnd => "unexpected end".to_string(),
             ErrorKind::TrailingPipe => "trailing pipe character".to_string(),
@@ -116,4 +117,5 @@ pub enum ErrorKind {
     UnexpectedEnd,
     TrailingPipe,
     InvalidUnindent,
+    InvalidPath,
 }

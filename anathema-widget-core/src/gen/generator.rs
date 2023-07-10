@@ -1,5 +1,5 @@
 use super::scope::Scope;
-use super::store::Store;
+use super::store::Values;
 use crate::error::Result;
 use crate::template::Template;
 use crate::WidgetContainer;
@@ -21,7 +21,7 @@ pub struct Generator<'parent> {
 }
 
 impl<'parent> Generator<'parent> {
-    pub fn new(templates: &'parent [Template], values: &mut Store<'parent>) -> Self {
+    pub fn new(templates: &'parent [Template], values: &mut Values<'parent>) -> Self {
         Self {
             scope: Scope::new(templates, values, Direction::Forward),
         }
@@ -37,7 +37,7 @@ impl<'parent> Generator<'parent> {
         self.scope.flip();
     }
 
-    pub fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer>> {
+    pub fn next(&mut self, values: &mut Values<'parent>) -> Option<Result<WidgetContainer>> {
         self.scope.next(values)
     }
 }

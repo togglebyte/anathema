@@ -3,21 +3,15 @@ use std::time::Duration;
 
 use anathema_render::Size;
 use anathema_widget_core::contexts::DataCtx;
-use anathema_widget_core::{Number, Value, WidgetContainer};
+use anathema_widget_core::{Number, Value};
+
+use crate::frame::Frame;
 
 const META: &'static str = "_meta";
 const TIMINGS: &'static str = "timings";
 const SIZE: &'static str = "size";
 const FOCUS: &'static str = "focus";
 const COUNT: &'static str = "count";
-
-fn len_of_tree(widgets: &[WidgetContainer]) -> usize {
-    let mut count = widgets.len();
-    for widget in widgets {
-        count += len_of_tree(&widget.children);
-    }
-    count
-}
 
 #[derive(Debug)]
 pub(super) struct Meta {
@@ -69,7 +63,7 @@ impl Meta {
         );
     }
 
-    pub(super) fn update(&mut self, ctx: &mut DataCtx, frame: &[WidgetContainer]) {
+    pub(super) fn update(&mut self, ctx: &mut DataCtx, frame: &Frame) {
         match ctx.get_mut::<HashMap<String, Value>>(META) {
             None => {
                 let mut metamap = HashMap::new();
@@ -83,7 +77,7 @@ impl Meta {
                 metamap.insert(SIZE.into(), size.into());
                 metamap.insert(TIMINGS.to_string(), timings.into());
                 metamap.insert(FOCUS.to_string(), self.focus.into());
-                metamap.insert(COUNT.to_string(), len_of_tree(frame).into());
+                metamap.insert(COUNT.to_string(), frame.count().into());
                 ctx.insert(META, metamap);
             }
             Some(meta) => {
@@ -95,9 +89,9 @@ impl Meta {
                 };
 
                 match meta.get_mut(COUNT) {
-                    Some(count) => *count = len_of_tree(frame).into(),
+                    Some(count) => *count = frame.count().into(),
                     None => {
-                        meta.insert(COUNT.to_string(), len_of_tree(frame).into());
+                        meta.insert(COUNT.to_string(), frame.count().into());
                     }
                 };
 

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use crate::gen::expressions::Expression;
-use crate::gen::store::Store;
+use crate::gen::store::Values;
 use crate::path::TextPath;
 use crate::{Attributes, Value};
 
@@ -42,7 +42,7 @@ pub enum Template {
 }
 
 impl Template {
-    pub fn to_expression<'parent>(&'parent self, values: &Store<'parent>) -> Expression<'_> {
+    pub fn to_expression<'parent>(&'parent self, values: &Values<'parent>) -> Expression<'_> {
         match &self {
             Template::View(id) => {
                 let id = match id {

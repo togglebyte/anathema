@@ -57,7 +57,7 @@ const DEFAULT_FACTOR: usize = 1;
 /// let right = root.by_id(&right_id).unwrap();
 /// assert_eq!(right.size().width, 6);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Expand {
     /// The direction to expand in.
     pub axis: Option<Axis>,

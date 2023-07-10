@@ -3,8 +3,7 @@ use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize}
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Layouts;
 use anathema_widget_core::{
-    fields, AnyWidget, LocalPos, TextPath, Value, ValuesAttributes, Widget, WidgetContainer,
-    WidgetFactory,
+    AnyWidget, LocalPos, TextPath, Value, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthChar;
 
@@ -130,7 +129,7 @@ impl BorderStyle {
 /// If a border has no size (width and height) and no child then nothing will be rendered.
 ///
 /// To render a border with no child provide a width and a height.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Border {
     /// Which sides of the border should be rendered.
     pub sides: Sides,
@@ -403,13 +402,13 @@ impl WidgetFactory for BorderFactory {
         _: Option<&TextPath>,
     ) -> Result<Box<dyn AnyWidget>> {
         let border_style = values
-            .get_attrib(fields::BORDER_STYLE)
+            .get_attrib("border-style")
             .and_then(Value::to_str)
             .map(From::from)
             .unwrap_or(BorderStyle::Thin);
 
         let sides = values
-            .get_attrib(fields::BORDER_STYLE)
+            .get_attrib("sides")
             .and_then(Value::to_str)
             .map(From::from)
             .unwrap_or(Sides::ALL);

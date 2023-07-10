@@ -9,7 +9,7 @@ use anathema_widget_core::{
 use crate::layout::many::Many;
 
 /// A viewport where the children can be rendered with an offset.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Viewport {
     /// Line / cell offset
     pub offset: i32,

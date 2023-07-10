@@ -243,8 +243,6 @@ impl<'src, 'consts> Parser<'src, 'consts> {
                 }
                 // Indent is smaller than previous: close larger scopes
                 Some(&last) if indent < last => {
-                    // TODO: validation misssing
-
                     if indent > 0 && !self.open_scopes.iter().any(|s| indent.eq(s)) {
                         return Err(self.lexer.error(ErrorKind::InvalidUnindent));
                     }
@@ -302,7 +300,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
         let ident = self.lexer.read_ident()?;
 
-        let index = self.constants.store_ident(ident);
+        let index = self.constants.store_string(ident);
         self.lexer.consume(true, false);
         self.next_state();
         Ok(Some(Expression::Node(index)))
@@ -322,10 +320,10 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             let _ = self.lexer.next();
             self.lexer.consume(true, false);
 
-            let binding = self.constants.store_ident(binding);
+            let binding = self.constants.store_string(binding);
 
             let data = AttributeParser::new(&mut self.lexer).parse("")?;
-            let data = self.constants.store_attribute(data);
+            let data = self.constants.store_value(data);
             self.lexer.consume(true, false);
 
             self.next_state();
@@ -351,7 +349,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             self.lexer.consume(true, false);
 
             let cond = AttributeParser::new(&mut self.lexer).parse("")?;
-            let cond = self.constants.store_attribute(cond);
+            let cond = self.constants.store_value(cond);
             self.lexer.consume(true, false);
 
             self.next_state();
@@ -367,7 +365,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         if self.lexer.consume_if(Kind::View)? {
             self.lexer.consume(true, false);
             let id = AttributeParser::new(&mut self.lexer).parse("")?;
-            let id = self.constants.store_attribute(id);
+            let id = self.constants.store_value(id);
             self.lexer.consume(true, false);
             self.next_state();
             Ok(Some(Expression::View(id)))
@@ -423,8 +421,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             return Err(self.lexer.error(ErrorKind::UnterminatedAttributes));
         }
 
-        let key = self.constants.store_ident(left);
-        let value = self.constants.store_attribute(right);
+        let key = self.constants.store_string(left);
+        let value = self.constants.store_value(right);
 
         Ok(Some(Expression::LoadAttribute { key, value }))
     }
@@ -593,7 +591,7 @@ pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
             Ok(Token(Kind::Number(Number::Unsigned(num)), _)) => {
                 path = path.compose(Path::Index(num as usize))
             }
-            _ => {} // TODO: this should return an error: InvalidPath
+            _ => return Err(lexer.error(ErrorKind::InvalidPath)),
         }
     }
 
@@ -858,6 +856,19 @@ mod test {
             },
             line: 1,
             col: 7,
+            src: src.to_string(),
+        };
+        let actual = parse_err(src).remove(0);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn parse_invalid_path() {
+        let src = "node [path: {{ a.-b.c }}]";
+        let expected = Error {
+            kind: ErrorKind::InvalidPath,
+            line: 1,
+            col: 17,
             src: src.to_string(),
         };
         let actual = parse_err(src).remove(0);

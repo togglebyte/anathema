@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use super::expressions::Expression;
 use super::generator::Direction;
 use super::index::Index;
-use super::store::Store;
+use super::store::Values;
 use super::ValueRef;
 use crate::error::Result;
 use crate::template::Template;
@@ -32,7 +32,7 @@ pub struct Scope<'parent> {
 impl<'parent> Scope<'parent> {
     pub(crate) fn new(
         templates: &'parent [Template],
-        values: &Store<'parent>,
+        values: &Values<'parent>,
         dir: Direction,
     ) -> Self {
         let expressions = templates
@@ -78,7 +78,7 @@ impl<'parent> Scope<'parent> {
         }
     }
 
-    pub(crate) fn next(&mut self, values: &mut Store<'parent>) -> Option<Result<WidgetContainer>> {
+    pub(crate) fn next(&mut self, values: &mut Values<'parent>) -> Option<Result<WidgetContainer>> {
         loop {
             match self.inner.as_mut().and_then(|scope| scope.next(values)) {
                 next @ Some(_) => break next,

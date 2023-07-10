@@ -40,7 +40,7 @@ use crate::layout::single::Single;
 /// | └────────┘
 /// ```
 /// ```
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Position {
     /// Horizontal edge
     pub horz_edge: HorzEdge,
