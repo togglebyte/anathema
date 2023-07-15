@@ -135,24 +135,6 @@ pub fn template(
     }
 }
 
-// pub fn template_if(cond: Value, body: Vec<Template>) -> Template {
-//     Template {
-//         kind: Kind::If(cond, None),
-//         children: body,
-//     }
-// }
-
-// pub fn template_else(cond: Option<Value>, body: Vec<Template>) -> Template {
-//     let else_template = Template {
-//         kind: Kind::Else,
-//         children: body,
-//     };
-//     Template {
-//         kind: Kind::If(Value::Bool(false), Some(Box::new(else_template))),
-//         children: vec![],
-//     }
-// }
-
 pub fn template_for(
     binding: impl Into<String>,
     data: impl Into<Value>,

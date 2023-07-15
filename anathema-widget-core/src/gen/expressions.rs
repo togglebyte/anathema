@@ -15,10 +15,6 @@ pub enum Expression<'parent> {
 }
 
 impl<'parent> Expression<'parent> {
-    pub fn node(template: &'parent Template) -> Self {
-        Self::Node(template)
-    }
-
     pub fn for_loop(
         body: &'parent [Template],
         binding: &'parent str,

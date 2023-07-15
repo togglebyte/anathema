@@ -164,13 +164,13 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
+    pub children: Vec<WidgetContainer>,
     pub(crate) background: Option<Color>,
     pub(crate) display: Display,
-    pub(crate) padding: Padding,
-    pub(crate) templates: Arc<[Template]>,
-    pub children: Vec<WidgetContainer>,
     pub(crate) inner: Box<dyn AnyWidget>,
+    pub(crate) padding: Padding,
     pub(crate) pos: Pos,
+    pub(crate) templates: Arc<[Template]>,
     size: Size,
 }
 
