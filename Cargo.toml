@@ -7,9 +7,10 @@ edition = "2021"
 anathema-compiler = { path = "./anathema-compiler" }
 anathema-render = { path = "./anathema-render" }
 anathema-runtime = { path = "./anathema-runtime" }
+anathema-values = { path = "./anathema-values" }
 anathema-vm = { path = "./anathema-vm" }
-anathema-widgets = { path = "./anathema-widgets" }
 anathema-widget-core = { path = "./anathema-widget-core" }
+anathema-widgets = { path = "./anathema-widgets" }
 
 [workspace.dependencies]
 unicode-width = "0.1.10"
@@ -17,13 +18,15 @@ crossterm = "0.25.0"
 bitflags = "1.3.2"
 thiserror = "1.0.40"
 flume = "0.10.14"
+parking_lot = "0.12.1"
 
 [workspace]
 members = [
     "anathema-compiler",
     "anathema-render",
     "anathema-runtime",
+    "anathema-values",
     "anathema-vm",
-    "anathema-widgets",
     "anathema-widget-core",
+    "anathema-widgets",
 ]

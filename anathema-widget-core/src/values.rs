@@ -4,10 +4,13 @@ use std::collections::HashMap;
 use std::fmt;
 
 use anathema_render::Style;
+use anathema_values::{GlobalBucket, StaticBucket};
 
 use crate::gen::store::Values;
 use crate::layout::{Align, Axis, Direction, Padding};
 use crate::{fields, Attributes, Color, Display, Path, TextPath};
+
+pub(crate) static GLOBAL_VALUES: StaticBucket<Value> = StaticBucket::new();
 
 /// A `Fragment` can be either a [`Path`] or a `String`.
 /// `Fragment`s are usually part of a list to represent a single string value.
