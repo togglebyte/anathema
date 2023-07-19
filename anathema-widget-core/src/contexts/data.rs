@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
 use crate::views::ViewCollection;
@@ -10,16 +11,26 @@ pub struct DataCtx {
 }
 
 impl DataCtx {
+    pub(crate) fn by_key(&self, key: &str) -> Option<&Value> {
+        self.data.get(key)
+    }
+
     pub fn insert(&mut self, key: impl Into<String>, value: impl Into<Value>) {
         self.data.insert(key.into(), value.into());
     }
 
-    pub fn by_key(&self, key: &str) -> Option<&Value> {
-        self.data.get(key)
-    }
-
-    pub fn get_mut_value(&mut self, key: &str) -> Option<&mut Value> {
-        self.data.get_mut(key)
+    pub fn get_mut_or<T: 'static>(&mut self, key: &str, or_val: T) -> &mut T
+    where
+        for<'a> &'a mut Value: TryInto<&'a mut T>,
+        Value: From<T>,
+    {
+        match self.data.entry(key.into()) {
+            Entry::Vacant(e) => e.insert(or_val.into()),
+            Entry::Occupied(e) => e.into_mut(),
+        }
+        .try_into()
+        .ok()
+        .expect("this can't fail as we assure that the value exist")
     }
 
     pub fn get_mut<T: 'static>(&mut self, key: &str) -> Option<&mut T>

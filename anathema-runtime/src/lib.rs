@@ -22,6 +22,7 @@ mod meta;
 
 pub struct Runtime<E, ER> {
     pub enable_meta: bool,
+    pub enable_mouse: bool,
     meta: Meta,
     templates: Arc<[Template]>,
     screen: Screen,
@@ -70,6 +71,7 @@ where
             events,
             event_receiver,
             enable_meta: false,
+            enable_mouse: false,
         };
 
         Ok(inst)
@@ -104,6 +106,10 @@ where
     }
 
     pub fn run(mut self) -> Result<()> {
+        if self.enable_mouse {
+            Screen::enable_mouse(&mut self.output)?;
+        }
+
         self.screen.clear_all(&mut self.output)?;
 
         'run: loop {
