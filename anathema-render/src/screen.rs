@@ -1,6 +1,6 @@
 use std::io::{Result, Write};
 
-use crossterm::event::DisableMouseCapture;
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::style::{Color, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen,
@@ -27,6 +27,18 @@ impl Screen {
     /// Show the cursor
     pub fn show_cursor(mut output: impl Write) -> Result<()> {
         output.queue(cursor::Show)?;
+        Ok(())
+    }
+
+    /// Enable mouse support
+    pub fn enable_mouse(mut output: impl Write) -> Result<()> {
+        output.queue(EnableMouseCapture)?;
+        Ok(())
+    }
+
+    /// Disable mouse support
+    pub fn disable_mouse(mut output: impl Write) -> Result<()> {
+        output.queue(DisableMouseCapture)?;
         Ok(())
     }
 

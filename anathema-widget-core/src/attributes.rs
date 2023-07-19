@@ -7,7 +7,6 @@ use crate::values::Value;
 // -----------------------------------------------------------------------------
 pub mod fields {
     pub const ALIGNMENT: &str = "align";
-    pub const ANIMATE: &str = "animate";
     pub const AUTO_SCROLL: &str = "auto-scroll";
     pub const AXIS: &str = "axis";
     pub const BACKGROUND: &str = "background";

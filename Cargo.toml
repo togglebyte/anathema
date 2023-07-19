@@ -16,6 +16,7 @@ unicode-width = "0.1.10"
 crossterm = "0.25.0"
 bitflags = "1.3.2"
 thiserror = "1.0.40"
+flume = "0.10.14"
 
 [workspace]
 members = [

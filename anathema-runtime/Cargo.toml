@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 anathema-widget-core = { path = "../anathema-widget-core" }
 anathema-render = { path = "../anathema-render" }
-flume = "0.10.14"
+flume = { workspace = true }
 crossterm = { workspace = true }

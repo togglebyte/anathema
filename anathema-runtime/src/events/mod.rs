@@ -15,6 +15,7 @@ pub enum Event {
     Quit,
     Blur,
     Focus,
+    CtrlC,
     KeyPress(KeyCode, KeyModifiers, KeyEventState),
     KeyRelease(KeyCode, KeyModifiers, KeyEventState),
     KeyRepeat(KeyCode, KeyModifiers, KeyEventState),
@@ -34,6 +35,12 @@ impl From<CTEvent> for Event {
             CTEvent::Paste(_) => Self::Noop,
             CTEvent::FocusGained => Self::Focus,
             CTEvent::FocusLost => Self::Blur,
+            CTEvent::Key(KeyEvent {
+                kind: KeyEventKind::Press,
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) => Self::CtrlC,
             CTEvent::Key(
                 ev @ KeyEvent {
                     kind: KeyEventKind::Press,
