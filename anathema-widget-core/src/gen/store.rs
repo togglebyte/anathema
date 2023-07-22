@@ -4,7 +4,6 @@ use std::fmt::Write;
 
 use super::ValueRef;
 use crate::contexts::DataCtx;
-use crate::{Fragment, TextPath, Value};
 
 // -----------------------------------------------------------------------------
 //   - Layout -

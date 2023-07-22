@@ -1,67 +1,93 @@
 use std::ops::{Deref, DerefMut};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-pub type StaticBucket<T> = OnceLock<RwLock<GlobalBucket<T>>>;
+use crate::generation::Generation;
+use crate::slab::Slab;
+use crate::{Path, ValueRef};
 
-fn new_bucket<T>() -> RwLock<GlobalBucket<T>> {
-    RwLock::new(GlobalBucket(Vec::new()))
+pub type StaticBucket<T> = RwLock<GlobalBucket<T>>;
+
+pub struct GlobalBucket<T> {
+    values: RwLock<Slab<T>>,
+    paths: Vec<Path>,
 }
-
-#[derive(Default)]
-pub struct GlobalBucket<T>(Vec<T>);
 
 impl<T> GlobalBucket<T> {
-    // Worst case scenario: dead lock
-    pub(crate) fn write(glob: &'static StaticBucket<T>) -> BucketMut<'static, T> {
-        BucketMut(glob.get_or_init(new_bucket).write())
+    fn empty(paths: Vec<Path>) -> Self {
+        Self {
+            values: RwLock::new(Slab::empty()),
+            paths,
+        }
     }
 
-    pub fn read(glob: &'static StaticBucket<T>) -> Bucket<'static, T> {
-        Bucket(glob.get_or_init(new_bucket).read())
+    /// Write causes a lock
+    pub fn write(&self) -> BucketMut<'_, T> {
+        BucketMut(self.values.write())
     }
 
-    pub(crate) fn push(&mut self, value: T) -> usize {
-        let value_id = self.0.len();
-        self.0.push(value);
-        value_id
-    }
-
-    pub(crate) fn get(&self, index: usize) -> Option<&T> {
-        self.0.get(index)
-    }
-
-    pub(crate) fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        self.0.get_mut(index)
+    /// Read casues a lock.
+    /// It's okay to have as many read locks as possible as long
+    /// as there is no write lock
+    pub fn read(&self) -> Bucket<'_, T> {
+        Bucket(self.values.read(), &self.paths)
     }
 }
 
-pub struct Bucket<'a, T>(RwLockReadGuard<'a, GlobalBucket<T>>);
+// -----------------------------------------------------------------------------
+//   - Bucket -
+// -----------------------------------------------------------------------------
+pub struct Bucket<'a, T>(RwLockReadGuard<'a, Slab<T>>, &'a [Path]);
+
+impl<'a, T> Bucket<'a, T> {
+    pub(crate) fn get(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
+        self.0
+            .get(value_ref.index)
+            .filter(|val| val.comp_gen(value_ref.gen))
+    }
+}
 
 unsafe impl<T> Send for Bucket<'static, T> {}
 unsafe impl<T> Sync for Bucket<'static, T> {}
 
-impl<'a, T> Deref for Bucket<'a, T> {
-    type Target = RwLockReadGuard<'a, GlobalBucket<T>>;
+// -----------------------------------------------------------------------------
+//   - Bucket mut -
+// -----------------------------------------------------------------------------
+pub struct BucketMut<'a, T>(RwLockWriteGuard<'a, Slab<T>>);
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl<'a, T> BucketMut<'a, T>{
+    pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<T> {
+        self.0.remove(value_ref.index)
+    }
+
+    pub(crate) fn push(&mut self, value: T) -> usize {
+        self.0.push(value)
+    }
+
+    pub(crate) fn get(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
+        self.0
+            .get(value_ref.index)
+            .filter(|val| val.comp_gen(value_ref.gen))
+    }
+
+    pub(crate) fn get_mut(&mut self, value_ref: ValueRef<T>) -> Option<&mut Generation<T>> {
+        self.0
+            .get_mut(value_ref.index)
+            .filter(|val| val.comp_gen(value_ref.gen))
     }
 }
 
-pub(crate) struct BucketMut<'a, T>(RwLockWriteGuard<'a, GlobalBucket<T>>);
+#[cfg(test)]
+mod test {
+    use super::*;
 
-impl<'a, T> Deref for BucketMut<'a, T> {
-    type Target = RwLockWriteGuard<'a, GlobalBucket<T>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a, T> DerefMut for BucketMut<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    #[test]
+    fn get_by_path() {
+        // TODO: continue from here. How can we use a path without something that can 
+        // perform a lookup via path?
+        let paths = vec![Path::from("a")];
+        let bucket = GlobalBucket::<usize>::empty(paths);
+        // assert_eq!(expected, actual);
     }
 }

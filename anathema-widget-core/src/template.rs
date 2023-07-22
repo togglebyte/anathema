@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use crate::gen::expressions::Expression;
-use crate::gen::store::Values;
-use crate::path::TextPath;
-use crate::{Attributes, Value};
+use anathema_values::{Value, TextPath};
+
+// use crate::gen::expressions::Expression;
+// use crate::gen::store::Values;
+use crate::Attributes;
 
 #[derive(Debug)]
 pub enum Cond {
@@ -42,65 +43,65 @@ pub enum Template {
 }
 
 impl Template {
-    pub fn to_expression<'parent>(&'parent self, values: &Values<'parent>) -> Expression<'_> {
-        match &self {
-            Template::View(id) => {
-                let id = match id {
-                    Value::String(s) => Cow::Borrowed(s.as_str()),
-                    Value::DataBinding(path) => {
-                        let val = path.lookup_value(values).unwrap_or(&Value::Empty);
-                        match val {
-                            Value::String(s) => Cow::Borrowed(s.as_str()),
-                            _ => Cow::Owned(val.to_string()),
-                        }
-                    }
-                    _ => Cow::Owned(id.to_string()),
-                };
-                Expression::View(id)
-            }
-            Template::Node { .. } => Expression::Node(&self),
-            Template::Loop {
-                binding,
-                data,
-                body,
-            } => {
-                let data = match data {
-                    Value::List(slice) => slice.as_slice(),
-                    Value::DataBinding(path) => path
-                        .lookup_value(values)
-                        .and_then(|v| v.to_slice())
-                        .unwrap_or(&[]),
-                    _ => &[],
-                };
-                Expression::for_loop(body, binding, data)
-            }
-            Template::ControlFlow(control_flow) => {
-                for branch in control_flow {
-                    match &branch.cond {
-                        Cond::If(Value::Bool(true))
-                        | Cond::Else(None)
-                        | Cond::Else(Some(Value::Bool(true))) => {
-                            return Expression::Block(&branch.body)
-                        }
-                        Cond::If(Value::DataBinding(path))
-                        | Cond::Else(Some(Value::DataBinding(path))) => {
-                            let is_true = path
-                                .lookup_value(values)
-                                .and_then(|v| v.to_bool())
-                                .unwrap_or(false);
+    // pub fn to_expression<'parent>(&'parent self, values: &Values<'parent>) -> Expression<'_> {
+    //     match &self {
+    //         Template::View(id) => {
+    //             let id = match id {
+    //                 Value::String(s) => Cow::Borrowed(s.as_str()),
+    //                 Value::DataBinding(path) => {
+    //                     let val = path.lookup_value(values).unwrap_or(&Value::Empty);
+    //                     match val {
+    //                         Value::String(s) => Cow::Borrowed(s.as_str()),
+    //                         _ => Cow::Owned(val.to_string()),
+    //                     }
+    //                 }
+    //                 _ => Cow::Owned(id.to_string()),
+    //             };
+    //             Expression::View(id)
+    //         }
+    //         Template::Node { .. } => Expression::Node(&self),
+    //         Template::Loop {
+    //             binding,
+    //             data,
+    //             body,
+    //         } => {
+    //             let data = match data {
+    //                 Value::List(slice) => slice.as_slice(),
+    //                 Value::DataBinding(path) => path
+    //                     .lookup_value(values)
+    //                     .and_then(|v| v.to_slice())
+    //                     .unwrap_or(&[]),
+    //                 _ => &[],
+    //             };
+    //             Expression::for_loop(body, binding, data)
+    //         }
+    //         Template::ControlFlow(control_flow) => {
+    //             for branch in control_flow {
+    //                 match &branch.cond {
+    //                     Cond::If(Value::Bool(true))
+    //                     | Cond::Else(None)
+    //                     | Cond::Else(Some(Value::Bool(true))) => {
+    //                         return Expression::Block(&branch.body)
+    //                     }
+    //                     Cond::If(Value::DataBinding(path))
+    //                     | Cond::Else(Some(Value::DataBinding(path))) => {
+    //                         let is_true = path
+    //                             .lookup_value(values)
+    //                             .and_then(|v| v.to_bool())
+    //                             .unwrap_or(false);
 
-                            if is_true {
-                                return Expression::Block(&branch.body);
-                            }
-                        }
-                        _ => continue,
-                    }
-                }
+    //                         if is_true {
+    //                             return Expression::Block(&branch.body);
+    //                         }
+    //                     }
+    //                     _ => continue,
+    //                 }
+    //             }
 
-                Expression::Block(&[])
-            }
-        }
-    }
+    //             Expression::Block(&[])
+    //         }
+    //     }
+    // }
 }
 
 pub fn template_text(text: impl Into<TextPath>) -> Template {

@@ -2,10 +2,9 @@ use anathema_render::{Screen, ScreenPos, Size};
 
 use super::WidgetContainer;
 use crate::contexts::{DataCtx, PaintCtx};
-use crate::gen::store::Values;
 use crate::layout::Constraints;
 use crate::template::Template;
-use crate::{Pos, Widget};
+use crate::Widget;
 
 // -----------------------------------------------------------------------------
 //   - Here be (hacky) dragons -

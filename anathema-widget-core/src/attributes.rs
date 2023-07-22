@@ -1,53 +1,6 @@
 use std::collections::HashMap;
 
-use crate::values::Value;
-
-// -----------------------------------------------------------------------------
-//     - Attribute names -
-// -----------------------------------------------------------------------------
-pub mod fields {
-    pub const ALIGNMENT: &str = "align";
-    pub const AUTO_SCROLL: &str = "auto-scroll";
-    pub const AXIS: &str = "axis";
-    pub const BACKGROUND: &str = "background";
-    pub const BG: &str = "bg";
-    pub const BINDING: &str = "binding";
-    pub const BORDER_CHARS: &str = "border-chars";
-    pub const BORDER_STYLE: &str = "border-style";
-    pub const BOTTOM: &str = "bottom";
-    pub const COLLAPSE_SPACES: &str = "collapse-spaces";
-    pub const DATA: &str = "data";
-    pub const DISPLAY: &str = "display";
-    pub const DIRECTION: &str = "direction";
-    pub const FACTOR: &str = "factor";
-    pub const FG: &str = "fg";
-    pub const FILL: &str = "fill";
-    pub const FOREGROUND: &str = "foreground";
-    pub const HEIGHT: &str = "height";
-    pub const ID: &str = "id";
-    pub const LEFT: &str = "left";
-    pub const MAX_CHILDREN: &str = "max-children";
-    pub const MAX_HEIGHT: &str = "max-height";
-    pub const MAX_WIDTH: &str = "max-width";
-    pub const MIN_HEIGHT: &str = "min-height";
-    pub const MIN_WIDTH: &str = "min-width";
-    pub const NAME: &str = "name";
-    pub const OFFSET: &str = "offset";
-    pub const PADDING: &str = "padding";
-    pub const PADDING_BOTTOM: &str = "padding-bottom";
-    pub const PADDING_LEFT: &str = "padding-left";
-    pub const PADDING_RIGHT: &str = "padding-right";
-    pub const PADDING_TOP: &str = "padding-top";
-    pub const POSITION: &str = "position";
-    pub const REVERSE: &str = "reverse";
-    pub const RIGHT: &str = "right";
-    pub const TAB_STOP: &str = "tab";
-    pub const TOP: &str = "top";
-    pub const TRIM_END: &str = "trim-end";
-    pub const TRIM_START: &str = "trim-start";
-    pub const WIDTH: &str = "width";
-    pub const WRAP: &str = "wrap";
-}
+use anathema_values::Value;
 
 // -----------------------------------------------------------------------------
 //     - Attributes -

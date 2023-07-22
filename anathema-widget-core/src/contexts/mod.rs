@@ -1,13 +1,13 @@
 use std::ops::Deref;
+use std::marker::PhantomData;
 
 use anathema_render::{Screen, ScreenPos, Size, Style};
+use anathema_values::{LocalPos, Padding, Pos, Region, Align};
 use unicode_width::UnicodeWidthChar;
 
 pub use self::data::DataCtx;
-use crate::gen::store::Values;
-use crate::layout::{Align, Constraints, Padding};
+use crate::layout::Constraints;
 use crate::template::Template;
-use crate::{LocalPos, Pos, Region};
 
 mod data;
 
@@ -17,7 +17,8 @@ mod data;
 #[derive(Copy, Clone)]
 pub struct LayoutCtx<'widget, 'parent> {
     pub templates: &'parent [Template],
-    pub values: &'widget Values<'parent>,
+    p: PhantomData<&'widget ()>,
+    // pub values: &'widget Values<'parent>,
     pub constraints: Constraints,
     pub padding: Padding,
 }
@@ -25,13 +26,14 @@ pub struct LayoutCtx<'widget, 'parent> {
 impl<'widget, 'parent> LayoutCtx<'widget, 'parent> {
     pub fn new(
         templates: &'parent [Template],
-        values: &'widget Values<'parent>,
+        // values: &'widget Values<'parent>,
         constraints: Constraints,
         padding: Padding,
     ) -> Self {
         Self {
             templates,
-            values,
+            p: PhantomData,
+            // values,
             constraints,
             padding,
         }

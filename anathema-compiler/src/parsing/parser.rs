@@ -1,4 +1,4 @@
-use anathema_widget_core::{Fragment, Number, Path, TextPath};
+use anathema_values::{Fragment, Number, Path, TextPath};
 
 use super::attribute_parser::AttributeParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
@@ -322,7 +322,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
             let binding = self.constants.store_string(binding);
 
-            let data = AttributeParser::new(&mut self.lexer).parse("")?;
+            let data = AttributeParser::new(&mut self.lexer, &mut self.constants).parse("")?;
             let data = self.constants.store_value(data);
             self.lexer.consume(true, false);
 
@@ -348,7 +348,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         } else if self.lexer.consume_if(Kind::If)? {
             self.lexer.consume(true, false);
 
-            let cond = AttributeParser::new(&mut self.lexer).parse("")?;
+            let cond = AttributeParser::new(&mut self.lexer, &mut self.constants).parse("")?;
             let cond = self.constants.store_value(cond);
             self.lexer.consume(true, false);
 
@@ -364,7 +364,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         self.lexer.consume(true, false);
         if self.lexer.consume_if(Kind::View)? {
             self.lexer.consume(true, false);
-            let id = AttributeParser::new(&mut self.lexer).parse("")?;
+            let id = AttributeParser::new(&mut self.lexer, &mut self.constants).parse("")?;
             let id = self.constants.store_value(id);
             self.lexer.consume(true, false);
             self.next_state();
@@ -409,7 +409,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         }
         self.lexer.consume(true, true);
 
-        let right = AttributeParser::new(&mut self.lexer).parse(left)?;
+        let right = AttributeParser::new(&mut self.lexer, &mut self.constants).parse(left)?;
         self.lexer.consume(true, true);
 
         // Consume comma
@@ -579,18 +579,18 @@ pub(super) fn parse_to_fragments(text: &str) -> TextPath {
 pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
     let mut path = Path::Key(ident.to_owned());
 
+    // {{ a.b }}
+    // {{ a[0][2] }}
     loop {
-        if let Ok(Token(Kind::Fullstop, _)) = lexer.peek() {
-            lexer.next()?;
-        } else {
-            break;
+        match lexer.peek() {
+            Ok(Token(Kind::Fullstop, _)) => drop(lexer.next()?),
+            Ok(Token(Kind::Index(_), _)) => {}
+            _ => break,
         }
 
         match lexer.next() {
             Ok(Token(Kind::Ident(ident), _)) => path = path.compose(Path::Key(ident.to_owned())),
-            Ok(Token(Kind::Number(Number::Unsigned(num)), _)) => {
-                path = path.compose(Path::Index(num as usize))
-            }
+            Ok(Token(Kind::Index(index), _)) => path = path.compose(Path::Index(index)),
             _ => return Err(lexer.error(ErrorKind::InvalidPath)),
         }
     }

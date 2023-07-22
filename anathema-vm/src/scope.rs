@@ -1,6 +1,7 @@
 use anathema_compiler::{Constants, Instruction};
+use anathema_values::TextPath;
 use anathema_widget_core::template::{Cond, ControlFlow, Template};
-use anathema_widget_core::{Attributes, TextPath};
+use anathema_widget_core::Attributes;
 
 use crate::error::Result;
 

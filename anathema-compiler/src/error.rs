@@ -50,6 +50,15 @@ impl Error {
             kind: ErrorKind::InvalidNumber,
         }
     }
+    pub(crate) fn invalid_index(range: Range<usize>, src: &str) -> Self {
+        let (line, col) = src_line_no(range.end, src);
+        Self {
+            line,
+            col,
+            src: src.to_string(),
+            kind: ErrorKind::InvalidIndex,
+        }
+    }
 
     pub(crate) fn invalid_hex_value(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.end, src);
@@ -82,6 +91,7 @@ impl Display for Error {
                 format!("invalid token. expected: {expected}")
             }
             ErrorKind::InvalidNumber => "invalid number".to_string(),
+            ErrorKind::InvalidIndex => "invalid index".to_string(),
             ErrorKind::InvalidPath => "invalid path".to_string(),
             ErrorKind::InvalidHexValue => "invalid hex value".to_string(),
             ErrorKind::UnexpectedEnd => "unexpected end".to_string(),
@@ -113,6 +123,7 @@ pub enum ErrorKind {
     UnterminatedAttributes,
     InvalidToken { expected: &'static str },
     InvalidNumber,
+    InvalidIndex,
     InvalidHexValue,
     UnexpectedEnd,
     TrailingPipe,

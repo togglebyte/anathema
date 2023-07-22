@@ -5,7 +5,6 @@ use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
 use crate::gen::store::Values;
-use crate::layout::Padding;
 use crate::template::Template;
 use crate::values::ValuesAttributes;
 use crate::widget::AnyWidget;

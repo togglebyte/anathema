@@ -1,13 +1,15 @@
-use anathema_widget_core::{TextPath, Value};
+use anathema_values::{Path, TextPath, Value, PathId};
 
 mod attribute_parser;
+mod fields;
 pub(crate) mod parser;
 
 #[derive(Debug, Default)]
 pub struct Constants {
     strings: Vec<String>,
     texts: Vec<TextPath>,
-    vaules: Vec<Value>,
+    values: Vec<Value>,
+    paths: Vec<Path>,
 }
 
 impl Constants {
@@ -15,7 +17,8 @@ impl Constants {
         Self {
             strings: vec![],
             texts: vec![],
-            vaules: vec![],
+            values: vec![],
+            paths: vec![],
         }
     }
 
@@ -43,12 +46,23 @@ impl Constants {
     }
 
     pub fn store_value(&mut self, value: Value) -> usize {
-        match self.vaules.iter().position(|v| value.eq(v)) {
+        match self.values.iter().position(|v| value.eq(v)) {
             Some(index) => index,
             None => {
-                let index = self.vaules.len();
-                self.vaules.push(value);
+                let index = self.values.len();
+                self.values.push(value);
                 index
+            }
+        }
+    }
+
+    pub fn store_path(&mut self, path: Path) -> PathId {
+        match self.paths.iter().position(|p| path.eq(p)) {
+            Some(index) => index.into(),
+            None => {
+                let index = self.paths.len();
+                self.paths.push(path);
+                index.into()
             }
         }
     }
@@ -62,6 +76,10 @@ impl Constants {
     }
 
     pub fn lookup_value(&self, index: usize) -> Option<&Value> {
-        self.vaules.get(index)
+        self.values.get(index)
+    }
+
+    pub fn lookup_path(&self, path_id: PathId) -> Option<&Path> {
+        self.paths.get(*path_id)
     }
 }

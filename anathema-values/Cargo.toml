@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 parking_lot = { workspace = true }
+anathema-render = { path = "../anathema-render" }

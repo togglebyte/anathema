@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_widget_core::Number;
+use anathema_values::Number;
 
 use crate::error::{Error, Result};
 
@@ -20,6 +20,7 @@ pub(crate) enum Kind<'src> {
     Else,
     View,
     Ident(&'src str),
+    Index(usize),
     Newline,
     Number(Number),
     Fullstop,
@@ -108,6 +109,7 @@ impl<'src> Lexer<'src> {
                 let _ = self.chars.next();
                 Ok(Kind::RDoubleCurly.to_token(index))
             }
+            ('[', Some('0'..='9')) => self.take_index(index),
 
             // -----------------------------------------------------------------------------
             //     - Single tokens -
@@ -234,6 +236,25 @@ impl<'src> Lexer<'src> {
             "else" => Kind::Else,
             "view" => Kind::View,
             s => Kind::Ident(s),
+        }
+    }
+
+    fn take_index(&mut self, index: usize) -> Result<Token<'src>> {
+        let mut end = index;
+        while let Some((e, '0'..='9')) = self.chars.peek() {
+            end = *e;
+            self.chars.next();
+        }
+        let s = self.src.as_bytes()[end];
+        match s {
+            b']' => {
+                let index = self.src[index + 1..end]
+                    .parse::<usize>()
+                    .map_err(|_| Error::invalid_index(index..end + 1, self.src))?;
+                let kind = Kind::Index(index);
+                Ok(kind.to_token(index))
+            }
+            _ => Err(Error::invalid_index(index..end + 1, self.src)),
         }
     }
 

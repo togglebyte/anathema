@@ -2,15 +2,14 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_render::{ScreenPos, Size, Style};
+use anathema_render::{Color, ScreenPos, Size, Style};
+use anathema_values::{Display, Padding, Pos, LocalPos, Region};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::id::NodeId;
-use super::layout::{Constraints, Padding};
-use super::{Color, Display, LocalPos, Pos, Region};
+use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::gen::store::Values;
 use crate::template::Template;
 
 // Layout:
@@ -271,16 +270,17 @@ impl WidgetContainer {
     pub fn layout<'parent>(
         &mut self,
         constraints: Constraints,
-        values: &Values<'_>,
+        // values: &Values<'_>,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let layout = LayoutCtx::new(&self.templates, values, constraints, self.padding);
-                let size = self.inner.layout(layout, &mut self.children)?;
-                self.size = size;
-                self.size.width += self.padding.left + self.padding.right;
-                self.size.height += self.padding.top + self.padding.bottom;
+                // let layout = LayoutCtx::new(&self.templates, values, constraints, self.padding);
+                // let size = self.inner.layout(layout, &mut self.children)?;
+                // self.size = size;
+                // self.size.width += self.padding.left + self.padding.right;
+                // self.size.height += self.padding.top + self.padding.bottom;
+                panic!("TODO: sort this out once anathema-values is done");
             }
         }
 

@@ -7,6 +7,7 @@ pub(crate) mod parsing;
 pub use compiler::Instruction;
 pub use parsing::Constants;
 
+/// Compile source into instructions and constants.
 pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {
     let lexer = lexer::Lexer::new(src);
     let mut constants = Constants::default();

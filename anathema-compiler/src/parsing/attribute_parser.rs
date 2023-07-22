@@ -1,21 +1,23 @@
 use anathema_render::Color;
-use anathema_widget_core::layout::{Align, Axis, Direction};
-use anathema_widget_core::{fields, Display, Path, TextPath, Value};
+use anathema_values::{Align, Axis, Direction, Display, Path, PathId, TextPath, Value};
 
+use super::fields;
 use super::parser::{parse_path, parse_to_fragments};
 use crate::error::{ErrorKind, Result};
 use crate::lexer::{Kind, Lexer};
+use crate::Constants;
 
 const TRUE: &str = "true";
 const FALSE: &str = "false";
 
 pub(super) struct AttributeParser<'lexer, 'src> {
     lexer: &'lexer mut Lexer<'src>,
+    constants: &'lexer mut Constants,
 }
 
 impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
-    pub(super) fn new(lexer: &'lexer mut Lexer<'src>) -> Self {
-        Self { lexer }
+    pub(super) fn new(lexer: &'lexer mut Lexer<'src>, constants: &'lexer mut Constants) -> Self {
+        Self { lexer, constants }
     }
 
     pub(super) fn parse(&mut self, left: &'src str) -> Result<Value> {
@@ -86,12 +88,12 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             Kind::LDoubleCurly => {
                 self.lexer.consume(true, false);
                 let ident = self.lexer.read_ident()?;
-                let path = self.try_parse_path(ident)?;
+                let path_id = self.try_parse_path(ident)?;
                 self.lexer.consume(true, false);
                 if !self.lexer.consume_if(Kind::RDoubleCurly)? {
                     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "}" }));
                 }
-                Ok(Value::DataBinding(path))
+                Ok(Value::DataBinding(path_id))
             }
             Kind::Colon
             | Kind::Comma
@@ -103,6 +105,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             | Kind::RParen
             | Kind::Indent(_)
             | Kind::Newline
+            | Kind::Index(_)
             | Kind::Comment
             | Kind::For
             | Kind::In
@@ -113,8 +116,10 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         }
     }
 
-    fn try_parse_path(&mut self, ident: &str) -> Result<Path> {
-        parse_path(self.lexer, ident)
+    fn try_parse_path(&mut self, ident: &str) -> Result<PathId> {
+        let path = parse_path(self.lexer, ident)?;
+        let path_id = self.constants.store_path(path);
+        Ok(path_id)
     }
 
     fn try_parse_color(&mut self, maybe_color: &str) -> Option<Color> {
@@ -165,7 +170,7 @@ mod test {
             match inst {
                 Expression::LoadAttribute { key, value } => {
                     let key = consts.strings.get(key).unwrap();
-                    let value = consts.vaules.get(value).unwrap();
+                    let value = consts.values.get(value).unwrap();
                     attrs.set(key, value.clone());
                 }
                 _ => continue,

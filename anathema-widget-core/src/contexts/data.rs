@@ -1,8 +1,9 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use anathema_values::Value;
+
 use crate::views::ViewCollection;
-use crate::Value;
 
 #[derive(Debug, Default)]
 pub struct DataCtx {

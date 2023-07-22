@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
+use anathema_values::Value;
+
 use crate::template::Template;
-use crate::Value;
 
 pub enum Expression<'parent> {
     Node(&'parent Template),

@@ -7,7 +7,7 @@ use super::store::Values;
 use super::ValueRef;
 use crate::error::Result;
 use crate::template::Template;
-use crate::{Factory, Value, WidgetContainer};
+use crate::{Factory, WidgetContainer};
 
 enum State<'parent> {
     Block,

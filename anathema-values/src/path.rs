@@ -1,6 +1,24 @@
 use std::fmt;
+use std::ops::Deref;
 
-use crate::gen::store::Values;
+use crate::Value;
+
+/// A `Fragment` can be either a [`Path`] or a `String`.
+/// `Fragment`s are usually part of a list to represent a single string value.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Fragment {
+    /// A string.
+    String(String),
+    /// A path to a value inside a context.
+    Data(Path),
+}
+
+impl Fragment {
+    /// Is the fragment a string?
+    pub fn is_string(&self) -> bool {
+        matches!(self, Fragment::String(_))
+    }
+}
 
 // Values can only come from the supplied value,
 // meaning the supplied value is either a vector of values or a hashmap
@@ -12,6 +30,24 @@ fn composite_value_lookup<'a, 'b: 'a>(path: &'a Path, value: &'b Value) -> Optio
             let inner = composite_value_lookup(left, value)?;
             composite_value_lookup(right, inner)
         }
+    }
+}
+
+/// Path lookup
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PathId(usize);
+
+impl From<usize> for PathId {
+    fn from(index: usize) -> Self {
+        Self(index)
+    }
+}
+
+impl Deref for PathId {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -53,16 +89,16 @@ impl fmt::Display for Path {
 }
 
 impl Path {
-    pub fn lookup_value<'parent>(&self, values: &Values<'parent>) -> Option<&'parent Value> {
-        match self {
-            Self::Key(key) => values.get_borrowed_value(key.as_str()),
-            Self::Composite(left, right) => {
-                let left = left.lookup_value(values)?;
-                composite_value_lookup(right, left)
-            }
-            _ => None,
-        }
-    }
+    // pub fn lookup_value<'parent>(&self, values: &Values<'parent>) -> Option<&'parent Value> {
+    //     match self {
+    //         Self::Key(key) => values.get_borrowed_value(key.as_str()),
+    //         Self::Composite(left, right) => {
+    //             let left = left.lookup_value(values)?;
+    //             composite_value_lookup(right, left)
+    //         }
+    //         _ => None,
+    //     }
+    // }
 }
 
 impl Path {
@@ -81,6 +117,18 @@ impl Path {
 impl From<usize> for Path {
     fn from(index: usize) -> Self {
         Self::Index(index)
+    }
+}
+
+impl From<&str> for Path {
+    fn from(s: &str) -> Self {
+        Self::Key(s.into())
+    }
+}
+
+impl From<String> for Path {
+    fn from(s: String) -> Self {
+        Self::Key(s)
     }
 }
 

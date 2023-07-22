@@ -1,4 +1,4 @@
-use crate::Path;
+use anathema_values::Path;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
