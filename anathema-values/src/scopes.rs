@@ -1,4 +1,4 @@
-use crate::bucket::Bucket;
+use crate::bucket::BucketRef;
 use crate::path::PathId;
 use crate::slab::Slab;
 use crate::{Value, ValueRef};
@@ -33,20 +33,34 @@ impl<T> Scopes<T> {
         }
     }
 
-    pub(crate) fn insert(&mut self, path_id: PathId, value: ValueRef<T>, scope: Option<ScopeId>) {
+    pub(crate) fn new_scope(&mut self) -> ScopeId {
+        self.scopes.push(Scope::new()).into()
+    }
+
+    pub(crate) fn insert(
+        &mut self,
+        path_id: PathId,
+        value: ValueRef<T>,
+        scope: impl Into<Option<ScopeId>>,
+    ) {
         let scope = scope
+            .into()
             .and_then(|id| self.scopes.get_mut(id.0))
             .unwrap_or_else(|| &mut self.root);
 
-        panic!("what is it that we are actually supposed to insert here?");
+        scope.insert(path_id, value);
     }
 
     pub fn remove(&mut self, scope_id: impl Into<ScopeId>) {
         self.scopes.remove(scope_id.into().0);
     }
 
-    fn get(&self, path: PathId, scope_id: Option<ScopeId>) -> Option<ValueRef<T>> {
-        let scope = scope_id.and_then(|id| self.scopes.get(id.0));
+    pub(crate) fn get(
+        &self,
+        path: PathId,
+        scope_id: impl Into<Option<ScopeId>>,
+    ) -> Option<ValueRef<T>> {
+        let scope = scope_id.into().and_then(|id| self.scopes.get(id.0));
 
         scope
             .and_then(|scope| scope.get(path))
@@ -91,14 +105,40 @@ mod test {
     }
 
     #[test]
-    fn add_value_to_stack() {
-        // let expected = ValueRef::<()>::new(0, 0);
-        // let path = PathId::from(0);
-        // let mut scopes = Scopes::new();
-        // let scope_id = scopes.new_scope();
-        // scopes.insert(path, expected);
+    fn add_value_to_inner_scope() {
+        let outer = ValueRef::<()>::new(0, 0);
+        let path = PathId::from(0);
+        let mut scopes = Scopes::new();
+        scopes.insert(path, outer, None);
 
-        // let actual = scopes.get(path).unwrap();
-        // assert_eq!(expected, actual);
+        // The block is only here to express
+        // inner scope to the reader of the test.
+        // It has no significance on the scope what so ever
+        {
+            let inner = ValueRef::<()>::new(1, 0);
+            let scope_id = scopes.new_scope();
+            scopes.insert(path, inner, scope_id);
+            let actual = scopes.get(path, scope_id).unwrap();
+            assert_eq!(inner, actual);
+        }
+
+        let actual = scopes.get(path, None).unwrap();
+        assert_eq!(outer, actual);
+    }
+
+    #[test]
+    fn remove_scope() {
+        let path = PathId::from(0);
+
+        let mut scopes = Scopes::new();
+
+        let scope_id = scopes.new_scope();
+        scopes.insert(path, ValueRef::<()>::new(1, 0), scope_id);
+        let actual = scopes.get(path, scope_id);
+        assert!(actual.is_some());
+        scopes.remove(scope_id);
+
+        let actual = scopes.get(path, scope_id);
+        assert!(actual.is_none());
     }
 }

@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::ScreenPos;
-pub use bucket::{GlobalBucket, StaticBucket};
+pub use bucket::{Bucket};
 
 pub use crate::layout_values::{Align, Axis, Direction, Padding};
 pub use crate::path::{Path, PathId};

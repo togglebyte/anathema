@@ -2,9 +2,9 @@ use std::fmt;
 use std::ops::Deref;
 
 /// Paths are insert and fetch only.
-/// Once a path is written into `Paths` it can 
-/// not be removed.
-pub(crate) struct Paths {
+/// Once a path is written into `Paths` it should never be removed
+/// as the index in the `Vec<Path>` is the path id
+pub struct Paths {
     inner: Vec<Path>,
 }
 
@@ -13,6 +13,10 @@ impl Paths {
         Self {
             inner: vec![],
         }
+    }
+
+    pub(crate) fn get(&self, path: Path) -> Option<PathId> {
+        self.inner.iter().position(|p| path.eq(p)).map(Into::into)
     }
 
     pub(crate) fn get_or_insert(&mut self, path: Path) -> PathId {
@@ -50,6 +54,7 @@ impl From<Vec<Path>> for Paths {
 
 /// Path lookup
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(transparent)]
 pub struct PathId(usize);
 
 impl From<usize> for PathId {
