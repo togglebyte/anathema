@@ -3,7 +3,10 @@ name = "anathema-values"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.release]
+debug = true
+debuginfo-level = 1
+jemalloc = false
 
 [dependencies]
 parking_lot = { workspace = true }

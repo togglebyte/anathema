@@ -24,7 +24,7 @@ impl<T> Generation<T> {
         Self { gen, value }
     }
 
-    pub(crate) fn comp_gen(&self, gen: GenerationId) -> bool {
+    pub(crate) fn compare_generation(&self, gen: GenerationId) -> bool {
         self.gen == gen
     }
 }

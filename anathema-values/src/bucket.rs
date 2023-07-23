@@ -72,7 +72,7 @@ impl<'a, T> BucketRef<'a, T> {
     pub fn get(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
         self.slab
             .get(value_ref.index)
-            .filter(|val| val.comp_gen(value_ref.gen))
+            .filter(|val| val.compare_generation(value_ref.gen))
     }
 }
 
@@ -117,10 +117,16 @@ impl<'a, T> BucketMut<'a, T> {
     }
 
 
-    pub fn get_by_ref(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
+    pub fn by_ref(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
         self.slab
             .get(value_ref.index)
-            .filter(|val| val.comp_gen(value_ref.gen))
+            .filter(|val| val.compare_generation(value_ref.gen))
+    }
+
+    pub fn by_ref_mut(&mut self, value_ref: ValueRef<T>) -> Option<&mut Generation<T>> {
+        self.slab
+            .get_mut(value_ref.index)
+            .filter(|val| val.compare_generation(value_ref.gen))
     }
 
     pub fn get(&self, path: impl Into<Path>) -> Option<&Generation<T>> {
@@ -129,7 +135,7 @@ impl<'a, T> BucketMut<'a, T> {
         let value_ref = self.scopes.get(path_id, None)?;
         self.slab
             .get(value_ref.index)
-            .filter(|val| val.comp_gen(value_ref.gen))
+            .filter(|val| val.compare_generation(value_ref.gen))
     }
 
     pub fn get_mut(&mut self, path: impl Into<Path>) -> Option<&mut Generation<T>> {
@@ -138,7 +144,7 @@ impl<'a, T> BucketMut<'a, T> {
         let value_ref = self.scopes.get(path_id, None)?;
         self.slab
             .get_mut(value_ref.index)
-            .filter(|val| val.comp_gen(value_ref.gen))
+            .filter(|val| val.compare_generation(value_ref.gen))
     }
 }
 
