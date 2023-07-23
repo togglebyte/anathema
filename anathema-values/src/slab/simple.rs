@@ -74,7 +74,7 @@ impl<T> Slab<T> {
     /// Remove the entry at a given index,
     /// and increment the generation.
     pub(crate) fn remove(&mut self, index: Index) -> T {
-        let Entry::Occupied(val) = &self.inner[index] else {
+        let Entry::Occupied(_val) = &self.inner[index] else {
             panic!("removal of vacant entry")
         };
 

@@ -1,6 +1,3 @@
-use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, OnceLock};
-
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::generation::Generation;
@@ -27,11 +24,19 @@ impl<T> Bucket<T> {
         }
     }
 
-    fn empty() -> Self {
+    pub fn with_capacity(cap: usize) -> Self {
+        Self {
+            values: RwLock::new(GenerationSlab::with_capacity(cap)),
+            scopes: RwLock::new(Scopes::with_capacity(cap)),
+            paths: RwLock::new(Paths::empty()),
+        }
+    }
+
+    pub fn empty() -> Self {
         Self {
             values: RwLock::new(GenerationSlab::empty()),
             scopes: RwLock::new(Scopes::new()),
-            paths: RwLock::new(Paths::new()),
+            paths: RwLock::new(Paths::empty()),
         }
     }
 
@@ -64,7 +69,7 @@ pub struct BucketRef<'a, T> {
 }
 
 impl<'a, T> BucketRef<'a, T> {
-    pub(crate) fn get(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
+    pub fn get(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
         self.slab
             .get(value_ref.index)
             .filter(|val| val.comp_gen(value_ref.gen))
@@ -97,6 +102,25 @@ impl<'a, T> BucketMut<'a, T> {
         let path_id = self.paths.write().get_or_insert(path);
         self.scopes.insert(path_id, value_ref, None);
         value_ref
+    }
+
+    pub fn bulk_insert<P: Into<Path>>(&mut self, data: Vec<(P, T)>) {
+        let mut paths = self.paths.write();
+
+        for (path, value) in data {
+            let value_ref = self.slab.push(value);
+            let path = path.into();
+            let path_id = paths.get_or_insert(path);
+            self.scopes.insert(path_id, value_ref, None);
+        }
+
+    }
+
+
+    pub fn get_by_ref(&self, value_ref: ValueRef<T>) -> Option<&Generation<T>> {
+        self.slab
+            .get(value_ref.index)
+            .filter(|val| val.comp_gen(value_ref.gen))
     }
 
     pub fn get(&self, path: impl Into<Path>) -> Option<&Generation<T>> {
@@ -132,7 +156,7 @@ mod test {
     #[test]
     fn bucket_mut_get() {
         let mut bucket = make_test_bucket();
-        let mut bucket = bucket.write();
+        let bucket = bucket.write();
         let count = bucket.get("count").unwrap();
         let len = bucket.get("len").unwrap();
         assert_eq!(123, **count);
@@ -152,13 +176,14 @@ mod test {
     #[test]
     fn bucket_mut_insert_map() {
         let mut bucket = make_test_bucket();
-        let mut bucket = bucket.write();
+        let bucket = bucket.write();
+        panic!("need to figure out maps and lists");
     }
 
     #[test]
     fn bucket_ref_get() {
-        let mut bucket = make_test_bucket();
-        let mut bucket = bucket.read();
+        let bucket = make_test_bucket();
+        let bucket = bucket.read();
         let count_value_ref = ValueRef::new(0, 0);
         let len_value_ref = ValueRef::new(1, 0);
         let count = bucket.get(count_value_ref).unwrap();

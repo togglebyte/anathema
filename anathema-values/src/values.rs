@@ -1,13 +1,13 @@
 // #![deny(missing_docs)]
 use std::marker::PhantomData;
-use std::borrow::Cow;
+
 use std::collections::HashMap;
 use std::fmt;
 
-use anathema_render::{Color, ScreenPos, Style};
+use anathema_render::{Color};
 
 // use crate::gen::store::Values;
-use crate::{Display, Path, TextPath, Align, Axis, Direction, Fragment, path::PathId};
+use crate::{Display, Align, Axis, Direction, Fragment, path::PathId};
 
 /// A value reference.
 /// Used an index to lookup values
@@ -19,7 +19,7 @@ pub struct ValueRef<T> {
 }
 
 impl<T> ValueRef<T> {
-    pub(crate) fn new(index: usize, gen: usize) -> Self {
+    pub fn new(index: usize, gen: usize) -> Self {
         Self {
             index,
             gen,

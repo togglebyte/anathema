@@ -1,56 +1,12 @@
 use std::fmt;
 use std::ops::Deref;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::collections::HashMap;
 
-/// Paths are insert and fetch only.
-/// Once a path is written into `Paths` it should never be removed
-/// as the index in the `Vec<Path>` is the path id
-pub struct Paths {
-    inner: Vec<Path>,
+fn next() -> PathId {
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    NEXT.fetch_add(1, Ordering::Relaxed).into()
 }
-
-impl Paths {
-    pub(crate) fn new() -> Self {
-        Self {
-            inner: vec![],
-        }
-    }
-
-    pub(crate) fn get(&self, path: Path) -> Option<PathId> {
-        self.inner.iter().position(|p| path.eq(p)).map(Into::into)
-    }
-
-    pub(crate) fn get_or_insert(&mut self, path: Path) -> PathId {
-        match self.inner.iter().position(|p| path.eq(p)) {
-            Some(p) => PathId(p),
-            None => {
-                let path_id = PathId(self.inner.len());
-                self.inner.push(path);
-                path_id
-            }
-        }
-    }
-}
-
-impl From<Vec<Path>> for Paths {
-    fn from(paths: Vec<Path>) -> Self {
-        Self {
-            inner: paths,
-        }
-    }
-}
-
-// // Values can only come from the supplied value,
-// // meaning the supplied value is either a vector of values or a hashmap
-// fn composite_value_lookup<'a, 'b: 'a>(path: &'a Path, value: &'b Value) -> Option<&'b Value> {
-//     match path {
-//         Path::Index(index) => value.to_slice().map(|v| &v[*index]),
-//         Path::Key(key) => value.to_map()?.get(key),
-//         Path::Composite(left, right) => {
-//             let inner = composite_value_lookup(left, value)?;
-//             composite_value_lookup(right, inner)
-//         }
-//     }
-// }
 
 /// Path lookup
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -71,6 +27,51 @@ impl Deref for PathId {
     }
 }
 
+
+/// Paths are insert and fetch only.
+/// Once a path is written into `Paths` it should never be removed
+/// as the index in the `Vec<Path>` is the path id
+pub struct Paths {
+    inner: HashMap<Path, PathId>,
+}
+
+impl Paths {
+    pub(crate) fn empty() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+
+    pub(crate) fn get(&self, path: &Path) -> Option<PathId> {
+        self.inner.get(path).copied()
+    }
+
+    pub(crate) fn get_or_insert(&mut self, path: Path) -> PathId {
+        *self.inner.entry(path).or_insert_with(next)
+    }
+}
+
+impl From<Vec<Path>> for Paths {
+    fn from(paths: Vec<Path>) -> Self {
+        Self {
+            inner: paths.into_iter().map(|p| (p, next())).collect(),
+        }
+    }
+}
+
+// // Values can only come from the supplied value,
+// // meaning the supplied value is either a vector of values or a hashmap
+// fn composite_value_lookup<'a, 'b: 'a>(path: &'a Path, value: &'b Value) -> Option<&'b Value> {
+//     match path {
+//         Path::Index(index) => value.to_slice().map(|v| &v[*index]),
+//         Path::Key(key) => value.to_map()?.get(key),
+//         Path::Composite(left, right) => {
+//             let inner = composite_value_lookup(left, value)?;
+//             composite_value_lookup(right, inner)
+//         }
+//     }
+// }
+
 // -----------------------------------------------------------------------------
 //   - Value path -
 //   The path to a value in a given context.
@@ -81,7 +82,7 @@ impl Deref for PathId {
 //   Key               Index   Key
 //   parent_collection .3     .name
 // -----------------------------------------------------------------------------
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Path {
     /// The key is an index to an ident inside `Constants`
     Key(String),
@@ -150,4 +151,3 @@ impl From<String> for Path {
         Self::Key(s)
     }
 }
-
