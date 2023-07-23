@@ -16,6 +16,12 @@ impl From<usize> for Value {
 }
 
 fn main() {
+    for _ in 0..1 {
+        run();
+    }
+}
+
+fn run() {
     let mut bucket = Bucket::<Value>::with_capacity(COUNT);
 
     {
@@ -46,7 +52,7 @@ fn main() {
 
         let now = Instant::now();
         for i in 0..COUNT {
-            bucket_mut.get(i).unwrap();
+            bucket_mut.get(i);//.unwrap();
         }
         eprintln!("Fetch mut by path {:?}", now.elapsed());
     }

@@ -1,7 +1,8 @@
+use integer_hasher::IntMap as HashMap;
 
 use crate::path::PathId;
 use crate::slab::Slab;
-use crate::{ValueRef};
+use crate::ValueRef;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(transparent)]
@@ -70,22 +71,19 @@ impl<T> Scopes<T> {
 }
 
 #[derive(Debug, Clone)]
-struct Scope<T>(Vec<(PathId, ValueRef<T>)>);
+struct Scope<T>(HashMap<usize, ValueRef<T>>);
 
 impl<T> Scope<T> {
     fn new() -> Self {
-        Self(vec![])
+        Self(Default::default())
     }
 
     fn get(&self, path: PathId) -> Option<&ValueRef<T>> {
-        self.0
-            .iter()
-            .filter_map(|(p, val)| (path.eq(p)).then_some(val))
-            .next()
+        self.0.get(&path.0)
     }
 
     fn insert(&mut self, path: PathId, value: ValueRef<T>) {
-        self.0.push((path, value));
+        self.0.insert(path.0, value);
     }
 }
 

@@ -9,9 +9,9 @@ fn next() -> PathId {
 }
 
 /// Path lookup
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct PathId(usize);
+pub struct PathId(pub usize);
 
 impl From<usize> for PathId {
     fn from(index: usize) -> Self {

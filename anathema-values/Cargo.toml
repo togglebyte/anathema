@@ -6,8 +6,15 @@ edition = "2021"
 [profile.release]
 debug = true
 debuginfo-level = 1
-jemalloc = false
 
 [dependencies]
 parking_lot = { workspace = true }
 anathema-render = { path = "../anathema-render" }
+integer-hasher = "0.1.1"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "bench"
+harness = false
