@@ -1,8 +1,7 @@
-use integer_hasher::IntMap as HashMap;
-
 use crate::path::PathId;
 use crate::slab::Slab;
 use crate::ValueRef;
+use crate::hashmap::{HashMap, IntMap};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(transparent)]

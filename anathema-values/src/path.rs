@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::collections::HashMap;
+use crate::hashmap::HashMap;
 
 fn next() -> PathId {
     static NEXT: AtomicUsize = AtomicUsize::new(0);

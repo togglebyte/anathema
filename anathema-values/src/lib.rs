@@ -16,6 +16,8 @@ mod path;
 mod scopes;
 mod slab;
 mod values;
+mod values2;
+mod hashmap;
 
 /// Determine how a widget should be displayed and laid out
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

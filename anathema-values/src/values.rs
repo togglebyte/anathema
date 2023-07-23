@@ -1,13 +1,14 @@
 // #![deny(missing_docs)]
 use std::marker::PhantomData;
 
-use std::collections::HashMap;
+use crate::hashmap::HashMap;
 use std::fmt;
 
 use anathema_render::{Color};
 
 // use crate::gen::store::Values;
 use crate::{Display, Align, Axis, Direction, Fragment, path::PathId};
+pub use crate::values2::{Map, List, ValueV2};
 
 /// A value reference.
 /// Used an index to lookup values
