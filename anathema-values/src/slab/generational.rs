@@ -1,6 +1,5 @@
-use crate::generation::{Generation, GenerationId};
-
-pub(crate) type Index = usize;
+use super::Index;
+use crate::{generation::{Generation, GenerationId}, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Entry -
@@ -11,20 +10,20 @@ enum Entry<T> {
 }
 
 // -----------------------------------------------------------------------------
-//   - Slab -
+//   - Generation slab -
 // -----------------------------------------------------------------------------
-pub(crate) struct Slab<T> {
+pub(crate) struct GenerationSlab<T> {
     inner: Vec<Entry<T>>,
     next_id: Option<Index>,
 }
 
-impl<T> Default for Slab<T> {
+impl<T> Default for GenerationSlab<T> {
     fn default() -> Self {
         Self::empty()
     }
 }
 
-impl<T> Slab<T> {
+impl<T> GenerationSlab<T> {
     pub(crate) fn empty() -> Self {
         Self {
             inner: vec![],
@@ -53,7 +52,7 @@ impl<T> Slab<T> {
         Some(val)
     }
 
-    pub(crate) fn push(&mut self, val: T) -> Index {
+    pub(crate) fn push(&mut self, val: T) -> ValueRef<T> {
         match self.next_id.take() {
             Some(id) => {
                 let entry = &mut self.inner[id];
@@ -63,16 +62,19 @@ impl<T> Slab<T> {
                     }
                     Entry::Vacant(gen, next_id) => {
                         self.next_id = next_id.take();
+                        let value_ref = ValueRef::new(id, *gen);
                         let gen = Generation::next(*gen, val);
                         std::mem::swap(entry, &mut Entry::Occupied(gen));
-                        id
+                        value_ref
                     }
                 }
             }
             None => {
                 let index = self.inner.len();
-                self.inner.push(Entry::Occupied(Generation::new(val)));
-                index
+                let gen = Generation::new(val);
+                let value_ref = ValueRef::new(index, gen.gen);
+                self.inner.push(Entry::Occupied(gen));
+                value_ref
             }
         }
     }
@@ -114,8 +116,8 @@ impl<T> Slab<T> {
 mod test {
     use super::*;
 
-    fn get_slab() -> Slab<u32> {
-        let mut slab = Slab::empty();
+    fn get_slab() -> GenerationSlab<u32> {
+        let mut slab = GenerationSlab::empty();
 
         slab.push(5);
         slab.push(10);
@@ -126,27 +128,27 @@ mod test {
 
     #[test]
     fn get() {
-        let mut slab = Slab::empty();
-        let index = slab.push(0u8);
+        let mut slab = GenerationSlab::empty();
+        let ValueRef { index, gen, .. } = slab.push(123u8);
         let val = slab.get(index).unwrap();
-        assert_eq!(**val, 0);
-        assert_eq!(val.gen, 0);
+        assert_eq!(**val, 123);
+        assert_eq!(val.gen, gen);
     }
 
     #[test]
     fn get_mut() {
-        let mut slab = Slab::empty();
-        let index = slab.push(1u8);
+        let mut slab = GenerationSlab::empty();
+        let ValueRef { index, gen, .. } = slab.push(100u8);
         let val = slab.get_mut(index).unwrap();
-        assert_eq!(**val, 1);
-        assert_eq!(val.gen, 0);
+        assert_eq!(**val, 100);
+        assert_eq!(val.gen, gen);
     }
 
     #[test]
     fn push() {
         let mut slab = get_slab();
         let next_id = slab.count();
-        let index = slab.push(100);
+        let ValueRef { index, .. } = slab.push(100);
         assert_eq!(index, next_id);
     }
 
@@ -168,13 +170,13 @@ mod test {
     fn remove_insert_remove() {
         let mut slab = get_slab();
         slab.remove(1);
-        let index = slab.push(999);
-        let entry = slab.get(index).unwrap();
+        let value_ref = slab.push(999);
+        let entry = slab.get(value_ref.index).unwrap();
         assert_eq!(entry.gen, 1);
 
         slab.remove(1);
-        let index = slab.push(999);
-        let entry = slab.get(index).unwrap();
+        let value_ref = slab.push(999);
+        let entry = slab.get(value_ref.index).unwrap();
         assert_eq!(entry.gen, 2);
     }
 

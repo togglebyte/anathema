@@ -1,37 +1,52 @@
 use std::fmt;
 use std::ops::Deref;
 
-use crate::Value;
-
-/// A `Fragment` can be either a [`Path`] or a `String`.
-/// `Fragment`s are usually part of a list to represent a single string value.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Fragment {
-    /// A string.
-    String(String),
-    /// A path to a value inside a context.
-    Data(Path),
+/// Paths are insert and fetch only.
+/// Once a path is written into `Paths` it can 
+/// not be removed.
+pub(crate) struct Paths {
+    inner: Vec<Path>,
 }
 
-impl Fragment {
-    /// Is the fragment a string?
-    pub fn is_string(&self) -> bool {
-        matches!(self, Fragment::String(_))
+impl Paths {
+    pub(crate) fn new() -> Self {
+        Self {
+            inner: vec![],
+        }
     }
-}
 
-// Values can only come from the supplied value,
-// meaning the supplied value is either a vector of values or a hashmap
-fn composite_value_lookup<'a, 'b: 'a>(path: &'a Path, value: &'b Value) -> Option<&'b Value> {
-    match path {
-        Path::Index(index) => value.to_slice().map(|v| &v[*index]),
-        Path::Key(key) => value.to_map()?.get(key),
-        Path::Composite(left, right) => {
-            let inner = composite_value_lookup(left, value)?;
-            composite_value_lookup(right, inner)
+    pub(crate) fn get_or_insert(&mut self, path: Path) -> PathId {
+        match self.inner.iter().position(|p| path.eq(p)) {
+            Some(p) => PathId(p),
+            None => {
+                let path_id = PathId(self.inner.len());
+                self.inner.push(path);
+                path_id
+            }
         }
     }
 }
+
+impl From<Vec<Path>> for Paths {
+    fn from(paths: Vec<Path>) -> Self {
+        Self {
+            inner: paths,
+        }
+    }
+}
+
+// // Values can only come from the supplied value,
+// // meaning the supplied value is either a vector of values or a hashmap
+// fn composite_value_lookup<'a, 'b: 'a>(path: &'a Path, value: &'b Value) -> Option<&'b Value> {
+//     match path {
+//         Path::Index(index) => value.to_slice().map(|v| &v[*index]),
+//         Path::Key(key) => value.to_map()?.get(key),
+//         Path::Composite(left, right) => {
+//             let inner = composite_value_lookup(left, value)?;
+//             composite_value_lookup(right, inner)
+//         }
+//     }
+// }
 
 /// Path lookup
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,9 +81,8 @@ pub enum Path {
     /// The key is an index to an ident inside `Constants`
     Key(String),
     /// Index in a collection
-    // TODO: when do we need the index? If not let's bin it, because
-    // it's causing grief over at the tokenizer (a.1.2 = a, fullstop, float(1.2))
     Index(usize),
+    /// Composite key, made up by two or more keys
     Composite(Box<Path>, Box<Path>),
 }
 
@@ -132,24 +146,3 @@ impl From<String> for Path {
     }
 }
 
-// -----------------------------------------------------------------------------
-//   - Text path -
-// -----------------------------------------------------------------------------
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TextPath {
-    String(String),
-    Fragments(Vec<Fragment>),
-}
-
-#[cfg(test)]
-impl TextPath {
-    pub fn fragment(key: &str) -> Self {
-        Self::Fragments(vec![Fragment::Data(Path::Key(key.into()))])
-    }
-}
-
-impl<T: Into<String>> From<T> for TextPath {
-    fn from(s: T) -> Self {
-        TextPath::String(s.into())
-    }
-}

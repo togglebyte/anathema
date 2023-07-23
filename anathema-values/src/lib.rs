@@ -4,9 +4,11 @@ use anathema_render::ScreenPos;
 pub use bucket::{GlobalBucket, StaticBucket};
 
 pub use crate::layout_values::{Align, Axis, Direction, Padding};
-pub use crate::path::{Fragment, Path, PathId, TextPath};
+pub use crate::path::{Path, PathId};
 pub use crate::values::{Number, Value, ValueRef};
+pub use fragment::{TextPath, Fragment};
 
+mod fragment;
 mod bucket;
 mod generation;
 mod layout_values;

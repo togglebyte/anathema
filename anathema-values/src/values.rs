@@ -11,11 +11,22 @@ use crate::{Display, Path, StaticBucket, TextPath, Align, Axis, Direction, Fragm
 
 /// A value reference.
 /// Used an index to lookup values
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ValueRef<T> {
     pub(crate) index: usize,
     pub(crate) gen: usize,
     _p: PhantomData<T>,
+}
+
+impl<T> ValueRef<T> {
+    pub(crate) fn new(index: usize, gen: usize) -> Self {
+        Self {
+            index,
+            gen,
+            _p: PhantomData,
+        }
+    }
+
 }
 
 impl<T> Clone for ValueRef<T> {
