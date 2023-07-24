@@ -4,14 +4,19 @@ use anathema_values::*;
 
 const COUNT: usize = 30_000;
 
-enum Value {
+enum TestValue {
     Num(usize),
-    List(Vec<ValueRef<Self>>)
+    S(String),
 }
 
-impl From<usize> for Value {
-    fn from(num: usize) -> Self {
-        Self::Num(num)
+impl<'a> TryFrom<&'a TestValue> for &'a usize {
+    type Error = ();
+
+    fn try_from(lark: &'a TestValue) -> Result<Self, Self::Error> {
+        match lark {
+            TestValue::Num(n) => Ok(n),
+            _ => Err(())
+        }
     }
 }
 
@@ -22,22 +27,26 @@ fn main() {
 }
 
 fn run() {
-    let mut bucket = Bucket::<Value>::with_capacity(COUNT);
+    let mut bucket = Bucket::<TestValue>::with_capacity(COUNT);
 
     {
         let mut bucket_mut = bucket.write();
+        // TODO: get::<u64>() should work on the writable one,
+        //       probably on readable too
+        //
+        //       inserting a Map<K, V> where V: impl Into<Value2>
 
         // -----------------------------------------------------------------------------
         //   - Insert -
         // -----------------------------------------------------------------------------
-        let data = (0..COUNT).map(|i: usize| (i, Value::from(i))).collect::<Vec<_>>();
+        let data = (0..COUNT).map(|i| (i, TestValue::Num(i))).collect::<Vec<_>>();
         let now = Instant::now();
         bucket_mut.bulk_insert(data);
         eprintln!("Insert (bulk) {:?}", now.elapsed());
 
         let now = Instant::now();
         for i in 0..COUNT {
-            bucket_mut.insert(i, Value::Num(i));
+            bucket_mut.insert(i, TestValue::Num(i));
         }
         eprintln!("Insert (individual) {:?}", now.elapsed());
 
@@ -52,7 +61,7 @@ fn run() {
 
         let now = Instant::now();
         for i in 0..COUNT {
-            bucket_mut.get(i);//.unwrap();
+            bucket_mut.get(i).unwrap();
         }
         eprintln!("Fetch mut by path {:?}", now.elapsed());
     }
@@ -64,10 +73,8 @@ fn run() {
     let mut count = 0usize;
     let now = Instant::now();
     for i in 0..COUNT {
-        match **bucket.get(ValueRef::new(i, 0)).unwrap() {
-            Value::Num(n) => count += 1,
-             _ => {}
-        }
+        bucket.get(ValueRef::new(i, 0)).unwrap();
+        count += 1;
     }
     eprintln!("Fetch ref {:?} | {count}", now.elapsed());
 }

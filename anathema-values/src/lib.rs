@@ -1,23 +1,24 @@
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::ScreenPos;
-pub use bucket::{Bucket};
+pub use bucket::Bucket;
+pub use fragment::{Fragment, TextPath};
 
 pub use crate::layout_values::{Align, Axis, Direction, Padding};
 pub use crate::path::{Path, PathId};
 pub use crate::values::{Number, Value, ValueRef};
-pub use fragment::{TextPath, Fragment};
+pub use crate::values2::{List, Map, ValueV2};
 
-mod fragment;
 mod bucket;
+mod fragment;
 mod generation;
+mod hashmap;
 mod layout_values;
 mod path;
 mod scopes;
 mod slab;
 mod values;
 mod values2;
-mod hashmap;
 
 /// Determine how a widget should be displayed and laid out
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
