@@ -1,9 +1,10 @@
-use std::fmt::{Debug, self};
-use crate::bucket::BucketMut;
-use crate::hashmap::IntMap;
+use std::fmt::{self, Debug};
 
 pub use self::list::List;
 pub use self::map::Map;
+use crate::Path;
+use crate::bucket::BucketMut;
+use crate::hashmap::{HashMap, IntMap};
 
 mod list;
 mod map;
@@ -21,8 +22,8 @@ impl<T: Debug> Debug for ValueV2<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Single(val) => write!(f, "Value::Single({val:?})"),
-            Self::List(list) => write!(f, "Value::List(<list: {}>)", list.len()),
-            Self::Map(map) => write!(f, "Value::Map(<map: {}>)", map.len()),
+            Self::List(list) => write!(f, "Value::List(<len: {}>)", list.len()),
+            Self::Map(map) => write!(f, "Value::Map(<len: {}>)", map.len()),
         }
     }
 }
@@ -42,7 +43,7 @@ impl<T> TryFromValue<T> for T {
     fn from_value(val: &ValueV2<T>) -> Option<&Self::Output> {
         match val {
             ValueV2::Single(val) => Some(val),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -53,7 +54,7 @@ impl<T> TryFromValue<T> for List<T> {
     fn from_value(val: &ValueV2<T>) -> Option<&Self::Output> {
         match val {
             ValueV2::List(list) => Some(list),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -64,7 +65,7 @@ impl<T> TryFromValue<T> for Map<T> {
     fn from_value(val: &ValueV2<T>) -> Option<&Self::Output> {
         match val {
             ValueV2::Map(map) => Some(map),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -84,7 +85,10 @@ impl<T> IntoValue<T> for T {
 }
 
 // List
-impl<T> IntoValue<T> for Vec<T> where T: IntoValue<T> {
+impl<T> IntoValue<T> for Vec<T>
+where
+    T: IntoValue<T>,
+{
     fn into_value(self, bucket: &mut BucketMut<'_, T>) -> ValueV2<T> {
         let mut output = Vec::with_capacity(self.len());
         for val in self {
@@ -96,12 +100,16 @@ impl<T> IntoValue<T> for Vec<T> where T: IntoValue<T> {
 }
 
 // Map
-impl<T> IntoValue<T> for IntMap<T> where T: IntoValue<T> {
-    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> ValueV2<T> {
+impl<K, V> IntoValue<V> for HashMap<K, V>
+where
+    V: IntoValue<V>,
+    K: Into<Path>
+{
+    fn into_value(self, bucket: &mut BucketMut<'_, V>) -> ValueV2<V> {
         let mut output = IntMap::default();
         for (k, val) in self {
             let value_ref = bucket.push(val);
-            let path_id = bucket.insert_path(k);
+            let path_id = bucket.insert_path(k.into());
             output.insert(path_id.0, value_ref);
         }
         ValueV2::Map(output.into())

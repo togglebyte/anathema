@@ -55,7 +55,7 @@ impl<T> Bucket<T> {
     /// as there is no write lock
     pub fn read(&self) -> BucketRef<'_, T> {
         BucketRef {
-            slab: self.values.read(),
+            values: self.values.read(),
             paths: self.paths.read(),
             scopes: &self.scopes,
         }
@@ -66,16 +66,27 @@ impl<T> Bucket<T> {
 //   - Bucket ref -
 // -----------------------------------------------------------------------------
 pub struct BucketRef<'a, T> {
-    slab: RwLockReadGuard<'a, GenerationSlab<ValueV2<T>>>,
+    values: RwLockReadGuard<'a, GenerationSlab<ValueV2<T>>>,
     paths: RwLockReadGuard<'a, Paths>,
     scopes: &'a RwLock<Scopes<ValueV2<T>>>,
 }
 
 impl<'a, T> BucketRef<'a, T> {
-    pub fn get(&self, value_ref: ValueRef<T>) -> Option<&Generation<ValueV2<T>>> {
-        self.slab
+    pub fn get(&self, value_ref: ValueRef<ValueV2<T>>) -> Option<&Generation<ValueV2<T>>> {
+        self.values
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
+    }
+
+    pub fn getv2<V>(&self, value_ref: ValueRef<ValueV2<T>>) -> Option<&V::Output> 
+        where V: TryFromValue<T>
+    {
+        V::from_value(self.get(value_ref)?)
+    }
+
+    pub fn by_path(&self, path_id: PathId, scope: impl Into<Option<ScopeId>>) -> Option<&Generation<ValueV2<T>>> {
+        let value_ref = self.scopes.read().get(path_id, scope)?;
+        self.get(value_ref)
     }
 
     pub fn new_scope(&self) -> ScopeId {
@@ -149,7 +160,9 @@ impl<'a, T> BucketMut<'a, T> {
             .filter(|val| val.compare_generation(value_ref.gen))
     }
 
-    pub fn getv2(&self, path: impl Into<Path>) -> Option<&T> {
+    pub fn getv2<V>(&self, path: impl Into<Path>) -> Option<&V::Output> 
+        where V: TryFromValue<T>
+    {
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
         let value_ref = self.scopes.get(path_id, None)?;
@@ -158,7 +171,7 @@ impl<'a, T> BucketMut<'a, T> {
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))?;
 
-        T::from_value(val)
+        V::from_value(val)
     }
 
     pub fn get(&self, path: impl Into<Path>) -> Option<&Generation<ValueV2<T>>> {
@@ -182,6 +195,8 @@ impl<'a, T> BucketMut<'a, T> {
 
 #[cfg(test)]
 mod test {
+    use crate::{Map, hashmap::HashMap, List};
+
     use super::*;
 
     fn make_test_bucket() -> Bucket<u32> {
@@ -211,10 +226,22 @@ mod test {
     }
 
     #[test]
+    fn bucket_mut_insert_list() {
+        let mut bucket = make_test_bucket();
+        let mut bucket = bucket.write();
+        bucket.insert("list", vec![1, 2, 3]);
+        let list: &List<u32> = bucket.getv2::<List<u32>>("list").unwrap();
+        assert_eq!(list.len(), 3);
+    }
+
+    #[test]
     fn bucket_mut_insert_map() {
         let mut bucket = make_test_bucket();
-        let bucket = bucket.write();
-        panic!("need to figure out maps and lists");
+        let mut bucket = bucket.write();
+        let hm = HashMap::from([("a", 1), ("b", 2)]);
+        bucket.insert("map", hm);
+        let map: &Map<u32> = bucket.getv2::<Map<u32>>("map").unwrap();
+        assert_eq!(map.len(), 2);
     }
 
     #[test]
