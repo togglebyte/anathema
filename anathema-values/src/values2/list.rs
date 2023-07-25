@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use crate::{ValueRef, ValueV2};
 
 #[derive(PartialEq)]
@@ -12,5 +14,13 @@ impl<T> List<T> {
 impl<T> From<Vec<ValueRef<ValueV2<T>>>> for List<T> {
     fn from(v: Vec<ValueRef<ValueV2<T>>>) -> Self {
         Self(v)
+    }
+}
+
+impl<T> Index<usize> for List<T> {
+    type Output = ValueRef<ValueV2<T>>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
     }
 }

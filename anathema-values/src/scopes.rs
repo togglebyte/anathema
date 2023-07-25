@@ -33,8 +33,14 @@ impl<T> Scopes<T> {
         }
     }
 
-    pub(crate) fn new_scope(&mut self) -> ScopeId {
-        self.scopes.push(Scope::new()).into()
+    pub(crate) fn new_scope(&mut self, parent: impl Into<Option<ScopeId>>) -> ScopeId {
+        match parent.into() {
+            Some(scope_id) => {
+                let parent_scope = self.scopes[scope_id.0].clone();
+                self.scopes.push(parent_scope).into()
+            }
+            None => self.scopes.push(Scope::new()).into()
+        }
     }
 
     pub(crate) fn new_scope_from(&mut self, scope_id: ScopeId) -> ScopeId {
@@ -124,7 +130,7 @@ mod test {
         // It has no significance on the scope what so ever
         {
             let inner = ValueRef::<()>::new(1, 0);
-            let scope_id = scopes.new_scope();
+            let scope_id = scopes.new_scope(None);
             scopes.insert(path, inner, scope_id);
             let actual = scopes.get(path, scope_id).unwrap();
             assert_eq!(inner, actual);
@@ -140,14 +146,14 @@ mod test {
         let mut scopes = Scopes::new();
         scopes.insert(0.into(), val, None);
 
-        let depth_1 = scopes.new_scope();
+        let depth_1 = scopes.new_scope(None);
         let value_ref_1 = ValueRef::<()>::new(1, 0);
         scopes.insert(0.into(), value_ref_1, depth_1);
 
-        let depth_2 = scopes.new_scope();
+        let depth_2 = scopes.new_scope(None);
         scopes.insert(0.into(), ValueRef::<()>::new(2, 0), depth_2);
 
-        let depth_1_1 = scopes.new_scope_from(depth_1);
+        let depth_1_1 = scopes.new_scope(depth_1);
         let value_ref_2 = ValueRef::<()>::new(3, 0);
         scopes.insert(1.into(), value_ref_2, depth_1_1);
 
@@ -161,7 +167,7 @@ mod test {
 
         let mut scopes = Scopes::new();
 
-        let scope_id = scopes.new_scope();
+        let scope_id = scopes.new_scope(None);
         scopes.insert(path, ValueRef::<()>::new(1, 0), scope_id);
         let actual = scopes.get(path, scope_id);
         assert!(actual.is_some());

@@ -89,8 +89,14 @@ impl<'a, T> BucketRef<'a, T> {
         self.get(value_ref)
     }
 
-    pub fn new_scope(&self) -> ScopeId {
-        self.scopes.write().new_scope()
+    pub fn by_pathv2<V>(&self, path_id: PathId, scope: impl Into<Option<ScopeId>>) -> Option<&V::Output> 
+        where V: TryFromValue<T>
+    {
+        V::from_value(self.by_path(path_id, scope)?)
+    }
+
+    pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
+        self.scopes.write().new_scope(parent)
     }
 
     pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {
