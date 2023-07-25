@@ -115,3 +115,43 @@ where
         ValueV2::Map(output.into())
     }
 }
+
+// Truthy
+pub trait Truthy {
+    fn is_true(&self) -> bool;
+}
+
+impl<T: Truthy> Truthy for ValueV2<T> {
+    fn is_true(&self) -> bool {
+        match self {
+            ValueV2::Single(val) => val.is_true(),
+            ValueV2::List(l) => l.is_empty(),
+            ValueV2::Map(m) => m.is_empty(),
+            _ => false,
+        }
+    }
+}
+
+
+macro_rules! int_impls {
+    ($int:ty) => {
+        impl Truthy for $int {
+            fn is_true(&self) -> bool {
+                *self != 0
+            }
+        }
+    }
+}
+
+int_impls!(u8);
+int_impls!(i8);
+int_impls!(u16);
+int_impls!(i16);
+int_impls!(u32);
+int_impls!(i32);
+int_impls!(u64);
+int_impls!(i64);
+int_impls!(i128);
+int_impls!(u128);
+int_impls!(isize);
+int_impls!(usize);

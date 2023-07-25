@@ -8,6 +8,10 @@ impl<T> Map<T> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<T> From<IntMap<ValueRef<ValueV2<T>>>> for Map<T> {

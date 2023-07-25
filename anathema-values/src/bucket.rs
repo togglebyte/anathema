@@ -102,6 +102,10 @@ impl<'a, T> BucketRef<'a, T> {
     pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {
         self.paths.get(&path.into()).expect("assumed path exists")
     }
+
+    pub fn scope_value(&self, path_id: PathId, value: ValueRef<ValueV2<T>>, scope: ScopeId) {
+        self.scopes.write().insert(path_id, value, scope)
+    }
 }
 
 // -----------------------------------------------------------------------------

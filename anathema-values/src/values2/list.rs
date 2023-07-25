@@ -9,6 +9,10 @@ impl<T> List<T> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<T> From<Vec<ValueRef<ValueV2<T>>>> for List<T> {
