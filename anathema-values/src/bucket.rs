@@ -5,7 +5,7 @@ use crate::path::Paths;
 use crate::scopes::Scopes;
 use crate::slab::GenerationSlab;
 use crate::values2::{IntoValue, TryFromValue};
-use crate::{Path, PathId, ValueRef, ValueV2};
+use crate::{Path, PathId, ScopeId, ValueRef, ValueV2};
 
 // -----------------------------------------------------------------------------
 //   - Global bucket -
@@ -57,6 +57,7 @@ impl<T> Bucket<T> {
         BucketRef {
             slab: self.values.read(),
             paths: self.paths.read(),
+            scopes: &self.scopes,
         }
     }
 }
@@ -67,6 +68,7 @@ impl<T> Bucket<T> {
 pub struct BucketRef<'a, T> {
     slab: RwLockReadGuard<'a, GenerationSlab<ValueV2<T>>>,
     paths: RwLockReadGuard<'a, Paths>,
+    scopes: &'a RwLock<Scopes<ValueV2<T>>>,
 }
 
 impl<'a, T> BucketRef<'a, T> {
@@ -74,6 +76,14 @@ impl<'a, T> BucketRef<'a, T> {
         self.slab
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
+    }
+
+    pub fn new_scope(&self) -> ScopeId {
+        self.scopes.write().new_scope()
+    }
+
+    pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {
+        self.paths.get(&path.into()).expect("assumed path exists")
     }
 }
 

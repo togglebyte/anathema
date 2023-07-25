@@ -37,6 +37,11 @@ impl<T> Scopes<T> {
         self.scopes.push(Scope::new()).into()
     }
 
+    pub(crate) fn new_scope_from(&mut self, scope_id: ScopeId) -> ScopeId {
+        let scope = self.scopes[scope_id.0].clone();
+        self.scopes.push(scope).into()
+    }
+
     pub(crate) fn insert(
         &mut self,
         path_id: PathId,
@@ -69,8 +74,8 @@ impl<T> Scopes<T> {
     }
 }
 
-#[derive(Debug, Clone)]
-struct Scope<T>(HashMap<usize, ValueRef<T>>);
+#[derive(Debug)]
+struct Scope<T>(IntMap<ValueRef<T>>);
 
 impl<T> Scope<T> {
     fn new() -> Self {
@@ -83,6 +88,12 @@ impl<T> Scope<T> {
 
     fn insert(&mut self, path: PathId, value: ValueRef<T>) {
         self.0.insert(path.0, value);
+    }
+}
+
+impl<T> Clone for Scope<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
@@ -121,6 +132,27 @@ mod test {
 
         let actual = scopes.get(path, None).unwrap();
         assert_eq!(outer, actual);
+    }
+
+    #[test]
+    fn scope_from_scope() {
+        let val = ValueRef::<()>::new(0, 0);
+        let mut scopes = Scopes::new();
+        scopes.insert(0.into(), val, None);
+
+        let depth_1 = scopes.new_scope();
+        let value_ref_1 = ValueRef::<()>::new(1, 0);
+        scopes.insert(0.into(), value_ref_1, depth_1);
+
+        let depth_2 = scopes.new_scope();
+        scopes.insert(0.into(), ValueRef::<()>::new(2, 0), depth_2);
+
+        let depth_1_1 = scopes.new_scope_from(depth_1);
+        let value_ref_2 = ValueRef::<()>::new(3, 0);
+        scopes.insert(1.into(), value_ref_2, depth_1_1);
+
+        assert_eq!(value_ref_1, scopes.get(0.into(), depth_1_1).unwrap());
+        assert_eq!(value_ref_2, scopes.get(1.into(), depth_1_1).unwrap());
     }
 
     #[test]

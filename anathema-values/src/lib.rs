@@ -1,13 +1,14 @@
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::ScreenPos;
-pub use bucket::Bucket;
+pub use bucket::{Bucket, BucketRef};
 pub use fragment::{Fragment, TextPath};
 
 pub use crate::layout_values::{Align, Axis, Direction, Padding};
 pub use crate::path::{Path, PathId};
 pub use crate::values::{Number, Value, ValueRef};
 pub use crate::values2::{List, Map, ValueV2};
+pub use crate::scopes::ScopeId;
 
 mod bucket;
 mod fragment;

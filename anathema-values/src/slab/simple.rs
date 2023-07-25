@@ -1,16 +1,18 @@
-use super::Index;
+use std::ops::Index;
+
+use super::Idx;
 
 // -----------------------------------------------------------------------------
 //   - Entry -
 // -----------------------------------------------------------------------------
 enum Entry<T> {
     Occupied(T),
-    Vacant(Option<Index>),
+    Vacant(Option<Idx>),
 }
 
 pub(crate) struct Slab<T> {
     inner: Vec<Entry<T>>,
-    next_id: Option<Index>,
+    next_id: Option<Idx>,
 }
 
 impl<T> Default for Slab<T> {
@@ -34,21 +36,21 @@ impl<T> Slab<T> {
         }
     }
 
-    pub(crate) fn get(&self, index: Index) -> Option<&T> {
+    pub(crate) fn get(&self, index: Idx) -> Option<&T> {
         let Entry::Occupied(val) = self.inner.get(index)? else {
             return None;
         };
         Some(val)
     }
 
-    pub(crate) fn get_mut(&mut self, index: Index) -> Option<&mut T> {
+    pub(crate) fn get_mut(&mut self, index: Idx) -> Option<&mut T> {
         let Entry::Occupied(val) = self.inner.get_mut(index)? else {
             return None;
         };
         Some(val)
     }
 
-    pub(crate) fn push(&mut self, val: T) -> Index {
+    pub(crate) fn push(&mut self, val: T) -> Idx {
         match self.next_id.take() {
             Some(index) => {
                 let entry = &mut self.inner[index];
@@ -73,7 +75,7 @@ impl<T> Slab<T> {
 
     /// Remove the entry at a given index,
     /// and increment the generation.
-    pub(crate) fn remove(&mut self, index: Index) -> T {
+    pub(crate) fn remove(&mut self, index: Idx) -> T {
         let Entry::Occupied(_val) = &self.inner[index] else {
             panic!("removal of vacant entry")
         };
@@ -99,6 +101,17 @@ impl<T> Slab<T> {
                 Entry::Vacant(..) => false,
             })
             .count()
+    }
+}
+
+impl<T> Index<Idx> for Slab<T> {
+    type Output = T;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        match &self.inner[index] {
+            Entry::Occupied(e) => e,
+            Entry::Vacant(_) => panic!("trying to reference value of a vacant entry")
+        }
     }
 }
 

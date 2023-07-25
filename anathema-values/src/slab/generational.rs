@@ -1,4 +1,4 @@
-use super::Index;
+use super::Idx;
 use crate::{generation::{Generation, GenerationId}, ValueRef};
 
 // -----------------------------------------------------------------------------
@@ -6,7 +6,7 @@ use crate::{generation::{Generation, GenerationId}, ValueRef};
 // -----------------------------------------------------------------------------
 enum Entry<T> {
     Occupied(Generation<T>),
-    Vacant(GenerationId, Option<Index>),
+    Vacant(GenerationId, Option<Idx>),
 }
 
 // -----------------------------------------------------------------------------
@@ -14,7 +14,7 @@ enum Entry<T> {
 // -----------------------------------------------------------------------------
 pub(crate) struct GenerationSlab<T> {
     inner: Vec<Entry<T>>,
-    next_id: Option<Index>,
+    next_id: Option<Idx>,
 }
 
 impl<T> Default for GenerationSlab<T> {
@@ -38,14 +38,14 @@ impl<T> GenerationSlab<T> {
         }
     }
 
-    pub(crate) fn get(&self, index: Index) -> Option<&Generation<T>> {
+    pub(crate) fn get(&self, index: Idx) -> Option<&Generation<T>> {
         let Entry::Occupied(val) = self.inner.get(index)? else {
             return None;
         };
         Some(val)
     }
 
-    pub(crate) fn get_mut(&mut self, index: Index) -> Option<&mut Generation<T>> {
+    pub(crate) fn get_mut(&mut self, index: Idx) -> Option<&mut Generation<T>> {
         let Entry::Occupied(val) = self.inner.get_mut(index)? else {
             return None;
         };
@@ -81,7 +81,7 @@ impl<T> GenerationSlab<T> {
 
     /// Remove the entry at a given index,
     /// and increment the generation.
-    pub(crate) fn remove(&mut self, index: Index) -> Generation<T> {
+    pub(crate) fn remove(&mut self, index: Idx) -> Generation<T> {
         let Entry::Occupied(Generation { gen, .. }) = self.inner[index] else {
             panic!("removal of vacant entry")
         };

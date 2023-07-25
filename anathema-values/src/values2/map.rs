@@ -2,7 +2,7 @@ use crate::hashmap::IntMap;
 use crate::{ValueRef, ValueV2};
 
 #[derive(PartialEq)]
-pub struct Map<T>(IntMap<usize, ValueRef<ValueV2<T>>>);
+pub struct Map<T>(IntMap<ValueRef<ValueV2<T>>>);
 
 impl<T> Map<T> {
     pub fn len(&self) -> usize {
@@ -10,8 +10,8 @@ impl<T> Map<T> {
     }
 }
 
-impl<T> From<IntMap<usize, ValueRef<ValueV2<T>>>> for Map<T> {
-    fn from(v: IntMap<usize, ValueRef<ValueV2<T>>>) -> Self {
+impl<T> From<IntMap<ValueRef<ValueV2<T>>>> for Map<T> {
+    fn from(v: IntMap<ValueRef<ValueV2<T>>>) -> Self {
         Self(v)
     }
 }

@@ -96,7 +96,7 @@ impl<T> IntoValue<T> for Vec<T> where T: IntoValue<T> {
 }
 
 // Map
-impl<T> IntoValue<T> for IntMap<String, T> where T: IntoValue<T> {
+impl<T> IntoValue<T> for IntMap<T> where T: IntoValue<T> {
     fn into_value(self, bucket: &mut BucketMut<'_, T>) -> ValueV2<T> {
         let mut output = IntMap::default();
         for (k, val) in self {
