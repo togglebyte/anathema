@@ -1,6 +1,5 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
 use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
 
 use self::controlflow::ControlFlows;
@@ -28,30 +27,6 @@ pub enum Node<Output: FromContext> {
     ControlFlow(ControlFlows<Output>),
 }
 
-impl<Output: FromContext> Node<Output> {
-    fn has_node(&mut self, bucket: &BucketRef<'_, Output::Value>) -> bool {
-        match self {
-            Self::Single(..) => true,
-            Self::Collection(state) => state
-                .generate_next(bucket)
-                .map(|node| node.has_node(bucket))
-                .unwrap_or(false),
-            Self::ControlFlow(flow) => flow
-                .generate_next(bucket)
-                .map(|node| node.has_node(bucket))
-                .unwrap_or(false),
-        }
-    }
-
-    fn get_node(&mut self) -> Option<&mut Output> {
-        match self {
-            Self::Single(output, ..) => Some(output),
-            Self::Collection(state) => state.last(),
-            Self::ControlFlow(state) => state.last(),
-        }
-    }
-}
-
 pub struct Nodes<Output: FromContext> {
     index: usize,
     inner: Vec<Node<Output>>,
@@ -76,31 +51,31 @@ where
         self.inner.push(node);
     }
 
-    // The api should be able to do the following:
-    // 1. Produce new values
-    // 2. Iterate over produced values
-    // 3. Find a Node(value) by some id
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+
     pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
-        if self.index == self.inner.len() {
-            return None;
-        }
+        let gen = self.inner[self.index..].iter_mut();
 
-        let index = self.index;
-
-        // TODO: know when to advance the index
-        let node = &mut self.inner[index];
-        let has_node = node.has_node(bucket);
-
-        match (&mut *node, has_node) {
-            (Node::Single(..), _) => self.index += 1,
-            (Node::Collection(_) | Node::ControlFlow(_), true) => {}
-            (Node::Collection(_) | Node::ControlFlow(_), false) => {
-                self.index += 1;
-                return self.next(bucket);
+        for generator in gen {
+            match generator {
+                Node::Single(node, _) => {
+                    self.index += 1;
+                    return Some(node);
+                }
+                Node::Collection(loop_state) => match loop_state.next(bucket) {
+                    last @ Some(_) => return last,
+                    None => self.index += 1,
+                },
+                Node::ControlFlow(flows) => match flows.next(bucket) {
+                    last @ Some(_) => return last,
+                    None => self.index += 1,
+                },
             }
         }
 
-        self.inner[index].get_node()
+        None
     }
 }
 
@@ -141,8 +116,20 @@ mod test {
 
         let mut nodes = Nodes::<Widget>::new(nodes);
 
-        while let Some(widget) = nodes.next(&bucket.read()) {
-            println!("{widget:?}");
-        }
+        assert_eq!("root", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("truthy", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("last", nodes.next(&bucket.read()).unwrap().ident);
     }
 }

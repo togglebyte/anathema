@@ -10,6 +10,7 @@ testing = []
 [dependencies]
 anathema-render = { path = "../anathema-render" }
 anathema-values = { path = "../anathema-values" }
+anathema-generator = { path = "../anathema-generator" }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }
 thiserror = { workspace = true }

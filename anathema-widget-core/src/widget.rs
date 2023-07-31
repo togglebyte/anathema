@@ -163,7 +163,7 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub children: Vec<WidgetContainer>,
+    // pub children: Vec<WidgetContainer>,
     pub(crate) background: Option<Color>,
     pub(crate) display: Display,
     pub(crate) inner: Box<dyn AnyWidget>,
@@ -191,7 +191,7 @@ impl WidgetContainer {
     pub fn new(inner: Box<dyn AnyWidget>, templates: Arc<[Template]>) -> Self {
         Self {
             templates,
-            children: vec![],
+            // children: vec![],
             display: Display::Show,
             size: Size::ZERO,
             inner,
@@ -296,7 +296,8 @@ impl WidgetContainer {
         );
 
         let ctx = PositionCtx::new(pos, self.inner_size());
-        self.inner.position(ctx, &mut self.children);
+        // self.inner.position(ctx, &mut self.children);
+        panic!()
     }
 
     pub fn paint(&mut self, ctx: PaintCtx<'_, Unsized>) {
@@ -314,7 +315,8 @@ impl WidgetContainer {
             self.pos.y + self.padding.top as i32,
         );
         ctx.update(self.inner_size(), pos);
-        self.inner.paint(ctx, &mut self.children);
+        // self.inner.paint(ctx, &mut self.children);
+        panic!()
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {

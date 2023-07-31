@@ -10,7 +10,7 @@ pub struct ControlFlows<Output: FromContext> {
     scope: Option<ScopeId>,
     nodes: Nodes<Output>,
     selected_flow: Option<usize>,
-    expression_index: usize,
+    node_index: usize,
 }
 
 impl<Output: FromContext> ControlFlows<Output> {
@@ -20,39 +20,49 @@ impl<Output: FromContext> ControlFlows<Output> {
             scope,
             nodes: Nodes::empty(),
             selected_flow: None,
-            expression_index: 0,
+            node_index: 0,
         }
     }
 
-    pub(super) fn generate_next(
+    pub(super) fn next(
         &mut self,
         bucket: &BucketRef<'_, Output::Value>,
-    ) -> Option<&mut Node<Output>> {
+    ) -> Option<&mut Output> {
         match self.selected_flow {
             None => {
-                self.selected_flow = self.eval(bucket, self.scope);
-                self.generate_next(bucket)
+                let flow_index = self.eval(bucket, self.scope)?;
+                self.selected_flow = Some(flow_index);
+                for expr in &*self.flows[flow_index].body {
+                    let node = expr.to_node(&EvaluationContext::new(bucket, self.scope))?;
+                    self.nodes.push(node);
+                }
+                return self.next(bucket);
             }
             Some(index) => {
-                let flow = &self.flows[index];
-
-                if self.expression_index == flow.body.len() {
-                    return None;
+                for node in self.nodes.inner[self.node_index..].iter_mut() {
+                    match node {
+                        Node::Single(value, _) => {
+                            self.node_index += 1;
+                            return Some(value);
+                        }
+                        Node::Collection(nodes) => match nodes.next(bucket) {
+                            last @ Some(_) => return last,
+                            None => self.node_index += 1,
+                        }
+                        Node::ControlFlow(flows) => match flows.next(bucket) {
+                            last @ Some(_) => return last,
+                            None => self.node_index += 1,
+                        }
+                    }
                 }
-
-                let expression_index = self.expression_index;
-                self.expression_index += 1;
-                let expr = &flow.body[expression_index];
-                let node = expr.to_node(&EvaluationContext::new(bucket, self.scope))?;
-                self.nodes.push(node);
-                self.nodes.inner.last_mut()
             }
         }
+        None
     }
 
-    pub(super) fn last(&mut self) -> Option<&mut Output> {
-        self.nodes.inner.last_mut().and_then(Node::get_node)
-    }
+    // pub(super) fn last(&mut self) -> Option<&mut Output> {
+    //     self.nodes.inner.last_mut().and_then(Node::get_output)
+    // }
 
     fn eval(&mut self, bucket: &BucketRef<'_, Output::Value>, scope: Option<ScopeId>) -> Option<usize> {
         for (index, flow) in self.flows.iter().enumerate() {

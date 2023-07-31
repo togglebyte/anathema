@@ -29,15 +29,15 @@ fn control_flow() -> Vec<ControlFlow<&'static str>> {
 pub(crate) fn expressions() -> (Vec<Expression<&'static str>>, Bucket<u32>) {
     const ITEM: usize = 0;
     const LIST: usize = 1;
-    const TURTH: usize = 2;
-    const ELSE_TURTH: usize = 3;
+    const TRUTH: usize = 2;
+    const ELSE_TRUTH: usize = 3;
 
     let mut bucket = Bucket::empty();
     {
         let mut bucket = bucket.write();
         bucket.get("item"); // ensure that the paths exists with the correct numbers 
-        bucket.insert("list", vec![1, 2, 3]); 
-        bucket.insert("truthy", 0);
+        bucket.insert("list", vec![1, 2]); 
+        bucket.insert("truthy", 1);
         bucket.insert("falsey", 0);
     }
 

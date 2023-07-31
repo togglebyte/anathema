@@ -132,7 +132,6 @@ impl<T: Truthy> Truthy for ValueV2<T> {
     }
 }
 
-
 macro_rules! int_impls {
     ($int:ty) => {
         impl Truthy for $int {

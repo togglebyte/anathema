@@ -78,22 +78,23 @@ impl<'a, T> BucketRef<'a, T> {
             .filter(|val| val.compare_generation(value_ref.gen))
     }
 
+    // TODO: reconsider this name
     pub fn getv2<V>(&self, value_ref: ValueRef<ValueV2<T>>) -> Option<&V::Output> 
         where V: TryFromValue<T>
     {
         V::from_value(self.get(value_ref)?)
     }
 
-    pub fn by_path(&self, path_id: PathId, scope: impl Into<Option<ScopeId>>) -> Option<&Generation<ValueV2<T>>> {
-        let value_ref = self.scopes.read().get(path_id, scope)?;
-        self.get(value_ref)
+    pub fn by_path(&self, path_id: PathId, scope: impl Into<Option<ScopeId>>) -> Option<ValueRef<ValueV2<T>>> {
+        self.scopes.read().get(path_id, scope)
     }
 
-    pub fn by_pathv2<V>(&self, path_id: PathId, scope: impl Into<Option<ScopeId>>) -> Option<&V::Output> 
-        where V: TryFromValue<T>
-    {
-        V::from_value(self.by_path(path_id, scope)?)
-    }
+    // TODO: do we need this one on the read-bucket?
+    // pub fn by_pathv2<V>(&self, path_id: PathId, scope: impl Into<Option<ScopeId>>) -> Option<&V::Output> 
+    //     where V: TryFromValue<T>
+    // {
+    //     V::from_value(self.by_path(path_id, scope)?)
+    // }
 
     pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
         self.scopes.write().new_scope(parent)

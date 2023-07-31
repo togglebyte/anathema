@@ -5,14 +5,21 @@ use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV
 use crate::expression::{EvaluationContext, FromContext};
 use crate::{Expression, Node, Nodes};
 
+enum State {
+    A,
+    B,
+}
+
 pub struct LoopState<Output: FromContext> {
+    state: State,
     scope: ScopeId,
     collection: ValueRef<ValueV2<Output::Value>>,
     expressions: Arc<[Expression<Output::Ctx>]>,
     binding: PathId,
     expression_index: usize,
     value_index: usize,
-    nodes: Nodes<Output>,
+    node_index: usize,
+    pub(super) nodes: Nodes<Output>,
 }
 
 impl<Output: FromContext> LoopState<Output> {
@@ -23,48 +30,75 @@ impl<Output: FromContext> LoopState<Output> {
         expressions: Arc<[Expression<Output::Ctx>]>,
     ) -> Self {
         Self {
+            state: State::A,
             scope,
             binding,
             collection,
             expressions,
             expression_index: 0,
             value_index: 0,
+            node_index: 0,
             nodes: Nodes::empty(),
         }
     }
 
-    pub(super) fn generate_next(
-        &mut self,
-        bucket: &BucketRef<'_, Output::Value>,
-    ) -> Option<&mut Node<Output>> {
+    fn gen_inner(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
+        match self.nodes.next(bucket) {
+            last @ Some(_) => last,
+            None => {
+                self.state = State::A;
+                None
+            }
+        }
+    }
+
+    fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<()> {
         let collection = bucket.getv2::<List<_>>(self.collection)?;
 
         // No more items to produce
-        if self.expression_index == self.expressions.len() && self.value_index == collection.len() {
+        if self.value_index == collection.len() {
             return None;
         }
 
-        // First expression, load up new value into the scope
-        if self.expression_index == 0 {
-            let value = collection[self.value_index];
-            bucket.scope_value(self.binding, value, self.scope);
+        self.value_index += 1;
+
+        for expr in &*self.expressions {
+            let node = expr.to_node(&EvaluationContext::new(bucket, self.scope))?;
+            self.nodes.push(node);
         }
 
-        // Last expression done, reset
-        if self.expression_index == self.expressions.len() {
-            self.expression_index = 0;
-            self.value_index += 1;
-        }
-
-        let expression_index = self.expression_index;
-        self.expression_index += 1;
-        let expr = &self.expressions[expression_index];
-        let node = expr.to_node(&EvaluationContext::new(bucket, self.scope))?;
-        self.nodes.push(node);
-        self.nodes.inner.last_mut()
+        self.state = State::B;
+        Some(())
     }
 
-    pub(super) fn last(&mut self) -> Option<&mut Output> {
-        self.nodes.inner.last_mut().and_then(Node::get_node)
+    pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
+        if let State::A = self.state {
+            self.load_value(bucket);
+        }
+
+        if self.node_index == self.nodes.len() {
+            self.load_value(bucket)?;
+        }
+
+        let nodes = self.nodes.inner[self.node_index..].iter_mut();
+
+        for node in nodes {
+            match node {
+                Node::Single(value, _) => {
+                    self.node_index += 1;
+                    return Some(value);
+                }
+                Node::Collection(nodes) => match nodes.next(bucket) {
+                    last @ Some(_) => return last,
+                    None => self.node_index += 1,
+                }
+                Node::ControlFlow(flows) => match flows.next(bucket) {
+                    last @ Some(_) => return last,
+                    None => self.node_index += 1,
+                }
+            }
+        }
+
+        None
     }
 }
