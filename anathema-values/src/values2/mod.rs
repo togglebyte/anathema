@@ -132,6 +132,12 @@ impl<T: Truthy> Truthy for ValueV2<T> {
     }
 }
 
+impl Truthy for f64 {
+    fn is_true(&self) -> bool {
+        *self != 0.0
+    }
+}
+
 macro_rules! int_impls {
     ($int:ty) => {
         impl Truthy for $int {

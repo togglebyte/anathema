@@ -2,8 +2,9 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
+use anathema_generator::FromContext;
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{Display, Padding, Pos, LocalPos, Region};
+use anathema_values::BucketRef;
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::id::NodeId;
@@ -11,6 +12,7 @@ use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::template::Template;
+use crate::{Attributes, Display, LocalPos, Padding, Pos, Region};
 
 // Layout:
 // 1. Receive constraints
@@ -337,5 +339,14 @@ impl WidgetContainer {
 
     pub fn id(&self) -> NodeId {
         panic!()
+    }
+}
+
+impl FromContext for WidgetContainer {
+    type Ctx = Attributes;
+    type Value = crate::Value;
+
+    fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Option<Self> {
+        todo!()
     }
 }

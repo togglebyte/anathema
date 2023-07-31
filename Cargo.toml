@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anathema-compiler = { path = "./anathema-compiler" }
 anathema-render = { path = "./anathema-render" }
-# anathema-runtime = { path = "./anathema-runtime" }
+anathema-runtime = { path = "./anathema-runtime" }
 anathema-values = { path = "./anathema-values" }
 anathema-vm = { path = "./anathema-vm" }
 anathema-widget-core = { path = "./anathema-widget-core" }
@@ -25,7 +25,7 @@ parking_lot = "0.12.1"
 members = [
     "anathema-compiler",
     "anathema-render",
-    # "anathema-runtime",
+    "anathema-runtime",
     "anathema-values",
     "anathema-vm",
     "anathema-widget-core",

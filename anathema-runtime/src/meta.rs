@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use anathema_render::Size;
-use anathema_widget_core::contexts::DataCtx;
 use anathema_widget_core::{Number, Value};
+use anathema_values::BucketMut;
 
 use crate::frame::Frame;
 
@@ -63,57 +63,58 @@ impl Meta {
         );
     }
 
-    pub(super) fn update(&mut self, ctx: &mut DataCtx, frame: &Frame) {
-        match ctx.get_mut::<HashMap<String, Value>>(META) {
-            None => {
-                let mut metamap = HashMap::new();
+    pub(super) fn update(&mut self, ctx: BucketMut<'_, Value>, frame: &Frame) {
+        panic!()
+        // match ctx.get_mut::<HashMap<String, Value>>(META) {
+        //     None => {
+        //         let mut metamap = HashMap::new();
 
-                let mut size = HashMap::new();
-                self.size_map(&mut size);
+        //         let mut size = HashMap::new();
+        //         self.size_map(&mut size);
 
-                let mut timings = HashMap::new();
-                self.timings_map(&mut timings);
+        //         let mut timings = HashMap::new();
+        //         self.timings_map(&mut timings);
 
-                metamap.insert(SIZE.into(), size.into());
-                metamap.insert(TIMINGS.to_string(), timings.into());
-                metamap.insert(FOCUS.to_string(), self.focus.into());
-                metamap.insert(COUNT.to_string(), frame.count().into());
-                ctx.insert(META, metamap);
-            }
-            Some(meta) => {
-                match meta.get_mut(FOCUS) {
-                    Some(focus) => *focus = self.focus.into(),
-                    None => {
-                        meta.insert(FOCUS.to_string(), self.focus.into());
-                    }
-                };
+        //         metamap.insert(SIZE.into(), size.into());
+        //         metamap.insert(TIMINGS.to_string(), timings.into());
+        //         metamap.insert(FOCUS.to_string(), self.focus.into());
+        //         metamap.insert(COUNT.to_string(), frame.count().into());
+        //         ctx.insert(META, metamap);
+        //     }
+        //     Some(meta) => {
+        //         match meta.get_mut(FOCUS) {
+        //             Some(focus) => *focus = self.focus.into(),
+        //             None => {
+        //                 meta.insert(FOCUS.to_string(), self.focus.into());
+        //             }
+        //         };
 
-                match meta.get_mut(COUNT) {
-                    Some(count) => *count = frame.count().into(),
-                    None => {
-                        meta.insert(COUNT.to_string(), frame.count().into());
-                    }
-                };
+        //         match meta.get_mut(COUNT) {
+        //             Some(count) => *count = frame.count().into(),
+        //             None => {
+        //                 meta.insert(COUNT.to_string(), frame.count().into());
+        //             }
+        //         };
 
-                match meta.get_mut(SIZE) {
-                    Some(Value::Map(size)) => self.size_map(size),
-                    _ => {
-                        let mut size = HashMap::new();
-                        self.size_map(&mut size);
-                        meta.insert(SIZE.into(), size.into());
-                    }
-                }
+        //         match meta.get_mut(SIZE) {
+        //             Some(Value::Map(size)) => self.size_map(size),
+        //             _ => {
+        //                 let mut size = HashMap::new();
+        //                 self.size_map(&mut size);
+        //                 meta.insert(SIZE.into(), size.into());
+        //             }
+        //         }
 
-                match meta.get_mut(TIMINGS) {
-                    Some(Value::Map(timings)) => self.timings_map(timings),
-                    _ => {
-                        let mut timings = HashMap::new();
-                        self.timings_map(&mut timings);
-                        meta.insert(TIMINGS.into(), timings.into());
-                    }
-                }
-            }
-        }
+        //         match meta.get_mut(TIMINGS) {
+        //             Some(Value::Map(timings)) => self.timings_map(timings),
+        //             _ => {
+        //                 let mut timings = HashMap::new();
+        //                 self.timings_map(&mut timings);
+        //                 meta.insert(TIMINGS.into(), timings.into());
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 

@@ -1,4 +1,5 @@
-use anathema_values::{Path, TextPath, Value, PathId};
+use anathema_values::{Path, PathId};
+use anathema_widget_core::{TextPath, Value};
 
 mod attribute_parser;
 mod fields;

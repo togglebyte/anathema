@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anathema_values::Value;
+use crate::Value;
 
 // -----------------------------------------------------------------------------
 //     - Attributes -

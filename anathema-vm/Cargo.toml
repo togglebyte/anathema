@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 crossterm = { workspace = true }
 anathema-compiler = { path = "../anathema-compiler" }
+anathema-generator = { path = "../anathema-generator" }
 anathema-render = { path = "../anathema-render" }
 anathema-values = { path = "../anathema-values" }
 anathema-widget-core = { path = "../anathema-widget-core" }

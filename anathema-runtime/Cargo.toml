@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 anathema-widget-core = { path = "../anathema-widget-core" }
+anathema-values = { path = "../anathema-values" }
 anathema-render = { path = "../anathema-render" }
+anathema-generator = { path = "../anathema-generator" }
 flume = { workspace = true }
 crossterm = { workspace = true }

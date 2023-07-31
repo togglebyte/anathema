@@ -2,13 +2,15 @@ use std::io::{stdout, Stdout};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anathema_render::{size, Screen, Size};
-use anathema_widget_core::contexts::{DataCtx, PaintCtx};
+use anathema_generator::{Nodes, Expression};
+use anathema_render::{size, Screen, Size, Attributes};
+use anathema_values::Bucket;
+use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::template::Template;
 use anathema_widget_core::views::View;
-use anathema_widget_core::{Generator, Pos, Values};
+use anathema_widget_core::{Pos, Value, WidgetContainer};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
@@ -28,8 +30,8 @@ pub struct Runtime<E, ER> {
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
-    current_frame: Frame,
-    ctx: DataCtx,
+    current_frame: Nodes<WidgetContainer>,
+    ctx: Bucket<Value>,
     events: E,
     event_receiver: ER,
 }
@@ -47,8 +49,8 @@ where
     ER: EventProvider,
 {
     pub fn new(
-        templates: impl Into<Arc<[Template]>>,
-        ctx: DataCtx,
+        templates: impl Into<Arc<[Expression<Attributes>]>>,
+        ctx: Bucket<Value>,
         events: E,
         event_receiver: ER,
     ) -> Result<Self> {
@@ -66,7 +68,7 @@ where
             screen,
             constraints,
             templates: templates.into(),
-            current_frame: Frame::empty(),
+            current_frame: Nodes::empty(),
             ctx,
             events,
             event_receiver,
@@ -77,20 +79,24 @@ where
         Ok(inst)
     }
 
+    fn initial(&mut self) {}
+
     pub fn register_view(&mut self, name: impl Into<String>, view: impl View + 'static) {
-        self.ctx.views.register(name.into(), view);
+        panic!()
+        // self.ctx.views.register(name.into(), view);
     }
 
     fn layout(&mut self) -> Result<()> {
-        let mut values = Values::new(&self.ctx);
-        let mut widgets = Generator::new(&self.templates, &mut values);
-        let mut frame = Frame::empty();
-        while let Some(mut widget) = widgets.next(&mut values).transpose()? {
-            widget.layout(self.constraints, &values)?;
-            frame.push(widget);
-        }
-        self.current_frame = frame;
-        Ok(())
+        panic!()
+        // let mut values = Values::new(&self.ctx);
+        // let mut widgets = Generator::new(&self.templates, &mut values);
+        // let mut frame = Frame::empty();
+        // while let Some(mut widget) = widgets.next(&mut values).transpose()? {
+        //     widget.layout(self.constraints, &values)?;
+        //     frame.push(widget);
+        // }
+        // self.current_frame = frame;
+        // Ok(())
     }
 
     fn position(&mut self) {
@@ -114,9 +120,9 @@ where
 
         'run: loop {
             while let Some(event) = self.event_receiver.next() {
-                let event = self
-                    .events
-                    .event(event, &mut self.ctx, &mut self.current_frame.inner);
+                let event =
+                    self.events
+                        .event(event, self.ctx.write(), &mut self.current_frame.inner);
                 match event {
                     Event::Resize(width, height) => {
                         let size = Size::from((width, height));
@@ -155,7 +161,7 @@ where
             self.screen.erase();
 
             if self.enable_meta {
-                self.meta.update(&mut self.ctx, &self.current_frame);
+                self.meta.update(self.ctx.write(), &self.current_frame);
             }
         }
     }

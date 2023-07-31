@@ -1,13 +1,12 @@
-use std::ops::Deref;
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 use anathema_render::{Screen, ScreenPos, Size, Style};
-use anathema_values::{LocalPos, Padding, Pos, Region, Align};
 use unicode_width::UnicodeWidthChar;
 
-pub use self::data::DataCtx;
 use crate::layout::Constraints;
 use crate::template::Template;
+use crate::{Align, LocalPos, Padding, Pos, Region};
 
 mod data;
 

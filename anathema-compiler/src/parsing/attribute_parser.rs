@@ -1,5 +1,6 @@
+use anathema_widget_core::{Align, Axis, Direction, Display, TextPath, Value};
 use anathema_render::Color;
-use anathema_values::{Align, Axis, Direction, Display, Path, PathId, TextPath, Value};
+use anathema_values::{Path, PathId};
 
 use super::fields;
 use super::parser::{parse_path, parse_to_fragments};

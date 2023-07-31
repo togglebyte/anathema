@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_values::Number;
+use anathema_widget_core::Number;
 
 use crate::error::{Error, Result};
 

@@ -1,7 +1,7 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_values::TextPath;
 use anathema_widget_core::template::{Cond, ControlFlow, Template};
-use anathema_widget_core::Attributes;
+use anathema_widget_core::{Attributes, TextPath, Value};
+use anathema_generator::Expression;
 
 use crate::error::Result;
 
@@ -21,7 +21,7 @@ impl<'vm> Scope<'vm> {
         }
     }
 
-    pub fn exec(&mut self) -> Result<Vec<Template>> {
+    pub fn exec(&mut self) -> Result<Vec<Expression<Attributes>>> {
         let mut nodes = vec![];
 
         if self.instructions.is_empty() {
@@ -37,7 +37,8 @@ impl<'vm> Scope<'vm> {
                         .lookup_value(id)
                         .cloned()
                         .expect(FILE_BUG_REPORT);
-                    nodes.push(Template::View(id));
+                    // nodes.push(Template::View(id));
+                    panic!()
                 }
                 Instruction::Node { ident, scope_size } => {
                     nodes.push(self.node(ident, scope_size)?)
@@ -52,14 +53,16 @@ impl<'vm> Scope<'vm> {
                         .lookup_string(binding)
                         .expect(FILE_BUG_REPORT)
                         .to_string();
+
                     let data = self
                         .consts
                         .lookup_value(data)
                         .cloned()
                         .expect(FILE_BUG_REPORT);
+
                     let body = self.instructions.drain(..size).collect();
                     let body = Scope::new(body, &self.consts).exec()?;
-                    let template = Template::Loop {
+                    let template = Expression::Loop {
                         binding,
                         data,
                         body: body.into(),
@@ -117,7 +120,7 @@ impl<'vm> Scope<'vm> {
         Ok(nodes)
     }
 
-    fn node(&mut self, ident: usize, scope_size: usize) -> Result<Template> {
+    fn node(&mut self, ident: usize, scope_size: usize) -> Result<Expression<Attributes>> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = Attributes::empty();

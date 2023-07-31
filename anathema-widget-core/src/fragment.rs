@@ -1,4 +1,4 @@
-use crate::Path;
+use anathema_values::PathId;
 
 /// A `Fragment` can be either a [`Path`] or a `String`.
 /// `Fragment`s are usually part of a list to represent a single string value.
@@ -7,7 +7,7 @@ pub enum Fragment {
     /// A string.
     String(String),
     /// A path to a value inside a context.
-    Data(Path),
+    Data(PathId),
 }
 
 impl Fragment {

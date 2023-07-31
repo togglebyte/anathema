@@ -1,11 +1,9 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use anathema_values::{Value, TextPath};
-
 // use crate::gen::expressions::Expression;
 // use crate::gen::store::Values;
-use crate::Attributes;
+use crate::{Attributes, TextPath, Value};
 
 #[derive(Debug)]
 pub enum Cond {
