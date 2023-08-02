@@ -13,7 +13,7 @@ enum State {
 pub struct LoopState<Output: FromContext> {
     scope: ScopeId,
     collection: ValueRef<ValueV2<Output::Value>>,
-    expressions: Arc<[Expression<Output::Ctx, Output::Value>]>,
+    expressions: Arc<[Expression<Output>]>,
     binding: PathId,
     expression_index: usize,
     value_index: usize,
@@ -26,7 +26,7 @@ impl<Output: FromContext> LoopState<Output> {
         scope: ScopeId,
         binding: PathId,
         collection: ValueRef<ValueV2<Output::Value>>,
-        expressions: Arc<[Expression<Output::Ctx, Output::Value>]>,
+        expressions: Arc<[Expression<Output>]>,
     ) -> Self {
         Self {
             scope,
@@ -40,7 +40,7 @@ impl<Output: FromContext> LoopState<Output> {
         }
     }
 
-    fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<()> {
+    fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<(), Output::Err>> {
         let collection = bucket.getv2::<List<_>>(self.collection)?;
 
         // No more items to produce
@@ -48,17 +48,22 @@ impl<Output: FromContext> LoopState<Output> {
             return None;
         }
 
+        let value = *collection.iter().skip(self.value_index).next()?;
+        bucket.scope_value(self.binding, value, self.scope);
+
         self.value_index += 1;
 
         for expr in &*self.expressions {
-            let node = expr.to_node(&EvaluationContext::new(bucket, self.scope))?;
-            self.nodes.push(node);
+            let node = match expr.to_node(&EvaluationContext::new(bucket, self.scope)) {
+                Ok(node) => self.nodes.push(node),
+                Err(e) => return Some(Err(e)),
+            };
         }
 
-        Some(())
+        Some(Ok(()))
     }
 
-    pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
+    pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
         if self.node_index == self.nodes.len() {
             self.load_value(bucket)?;
         }
@@ -69,16 +74,16 @@ impl<Output: FromContext> LoopState<Output> {
             match node {
                 Node::Single(value, _) => {
                     self.node_index += 1;
-                    return Some(value);
+                    return Some(Ok(value));
                 }
                 Node::Collection(nodes) => match nodes.next(bucket) {
                     last @ Some(_) => return last,
                     None => self.node_index += 1,
-                }
+                },
                 Node::ControlFlow(flows) => match flows.next(bucket) {
                     last @ Some(_) => return last,
                     None => self.node_index += 1,
-                }
+                },
             }
         }
 

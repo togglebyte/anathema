@@ -1,4 +1,4 @@
-pub use crate::expression::{FromContext, Expression, ControlFlow, Cond, Value};
+pub use crate::expression::{FromContext, Expression, ControlFlow, Cond, EvaluationContext};
 pub use crate::generator::Generator;
 pub use crate::nodes::{Node, Nodes};
 

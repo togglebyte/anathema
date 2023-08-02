@@ -1,3 +1,4 @@
+use std::iter::once;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
@@ -55,14 +56,14 @@ where
         self.inner.len()
     }
 
-    pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
+    pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
         let gen = self.inner[self.index..].iter_mut();
 
         for generator in gen {
             match generator {
                 Node::Single(node, _) => {
                     self.index += 1;
-                    return Some(node);
+                    return Some(Ok(node));
                 }
                 Node::Collection(loop_state) => match loop_state.next(bucket) {
                     last @ Some(_) => return last,
@@ -76,6 +77,21 @@ where
         }
 
         None
+    }
+
+    pub fn iter_mut(&mut self) -> Box<dyn Iterator<Item = (&mut Output, &mut Self)> + '_> {
+        let iter = self.inner
+            .iter_mut()
+            .map(|node| -> Box<dyn Iterator<Item = (&mut Output, &mut Self)>>  {
+                match node {
+                    Node::Single(output, nodes) => Box::new(once((output, nodes))),
+                    Node::Collection(state) => state.nodes.iter_mut(),
+                    Node::ControlFlow(flows) => flows.nodes.iter_mut(),
+                }
+            })
+            .flatten();
+
+        Box::new(iter)
     }
 }
 

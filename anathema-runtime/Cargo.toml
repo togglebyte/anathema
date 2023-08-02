@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anathema-widget-core = { path = "../anathema-widget-core" }
-anathema-values = { path = "../anathema-values" }
-anathema-render = { path = "../anathema-render" }
 anathema-generator = { path = "../anathema-generator" }
-flume = { workspace = true }
+anathema-render = { path = "../anathema-render" }
+anathema-values = { path = "../anathema-values" }
+anathema-vm = { path = "../anathema-vm" }
+anathema-widget-core = { path = "../anathema-widget-core" }
 crossterm = { workspace = true }
+flume = { workspace = true }

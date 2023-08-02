@@ -71,18 +71,66 @@ impl<T> TryFromValue<T> for Map<T> {
 }
 
 // -----------------------------------------------------------------------------
+//   - From value mut -
+// -----------------------------------------------------------------------------
+pub trait TryFromValueMut<T> {
+    type Output;
+
+    fn from_value(val: &mut ValueV2<T>) -> Option<&mut Self::Output>;
+}
+
+impl<T> TryFromValueMut<T> for T {
+    type Output = T;
+
+    fn from_value(val: &mut ValueV2<T>) -> Option<&mut Self::Output> {
+        match val {
+            ValueV2::Single(val) => Some(val),
+            _ => None,
+        }
+    }
+}
+
+impl<T> TryFromValueMut<T> for List<T> {
+    type Output = List<T>;
+
+    fn from_value(val: &mut ValueV2<T>) -> Option<&mut Self::Output> {
+        match val {
+            ValueV2::List(list) => Some(list),
+            _ => None,
+        }
+    }
+}
+
+impl<T> TryFromValueMut<T> for Map<T> {
+    type Output = Map<T>;
+
+    fn from_value(val: &mut ValueV2<T>) -> Option<&mut Self::Output> {
+        match val {
+            ValueV2::Map(map) => Some(map),
+            _ => None,
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
 //   - Into value -
 // -----------------------------------------------------------------------------
 pub trait IntoValue<T> {
     fn into_value(self, bucket: &mut BucketMut<'_, T>) -> ValueV2<T>;
 }
 
-// Single value
-impl<T> IntoValue<T> for T {
+impl<T> IntoValue<T> for ValueV2<T> {
     fn into_value(self, bucket: &mut BucketMut<'_, T>) -> ValueV2<T> {
-        ValueV2::Single(self)
+        self
     }
 }
+
+// // Single value
+// impl<T> IntoValue<T> for T {
+//     fn into_value(self, bucket: &mut BucketMut<'_, T>) -> ValueV2<T> {
+//         ValueV2::Single(self)
+//     }
+// }
 
 // List
 impl<T> IntoValue<T> for Vec<T>
@@ -160,3 +208,7 @@ int_impls!(i128);
 int_impls!(u128);
 int_impls!(isize);
 int_impls!(usize);
+
+pub trait AsSlice {
+    fn as_slice(&self) -> &[Self] where Self: Sized;
+}

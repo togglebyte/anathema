@@ -5,7 +5,7 @@ pub use bucket::{Bucket, BucketRef, BucketMut};
 
 pub use crate::path::{Path, PathId};
 pub use crate::values::ValueRef;
-pub use crate::values2::{List, Map, ValueV2, Truthy};
+pub use crate::values2::{List, Map, ValueV2, Truthy, AsSlice};
 pub use crate::scopes::ScopeId;
 pub use crate::slab::Slab;
 
@@ -17,6 +17,8 @@ mod scopes;
 mod slab;
 mod values;
 mod values2;
+
+// TODO: rename ValueV2 to Value
 
 // /// Determine how a widget should be displayed and laid out
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

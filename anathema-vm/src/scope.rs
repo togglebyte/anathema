@@ -1,9 +1,10 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{Cond, ControlFlow, Expression, Value as ExpressionValue};
+use anathema_generator::{Cond, ControlFlow, Expression};
 use anathema_values::BucketMut;
-use anathema_widget_core::{Attributes, TextPath, Value, WidgetMeta};
+use anathema_widget_core::{Attributes, TextPath, Value, WidgetContainer, WidgetMeta};
 
 use crate::error::Result;
+use crate::Expressions;
 
 static FILE_BUG_REPORT: &str =
     "consts have been modified, this is a bug with Anathema, file a bug report please";
@@ -21,10 +22,7 @@ impl<'vm> Scope<'vm> {
         }
     }
 
-    pub fn exec(
-        &mut self,
-        bucket: &mut BucketMut<'_, Value>,
-    ) -> Result<Vec<Expression<WidgetMeta, Value>>> {
+    pub fn exec(&mut self, bucket: &mut BucketMut<'_, Value>) -> Result<Expressions> {
         let mut nodes = vec![];
 
         if self.instructions.is_empty() {
@@ -62,8 +60,11 @@ impl<'vm> Scope<'vm> {
                         .expect(FILE_BUG_REPORT);
 
                     let collection = match data {
-                        Value::DataBinding(path_id) => ExpressionValue::Dynamic(path_id),
-                        _ => ExpressionValue::Static(data),
+                        Value::DataBinding(path_id) => path_id,
+                        value @ _ => {
+                            let value_ref = bucket.push(value);
+                            panic!("value ref or path id, this smells like an enum");
+                        }
                     };
 
                     let body = self.instructions.drain(..size).collect();
@@ -86,8 +87,11 @@ impl<'vm> Scope<'vm> {
                     let body = Scope::new(body, &self.consts).exec(bucket)?;
 
                     let cond = match cond {
-                        Value::DataBinding(path_id) => ExpressionValue::Dynamic(path_id),
-                        _ => ExpressionValue::Static(cond),
+                        Value::DataBinding(path_id) => path_id,
+                        value @ _ => {
+                            let value_ref = bucket.push(value);
+                            panic!("value ref or path id, this smells like an enum");
+                        }
                     };
 
                     let mut control_flow = vec![];
@@ -105,8 +109,11 @@ impl<'vm> Scope<'vm> {
                         let cond = cond
                             .map(|c| self.consts.lookup_value(c).cloned().expect(FILE_BUG_REPORT))
                             .map(|cond| match cond {
-                                Value::DataBinding(path_id) => ExpressionValue::Dynamic(path_id),
-                                _ => ExpressionValue::Static(cond),
+                                Value::DataBinding(path_id) => path_id,
+                                value @ _ => {
+                                    let value_ref = bucket.push(value);
+                                    panic!("value ref or path id, this smells like an enum");
+                                }
                             });
 
                         let body = self.instructions.drain(..size).collect();
@@ -142,7 +149,7 @@ impl<'vm> Scope<'vm> {
         ident: StringId,
         scope_size: usize,
         bucket: &mut BucketMut<'_, Value>,
-    ) -> Result<Expression<WidgetMeta, Value>> {
+    ) -> Result<Expression<WidgetContainer>> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = Attributes::empty();

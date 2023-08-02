@@ -18,6 +18,10 @@ impl<T> List<T> {
     pub fn as_slice(&self) -> &[ValueRef<ValueV2<T>>] {
         self.0.as_slice()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &ValueRef<ValueV2<T>>> + '_ {
+        self.0.iter()
+    }
 }
 
 impl<T> From<Vec<ValueRef<ValueV2<T>>>> for List<T> {

@@ -12,7 +12,7 @@ use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::template::Template;
-use crate::{Attributes, Display, LocalPos, Padding, Pos, Region, TextPath};
+use crate::{Attributes, Display, LocalPos, Nodes, Padding, Pos, Region, TextPath};
 
 // Layout:
 // 1. Receive constraints
@@ -34,19 +34,19 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     fn layout<'widget, 'parent>(
         &mut self,
+        children: &mut Nodes,
         ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
     /// of the children.
-    fn position<'tpl>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]);
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
-    fn paint<'tpl>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
-        for child in children {
+    fn paint<'tpl>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+        for (widget, children) in children.iter_mut() {
             let ctx = ctx.sub_context(None);
-            child.paint(ctx);
+            widget.paint(children, ctx);
         }
     }
 }
@@ -60,19 +60,15 @@ pub trait AnyWidget {
 
     fn layout_any<'widget, 'parent>(
         &mut self,
+        children: &mut Nodes,
         ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
-    fn position_any(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]);
+    fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
-    fn paint_any<'gen: 'ctx, 'ctx>(
-        &mut self,
-        ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer],
-    );
+    fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>);
 }
 
 impl Widget for Box<dyn AnyWidget> {
@@ -82,18 +78,18 @@ impl Widget for Box<dyn AnyWidget> {
 
     fn layout<'widget, 'parent>(
         &mut self,
+        children: &mut Nodes,
         ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
-        self.deref_mut().layout_any(ctx, children)
+        self.deref_mut().layout_any(children, ctx)
     }
 
-    fn position(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        self.deref_mut().position_any(ctx, children)
+    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        self.deref_mut().position_any(children, ctx)
     }
 
-    fn paint(&mut self, ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
-        self.deref_mut().paint_any(ctx, children)
+    fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
+        self.deref_mut().paint_any(children, ctx)
     }
 }
 
@@ -115,26 +111,22 @@ impl<T: Widget + 'static + PartialEq<T>> AnyWidget for T {
 
     fn layout_any<'widget, 'parent>(
         &mut self,
+        children: &mut Nodes,
         ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
-        self.layout(ctx, children)
+        self.layout(children, ctx)
     }
 
     fn kind_any(&self) -> &'static str {
         self.kind()
     }
 
-    fn position_any(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        self.position(ctx, children)
+    fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        self.position(children, ctx)
     }
 
-    fn paint_any<'gen: 'ctx, 'ctx>(
-        &mut self,
-        ctx: PaintCtx<'_, WithSize>,
-        children: &mut [WidgetContainer],
-    ) {
-        self.paint(ctx, children)
+    fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
+        self.paint(children, ctx)
     }
 }
 
@@ -145,18 +137,18 @@ impl Widget for Box<dyn Widget> {
 
     fn layout<'parent>(
         &mut self,
+        children: &mut Nodes,
         layout: LayoutCtx<'_, 'parent>,
-        children: &mut Vec<WidgetContainer>,
     ) -> Result<Size> {
-        self.as_mut().layout(layout, children)
+        self.as_mut().layout(children, layout)
     }
 
-    fn position<'gen, 'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        self.as_mut().position(ctx, children)
+    fn position<'gen, 'ctx>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        self.as_mut().position(children, ctx)
     }
 
-    fn paint<'gen, 'ctx>(&mut self, ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
-        self.as_mut().paint(ctx, children)
+    fn paint<'gen, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
+        self.as_mut().paint(children, ctx)
     }
 }
 
@@ -271,25 +263,28 @@ impl WidgetContainer {
 
     pub fn layout<'parent>(
         &mut self,
+        children: &mut Nodes,
         constraints: Constraints,
-        // values: &Values<'_>,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                // let layout = LayoutCtx::new(&self.templates, values, constraints, self.padding);
-                // let size = self.inner.layout(layout, &mut self.children)?;
-                // self.size = size;
-                // self.size.width += self.padding.left + self.padding.right;
-                // self.size.height += self.padding.top + self.padding.bottom;
-                panic!("TODO: sort this out once anathema-values is done");
+                let layout = LayoutCtx::new(&self.templates, constraints, self.padding);
+                let size = self.inner.layout(children, layout)?;
+
+                // TODO: we should compare the new size with the old size
+                //       to determine if the layout needs to propagate outwards
+
+                self.size = size;
+                self.size.width += self.padding.left + self.padding.right;
+                self.size.height += self.padding.top + self.padding.bottom;
             }
         }
 
         Ok(self.size)
     }
 
-    pub fn position(&mut self, pos: Pos) {
+    pub fn position(&mut self, children: &mut Nodes, pos: Pos) {
         self.pos = pos;
 
         let pos = Pos::new(
@@ -298,11 +293,10 @@ impl WidgetContainer {
         );
 
         let ctx = PositionCtx::new(pos, self.inner_size());
-        // self.inner.position(ctx, &mut self.children);
-        panic!()
+        self.inner.position(children, ctx);
     }
 
-    pub fn paint(&mut self, ctx: PaintCtx<'_, Unsized>) {
+    pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
         if let Display::Hide | Display::Exclude = self.display {
             return;
         }
@@ -317,8 +311,7 @@ impl WidgetContainer {
             self.pos.y + self.padding.top as i32,
         );
         ctx.update(self.inner_size(), pos);
-        // self.inner.paint(ctx, &mut self.children);
-        panic!()
+        self.inner.paint(children, ctx);
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
@@ -337,20 +330,22 @@ impl WidgetContainer {
         Some(())
     }
 
+    // TODO: throw this out perhaps?
     pub fn id(&self) -> NodeId {
         panic!()
     }
 }
 
 impl FromContext for WidgetContainer {
-    type Ctx = Attributes;
+    type Ctx = WidgetMeta;
     type Value = crate::Value;
+    type Err = crate::error::Error;
 
-    fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Option<Self> {
+    fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Result<Self> {
+        FACTORIES:: whatever
         todo!()
     }
 }
-
 
 /// Meta data needed to construct a `WidgetContainer` from a `Node`
 pub struct WidgetMeta {

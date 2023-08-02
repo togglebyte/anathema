@@ -1,6 +1,6 @@
 use std::fmt::{self, Debug};
 use crate::hashmap::IntMap;
-use crate::{ValueRef, ValueV2};
+use crate::{ValueRef, ValueV2, PathId};
 
 #[derive(PartialEq)]
 pub struct Map<T>(IntMap<ValueRef<ValueV2<T>>>);
@@ -16,6 +16,26 @@ impl<T> Map<T> {
 
     pub fn iter(&self) -> () {
         self.0.iter();
+    }
+
+    /// Insert a value at a path.
+    /// ```
+    /// # use std::collections::HashMap;
+    /// # use anathema_values::{Map, BucketMut};
+    /// # fn run(bucket: &mut BucketMut<'_, String>) -> Option<()> {
+    /// let map = HashMap::<&str, String>::from_iter(vec![("tea", "earl grey".to_string()),]);
+    /// bucket.insert_at_path("themap", map);
+    ///
+    /// let sugar = bucket.insert_path("sugar");
+    /// let value_ref = bucket.insert(sugar, "no, thank you".to_string());
+    ///
+    /// let map = bucket.getv2_mut::<Map<_>>("themap")?;
+    /// map.insert(sugar, value_ref);
+    /// # Some(())
+    /// # }
+    /// ```
+    pub fn insert(&mut self, path: PathId, value: ValueRef<ValueV2<T>>) {
+        self.0.insert(path.0, value);
     }
 }
 

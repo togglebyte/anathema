@@ -16,25 +16,22 @@ mod data;
 #[derive(Copy, Clone)]
 pub struct LayoutCtx<'widget, 'parent> {
     pub templates: &'parent [Template],
-    p: PhantomData<&'widget ()>,
-    // pub values: &'widget Values<'parent>,
     pub constraints: Constraints,
     pub padding: Padding,
+    p: PhantomData<&'widget ()>,
 }
 
 impl<'widget, 'parent> LayoutCtx<'widget, 'parent> {
     pub fn new(
         templates: &'parent [Template],
-        // values: &'widget Values<'parent>,
         constraints: Constraints,
         padding: Padding,
     ) -> Self {
         Self {
             templates,
-            p: PhantomData,
-            // values,
             constraints,
             padding,
+            p: PhantomData,
         }
     }
 

@@ -27,6 +27,11 @@ impl<T> Generation<T> {
     pub(crate) fn compare_generation(&self, gen: GenerationId) -> bool {
         self.gen == gen
     }
+
+    pub fn replace(&mut self, mut new_value: T) -> T {
+        std::mem::swap(&mut new_value, &mut self.value);
+        new_value
+    }
 }
 
 impl<T> Deref for Generation<T> {

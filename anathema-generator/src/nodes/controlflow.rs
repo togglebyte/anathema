@@ -6,15 +6,15 @@ use crate::expression::{ControlFlow, FromContext, EvaluationContext};
 use crate::{Node, Nodes};
 
 pub struct ControlFlows<Output: FromContext> {
-    flows: Arc<[ControlFlow<Output::Ctx, Output::Value>]>,
+    flows: Arc<[ControlFlow<Output>]>,
     scope: Option<ScopeId>,
-    nodes: Nodes<Output>,
+    pub(crate) nodes: Nodes<Output>,
     selected_flow: Option<usize>,
     node_index: usize,
 }
 
 impl<Output: FromContext> ControlFlows<Output> {
-    pub fn new(flows: Arc<[ControlFlow<Output::Ctx, Output::Value>]>, scope: Option<ScopeId>) -> Self {
+    pub fn new(flows: Arc<[ControlFlow<Output>]>, scope: Option<ScopeId>) -> Self {
         Self {
             flows,
             scope,
@@ -27,23 +27,25 @@ impl<Output: FromContext> ControlFlows<Output> {
     pub(super) fn next(
         &mut self,
         bucket: &BucketRef<'_, Output::Value>,
-    ) -> Option<&mut Output> {
+    ) -> Option<Result<&mut Output, Output::Err>> {
         match self.selected_flow {
             None => {
                 let flow_index = self.eval(bucket, self.scope)?;
                 self.selected_flow = Some(flow_index);
                 for expr in &*self.flows[flow_index].body {
-                    let node = expr.to_node(&EvaluationContext::new(bucket, self.scope))?;
-                    self.nodes.push(node);
+                    match expr.to_node(&EvaluationContext::new(bucket, self.scope)) {
+                        Ok(node) => self.nodes.push(node),
+                        Err(e) => return Some(Err(e))
+                    }
                 }
                 return self.next(bucket);
             }
             Some(index) => {
                 for node in self.nodes.inner[self.node_index..].iter_mut() {
                     match node {
-                        Node::Single(value, _) => {
+                        Node::Single(output, _) => {
                             self.node_index += 1;
-                            return Some(value);
+                            return Some(Ok(output));
                         }
                         Node::Collection(nodes) => match nodes.next(bucket) {
                             last @ Some(_) => return last,
@@ -59,10 +61,6 @@ impl<Output: FromContext> ControlFlows<Output> {
         }
         None
     }
-
-    // pub(super) fn last(&mut self) -> Option<&mut Output> {
-    //     self.nodes.inner.last_mut().and_then(Node::get_output)
-    // }
 
     fn eval(&mut self, bucket: &BucketRef<'_, Output::Value>, scope: Option<ScopeId>) -> Option<usize> {
         for (index, flow) in self.flows.iter().enumerate() {

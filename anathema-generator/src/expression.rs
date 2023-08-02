@@ -1,17 +1,10 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
+use anathema_values::{AsSlice, BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
 
 use crate::nodes::controlflow::ControlFlows;
 use crate::nodes::loops::LoopState;
 use crate::{Node, Nodes};
-
-pub enum Value<T> {
-    /// Value that can change at runtime
-    Dynamic(PathId),
-    /// A static value that never changes
-    Static(T)
-}
 
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
@@ -27,19 +20,19 @@ impl<'a, Val> EvaluationContext<'a, Val> {
     }
 }
 
-pub enum Cond<Val> {
-    If(Value<Val>),
-    Else(Option<Value<Val>>),
+pub enum Cond {
+    If(PathId),
+    Else(Option<PathId>),
 }
 
-impl<Val> Cond<Val> {
-    pub(crate) fn eval(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool
-    where
-        Val: Truthy,
-    {
+impl Cond {
+    pub(crate) fn eval<Val: Truthy>(
+        &self,
+        bucket: &BucketRef<'_, Val>,
+        scope: Option<ScopeId>,
+    ) -> bool {
         match self {
-            Self::If(Value::Static(val)) | Self::Else(Some(Value::Static(val))) => val.is_true(),
-            Self::If(Value::Dynamic(path)) | Self::Else(Some(Value::Dynamic(path))) => bucket
+            Self::If(path) | Self::Else(Some(path)) => bucket
                 .by_path(*path, scope)
                 .and_then(|val| bucket.get(val))
                 .map(|val| val.is_true())
@@ -49,56 +42,54 @@ impl<Val> Cond<Val> {
     }
 }
 
-pub struct ControlFlow<Ctx, Val> {
-    pub cond: Cond<Val>,
-    pub body: Arc<[Expression<Ctx, Val>]>,
+pub struct ControlFlow<Output: FromContext> {
+    pub cond: Cond,
+    pub body: Arc<[Expression<Output>]>,
 }
 
-pub enum Expression<Ctx, Val> {
+pub enum Expression<Output: FromContext> {
     Node {
-        context: Ctx,
-        children: Arc<[Expression<Ctx, Val>]>,
+        context: Output::Ctx,
+        children: Arc<[Expression<Output>]>,
     },
     Loop {
-        collection: Value<Val>,
+        collection: PathId,
         binding: PathId,
-        body: Arc<[Expression<Ctx, Val>]>,
+        body: Arc<[Expression<Output>]>,
     },
-    ControlFlow(Arc<[ControlFlow<Ctx, Val>]>),
+    ControlFlow(Arc<[ControlFlow<Output>]>),
 }
 
-impl<Ctx, Val> Expression<Ctx, Val> {
-    pub fn to_node<Output>(&self, eval: &EvaluationContext<'_, Val>) -> Option<Node<Output>>
-    where
-        Val: Truthy,
-        Output: FromContext<Ctx = Ctx, Value = Val>,
-    {
+impl<Output: FromContext> Expression<Output> {
+    pub fn to_node(
+        &self,
+        eval: &EvaluationContext<'_, Output::Value>,
+    ) -> Result<Node<Output>, Output::Err> {
         match self {
             Self::Node { context, children } => {
-                let output = Output::from_context(&context, &eval.bucket)?;
+                let output = Output::from_context(&context, eval.bucket)?;
                 let nodes = children
                     .iter()
-                    .filter_map(|expr| expr.to_node(eval))
-                    .collect();
-                Some(Node::Single(output, Nodes::new(nodes)))
+                    .map(|expr| expr.to_node(eval))
+                    .collect::<Result<_, Output::Err>>()?;
+                Ok(Node::Single(output, Nodes::new(nodes)))
             }
             Self::Loop {
                 collection,
                 binding,
                 body,
             } => {
-                let collection = match collection {
-                    Value::Dynamic(path) => eval.bucket.by_path(*path, eval.scope)?,
-                    Value::Static(val) => panic!("impl to slice or whatever")
-                };
+                let collection = eval
+                    .bucket
+                    .by_path(*collection, eval.scope).unwrap();
 
                 let scope = eval.bucket.new_scope(eval.scope);
                 let state = LoopState::new(scope, *binding, collection, body.clone());
-                Some(Node::Collection(state))
+                Ok(Node::Collection(state))
             }
             Self::ControlFlow(flows) => {
                 let flows = ControlFlows::new(flows.clone(), eval.scope);
-                Some(Node::ControlFlow(flows))
+                Ok(Node::ControlFlow(flows))
             }
         }
     }
@@ -106,7 +97,11 @@ impl<Ctx, Val> Expression<Ctx, Val> {
 
 pub trait FromContext: Sized {
     type Ctx;
-    type Value: Truthy;
+    type Value: Truthy + Clone;
+    type Err;
 
-    fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Option<Self>;
+    fn from_context(
+        ctx: &Self::Ctx,
+        bucket: &BucketRef<'_, Self::Value>,
+    ) -> Result<Self, Self::Err>;
 }
