@@ -6,7 +6,7 @@ use crate::expression::{ControlFlow, FromContext, EvaluationContext};
 use crate::{Node, Nodes};
 
 pub struct ControlFlows<Output: FromContext> {
-    flows: Arc<[ControlFlow<Output::Ctx>]>,
+    flows: Arc<[ControlFlow<Output::Ctx, Output::Value>]>,
     scope: Option<ScopeId>,
     nodes: Nodes<Output>,
     selected_flow: Option<usize>,
@@ -14,7 +14,7 @@ pub struct ControlFlows<Output: FromContext> {
 }
 
 impl<Output: FromContext> ControlFlows<Output> {
-    pub fn new(flows: Arc<[ControlFlow<Output::Ctx>]>, scope: Option<ScopeId>) -> Self {
+    pub fn new(flows: Arc<[ControlFlow<Output::Ctx, Output::Value>]>, scope: Option<ScopeId>) -> Self {
         Self {
             flows,
             scope,

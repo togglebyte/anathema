@@ -25,7 +25,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         let next = self.lexer.next()?.0;
 
         match next {
-            Kind::String(val) => match parse_to_fragments(val) {
+            Kind::String(val) => match parse_to_fragments(val, self.constants) {
                 TextPath::String(s) => Ok(Value::String(s)),
                 TextPath::Fragments(fragments) => Ok(Value::Fragments(fragments)),
             },

@@ -1,18 +1,18 @@
 use anathema_values::{ValueRef, Bucket};
 
-use crate::expression::{ControlFlow, Cond};
+use crate::expression::{ControlFlow, Cond, Value};
 use crate::{Expression, Node};
 
-fn control_flow() -> Vec<ControlFlow<&'static str>> {
+fn control_flow() -> Vec<ControlFlow<&'static str, u32>> {
     vec![
         ControlFlow {
-            cond: Cond::If(2.into()),
+            cond: Cond::If(Value::Static(1)),
             body: vec![
                 Expression::Node { context: "truthy", children: vec![].into() },
             ].into(),
         },
         ControlFlow {
-            cond: Cond::Else(Some(3.into())),
+            cond: Cond::Else(Some(Value::Static(1))),
             body: vec![
                 Expression::Node { context: "else cond", children: vec![].into() },
             ].into(),
@@ -26,7 +26,7 @@ fn control_flow() -> Vec<ControlFlow<&'static str>> {
     ]
 }
 
-pub(crate) fn expressions() -> (Vec<Expression<&'static str>>, Bucket<u32>) {
+pub(crate) fn expressions() -> (Vec<Expression<&'static str, u32>>, Bucket<u32>) {
     const ITEM: usize = 0;
     const LIST: usize = 1;
     const TRUTH: usize = 2;
@@ -36,9 +36,9 @@ pub(crate) fn expressions() -> (Vec<Expression<&'static str>>, Bucket<u32>) {
     {
         let mut bucket = bucket.write();
         bucket.get("item"); // ensure that the paths exists with the correct numbers 
-        bucket.insert("list", vec![1, 2]); 
-        bucket.insert("truthy", 1);
-        bucket.insert("falsey", 0);
+        bucket.insert_at_path("list", vec![1, 2]); 
+        bucket.insert_at_path("truthy", 1);
+        bucket.insert_at_path("falsey", 0);
     }
 
     let expressions = vec![
@@ -52,11 +52,11 @@ pub(crate) fn expressions() -> (Vec<Expression<&'static str>>, Bucket<u32>) {
 
         Expression::Loop {
             binding: ITEM.into(),
-            collection: LIST.into(),
+            collection: Value::Dynamic(LIST.into()),
             body: vec![
                 Expression::Loop {
                     binding: ITEM.into(),
-                    collection: LIST.into(),
+                    collection: Value::Dynamic(LIST.into()),
                     body: vec![
                         Expression::Node { context: "inner loopy child 1", children: vec![].into() },
                         Expression::Node { context: "inner loopy child 2", children: vec![].into() },

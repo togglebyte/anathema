@@ -23,7 +23,7 @@ mod fragment;
 
 pub use id::{Id, NodeId};
 // pub use lookup::{Factory, WidgetFactory};
-pub use widget::{AnyWidget, Widget, WidgetContainer};
+pub use widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
 pub use crate::values::{Display, Number, Value, Color};
 pub use crate::fragment::{Fragment, TextPath};
 

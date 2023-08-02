@@ -6,6 +6,13 @@ use crate::nodes::controlflow::ControlFlows;
 use crate::nodes::loops::LoopState;
 use crate::{Node, Nodes};
 
+pub enum Value<T> {
+    /// Value that can change at runtime
+    Dynamic(PathId),
+    /// A static value that never changes
+    Static(T)
+}
+
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
     scope: Option<ScopeId>,
@@ -20,19 +27,19 @@ impl<'a, Val> EvaluationContext<'a, Val> {
     }
 }
 
-#[derive(Debug)]
-pub enum Cond {
-    If(PathId),
-    Else(Option<PathId>),
+pub enum Cond<Val> {
+    If(Value<Val>),
+    Else(Option<Value<Val>>),
 }
 
-impl Cond {
-    pub(crate) fn eval<Val>(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool
+impl<Val> Cond<Val> {
+    pub(crate) fn eval(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool
     where
         Val: Truthy,
     {
         match self {
-            Self::If(path) | Self::Else(Some(path)) => bucket
+            Self::If(Value::Static(val)) | Self::Else(Some(Value::Static(val))) => val.is_true(),
+            Self::If(Value::Dynamic(path)) | Self::Else(Some(Value::Dynamic(path))) => bucket
                 .by_path(*path, scope)
                 .and_then(|val| bucket.get(val))
                 .map(|val| val.is_true())
@@ -42,28 +49,26 @@ impl Cond {
     }
 }
 
-#[derive(Debug)]
-pub struct ControlFlow<Ctx> {
-    pub(crate) cond: Cond,
-    pub(crate) body: Arc<[Expression<Ctx>]>,
+pub struct ControlFlow<Ctx, Val> {
+    pub cond: Cond<Val>,
+    pub body: Arc<[Expression<Ctx, Val>]>,
 }
 
-#[derive(Debug)]
-pub enum Expression<Ctx> {
+pub enum Expression<Ctx, Val> {
     Node {
         context: Ctx,
-        children: Arc<[Expression<Ctx>]>,
+        children: Arc<[Expression<Ctx, Val>]>,
     },
     Loop {
-        collection: PathId,
+        collection: Value<Val>,
         binding: PathId,
-        body: Arc<[Expression<Ctx>]>,
+        body: Arc<[Expression<Ctx, Val>]>,
     },
-    ControlFlow(Arc<[ControlFlow<Ctx>]>),
+    ControlFlow(Arc<[ControlFlow<Ctx, Val>]>),
 }
 
-impl<Ctx> Expression<Ctx> {
-    pub fn to_node<Output, Val>(&self, eval: &EvaluationContext<'_, Val>) -> Option<Node<Output>>
+impl<Ctx, Val> Expression<Ctx, Val> {
+    pub fn to_node<Output>(&self, eval: &EvaluationContext<'_, Val>) -> Option<Node<Output>>
     where
         Val: Truthy,
         Output: FromContext<Ctx = Ctx, Value = Val>,
@@ -82,7 +87,11 @@ impl<Ctx> Expression<Ctx> {
                 binding,
                 body,
             } => {
-                let collection = eval.bucket.by_path(*collection, eval.scope)?;
+                let collection = match collection {
+                    Value::Dynamic(path) => eval.bucket.by_path(*path, eval.scope)?,
+                    Value::Static(val) => panic!("impl to slice or whatever")
+                };
+
                 let scope = eval.bucket.new_scope(eval.scope);
                 let state = LoopState::new(scope, *binding, collection, body.clone());
                 Some(Node::Collection(state))

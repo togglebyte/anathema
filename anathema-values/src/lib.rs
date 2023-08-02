@@ -7,6 +7,7 @@ pub use crate::path::{Path, PathId};
 pub use crate::values::ValueRef;
 pub use crate::values2::{List, Map, ValueV2, Truthy};
 pub use crate::scopes::ScopeId;
+pub use crate::slab::Slab;
 
 mod bucket;
 mod generation;

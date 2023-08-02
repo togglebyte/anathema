@@ -4,17 +4,17 @@ use anathema_widget_core::{Fragment, Number, TextPath};
 use super::attribute_parser::AttributeParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token};
-use crate::Constants;
+use crate::{StringId, Constants, ValueId, TextId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
-    LoadText(usize),
-    LoadAttribute { key: usize, value: usize },
-    View(usize),
-    Node(usize),
-    For { data: usize, binding: usize },
-    If(usize),
-    Else(Option<usize>),
+    LoadText(TextId),
+    LoadAttribute { key: StringId, value: ValueId },
+    View(ValueId),
+    Node(StringId),
+    For { data: ValueId, binding: StringId },
+    If(ValueId),
+    Else(Option<ValueId>),
     ScopeStart,
     ScopeEnd,
     EOF,
@@ -453,7 +453,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
         let ret = match self.lexer.peek() {
             Ok(Token(Kind::String(s), _)) => {
-                let text = parse_to_fragments(s);
+                let text = parse_to_fragments(s, self.constants);
                 let index = self.constants.store_text(text);
                 let _ = self.lexer.next();
                 Ok(Some(Expression::LoadText(index)))
@@ -522,7 +522,7 @@ impl Iterator for Parser<'_, '_> {
 // -----------------------------------------------------------------------------
 //     - Parse string into fragments -
 // -----------------------------------------------------------------------------
-pub(super) fn parse_to_fragments(text: &str) -> TextPath {
+pub(super) fn parse_to_fragments(text: &str, consts: &mut Constants) -> TextPath {
     let mut fragments = vec![];
     let mut chars = text.char_indices().peekable();
     let mut pos = 0;
@@ -544,7 +544,8 @@ pub(super) fn parse_to_fragments(text: &str) -> TextPath {
                     let mut lexer = Lexer::new(frag);
                     if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
                         if let Ok(path) = parse_path(&mut lexer, ident) {
-                            fragments.push(Fragment::Data(path));
+                            let path_id = consts.store_path(path);
+                            fragments.push(Fragment::Data(path_id));
                         }
                     }
                 }
@@ -580,8 +581,6 @@ pub(super) fn parse_to_fragments(text: &str) -> TextPath {
 pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
     let mut path = Path::Key(ident.to_owned());
 
-    // {{ a.b }}
-    // {{ a[0][2] }}
     loop {
         match lexer.peek() {
             Ok(Token(Kind::Fullstop, _)) => drop(lexer.next()?),

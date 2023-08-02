@@ -1,7 +1,7 @@
-use anathema_compiler::{Constants, Instruction};
-use anathema_widget_core::template::{Cond, ControlFlow, Template};
-use anathema_widget_core::{Attributes, TextPath, Value};
-use anathema_generator::Expression;
+use anathema_compiler::{Constants, Instruction, StringId};
+use anathema_generator::{Cond, ControlFlow, Expression, Value as ExpressionValue};
+use anathema_values::BucketMut;
+use anathema_widget_core::{Attributes, TextPath, Value, WidgetMeta};
 
 use crate::error::Result;
 
@@ -21,7 +21,10 @@ impl<'vm> Scope<'vm> {
         }
     }
 
-    pub fn exec(&mut self) -> Result<Vec<Expression<Attributes>>> {
+    pub fn exec(
+        &mut self,
+        bucket: &mut BucketMut<'_, Value>,
+    ) -> Result<Vec<Expression<WidgetMeta, Value>>> {
         let mut nodes = vec![];
 
         if self.instructions.is_empty() {
@@ -38,21 +41,19 @@ impl<'vm> Scope<'vm> {
                         .cloned()
                         .expect(FILE_BUG_REPORT);
                     // nodes.push(Template::View(id));
-                    panic!()
+                    panic!("need to rethink views")
                 }
                 Instruction::Node { ident, scope_size } => {
-                    nodes.push(self.node(ident, scope_size)?)
+                    nodes.push(self.node(ident, scope_size, bucket)?)
                 }
                 Instruction::For {
                     binding,
                     data,
                     size,
                 } => {
-                    let binding = self
-                        .consts
-                        .lookup_string(binding)
-                        .expect(FILE_BUG_REPORT)
-                        .to_string();
+                    let binding = self.consts.lookup_string(binding).expect(FILE_BUG_REPORT);
+
+                    let binding = bucket.insert_path(binding);
 
                     let data = self
                         .consts
@@ -60,11 +61,16 @@ impl<'vm> Scope<'vm> {
                         .cloned()
                         .expect(FILE_BUG_REPORT);
 
+                    let collection = match data {
+                        Value::DataBinding(path_id) => ExpressionValue::Dynamic(path_id),
+                        _ => ExpressionValue::Static(data),
+                    };
+
                     let body = self.instructions.drain(..size).collect();
-                    let body = Scope::new(body, &self.consts).exec()?;
+                    let body = Scope::new(body, &self.consts).exec(bucket)?;
                     let template = Expression::Loop {
                         binding,
-                        data,
+                        collection,
                         body: body.into(),
                     };
 
@@ -77,7 +83,12 @@ impl<'vm> Scope<'vm> {
                         .cloned()
                         .expect(FILE_BUG_REPORT);
                     let body = self.instructions.drain(..size).collect::<Vec<_>>();
-                    let body = Scope::new(body, &self.consts).exec()?;
+                    let body = Scope::new(body, &self.consts).exec(bucket)?;
+
+                    let cond = match cond {
+                        Value::DataBinding(path_id) => ExpressionValue::Dynamic(path_id),
+                        _ => ExpressionValue::Static(cond),
+                    };
 
                     let mut control_flow = vec![];
                     control_flow.push(ControlFlow {
@@ -90,10 +101,16 @@ impl<'vm> Scope<'vm> {
                         else {
                             break;
                         };
+
                         let cond = cond
-                            .map(|c| self.consts.lookup_value(c).cloned().expect(FILE_BUG_REPORT));
+                            .map(|c| self.consts.lookup_value(c).cloned().expect(FILE_BUG_REPORT))
+                            .map(|cond| match cond {
+                                Value::DataBinding(path_id) => ExpressionValue::Dynamic(path_id),
+                                _ => ExpressionValue::Static(cond),
+                            });
+
                         let body = self.instructions.drain(..size).collect();
-                        let body = Scope::new(body, &self.consts).exec()?;
+                        let body = Scope::new(body, &self.consts).exec(bucket)?;
 
                         control_flow.push(ControlFlow {
                             cond: Cond::Else(cond),
@@ -101,7 +118,7 @@ impl<'vm> Scope<'vm> {
                         });
                     }
 
-                    let template = Template::ControlFlow(control_flow);
+                    let template = Expression::ControlFlow(control_flow.into());
                     nodes.push(template);
                 }
                 Instruction::Else { .. } => {
@@ -120,7 +137,12 @@ impl<'vm> Scope<'vm> {
         Ok(nodes)
     }
 
-    fn node(&mut self, ident: usize, scope_size: usize) -> Result<Expression<Attributes>> {
+    fn node(
+        &mut self,
+        ident: StringId,
+        scope_size: usize,
+        bucket: &mut BucketMut<'_, Value>,
+    ) -> Result<Expression<WidgetMeta, Value>> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = Attributes::empty();
@@ -144,12 +166,16 @@ impl<'vm> Scope<'vm> {
         self.instructions.drain(..ip);
 
         let scope = self.instructions.drain(..scope_size).collect();
-        let children = Scope::new(scope, &self.consts).exec()?;
+        let children = Scope::new(scope, &self.consts).exec(bucket)?;
 
-        let node = Template::Node {
-            ident: ident.to_string(),
+        let meta = WidgetMeta {
             attributes,
+            ident: ident.to_string(),
             text,
+        };
+
+        let node = Expression::Node {
+            context: meta,
             children: children.into(),
         };
 

@@ -117,19 +117,19 @@ mod test {
         let mut nodes = Nodes::<Widget>::new(nodes);
 
         assert_eq!("root", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("loopy child 1", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("loopy child 2", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("truthy", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("last", nodes.next(&bucket.read()).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("truthy", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!("last", nodes.next(&bucket_ref).unwrap().ident);
     }
 }

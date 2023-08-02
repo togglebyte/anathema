@@ -1,33 +1,33 @@
-use crate::parsing::parser::Expression as ParseExpr;
+use crate::{parsing::parser::Expression as ParseExpr, StringId, ValueId, TextId};
 
 enum ControlFlow {
-    If(usize),
-    Else(Option<usize>),
+    If(ValueId),
+    Else(Option<ValueId>),
 }
 
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub(crate) enum Expression {
     If {
-        cond: usize,
+        cond: ValueId,
         size: usize,
     },
     Else {
-        cond: Option<usize>,
+        cond: Option<ValueId>,
         size: usize,
     },
     For {
-        data: usize,
-        binding: usize,
+        data: ValueId,
+        binding: StringId,
         size: usize,
     },
-    View(usize),
-    LoadText(usize),
+    View(ValueId),
+    LoadText(TextId),
     LoadAttribute {
-        key: usize,
-        value: usize,
+        key: StringId,
+        value: ValueId,
     },
     Node {
-        ident: usize,
+        ident: StringId,
         scope_size: usize,
     },
 }
@@ -180,7 +180,7 @@ impl Optimizer {
         }
     }
 
-    fn opt_for(&mut self, data: usize, binding: usize) {
+    fn opt_for(&mut self, data: ValueId, binding: StringId) {
         let start = self.output.len();
         self.opt_scope();
         let end = self.output.len();

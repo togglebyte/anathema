@@ -1,3 +1,4 @@
+use std::fmt::{self, Debug};
 use std::ops::Index;
 
 use super::Idx;
@@ -10,7 +11,16 @@ enum Entry<T> {
     Vacant(Option<Idx>),
 }
 
-pub(crate) struct Slab<T> {
+impl<T: Debug> Debug for Entry<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Occupied(val) => write!(f, "Entry::Occupied({val:?})"),
+            Self::Vacant(idx) => write!(f, "Entry::Vacant({idx:?})"),
+        }
+    }
+}
+
+pub struct Slab<T> {
     inner: Vec<Entry<T>>,
     next_id: Option<Idx>,
 }
@@ -21,36 +31,37 @@ impl<T> Default for Slab<T> {
     }
 }
 
+
 impl<T> Slab<T> {
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             inner: vec![],
             next_id: None,
         }
     }
 
-    pub(crate) fn with_capacity(cap: usize) -> Self {
+    pub fn with_capacity(cap: usize) -> Self {
         Self {
             inner: Vec::with_capacity(cap),
             next_id: None,
         }
     }
 
-    pub(crate) fn get(&self, index: Idx) -> Option<&T> {
+    pub fn get(&self, index: Idx) -> Option<&T> {
         let Entry::Occupied(val) = self.inner.get(index)? else {
             return None;
         };
         Some(val)
     }
 
-    pub(crate) fn get_mut(&mut self, index: Idx) -> Option<&mut T> {
+    pub fn get_mut(&mut self, index: Idx) -> Option<&mut T> {
         let Entry::Occupied(val) = self.inner.get_mut(index)? else {
             return None;
         };
         Some(val)
     }
 
-    pub(crate) fn push(&mut self, val: T) -> Idx {
+    pub fn push(&mut self, val: T) -> Idx {
         match self.next_id.take() {
             Some(index) => {
                 let entry = &mut self.inner[index];
@@ -75,7 +86,7 @@ impl<T> Slab<T> {
 
     /// Remove the entry at a given index,
     /// and increment the generation.
-    pub(crate) fn remove(&mut self, index: Idx) -> T {
+    pub fn remove(&mut self, index: Idx) -> T {
         let Entry::Occupied(_val) = &self.inner[index] else {
             panic!("removal of vacant entry")
         };
@@ -102,6 +113,25 @@ impl<T> Slab<T> {
             })
             .count()
     }
+    
+    /// Don't use this function.
+    /// It's slow and should only be used in special situations.
+    /// Most likely your situation is not that
+    pub fn find(&self, value: &T) -> Option<Idx> 
+        where T: PartialEq
+    {
+        self.inner.iter().enumerate().filter_map(|(index, entry)| match entry {
+            Entry::Occupied(val) if value == val => Some(index),
+            _ => None
+        }).next()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
+        self.inner.iter().filter_map(|entry| match entry {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) => None
+        })
+    }
 }
 
 impl<T> Index<Idx> for Slab<T> {
@@ -112,6 +142,15 @@ impl<T> Index<Idx> for Slab<T> {
             Entry::Occupied(e) => e,
             Entry::Vacant(_) => panic!("trying to reference value of a vacant entry")
         }
+    }
+}
+
+impl<T: Debug> Debug for Slab<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Slab")
+            .field("inner", &self.inner)
+            .field("next_id", &self.next_id)
+            .finish()
     }
 }
 

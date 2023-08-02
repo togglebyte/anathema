@@ -1,3 +1,5 @@
+use crate::{StringId, ValueId, TextId};
+
 use self::optimizer::Expression;
 pub(crate) use self::optimizer::Optimizer;
 use super::error::Result;
@@ -7,33 +9,33 @@ mod optimizer;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Instruction {
     If {
-        cond: usize,
+        cond: ValueId,
         size: usize,
     },
     Else {
-        cond: Option<usize>,
+        cond: Option<ValueId>,
         size: usize,
     },
     For {
-        binding: usize,
-        data: usize,
+        binding: StringId,
+        data: ValueId,
         size: usize,
     },
-    View(usize),
+    View(ValueId),
     Node {
-        ident: usize,
+        ident: StringId,
         scope_size: usize,
     },
     LoadAttribute {
-        key: usize,
-        value: usize,
+        key: StringId,
+        value: ValueId,
     },
-    LoadText(usize),
+    LoadText(TextId),
 }
 
 enum Branch {
-    If(usize),
-    Else(Option<usize>),
+    If(ValueId),
+    Else(Option<ValueId>),
 }
 
 pub(super) struct Compiler {
@@ -78,22 +80,18 @@ impl Compiler {
                 Expression::Else { cond, size } => {
                     self.compile_control_flow(Branch::Else(*cond), *size)
                 }
-                Expression::For {
-                    binding,
-                    data,
-                    size,
-                } => self.compile_for(*binding, *data, *size),
+                Expression::For { binding, data, size } => self.compile_for(*binding, *data, *size),
             }?;
         }
         Ok(())
     }
 
-    fn compile_view(&mut self, id: usize) -> Result<()> {
+    fn compile_view(&mut self, id: ValueId) -> Result<()> {
         self.output.push(Instruction::View(id));
         Ok(())
     }
 
-    fn compile_node(&mut self, ident: usize, child_scope_size: usize) -> Result<()> {
+    fn compile_node(&mut self, ident: StringId, child_scope_size: usize) -> Result<()> {
         self.output.push(Instruction::Node {
             ident,
             scope_size: child_scope_size,
@@ -101,12 +99,12 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_text(&mut self, index: usize) -> Result<()> {
+    fn compile_text(&mut self, index: TextId) -> Result<()> {
         self.output.push(Instruction::LoadText(index));
         Ok(())
     }
 
-    fn compile_attribute(&mut self, key: usize, value: usize) -> Result<()> {
+    fn compile_attribute(&mut self, key: StringId, value: ValueId) -> Result<()> {
         self.output.push(Instruction::LoadAttribute { key, value });
         Ok(())
     }
@@ -137,7 +135,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_for(&mut self, binding: usize, data: usize, size: usize) -> Result<()> {
+    fn compile_for(&mut self, binding: StringId, data: ValueId, size: usize) -> Result<()> {
         let instruction_index = self.output.len();
 
         // Inner scope = body

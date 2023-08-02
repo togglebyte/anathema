@@ -127,22 +127,33 @@ impl<'a, T> BucketMut<'a, T> {
         self.slab.push(ValueV2::Single(value))
     }
 
-    pub(crate) fn insert_path(&mut self, path: impl Into<Path>) -> PathId {
+    pub fn insert_path(&mut self, path: impl Into<Path>) -> PathId {
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
         path_id
     }
 
-    // Insert a value at a given path.
-    // This will ensure the path will be created if it doesn't exist.
-    pub fn insert<V>(&mut self, path: impl Into<Path>, value: V) -> ValueRef<ValueV2<T>>
+    /// Insert a value at a given path.
+    /// This will ensure the path will be created if it doesn't exist.
+    ///
+    /// This will only insert into the root scope.
+    pub fn insert_at_path<V>(&mut self, path: impl Into<Path>, value: V) -> ValueRef<ValueV2<T>>
     where
         V: IntoValue<T>,
     {
-        let value = value.into_value(&mut *self);
-        let value_ref = self.slab.push(value);
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
+        self.insert(path_id, value)
+    }
+
+    /// Insert a value at a given path id.
+    /// The value is inserted into the root scope,
+    /// (A `BucketMut` should never operate on anything but the root scope.)
+    pub fn insert<V>(&mut self, path_id: PathId, value: V) -> ValueRef<ValueV2<T>>
+        where V: IntoValue<T>
+    {
+        let value = value.into_value(&mut *self);
+        let value_ref = self.slab.push(value);
         self.scopes.insert(path_id, value_ref, None);
         value_ref
     }

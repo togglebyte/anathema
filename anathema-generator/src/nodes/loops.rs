@@ -6,15 +6,14 @@ use crate::expression::{EvaluationContext, FromContext};
 use crate::{Expression, Node, Nodes};
 
 enum State {
-    A,
-    B,
+    LoadValue,
+    ProduceNode,
 }
 
 pub struct LoopState<Output: FromContext> {
-    state: State,
     scope: ScopeId,
     collection: ValueRef<ValueV2<Output::Value>>,
-    expressions: Arc<[Expression<Output::Ctx>]>,
+    expressions: Arc<[Expression<Output::Ctx, Output::Value>]>,
     binding: PathId,
     expression_index: usize,
     value_index: usize,
@@ -27,10 +26,9 @@ impl<Output: FromContext> LoopState<Output> {
         scope: ScopeId,
         binding: PathId,
         collection: ValueRef<ValueV2<Output::Value>>,
-        expressions: Arc<[Expression<Output::Ctx>]>,
+        expressions: Arc<[Expression<Output::Ctx, Output::Value>]>,
     ) -> Self {
         Self {
-            state: State::A,
             scope,
             binding,
             collection,
@@ -39,16 +37,6 @@ impl<Output: FromContext> LoopState<Output> {
             value_index: 0,
             node_index: 0,
             nodes: Nodes::empty(),
-        }
-    }
-
-    fn gen_inner(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
-        match self.nodes.next(bucket) {
-            last @ Some(_) => last,
-            None => {
-                self.state = State::A;
-                None
-            }
         }
     }
 
@@ -67,15 +55,10 @@ impl<Output: FromContext> LoopState<Output> {
             self.nodes.push(node);
         }
 
-        self.state = State::B;
         Some(())
     }
 
     pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<&mut Output> {
-        if let State::A = self.state {
-            self.load_value(bucket);
-        }
-
         if self.node_index == self.nodes.len() {
             self.load_value(bucket)?;
         }

@@ -1,4 +1,7 @@
 use anathema_compiler::{Constants, Instruction};
+use anathema_generator::Expression;
+use anathema_values::BucketMut;
+use anathema_widget_core::{Value, Attributes, WidgetMeta};
 use anathema_widget_core::template::Template;
 
 use crate::error::Result;
@@ -17,9 +20,9 @@ impl VirtualMachine {
         }
     }
 
-    pub fn exec(self) -> Result<Vec<Template>> {
+    pub fn exec(self, bucket: &mut BucketMut<'_, Value>) -> Result<Vec<Expression<WidgetMeta, Value>>> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
-        root_scope.exec()
+        root_scope.exec(bucket)
     }
 }
 

@@ -12,7 +12,7 @@ use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::template::Template;
-use crate::{Attributes, Display, LocalPos, Padding, Pos, Region};
+use crate::{Attributes, Display, LocalPos, Padding, Pos, Region, TextPath};
 
 // Layout:
 // 1. Receive constraints
@@ -349,4 +349,12 @@ impl FromContext for WidgetContainer {
     fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Option<Self> {
         todo!()
     }
+}
+
+
+/// Meta data needed to construct a `WidgetContainer` from a `Node`
+pub struct WidgetMeta {
+    pub attributes: Attributes,
+    pub ident: String,
+    pub text: Option<TextPath>,
 }
