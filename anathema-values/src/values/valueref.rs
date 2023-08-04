@@ -6,7 +6,7 @@ use anathema_render::Color;
 
 use crate::hashmap::HashMap;
 use crate::path::PathId;
-pub use crate::values2::{List, Map, ValueV2};
+pub use crate::values::{List, Map, Value};
 
 /// A value reference.
 /// Used an index to lookup values

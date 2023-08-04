@@ -4,41 +4,33 @@ use crate::generation::Generation;
 use crate::path::Paths;
 use crate::scopes::Scopes;
 use crate::slab::GenerationSlab;
-use crate::values2::{IntoValue, TryFromValue, TryFromValueMut};
-use crate::{Path, PathId, ScopeId, ValueRef, ValueV2};
+use crate::notifier::{Change, Notifier};
+use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
+use crate::{Path, PathId, ScopeId, Value, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Global bucket -
 // -----------------------------------------------------------------------------
 pub struct Bucket<T> {
-    values: RwLock<GenerationSlab<ValueV2<T>>>,
-    scopes: RwLock<Scopes<ValueV2<T>>>,
+    values: RwLock<GenerationSlab<Value<T>>>,
+    scopes: RwLock<Scopes<Value<T>>>,
     paths: RwLock<Paths>,
+    notifier: Notifier<T>,
 }
 
 impl<T> Bucket<T> {
-    pub fn new(paths: Paths) -> Self {
-        Self {
-            values: RwLock::new(GenerationSlab::empty()),
-            scopes: RwLock::new(Scopes::new()),
-            paths: RwLock::new(paths),
-        }
-    }
-
     pub fn with_capacity(cap: usize) -> Self {
+        let (sender, receiver) = flume::unbounded();
         Self {
             values: RwLock::new(GenerationSlab::with_capacity(cap)),
             scopes: RwLock::new(Scopes::with_capacity(cap)),
             paths: RwLock::new(Paths::empty()),
+            notifier: Notifier::new(sender),
         }
     }
 
     pub fn empty() -> Self {
-        Self {
-            values: RwLock::new(GenerationSlab::empty()),
-            scopes: RwLock::new(Scopes::new()),
-            paths: RwLock::new(Paths::empty()),
-        }
+        Self::with_capacity(0)
     }
 
     /// Write causes a lock
@@ -47,6 +39,7 @@ impl<T> Bucket<T> {
             slab: self.values.write(),
             scopes: self.scopes.write(),
             paths: &self.paths,
+            notifier: &self.notifier,
         }
     }
 
@@ -66,20 +59,20 @@ impl<T> Bucket<T> {
 //   - Bucket ref -
 // -----------------------------------------------------------------------------
 pub struct BucketRef<'a, T> {
-    values: RwLockReadGuard<'a, GenerationSlab<ValueV2<T>>>,
+    values: RwLockReadGuard<'a, GenerationSlab<Value<T>>>,
     paths: RwLockReadGuard<'a, Paths>,
-    scopes: &'a RwLock<Scopes<ValueV2<T>>>,
+    scopes: &'a RwLock<Scopes<Value<T>>>,
 }
 
 impl<'a, T> BucketRef<'a, T> {
-    pub fn get(&self, value_ref: ValueRef<ValueV2<T>>) -> Option<&Generation<ValueV2<T>>> {
+    pub fn get(&self, value_ref: ValueRef<Value<T>>) -> Option<&Generation<Value<T>>> {
         self.values
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
     }
 
     // TODO: reconsider this name
-    pub fn getv2<V>(&self, value_ref: ValueRef<ValueV2<T>>) -> Option<&V::Output>
+    pub fn getv2<V>(&self, value_ref: ValueRef<Value<T>>) -> Option<&V::Output>
     where
         V: TryFromValue<T>,
     {
@@ -90,7 +83,7 @@ impl<'a, T> BucketRef<'a, T> {
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> Option<ValueRef<ValueV2<T>>> {
+    ) -> Option<ValueRef<Value<T>>> {
         self.scopes.read().get(path_id, scope)
     }
 
@@ -102,7 +95,7 @@ impl<'a, T> BucketRef<'a, T> {
         self.paths.get(&path.into()).expect("assumed path exists")
     }
 
-    pub fn scope_value(&self, path_id: PathId, value: ValueRef<ValueV2<T>>, scope: ScopeId) {
+    pub fn scope_value(&self, path_id: PathId, value: ValueRef<Value<T>>, scope: ScopeId) {
         self.scopes.write().insert(path_id, value, scope)
     }
 }
@@ -111,18 +104,19 @@ impl<'a, T> BucketRef<'a, T> {
 //   - Bucket mut -
 // -----------------------------------------------------------------------------
 pub struct BucketMut<'a, T> {
-    slab: RwLockWriteGuard<'a, GenerationSlab<ValueV2<T>>>,
-    scopes: RwLockWriteGuard<'a, Scopes<ValueV2<T>>>,
+    slab: RwLockWriteGuard<'a, GenerationSlab<Value<T>>>,
+    scopes: RwLockWriteGuard<'a, Scopes<Value<T>>>,
     paths: &'a RwLock<Paths>,
+    notifier: &'a Notifier<T>,
 }
 
 impl<'a, T> BucketMut<'a, T> {
-    pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<ValueV2<T>> {
+    pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<Value<T>> {
         self.slab.remove(value_ref.index)
     }
 
-    pub fn push(&mut self, value: T) -> ValueRef<ValueV2<T>> {
-        self.slab.push(ValueV2::Single(value))
+    pub fn push(&mut self, value: T) -> ValueRef<Value<T>> {
+        self.slab.push(Value::Single(value))
     }
 
     pub fn insert_path(&mut self, path: impl Into<Path>) -> PathId {
@@ -135,42 +129,22 @@ impl<'a, T> BucketMut<'a, T> {
     /// This will ensure the path will be created if it doesn't exist.
     ///
     /// This will only insert into the root scope.
-    pub fn insert_at_path<V>(&mut self, path: impl Into<Path>, value: V) -> ValueRef<ValueV2<T>>
+    pub fn insert_at_path<V>(&mut self, path: impl Into<Path>, value: V) -> ValueRef<Value<T>>
     where
         V: IntoValue<T>,
     {
+        // a
+        // a.b.c
+
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
         self.insert(path_id, value)
     }
 
-    /// Insert a value at a given path.
-    /// This will ensure the path will be created if it doesn't exist.
-    ///
-    /// This will only insert into the root scope.
-    pub fn insert_or_update<V>(&mut self, path: impl Into<Path>, value: V)
-    where
-        T: From<V>
-    {
-        let path = path.into();
-        let path_id = self.paths.write().get_or_insert(path);
-
-        let value = ValueV2::Single(value.into());
-
-        if let Some(val_ref) = self.scopes.get(path_id, None) {
-            if let Some(val) = self.by_ref_mut(val_ref) {
-                val.replace(value);
-                return;
-            }
-        }
-
-        self.insert(path_id, value);
-    }
-
     /// Insert a value at a given path id.
     /// The value is inserted into the root scope,
     /// (A `BucketMut` should never operate on anything but the root scope.)
-    pub fn insert<V>(&mut self, path_id: PathId, value: V) -> ValueRef<ValueV2<T>>
+    pub fn insert<V>(&mut self, path_id: PathId, value: V) -> ValueRef<Value<T>>
     where
         V: IntoValue<T>,
     {
@@ -180,73 +154,44 @@ impl<'a, T> BucketMut<'a, T> {
         value_ref
     }
 
-    // pub fn bulk_insert<P: Into<Path>>(&mut self, data: Vec<(P, T)>) {
-    //     let mut paths = self.paths.write();
-
-    //     for (path, value) in data {
-    //         let value = value.into_value(&mut *self);
-    //         let value_ref = self.slab.push(value);
-    //         let path = path.into();
-    //         let path_id = paths.get_or_insert(path);
-    //         self.scopes.insert(path_id, value_ref, None);
-    //     }
-    // }
-
-    pub fn by_ref(&self, value_ref: ValueRef<ValueV2<T>>) -> Option<&Generation<ValueV2<T>>> {
-        self.slab
-            .get(value_ref.index)
-            .filter(|val| val.compare_generation(value_ref.gen))
-    }
-
-    pub fn by_ref_mut(&mut self, value_ref: ValueRef<ValueV2<T>>) -> Option<&mut Generation<ValueV2<T>>> {
-        self.slab
-            .get_mut(value_ref.index)
-            .filter(|val| val.compare_generation(value_ref.gen))
-    }
-
+    // TODO: rename this to something more sensible
     pub fn getv2<V>(&self, path: impl Into<Path>) -> Option<&V::Output>
     where
         V: TryFromValue<T>,
     {
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
-        let value_ref = self.scopes.get(path_id, None)?;
-        let val: &ValueV2<T> = &*self
-            .slab
-            .get(value_ref.index)
-            .filter(|val| val.compare_generation(value_ref.gen))?;
-
-        V::from_value(val)
+        self.get(path_id).and_then(|v| V::from_value(v))
     }
 
+    // TODO: rename this, you know the drill
     pub fn getv2_mut<V>(&mut self, path: impl Into<Path>) -> Option<&mut V::Output>
     where
         V: TryFromValueMut<T>,
     {
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
-        let value_ref = self.scopes.get(path_id, None)?;
-        let val: &mut ValueV2<T> = &mut *self
-            .slab
-            .get_mut(value_ref.index)
-            .filter(|val| val.compare_generation(value_ref.gen))?;
-
-        V::from_value(val)
+        self.get_mut(path_id).and_then(|v| V::from_value(v))
     }
 
-    pub fn get(&self, path: impl Into<Path>) -> Option<&Generation<ValueV2<T>>> {
-        let path = path.into();
-        let path_id = self.paths.write().get_or_insert(path);
+    pub fn get(&self, path_id: PathId) -> Option<&Generation<Value<T>>> {
         let value_ref = self.scopes.get(path_id, None)?;
         self.slab
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
     }
 
-    pub fn get_mut(&mut self, path: impl Into<Path>) -> Option<&mut Generation<ValueV2<T>>> {
-        let path = path.into();
-        let path_id = self.paths.write().get_or_insert(path);
+    pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Value<T>>> {
         let value_ref = self.scopes.get(path_id, None)?;
+        self.by_ref_mut(value_ref)
+    }
+
+    pub fn by_ref_mut(
+        &mut self,
+        value_ref: ValueRef<Value<T>>,
+    ) -> Option<&mut Generation<Value<T>>> {
+        // Notify here
+        self.notifier.notify(value_ref, Change::Modified);
         self.slab
             .get_mut(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
@@ -261,7 +206,7 @@ mod test {
 
     fn make_test_bucket() -> Bucket<u32> {
         let mut bucket = Bucket::empty();
-        bucket.write().insert_at_path("count", 123);
+        bucket.write().insert_at_path("count", 123u32);
         bucket.write().insert_at_path("len", 10);
         bucket
     }
@@ -270,19 +215,19 @@ mod test {
     fn bucket_mut_get() {
         let mut bucket = make_test_bucket();
         let bucket = bucket.write();
-        let count = bucket.get("count").unwrap();
-        let len = bucket.get("len").unwrap();
-        assert_eq!(ValueV2::Single(123), **count);
-        assert_eq!(ValueV2::Single(10), **len);
+        let count = bucket.getv2::<u32>("count").unwrap();
+        let len = bucket.getv2::<u32>("len").unwrap();
+        assert_eq!(123, *count);
+        assert_eq!(10, *len);
     }
 
     #[test]
     fn bucket_mut_get_mut() {
         let mut bucket = make_test_bucket();
         let mut bucket = bucket.write();
-        **bucket.get_mut("count").unwrap() = ValueV2::Single(5u32);
-        let actual = bucket.get_mut("count").unwrap();
-        assert_eq!(ValueV2::Single(5), **actual);
+        *bucket.getv2_mut::<u32>("count").unwrap() = 5u32;
+        let actual = bucket.getv2_mut::<u32>("count").unwrap();
+        assert_eq!(5, *actual);
     }
 
     #[test]
@@ -302,7 +247,7 @@ mod test {
         let len_value_ref = ValueRef::new(1, 0);
         let count = bucket.get(count_value_ref).unwrap();
         let len = bucket.get(len_value_ref).unwrap();
-        assert_eq!(ValueV2::Single(123), **count);
-        assert_eq!(ValueV2::Single(10), **len);
+        assert_eq!(Value::Single(123), **count);
+        assert_eq!(Value::Single(10), **len);
     }
 }

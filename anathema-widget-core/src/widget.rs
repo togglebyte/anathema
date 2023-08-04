@@ -157,7 +157,6 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    // pub children: Vec<WidgetContainer>,
     pub(crate) background: Option<Color>,
     pub(crate) display: Display,
     pub(crate) inner: Box<dyn AnyWidget>,
@@ -185,7 +184,6 @@ impl WidgetContainer {
     pub fn new(inner: Box<dyn AnyWidget>, templates: Arc<[Template]>) -> Self {
         Self {
             templates,
-            // children: vec![],
             display: Display::Show,
             size: Size::ZERO,
             inner,
@@ -329,11 +327,6 @@ impl WidgetContainer {
 
         Some(())
     }
-
-    // TODO: throw this out perhaps?
-    pub fn id(&self) -> NodeId {
-        panic!()
-    }
 }
 
 impl FromContext for WidgetContainer {
@@ -342,7 +335,6 @@ impl FromContext for WidgetContainer {
     type Err = crate::error::Error;
 
     fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Result<Self> {
-        FACTORIES:: whatever
         todo!()
     }
 }

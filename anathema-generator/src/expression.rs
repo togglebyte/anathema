@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anathema_values::{AsSlice, BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
+use anathema_values::{AsSlice, BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
 
 use crate::nodes::controlflow::ControlFlows;
 use crate::nodes::loops::LoopState;
@@ -84,6 +84,8 @@ impl<Output: FromContext> Expression<Output> {
                     .by_path(*collection, eval.scope).unwrap();
 
                 let scope = eval.bucket.new_scope(eval.scope);
+                // TODO: Lookup the value, subscribe to the value, if the value does not exist
+                // insert Value::Empty,
                 let state = LoopState::new(scope, *binding, collection, body.clone());
                 Ok(Node::Collection(state))
             }

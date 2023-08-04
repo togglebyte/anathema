@@ -1,10 +1,10 @@
 use std::fmt::{self, Debug};
 use std::ops::Index;
 
-use crate::{ValueRef, ValueV2};
+use crate::{ValueRef, Value};
 
 #[derive(PartialEq)]
-pub struct List<T>(Vec<ValueRef<ValueV2<T>>>);
+pub struct List<T>(Vec<ValueRef<Value<T>>>);
 
 impl<T> List<T> {
     pub fn len(&self) -> usize {
@@ -15,23 +15,23 @@ impl<T> List<T> {
         self.0.is_empty()
     }
 
-    pub fn as_slice(&self) -> &[ValueRef<ValueV2<T>>] {
+    pub fn as_slice(&self) -> &[ValueRef<Value<T>>] {
         self.0.as_slice()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &ValueRef<ValueV2<T>>> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = &ValueRef<Value<T>>> + '_ {
         self.0.iter()
     }
 }
 
-impl<T> From<Vec<ValueRef<ValueV2<T>>>> for List<T> {
-    fn from(v: Vec<ValueRef<ValueV2<T>>>) -> Self {
+impl<T> From<Vec<ValueRef<Value<T>>>> for List<T> {
+    fn from(v: Vec<ValueRef<Value<T>>>) -> Self {
         Self(v)
     }
 }
 
 impl<T> Index<usize> for List<T> {
-    type Output = ValueRef<ValueV2<T>>;
+    type Output = ValueRef<Value<T>>;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]

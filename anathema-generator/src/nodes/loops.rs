@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
+use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
 
 use crate::expression::{EvaluationContext, FromContext};
 use crate::{Expression, Node, Nodes};
@@ -12,7 +12,7 @@ enum State {
 
 pub struct LoopState<Output: FromContext> {
     scope: ScopeId,
-    collection: ValueRef<ValueV2<Output::Value>>,
+    collection: ValueRef<Value<Output::Value>>,
     expressions: Arc<[Expression<Output>]>,
     binding: PathId,
     expression_index: usize,
@@ -25,7 +25,7 @@ impl<Output: FromContext> LoopState<Output> {
     pub(crate) fn new(
         scope: ScopeId,
         binding: PathId,
-        collection: ValueRef<ValueV2<Output::Value>>,
+        collection: ValueRef<Value<Output::Value>>,
         expressions: Arc<[Expression<Output>]>,
     ) -> Self {
         Self {

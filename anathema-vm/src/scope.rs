@@ -50,7 +50,6 @@ impl<'vm> Scope<'vm> {
                     size,
                 } => {
                     let binding = self.consts.lookup_string(binding).expect(FILE_BUG_REPORT);
-
                     let binding = bucket.insert_path(binding);
 
                     let data = self
@@ -102,9 +101,7 @@ impl<'vm> Scope<'vm> {
 
                     loop {
                         let Some(&Instruction::Else { cond, size }) = self.instructions.get(0)
-                        else {
-                            break;
-                        };
+                        else { break; };
 
                         let cond = cond
                             .map(|c| self.consts.lookup_value(c).cloned().expect(FILE_BUG_REPORT))

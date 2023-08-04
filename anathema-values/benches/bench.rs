@@ -22,22 +22,11 @@ fn loaded_bucket() -> Bucket<Value> {
         .collect::<Vec<_>>();
     {
         let mut bucket_mut = bucket.write();
-        bucket_mut.bulk_insert(data);
+        for (key, value) in data {
+            bucket_mut.insert_at_path(key, value);
+        }
     }
     bucket
-}
-
-fn mut_bucket_insert_bulk(c: &mut Criterion) {
-    let mut bucket = black_box(Bucket::<Value>::with_capacity(COUNT));
-    c.bench_function("mut bucket: insert bulk", |b| {
-        b.iter(|| {
-            let data = (0..COUNT)
-                .map(|i: usize| (i, Value::from(i)))
-                .collect::<Vec<_>>();
-            let mut bucket_mut = bucket.write();
-            bucket_mut.bulk_insert(data);
-        });
-    });
 }
 
 fn mut_bucket_insert_individual(c: &mut Criterion) {
@@ -46,7 +35,7 @@ fn mut_bucket_insert_individual(c: &mut Criterion) {
         b.iter(|| {
             let mut bucket_mut = bucket.write();
             for i in 0..COUNT {
-                bucket_mut.insert(i, Value::Num(i));
+                bucket_mut.insert_at_path(i, Value::Num(i));
             }
         });
     });
@@ -93,7 +82,6 @@ fn bucket_fetch_by_value_ref(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    mut_bucket_insert_bulk,
     mut_bucket_insert_individual,
     mut_bucket_fetch_by_value_ref,
     mut_bucket_fetch_by_path,

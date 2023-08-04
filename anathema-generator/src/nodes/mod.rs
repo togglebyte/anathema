@@ -1,7 +1,7 @@
 use std::iter::once;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, ValueV2};
+use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
 
 use self::controlflow::ControlFlows;
 use self::loops::LoopState;

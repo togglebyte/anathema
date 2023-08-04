@@ -1,9 +1,9 @@
 use std::fmt::{self, Debug};
 use crate::hashmap::IntMap;
-use crate::{ValueRef, ValueV2, PathId};
+use crate::{ValueRef, Value, PathId};
 
 #[derive(PartialEq)]
-pub struct Map<T>(IntMap<ValueRef<ValueV2<T>>>);
+pub struct Map<T>(IntMap<ValueRef<Value<T>>>);
 
 impl<T> Map<T> {
     pub fn len(&self) -> usize {
@@ -34,14 +34,18 @@ impl<T> Map<T> {
     /// # Some(())
     /// # }
     /// ```
-    pub fn insert(&mut self, path: PathId, value: ValueRef<ValueV2<T>>) {
+    pub fn insert(&mut self, path: PathId, value: ValueRef<Value<T>>) {
+        // Send out an InsertEvent
         self.0.insert(path.0, value);
+    }
+
+    pub fn remove(&mut self, path: PathId) {
+        // 
     }
 }
 
-
-impl<T> From<IntMap<ValueRef<ValueV2<T>>>> for Map<T> {
-    fn from(v: IntMap<ValueRef<ValueV2<T>>>) -> Self {
+impl<T> From<IntMap<ValueRef<Value<T>>>> for Map<T> {
+    fn from(v: IntMap<ValueRef<Value<T>>>) -> Self {
         Self(v)
     }
 }
