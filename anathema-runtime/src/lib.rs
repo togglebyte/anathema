@@ -2,7 +2,7 @@ use std::io::{stdout, Stdout};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anathema_generator::{EvaluationContext, Expression, Nodes};
+use anathema_generator::{EvaluationContext, Expression, Nodes, NodeId};
 use anathema_render::{size, Attributes, Screen, Size};
 use anathema_values::Bucket;
 use anathema_vm::Expressions;
@@ -67,7 +67,8 @@ where
             let eval_ctx = EvaluationContext::new(&bucket_ref, None);
             expressions
                 .into_iter()
-                .map(|expr| expr.to_node(&eval_ctx))
+                .enumerate()
+                .map(|(i, expr)| expr.to_node(&eval_ctx, NodeId::new(i)))
                 .collect::<Result<Vec<_>>>()?
         };
 

@@ -1,7 +1,7 @@
 use anathema_values::{ValueRef, Bucket};
 
 use crate::expression::{ControlFlow, Cond};
-use crate::{Expression, Node};
+use crate::{Expression, NodeKind};
 
 // fn control_flow() -> Vec<ControlFlow<&'static str, u32>> {
 //     vec![

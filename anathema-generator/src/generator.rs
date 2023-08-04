@@ -1,6 +1,6 @@
 use anathema_values::{BucketRef, ScopeId};
 
-use crate::{Expression, Node};
+use crate::{Expression, NodeKind};
 
 enum State {
     Block,

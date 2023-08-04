@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
 
 use crate::expression::{EvaluationContext, FromContext};
-use crate::{Expression, Node, Nodes};
+use crate::{Expression, NodeKind, Nodes, NodeId};
 
 enum State {
     LoadValue,
@@ -40,7 +40,7 @@ impl<Output: FromContext> LoopState<Output> {
         }
     }
 
-    fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<(), Output::Err>> {
+    fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>, parent: &NodeId) -> Option<Result<(), Output::Err>> {
         let collection = bucket.getv2::<List<_>>(self.collection)?;
 
         // No more items to produce
@@ -54,7 +54,7 @@ impl<Output: FromContext> LoopState<Output> {
         self.value_index += 1;
 
         for expr in &*self.expressions {
-            let node = match expr.to_node(&EvaluationContext::new(bucket, self.scope)) {
+            let node = match expr.to_node(&EvaluationContext::new(bucket, self.scope), parent.child(self.nodes.len())) {
                 Ok(node) => self.nodes.push(node),
                 Err(e) => return Some(Err(e)),
             };
@@ -63,24 +63,24 @@ impl<Output: FromContext> LoopState<Output> {
         Some(Ok(()))
     }
 
-    pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
+    pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>, parent: &NodeId) -> Option<Result<&mut Output, Output::Err>> {
         if self.node_index == self.nodes.len() {
-            self.load_value(bucket)?;
+            self.load_value(bucket, parent)?;
         }
 
         let nodes = self.nodes.inner[self.node_index..].iter_mut();
 
         for node in nodes {
-            match node {
-                Node::Single(value, _) => {
+            match &mut node.kind {
+                NodeKind::Single(value, _) => {
                     self.node_index += 1;
                     return Some(Ok(value));
                 }
-                Node::Collection(nodes) => match nodes.next(bucket) {
+                NodeKind::Collection(nodes) => match nodes.next(bucket, &node.id) {
                     last @ Some(_) => return last,
                     None => self.node_index += 1,
                 },
-                Node::ControlFlow(flows) => match flows.next(bucket) {
+                NodeKind::ControlFlow(flows) => match flows.next(bucket, &node.id) {
                     last @ Some(_) => return last,
                     None => self.node_index += 1,
                 },

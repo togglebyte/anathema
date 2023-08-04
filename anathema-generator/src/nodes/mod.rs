@@ -1,4 +1,5 @@
 use std::iter::once;
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
@@ -12,20 +13,57 @@ use crate::{Expression, Generator};
 pub(crate) mod controlflow;
 pub(crate) mod loops;
 
-#[derive(Debug, Copy, Clone)]
+// TODO: overflowing a u16 should use the Vec variant
+enum NodeIdV2 {
+    Small([u16; 15]),
+    Large(Vec<usize>)
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
-pub struct NodeId(usize);
+pub struct NodeId(Vec<usize>);
+
+impl NodeId {
+    pub fn new(id: usize) -> Self {
+        Self(vec![id])
+    }
+
+    pub fn child(&self, next: usize) -> Self {
+        let mut v = Vec::with_capacity(self.0.len() + 1);
+        v.extend(&self.0);
+        v.push(next);
+        Self(v)
+    }
+}
+
+pub trait RemoveTrigger: Default {
+    fn remove(&mut self);
+}
 
 fn next() -> NodeId {
     static NEXT: AtomicUsize = AtomicUsize::new(0);
-    NodeId(NEXT.fetch_add(1, Ordering::Relaxed))
+    NodeId(vec![NEXT.fetch_add(1, Ordering::Relaxed)])
+}
+
+pub struct Node<Output: FromContext> {
+    id: NodeId,
+    kind: NodeKind<Output>,
 }
 
 /// A single node in the node tree
-pub enum Node<Output: FromContext> {
+pub enum NodeKind<Output: FromContext> {
     Single(Output, Nodes<Output>),
     Collection(LoopState<Output>),
     ControlFlow(ControlFlows<Output>),
+}
+
+impl<Output: FromContext> NodeKind<Output> {
+    pub(crate) fn to_node(self, id: NodeId) -> Node<Output> {
+        Node {
+            id,
+            kind: self,
+        }
+    }
 }
 
 pub struct Nodes<Output: FromContext> {
@@ -57,19 +95,19 @@ where
     }
 
     pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
-        let gen = self.inner[self.index..].iter_mut();
+        let nodes = self.inner[self.index..].iter_mut();
 
-        for generator in gen {
-            match generator {
-                Node::Single(node, _) => {
+        for node in nodes {
+            match &mut node.kind {
+                NodeKind::Single(output, _) => {
                     self.index += 1;
-                    return Some(Ok(node));
+                    return Some(Ok(output));
                 }
-                Node::Collection(loop_state) => match loop_state.next(bucket) {
+                NodeKind::Collection(loop_state) => match loop_state.next(bucket, &node.id) {
                     last @ Some(_) => return last,
                     None => self.index += 1,
                 },
-                Node::ControlFlow(flows) => match flows.next(bucket) {
+                NodeKind::ControlFlow(flows) => match flows.next(bucket, &node.id) {
                     last @ Some(_) => return last,
                     None => self.index += 1,
                 },
@@ -83,10 +121,10 @@ where
         let iter = self.inner
             .iter_mut()
             .map(|node| -> Box<dyn Iterator<Item = (&mut Output, &mut Self)>>  {
-                match node {
-                    Node::Single(output, nodes) => Box::new(once((output, nodes))),
-                    Node::Collection(state) => state.nodes.iter_mut(),
-                    Node::ControlFlow(flows) => flows.nodes.iter_mut(),
+                match &mut node.kind {
+                    NodeKind::Single(output, nodes) => Box::new(once((output, nodes))),
+                    NodeKind::Collection(state) => state.nodes.iter_mut(),
+                    NodeKind::ControlFlow(flows) => flows.nodes.iter_mut(),
                 }
             })
             .flatten();

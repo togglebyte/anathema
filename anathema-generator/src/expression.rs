@@ -4,7 +4,7 @@ use anathema_values::{AsSlice, BucketRef, List, PathId, ScopeId, Truthy, ValueRe
 
 use crate::nodes::controlflow::ControlFlows;
 use crate::nodes::loops::LoopState;
-use crate::{Node, Nodes};
+use crate::{NodeKind, Node, Nodes, NodeId};
 
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
@@ -64,15 +64,17 @@ impl<Output: FromContext> Expression<Output> {
     pub fn to_node(
         &self,
         eval: &EvaluationContext<'_, Output::Value>,
+        node_id: NodeId,
     ) -> Result<Node<Output>, Output::Err> {
         match self {
             Self::Node { context, children } => {
                 let output = Output::from_context(&context, eval.bucket)?;
                 let nodes = children
                     .iter()
-                    .map(|expr| expr.to_node(eval))
+                    .enumerate()
+                    .map(|(i, expr)| expr.to_node(eval, node_id.child(i)))
                     .collect::<Result<_, Output::Err>>()?;
-                Ok(Node::Single(output, Nodes::new(nodes)))
+                Ok(NodeKind::Single(output, Nodes::new(nodes)).to_node(node_id))
             }
             Self::Loop {
                 collection,
@@ -87,11 +89,11 @@ impl<Output: FromContext> Expression<Output> {
                 // TODO: Lookup the value, subscribe to the value, if the value does not exist
                 // insert Value::Empty,
                 let state = LoopState::new(scope, *binding, collection, body.clone());
-                Ok(Node::Collection(state))
+                Ok(NodeKind::Collection(state).to_node(node_id))
             }
             Self::ControlFlow(flows) => {
                 let flows = ControlFlows::new(flows.clone(), eval.scope);
-                Ok(Node::ControlFlow(flows))
+                Ok(NodeKind::ControlFlow(flows).to_node(node_id))
             }
         }
     }

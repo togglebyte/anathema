@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anathema_values::{BucketRef, ScopeId};
 
 use crate::expression::{ControlFlow, FromContext, EvaluationContext};
-use crate::{Node, Nodes};
+use crate::{NodeKind, Nodes, NodeId};
 
 pub struct ControlFlows<Output: FromContext> {
     flows: Arc<[ControlFlow<Output>]>,
@@ -27,31 +27,32 @@ impl<Output: FromContext> ControlFlows<Output> {
     pub(super) fn next(
         &mut self,
         bucket: &BucketRef<'_, Output::Value>,
+        parent: &NodeId,
     ) -> Option<Result<&mut Output, Output::Err>> {
         match self.selected_flow {
             None => {
                 let flow_index = self.eval(bucket, self.scope)?;
                 self.selected_flow = Some(flow_index);
                 for expr in &*self.flows[flow_index].body {
-                    match expr.to_node(&EvaluationContext::new(bucket, self.scope)) {
+                    match expr.to_node(&EvaluationContext::new(bucket, self.scope), parent.child(self.nodes.len())) {
                         Ok(node) => self.nodes.push(node),
                         Err(e) => return Some(Err(e))
                     }
                 }
-                return self.next(bucket);
+                return self.next(bucket, parent);
             }
             Some(index) => {
                 for node in self.nodes.inner[self.node_index..].iter_mut() {
-                    match node {
-                        Node::Single(output, _) => {
+                    match &mut node.kind {
+                        NodeKind::Single(output, _) => {
                             self.node_index += 1;
                             return Some(Ok(output));
                         }
-                        Node::Collection(nodes) => match nodes.next(bucket) {
+                        NodeKind::Collection(nodes) => match nodes.next(bucket, &node.id) {
                             last @ Some(_) => return last,
                             None => self.node_index += 1,
                         }
-                        Node::ControlFlow(flows) => match flows.next(bucket) {
+                        NodeKind::ControlFlow(flows) => match flows.next(bucket, &node.id) {
                             last @ Some(_) => return last,
                             None => self.node_index += 1,
                         }
