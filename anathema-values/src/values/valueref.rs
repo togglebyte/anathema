@@ -10,7 +10,7 @@ pub use crate::values::{List, Map, Value};
 
 /// A value reference.
 /// Used an index to lookup values
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct ValueRef<T> {
     pub(crate) index: usize,
     pub(crate) gen: usize,

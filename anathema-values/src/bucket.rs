@@ -4,7 +4,7 @@ use crate::generation::Generation;
 use crate::path::Paths;
 use crate::scopes::Scopes;
 use crate::slab::GenerationSlab;
-use crate::notifier::{Change, Notifier};
+use crate::notifier::{Action, Notifier};
 use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
 use crate::{Path, PathId, ScopeId, Value, ValueRef};
 
@@ -191,7 +191,7 @@ impl<'a, T> BucketMut<'a, T> {
         value_ref: ValueRef<Value<T>>,
     ) -> Option<&mut Generation<Value<T>>> {
         // Notify here
-        self.notifier.notify(value_ref, Change::Modified);
+        self.notifier.notify(value_ref, Action::Modified);
         self.slab
             .get_mut(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
