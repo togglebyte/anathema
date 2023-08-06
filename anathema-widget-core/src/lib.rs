@@ -17,11 +17,12 @@ mod widget;
 // mod path;
 mod values;
 mod fragment;
+mod notifications;
 
 // #[cfg(feature = "testing")]
 // pub mod testing;
 
-pub use id::{Id, NodeId};
+// pub use id::{Id, NodeId};
 // pub use lookup::{Factory, WidgetFactory};
 pub use widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
 pub use crate::values::{Display, Number, Value, Color};

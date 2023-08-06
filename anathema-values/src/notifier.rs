@@ -6,47 +6,22 @@ use flume::Sender;
 use crate::hashmap::HashMap;
 use crate::{Value, ValueRef};
 
-// We have a list of values
-// We have a list of nodes
-//
-// We subscribe a node to one or more value.
-//
-// When a node is removed, all the *value* references (pointer / index, whatever) to that node needs
-// to be removed.
-//
-// When a value changes, all the nodes that are subscribing to that value needs to be accessed
-//
-// When a value is removed, all the nodes subscribing to that value needs to be disconnected from
-// that value
-//
-//
-// Value -> [Node]
-// Node -> [Value]
-//
-// Scenario setup:
-//
-// Value X is added.
-// Node 1 and Node 2 subscribe to Value X
-//
-// Scenario 1: the change
-// Value X change: we now need to notify Node 1 and 2
-//
-// Scenario 2: the node removal
-// Node 2 is removed, we now need to remove any association between Value X and node 2
-//
-// Scenario 3: The value removal
-// Value X is removed, we now need to rmeove any association between Value X and all it's nodes
+pub trait Listen {
+    type Value;
+    type Key: Eq + Hash + Clone;
 
-#[derive(Debug)]
-struct Subscribers<K, V> {
-    subscribers: HashMap<K, Vec<ValueRef<V>>>,
-    values: HashMap<ValueRef<V>, Vec<K>>,
+    fn subscribe(value: ValueRef<Value<Self::Value>>, key: Self::Key);
 }
 
-impl<K, V> Subscribers<K, V>
+#[derive(Debug)]
+pub struct Listeners<K, V> {
+    subscribers: HashMap<K, Vec<ValueRef<Value<V>>>>,
+    values: HashMap<ValueRef<Value<V>>, Vec<K>>,
+}
+
+impl<K, V> Listeners<K, V>
 where
     K: Eq + Hash + Clone,
-    V: Eq + Hash + Clone + Copy,
 {
     pub fn empty() -> Self {
         Self {
@@ -55,14 +30,14 @@ where
         }
     }
 
-    fn subscribe_to_value(&mut self, sub: K, value: ValueRef<V>) {
+    pub fn subscribe_to_value(&mut self, sub: K, value: ValueRef<Value<V>>) {
         let values = self.subscribers.entry(sub.clone()).or_default();
         let subs = self.values.entry(value).or_default();
         values.push(value);
         subs.push(sub);
     }
 
-    fn unsubscribe(&mut self, sub: K) {
+    pub fn unsubscribe(&mut self, sub: K) {
         let values = self.subscribers.remove(&sub).unwrap_or_default();
         for value in &values {
             let Some(subs) = self.values.get_mut(value) else {
@@ -77,7 +52,7 @@ where
         }
     }
 
-    fn remove_value(&mut self, value: ValueRef<V>) {
+    pub fn remove_value(&mut self, value: ValueRef<Value<V>>) {
         let nodes = self.values.remove(&value).unwrap_or_default();
         for node in &nodes {
             let Some(values) = self.subscribers.get_mut(node) else {
@@ -92,7 +67,7 @@ where
         }
     }
 
-    fn by_value(&self, value: ValueRef<V>) -> Option<&[K]> {
+    pub fn by_value(&self, value: ValueRef<Value<V>>) -> Option<&[K]> {
         self.values.get(&value).map(Vec::as_slice)
     }
 }
@@ -131,8 +106,8 @@ mod test {
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     struct Sub(usize);
 
-    fn setup() -> Subscribers<Sub, u32> {
-        let mut subs = Subscribers::empty();
+    fn setup() -> Listeners<Sub, u32> {
+        let mut subs = Listeners::empty();
         subs.subscribe_to_value(Sub(0), ValueRef::new(0, 0));
         subs.subscribe_to_value(Sub(0), ValueRef::new(1, 0));
         subs.subscribe_to_value(Sub(0), ValueRef::new(2, 0));

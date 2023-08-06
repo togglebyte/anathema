@@ -6,12 +6,22 @@ use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value}
 
 use self::controlflow::ControlFlows;
 use self::loops::LoopState;
-use crate::expression::{Cond, ControlFlow, EvaluationContext, FromContext};
+use crate::expression::{EvaluationContext, FromContext};
 use crate::generator::Op;
 use crate::{Expression, Generator};
 
 pub(crate) mod controlflow;
 pub(crate) mod loops;
+
+// TODO: One possible solution to the partial rebuild 
+//       could be message passing.
+//
+//       enum Change {
+//          Add,
+//          Remove(NodeId),
+//          Update,
+//          Swap(NodeId, NodeId)
+//       }
 
 // TODO: overflowing a u16 should use the Vec variant
 enum NodeIdV2 {

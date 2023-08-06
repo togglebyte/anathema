@@ -76,6 +76,11 @@ impl<'vm> Scope<'vm> {
 
                     nodes.push(template);
                 }
+                // TODO:
+                // The expressions should hold the path id, but the nodes should have the value.
+                // Otherwise it's not possible to listen to changes.
+                //
+                // Change the Expression::ControlFlow
                 Instruction::If { cond, size } => {
                     let cond = self
                         .consts
@@ -94,14 +99,13 @@ impl<'vm> Scope<'vm> {
                     };
 
                     let mut control_flow = vec![];
-                    control_flow.push(ControlFlow {
-                        cond: Cond::If(cond),
-                        body: body.into(),
-                    });
+                    control_flow.push(ControlFlow::If(cond, body.into()));
 
                     loop {
                         let Some(&Instruction::Else { cond, size }) = self.instructions.get(0)
-                        else { break; };
+                        else {
+                            break;
+                        };
 
                         let cond = cond
                             .map(|c| self.consts.lookup_value(c).cloned().expect(FILE_BUG_REPORT))

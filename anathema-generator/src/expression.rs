@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use anathema_values::{AsSlice, BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
+use anathema_values::{AsSlice, BucketRef, List, Listen, PathId, ScopeId, Truthy, Value, ValueRef};
 
-use crate::nodes::controlflow::ControlFlows;
+use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{NodeKind, Node, Nodes, NodeId};
+use crate::{Node, NodeId, NodeKind, Nodes};
 
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
@@ -20,31 +20,9 @@ impl<'a, Val> EvaluationContext<'a, Val> {
     }
 }
 
-pub enum Cond {
+pub enum ControlFlowExpr {
     If(PathId),
     Else(Option<PathId>),
-}
-
-impl Cond {
-    pub(crate) fn eval<Val: Truthy>(
-        &self,
-        bucket: &BucketRef<'_, Val>,
-        scope: Option<ScopeId>,
-    ) -> bool {
-        match self {
-            Self::If(path) | Self::Else(Some(path)) => bucket
-                .by_path(*path, scope)
-                .and_then(|val| bucket.get(val))
-                .map(|val| val.is_true())
-                .unwrap_or(false),
-            Self::Else(None) => true,
-        }
-    }
-}
-
-pub struct ControlFlow<Output: FromContext> {
-    pub cond: Cond,
-    pub body: Arc<[Expression<Output>]>,
 }
 
 pub enum Expression<Output: FromContext> {
@@ -57,7 +35,7 @@ pub enum Expression<Output: FromContext> {
         binding: PathId,
         body: Arc<[Expression<Output>]>,
     },
-    ControlFlow(Arc<[ControlFlow<Output>]>),
+    ControlFlow(Vec<(ControlFlowExpr, Arc<[Expression<Output>]>)>),
 }
 
 impl<Output: FromContext> Expression<Output> {
@@ -81,18 +59,31 @@ impl<Output: FromContext> Expression<Output> {
                 binding,
                 body,
             } => {
-                let collection = eval
-                    .bucket
-                    .by_path(*collection, eval.scope).unwrap();
+                // TODO: unwrap!!!
+                let collection = eval.bucket.by_path(*collection, eval.scope).unwrap();
+                Output::Notifier::subscribe(collection, node_id.clone());
 
                 let scope = eval.bucket.new_scope(eval.scope);
-                // TODO: Lookup the value, subscribe to the value, if the value does not exist
-                // insert Value::Empty,
                 let state = LoopState::new(scope, *binding, collection, body.clone());
                 Ok(NodeKind::Collection(state).to_node(node_id))
             }
             Self::ControlFlow(flows) => {
-                let flows = ControlFlows::new(flows.clone(), eval.scope);
+                let mut node_flows = vec![];
+                for (cond, expressions) in flows {
+                    let cond = match cond {
+                        ControlFlowExpr::If(path) => {
+                            let val = eval.bucket.by_path(*path, eval.scope).unwrap();
+                            ControlFlow::If(val)
+                        }
+                        ControlFlowExpr::Else(Some(path)) => {
+                            let val = eval.bucket.by_path(*path, eval.scope).unwrap();
+                            ControlFlow::Else(Some(val))
+                        }
+                        ControlFlowExpr::Else(None) => ControlFlow::Else(None),
+                    };
+                    node_flows.push((cond, expressions.clone()));
+                }
+                let flows = ControlFlows::new(node_flows, eval.scope);
                 Ok(NodeKind::ControlFlow(flows).to_node(node_id))
             }
         }
@@ -103,6 +94,7 @@ pub trait FromContext: Sized {
     type Ctx;
     type Value: Truthy + Clone;
     type Err;
+    type Notifier: Listen<Key = NodeId, Value = Self::Value>;
 
     fn from_context(
         ctx: &Self::Ctx,

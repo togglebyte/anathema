@@ -2,17 +2,17 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::FromContext;
+use anathema_generator::{FromContext, NodeId};
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::BucketRef;
+use anathema_values::{BucketRef, Listen, ValueRef, Listeners};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
-use super::id::NodeId;
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
+use crate::notifications::X;
 use crate::template::Template;
-use crate::{Attributes, Display, LocalPos, Nodes, Padding, Pos, Region, TextPath};
+use crate::{Attributes, Display, LocalPos, Nodes, Padding, Pos, Region, TextPath, Value};
 
 // Layout:
 // 1. Receive constraints
@@ -331,11 +331,12 @@ impl WidgetContainer {
 
 impl FromContext for WidgetContainer {
     type Ctx = WidgetMeta;
-    type Value = crate::Value;
     type Err = crate::error::Error;
+    type Value = crate::Value;
+    type Notifier = X;
 
     fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Result<Self> {
-        todo!()
+        todo!("when creating the widget, any value access should create an association between the value and the node id. This could be done by having an intermediate struct that has a reference to the node id and any value access goes via that");
     }
 }
 

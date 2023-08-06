@@ -1,5 +1,6 @@
 // #![deny(missing_docs)]
 use std::fmt::{self, Debug};
+use std::hash::Hash;
 use std::marker::PhantomData;
 
 use anathema_render::Color;
@@ -10,7 +11,6 @@ pub use crate::values::{List, Map, Value};
 
 /// A value reference.
 /// Used an index to lookup values
-#[derive(PartialEq, Eq, Hash)]
 pub struct ValueRef<T> {
     pub(crate) index: usize,
     pub(crate) gen: usize,
@@ -24,6 +24,22 @@ impl<T> ValueRef<T> {
             gen,
             _p: PhantomData,
         }
+    }
+}
+
+impl<T> Hash for ValueRef<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.index, self.gen).hash(state)
+    }
+}
+
+impl<T> Eq for ValueRef<T> {
+    fn assert_receiver_is_total_eq(&self) {}
+}
+
+impl<T> PartialEq for ValueRef<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index.eq(&other.index) && self.gen.eq(&other.gen)
     }
 }
 

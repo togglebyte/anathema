@@ -7,6 +7,7 @@ pub use crate::path::{Path, PathId};
 pub use crate::scopes::ScopeId;
 pub use crate::slab::Slab;
 pub use crate::values::{AsSlice, List, Map, Truthy, Value, ValueRef};
+pub use crate::notifier::{Listeners, Listen};
 
 mod bucket;
 mod generation;

@@ -1,12 +1,45 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, ScopeId};
+use anathema_values::{BucketRef, ScopeId, Truthy, Value, ValueRef};
 
-use crate::expression::{ControlFlow, FromContext, EvaluationContext};
-use crate::{NodeKind, Nodes, NodeId};
+use crate::expression::{ControlFlowExpr, EvaluationContext, FromContext};
+use crate::{Expression, NodeId, NodeKind, Nodes};
+
+enum Cond<Val> {
+    If(ValueRef<Value<Val>>),
+    Else(Option<ValueRef<Value<Val>>>),
+}
+
+impl<Val: Truthy> Cond<Val> {
+    pub(crate) fn eval(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool {
+        match self {
+            Self::If(val) | Self::Else(Some(val)) => {
+                bucket.get(*val).map(|val| val.is_true()).unwrap_or(false)
+            }
+            Self::Else(None) => true,
+        }
+    }
+}
+
+pub(crate) enum ControlFlow<Val> {
+    If(ValueRef<Value<Val>>),
+    Else(Option<ValueRef<Value<Val>>>),
+}
+
+impl<Val: Truthy> ControlFlow<Val> {
+    fn eval(&self, bucket: &BucketRef<'_, Val>) -> bool {
+        match self {
+            Self::If(val_ref) | Self::Else(Some(val_ref)) => bucket
+                .get(*val_ref)
+                .map(|val| val.is_true())
+                .unwrap_or(false),
+            Self::Else(None) => true,
+        }
+    }
+}
 
 pub struct ControlFlows<Output: FromContext> {
-    flows: Arc<[ControlFlow<Output>]>,
+    flows: Vec<(ControlFlow<Output::Value>, Arc<[Expression<Output>]>)>,
     scope: Option<ScopeId>,
     pub(crate) nodes: Nodes<Output>,
     selected_flow: Option<usize>,
@@ -14,7 +47,10 @@ pub struct ControlFlows<Output: FromContext> {
 }
 
 impl<Output: FromContext> ControlFlows<Output> {
-    pub fn new(flows: Arc<[ControlFlow<Output>]>, scope: Option<ScopeId>) -> Self {
+    pub(crate) fn new(
+        flows: Vec<(ControlFlow<Output::Value>, Arc<[Expression<Output>]>)>,
+        scope: Option<ScopeId>,
+    ) -> Self {
         Self {
             flows,
             scope,
@@ -31,12 +67,16 @@ impl<Output: FromContext> ControlFlows<Output> {
     ) -> Option<Result<&mut Output, Output::Err>> {
         match self.selected_flow {
             None => {
-                let flow_index = self.eval(bucket, self.scope)?;
+                let flow_index = self.eval(bucket)?;
                 self.selected_flow = Some(flow_index);
-                for expr in &*self.flows[flow_index].body {
-                    match expr.to_node(&EvaluationContext::new(bucket, self.scope), parent.child(self.nodes.len())) {
+
+                for expression in &*self.flows[flow_index].1 {
+                    match expression.to_node(
+                        &EvaluationContext::new(bucket, self.scope),
+                        parent.child(self.nodes.len()),
+                    ) {
                         Ok(node) => self.nodes.push(node),
-                        Err(e) => return Some(Err(e))
+                        Err(e) => return Some(Err(e)),
                     }
                 }
                 return self.next(bucket, parent);
@@ -51,11 +91,11 @@ impl<Output: FromContext> ControlFlows<Output> {
                         NodeKind::Collection(nodes) => match nodes.next(bucket, &node.id) {
                             last @ Some(_) => return last,
                             None => self.node_index += 1,
-                        }
+                        },
                         NodeKind::ControlFlow(flows) => match flows.next(bucket, &node.id) {
                             last @ Some(_) => return last,
                             None => self.node_index += 1,
-                        }
+                        },
                     }
                 }
             }
@@ -63,9 +103,11 @@ impl<Output: FromContext> ControlFlows<Output> {
         None
     }
 
-    fn eval(&mut self, bucket: &BucketRef<'_, Output::Value>, scope: Option<ScopeId>) -> Option<usize> {
-        for (index, flow) in self.flows.iter().enumerate() {
-            if flow.cond.eval(bucket, scope) {
+    // Evaluate the condition that is true for this control flow.
+    // The index can then be used to select the truthy branch
+    fn eval(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<usize> {
+        for (index, (flow, _)) in self.flows.iter().enumerate() {
+            if flow.eval(bucket) {
                 return Some(index);
             }
         }
