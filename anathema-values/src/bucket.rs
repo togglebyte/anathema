@@ -1,10 +1,10 @@
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::generation::Generation;
+use crate::notifier::{Action, Notifier};
 use crate::path::Paths;
 use crate::scopes::Scopes;
 use crate::slab::GenerationSlab;
-use crate::notifier::{Action, Notifier};
 use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
 use crate::{Path, PathId, ScopeId, Value, ValueRef};
 
@@ -87,8 +87,24 @@ impl<'a, T> BucketRef<'a, T> {
         self.scopes.read().get(path_id, scope)
     }
 
+    pub fn by_path_or_empty(
+        &self,
+        path_id: PathId,
+        scope: impl Into<Option<ScopeId>>,
+    ) -> Option<ValueRef<Value<T>>> {
+        // self.values.write();
+        match self.by_path(path_id, scope) {
+            Some(val) => Some(val),
+            None => None,
+        }
+    }
+
     pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
         self.scopes.write().new_scope(parent)
+    }
+
+    pub fn get_path(&self, path: impl Into<Path>) -> Option<PathId> {
+        self.paths.get(&path.into())
     }
 
     pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {

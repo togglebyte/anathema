@@ -7,8 +7,7 @@ use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value}
 use self::controlflow::ControlFlows;
 use self::loops::LoopState;
 use crate::expression::{EvaluationContext, FromContext};
-use crate::generator::Op;
-use crate::{Expression, Generator};
+use crate::Expression;
 
 pub(crate) mod controlflow;
 pub(crate) mod loops;

@@ -3,11 +3,11 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 use anathema_render::ScreenPos;
 pub use bucket::{Bucket, BucketMut, BucketRef};
 
+pub use crate::notifier::{Listen, Listeners};
 pub use crate::path::{Path, PathId};
 pub use crate::scopes::ScopeId;
 pub use crate::slab::Slab;
 pub use crate::values::{AsSlice, List, Map, Truthy, Value, ValueRef};
-pub use crate::notifier::{Listeners, Listen};
 
 mod bucket;
 mod generation;

@@ -16,6 +16,9 @@ mod valueref;
 /// Both `Map` and `List` contains `ValueRef<T>` rather than `T`
 #[derive(PartialEq)]
 pub enum Value<T> {
+    /// The empty value is used a placeholder. This makes it possible
+    /// to associate a signal or such to a value that does not exist yet.
+    Empty,
     Single(T),
     Map(Map<T>),
     List(List<T>),
@@ -24,6 +27,7 @@ pub enum Value<T> {
 impl<T: Debug> Debug for Value<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Empty => write!(f, "Value::Empty"),
             Self::Single(val) => write!(f, "Value::Single({val:?})"),
             Self::List(list) => write!(f, "Value::List(<len: {}>)", list.len()),
             Self::Map(map) => write!(f, "Value::Map(<len: {}>)", map.len()),
