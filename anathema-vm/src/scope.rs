@@ -1,5 +1,5 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{Cond, ControlFlow, Expression};
+use anathema_generator::{ControlFlowExpr, Expression};
 use anathema_values::BucketMut;
 use anathema_widget_core::{Attributes, TextPath, Value, WidgetContainer, WidgetMeta};
 
@@ -76,11 +76,6 @@ impl<'vm> Scope<'vm> {
 
                     nodes.push(template);
                 }
-                // TODO:
-                // The expressions should hold the path id, but the nodes should have the value.
-                // Otherwise it's not possible to listen to changes.
-                //
-                // Change the Expression::ControlFlow
                 Instruction::If { cond, size } => {
                     let cond = self
                         .consts
@@ -99,7 +94,7 @@ impl<'vm> Scope<'vm> {
                     };
 
                     let mut control_flow = vec![];
-                    control_flow.push(ControlFlow::If(cond, body.into()));
+                    control_flow.push((ControlFlowExpr::If(cond), body.into()));
 
                     loop {
                         let Some(&Instruction::Else { cond, size }) = self.instructions.get(0)
@@ -120,10 +115,7 @@ impl<'vm> Scope<'vm> {
                         let body = self.instructions.drain(..size).collect();
                         let body = Scope::new(body, &self.consts).exec(bucket)?;
 
-                        control_flow.push(ControlFlow {
-                            cond: Cond::Else(cond),
-                            body: body.into(),
-                        });
+                        control_flow.push((ControlFlowExpr::Else(cond), body.into()));
                     }
 
                     let template = Expression::ControlFlow(control_flow.into());
