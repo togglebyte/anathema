@@ -41,7 +41,8 @@ impl<Output: FromContext> LoopState<Output> {
     }
 
     fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>, parent: &NodeId) -> Option<Result<(), Output::Err>> {
-        let collection = bucket.getv2::<List<_>>(self.collection)?;
+        let value_read = bucket.read();
+        let collection = value_read.getv2::<List<_>>(self.collection)?;
 
         // No more items to produce
         if self.value_index == collection.len() {

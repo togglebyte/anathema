@@ -12,7 +12,8 @@ enum Entry<T> {
 // -----------------------------------------------------------------------------
 //   - Generation slab -
 // -----------------------------------------------------------------------------
-pub(crate) struct GenerationSlab<T> {
+// TODO: make this pub(crate) once the bucket api is sensible
+pub struct GenerationSlab<T> {
     inner: Vec<Entry<T>>,
     next_id: Option<Idx>,
 }

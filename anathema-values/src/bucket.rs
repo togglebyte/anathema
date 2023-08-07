@@ -1,4 +1,4 @@
-use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockUpgradableReadGuard, RwLockWriteGuard};
 
 use crate::generation::Generation;
 use crate::notifier::{Action, Notifier};
@@ -6,7 +6,11 @@ use crate::path::Paths;
 use crate::scopes::Scopes;
 use crate::slab::GenerationSlab;
 use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
-use crate::{Path, PathId, ScopeId, Value, ValueRef};
+use crate::{Path, PathId, ScopeId, Truthy, Value, ValueRef};
+
+// TODO: Rename this, "bucket" is a bit of a stupid name here.
+//       Revisit the whole thing, it makes no sense that a BucketRef can return
+//       a ReadOnly since the bucket ref should be read-only by default
 
 // -----------------------------------------------------------------------------
 //   - Global bucket -
@@ -48,7 +52,7 @@ impl<T> Bucket<T> {
     /// as there is no write lock
     pub fn read(&self) -> BucketRef<'_, T> {
         BucketRef {
-            values: self.values.read(),
+            values: &self.values,
             paths: self.paths.read(),
             scopes: &self.scopes,
         }
@@ -59,24 +63,28 @@ impl<T> Bucket<T> {
 //   - Bucket ref -
 // -----------------------------------------------------------------------------
 pub struct BucketRef<'a, T> {
-    values: RwLockReadGuard<'a, GenerationSlab<Value<T>>>,
+    // values: RwLockUpgradableReadGuard<'a, GenerationSlab<Value<T>>>,
+    values: &'a RwLock<GenerationSlab<Value<T>>>,
     paths: RwLockReadGuard<'a, Paths>,
     scopes: &'a RwLock<Scopes<Value<T>>>,
 }
 
-impl<'a, T> BucketRef<'a, T> {
-    pub fn get(&self, value_ref: ValueRef<Value<T>>) -> Option<&Generation<Value<T>>> {
+impl<'a, T: Truthy> BucketRef<'a, T> {
+    pub fn check_true(&self, value_ref: ValueRef<Value<T>>) -> bool {
         self.values
+            .read()
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
+            .map(|val| val.is_true())
+            .unwrap_or(false)
     }
+}
 
-    // TODO: reconsider this name
-    pub fn getv2<V>(&self, value_ref: ValueRef<Value<T>>) -> Option<&V::Output>
-    where
-        V: TryFromValue<T>,
-    {
-        V::from_value(self.get(value_ref)?)
+impl<'a, T> BucketRef<'a, T> {
+    pub fn read(&self) -> ReadOnly<'a, T> {
+        ReadOnly {
+            inner: self.values.read(),
+        }
     }
 
     pub fn by_path(
@@ -87,16 +95,23 @@ impl<'a, T> BucketRef<'a, T> {
         self.scopes.read().get(path_id, scope)
     }
 
+    /// Try to get a value by path.
+    /// If there is no value at a given path, insert an 
+    /// empty value and return the `ValueRef` to that.
     pub fn by_path_or_empty(
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> Option<ValueRef<Value<T>>> {
-        // self.values.write();
-        match self.by_path(path_id, scope) {
-            Some(val) => Some(val),
-            None => None,
-        }
+    ) -> ValueRef<Value<T>> {
+        let value_ref = match self.by_path(path_id, scope) {
+            Some(val) => val,
+            None => {
+                let mut values = self.values.write();
+                values.push(Value::Empty)
+            }
+        };
+
+        value_ref
     }
 
     pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
@@ -113,6 +128,29 @@ impl<'a, T> BucketRef<'a, T> {
 
     pub fn scope_value(&self, path_id: PathId, value: ValueRef<Value<T>>, scope: ScopeId) {
         self.scopes.write().insert(path_id, value, scope)
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Read-only values -
+// -----------------------------------------------------------------------------
+pub struct ReadOnly<'a, T> {
+    inner: RwLockReadGuard<'a, GenerationSlab<Value<T>>>,
+}
+
+impl<'a, T> ReadOnly<'a, T> {
+    pub fn get(&self, value_ref: ValueRef<Value<T>>) -> Option<&Generation<Value<T>>> {
+        self.inner
+            .get(value_ref.index)
+            .filter(|val| val.compare_generation(value_ref.gen))
+    }
+
+    // TODO: reconsider this name
+    pub fn getv2<V>(&self, value_ref: ValueRef<Value<T>>) -> Option<&V::Output>
+    where
+        V: TryFromValue<T>,
+    {
+        V::from_value(self.get(value_ref)?)
     }
 }
 

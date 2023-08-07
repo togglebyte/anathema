@@ -1,17 +1,17 @@
 pub mod layout;
-#[cfg(feature = "testing")]
-pub mod testing;
+// #[cfg(feature = "testing")]
+// pub mod testing;
 
 mod alignment;
-mod border;
-mod expand;
-mod hstack;
-mod position;
-mod spacer;
-mod text;
-mod viewport;
-mod vstack;
-mod zstack;
+// mod border;
+// mod expand;
+// mod hstack;
+// mod position;
+// mod spacer;
+// mod text;
+// mod viewport;
+// mod vstack;
+// mod zstack;
 
 use anathema_widget_core::error::Result;
 use anathema_widget_core::Factory;
@@ -20,30 +20,30 @@ use anathema_widget_core::Factory;
 //   - Export widgets -
 // -----------------------------------------------------------------------------
 pub use crate::alignment::Alignment;
-pub use crate::border::{Border, BorderStyle, Sides};
-pub use crate::expand::Expand;
-pub use crate::hstack::HStack;
-pub use crate::position::Position;
-pub use crate::spacer::Spacer;
-pub use crate::text::{Text, TextSpan};
-pub use crate::viewport::Viewport;
-pub use crate::vstack::VStack;
-pub use crate::zstack::ZStack;
+// pub use crate::border::{Border, BorderStyle, Sides};
+// pub use crate::expand::Expand;
+// pub use crate::hstack::HStack;
+// pub use crate::position::Position;
+// pub use crate::spacer::Spacer;
+// pub use crate::text::{Text, TextSpan};
+// pub use crate::viewport::Viewport;
+// pub use crate::vstack::VStack;
+// pub use crate::zstack::ZStack;
 
 // -----------------------------------------------------------------------------
 //   - Widget factories -
 // -----------------------------------------------------------------------------
 mod factories {
     pub(super) use crate::alignment::AlignmentFactory;
-    pub(super) use crate::border::BorderFactory;
-    pub(super) use crate::expand::ExpandFactory;
-    pub(super) use crate::hstack::HStackFactory;
-    pub(super) use crate::position::PositionFactory;
-    pub(super) use crate::spacer::SpacerFactory;
-    pub(super) use crate::text::{SpanFactory, TextFactory};
-    pub(super) use crate::viewport::ViewportFactory;
-    pub(super) use crate::vstack::VStackFactory;
-    pub(super) use crate::zstack::ZStackFactory;
+    // pub(super) use crate::border::BorderFactory;
+    // pub(super) use crate::expand::ExpandFactory;
+    // pub(super) use crate::hstack::HStackFactory;
+    // pub(super) use crate::position::PositionFactory;
+    // pub(super) use crate::spacer::SpacerFactory;
+    // pub(super) use crate::text::{SpanFactory, TextFactory};
+    // pub(super) use crate::viewport::ViewportFactory;
+    // pub(super) use crate::vstack::VStackFactory;
+    // pub(super) use crate::zstack::ZStackFactory;
 }
 
 /// Register the default widgets.

@@ -157,41 +157,41 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub(crate) background: Option<Color>,
-    pub(crate) display: Display,
+    pub(crate) background: Option<ValueRef<Color>>,
+    pub(crate) display: Option<ValueRef<Display>>,
     pub(crate) inner: Box<dyn AnyWidget>,
-    pub(crate) padding: Padding,
+    pub(crate) padding: Option<ValueRef<Padding>>,
     pub(crate) pos: Pos,
-    pub(crate) templates: Arc<[Template]>,
     size: Size,
 }
 
-impl PartialEq for WidgetContainer {
-    fn eq(&self, other: &Self) -> bool {
-        let lhs = &self.inner;
-        let rhs = &other.inner;
+// TODO: Do we need this anymore?
+//       This made sense when we diffed the tree but now?
+// impl PartialEq for WidgetContainer {
+//     fn eq(&self, other: &Self) -> bool {
+//         let lhs = &self.inner;
+//         let rhs = &other.inner;
 
-        self.background == other.background
-            && self.display == other.display
-            && self.padding == other.padding
-            && self.pos == other.pos
-            && self.size == other.size
-            && lhs.any_eq(rhs)
-    }
-}
+//         self.background == other.background
+//             && self.display == other.display
+//             && self.padding == other.padding
+//             && self.pos == other.pos
+//             && self.size == other.size
+//             && lhs.any_eq(rhs)
+//     }
+// }
 
 impl WidgetContainer {
-    pub fn new(inner: Box<dyn AnyWidget>, templates: Arc<[Template]>) -> Self {
-        Self {
-            templates,
-            display: Display::Show,
-            size: Size::ZERO,
-            inner,
-            pos: Pos::ZERO,
-            background: None,
-            padding: Padding::ZERO,
-        }
-    }
+    // pub fn new(inner: Box<dyn AnyWidget>) -> Self {
+    //     Self {
+    //         display: Display::Show,
+    //         size: Size::ZERO,
+    //         inner,
+    //         pos: Pos::ZERO,
+    //         background: None,
+    //         padding: Padding::ZERO,
+    //     }
+    // }
 
     pub fn to_ref<T: 'static>(&self) -> &T {
         let kind = self.inner.kind();
@@ -239,10 +239,11 @@ impl WidgetContainer {
     }
 
     pub fn inner_size(&self) -> Size {
-        Size::new(
-            self.size.width - (self.padding.left + self.padding.right),
-            self.size.height - (self.padding.top + self.padding.bottom),
-        )
+        panic!()
+        // Size::new(
+        //     self.size.width - (self.padding.left + self.padding.right),
+        //     self.size.height - (self.padding.top + self.padding.bottom),
+        // )
     }
 
     pub fn region(&self) -> Region {
@@ -264,68 +265,72 @@ impl WidgetContainer {
         children: &mut Nodes,
         constraints: Constraints,
     ) -> Result<Size> {
-        match self.display {
-            Display::Exclude => self.size = Size::ZERO,
-            _ => {
-                let layout = LayoutCtx::new(&self.templates, constraints, self.padding);
-                let size = self.inner.layout(children, layout)?;
+        panic!()
+        // match self.display {
+        //     Display::Exclude => self.size = Size::ZERO,
+        //     _ => {
+        //         let layout = LayoutCtx::new(&self.templates, constraints, self.padding);
+        //         let size = self.inner.layout(children, layout)?;
 
-                // TODO: we should compare the new size with the old size
-                //       to determine if the layout needs to propagate outwards
+        //         // TODO: we should compare the new size with the old size
+        //         //       to determine if the layout needs to propagate outwards
 
-                self.size = size;
-                self.size.width += self.padding.left + self.padding.right;
-                self.size.height += self.padding.top + self.padding.bottom;
-            }
-        }
+        //         self.size = size;
+        //         self.size.width += self.padding.left + self.padding.right;
+        //         self.size.height += self.padding.top + self.padding.bottom;
+        //     }
+        // }
 
-        Ok(self.size)
+        // Ok(self.size)
     }
 
     pub fn position(&mut self, children: &mut Nodes, pos: Pos) {
-        self.pos = pos;
+        panic!()
+        // self.pos = pos;
 
-        let pos = Pos::new(
-            self.pos.x + self.padding.left as i32,
-            self.pos.y + self.padding.top as i32,
-        );
+        // let pos = Pos::new(
+        //     self.pos.x + self.padding.left as i32,
+        //     self.pos.y + self.padding.top as i32,
+        // );
 
-        let ctx = PositionCtx::new(pos, self.inner_size());
-        self.inner.position(children, ctx);
+        // let ctx = PositionCtx::new(pos, self.inner_size());
+        // self.inner.position(children, ctx);
     }
 
     pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
-        if let Display::Hide | Display::Exclude = self.display {
-            return;
-        }
+        panic!()
+        // if let Display::Hide | Display::Exclude = self.display {
+        //     return;
+        // }
 
-        // Paint the background without the padding,
-        // using the outer size and current pos.
-        let mut ctx = ctx.into_sized(self.outer_size(), self.pos);
-        self.paint_background(&mut ctx);
+        // // Paint the background without the padding,
+        // // using the outer size and current pos.
+        // let mut ctx = ctx.into_sized(self.outer_size(), self.pos);
+        // self.paint_background(&mut ctx);
 
-        let pos = Pos::new(
-            self.pos.x + self.padding.left as i32,
-            self.pos.y + self.padding.top as i32,
-        );
-        ctx.update(self.inner_size(), pos);
-        self.inner.paint(children, ctx);
+        // let pos = Pos::new(
+        //     self.pos.x + self.padding.left as i32,
+        //     self.pos.y + self.padding.top as i32,
+        // );
+        // ctx.update(self.inner_size(), pos);
+        // self.inner.paint(children, ctx);
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
-        let color = self.background?;
-        let width = self.size.width;
+        panic!()
+        // let color = self.background?;
+        // let width = self.size.width;
 
-        let background_str = format!("{:width$}", "", width = width);
-        let mut style = Style::new();
-        style.set_bg(color);
+        // let background_str = format!("{:width$}", "", width = width);
+        // let mut style = Style::new();
+        // style.set_bg(color);
 
-        for y in 0..self.size.height {
-            let pos = LocalPos::new(0, y);
-            ctx.print(&background_str, style, pos);
-        }
+        // for y in 0..self.size.height {
+        //     let pos = LocalPos::new(0, y);
+        //     ctx.print(&background_str, style, pos);
+        // }
 
-        Some(())
+        // Some(())
     }
 }
 
@@ -336,6 +341,9 @@ impl FromContext for WidgetContainer {
     type Notifier = X;
 
     fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Result<Self> {
+        // let container = WidgetContainer {
+        //     display: bucket.by_path("display"),
+        // };
         todo!("when creating the widget, any value access should create an association between the value and the node id. This could be done by having an intermediate struct that has a reference to the node id and any value access goes via that");
     }
 }

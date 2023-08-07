@@ -46,7 +46,8 @@ impl<Output: FromContext> Expression<Output> {
     ) -> Result<Node<Output>, Output::Err> {
         match self {
             Self::Node { context, children } => {
-                let output = Output::from_context(&context, eval.bucket)?;
+                let context = crate::ctx::DataCtx::new(eval.bucket, &node_id, eval.scope, context);
+                let output = Output::from_context(context)?;
                 let nodes = children
                     .iter()
                     .enumerate()
@@ -73,10 +74,12 @@ impl<Output: FromContext> Expression<Output> {
                     let cond = match cond {
                         ControlFlowExpr::If(path) => {
                             let val = eval.bucket.by_path(*path, eval.scope).unwrap();
+                            Output::Notifier::subscribe(val, node_id.clone());
                             ControlFlow::If(val)
                         }
                         ControlFlowExpr::Else(Some(path)) => {
                             let val = eval.bucket.by_path(*path, eval.scope).unwrap();
+                            Output::Notifier::subscribe(val, node_id.clone());
                             ControlFlow::Else(Some(val))
                         }
                         ControlFlowExpr::Else(None) => ControlFlow::Else(None),
@@ -97,7 +100,8 @@ pub trait FromContext: Sized {
     type Notifier: Listen<Key = NodeId, Value = Self::Value>;
 
     fn from_context(
-        ctx: &Self::Ctx,
-        bucket: &BucketRef<'_, Self::Value>,
+        ctx: &crate::ctx::DataCtx<'_, Self::Value, Self::Ctx, Self::Notifier>,
+        // &Self::Ctx,
+        // bucket: &BucketRef<'_, Self::Value>,
     ) -> Result<Self, Self::Err>;
 }

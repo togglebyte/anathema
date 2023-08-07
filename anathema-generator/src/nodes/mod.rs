@@ -103,7 +103,7 @@ where
         self.inner.len()
     }
 
-    pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
+    pub fn next(&mut self, bucket: &mut BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
         let nodes = self.inner[self.index..].iter_mut();
 
         for node in nodes {

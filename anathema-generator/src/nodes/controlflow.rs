@@ -10,16 +10,14 @@ enum Cond<Val> {
     Else(Option<ValueRef<Value<Val>>>),
 }
 
-impl<Val: Truthy> Cond<Val> {
-    pub(crate) fn eval(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool {
-        match self {
-            Self::If(val) | Self::Else(Some(val)) => {
-                bucket.get(*val).map(|val| val.is_true()).unwrap_or(false)
-            }
-            Self::Else(None) => true,
-        }
-    }
-}
+// impl<Val: Truthy> Cond<Val> {
+//     pub(crate) fn eval(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool {
+//         match self {
+//             Self::If(val) | Self::Else(Some(val)) => bucket.check_true(*val),
+//             Self::Else(None) => true,
+//         }
+//     }
+// }
 
 pub(crate) enum ControlFlow<Val> {
     If(ValueRef<Value<Val>>),
@@ -29,10 +27,7 @@ pub(crate) enum ControlFlow<Val> {
 impl<Val: Truthy> ControlFlow<Val> {
     fn eval(&self, bucket: &BucketRef<'_, Val>) -> bool {
         match self {
-            Self::If(val_ref) | Self::Else(Some(val_ref)) => bucket
-                .get(*val_ref)
-                .map(|val| val.is_true())
-                .unwrap_or(false),
+            Self::If(val_ref) | Self::Else(Some(val_ref)) => bucket.check_true(*val_ref),
             Self::Else(None) => true,
         }
     }
