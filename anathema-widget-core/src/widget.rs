@@ -2,9 +2,9 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::{FromContext, NodeId};
+use anathema_generator::{DataCtx, FromContext, NodeId};
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{BucketRef, Listen, ValueRef, Listeners};
+use anathema_values::{BucketRef, Listen, Listeners, ValueRef};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
@@ -337,10 +337,10 @@ impl WidgetContainer {
 impl FromContext for WidgetContainer {
     type Ctx = WidgetMeta;
     type Err = crate::error::Error;
-    type Value = crate::Value;
     type Notifier = X;
+    type Value = crate::Value;
 
-    fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Result<Self> {
+    fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
         // let container = WidgetContainer {
         //     display: bucket.by_path("display"),
         // };

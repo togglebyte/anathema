@@ -4,7 +4,7 @@ use anathema_values::{AsSlice, BucketRef, List, Listen, PathId, ScopeId, Truthy,
 
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{Node, NodeId, NodeKind, Nodes};
+use crate::{DataCtx, Node, NodeId, NodeKind, Nodes};
 
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
@@ -46,7 +46,7 @@ impl<Output: FromContext> Expression<Output> {
     ) -> Result<Node<Output>, Output::Err> {
         match self {
             Self::Node { context, children } => {
-                let context = crate::ctx::DataCtx::new(eval.bucket, &node_id, eval.scope, context);
+                let context = DataCtx::new(eval.bucket, &node_id, eval.scope, context);
                 let output = Output::from_context(context)?;
                 let nodes = children
                     .iter()
@@ -99,9 +99,5 @@ pub trait FromContext: Sized {
     type Err;
     type Notifier: Listen<Key = NodeId, Value = Self::Value>;
 
-    fn from_context(
-        ctx: &crate::ctx::DataCtx<'_, Self::Value, Self::Ctx, Self::Notifier>,
-        // &Self::Ctx,
-        // bucket: &BucketRef<'_, Self::Value>,
-    ) -> Result<Self, Self::Err>;
+    fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self, Self::Err>;
 }

@@ -2,25 +2,22 @@ use std::marker::PhantomData;
 
 use anathema_values::{BucketRef, Listen, ScopeId};
 
-use crate::NodeId;
+use crate::{NodeId, FromContext};
 
-pub struct DataCtx<'a, Val, InnerCtx, L> {
-    bucket: &'a BucketRef<'a, Val>,
+pub struct DataCtx<'a, T: FromContext> {
+    bucket: &'a BucketRef<'a, T::Value>,
     node_id: &'a NodeId,
     scope: Option<ScopeId>,
-    inner: InnerCtx,
-    _p: PhantomData<L>,
+    inner: &'a T::Ctx,
+    _p: PhantomData<T::Notifier>,
 }
 
-impl<'a, Val, InnerCtx, L> DataCtx<'a, Val, InnerCtx, L>
-where
-    L: Listen<Value = Val, Key = NodeId>,
-{
+impl<'a, T: FromContext> DataCtx<'a, T> {
     pub fn new(
-        bucket: &'a BucketRef<'a, Val>,
+        bucket: &'a BucketRef<'a, T::Value>,
         node_id: &'a NodeId,
         scope: Option<ScopeId>,
-        inner: InnerCtx,
+        inner: &'a T::Ctx,
     ) -> Self {
         Self {
             bucket,
@@ -35,7 +32,7 @@ where
         let path = self.bucket.get_path(key)?;
         let val = self.bucket.by_path_or_empty(path, self.scope);
         // subscribe to value
-        L::subscribe(val, self.node_id.clone());
+        T::Notifier::subscribe(val, self.node_id.clone());
         Some(())
     }
 }
