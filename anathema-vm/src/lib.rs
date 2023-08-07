@@ -4,8 +4,7 @@ mod vm;
 
 use anathema_generator::Expression;
 use anathema_values::BucketMut;
-use anathema_widget_core::template::Template;
-use anathema_widget_core::{Attributes, Value, WidgetContainer};
+use anathema_widget_core::{Value, WidgetContainer};
 pub use vm::VirtualMachine;
 
 use self::error::Result;

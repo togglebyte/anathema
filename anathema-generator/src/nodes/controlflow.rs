@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, ScopeId, Truthy, Value, ValueRef};
+use anathema_values::{BucketRef, Container, ScopeId, Truthy, ValueRef};
 
+use crate::attribute::Attribute;
 use crate::expression::{ControlFlowExpr, EvaluationContext, FromContext};
 use crate::{Expression, NodeId, NodeKind, Nodes};
 
 enum Cond<Val> {
-    If(ValueRef<Value<Val>>),
-    Else(Option<ValueRef<Value<Val>>>),
+    If(ValueRef<Container<Val>>),
+    Else(Option<ValueRef<Container<Val>>>),
 }
 
 // impl<Val: Truthy> Cond<Val> {
@@ -20,14 +21,19 @@ enum Cond<Val> {
 // }
 
 pub(crate) enum ControlFlow<Val> {
-    If(ValueRef<Value<Val>>),
-    Else(Option<ValueRef<Value<Val>>>),
+    If(Attribute<Val>),
+    Else(Option<Attribute<Val>>),
 }
 
 impl<Val: Truthy> ControlFlow<Val> {
     fn eval(&self, bucket: &BucketRef<'_, Val>) -> bool {
         match self {
-            Self::If(val_ref) | Self::Else(Some(val_ref)) => bucket.check_true(*val_ref),
+            Self::If(Attribute::Dyn(val_ref)) | Self::Else(Some(Attribute::Dyn(val_ref))) => {
+                bucket.check_true(*val_ref)
+            }
+            Self::If(Attribute::Static(val)) | Self::Else(Some(Attribute::Static(val))) => {
+                val.is_true()
+            }
             Self::Else(None) => true,
         }
     }

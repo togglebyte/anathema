@@ -2,7 +2,7 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::{DataCtx, FromContext, NodeId};
+use anathema_generator::{DataCtx, FromContext, NodeId, Attribute};
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{BucketRef, Listen, Listeners, ValueRef};
 
@@ -11,8 +11,7 @@ use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::notifications::X;
-use crate::template::Template;
-use crate::{Attributes, Display, LocalPos, Nodes, Padding, Pos, Region, TextPath, Value};
+use crate::{Display, LocalPos, Nodes, Padding, Pos, Region, TextPath, Value};
 
 // Layout:
 // 1. Receive constraints
@@ -32,10 +31,10 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
         children: &mut Nodes,
-        ctx: LayoutCtx<'widget, 'parent>,
+        ctx: LayoutCtx,
     ) -> Result<Size>;
 
     /// By the time this function is called the widget container
@@ -58,10 +57,10 @@ pub trait AnyWidget {
 
     fn any_eq(&self, other: &dyn Any) -> bool;
 
-    fn layout_any<'widget, 'parent>(
+    fn layout_any(
         &mut self,
         children: &mut Nodes,
-        ctx: LayoutCtx<'widget, 'parent>,
+        ctx: LayoutCtx,
     ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
@@ -76,10 +75,10 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
         children: &mut Nodes,
-        ctx: LayoutCtx<'widget, 'parent>,
+        ctx: LayoutCtx,
     ) -> Result<Size> {
         self.deref_mut().layout_any(children, ctx)
     }
@@ -109,10 +108,10 @@ impl<T: Widget + 'static + PartialEq<T>> AnyWidget for T {
         self
     }
 
-    fn layout_any<'widget, 'parent>(
+    fn layout_any(
         &mut self,
         children: &mut Nodes,
-        ctx: LayoutCtx<'widget, 'parent>,
+        ctx: LayoutCtx,
     ) -> Result<Size> {
         self.layout(children, ctx)
     }
@@ -135,10 +134,10 @@ impl Widget for Box<dyn Widget> {
         self.as_ref().kind()
     }
 
-    fn layout<'parent>(
+    fn layout(
         &mut self,
         children: &mut Nodes,
-        layout: LayoutCtx<'_, 'parent>,
+        layout: LayoutCtx,
     ) -> Result<Size> {
         self.as_mut().layout(children, layout)
     }
@@ -157,10 +156,10 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub(crate) background: Option<ValueRef<Color>>,
-    pub(crate) display: Option<ValueRef<Display>>,
+    pub(crate) background: Attribute<Value>,
+    pub(crate) display: Attribute<Value>,
+    pub(crate) padding: Attribute<Value>,
     pub(crate) inner: Box<dyn AnyWidget>,
-    pub(crate) padding: Option<ValueRef<Padding>>,
     pub(crate) pos: Pos,
     size: Size,
 }
@@ -341,16 +340,20 @@ impl FromContext for WidgetContainer {
     type Value = crate::Value;
 
     fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
-        // let container = WidgetContainer {
-        //     display: bucket.by_path("display"),
-        // };
+        let container = WidgetContainer {
+            display: ctx.get("display"),
+            background: ctx.get("background"),
+            padding: ctx.get("padding"),
+            size: Size::ZERO,
+            pos: Pos::ZERO,
+            inner: panic!("magic goes here"), 
+        };
         todo!("when creating the widget, any value access should create an association between the value and the node id. This could be done by having an intermediate struct that has a reference to the node id and any value access goes via that");
     }
 }
 
 /// Meta data needed to construct a `WidgetContainer` from a `Node`
 pub struct WidgetMeta {
-    pub attributes: Attributes,
     pub ident: String,
     pub text: Option<TextPath>,
 }

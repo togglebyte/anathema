@@ -9,7 +9,6 @@ use anathema_vm::Expressions;
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::template::Template;
 use anathema_widget_core::views::View;
 use anathema_widget_core::{Pos, Value, WidgetContainer};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};

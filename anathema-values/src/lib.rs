@@ -7,11 +7,11 @@ pub use crate::notifier::{Listen, Listeners};
 pub use crate::path::{Path, PathId};
 pub use crate::scopes::ScopeId;
 pub use crate::slab::Slab;
-pub use crate::values::{AsSlice, List, Map, Truthy, Value, ValueRef};
+pub use crate::values::{AsSlice, List, Map, Truthy, Container, ValueRef};
 
 mod bucket;
 mod generation;
-mod hashmap;
+pub mod hashmap;
 mod notifier;
 mod path;
 mod scopes;

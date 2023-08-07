@@ -4,19 +4,19 @@ use std::hash::Hash;
 use flume::Sender;
 
 use crate::hashmap::HashMap;
-use crate::{Value, ValueRef};
+use crate::{Container, ValueRef};
 
 pub trait Listen {
     type Value;
     type Key: Eq + Hash + Clone;
 
-    fn subscribe(value: ValueRef<Value<Self::Value>>, key: Self::Key);
+    fn subscribe(value: ValueRef<Container<Self::Value>>, key: Self::Key);
 }
 
 #[derive(Debug)]
 pub struct Listeners<K, V> {
-    subscribers: HashMap<K, Vec<ValueRef<Value<V>>>>,
-    values: HashMap<ValueRef<Value<V>>, Vec<K>>,
+    subscribers: HashMap<K, Vec<ValueRef<Container<V>>>>,
+    values: HashMap<ValueRef<Container<V>>, Vec<K>>,
 }
 
 impl<K, V> Listeners<K, V>
@@ -30,7 +30,7 @@ where
         }
     }
 
-    pub fn subscribe_to_value(&mut self, sub: K, value: ValueRef<Value<V>>) {
+    pub fn subscribe_to_value(&mut self, sub: K, value: ValueRef<Container<V>>) {
         let values = self.subscribers.entry(sub.clone()).or_default();
         let subs = self.values.entry(value).or_default();
         values.push(value);
@@ -52,7 +52,7 @@ where
         }
     }
 
-    pub fn remove_value(&mut self, value: ValueRef<Value<V>>) {
+    pub fn remove_value(&mut self, value: ValueRef<Container<V>>) {
         let nodes = self.values.remove(&value).unwrap_or_default();
         for node in &nodes {
             let Some(values) = self.subscribers.get_mut(node) else {
@@ -67,12 +67,12 @@ where
         }
     }
 
-    pub fn by_value(&self, value: ValueRef<Value<V>>) -> Option<&[K]> {
+    pub fn by_value(&self, value: ValueRef<Container<V>>) -> Option<&[K]> {
         self.values.get(&value).map(Vec::as_slice)
     }
 }
 
-pub(crate) struct Change<T>(ValueRef<Value<T>>, Action<T>);
+pub(crate) struct Change<T>(ValueRef<Container<T>>, Action<T>);
 
 pub struct Notifier<T> {
     sender: Sender<Change<T>>,
@@ -85,7 +85,7 @@ impl<T> Notifier<T> {
         }
     }
 
-    pub fn notify(&self, value_ref: ValueRef<Value<T>>, change: Action<T>) {
+    pub fn notify(&self, value_ref: ValueRef<Container<T>>, change: Action<T>) {
         let banana = Change(value_ref, change);
         self.sender.send(banana);
     }

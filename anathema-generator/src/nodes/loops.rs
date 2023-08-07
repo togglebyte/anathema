@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Value};
+use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, Container, ValueRef};
 
+use crate::attribute::Attribute;
 use crate::expression::{EvaluationContext, FromContext};
-use crate::{Expression, NodeKind, Nodes, NodeId};
+use crate::{Expression, NodeId, NodeKind, Nodes};
 
 enum State {
     LoadValue,
@@ -12,7 +13,7 @@ enum State {
 
 pub struct LoopState<Output: FromContext> {
     scope: ScopeId,
-    collection: ValueRef<Value<Output::Value>>,
+    collection: Attribute<Output::Value>,
     expressions: Arc<[Expression<Output>]>,
     binding: PathId,
     expression_index: usize,
@@ -25,7 +26,7 @@ impl<Output: FromContext> LoopState<Output> {
     pub(crate) fn new(
         scope: ScopeId,
         binding: PathId,
-        collection: ValueRef<Value<Output::Value>>,
+        collection: Attribute<Output::Value>,
         expressions: Arc<[Expression<Output>]>,
     ) -> Self {
         Self {
@@ -40,9 +41,22 @@ impl<Output: FromContext> LoopState<Output> {
         }
     }
 
-    fn load_value(&mut self, bucket: &BucketRef<'_, Output::Value>, parent: &NodeId) -> Option<Result<(), Output::Err>> {
+    fn load_value(
+        &mut self,
+        bucket: &BucketRef<'_, Output::Value>,
+        parent: &NodeId,
+    ) -> Option<Result<(), Output::Err>> {
         let value_read = bucket.read();
-        let collection = value_read.getv2::<List<_>>(self.collection)?;
+        let collection = match &self.collection {
+            Attribute::Dyn(col) => value_read.getv2::<List<_>>(*col)?,
+            Attribute::Static(val) => {
+                let val: &Container<_> = &*val;
+                match val {
+                    Container::List(ref list) => panic!(),
+                    _ => return None,
+                }
+            }
+        };
 
         // No more items to produce
         if self.value_index == collection.len() {
@@ -55,7 +69,10 @@ impl<Output: FromContext> LoopState<Output> {
         self.value_index += 1;
 
         for expr in &*self.expressions {
-            let node = match expr.to_node(&EvaluationContext::new(bucket, self.scope), parent.child(self.nodes.len())) {
+            let node = match expr.to_node(
+                &EvaluationContext::new(bucket, self.scope),
+                parent.child(self.nodes.len()),
+            ) {
                 Ok(node) => self.nodes.push(node),
                 Err(e) => return Some(Err(e)),
             };
@@ -64,7 +81,11 @@ impl<Output: FromContext> LoopState<Output> {
         Some(Ok(()))
     }
 
-    pub(super) fn next(&mut self, bucket: &BucketRef<'_, Output::Value>, parent: &NodeId) -> Option<Result<&mut Output, Output::Err>> {
+    pub(super) fn next(
+        &mut self,
+        bucket: &BucketRef<'_, Output::Value>,
+        parent: &NodeId,
+    ) -> Option<Result<&mut Output, Output::Err>> {
         if self.node_index == self.nodes.len() {
             self.load_value(bucket, parent)?;
         }

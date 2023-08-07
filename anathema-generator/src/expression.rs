@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use anathema_values::{AsSlice, BucketRef, List, Listen, PathId, ScopeId, Truthy, Value, ValueRef};
+use anathema_values::{AsSlice, BucketRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef};
 
+use crate::attribute::{ExpressionAttribute, Attribute};
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{DataCtx, Node, NodeId, NodeKind, Nodes};
+use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, Attributes};
 
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
@@ -20,22 +21,23 @@ impl<'a, Val> EvaluationContext<'a, Val> {
     }
 }
 
-pub enum ControlFlowExpr {
-    If(PathId),
-    Else(Option<PathId>),
+pub enum ControlFlowExpr<T> {
+    If(ExpressionAttribute<T>),
+    Else(Option<ExpressionAttribute<T>>),
 }
 
 pub enum Expression<Output: FromContext> {
     Node {
         context: Output::Ctx,
         children: Arc<[Expression<Output>]>,
+        attributes: Attributes<Output::Value>,
     },
     Loop {
-        collection: PathId,
+        collection: ExpressionAttribute<Output::Value>,
         binding: PathId,
         body: Arc<[Expression<Output>]>,
     },
-    ControlFlow(Vec<(ControlFlowExpr, Arc<[Expression<Output>]>)>),
+    ControlFlow(Vec<(ControlFlowExpr<Output::Value>, Arc<[Expression<Output>]>)>),
 }
 
 impl<Output: FromContext> Expression<Output> {
@@ -45,8 +47,8 @@ impl<Output: FromContext> Expression<Output> {
         node_id: NodeId,
     ) -> Result<Node<Output>, Output::Err> {
         match self {
-            Self::Node { context, children } => {
-                let context = DataCtx::new(eval.bucket, &node_id, eval.scope, context);
+            Self::Node { context, children, attributes } => {
+                let context = DataCtx::new(eval.bucket, &node_id, eval.scope, context, attributes);
                 let output = Output::from_context(context)?;
                 let nodes = children
                     .iter()
@@ -60,9 +62,14 @@ impl<Output: FromContext> Expression<Output> {
                 binding,
                 body,
             } => {
-                // TODO: unwrap!!!
-                let collection = eval.bucket.by_path(*collection, eval.scope).unwrap();
-                Output::Notifier::subscribe(collection, node_id.clone());
+                let collection: Attribute<_> = match collection {
+                    ExpressionAttribute::Dyn(collection) => {
+                        let value_ref = eval.bucket.by_path_or_empty(*collection, eval.scope);
+                        Output::Notifier::subscribe(value_ref, node_id.clone());
+                        value_ref.into()
+                    }
+                    ExpressionAttribute::Static(val) => Attribute::Static(Arc::clone(val)),
+                };
 
                 let scope = eval.bucket.new_scope(eval.scope);
                 let state = LoopState::new(scope, *binding, collection, body.clone());
@@ -72,14 +79,12 @@ impl<Output: FromContext> Expression<Output> {
                 let mut node_flows = vec![];
                 for (cond, expressions) in flows {
                     let cond = match cond {
-                        ControlFlowExpr::If(path) => {
-                            let val = eval.bucket.by_path(*path, eval.scope).unwrap();
-                            Output::Notifier::subscribe(val, node_id.clone());
+                        ControlFlowExpr::If(val) => {
+                            let val = val.to_attrib::<Output::Notifier>(eval.bucket, eval.scope, &node_id);
                             ControlFlow::If(val)
                         }
-                        ControlFlowExpr::Else(Some(path)) => {
-                            let val = eval.bucket.by_path(*path, eval.scope).unwrap();
-                            Output::Notifier::subscribe(val, node_id.clone());
+                        ControlFlowExpr::Else(Some(val)) => {
+                            let val = val.to_attrib::<Output::Notifier>(eval.bucket, eval.scope, &node_id);
                             ControlFlow::Else(Some(val))
                         }
                         ControlFlowExpr::Else(None) => ControlFlow::Else(None),

@@ -6,7 +6,7 @@ use crate::path::Paths;
 use crate::scopes::Scopes;
 use crate::slab::GenerationSlab;
 use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
-use crate::{Path, PathId, ScopeId, Truthy, Value, ValueRef};
+use crate::{Path, PathId, ScopeId, Truthy, Container, ValueRef};
 
 // TODO: Rename this, "bucket" is a bit of a stupid name here.
 //       Revisit the whole thing, it makes no sense that a BucketRef can return
@@ -16,8 +16,8 @@ use crate::{Path, PathId, ScopeId, Truthy, Value, ValueRef};
 //   - Global bucket -
 // -----------------------------------------------------------------------------
 pub struct Bucket<T> {
-    values: RwLock<GenerationSlab<Value<T>>>,
-    scopes: RwLock<Scopes<Value<T>>>,
+    values: RwLock<GenerationSlab<Container<T>>>,
+    scopes: RwLock<Scopes<Container<T>>>,
     paths: RwLock<Paths>,
     notifier: Notifier<T>,
 }
@@ -53,7 +53,7 @@ impl<T> Bucket<T> {
     pub fn read(&self) -> BucketRef<'_, T> {
         BucketRef {
             values: &self.values,
-            paths: self.paths.read(),
+            paths: &self.paths,
             scopes: &self.scopes,
         }
     }
@@ -64,13 +64,13 @@ impl<T> Bucket<T> {
 // -----------------------------------------------------------------------------
 pub struct BucketRef<'a, T> {
     // values: RwLockUpgradableReadGuard<'a, GenerationSlab<Value<T>>>,
-    values: &'a RwLock<GenerationSlab<Value<T>>>,
-    paths: RwLockReadGuard<'a, Paths>,
-    scopes: &'a RwLock<Scopes<Value<T>>>,
+    values: &'a RwLock<GenerationSlab<Container<T>>>,
+    paths: &'a RwLock<Paths>,
+    scopes: &'a RwLock<Scopes<Container<T>>>,
 }
 
 impl<'a, T: Truthy> BucketRef<'a, T> {
-    pub fn check_true(&self, value_ref: ValueRef<Value<T>>) -> bool {
+    pub fn check_true(&self, value_ref: ValueRef<Container<T>>) -> bool {
         self.values
             .read()
             .get(value_ref.index)
@@ -91,7 +91,7 @@ impl<'a, T> BucketRef<'a, T> {
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> Option<ValueRef<Value<T>>> {
+    ) -> Option<ValueRef<Container<T>>> {
         self.scopes.read().get(path_id, scope)
     }
 
@@ -102,12 +102,12 @@ impl<'a, T> BucketRef<'a, T> {
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> ValueRef<Value<T>> {
+    ) -> ValueRef<Container<T>> {
         let value_ref = match self.by_path(path_id, scope) {
             Some(val) => val,
             None => {
                 let mut values = self.values.write();
-                values.push(Value::Empty)
+                values.push(Container::Empty)
             }
         };
 
@@ -118,15 +118,19 @@ impl<'a, T> BucketRef<'a, T> {
         self.scopes.write().new_scope(parent)
     }
 
+    pub fn get_or_insert_path(&self, path: impl Into<Path>) -> PathId {
+        self.paths.write().get_or_insert(path.into())
+    }
+
     pub fn get_path(&self, path: impl Into<Path>) -> Option<PathId> {
-        self.paths.get(&path.into())
+        self.paths.read().get(&path.into())
     }
 
     pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {
-        self.paths.get(&path.into()).expect("assumed path exists")
+        self.paths.read().get(&path.into()).expect("assumed path exists")
     }
 
-    pub fn scope_value(&self, path_id: PathId, value: ValueRef<Value<T>>, scope: ScopeId) {
+    pub fn scope_value(&self, path_id: PathId, value: ValueRef<Container<T>>, scope: ScopeId) {
         self.scopes.write().insert(path_id, value, scope)
     }
 }
@@ -135,18 +139,18 @@ impl<'a, T> BucketRef<'a, T> {
 //   - Read-only values -
 // -----------------------------------------------------------------------------
 pub struct ReadOnly<'a, T> {
-    inner: RwLockReadGuard<'a, GenerationSlab<Value<T>>>,
+    inner: RwLockReadGuard<'a, GenerationSlab<Container<T>>>,
 }
 
 impl<'a, T> ReadOnly<'a, T> {
-    pub fn get(&self, value_ref: ValueRef<Value<T>>) -> Option<&Generation<Value<T>>> {
+    pub fn get(&self, value_ref: ValueRef<Container<T>>) -> Option<&Generation<Container<T>>> {
         self.inner
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
     }
 
     // TODO: reconsider this name
-    pub fn getv2<V>(&self, value_ref: ValueRef<Value<T>>) -> Option<&V::Output>
+    pub fn getv2<V>(&self, value_ref: ValueRef<Container<T>>) -> Option<&V::Output>
     where
         V: TryFromValue<T>,
     {
@@ -158,19 +162,19 @@ impl<'a, T> ReadOnly<'a, T> {
 //   - Bucket mut -
 // -----------------------------------------------------------------------------
 pub struct BucketMut<'a, T> {
-    slab: RwLockWriteGuard<'a, GenerationSlab<Value<T>>>,
-    scopes: RwLockWriteGuard<'a, Scopes<Value<T>>>,
+    slab: RwLockWriteGuard<'a, GenerationSlab<Container<T>>>,
+    scopes: RwLockWriteGuard<'a, Scopes<Container<T>>>,
     paths: &'a RwLock<Paths>,
     notifier: &'a Notifier<T>,
 }
 
 impl<'a, T> BucketMut<'a, T> {
-    pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<Value<T>> {
+    pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<Container<T>> {
         self.slab.remove(value_ref.index)
     }
 
-    pub fn push(&mut self, value: T) -> ValueRef<Value<T>> {
-        self.slab.push(Value::Single(value))
+    pub fn push(&mut self, value: T) -> ValueRef<Container<T>> {
+        self.slab.push(Container::Single(value))
     }
 
     pub fn insert_path(&mut self, path: impl Into<Path>) -> PathId {
@@ -183,7 +187,7 @@ impl<'a, T> BucketMut<'a, T> {
     /// This will ensure the path will be created if it doesn't exist.
     ///
     /// This will only insert into the root scope.
-    pub fn insert_at_path<V>(&mut self, path: impl Into<Path>, value: V) -> ValueRef<Value<T>>
+    pub fn insert_at_path<V>(&mut self, path: impl Into<Path>, value: V) -> ValueRef<Container<T>>
     where
         V: IntoValue<T>,
     {
@@ -198,7 +202,7 @@ impl<'a, T> BucketMut<'a, T> {
     /// Insert a value at a given path id.
     /// The value is inserted into the root scope,
     /// (A `BucketMut` should never operate on anything but the root scope.)
-    pub fn insert<V>(&mut self, path_id: PathId, value: V) -> ValueRef<Value<T>>
+    pub fn insert<V>(&mut self, path_id: PathId, value: V) -> ValueRef<Container<T>>
     where
         V: IntoValue<T>,
     {
@@ -228,22 +232,22 @@ impl<'a, T> BucketMut<'a, T> {
         self.get_mut(path_id).and_then(|v| V::from_value(v))
     }
 
-    pub fn get(&self, path_id: PathId) -> Option<&Generation<Value<T>>> {
+    pub fn get(&self, path_id: PathId) -> Option<&Generation<Container<T>>> {
         let value_ref = self.scopes.get(path_id, None)?;
         self.slab
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
     }
 
-    pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Value<T>>> {
+    pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Container<T>>> {
         let value_ref = self.scopes.get(path_id, None)?;
         self.by_ref_mut(value_ref)
     }
 
     pub fn by_ref_mut(
         &mut self,
-        value_ref: ValueRef<Value<T>>,
-    ) -> Option<&mut Generation<Value<T>>> {
+        value_ref: ValueRef<Container<T>>,
+    ) -> Option<&mut Generation<Container<T>>> {
         // Notify here
         self.notifier.notify(value_ref, Action::Modified);
         self.slab
@@ -301,7 +305,7 @@ mod test {
         let len_value_ref = ValueRef::new(1, 0);
         let count = bucket.get(count_value_ref).unwrap();
         let len = bucket.get(len_value_ref).unwrap();
-        assert_eq!(Value::Single(123), **count);
-        assert_eq!(Value::Single(10), **len);
+        assert_eq!(Container::Single(123), **count);
+        assert_eq!(Container::Single(10), **len);
     }
 }

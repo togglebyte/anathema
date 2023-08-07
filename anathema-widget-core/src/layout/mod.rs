@@ -15,9 +15,9 @@ use crate::error::Result;
 use crate::WidgetContainer;
 
 pub trait Layout {
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'parent>,
+        ctx: &mut LayoutCtx,
         children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()>;
@@ -26,14 +26,14 @@ pub trait Layout {
 // -----------------------------------------------------------------------------
 //   - Layouts -
 // -----------------------------------------------------------------------------
-pub struct Layouts<'ctx, 'widget, 'parent, T> {
-    pub ctx: &'ctx mut LayoutCtx<'widget, 'parent>,
+pub struct Layouts<'ctx, T> {
+    pub ctx: &'ctx mut LayoutCtx,
     pub size: Size,
     pub layout: T,
 }
 
-impl<'ctx, 'widget, 'parent, T: Layout> Layouts<'ctx, 'widget, 'parent, T> {
-    pub fn new(layout: T, ctx: &'ctx mut LayoutCtx<'widget, 'parent>) -> Self {
+impl<'ctx, T: Layout> Layouts<'ctx, T> {
+    pub fn new(layout: T, ctx: &'ctx mut LayoutCtx) -> Self {
         Self {
             ctx,
             layout,

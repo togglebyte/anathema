@@ -1,5 +1,3 @@
-use crate::template::Template;
-
 #[derive(Debug)]
 pub struct ViewCollection {
     inner: Vec<(String, Box<dyn View>)>,
@@ -29,11 +27,11 @@ impl ViewCollection {
 }
 
 pub trait View: std::fmt::Debug + Send + Sync {
-    fn templates(&self) -> &[Template];
+    fn templates(&self) -> ();
 }
 
 impl View for Box<dyn View> {
-    fn templates(&self) -> &[Template] {
+    fn templates(&self) -> () {
         self.as_ref().templates()
     }
 }

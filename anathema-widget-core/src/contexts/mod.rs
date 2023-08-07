@@ -5,7 +5,6 @@ use anathema_render::{Screen, ScreenPos, Size, Style};
 use unicode_width::UnicodeWidthChar;
 
 use crate::layout::Constraints;
-use crate::template::Template;
 use crate::{Align, LocalPos, Padding, Pos, Region};
 
 mod data;
@@ -14,24 +13,16 @@ mod data;
 //   - Layout -
 // -----------------------------------------------------------------------------
 #[derive(Copy, Clone)]
-pub struct LayoutCtx<'widget, 'parent> {
-    pub templates: &'parent [Template],
+pub struct LayoutCtx {
     pub constraints: Constraints,
     pub padding: Padding,
-    p: PhantomData<&'widget ()>,
 }
 
-impl<'widget, 'parent> LayoutCtx<'widget, 'parent> {
-    pub fn new(
-        templates: &'parent [Template],
-        constraints: Constraints,
-        padding: Padding,
-    ) -> Self {
+impl LayoutCtx {
+    pub fn new(constraints: Constraints, padding: Padding) -> Self {
         Self {
-            templates,
             constraints,
             padding,
-            p: PhantomData,
         }
     }
 

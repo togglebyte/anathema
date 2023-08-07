@@ -15,7 +15,7 @@ mod valueref;
 /// Represent a value stored.
 /// Both `Map` and `List` contains `ValueRef<T>` rather than `T`
 #[derive(PartialEq)]
-pub enum Value<T> {
+pub enum Container<T> {
     /// The empty value is used a placeholder. This makes it possible
     /// to associate a signal or such to a value that does not exist yet.
     Empty,
@@ -24,7 +24,7 @@ pub enum Value<T> {
     List(List<T>),
 }
 
-impl<T: Debug> Debug for Value<T> {
+impl<T: Debug> Debug for Container<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Empty => write!(f, "Value::Empty"),
@@ -41,15 +41,15 @@ impl<T: Debug> Debug for Value<T> {
 pub trait TryFromValue<T> {
     type Output;
 
-    fn from_value(val: &Value<T>) -> Option<&Self::Output>;
+    fn from_value(val: &Container<T>) -> Option<&Self::Output>;
 }
 
 impl<T> TryFromValue<T> for T {
     type Output = T;
 
-    fn from_value(val: &Value<T>) -> Option<&Self::Output> {
+    fn from_value(val: &Container<T>) -> Option<&Self::Output> {
         match val {
-            Value::Single(val) => Some(val),
+            Container::Single(val) => Some(val),
             _ => None,
         }
     }
@@ -58,9 +58,9 @@ impl<T> TryFromValue<T> for T {
 impl<T> TryFromValue<T> for List<T> {
     type Output = List<T>;
 
-    fn from_value(val: &Value<T>) -> Option<&Self::Output> {
+    fn from_value(val: &Container<T>) -> Option<&Self::Output> {
         match val {
-            Value::List(list) => Some(list),
+            Container::List(list) => Some(list),
             _ => None,
         }
     }
@@ -69,9 +69,9 @@ impl<T> TryFromValue<T> for List<T> {
 impl<T> TryFromValue<T> for Map<T> {
     type Output = Map<T>;
 
-    fn from_value(val: &Value<T>) -> Option<&Self::Output> {
+    fn from_value(val: &Container<T>) -> Option<&Self::Output> {
         match val {
-            Value::Map(map) => Some(map),
+            Container::Map(map) => Some(map),
             _ => None,
         }
     }
@@ -83,15 +83,15 @@ impl<T> TryFromValue<T> for Map<T> {
 pub trait TryFromValueMut<T> {
     type Output;
 
-    fn from_value(val: &mut Value<T>) -> Option<&mut Self::Output>;
+    fn from_value(val: &mut Container<T>) -> Option<&mut Self::Output>;
 }
 
 impl<T> TryFromValueMut<T> for T {
     type Output = T;
 
-    fn from_value(val: &mut Value<T>) -> Option<&mut Self::Output> {
+    fn from_value(val: &mut Container<T>) -> Option<&mut Self::Output> {
         match val {
-            Value::Single(val) => Some(val),
+            Container::Single(val) => Some(val),
             _ => None,
         }
     }
@@ -100,9 +100,9 @@ impl<T> TryFromValueMut<T> for T {
 impl<T> TryFromValueMut<T> for List<T> {
     type Output = List<T>;
 
-    fn from_value(val: &mut Value<T>) -> Option<&mut Self::Output> {
+    fn from_value(val: &mut Container<T>) -> Option<&mut Self::Output> {
         match val {
-            Value::List(list) => Some(list),
+            Container::List(list) => Some(list),
             _ => None,
         }
     }
@@ -111,9 +111,9 @@ impl<T> TryFromValueMut<T> for List<T> {
 impl<T> TryFromValueMut<T> for Map<T> {
     type Output = Map<T>;
 
-    fn from_value(val: &mut Value<T>) -> Option<&mut Self::Output> {
+    fn from_value(val: &mut Container<T>) -> Option<&mut Self::Output> {
         match val {
-            Value::Map(map) => Some(map),
+            Container::Map(map) => Some(map),
             _ => None,
         }
     }
@@ -123,19 +123,19 @@ impl<T> TryFromValueMut<T> for Map<T> {
 //   - Into value -
 // -----------------------------------------------------------------------------
 pub trait IntoValue<T> {
-    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Value<T>;
+    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Container<T>;
 }
 
-impl<T> IntoValue<T> for Value<T> {
-    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Value<T> {
+impl<T> IntoValue<T> for Container<T> {
+    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Container<T> {
         self
     }
 }
 
 // Single value
 impl<T> IntoValue<T> for T {
-    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Value<T> {
-        Value::Single(self)
+    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Container<T> {
+        Container::Single(self)
     }
 }
 
@@ -144,13 +144,13 @@ impl<T> IntoValue<T> for Vec<T>
 where
     T: IntoValue<T>,
 {
-    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Value<T> {
+    fn into_value(self, bucket: &mut BucketMut<'_, T>) -> Container<T> {
         let mut output = Vec::with_capacity(self.len());
         for val in self {
             let value_ref = bucket.push(val);
             output.push(value_ref);
         }
-        Value::List(output.into())
+        Container::List(output.into())
     }
 }
 
@@ -160,14 +160,14 @@ where
     V: IntoValue<V>,
     K: Into<Path>,
 {
-    fn into_value(self, bucket: &mut BucketMut<'_, V>) -> Value<V> {
+    fn into_value(self, bucket: &mut BucketMut<'_, V>) -> Container<V> {
         let mut output = IntMap::default();
         for (k, val) in self {
             let value_ref = bucket.push(val);
             let path_id = bucket.insert_path(k.into());
             output.insert(path_id.0, value_ref);
         }
-        Value::Map(output.into())
+        Container::Map(output.into())
     }
 }
 
@@ -176,12 +176,12 @@ pub trait Truthy {
     fn is_true(&self) -> bool;
 }
 
-impl<T: Truthy> Truthy for Value<T> {
+impl<T: Truthy> Truthy for Container<T> {
     fn is_true(&self) -> bool {
         match self {
-            Value::Single(val) => val.is_true(),
-            Value::List(l) => l.is_empty(),
-            Value::Map(m) => m.is_empty(),
+            Container::Single(val) => val.is_true(),
+            Container::List(l) => l.is_empty(),
+            Container::Map(m) => m.is_empty(),
             _ => false,
         }
     }

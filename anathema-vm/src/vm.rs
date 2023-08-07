@@ -1,7 +1,6 @@
 use anathema_compiler::{Constants, Instruction};
 use anathema_values::BucketMut;
-use anathema_widget_core::{Value, Attributes, WidgetMeta};
-use anathema_widget_core::template::Template;
+use anathema_widget_core::{Value, WidgetMeta};
 
 use crate::Expressions;
 use crate::error::Result;

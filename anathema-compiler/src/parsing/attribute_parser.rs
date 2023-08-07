@@ -1,6 +1,9 @@
-use anathema_widget_core::{Align, Axis, Direction, Display, TextPath, Value};
+use std::sync::Arc;
+
+use anathema_generator::ExpressionAttribute;
 use anathema_render::Color;
-use anathema_values::{Path, PathId};
+use anathema_values::{Container, Path, PathId};
+use anathema_widget_core::{Align, Axis, Direction, Display, TextPath, Value};
 
 use super::fields;
 use super::parser::{parse_path, parse_to_fragments};
@@ -21,71 +24,75 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         Self { lexer, constants }
     }
 
-    pub(super) fn parse(&mut self, left: &'src str) -> Result<Value> {
+    pub(super) fn parse(&mut self, left: &'src str) -> Result<ExpressionAttribute<Value>> {
         let next = self.lexer.next()?.0;
 
-        match next {
+        let value = match next {
             Kind::String(val) => match parse_to_fragments(val, self.constants) {
-                TextPath::String(s) => Ok(Value::String(s)),
-                TextPath::Fragments(fragments) => Ok(Value::Fragments(fragments)),
+                TextPath::String(s) => Value::String(s),
+                TextPath::Fragments(fragments) => Value::Fragments(fragments),
             },
-            Kind::Hex(r, g, b) => Ok(Value::Color(Color::Rgb { r, g, b })),
-            Kind::Ident(b @ (TRUE | FALSE)) => match b {
-                TRUE => Ok(Value::Bool(true)),
-                FALSE => Ok(Value::Bool(false)),
-                _ => unreachable!(),
-            },
+            Kind::Hex(r, g, b) => Value::Color(Color::Rgb { r, g, b }),
+            Kind::Ident(b @ (TRUE | FALSE)) => Value::Bool(b == TRUE),
             Kind::Ident(val) if val.starts_with("ansi") => match val[4..].parse::<u8>() {
-                Ok(ansi_val) => Ok(Value::Color(Color::AnsiValue(ansi_val))),
-                Err(_e) => Err(self.lexer.error(ErrorKind::InvalidNumber)),
+                Ok(ansi_val) => Value::Color(Color::AnsiValue(ansi_val)),
+                Err(_e) => return Err(self.lexer.error(ErrorKind::InvalidNumber)),
             },
             Kind::Ident(val) => {
                 let val = val.trim();
                 match left {
                     fields::ALIGNMENT => match val {
-                        "top" => Ok(Value::Alignment(Align::Top)),
-                        "top-right" => Ok(Value::Alignment(Align::TopRight)),
-                        "right" => Ok(Value::Alignment(Align::Right)),
-                        "bottom-right" => Ok(Value::Alignment(Align::BottomRight)),
-                        "bottom" => Ok(Value::Alignment(Align::Bottom)),
-                        "bottom-left" => Ok(Value::Alignment(Align::BottomLeft)),
-                        "left" => Ok(Value::Alignment(Align::Left)),
-                        "top-left" => Ok(Value::Alignment(Align::TopLeft)),
-                        "centre" | "center" => Ok(Value::Alignment(Align::Centre)),
-                        _ => Err(self.lexer.error(ErrorKind::InvalidToken {
-                            expected: "alignment",
-                        })),
+                        "top" => Value::Alignment(Align::Top),
+                        "top-right" => Value::Alignment(Align::TopRight),
+                        "right" => Value::Alignment(Align::Right),
+                        "bottom-right" => Value::Alignment(Align::BottomRight),
+                        "bottom" => Value::Alignment(Align::Bottom),
+                        "bottom-left" => Value::Alignment(Align::BottomLeft),
+                        "left" => Value::Alignment(Align::Left),
+                        "top-left" => Value::Alignment(Align::TopLeft),
+                        "centre" | "center" => Value::Alignment(Align::Centre),
+                        _ => {
+                            return Err(self.lexer.error(ErrorKind::InvalidToken {
+                                expected: "alignment",
+                            }))
+                        }
                     },
                     fields::AXIS => match val {
-                        "horizontal" | "horz" => Ok(Value::Axis(Axis::Horizontal)),
-                        "vertical" | "vert" => Ok(Value::Axis(Axis::Vertical)),
-                        _ => Err(self
-                            .lexer
-                            .error(ErrorKind::InvalidToken { expected: "axis" })),
+                        "horizontal" | "horz" => Value::Axis(Axis::Horizontal),
+                        "vertical" | "vert" => Value::Axis(Axis::Vertical),
+                        _ => {
+                            return Err(self
+                                .lexer
+                                .error(ErrorKind::InvalidToken { expected: "axis" }))
+                        }
                     },
-                    fields::ID => Ok(Value::String(val.to_string())),
+                    fields::ID => Value::String(val.to_string()),
                     fields::DISPLAY => match val {
-                        "show" => Ok(Value::Display(Display::Show)),
-                        "hide" => Ok(Value::Display(Display::Hide)),
-                        "exclude" => Ok(Value::Display(Display::Exclude)),
-                        _ => Err(self.lexer.error(ErrorKind::InvalidToken {
-                            expected: "display",
-                        })),
+                        "show" => Value::Display(Display::Show),
+                        "hide" => Value::Display(Display::Hide),
+                        "exclude" => Value::Display(Display::Exclude),
+                        _ => {
+                            return Err(self.lexer.error(ErrorKind::InvalidToken {
+                                expected: "display",
+                            }))
+                        }
                     },
                     fields::DIRECTION => match val {
-                        "forward" => Ok(Value::Direction(Direction::Forward)),
-                        "backward" => Ok(Value::Direction(Direction::Backward)),
-                        _ => Err(self
-                            .lexer
-                            .error(ErrorKind::InvalidToken { expected: "axis" })),
+                        "forward" => Value::Direction(Direction::Forward),
+                        "backward" => Value::Direction(Direction::Backward),
+                        _ => {
+                            return Err(self
+                                .lexer
+                                .error(ErrorKind::InvalidToken { expected: "axis" }))
+                        }
                     },
                     _custom_attribute => match self.try_parse_color(val) {
-                        Some(color) => Ok(Value::Color(color)),
-                        None => Ok(Value::String(val.to_string())),
+                        Some(color) => Value::Color(color),
+                        None => Value::String(val.to_string()),
                     },
                 }
             }
-            Kind::Number(val) => Ok(Value::Number(val)),
+            Kind::Number(val) => Value::Number(val),
             Kind::LDoubleCurly => {
                 self.lexer.consume(true, false);
                 let ident = self.lexer.read_ident()?;
@@ -94,7 +101,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                 if !self.lexer.consume_if(Kind::RDoubleCurly)? {
                     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "}" }));
                 }
-                Ok(Value::DataBinding(path_id))
+                return Ok(ExpressionAttribute::Dyn(path_id));
             }
             Kind::Colon
             | Kind::Comma
@@ -113,8 +120,10 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             | Kind::If
             | Kind::Else
             | Kind::View
-            | Kind::EOF => Err(self.lexer.error(ErrorKind::InvalidToken { expected: "" })),
-        }
+            | Kind::EOF => return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "" })),
+        };
+
+        Ok(ExpressionAttribute::Static(Arc::new(Container::Single(value))))
     }
 
     fn try_parse_path(&mut self, ident: &str) -> Result<PathId> {

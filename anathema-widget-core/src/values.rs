@@ -8,7 +8,7 @@ use anathema_render::Style;
 use anathema_values::{PathId, List, Map, Truthy};
 
 use crate::layout::{Align, Axis, Direction, Padding};
-use crate::{Attributes, TextPath, Fragment};
+use crate::{TextPath, Fragment};
 
 /// Determine how a widget should be displayed and laid out
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,14 +63,12 @@ pub enum Value {
     Bool(bool),
     /// A colour.
     Color(Color),
-    /// A value lookup path.
-    DataBinding(PathId),
+    // /// A value lookup path.
+    // DataBinding(PathId),
     /// Display is used to determine how to render and layout widgets.
     Display(Display),
     /// Direction
     Direction(Direction),
-    /// An empty value.
-    Empty,
     /// A list of values.
     List(List<Value>),
     /// A map of values.
@@ -91,7 +89,6 @@ impl Truthy for Value {
             Self::String(s) if s.is_empty() => false,
             Self::List(list) => !list.is_empty(),
             Self::Map(map) => panic!(),
-            Self::Empty => false,
             _ => true,
         }
     }
@@ -291,12 +288,11 @@ try_from_signed_int!(i64);
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Empty => write!(f, ""),
             Self::Alignment(val) => write!(f, "{}", val),
             Self::Axis(val) => write!(f, "{:?}", val),
             Self::Bool(val) => write!(f, "{}", val),
             Self::Color(val) => write!(f, "{:?}", val),
-            Self::DataBinding(val) => write!(f, "{:?}", val),
+            // Self::DataBinding(val) => write!(f, "{:?}", val),
             Self::Display(val) => write!(f, "{:?}", val),
             Self::Direction(val) => write!(f, "{:?}", val),
             Self::Fragments(val) => write!(f, "Fragments {:?}", val),
@@ -336,13 +332,13 @@ impl Value {
         }
     }
 
-    /// The value as an optional path
-    pub fn to_data_binding(&self) -> Option<&PathId> {
-        match self {
-            Self::DataBinding(val) => Some(val),
-            _ => None,
-        }
-    }
+    // /// The value as an optional path
+    // pub fn to_data_binding(&self) -> Option<&PathId> {
+    //     match self {
+    //         Self::DataBinding(val) => Some(val),
+    //         _ => None,
+    //     }
+    // }
 
     /// The value as an optional signed integer.
     /// This will cast any numerical value into an `i64`.
