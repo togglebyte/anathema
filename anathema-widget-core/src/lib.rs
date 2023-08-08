@@ -9,26 +9,26 @@ pub mod error;
 // mod gen;
 mod id;
 // mod gen2;
+mod factory;
 pub mod layout;
-// mod lookup;
 // pub mod template;
 pub mod views;
 mod widget;
 // mod path;
-mod values;
 mod fragment;
 mod notifications;
+mod values;
 
 // #[cfg(feature = "testing")]
 // pub mod testing;
 
 // pub use id::{Id, NodeId};
-// pub use lookup::{Factory, WidgetFactory};
-pub use widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
-pub use crate::values::{Display, Number, Value, Color};
-pub use crate::fragment::{Fragment, TextPath};
-
 // pub use crate::attributes::{Attribute, Attributes};
-pub use crate::layout::{Padding, Axis, Direction, Align, Pos, LocalPos, Region};
+pub use crate::factory::{WidgetFactory, Factory};
+pub use crate::fragment::{Fragment, TextPath};
+pub use crate::layout::{Align, Axis, Direction, LocalPos, Padding, Pos, Region};
+pub use crate::values::{Color, Display, Number, Value};
+pub use crate::widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
 
 pub type Nodes = anathema_generator::Nodes<WidgetContainer>;
+pub type ReadOnly<'a> = anathema_values::ReadOnly<'a, Value>;

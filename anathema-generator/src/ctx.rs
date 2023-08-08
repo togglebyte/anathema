@@ -1,8 +1,9 @@
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 use anathema_values::{BucketRef, Listen, ScopeId};
 
-use crate::attribute::Attributes;
+use crate::attribute::ExpressionAttributes;
 use crate::{FromContext, NodeId, Attribute, ExpressionAttribute};
 
 pub struct DataCtx<'a, T: FromContext> {
@@ -10,7 +11,7 @@ pub struct DataCtx<'a, T: FromContext> {
     node_id: &'a NodeId,
     scope: Option<ScopeId>,
     inner: &'a T::Ctx,
-    attributes: &'a Attributes<T::Value>,
+    attributes: &'a ExpressionAttributes<T::Value>,
     _p: PhantomData<T::Notifier>,
 }
 
@@ -20,7 +21,7 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
         node_id: &'a NodeId,
         scope: Option<ScopeId>,
         inner: &'a T::Ctx,
-        attributes: &'a Attributes<T::Value>,
+        attributes: &'a ExpressionAttributes<T::Value>,
     ) -> Self {
         Self {
             bucket,
@@ -49,5 +50,13 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
             }
             Some(ExpressionAttribute::Static(value)) => Attribute::Static(value.clone()),
         }
+    }
+}
+
+impl<'a, T: FromContext> Deref for DataCtx<'a, T> {
+    type Target = T::Ctx;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }

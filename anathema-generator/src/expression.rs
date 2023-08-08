@@ -5,7 +5,7 @@ use anathema_values::{AsSlice, BucketRef, List, Listen, PathId, ScopeId, Truthy,
 use crate::attribute::{ExpressionAttribute, Attribute};
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, Attributes};
+use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, ExpressionAttributes};
 
 pub struct EvaluationContext<'a, Val> {
     bucket: &'a BucketRef<'a, Val>,
@@ -30,7 +30,7 @@ pub enum Expression<Output: FromContext> {
     Node {
         context: Output::Ctx,
         children: Arc<[Expression<Output>]>,
-        attributes: Attributes<Output::Value>,
+        attributes: ExpressionAttributes<Output::Value>,
     },
     Loop {
         collection: ExpressionAttribute<Output::Value>,

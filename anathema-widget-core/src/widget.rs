@@ -2,7 +2,7 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::{DataCtx, FromContext, NodeId, Attribute};
+use anathema_generator::{Attribute, DataCtx, FromContext, NodeId};
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{BucketRef, Listen, Listeners, ValueRef};
 
@@ -10,8 +10,9 @@ use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
+use crate::factory::Factory;
 use crate::notifications::X;
-use crate::{Display, LocalPos, Nodes, Padding, Pos, Region, TextPath, Value};
+use crate::{Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, TextPath, Value};
 
 // Layout:
 // 1. Receive constraints
@@ -31,21 +32,22 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout(
-        &mut self,
-        children: &mut Nodes,
-        ctx: LayoutCtx,
-    ) -> Result<Size>;
+    fn layout(&mut self, children: &mut Nodes, ctx: LayoutCtx, data: &ReadOnly<'_>) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
     /// of the children.
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx, data: &ReadOnly<'_>);
 
-    fn paint<'tpl>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint<'tpl>(
+        &mut self,
+        children: &mut Nodes,
+        mut ctx: PaintCtx<'_, WithSize>,
+        data: &ReadOnly<'_>,
+    ) {
         for (widget, children) in children.iter_mut() {
             let ctx = ctx.sub_context(None);
-            widget.paint(children, ctx);
+            widget.paint(children, ctx, data);
         }
     }
 }
@@ -55,19 +57,18 @@ pub trait AnyWidget {
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn any_eq(&self, other: &dyn Any) -> bool;
-
     fn layout_any(
         &mut self,
         children: &mut Nodes,
         ctx: LayoutCtx,
+        data: &ReadOnly<'_>,
     ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
-    fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx);
+    fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx, data: &ReadOnly<'_>);
 
-    fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>);
+    fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>, data: &ReadOnly<'_>);
 }
 
 impl Widget for Box<dyn AnyWidget> {
@@ -75,31 +76,20 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout(
-        &mut self,
-        children: &mut Nodes,
-        ctx: LayoutCtx,
-    ) -> Result<Size> {
-        self.deref_mut().layout_any(children, ctx)
+    fn layout(&mut self, children: &mut Nodes, ctx: LayoutCtx, data: &ReadOnly<'_>) -> Result<Size> {
+        self.deref_mut().layout_any(children, ctx, data)
     }
 
-    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
-        self.deref_mut().position_any(children, ctx)
+    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx, data: &ReadOnly<'_>) {
+        self.deref_mut().position_any(children, ctx, data)
     }
 
-    fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
-        self.deref_mut().paint_any(children, ctx)
+    fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>, data: &ReadOnly<'_>) {
+        self.deref_mut().paint_any(children, ctx, data)
     }
 }
 
-impl<T: Widget + 'static + PartialEq<T>> AnyWidget for T {
-    fn any_eq(&self, other: &dyn Any) -> bool {
-        match other.downcast_ref::<Self>() {
-            Some(rhs) => self.eq(rhs),
-            None => return false,
-        }
-    }
-
+impl<T: Widget + 'static> AnyWidget for T {
     fn as_any_ref(&self) -> &dyn Any {
         self
     }
@@ -112,20 +102,21 @@ impl<T: Widget + 'static + PartialEq<T>> AnyWidget for T {
         &mut self,
         children: &mut Nodes,
         ctx: LayoutCtx,
+        data: &ReadOnly<'_>,
     ) -> Result<Size> {
-        self.layout(children, ctx)
+        self.layout(children, ctx, data)
     }
 
     fn kind_any(&self) -> &'static str {
         self.kind()
     }
 
-    fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx) {
-        self.position(children, ctx)
+    fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx, data: &ReadOnly<'_>) {
+        self.position(children, ctx, data)
     }
 
-    fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
-        self.paint(children, ctx)
+    fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>, data: &ReadOnly<'_>) {
+        self.paint(children, ctx, data)
     }
 }
 
@@ -138,16 +129,17 @@ impl Widget for Box<dyn Widget> {
         &mut self,
         children: &mut Nodes,
         layout: LayoutCtx,
+        data: &ReadOnly<'_>,
     ) -> Result<Size> {
-        self.as_mut().layout(children, layout)
+        self.as_mut().layout(children, layout, data)
     }
 
-    fn position<'gen, 'ctx>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
-        self.as_mut().position(children, ctx)
+    fn position<'gen, 'ctx>(&mut self, children: &mut Nodes, ctx: PositionCtx, data: &ReadOnly<'_>) {
+        self.as_mut().position(children, ctx, data)
     }
 
-    fn paint<'gen, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
-        self.as_mut().paint(children, ctx)
+    fn paint<'gen, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>, data: &ReadOnly<'_>) {
+        self.as_mut().paint(children, ctx, data)
     }
 }
 
@@ -164,34 +156,7 @@ pub struct WidgetContainer {
     size: Size,
 }
 
-// TODO: Do we need this anymore?
-//       This made sense when we diffed the tree but now?
-// impl PartialEq for WidgetContainer {
-//     fn eq(&self, other: &Self) -> bool {
-//         let lhs = &self.inner;
-//         let rhs = &other.inner;
-
-//         self.background == other.background
-//             && self.display == other.display
-//             && self.padding == other.padding
-//             && self.pos == other.pos
-//             && self.size == other.size
-//             && lhs.any_eq(rhs)
-//     }
-// }
-
 impl WidgetContainer {
-    // pub fn new(inner: Box<dyn AnyWidget>) -> Self {
-    //     Self {
-    //         display: Display::Show,
-    //         size: Size::ZERO,
-    //         inner,
-    //         pos: Pos::ZERO,
-    //         background: None,
-    //         padding: Padding::ZERO,
-    //     }
-    // }
-
     pub fn to_ref<T: 'static>(&self) -> &T {
         let kind = self.inner.kind();
 
@@ -264,26 +229,25 @@ impl WidgetContainer {
         children: &mut Nodes,
         constraints: Constraints,
     ) -> Result<Size> {
-        panic!()
-        // match self.display {
-        //     Display::Exclude => self.size = Size::ZERO,
-        //     _ => {
-        //         let layout = LayoutCtx::new(&self.templates, constraints, self.padding);
-        //         let size = self.inner.layout(children, layout)?;
+        match self.display.load(panic!()) {
+            Display::Exclude => self.size = Size::ZERO,
+            _ => {
+                let layout = LayoutCtx::new(&self.templates, constraints, self.padding);
+                let size = self.inner.layout(children, layout)?;
 
-        //         // TODO: we should compare the new size with the old size
-        //         //       to determine if the layout needs to propagate outwards
+                // TODO: we should compare the new size with the old size
+                //       to determine if the layout needs to propagate outwards
 
-        //         self.size = size;
-        //         self.size.width += self.padding.left + self.padding.right;
-        //         self.size.height += self.padding.top + self.padding.bottom;
-        //     }
-        // }
+                self.size = size;
+                self.size.width += self.padding.left + self.padding.right;
+                self.size.height += self.padding.top + self.padding.bottom;
+            }
+        }
 
-        // Ok(self.size)
+        Ok(self.size)
     }
 
-    pub fn position(&mut self, children: &mut Nodes, pos: Pos) {
+    pub fn position(&mut self, children: &mut Nodes, pos: Pos, data: &ReadOnly<'_>) {
         panic!()
         // self.pos = pos;
 
@@ -296,7 +260,7 @@ impl WidgetContainer {
         // self.inner.position(children, ctx);
     }
 
-    pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
+    pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>, data: &ReadOnly<'_>) {
         panic!()
         // if let Display::Hide | Display::Exclude = self.display {
         //     return;
@@ -346,9 +310,9 @@ impl FromContext for WidgetContainer {
             padding: ctx.get("padding"),
             size: Size::ZERO,
             pos: Pos::ZERO,
-            inner: panic!("magic goes here"), 
+            inner: Factory::exec(ctx)?,
         };
-        todo!("when creating the widget, any value access should create an association between the value and the node id. This could be done by having an intermediate struct that has a reference to the node id and any value access goes via that");
+        Ok(container)
     }
 }
 

@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::ScreenPos;
-pub use bucket::{Bucket, BucketMut, BucketRef};
+pub use bucket::{Bucket, BucketMut, BucketRef, ReadOnly};
 
 pub use crate::notifier::{Listen, Listeners};
 pub use crate::path::{Path, PathId};

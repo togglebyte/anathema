@@ -103,7 +103,8 @@ where
         self.inner.len()
     }
 
-    pub fn next(&mut self, bucket: &mut BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
+    /// This is generating nodes and should only be called once.
+    pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
         let nodes = self.inner[self.index..].iter_mut();
 
         for node in nodes {
@@ -139,6 +140,15 @@ where
             .flatten();
 
         Box::new(iter)
+    }
+
+    pub fn first_mut(&mut self) -> Option<(&mut Output, &mut Self)> {
+        let first_node = self.inner.first_mut()?;
+        match &mut first_node.kind {
+            NodeKind::Single(output, children) => Some((output, children)),
+            NodeKind::Collection(state) => state.nodes.first_mut(),
+            NodeKind::ControlFlow(flows) => flows.nodes.first_mut(),
+        }
     }
 }
 

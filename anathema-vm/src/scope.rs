@@ -1,5 +1,5 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{ControlFlowExpr, Expression, Attributes};
+use anathema_generator::{ControlFlowExpr, Expression, ExpressionAttributes};
 use anathema_values::BucketMut;
 use anathema_widget_core::{TextPath, Value, WidgetContainer, WidgetMeta};
 
@@ -126,7 +126,7 @@ impl<'vm> Scope<'vm> {
     ) -> Result<Expression<WidgetContainer>> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
-        let mut attributes = Attributes::empty();
+        let mut attributes = ExpressionAttributes::empty();
         let mut text = None::<TextPath>;
         let mut ip = 0;
 

@@ -50,16 +50,16 @@ mod factories {
 pub fn register_default_widgets() -> Result<()> {
     let results = [
         Factory::register("alignment".to_string(), factories::AlignmentFactory),
-        Factory::register("border".to_string(), factories::BorderFactory),
-        Factory::register("expand".to_string(), factories::ExpandFactory),
-        Factory::register("hstack".to_string(), factories::HStackFactory),
-        Factory::register("position".to_string(), factories::PositionFactory),
-        Factory::register("spacer".to_string(), factories::SpacerFactory),
-        Factory::register("span".to_string(), factories::SpanFactory),
-        Factory::register("text".to_string(), factories::TextFactory),
-        Factory::register("vstack".to_string(), factories::VStackFactory),
-        Factory::register("zstack".to_string(), factories::ZStackFactory),
-        Factory::register("viewport".to_string(), factories::ViewportFactory),
+        // Factory::register("border".to_string(), factories::BorderFactory),
+        // Factory::register("expand".to_string(), factories::ExpandFactory),
+        // Factory::register("hstack".to_string(), factories::HStackFactory),
+        // Factory::register("position".to_string(), factories::PositionFactory),
+        // Factory::register("spacer".to_string(), factories::SpacerFactory),
+        // Factory::register("span".to_string(), factories::SpanFactory),
+        // Factory::register("text".to_string(), factories::TextFactory),
+        // Factory::register("vstack".to_string(), factories::VStackFactory),
+        // Factory::register("zstack".to_string(), factories::ZStackFactory),
+        // Factory::register("viewport".to_string(), factories::ViewportFactory),
     ];
 
     for result in results {

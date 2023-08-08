@@ -63,7 +63,6 @@ impl<T> Bucket<T> {
 //   - Bucket ref -
 // -----------------------------------------------------------------------------
 pub struct BucketRef<'a, T> {
-    // values: RwLockUpgradableReadGuard<'a, GenerationSlab<Value<T>>>,
     values: &'a RwLock<GenerationSlab<Container<T>>>,
     paths: &'a RwLock<Paths>,
     scopes: &'a RwLock<Scopes<Container<T>>>,
@@ -143,10 +142,11 @@ pub struct ReadOnly<'a, T> {
 }
 
 impl<'a, T> ReadOnly<'a, T> {
-    pub fn get(&self, value_ref: ValueRef<Container<T>>) -> Option<&Generation<Container<T>>> {
+    pub fn get(&self, value_ref: ValueRef<Container<T>>) -> Option<&Container<T>> {
         self.inner
             .get(value_ref.index)
             .filter(|val| val.compare_generation(value_ref.gen))
+            .map(std::ops::Deref::deref)
     }
 
     // TODO: reconsider this name

@@ -6,20 +6,6 @@ use crate::attribute::Attribute;
 use crate::expression::{ControlFlowExpr, EvaluationContext, FromContext};
 use crate::{Expression, NodeId, NodeKind, Nodes};
 
-enum Cond<Val> {
-    If(ValueRef<Container<Val>>),
-    Else(Option<ValueRef<Container<Val>>>),
-}
-
-// impl<Val: Truthy> Cond<Val> {
-//     pub(crate) fn eval(&self, bucket: &BucketRef<'_, Val>, scope: Option<ScopeId>) -> bool {
-//         match self {
-//             Self::If(val) | Self::Else(Some(val)) => bucket.check_true(*val),
-//             Self::Else(None) => true,
-//         }
-//     }
-// }
-
 pub(crate) enum ControlFlow<Val> {
     If(Attribute<Val>),
     Else(Option<Attribute<Val>>),
@@ -40,9 +26,9 @@ impl<Val: Truthy> ControlFlow<Val> {
 }
 
 pub struct ControlFlows<Output: FromContext> {
+    pub(crate) nodes: Nodes<Output>,
     flows: Vec<(ControlFlow<Output::Value>, Arc<[Expression<Output>]>)>,
     scope: Option<ScopeId>,
-    pub(crate) nodes: Nodes<Output>,
     selected_flow: Option<usize>,
     node_index: usize,
 }

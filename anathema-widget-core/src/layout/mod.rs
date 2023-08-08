@@ -12,13 +12,13 @@ mod constraints;
 // -----------------------------------------------------------------------------
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::WidgetContainer;
+use crate::{WidgetContainer, Nodes};
 
 pub trait Layout {
     fn layout(
         &mut self,
         ctx: &mut LayoutCtx,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut Nodes,
         size: &mut Size,
     ) -> Result<()>;
 }
@@ -41,7 +41,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout(&mut self, children: &mut Vec<WidgetContainer>) -> Result<&mut Self> {
+    pub fn layout(&mut self, children: &mut Nodes) -> Result<&mut Self> {
         self.layout.layout(self.ctx, children, &mut self.size)?;
         Ok(self)
     }

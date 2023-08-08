@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use anathema_generator::{EvaluationContext, Expression, Nodes, NodeId};
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::Bucket;
+use anathema_values::{Bucket, ReadOnly};
 use anathema_vm::Expressions;
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
@@ -101,14 +101,16 @@ where
     }
 
     fn position(&mut self) {
+        let bucket = self.bucket.read().read();
         for (widget, children) in self.nodes.iter_mut() {
-            widget.position(children, Pos::ZERO);
+            widget.position(children, Pos::ZERO, &bucket);
         }
     }
 
     fn paint(&mut self) {
+        let bucket = self.bucket.read().read();
         for (widget, children) in self.nodes.iter_mut() {
-            widget.paint(children, PaintCtx::new(&mut self.screen, None));
+            widget.paint(children, PaintCtx::new(&mut self.screen, None), &bucket);
         }
     }
 

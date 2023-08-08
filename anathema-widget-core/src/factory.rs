@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use anathema_generator::DataCtx;
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
-use crate::gen::store::Values;
-use crate::template::Template;
-use crate::values::ValuesAttributes;
 use crate::widget::AnyWidget;
 use crate::{TextPath, WidgetContainer};
 
@@ -15,8 +13,7 @@ const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 pub trait WidgetFactory: Send + Sync {
     fn make(
         &self,
-        store: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
+        data: DataCtx<WidgetContainer>,
     ) -> Result<Box<dyn AnyWidget>>;
 }
 
@@ -25,37 +22,13 @@ static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = On
 pub struct Factory;
 
 impl Factory {
-    pub fn exec<'tpl, 'parent>(
-        template: &'tpl Template,
-        values: &Values<'parent>,
-    ) -> Result<WidgetContainer> {
-        match &template {
-            Template::Node {
-                ident,
-                attributes,
-                text,
-                children,
-            } => {
-                let values = ValuesAttributes::new(values, attributes);
-                let background = values.background();
-                let padding = values.padding_all().unwrap_or_else(|| Padding::ZERO);
-                let display = values.display();
-
-                let factories = FACTORIES.get_or_init(Default::default).read();
-                let factory = factories
-                    .get(ident)
-                    .ok_or_else(|| Error::UnregisteredWidget(ident.to_string()))?;
-                let widget = factory.make(values, text.as_ref())?;
-                drop(factories);
-
-                let mut container = WidgetContainer::new(widget, children.clone());
-                container.background = background;
-                container.padding = padding;
-                container.display = display;
-                Ok(container)
-            }
-            _ => panic!("there should only ever be nodes here, not {:?}", template),
-        }
+    pub fn exec(ctx: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+        let factories = FACTORIES.get_or_init(Default::default).read();
+        let factory = factories
+            .get(&ctx.ident)
+            .ok_or_else(|| Error::UnregisteredWidget(ctx.ident.clone()))?;
+        let widget = factory.make(ctx)?;
+        Ok(Box::new(widget))
     }
 
     pub fn register(ident: impl Into<String>, factory: impl WidgetFactory + 'static) -> Result<()> {
