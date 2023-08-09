@@ -85,7 +85,7 @@ impl<Output: FromContext> LoopState<Output> {
         &mut self,
         bucket: &BucketRef<'_, Output::Value>,
         parent: &NodeId,
-    ) -> Option<Result<&mut Output, Output::Err>> {
+    ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         if self.node_index == self.nodes.len() {
             self.load_value(bucket, parent)?;
         }
@@ -94,9 +94,9 @@ impl<Output: FromContext> LoopState<Output> {
 
         for node in nodes {
             match &mut node.kind {
-                NodeKind::Single(value, _) => {
+                NodeKind::Single(value, children) => {
                     self.node_index += 1;
-                    return Some(Ok(value));
+                    return Some(Ok((value, children)));
                 }
                 NodeKind::Collection(nodes) => match nodes.next(bucket, &node.id) {
                     last @ Some(_) => return last,

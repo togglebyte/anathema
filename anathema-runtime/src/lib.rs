@@ -11,6 +11,7 @@ use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::views::View;
 use anathema_widget_core::{Pos, Value, WidgetContainer};
+use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
@@ -53,6 +54,7 @@ where
         events: E,
         event_receiver: ER,
     ) -> Result<Self> {
+        register_default_widgets();
         enable_raw_mode()?;
         let mut stdout = stdout();
         Screen::hide_cursor(&mut stdout)?;
@@ -93,8 +95,9 @@ where
     }
 
     fn layout(&mut self) -> Result<()> {
+        let bucket = self.bucket.read();
         for (widget, children) in self.nodes.iter_mut() {
-            widget.layout(children, self.constraints)?;
+            widget.layout(children, self.constraints, &bucket)?;
         }
 
         Ok(())
@@ -103,14 +106,13 @@ where
     fn position(&mut self) {
         let bucket = self.bucket.read().read();
         for (widget, children) in self.nodes.iter_mut() {
-            widget.position(children, Pos::ZERO, &bucket);
+            widget.position(children, Pos::ZERO);
         }
     }
 
     fn paint(&mut self) {
-        let bucket = self.bucket.read().read();
         for (widget, children) in self.nodes.iter_mut() {
-            widget.paint(children, PaintCtx::new(&mut self.screen, None), &bucket);
+            widget.paint(children, PaintCtx::new(&mut self.screen, None));
         }
     }
 

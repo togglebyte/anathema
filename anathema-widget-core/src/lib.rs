@@ -15,7 +15,7 @@ pub mod layout;
 pub mod views;
 mod widget;
 // mod path;
-mod fragment;
+// mod fragment;
 mod notifications;
 mod values;
 
@@ -32,3 +32,4 @@ pub use crate::widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
 
 pub type Nodes = anathema_generator::Nodes<WidgetContainer>;
 pub type ReadOnly<'a> = anathema_values::ReadOnly<'a, Value>;
+pub type BucketRef<'a> = anathema_values::BucketRef<'a, Value>;

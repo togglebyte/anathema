@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::Layout;
-use anathema_widget_core::{WidgetContainer, Nodes};
+use anathema_widget_core::{WidgetContainer, Nodes, BucketRef};
 
 pub struct Single;
 
@@ -11,20 +11,19 @@ impl Layout for Single {
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
+        bucket: &BucketRef<'_>,
         size: &mut Size,
     ) -> Result<()> {
-        panic!()
-        // let constraints = ctx.padded_constraints();
+        let constraints = ctx.padded_constraints();
 
-        // if let Some(widget) = children.next(&mut values).transpose()? {
-        //     children.push(widget);
-        //     *size = match children[0].layout(constraints, &values) {
-        //         Ok(s) => s,
-        //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
-        //         err @ Err(_) => err?,
-        //     };
-        // }
+        if let Some((widget, children)) = children.next(bucket).transpose()? {
+            *size = match widget.layout(children, constraints, bucket) {
+                Ok(s) => s,
+                Err(Error::InsufficientSpaceAvailble) => return Ok(()),
+                err @ Err(_) => err?,
+            };
+        }
 
-        // Ok(())
+        Ok(())
     }
 }

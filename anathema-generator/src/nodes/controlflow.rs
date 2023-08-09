@@ -51,7 +51,7 @@ impl<Output: FromContext> ControlFlows<Output> {
         &mut self,
         bucket: &BucketRef<'_, Output::Value>,
         parent: &NodeId,
-    ) -> Option<Result<&mut Output, Output::Err>> {
+    ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         match self.selected_flow {
             None => {
                 let flow_index = self.eval(bucket)?;
@@ -71,9 +71,9 @@ impl<Output: FromContext> ControlFlows<Output> {
             Some(index) => {
                 for node in self.nodes.inner[self.node_index..].iter_mut() {
                     match &mut node.kind {
-                        NodeKind::Single(output, _) => {
+                        NodeKind::Single(output, children) => {
                             self.node_index += 1;
-                            return Some(Ok(output));
+                            return Some(Ok((output, children)));
                         }
                         NodeKind::Collection(nodes) => match nodes.next(bucket, &node.id) {
                             last @ Some(_) => return last,

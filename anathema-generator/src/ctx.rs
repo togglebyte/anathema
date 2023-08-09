@@ -7,7 +7,7 @@ use crate::attribute::ExpressionAttributes;
 use crate::{FromContext, NodeId, Attribute, ExpressionAttribute};
 
 pub struct DataCtx<'a, T: FromContext> {
-    bucket: &'a BucketRef<'a, T::Value>,
+    pub bucket: &'a BucketRef<'a, T::Value>,
     node_id: &'a NodeId,
     scope: Option<ScopeId>,
     inner: &'a T::Ctx,

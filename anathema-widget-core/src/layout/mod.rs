@@ -1,24 +1,21 @@
 use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
-use anathema_render::{Size, ScreenPos};
+use anathema_render::{ScreenPos, Size};
 
 pub use self::constraints::Constraints;
-
-mod constraints;
-
-// -----------------------------------------------------------------------------
-//   - Re-export layouts -
-// -----------------------------------------------------------------------------
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{WidgetContainer, Nodes};
+use crate::{BucketRef, Nodes, WidgetContainer};
+
+mod constraints;
 
 pub trait Layout {
     fn layout(
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
+        bucket: &BucketRef<'_>,
         size: &mut Size,
     ) -> Result<()>;
 }
@@ -41,8 +38,8 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout(&mut self, children: &mut Nodes) -> Result<&mut Self> {
-        self.layout.layout(self.ctx, children, &mut self.size)?;
+    pub fn layout(&mut self, children: &mut Nodes, bucket: &BucketRef<'_>) -> Result<&mut Self> {
+        self.layout.layout(self.ctx, children, bucket, &mut self.size)?;
         Ok(self)
     }
 

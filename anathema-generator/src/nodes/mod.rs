@@ -2,7 +2,8 @@ use std::iter::once;
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, ValueRef, Container};
+
+use anathema_values::{BucketRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
 
 use self::controlflow::ControlFlows;
 use self::loops::LoopState;
@@ -12,7 +13,7 @@ use crate::Expression;
 pub(crate) mod controlflow;
 pub(crate) mod loops;
 
-// TODO: One possible solution to the partial rebuild 
+// TODO: One possible solution to the partial rebuild
 //       could be message passing.
 //
 //       enum Change {
@@ -25,7 +26,7 @@ pub(crate) mod loops;
 // TODO: overflowing a u16 should use the Vec variant
 enum NodeIdV2 {
     Small([u16; 15]),
-    Large(Vec<usize>)
+    Large(Vec<usize>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -68,10 +69,7 @@ pub enum NodeKind<Output: FromContext> {
 
 impl<Output: FromContext> NodeKind<Output> {
     pub(crate) fn to_node(self, id: NodeId) -> Node<Output> {
-        Node {
-            id,
-            kind: self,
-        }
+        Node { id, kind: self }
     }
 }
 
@@ -103,15 +101,18 @@ where
         self.inner.len()
     }
 
-    /// This is generating nodes and should only be called once.
-    pub fn next(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<Result<&mut Output, Output::Err>> {
+    /// Generate more nodes if needed (and there is enough information to produce more)
+    pub fn next(
+        &mut self,
+        bucket: &BucketRef<'_, Output::Value>,
+    ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         let nodes = self.inner[self.index..].iter_mut();
 
         for node in nodes {
             match &mut node.kind {
-                NodeKind::Single(output, _) => {
+                NodeKind::Single(output, children) => {
                     self.index += 1;
-                    return Some(Ok(output));
+                    return Some(Ok((output, children)));
                 }
                 NodeKind::Collection(loop_state) => match loop_state.next(bucket, &node.id) {
                     last @ Some(_) => return last,
@@ -128,15 +129,18 @@ where
     }
 
     pub fn iter_mut(&mut self) -> Box<dyn Iterator<Item = (&mut Output, &mut Self)> + '_> {
-        let iter = self.inner
+        let iter = self
+            .inner
             .iter_mut()
-            .map(|node| -> Box<dyn Iterator<Item = (&mut Output, &mut Self)>>  {
-                match &mut node.kind {
-                    NodeKind::Single(output, nodes) => Box::new(once((output, nodes))),
-                    NodeKind::Collection(state) => state.nodes.iter_mut(),
-                    NodeKind::ControlFlow(flows) => flows.nodes.iter_mut(),
-                }
-            })
+            .map(
+                |node| -> Box<dyn Iterator<Item = (&mut Output, &mut Self)>> {
+                    match &mut node.kind {
+                        NodeKind::Single(output, nodes) => Box::new(once((output, nodes))),
+                        NodeKind::Collection(state) => state.nodes.iter_mut(),
+                        NodeKind::ControlFlow(flows) => flows.nodes.iter_mut(),
+                    }
+                },
+            )
             .flatten();
 
         Box::new(iter)
@@ -190,16 +194,40 @@ mod test {
         let mut nodes = Nodes::<Widget>::new(nodes);
 
         assert_eq!("root", nodes.next(&bucket.read()).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!(
+            "inner loopy child 1",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
+        assert_eq!(
+            "inner loopy child 2",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
+        assert_eq!(
+            "inner loopy child 1",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
+        assert_eq!(
+            "inner loopy child 2",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
         assert_eq!("loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
         assert_eq!("loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
-        assert_eq!("inner loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
+        assert_eq!(
+            "inner loopy child 1",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
+        assert_eq!(
+            "inner loopy child 2",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
+        assert_eq!(
+            "inner loopy child 1",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
+        assert_eq!(
+            "inner loopy child 2",
+            nodes.next(&bucket_ref).unwrap().ident
+        );
         assert_eq!("loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
         assert_eq!("loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
         assert_eq!("truthy", nodes.next(&bucket_ref).unwrap().ident);

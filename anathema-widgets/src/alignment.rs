@@ -4,7 +4,7 @@ use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Align, Layouts};
 use anathema_widget_core::{
-    AnyWidget, Pos, TextPath, Widget, WidgetContainer, WidgetFactory, Nodes, Value, ReadOnly
+    AnyWidget, Nodes, Pos, ReadOnly, TextPath, Value, Widget, WidgetContainer, WidgetFactory, BucketRef,
 };
 
 use crate::layout::single::Single;
@@ -21,7 +21,8 @@ use crate::layout::single::Single;
 /// ```
 pub struct Alignment {
     /// The alignment
-    pub alignment: Attribute<Value>,
+    pub alignment_attrib: Attribute<Value>,
+    pub alignment: Align,
 }
 
 impl Alignment {
@@ -29,8 +30,11 @@ impl Alignment {
     pub const KIND: &'static str = "Alignment";
 
     /// Create a new instance of an `Alignment` widget
-    pub fn new(alignment: Attribute<Value>) -> Self {
-        Self { alignment }
+    pub fn new(alignment_attrib: Attribute<Value>) -> Self {
+        Self { 
+            alignment_attrib,
+            alignment: Align::Left,
+        }
     }
 }
 
@@ -43,10 +47,15 @@ impl Widget for Alignment {
         &mut self,
         children: &mut Nodes,
         mut ctx: LayoutCtx,
-        data: &ReadOnly<'_>,
+        data: &BucketRef<'_>,
     ) -> Result<Size> {
+        let bucket = data.read();
+        if let Some(Value::Alignment(alignment)) = self.alignment_attrib.load(&bucket) {
+            self.alignment = *alignment;
+        }
+
         let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout(children)?;
+        layout.layout(children, data)?;
         let size = layout.size()?;
         if size == Size::ZERO {
             Ok(Size::ZERO)
@@ -55,19 +64,14 @@ impl Widget for Alignment {
         }
     }
 
-    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx, data: &ReadOnly<'_>) {
+    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
         if let Some((child, children)) = children.first_mut() {
-            let alignment = match self.alignment.load(&data) {
-                Some(Value::Alignment(align)) => align,
-                _ => return,
-            };
-
             let width = ctx.inner_size.width as i32;
             let height = ctx.inner_size.height as i32;
             let child_width = child.outer_size().width as i32;
             let child_height = child.outer_size().height as i32;
 
-            let child_offset = match alignment {
+            let child_offset = match self.alignment {
                 Align::TopLeft => Pos::ZERO,
                 Align::Top => Pos::new(width / 2 - child_width / 2, 0),
                 Align::TopRight => Pos::new(width - child_width, 0),
@@ -81,7 +85,7 @@ impl Widget for Alignment {
                 }
             };
 
-            child.position(children, ctx.pos + child_offset, data);
+            child.position(children, ctx.pos + child_offset);
         }
     }
 }
@@ -89,24 +93,11 @@ impl Widget for Alignment {
 pub(crate) struct AlignmentFactory;
 
 impl WidgetFactory for AlignmentFactory {
-    fn make(
-        &self,
-        data: DataCtx<WidgetContainer>,
-    ) -> Result<Box<dyn AnyWidget>> {
-        panic!()
-        // let alignment = data.get("alignment");
-        // let widget = Alignment::new(alignment);
-        // Ok(widget)
+    fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+        let alignment = data.get("align");
+        let widget = Alignment::new(alignment);
+        Ok(Box::new(widget))
     }
-    // fn make(
-    //     &self,
-    //     values: ValuesAttributes<'_, '_>,
-    //     _: Option<&TextPath>,
-    // ) -> Result<Box<dyn AnyWidget>> {
-    //     let align = values.alignment().unwrap_or(Align::TopLeft);
-    //     let widget = Alignment::new(align);
-    //     Ok(Box::new(widget))
-    // }
 }
 
 #[cfg(test)]

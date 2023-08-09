@@ -26,6 +26,7 @@ pub use crate::alignment::Alignment;
 // pub use crate::position::Position;
 // pub use crate::spacer::Spacer;
 // pub use crate::text::{Text, TextSpan};
+// pub use crate::text::Text;
 // pub use crate::viewport::Viewport;
 // pub use crate::vstack::VStack;
 // pub use crate::zstack::ZStack;

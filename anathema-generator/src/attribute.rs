@@ -78,22 +78,21 @@ pub enum Attribute<T> {
 }
 
 impl<T> Attribute<T> {
-    pub fn load<'a, 'b: 'a>(&'b self, bucket: &ReadOnly<'a, T>) -> Option<&'a T> {
+    pub fn load<'a>(&'a self, bucket: &'a ReadOnly<'a, T>) -> Option<&T> {
         match self {
             Self::Static(val) => {
                 let val: &Container<_> = &*val;
                 match val {
                     Container::Single(val) => Some(val),
-                    _ => panic!(),
+                    _ => None
                 }
             }
             Self::Dyn(val) => {
-                panic!()
-                // let val = &*bucket.get(*val)?;
-                // match val {
-                //     Container::Single(val) => Some(val),
-                //     _ => panic!(),
-                // }
+                let val = &*bucket.get(*val)?;
+                match val {
+                    Container::Single(val) => Some(val),
+                    _ => None
+                }
             },
         }
     }

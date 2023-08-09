@@ -1,9 +1,9 @@
+use anathema_generator::{Attribute, DataCtx};
 use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, Generator, LocalPos, TextPath, Value, ValuesAttributes, Widget, WidgetContainer,
-    WidgetFactory,
+    AnyWidget, BucketRef, LocalPos, Nodes, TextPath, Value, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -27,8 +27,9 @@ use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 /// Note: Spans, unlike other widgets, does not require a widget id
 ///
 /// A `Text` widget will be as wide as its text.
-#[derive(Debug, PartialEq, Eq)]
 pub struct Text {
+    word_wrap_attrib: Attribute<Value>,
+    text_alignment_attrib: Attribute<Value>,
     /// Word wrapping
     pub word_wrap: Wrap,
     /// Text alignment. Note that text alignment only aligns the text inside the parent widget,
@@ -36,40 +37,15 @@ pub struct Text {
     /// [`Alignment`](crate::Alignment).
     pub text_alignment: TextAlignment,
     /// Text
-    pub text: String,
+    pub text: TextPath,
     /// Text style
     pub style: Style,
 
     layout: TextLayout,
 }
 
-impl Default for Text {
-    fn default() -> Self {
-        Self {
-            text: String::new(),
-            style: Style::new(),
-            word_wrap: Wrap::Normal,
-            text_alignment: TextAlignment::Left,
-            layout: TextLayout::ZERO,
-        }
-    }
-}
-
 impl Text {
     pub const KIND: &'static str = "Text";
-
-    /// Create a new instance of a `Text` widget
-    pub fn new(text: impl Into<String>) -> Self {
-        let mut inst = Self::default();
-        inst.set_text(text);
-        inst
-    }
-
-    /// Update the text of the first `TextSpan` with new text, without changing attributes or `NodeId`.
-    /// If there are no `TextSpan` one will be created and inserted.
-    pub fn set_text(&mut self, text: impl Into<String>) {
-        self.text = text.into();
-    }
 
     fn text_and_style<'a>(
         &'a self,
@@ -144,18 +120,27 @@ impl Widget for Text {
 
     fn layout<'widget, 'parent>(
         &mut self,
-        ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut Nodes,
+        mut ctx: LayoutCtx,
+        data: &BucketRef<'_>,
     ) -> Result<Size> {
+        let bucket = data.read();
+        if let Some(Value::Wrap(wrap)) = self.wrap_attrib.load(&bucket) {
+            self.wrap = *wrap;
+        }
+
+        if let Some(Value::TextAlignment(align)) = self.text_alignment_attrib.load(&bucket) {
+            self.text_alignment = *align;
+        }
+
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
-
         self.layout.process(self.text.as_str());
 
-        let mut values = ctx.values.next();
-        let mut gen = Generator::new(&ctx.templates, &mut values);
-        while let Some(mut span) = gen.next(&mut values).transpose()? {
+        drop(bucket);
+
+        while let Some(mut span) = children.next(data).transpose()? {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
                 continue;
@@ -171,7 +156,7 @@ impl Widget for Text {
         Ok(self.layout.size())
     }
 
-    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
+    fn paint<'ctx>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
         let mut y = 0;
         let mut range = 0..0;
         for entry in &self.layout.lines.inner {
@@ -188,7 +173,7 @@ impl Widget for Text {
         self.paint_line(&mut range, children, y, &mut ctx);
     }
 
-    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {
+    fn position<'ctx>(&mut self, _: &mut Nodes, _: PositionCtx) {
         // NOTE: there is no need to position text as the text
         // is printed from the context position
     }
@@ -219,16 +204,16 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, _ctx: LayoutCtx<'_, '_>, _: &mut Vec<WidgetContainer>) -> Result<Size> {
+    fn layout(&mut self, _: &mut Nodes, _: LayoutCtx, _: &BucketRef<'_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
-    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {
+    fn position<'ctx>(&mut self, _: &mut Nodes, _: PositionCtx) {
         // NOTE: there is no need to position text as the text is printed from the context position
         panic!("don't invoke position on the span directly.");
     }
 
-    fn paint<'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer]) {
+    fn paint<'ctx>(&mut self, _: &mut Nodes, _: PaintCtx<'_, WithSize>) {
         panic!("don't invoke paint on the span directly.");
     }
 }
@@ -236,29 +221,39 @@ impl Widget for TextSpan {
 pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
-    fn make(
-        &self,
-        values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let mut widget = Text::default();
+    fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+        let word_wrap_attrib = data.get("wrap");
+        let text_alignment_attrib = data.get("text-align");
 
-        widget.word_wrap = values
-            .get_attrib("wrap")
-            .and_then(Value::to_str)
-            .map(From::from)
-            .unwrap_or(Wrap::Normal);
+        // widget.word_wrap = values
+        //     .get_attrib("wrap")
+        //     .and_then(Value::to_str)
+        //     .map(From::from)
+        //     .unwrap_or(Wrap::Normal);
 
-        widget.text_alignment = values
-            .get_attrib("text-align")
-            .and_then(Value::to_str)
-            .map(From::from)
-            .unwrap_or(TextAlignment::Left);
+        // widget.text_alignment = values
+        //     .get_attrib("text-align")
+        //     .and_then(Value::to_str)
+        //     .map(From::from)
+        //     .unwrap_or(TextAlignment::Left);
 
-        widget.style = values.style();
-        if let Some(text) = text {
-            widget.text = values.text_to_string(text).to_string();
-        }
+        // TODO: we do need them styles
+        // widget.style = values.style();
+
+        // if let Some(text) = data.text {
+        //     widget.text = values.text_to_string(text).to_string();
+        // }
+
+        let mut widget = Text {
+            word_wrap: Wrap::Normal,
+            word_wrap_attrib,
+            text_alignment: TextAlignment::Left,
+            text_alignment_attrib,
+            style: Style::new(),
+            layout: TextLayout::new(),
+            text: data.text.unwrap_or(TextPath::empty()),
+        };
+
         Ok(Box::new(widget))
     }
 }
@@ -266,16 +261,12 @@ impl WidgetFactory for TextFactory {
 pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
-    fn make(
-        &self,
-        values: ValuesAttributes<'_, '_>,
-        text: Option<&TextPath>,
-    ) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
         let mut widget = TextSpan::new();
-        if let Some(text) = text {
-            widget.text = values.text_to_string(text).to_string();
-        }
-        widget.style = values.style();
+        // if let Some(text) = text {
+        //     widget.text = values.text_to_string(text).to_string();
+        // }
+        // widget.style = values.style();
 
         Ok(Box::new(widget))
     }

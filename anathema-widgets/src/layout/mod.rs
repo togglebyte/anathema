@@ -5,5 +5,5 @@
 pub mod single;
 // pub mod spacers;
 // pub mod stacked;
-// pub mod text;
+pub mod text;
 // pub mod vertical;
