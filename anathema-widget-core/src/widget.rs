@@ -12,7 +12,7 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::factory::Factory;
 use crate::notifications::X;
-use crate::{BucketRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, TextPath, Value};
+use crate::{BucketRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
 
 // Layout:
 // 1. Receive constraints
@@ -341,5 +341,5 @@ impl FromContext for WidgetContainer {
 /// Meta data needed to construct a `WidgetContainer` from a `Node`
 pub struct WidgetMeta {
     pub ident: String,
-    pub text: Option<TextPath>,
+    pub text: Option<()>,
 }

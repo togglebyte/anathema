@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use anathema_values::hashmap::HashMap;
-use anathema_values::{BucketRef, Container, Listen, PathId, ScopeId, ValueRef, ReadOnly};
+use anathema_values::{BucketRef, Container, Listen, PathId, ReadOnly, ScopeId, ValueRef};
 
 use crate::NodeId;
 
@@ -35,6 +35,8 @@ impl<T> ExpressionAttributes<T> {
 pub enum ExpressionAttribute<T> {
     Dyn(PathId),
     Static(Arc<Container<T>>),
+    List(Arc<[ExpressionAttribute<T>]>),
+    // TODO: add map
 }
 
 impl<T> ExpressionAttribute<T> {
@@ -56,6 +58,12 @@ impl<T> ExpressionAttribute<T> {
                 Attribute::Dyn(val)
             }
             Self::Static(val) => Attribute::Static(val.clone()),
+            Self::List(values) => Attribute::List(
+                values
+                    .iter()
+                    .map(|val| val.to_attrib::<N>(bucket, scope, node_id))
+                    .collect::<Vec<_>>(),
+            ),
         }
     }
 }
@@ -65,6 +73,7 @@ impl<T> Clone for ExpressionAttribute<T> {
         match self {
             Self::Dyn(path_id) => Self::Dyn(*path_id),
             Self::Static(val) => Self::Static(Arc::clone(val)),
+            Self::List(val) => Self::List(Arc::clone(val)),
         }
     }
 }
@@ -75,27 +84,17 @@ impl<T> Clone for ExpressionAttribute<T> {
 pub enum Attribute<T> {
     Dyn(ValueRef<Container<T>>),
     Static(Arc<Container<T>>),
+    List(Vec<Attribute<T>>),
 }
 
 impl<T> Attribute<T> {
-    pub fn load<'a>(&'a self, bucket: &'a ReadOnly<'a, T>) -> Option<&T> {
-        match self {
-            Self::Static(val) => {
-                let val: &Container<_> = &*val;
-                match val {
-                    Container::Single(val) => Some(val),
-                    _ => None
-                }
-            }
-            Self::Dyn(val) => {
-                let val = &*bucket.get(*val)?;
-                match val {
-                    Container::Single(val) => Some(val),
-                    _ => None
-                }
-            },
-        }
-    }
+    // pub fn load<'a>(&'a self, bucket: &'a ReadOnly<'a, T>) -> Option<&Container<T>> {
+    //     match self {
+    //         Self::Static(val) => Some(val),
+    //         Self::Dyn(val) => bucket.get(*val),
+    //         Self::List(list) => Some(list)
+    //     }
+    // }
 }
 
 impl<T> From<ValueRef<Container<T>>> for Attribute<T> {

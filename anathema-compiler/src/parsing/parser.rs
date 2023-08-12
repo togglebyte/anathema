@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
+use anathema_generator::ExpressionAttribute;
 use anathema_values::Path;
-use anathema_widget_core::{Fragment, Number, TextPath};
+use anathema_widget_core::{Number, Value};
 
 use super::attribute_parser::AttributeParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token};
-use crate::{StringId, Constants, ValueId, TextId};
+use crate::{Constants, StringId, TextId, ValueId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
@@ -522,7 +525,10 @@ impl Iterator for Parser<'_, '_> {
 // -----------------------------------------------------------------------------
 //     - Parse string into fragments -
 // -----------------------------------------------------------------------------
-pub(super) fn parse_to_fragments(text: &str, consts: &mut Constants) -> TextPath {
+pub(super) fn parse_to_fragments(
+    text: &str,
+    consts: &mut Constants,
+) -> Vec<ExpressionAttribute<Value>> {
     let mut fragments = vec![];
     let mut chars = text.char_indices().peekable();
     let mut pos = 0;
@@ -534,7 +540,9 @@ pub(super) fn parse_to_fragments(text: &str, consts: &mut Constants) -> TextPath
                 let frag = &text[pos..i];
                 if !frag.is_empty() {
                     let text_fragment = frag.replace("\\\"", "\"");
-                    fragments.push(Fragment::String(text_fragment));
+                    fragments.push(ExpressionAttribute::Static(Arc::new(Value::String(
+                        text_fragment,
+                    ))));
                 }
                 pos = i;
             }
@@ -545,7 +553,7 @@ pub(super) fn parse_to_fragments(text: &str, consts: &mut Constants) -> TextPath
                     if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
                         if let Ok(path) = parse_path(&mut lexer, ident) {
                             let path_id = consts.store_path(path);
-                            fragments.push(Fragment::Data(path_id));
+                            fragments.push(ExpressionAttribute::Dyn(path_id));
                         }
                     }
                 }
@@ -559,18 +567,21 @@ pub(super) fn parse_to_fragments(text: &str, consts: &mut Constants) -> TextPath
 
     if !remainder.is_empty() {
         let text_fragment = remainder.replace("\\\"", "\"");
-        fragments.push(Fragment::String(text_fragment));
+        fragments.push(FragmentExpr::String(text_fragment));
     }
 
-    if fragments.len() == 1 && fragments[0].is_string() {
-        let s = match fragments.remove(0) {
-            Fragment::String(s) => s,
-            _ => unreachable!(),
-        };
-        TextPath::String(s)
-    } else {
-        TextPath::Fragments(fragments)
-    }
+    // TODO: would it make sense to return a static string directly instead of a vec?
+    // if fragments.len() == 1 && fragments[0].is_string() {
+    //     let s = match fragments.remove(0) {
+    //         FragmentExpr::String(s) => s,
+    //         _ => unreachable!(),
+    //     };
+    //     TextExpr::String(s)
+    // } else {
+    //     TextExpr::Fragments(fragments)
+    // }
+
+    fragments
 }
 
 // -----------------------------------------------------------------------------

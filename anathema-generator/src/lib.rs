@@ -2,11 +2,9 @@ pub use crate::expression::{FromContext, Expression, ControlFlowExpr, Evaluation
 pub use crate::nodes::{NodeKind, Nodes, Node, NodeId};
 pub use crate::attribute::{Attribute, ExpressionAttributes, ExpressionAttribute};
 pub use crate::ctx::DataCtx;
-pub use crate::text::{Text, TextExpr};
 
 mod attribute;
 mod ctx;
 mod expression;
 mod nodes;
 mod testing;
-mod text;

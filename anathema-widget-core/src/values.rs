@@ -5,10 +5,9 @@ use std::fmt;
 
 pub use anathema_render::Color;
 use anathema_render::Style;
-use anathema_values::{PathId, List, Map, Truthy};
+use anathema_values::{List, Map, PathId, Truthy};
 
 use crate::layout::{Align, Axis, Direction, Padding};
-use crate::{TextPath, Fragment};
 
 /// Determine how a widget should be displayed and laid out
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,7 +52,7 @@ impl Truthy for Number {
 }
 
 /// A value.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Clone)]
 pub enum Value {
     /// Alignment.
     Alignment(Align),
@@ -78,8 +77,6 @@ pub enum Value {
     /// String: this is only available from the user data context.
     /// Strings generated from the parser is accessible only throught he `Text` lookup.
     String(String),
-    /// Fragments .
-    Fragments(Vec<Fragment>),
 }
 
 impl Truthy for Value {
@@ -295,9 +292,9 @@ impl fmt::Display for Value {
             // Self::DataBinding(val) => write!(f, "{:?}", val),
             Self::Display(val) => write!(f, "{:?}", val),
             Self::Direction(val) => write!(f, "{:?}", val),
-            Self::Fragments(val) => write!(f, "Fragments {:?}", val),
             Self::List(val) => write!(f, "{:?}", val),
             Self::Map(val) => {
+                // TODO: oops
                 panic!()
                 // write!(f, "{{ ")?;
                 // let s = val

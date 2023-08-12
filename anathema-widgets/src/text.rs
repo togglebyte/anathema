@@ -3,7 +3,7 @@ use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, BucketRef, LocalPos, Nodes, TextPath, Value, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, BucketRef, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -30,6 +30,7 @@ use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 pub struct Text {
     word_wrap_attrib: Attribute<Value>,
     text_alignment_attrib: Attribute<Value>,
+
     /// Word wrapping
     pub word_wrap: Wrap,
     /// Text alignment. Note that text alignment only aligns the text inside the parent widget,
@@ -37,7 +38,7 @@ pub struct Text {
     /// [`Alignment`](crate::Alignment).
     pub text_alignment: TextAlignment,
     /// Text
-    pub text: TextPath,
+    pub text: String,
     /// Text style
     pub style: Style,
 
@@ -50,7 +51,7 @@ impl Text {
     fn text_and_style<'a>(
         &'a self,
         entry: &Entry,
-        children: &'a [WidgetContainer],
+        children: Vec<&'a WidgetContainer>,
     ) -> (&'a str, Style) {
         let widget_index = match entry {
             Entry::All { index, .. } => index,
@@ -77,7 +78,7 @@ impl Text {
     fn paint_line(
         &self,
         range: &mut std::ops::Range<usize>,
-        children: &[WidgetContainer],
+        children: Vec<&WidgetContainer>,
         y: usize,
         ctx: &mut PaintCtx<'_, WithSize>,
     ) {
@@ -125,12 +126,12 @@ impl Widget for Text {
         data: &BucketRef<'_>,
     ) -> Result<Size> {
         let bucket = data.read();
-        if let Some(Value::Wrap(wrap)) = self.wrap_attrib.load(&bucket) {
-            self.wrap = *wrap;
+        if let Some(Value::String(wrap)) = self.word_wrap_attrib.load(&bucket) {
+            self.word_wrap = Wrap::from(wrap.as_str());
         }
 
-        if let Some(Value::TextAlignment(align)) = self.text_alignment_attrib.load(&bucket) {
-            self.text_alignment = *align;
+        if let Some(Value::String(align)) = self.text_alignment_attrib.load(&bucket) {
+            self.text_alignment = TextAlignment::from(align.as_str());
         }
 
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
@@ -140,7 +141,7 @@ impl Widget for Text {
 
         drop(bucket);
 
-        while let Some(mut span) = children.next(data).transpose()? {
+        while let Some((span, children)) = children.next(data).transpose()? {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
                 continue;
@@ -150,7 +151,6 @@ impl Widget for Text {
                 continue;
             };
             self.layout.process(inner_span.text.as_str());
-            children.push(span);
         }
 
         Ok(self.layout.size())
@@ -159,6 +159,7 @@ impl Widget for Text {
     fn paint<'ctx>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
         let mut y = 0;
         let mut range = 0..0;
+        let children = children.iter_mut().map(|(c, _)| &*c).collect::<Vec<_>>();
         for entry in &self.layout.lines.inner {
             match entry {
                 Entry::All { .. } | Entry::Range(_) => range.end += 1,
@@ -244,13 +245,15 @@ impl WidgetFactory for TextFactory {
         //     widget.text = values.text_to_string(text).to_string();
         // }
 
+        let text = data.text.map(|s| s.load_string(data.bucket));
+
         let mut widget = Text {
             word_wrap: Wrap::Normal,
             word_wrap_attrib,
             text_alignment: TextAlignment::Left,
             text_alignment_attrib,
             style: Style::new(),
-            layout: TextLayout::new(),
+            layout: TextLayout::ZERO,
             text: data.text.unwrap_or(TextPath::empty()),
         };
 

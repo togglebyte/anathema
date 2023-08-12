@@ -3,6 +3,11 @@ use crate::slab::Slab;
 use crate::ValueRef;
 use crate::hashmap::{HashMap, IntMap};
 
+pub enum ScopeValue {
+    Ref(ValueRef<T>),
+    Static(T),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(transparent)]
 pub struct ScopeId(usize);
@@ -70,7 +75,7 @@ impl<T> Scopes<T> {
         &self,
         path: PathId,
         scope_id: impl Into<Option<ScopeId>>,
-    ) -> Option<ValueRef<T>> {
+    ) -> Option<ScopeValue<T>> {
         let scope = scope_id.into().and_then(|id| self.scopes.get(id.0));
 
         scope
@@ -81,7 +86,7 @@ impl<T> Scopes<T> {
 }
 
 #[derive(Debug)]
-struct Scope<T>(IntMap<ValueRef<T>>);
+struct Scope<T>(IntMap<ScopeValue<T>>);
 
 impl<T> Scope<T> {
     fn new() -> Self {
@@ -92,16 +97,18 @@ impl<T> Scope<T> {
         self.0.get(&path.0)
     }
 
-    fn insert(&mut self, path: PathId, value: ValueRef<T>) {
+    fn insert(&mut self, path: PathId, value: ScopeValue<T>) {
         self.0.insert(path.0, value);
     }
 }
 
-impl<T> Clone for Scope<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
+// TODO: does Scope needs to be clone? 
+//       if it contains static values then that would be a bad idea without Arc
+// impl<T> Clone for Scope<T> {
+//     fn clone(&self) -> Self {
+//         Self(self.0.clone())
+//     }
+// }
 
 #[cfg(test)]
 mod test {

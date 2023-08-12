@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anathema_generator::ExpressionAttribute;
 use anathema_render::Color;
 use anathema_values::{Container, Path, PathId};
-use anathema_widget_core::{Align, Axis, Direction, Display, TextPath, Value};
+use anathema_widget_core::{Align, Axis, Direction, Display, Value};
 
 use super::fields;
 use super::parser::{parse_path, parse_to_fragments};
@@ -28,9 +28,9 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         let next = self.lexer.next()?.0;
 
         let value = match next {
-            Kind::String(val) => match parse_to_fragments(val, self.constants) {
-                TextPath::String(s) => Value::String(s),
-                TextPath::Fragments(fragments) => Value::Fragments(fragments),
+            Kind::String(val) =>  {
+                let attributes = parse_to_fragments(val, self.constants);
+                return Ok(ExpressionAttribute::List(attributes));
             },
             Kind::Hex(r, g, b) => Value::Color(Color::Rgb { r, g, b }),
             Kind::Ident(b @ (TRUE | FALSE)) => Value::Bool(b == TRUE),

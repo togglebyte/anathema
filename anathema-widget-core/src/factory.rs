@@ -6,7 +6,7 @@ use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
 use crate::widget::AnyWidget;
-use crate::{TextPath, WidgetContainer};
+use crate::WidgetContainer;
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
 

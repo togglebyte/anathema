@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, List, PathId, ScopeId, Truthy, Container, ValueRef};
+use anathema_values::{BucketRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
 
 use crate::attribute::Attribute;
 use crate::expression::{EvaluationContext, FromContext};
@@ -47,6 +47,15 @@ impl<Output: FromContext> LoopState<Output> {
         parent: &NodeId,
     ) -> Option<Result<(), Output::Err>> {
         let value_read = bucket.read();
+
+        let value = match &self.collection {
+            Attribute::Dyn(col) => value_read
+                .getv2::<List<_>>(*col)?
+                .iter()
+                .skip(self.value_index)
+                .next()?,
+        };
+
         let collection = match &self.collection {
             Attribute::Dyn(col) => value_read.getv2::<List<_>>(*col)?,
             Attribute::Static(val) => {
@@ -56,6 +65,7 @@ impl<Output: FromContext> LoopState<Output> {
                     _ => return None,
                 }
             }
+            Attribute::List(attribs) => {}
         };
 
         // No more items to produce

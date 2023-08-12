@@ -5,7 +5,7 @@ pub use bucket::{Bucket, BucketMut, BucketRef, ReadOnly};
 
 pub use crate::notifier::{Listen, Listeners};
 pub use crate::path::{Path, PathId};
-pub use crate::scopes::ScopeId;
+pub use crate::scopes::{ScopeValue, ScopeId};
 pub use crate::slab::Slab;
 pub use crate::values::{AsSlice, List, Map, Truthy, Container, ValueRef};
 

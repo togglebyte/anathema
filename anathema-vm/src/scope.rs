@@ -1,7 +1,7 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{ControlFlowExpr, Expression, ExpressionAttributes};
+use anathema_generator::{ControlFlowExpr, Expression, ExpressionAttributes, TextExpr};
 use anathema_values::BucketMut;
-use anathema_widget_core::{TextPath, Value, WidgetContainer, WidgetMeta};
+use anathema_widget_core::{Value, WidgetContainer, WidgetMeta};
 
 use crate::error::Result;
 use crate::Expressions;
@@ -127,7 +127,7 @@ impl<'vm> Scope<'vm> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = ExpressionAttributes::empty();
-        let mut text = None::<TextPath>;
+        let mut text = None::<TextExpr>;
         let mut ip = 0;
 
         loop {
@@ -137,7 +137,7 @@ impl<'vm> Scope<'vm> {
                     let value = self.consts.lookup_value(*value).expect(FILE_BUG_REPORT);
                     attributes.set(key.to_string(), value.clone());
                 }
-                Some(Instruction::LoadText(i)) => text = self.consts.lookup_text(*i).cloned(),
+                Some(Instruction::LoadText(i)) => text = self.consts.lookup_value(*i).cloned(),
                 _ => break,
             }
             ip += 1;

@@ -1,5 +1,5 @@
 use anathema_values::{Path, Slab, PathId};
-use anathema_widget_core::{TextPath, Value};
+use anathema_widget_core::Value;
 use anathema_generator::ExpressionAttribute;
 pub(crate) use storage::Storage;
 
@@ -43,10 +43,6 @@ impl Constants {
         self.strings.push(string.into())
     }
 
-    pub(crate) fn store_text(&mut self, text: TextPath) -> TextId {
-        self.texts.push(text)
-    }
-
     pub fn paths(&self) -> impl Iterator<Item = &Path> + '_ {
         self.paths.iter()
     }
@@ -61,10 +57,6 @@ impl Constants {
 
     pub fn lookup_string(&self, index: StringId) -> Option<&str> {
         self.strings.get(index).map(String::as_str)
-    }
-
-    pub fn lookup_text(&self, index: TextId) -> Option<&TextPath> {
-        self.texts.get(index)
     }
 
     pub fn lookup_value(&self, index: ValueId) -> Option<&ExpressionAttribute<Value>> {

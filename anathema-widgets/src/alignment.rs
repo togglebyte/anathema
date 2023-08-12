@@ -4,7 +4,7 @@ use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Align, Layouts};
 use anathema_widget_core::{
-    AnyWidget, Nodes, Pos, ReadOnly, TextPath, Value, Widget, WidgetContainer, WidgetFactory, BucketRef,
+    AnyWidget, Nodes, Pos, ReadOnly, Value, Widget, WidgetContainer, WidgetFactory, BucketRef,
 };
 
 use crate::layout::single::Single;
