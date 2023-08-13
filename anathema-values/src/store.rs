@@ -58,6 +58,8 @@ impl<T> Store<T> {
 
 // -----------------------------------------------------------------------------
 //   - Bucket ref -
+//
+//   This is for the node generator
 // -----------------------------------------------------------------------------
 pub struct StoreRef<'a, T> {
     values: &'a RwLock<GenerationSlab<Container<T>>>,
@@ -87,8 +89,8 @@ impl<'a, T> StoreRef<'a, T> {
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> Option<&Container<T>> {
-        self.scopes.read().get(path_id, scope)
+    ) -> Option<ScopeValue<T>> {
+        self.scopes.read().get(path_id, scope).cloned()
     }
 
     /// Try to get a value by path.
@@ -98,17 +100,17 @@ impl<'a, T> StoreRef<'a, T> {
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> &Container<T> {
-        match self.by_path(path_id, scope) {
+    ) -> ScopeValue<T> {
+        match self.by_path(path_id, scope).clone() {
             Some(val) => val,
             None => {
-                self.values.write().push(Container::Empty);
-                self.by_path(path_id, scope).expect("value is guaranteed to exist here")
+                let value_ref = self.values.write().push(Container::Empty);
+                ScopeValue::Dyn(value_ref)
             }
         }
     }
 
-    pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
+    pub fn new_scope(&self, parent: ScopeId) -> ScopeId {
         self.scopes.write().new_scope(parent)
     }
 
@@ -158,6 +160,8 @@ impl<'a, T> ReadOnly<'a, T> {
 
 // -----------------------------------------------------------------------------
 //   - Bucket mut -
+//
+//   This is what is exposed to the user of the runtime
 // -----------------------------------------------------------------------------
 pub struct StoreMut<'a, T> {
     slab: RwLockWriteGuard<'a, GenerationSlab<Container<T>>>,
@@ -171,7 +175,7 @@ impl<'a, T> StoreMut<'a, T> {
         self.slab.remove(value_ref.index)
     }
 
-    pub fn push(&mut self, value: T) -> ValueRef<T> {
+    pub fn push(&mut self, value: T) -> ValueRef<Container<T>> {
         self.slab.push(Container::Value(value))
     }
 
@@ -189,58 +193,55 @@ impl<'a, T> StoreMut<'a, T> {
     where
         V: IntoValue<T>,
     {
-        // a
-        // a.b.c
-
         let path = path.into();
         let path_id = self.paths.write().get_or_insert(path);
-        self.insert(path_id, value)
+        self.insert_dyn(path_id, value)
     }
 
     /// Insert a value at a given path id.
     /// The value is inserted into the root scope,
-    /// (A `BucketMut` should never operate on anything but the root scope.)
-    pub fn insert<V>(&mut self, path_id: PathId, value: V) -> ValueRef<Container<T>>
+    /// (A `BucketMut` should never operate on anything other than the root scope.)
+    pub fn insert_dyn<V>(&mut self, path_id: PathId, value: V) -> ValueRef<Container<T>>
     where
         V: IntoValue<T>,
     {
         let value = value.into_value(&mut *self);
         let value_ref = self.slab.push(value);
-        self.scopes.insert(path_id, value_ref, None);
+        self.scopes.insert(path_id, ScopeValue::Dyn(value_ref), None);
         value_ref
     }
 
-    // TODO: rename this to something more sensible
-    pub fn getv2<V>(&self, path: impl Into<Path>) -> Option<&V::Output>
-    where
-        V: TryFromValue<T>,
-    {
-        let path = path.into();
-        let path_id = self.paths.write().get_or_insert(path);
-        self.get(path_id).and_then(|v| V::from_value(v))
-    }
+    // // TODO: rename this to something more sensible
+    // pub fn getv2<V>(&self, path: impl Into<Path>) -> Option<&V::Output>
+    // where
+    //     V: TryFromValue<T>,
+    // {
+    //     let path = path.into();
+    //     let path_id = self.paths.write().get_or_insert(path);
+    //     self.get(path_id).and_then(|v| V::from_value(v))
+    // }
 
-    // TODO: rename this, you know the drill
-    pub fn getv2_mut<V>(&mut self, path: impl Into<Path>) -> Option<&mut V::Output>
-    where
-        V: TryFromValueMut<T>,
-    {
-        let path = path.into();
-        let path_id = self.paths.write().get_or_insert(path);
-        self.get_mut(path_id).and_then(|v| V::from_value(v))
-    }
+    // // TODO: rename this, you know the drill
+    // pub fn getv2_mut<V>(&mut self, path: impl Into<Path>) -> Option<&mut V::Output>
+    // where
+    //     V: TryFromValueMut<T>,
+    // {
+    //     let path = path.into();
+    //     let path_id = self.paths.write().get_or_insert(path);
+    //     self.get_mut(path_id).and_then(|v| V::from_value(v))
+    // }
 
-    pub fn get(&self, path_id: PathId) -> Option<&Generation<Container<T>>> {
-        let value_ref = self.scopes.get(path_id, None)?;
-        self.slab
-            .get(value_ref.index)
-            .filter(|val| val.compare_generation(value_ref.gen))
-    }
+    // pub fn get(&self, path_id: PathId) -> Option<&Generation<Container<T>>> {
+    //     let ScopeValue::Dyn(value_ref) = self.scopes.get(path_id, None)? else { return None };
+    //     self.slab
+    //         .get(value_ref.index)
+    //         .filter(|val| val.compare_generation(value_ref.gen))
+    // }
 
-    pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Container<T>>> {
-        let value_ref = self.scopes.get(path_id, None)?;
-        self.by_ref_mut(value_ref)
-    }
+    // pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Container<T>>> {
+    //     let value_ref = self.scopes.get(path_id, None)?;
+    //     self.by_ref_mut(value_ref)
+    // }
 
     pub fn by_ref_mut(
         &mut self,

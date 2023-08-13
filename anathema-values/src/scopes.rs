@@ -7,8 +7,18 @@ use crate::{Container, ValueRef};
 
 pub enum ScopeValue<T> {
     Static(Arc<T>),
-    Dyn(ValueRef<T>),
+    Dyn(ValueRef<Container<T>>),
     List(Box<[ScopeValue<T>]>),
+}
+
+impl<T> Clone for ScopeValue<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Static(val) => Self::Static(val.clone()),
+            Self::Dyn(val) => Self::Dyn(*val),
+            Self::List(list) => Self::List(list.clone()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -29,31 +39,20 @@ pub struct Scopes<T> {
 impl<T> Scopes<T> {
     pub fn with_capacity(cap: usize) -> Self {
         Self {
-            root: Scope::new(),
+            root: Scope::root(),
             scopes: Slab::with_capacity(cap),
         }
     }
 
     pub fn new() -> Self {
         Self {
-            root: Scope::new(),
+            root: Scope::root(),
             scopes: Slab::empty(),
         }
     }
 
-    pub(crate) fn new_scope(&mut self, parent: impl Into<Option<ScopeId>>) -> ScopeId {
-        match parent.into() {
-            Some(scope_id) => {
-                let parent_scope = self.scopes[scope_id.0].clone();
-                self.scopes.push(parent_scope).into()
-            }
-            None => self.scopes.push(Scope::new()).into(),
-        }
-    }
-
-    pub(crate) fn new_scope_from(&mut self, scope_id: ScopeId) -> ScopeId {
-        let scope = self.scopes[scope_id.0].clone();
-        self.scopes.push(scope).into()
+    pub(crate) fn new_scope(&mut self, parent_id: ScopeId) -> ScopeId {
+        self.scopes.push(Scope::new(parent_id)).into()
     }
 
     pub(crate) fn insert(
@@ -70,15 +69,15 @@ impl<T> Scopes<T> {
         scope.insert(path_id, value);
     }
 
-    pub fn remove(&mut self, scope_id: impl Into<ScopeId>) -> Container<T> {
-        self.scopes.remove(scope_id.into().0)
+    pub fn remove(&mut self, scope_id: impl Into<ScopeId>) {
+        let _ = self.scopes.remove(scope_id.into().0);
     }
 
     pub(crate) fn get(
         &self,
         path: PathId,
         scope_id: impl Into<Option<ScopeId>>,
-    ) -> Option<&Container<T>> {
+    ) -> Option<&ScopeValue<T>> {
         let scope = scope_id.into().and_then(|id| self.scopes.get(id.0));
         scope
             .and_then(|scope| scope.get(path))
@@ -86,30 +85,34 @@ impl<T> Scopes<T> {
     }
 }
 
-#[derive(Debug)]
-struct Scope<T>(IntMap<ScopeValue<T>>);
-
-impl<T> Scope<T> {
-    fn new() -> Self {
-        Self(Default::default())
-    }
-
-    fn get(&self, path: PathId) -> Option<&Container<T>> {
-        self.0.get(&path.0)
-    }
-
-    fn insert(&mut self, path: PathId, value: Container<T>) {
-        self.0.insert(path.0, value);
-    }
+struct Scope<T> {
+    values: IntMap<ScopeValue<T>>,
+    parent: Option<ScopeId>,
 }
 
-// TODO: does Scope needs to be clone?
-//       if it contains static values then that would be a bad idea without Arc
-// impl<T> Clone for Scope<T> {
-//     fn clone(&self) -> Self {
-//         Self(self.0.clone())
-//     }
-// }
+impl<T> Scope<T> {
+    fn root() -> Self {
+        Self {
+            values: Default::default(),
+            parent: None,
+        }
+    }
+
+    fn new(parent: ScopeId) -> Self {
+        Self {
+            values: Default::default(),
+            parent: Some(parent),
+        }
+    }
+
+    fn get(&self, path: PathId) -> Option<&ScopeValue<T>> {
+        self.values.get(&path.0)
+    }
+
+    fn insert(&mut self, path: PathId, value: ScopeValue<T>) {
+        self.values.insert(path.0, value);
+    }
+}
 
 #[cfg(test)]
 mod test {

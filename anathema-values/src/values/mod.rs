@@ -68,9 +68,9 @@ pub trait Truthy {
 impl<T: Truthy> Truthy for Container<T> {
     fn is_true(&self) -> bool {
         match self {
-            Container::Static(val) => val.is_true(),
+            Container::Value(val) => val.is_true(),
             Container::List(l) => l.is_empty(),
-            Container::Map(m) => m.is_empty(),
+            // Container::Map(m) => m.is_empty(),
             _ => false,
         }
     }

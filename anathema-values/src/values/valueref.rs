@@ -8,7 +8,7 @@ use crate::path::PathId;
 pub use crate::values::{Container};
 
 /// A value reference.
-/// Used an index to lookup values
+/// Used an index to lookup values.
 pub struct ValueRef<T> {
     pub(crate) index: usize,
     pub(crate) gen: usize,
