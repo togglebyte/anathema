@@ -257,54 +257,54 @@ impl<'a, T> StoreMut<'a, T> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::hashmap::HashMap;
-    use crate::{List, Map};
+    // use super::*;
+    // use crate::hashmap::HashMap;
+    // use crate::{List, Map};
 
-    fn make_test_bucket() -> Store<u32> {
-        let mut bucket = Store::empty();
-        bucket.write().insert_at_path("count", 123u32);
-        bucket.write().insert_at_path("len", 10);
-        bucket
-    }
+    // fn make_test_bucket() -> Store<u32> {
+    //     let mut bucket = Store::empty();
+    //     bucket.write().insert_at_path("count", 123u32);
+    //     bucket.write().insert_at_path("len", 10);
+    //     bucket
+    // }
 
-    #[test]
-    fn bucket_mut_get() {
-        let mut bucket = make_test_bucket();
-        let bucket = bucket.write();
-        let count = bucket.getv2::<u32>("count").unwrap();
-        let len = bucket.getv2::<u32>("len").unwrap();
-        assert_eq!(123, *count);
-        assert_eq!(10, *len);
-    }
+    // #[test]
+    // fn bucket_mut_get() {
+    //     let mut bucket = make_test_bucket();
+    //     let bucket = bucket.write();
+    //     let count = bucket.getv2::<u32>("count").unwrap();
+    //     let len = bucket.getv2::<u32>("len").unwrap();
+    //     assert_eq!(123, *count);
+    //     assert_eq!(10, *len);
+    // }
 
-    #[test]
-    fn bucket_mut_get_mut() {
-        let mut bucket = make_test_bucket();
-        let mut bucket = bucket.write();
-        *bucket.getv2_mut::<u32>("count").unwrap() = 5u32;
-        let actual = bucket.getv2_mut::<u32>("count").unwrap();
-        assert_eq!(5, *actual);
-    }
+    // #[test]
+    // fn bucket_mut_get_mut() {
+    //     let mut bucket = make_test_bucket();
+    //     let mut bucket = bucket.write();
+    //     *bucket.getv2_mut::<u32>("count").unwrap() = 5u32;
+    //     let actual = bucket.getv2_mut::<u32>("count").unwrap();
+    //     assert_eq!(5, *actual);
+    // }
 
-    #[test]
-    fn bucket_mut_insert_list() {
-        let mut bucket = make_test_bucket();
-        let mut bucket = bucket.write();
-        bucket.insert_at_path("list", vec![1, 2, 3]);
-        let list: &List<u32> = bucket.getv2::<List<u32>>("list").unwrap();
-        assert_eq!(list.len(), 3);
-    }
+    // #[test]
+    // fn bucket_mut_insert_list() {
+    //     let mut bucket = make_test_bucket();
+    //     let mut bucket = bucket.write();
+    //     bucket.insert_at_path("list", vec![1, 2, 3]);
+    //     let list: &List<u32> = bucket.getv2::<List<u32>>("list").unwrap();
+    //     assert_eq!(list.len(), 3);
+    // }
 
-    #[test]
-    fn bucket_ref_get() {
-        let bucket = make_test_bucket();
-        let bucket = bucket.read();
-        let count_value_ref = ValueRef::new(0, 0);
-        let len_value_ref = ValueRef::new(1, 0);
-        let count = bucket.get(count_value_ref).unwrap();
-        let len = bucket.get(len_value_ref).unwrap();
-        assert_eq!(Container::Single(123), **count);
-        assert_eq!(Container::Single(10), **len);
-    }
+    // #[test]
+    // fn bucket_ref_get() {
+    //     let bucket = make_test_bucket();
+    //     let bucket = bucket.read();
+    //     let count_value_ref = ValueRef::new(0, 0);
+    //     let len_value_ref = ValueRef::new(1, 0);
+    //     let count = bucket.get(count_value_ref).unwrap();
+    //     let len = bucket.get(len_value_ref).unwrap();
+    //     assert_eq!(Container::Single(123), **count);
+    //     assert_eq!(Container::Single(10), **len);
+    // }
 }

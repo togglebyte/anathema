@@ -32,7 +32,10 @@ impl<T> Hash for ValueRef<T> {
 }
 
 impl<T> Eq for ValueRef<T> {
-    fn assert_receiver_is_total_eq(&self) {}
+    fn assert_receiver_is_total_eq(&self) {
+        self.index.assert_receiver_is_total_eq();
+        self.gen.assert_receiver_is_total_eq();
+    }
 }
 
 impl<T> PartialEq for ValueRef<T> {
