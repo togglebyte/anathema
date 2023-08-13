@@ -52,8 +52,8 @@ impl<T> Scopes<T> {
         }
     }
 
-    pub(crate) fn new_scope(&mut self, parent_id: Option<ScopeId>) -> ScopeId {
-        self.scopes.push(Scope::new(parent_id)).into()
+    pub(crate) fn new_scope(&mut self, parent_id: impl Into<Option<ScopeId>>) -> ScopeId {
+        self.scopes.push(Scope::new(parent_id.into())).into()
     }
 
     pub(crate) fn insert(
@@ -80,9 +80,11 @@ impl<T> Scopes<T> {
         scope_id: impl Into<Option<ScopeId>>,
     ) -> Option<&ScopeValue<T>> {
         let scope = scope_id.into().and_then(|id| self.scopes.get(id.0));
-        scope
-            .and_then(|scope| scope.get(path))
-            .or_else(|| self.root.get(path))
+
+        match scope {
+            Some(scope) => scope.get(path).or_else(|| self.get(path, scope.parent)),
+            None => self.root.get(path),
+        }
     }
 }
 
@@ -99,10 +101,10 @@ impl<T> Scope<T> {
         }
     }
 
-    fn new(parent: ScopeId) -> Self {
+    fn new(parent: Option<ScopeId>) -> Self {
         Self {
             values: Default::default(),
-            parent: Some(parent),
+            parent,
         }
     }
 
@@ -132,7 +134,7 @@ mod test {
 
     #[test]
     fn add_value_to_inner_scope() {
-        let outer = ScopeValue::Static(0);
+        let outer = ScopeValue::Static(0.into());
         let path = PathId::from(0);
         let mut scopes = Scopes::new();
         scopes.insert(path, outer.clone(), None);
@@ -141,8 +143,8 @@ mod test {
         // inner scope to the reader of the test.
         // It has no significance on the scope what so ever
         {
-            let inner = ScopeValue::Static(1);
-            let scope_id = scopes.new_scope();
+            let inner = ScopeValue::Static(1.into());
+            let scope_id = scopes.new_scope(None);
             scopes.insert(path, inner.clone(), scope_id);
             let actual = scopes.get(path, scope_id).unwrap();
             assert_eq!(inner, *actual);
@@ -152,40 +154,44 @@ mod test {
         assert_eq!(outer, *actual);
     }
 
-    // #[test]
-    // fn scope_from_scope() {
-    //     let val = ValueRef::<()>::new(0, 0);
-    //     let mut scopes = Scopes::new();
-    //     scopes.insert(0.into(), val, None);
+    #[test]
+    fn scope_from_scope() {
+        let val = ScopeValue::Static(0.into());
+        let mut scopes = Scopes::new();
+        // Root scope insert
+        scopes.insert(0.into(), val, None);
 
-    //     let depth_1 = scopes.new_scope(None);
-    //     let value_ref_1 = ValueRef::<()>::new(1, 0);
-    //     scopes.insert(0.into(), value_ref_1, depth_1);
+        // Scope 1
+        let scope_1 = scopes.new_scope(None);
+        let val_1 = ScopeValue::Static(1.into());
+        scopes.insert(0.into(), val_1.clone(), scope_1);
 
-    //     let depth_2 = scopes.new_scope(None);
-    //     scopes.insert(0.into(), ValueRef::<()>::new(2, 0), depth_2);
+        // Scope 2
+        let scope_2 = scopes.new_scope(None);
+        scopes.insert(0.into(), ScopeValue::Static(3.into()), scope_2);
 
-    //     let depth_1_1 = scopes.new_scope(depth_1);
-    //     let value_ref_2 = ValueRef::<()>::new(3, 0);
-    //     scopes.insert(1.into(), value_ref_2, depth_1_1);
+        // Scope 1.1
+        let scope_1_1 = scopes.new_scope(scope_1);
+        let val_2 = ScopeValue::Static(3.into());
+        scopes.insert(1.into(), val_2.clone(), scope_1_1);
 
-    //     assert_eq!(value_ref_1, scopes.get(0.into(), depth_1_1).unwrap());
-    //     assert_eq!(value_ref_2, scopes.get(1.into(), depth_1_1).unwrap());
-    // }
+        assert_eq!(val_1, *scopes.get(0.into(), scope_1_1).unwrap());
+        assert_eq!(val_2, *scopes.get(1.into(), scope_1_1).unwrap());
+    }
 
-    // #[test]
-    // fn remove_scope() {
-    //     let path = PathId::from(0);
+    #[test]
+    fn remove_scope() {
+        let path = PathId::from(0);
 
-    //     let mut scopes = Scopes::new();
+        let mut scopes = Scopes::new();
 
-    //     let scope_id = scopes.new_scope(None);
-    //     scopes.insert(path, ValueRef::<()>::new(1, 0), scope_id);
-    //     let actual = scopes.get(path, scope_id);
-    //     assert!(actual.is_some());
-    //     scopes.remove(scope_id);
+        let scope_id = scopes.new_scope(None);
+        scopes.insert(path, ScopeValue::Static(1.into()), scope_id);
+        let actual = scopes.get(path, scope_id);
+        assert!(actual.is_some());
+        scopes.remove(scope_id);
 
-    //     let actual = scopes.get(path, scope_id);
-    //     assert!(actual.is_none());
-    // }
+        let actual = scopes.get(path, scope_id);
+        assert!(actual.is_none());
+    }
 }

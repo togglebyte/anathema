@@ -110,7 +110,7 @@ impl<'a, T> StoreRef<'a, T> {
         }
     }
 
-    pub fn new_scope(&self, parent: ScopeId) -> ScopeId {
+    pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
         self.scopes.write().new_scope(parent)
     }
 
