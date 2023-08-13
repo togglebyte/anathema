@@ -1,27 +1,27 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use anathema_values::{BucketRef, Listen, ScopeId};
+use anathema_values::{StoreRef, Listen, ScopeId};
 
-use crate::attribute::ExpressionAttributes;
-use crate::{FromContext, NodeId, Attribute, ExpressionAttribute};
+use crate::attribute::ExpressionValue;
+use crate::{FromContext, NodeId, Attribute, ExpressionValue};
 
 pub struct DataCtx<'a, T: FromContext> {
-    pub bucket: &'a BucketRef<'a, T::Value>,
+    pub bucket: &'a StoreRef<'a, T::Value>,
     node_id: &'a NodeId,
     scope: Option<ScopeId>,
     inner: &'a T::Ctx,
-    attributes: &'a ExpressionAttributes<T::Value>,
+    attributes: &'a ExpressionValue<T::Value>,
     _p: PhantomData<T::Notifier>,
 }
 
 impl<'a, T: FromContext> DataCtx<'a, T> {
     pub fn new(
-        bucket: &'a BucketRef<'a, T::Value>,
+        bucket: &'a StoreRef<'a, T::Value>,
         node_id: &'a NodeId,
         scope: Option<ScopeId>,
         inner: &'a T::Ctx,
-        attributes: &'a ExpressionAttributes<T::Value>,
+        attributes: &'a ExpressionValue<T::Value>,
     ) -> Self {
         Self {
             bucket,
@@ -35,7 +35,7 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
 
     pub fn get(&self, key: &str) -> Attribute<T::Value> {
         match self.attributes.get(key) {
-            Some(ExpressionAttribute::Dyn(path)) => {
+            Some(ExpressionValue::Dyn(path)) => {
                 let val = self.bucket.by_path_or_empty(*path, self.scope);
                 // subscribe to value
                 T::Notifier::subscribe(val, self.node_id.clone());
@@ -48,7 +48,7 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
                 T::Notifier::subscribe(val, self.node_id.clone());
                 Attribute::Dyn(val)
             }
-            Some(ExpressionAttribute::Static(value)) => Attribute::Static(value.clone()),
+            Some(ExpressionValue::Static(value)) => Attribute::Static(value.clone()),
         }
     }
 }

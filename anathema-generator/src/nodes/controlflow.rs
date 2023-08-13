@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, Container, ScopeId, Truthy, ValueRef};
+use anathema_values::{StoreRef, Container, ScopeId, Truthy, ValueRef};
 
 use crate::attribute::Attribute;
 use crate::expression::{ControlFlowExpr, EvaluationContext, FromContext};
@@ -12,7 +12,7 @@ pub(crate) enum ControlFlow<Val> {
 }
 
 impl<Val: Truthy> ControlFlow<Val> {
-    fn eval(&self, bucket: &BucketRef<'_, Val>) -> bool {
+    fn eval(&self, bucket: &StoreRef<'_, Val>) -> bool {
         match self {
             Self::If(Attribute::Dyn(val_ref)) | Self::Else(Some(Attribute::Dyn(val_ref))) => {
                 bucket.check_true(*val_ref)
@@ -49,7 +49,7 @@ impl<Output: FromContext> ControlFlows<Output> {
 
     pub(super) fn next(
         &mut self,
-        bucket: &BucketRef<'_, Output::Value>,
+        bucket: &StoreRef<'_, Output::Value>,
         parent: &NodeId,
     ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         match self.selected_flow {
@@ -92,7 +92,7 @@ impl<Output: FromContext> ControlFlows<Output> {
 
     // Evaluate the condition that is true for this control flow.
     // The index can then be used to select the truthy branch
-    fn eval(&mut self, bucket: &BucketRef<'_, Output::Value>) -> Option<usize> {
+    fn eval(&mut self, bucket: &StoreRef<'_, Output::Value>) -> Option<usize> {
         for (index, (flow, _)) in self.flows.iter().enumerate() {
             if flow.eval(bucket) {
                 return Some(index);

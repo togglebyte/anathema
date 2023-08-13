@@ -1,6 +1,6 @@
 use anathema_values::{Path, Slab, PathId};
 use anathema_widget_core::Value;
-use anathema_generator::ExpressionAttribute;
+use anathema_generator::ExpressionValue;
 pub(crate) use storage::Storage;
 
 use self::paths::Paths;
@@ -47,7 +47,7 @@ impl Constants {
         self.paths.iter()
     }
 
-    pub fn store_value(&mut self, value: ExpressionAttribute<Value>) -> ValueId {
+    pub fn store_value(&mut self, value: ExpressionValue<Value>) -> ValueId {
         self.values.push(value)
     }
 
@@ -59,7 +59,7 @@ impl Constants {
         self.strings.get(index).map(String::as_str)
     }
 
-    pub fn lookup_value(&self, index: ValueId) -> Option<&ExpressionAttribute<Value>> {
+    pub fn lookup_value(&self, index: ValueId) -> Option<&ExpressionValue<Value>> {
         self.values.get(index)
     }
 

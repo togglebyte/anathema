@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use anathema_generator::ExpressionAttribute;
+use anathema_generator::ExpressionValue;
 use anathema_render::Color;
 use anathema_values::{Container, Path, PathId};
 use anathema_widget_core::{Align, Axis, Direction, Display, Value};
 
 use super::fields;
-use super::parser::{parse_path, parse_to_fragments};
+use super::parser::{parse_path, parse_expression_value};
 use crate::error::{ErrorKind, Result};
 use crate::lexer::{Kind, Lexer};
 use crate::Constants;
@@ -24,13 +24,13 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         Self { lexer, constants }
     }
 
-    pub(super) fn parse(&mut self, left: &'src str) -> Result<ExpressionAttribute<Value>> {
+    pub(super) fn parse(&mut self, left: &'src str) -> Result<ExpressionValue<Value>> {
         let next = self.lexer.next()?.0;
 
         let value = match next {
             Kind::String(val) =>  {
-                let attributes = parse_to_fragments(val, self.constants);
-                return Ok(ExpressionAttribute::List(attributes));
+                let attributes = parse_expression_value(val, self.constants);
+                return Ok(ExpressionValue::List(attributes));
             },
             Kind::Hex(r, g, b) => Value::Color(Color::Rgb { r, g, b }),
             Kind::Ident(b @ (TRUE | FALSE)) => Value::Bool(b == TRUE),
@@ -101,7 +101,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
                 if !self.lexer.consume_if(Kind::RDoubleCurly)? {
                     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "}" }));
                 }
-                return Ok(ExpressionAttribute::Dyn(path_id));
+                return Ok(ExpressionValue::Dyn(path_id));
             }
             Kind::Colon
             | Kind::Comma
@@ -123,7 +123,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             | Kind::EOF => return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "" })),
         };
 
-        Ok(ExpressionAttribute::Static(Arc::new(Container::Single(value))))
+        Ok(ExpressionValue::Static(Arc::new(Container::Single(value))))
     }
 
     fn try_parse_path(&mut self, ident: &str) -> Result<PathId> {
@@ -216,7 +216,7 @@ mod test {
 
     #[test]
     fn string_fragments() {
-        let text = parse_to_fragments("a{{b}}");
+        let text = parse_expression_value("a{{b}}");
         let TextPath::Fragments(fragments) = text else {
             panic!()
         };
@@ -227,7 +227,7 @@ mod test {
 
     #[test]
     fn escaped_string() {
-        let text = parse_to_fragments("a\\\"b");
+        let text = parse_expression_value("a\\\"b");
         let TextPath::String(s) = text else { panic!() };
         assert_eq!(s, "a\"b");
     }

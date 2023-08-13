@@ -15,8 +15,8 @@ impl From<usize> for Value {
     }
 }
 
-fn loaded_bucket() -> Bucket<Value> {
-    let mut bucket = Bucket::<Value>::with_capacity(COUNT);
+fn loaded_bucket() -> Store<Value> {
+    let mut bucket = Store::<Value>::with_capacity(COUNT);
     let data = (0..COUNT)
         .map(|i: usize| (i, Value::from(i)))
         .collect::<Vec<_>>();
@@ -30,7 +30,7 @@ fn loaded_bucket() -> Bucket<Value> {
 }
 
 fn mut_bucket_insert_individual(c: &mut Criterion) {
-    let mut bucket = black_box(Bucket::<Value>::with_capacity(COUNT));
+    let mut bucket = black_box(Store::<Value>::with_capacity(COUNT));
     c.bench_function("mut bucket: insert individual", |b| {
         b.iter(|| {
             let mut bucket_mut = bucket.write();

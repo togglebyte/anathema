@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use anathema_generator::{EvaluationContext, Expression, Nodes, NodeId};
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::{Bucket, ReadOnly};
+use anathema_values::{Store, ReadOnly};
 use anathema_vm::Expressions;
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
@@ -31,7 +31,7 @@ pub struct Runtime<E, ER> {
     output: Stdout,
     constraints: Constraints,
     nodes: Nodes<WidgetContainer>,
-    bucket: Bucket<Value>,
+    bucket: Store<Value>,
     events: E,
     event_receiver: ER,
 }
@@ -50,7 +50,7 @@ where
 {
     pub fn new(
         expressions: Expressions,
-        bucket: Bucket<Value>,
+        bucket: Store<Value>,
         events: E,
         event_receiver: ER,
     ) -> Result<Self> {

@@ -87,10 +87,6 @@ impl<T> Slab<T> {
     /// Remove the entry at a given index,
     /// and increment the generation.
     pub fn remove(&mut self, index: Idx) -> T {
-        let Entry::Occupied(_val) = &self.inner[index] else {
-            panic!("removal of vacant entry")
-        };
-
         let mut entry = Entry::Vacant(self.next_id.take());
         self.next_id = Some(index);
         std::mem::swap(&mut self.inner[index], &mut entry);

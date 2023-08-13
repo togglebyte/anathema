@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
+use anathema_values::{StoreRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
 
 use self::controlflow::ControlFlows;
 use self::loops::LoopState;
@@ -104,7 +104,7 @@ where
     /// Generate more nodes if needed (and there is enough information to produce more)
     pub fn next(
         &mut self,
-        bucket: &BucketRef<'_, Output::Value>,
+        bucket: &StoreRef<'_, Output::Value>,
     ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         let nodes = self.inner[self.index..].iter_mut();
 
@@ -167,14 +167,14 @@ mod test {
     }
 
     impl Widget {
-        fn layout(&mut self, bucket: &BucketRef<'_, u32>) {}
+        fn layout(&mut self, bucket: &StoreRef<'_, u32>) {}
     }
 
     impl FromContext for Widget {
         type Ctx = &'static str;
         type Value = u32;
 
-        fn from_context(ctx: &Self::Ctx, bucket: &BucketRef<'_, Self::Value>) -> Option<Self> {
+        fn from_context(ctx: &Self::Ctx, bucket: &StoreRef<'_, Self::Value>) -> Option<Self> {
             let w = Self { ident: ctx };
             Some(w)
         }

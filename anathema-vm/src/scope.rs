@@ -1,6 +1,6 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{ControlFlowExpr, Expression, ExpressionAttributes, TextExpr};
-use anathema_values::BucketMut;
+use anathema_generator::{ControlFlowExpr, Expression, ExpressionValue, TextExpr};
+use anathema_values::StoreMut;
 use anathema_widget_core::{Value, WidgetContainer, WidgetMeta};
 
 use crate::error::Result;
@@ -22,7 +22,7 @@ impl<'vm> Scope<'vm> {
         }
     }
 
-    pub fn exec(&mut self, bucket: &mut BucketMut<'_, Value>) -> Result<Expressions> {
+    pub fn exec(&mut self, bucket: &mut StoreMut<'_, Value>) -> Result<Expressions> {
         let mut nodes = vec![];
 
         if self.instructions.is_empty() {
@@ -122,11 +122,11 @@ impl<'vm> Scope<'vm> {
         &mut self,
         ident: StringId,
         scope_size: usize,
-        bucket: &mut BucketMut<'_, Value>,
+        bucket: &mut StoreMut<'_, Value>,
     ) -> Result<Expression<WidgetContainer>> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
-        let mut attributes = ExpressionAttributes::empty();
+        let mut attributes = ExpressionValue::empty();
         let mut text = None::<TextExpr>;
         let mut ip = 0;
 

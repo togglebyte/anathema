@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anathema_render::Size;
 use anathema_widget_core::{Number, Value, Nodes};
-use anathema_values::{BucketMut, Map, Path};
+use anathema_values::{StoreMut, Map, Path};
 
 use crate::frame::Frame;
 
@@ -63,7 +63,7 @@ impl Meta {
         );
     }
 
-    pub(super) fn update(&mut self, mut bucket: BucketMut<'_, Value>, nodes: &Nodes) {
+    pub(super) fn update(&mut self, mut bucket: StoreMut<'_, Value>, nodes: &Nodes) {
         // let root: Path = META.into();
 
         // let size: Path = root.compose(SIZE);

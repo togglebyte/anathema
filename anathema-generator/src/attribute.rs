@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use anathema_values::hashmap::HashMap;
-use anathema_values::{BucketRef, Container, Listen, PathId, ReadOnly, ScopeId, ValueRef};
+use anathema_values::{StoreRef, Container, Listen, PathId, ReadOnly, ScopeId, ValueRef};
 
 use crate::NodeId;
 
@@ -10,7 +10,7 @@ use crate::NodeId;
 //   - Expression attributes -
 // -----------------------------------------------------------------------------
 pub struct ExpressionAttributes<T> {
-    inner: HashMap<String, ExpressionAttribute<T>>,
+    inner: HashMap<String, ExpressionValue<T>>,
 }
 
 impl<T> ExpressionAttributes<T> {
@@ -20,11 +20,11 @@ impl<T> ExpressionAttributes<T> {
         }
     }
 
-    pub fn set(&mut self, key: impl Into<String>, value: ExpressionAttribute<T>) {
+    pub fn set(&mut self, key: impl Into<String>, value: ExpressionValue<T>) {
         self.inner.insert(key.into(), value);
     }
 
-    pub(crate) fn get(&self, key: impl AsRef<str>) -> Option<&ExpressionAttribute<T>> {
+    pub(crate) fn get(&self, key: impl AsRef<str>) -> Option<&ExpressionValue<T>> {
         self.inner.get(key.as_ref())
     }
 }
@@ -32,21 +32,20 @@ impl<T> ExpressionAttributes<T> {
 // -----------------------------------------------------------------------------
 //   - Expression attribute -
 // -----------------------------------------------------------------------------
-pub enum ExpressionAttribute<T> {
+pub enum ExpressionValue<T> {
     Dyn(PathId),
-    Static(Arc<Container<T>>),
-    List(Arc<[ExpressionAttribute<T>]>),
-    // TODO: add map
+    Static(Arc<T>),
+    List(Box<[ExpressionValue<T>]>),
 }
 
-impl<T> ExpressionAttribute<T> {
+impl<T> ExpressionValue<T> {
     pub fn single(val: T) -> Self {
         Self::Static(Arc::new(Container::Single(val)))
     }
 
     pub(crate) fn to_attrib<N: Listen<Value = T, Key = NodeId>>(
         &self,
-        bucket: &BucketRef<'_, T>,
+        bucket: &StoreRef<'_, T>,
         scope: Option<ScopeId>,
         node_id: &NodeId,
     ) -> Attribute<T> {
@@ -68,7 +67,7 @@ impl<T> ExpressionAttribute<T> {
     }
 }
 
-impl<T> Clone for ExpressionAttribute<T> {
+impl<T> Clone for ExpressionValue<T> {
     fn clone(&self) -> Self {
         match self {
             Self::Dyn(path_id) => Self::Dyn(*path_id),
@@ -82,9 +81,9 @@ impl<T> Clone for ExpressionAttribute<T> {
 //   - Attribute -
 // -----------------------------------------------------------------------------
 pub enum Attribute<T> {
-    Dyn(ValueRef<Container<T>>),
-    Static(Arc<Container<T>>),
-    List(Vec<Attribute<T>>),
+    Dyn(ValueRef<T>),
+    Static(Arc<T>),
+    List(Box<[Attribute<T>]>),
 }
 
 impl<T> Attribute<T> {

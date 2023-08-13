@@ -3,26 +3,23 @@ use parking_lot::{RwLock, RwLockReadGuard, RwLockUpgradableReadGuard, RwLockWrit
 use crate::generation::Generation;
 use crate::notifier::{Action, Notifier};
 use crate::path::Paths;
-use crate::scopes::Scopes;
+use crate::scopes::{Scopes, ScopeValue};
 use crate::slab::GenerationSlab;
 use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
-use crate::{Path, PathId, ScopeId, Truthy, Container, ValueRef};
-
-// TODO: Rename this, "bucket" is a bit of a stupid name here.
-//       Revisit the whole thing, it makes no sense that a BucketRef can return
-//       a ReadOnly since the bucket ref should be read-only by default
+use crate::{Container, Path, PathId, ScopeId, Truthy, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Global bucket -
 // -----------------------------------------------------------------------------
-pub struct Bucket<T> {
+/// A store contains a collection of `Container`s
+pub struct Store<T> {
     values: RwLock<GenerationSlab<Container<T>>>,
-    scopes: RwLock<Scopes<Container<T>>>,
+    scopes: RwLock<Scopes<T>>,
     paths: RwLock<Paths>,
     notifier: Notifier<T>,
 }
 
-impl<T> Bucket<T> {
+impl<T> Store<T> {
     pub fn with_capacity(cap: usize) -> Self {
         let (sender, receiver) = flume::unbounded();
         Self {
@@ -38,8 +35,8 @@ impl<T> Bucket<T> {
     }
 
     /// Write causes a lock
-    pub fn write(&mut self) -> BucketMut<'_, T> {
-        BucketMut {
+    pub fn write(&mut self) -> StoreMut<'_, T> {
+        StoreMut {
             slab: self.values.write(),
             scopes: self.scopes.write(),
             paths: &self.paths,
@@ -50,8 +47,8 @@ impl<T> Bucket<T> {
     /// Read casues a lock.
     /// It's okay to have as many read locks as possible as long
     /// as there is no write lock
-    pub fn read(&self) -> BucketRef<'_, T> {
-        BucketRef {
+    pub fn read(&self) -> StoreRef<'_, T> {
+        StoreRef {
             values: &self.values,
             paths: &self.paths,
             scopes: &self.scopes,
@@ -62,14 +59,14 @@ impl<T> Bucket<T> {
 // -----------------------------------------------------------------------------
 //   - Bucket ref -
 // -----------------------------------------------------------------------------
-pub struct BucketRef<'a, T> {
+pub struct StoreRef<'a, T> {
     values: &'a RwLock<GenerationSlab<Container<T>>>,
     paths: &'a RwLock<Paths>,
-    scopes: &'a RwLock<Scopes<Container<T>>>,
+    scopes: &'a RwLock<Scopes<T>>,
 }
 
-impl<'a, T: Truthy> BucketRef<'a, T> {
-    pub fn check_true(&self, value_ref: ValueRef<Container<T>>) -> bool {
+impl<'a, T: Truthy> StoreRef<'a, T> {
+    pub fn check_true(&self, value_ref: ValueRef<T>) -> bool {
         self.values
             .read()
             .get(value_ref.index)
@@ -79,7 +76,7 @@ impl<'a, T: Truthy> BucketRef<'a, T> {
     }
 }
 
-impl<'a, T> BucketRef<'a, T> {
+impl<'a, T> StoreRef<'a, T> {
     pub fn read(&self) -> ReadOnly<'a, T> {
         ReadOnly {
             inner: self.values.read(),
@@ -90,27 +87,25 @@ impl<'a, T> BucketRef<'a, T> {
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> Option<ValueRef<Container<T>>> {
+    ) -> Option<&Container<T>> {
         self.scopes.read().get(path_id, scope)
     }
 
     /// Try to get a value by path.
-    /// If there is no value at a given path, insert an 
+    /// If there is no value at a given path, insert an
     /// empty value and return the `ValueRef` to that.
     pub fn by_path_or_empty(
         &self,
         path_id: PathId,
         scope: impl Into<Option<ScopeId>>,
-    ) -> ValueRef<Container<T>> {
-        let value_ref = match self.by_path(path_id, scope) {
+    ) -> &Container<T> {
+        match self.by_path(path_id, scope) {
             Some(val) => val,
             None => {
-                let mut values = self.values.write();
-                values.push(Container::Empty)
+                self.values.write().push(Container::Empty);
+                self.by_path(path_id, scope).expect("value is guaranteed to exist here")
             }
-        };
-
-        value_ref
+        }
     }
 
     pub fn new_scope(&self, parent: Option<ScopeId>) -> ScopeId {
@@ -126,10 +121,13 @@ impl<'a, T> BucketRef<'a, T> {
     }
 
     pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {
-        self.paths.read().get(&path.into()).expect("assumed path exists")
+        self.paths
+            .read()
+            .get(&path.into())
+            .expect("assumed path exists")
     }
 
-    pub fn scope_value(&self, path_id: PathId, value: ValueRef<Container<T>>, scope: ScopeId) {
+    pub fn scope_value(&self, path_id: PathId, value: ScopeValue<T>, scope: ScopeId) {
         self.scopes.write().insert(path_id, value, scope)
     }
 }
@@ -161,20 +159,20 @@ impl<'a, T> ReadOnly<'a, T> {
 // -----------------------------------------------------------------------------
 //   - Bucket mut -
 // -----------------------------------------------------------------------------
-pub struct BucketMut<'a, T> {
+pub struct StoreMut<'a, T> {
     slab: RwLockWriteGuard<'a, GenerationSlab<Container<T>>>,
-    scopes: RwLockWriteGuard<'a, Scopes<Container<T>>>,
+    scopes: RwLockWriteGuard<'a, Scopes<T>>,
     paths: &'a RwLock<Paths>,
     notifier: &'a Notifier<T>,
 }
 
-impl<'a, T> BucketMut<'a, T> {
+impl<'a, T> StoreMut<'a, T> {
     pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<Container<T>> {
         self.slab.remove(value_ref.index)
     }
 
-    pub fn push(&mut self, value: T) -> ValueRef<Container<T>> {
-        self.slab.push(Container::Single(value))
+    pub fn push(&mut self, value: T) -> ValueRef<T> {
+        self.slab.push(Container::Value(value))
     }
 
     pub fn insert_path(&mut self, path: impl Into<Path>) -> PathId {
@@ -262,8 +260,8 @@ mod test {
     use crate::hashmap::HashMap;
     use crate::{List, Map};
 
-    fn make_test_bucket() -> Bucket<u32> {
-        let mut bucket = Bucket::empty();
+    fn make_test_bucket() -> Store<u32> {
+        let mut bucket = Store::empty();
         bucket.write().insert_at_path("count", 123u32);
         bucket.write().insert_at_path("len", 10);
         bucket

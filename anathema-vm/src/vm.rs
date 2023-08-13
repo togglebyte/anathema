@@ -1,5 +1,5 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_values::BucketMut;
+use anathema_values::StoreMut;
 use anathema_widget_core::{Value, WidgetMeta};
 
 use crate::Expressions;
@@ -19,7 +19,7 @@ impl VirtualMachine {
         }
     }
 
-    pub fn exec(self, bucket: &mut BucketMut<'_, Value>) -> Result<Expressions> {
+    pub fn exec(self, bucket: &mut StoreMut<'_, Value>) -> Result<Expressions> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
         root_scope.exec(bucket)
     }

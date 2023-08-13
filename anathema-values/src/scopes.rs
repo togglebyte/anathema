@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
+use crate::hashmap::{HashMap, IntMap};
 use crate::path::PathId;
 use crate::slab::Slab;
-use crate::ValueRef;
-use crate::hashmap::{HashMap, IntMap};
+use crate::{Container, ValueRef};
 
-pub enum ScopeValue {
-    Ref(ValueRef<T>),
-    Static(T),
+pub enum ScopeValue<T> {
+    Static(Arc<T>),
+    Dyn(ValueRef<T>),
+    List(Box<[ScopeValue<T>]>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -44,7 +47,7 @@ impl<T> Scopes<T> {
                 let parent_scope = self.scopes[scope_id.0].clone();
                 self.scopes.push(parent_scope).into()
             }
-            None => self.scopes.push(Scope::new()).into()
+            None => self.scopes.push(Scope::new()).into(),
         }
     }
 
@@ -56,7 +59,7 @@ impl<T> Scopes<T> {
     pub(crate) fn insert(
         &mut self,
         path_id: PathId,
-        value: ValueRef<T>,
+        value: ScopeValue<T>,
         scope: impl Into<Option<ScopeId>>,
     ) {
         let scope = scope
@@ -67,21 +70,19 @@ impl<T> Scopes<T> {
         scope.insert(path_id, value);
     }
 
-    pub fn remove(&mut self, scope_id: impl Into<ScopeId>) {
-        self.scopes.remove(scope_id.into().0);
+    pub fn remove(&mut self, scope_id: impl Into<ScopeId>) -> Container<T> {
+        self.scopes.remove(scope_id.into().0)
     }
 
     pub(crate) fn get(
         &self,
         path: PathId,
         scope_id: impl Into<Option<ScopeId>>,
-    ) -> Option<ScopeValue<T>> {
+    ) -> Option<&Container<T>> {
         let scope = scope_id.into().and_then(|id| self.scopes.get(id.0));
-
         scope
             .and_then(|scope| scope.get(path))
             .or_else(|| self.root.get(path))
-            .copied()
     }
 }
 
@@ -93,16 +94,16 @@ impl<T> Scope<T> {
         Self(Default::default())
     }
 
-    fn get(&self, path: PathId) -> Option<&ValueRef<T>> {
+    fn get(&self, path: PathId) -> Option<&Container<T>> {
         self.0.get(&path.0)
     }
 
-    fn insert(&mut self, path: PathId, value: ScopeValue<T>) {
+    fn insert(&mut self, path: PathId, value: Container<T>) {
         self.0.insert(path.0, value);
     }
 }
 
-// TODO: does Scope needs to be clone? 
+// TODO: does Scope needs to be clone?
 //       if it contains static values then that would be a bad idea without Arc
 // impl<T> Clone for Scope<T> {
 //     fn clone(&self) -> Self {

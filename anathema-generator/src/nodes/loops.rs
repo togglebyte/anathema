@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anathema_values::{BucketRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
+use anathema_values::{StoreRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
 
 use crate::attribute::Attribute;
 use crate::expression::{EvaluationContext, FromContext};
@@ -43,7 +43,7 @@ impl<Output: FromContext> LoopState<Output> {
 
     fn load_value(
         &mut self,
-        bucket: &BucketRef<'_, Output::Value>,
+        bucket: &StoreRef<'_, Output::Value>,
         parent: &NodeId,
     ) -> Option<Result<(), Output::Err>> {
         let value_read = bucket.read();
@@ -93,7 +93,7 @@ impl<Output: FromContext> LoopState<Output> {
 
     pub(super) fn next(
         &mut self,
-        bucket: &BucketRef<'_, Output::Value>,
+        bucket: &StoreRef<'_, Output::Value>,
         parent: &NodeId,
     ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         if self.node_index == self.nodes.len() {

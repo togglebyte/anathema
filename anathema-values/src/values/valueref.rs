@@ -3,11 +3,9 @@ use std::fmt::{self, Debug};
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use anathema_render::Color;
-
 use crate::hashmap::HashMap;
 use crate::path::PathId;
-pub use crate::values::{List, Map, Container};
+pub use crate::values::{Container};
 
 /// A value reference.
 /// Used an index to lookup values

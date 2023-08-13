@@ -10,7 +10,6 @@ debuginfo-level = 1
 [dependencies]
 parking_lot = { workspace = true }
 flume = { workspace = true }
-anathema-render = { path = "../anathema-render" }
 integer-hasher = "0.1.1"
 
 [dev-dependencies]

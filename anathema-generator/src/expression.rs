@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
-use anathema_values::{AsSlice, BucketRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef};
+use anathema_values::{AsSlice, StoreRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef};
 
-use crate::attribute::{ExpressionAttribute, Attribute};
+use crate::attribute::{ExpressionValue, Attribute};
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, ExpressionAttributes};
+use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, ExpressionValue};
 
 pub struct EvaluationContext<'a, Val> {
-    bucket: &'a BucketRef<'a, Val>,
+    bucket: &'a StoreRef<'a, Val>,
     scope: Option<ScopeId>,
 }
 
 impl<'a, Val> EvaluationContext<'a, Val> {
-    pub fn new(bucket: &'a BucketRef<'a, Val>, scope: impl Into<Option<ScopeId>>) -> Self {
+    pub fn new(bucket: &'a StoreRef<'a, Val>, scope: impl Into<Option<ScopeId>>) -> Self {
         Self {
             scope: scope.into(),
             bucket,
@@ -22,18 +22,18 @@ impl<'a, Val> EvaluationContext<'a, Val> {
 }
 
 pub enum ControlFlowExpr<T> {
-    If(ExpressionAttribute<T>),
-    Else(Option<ExpressionAttribute<T>>),
+    If(ExpressionValue<T>),
+    Else(Option<ExpressionValue<T>>),
 }
 
 pub enum Expression<Output: FromContext> {
     Node {
         context: Output::Ctx,
         children: Arc<[Expression<Output>]>,
-        attributes: ExpressionAttributes<Output::Value>,
+        attributes: ExpressionValue<Output::Value>,
     },
     Loop {
-        collection: ExpressionAttribute<Output::Value>,
+        collection: ExpressionValue<Output::Value>,
         binding: PathId,
         body: Arc<[Expression<Output>]>,
     },
@@ -63,12 +63,12 @@ impl<Output: FromContext> Expression<Output> {
                 body,
             } => {
                 let collection: Attribute<_> = match collection {
-                    ExpressionAttribute::Dyn(collection) => {
+                    ExpressionValue::Dyn(collection) => {
                         let value_ref = eval.bucket.by_path_or_empty(*collection, eval.scope);
                         Output::Notifier::subscribe(value_ref, node_id.clone());
                         value_ref.into()
                     }
-                    ExpressionAttribute::Static(val) => Attribute::Static(Arc::clone(val)),
+                    ExpressionValue::Static(val) => Attribute::Static(Arc::clone(val)),
                 };
 
                 let scope = eval.bucket.new_scope(eval.scope);
