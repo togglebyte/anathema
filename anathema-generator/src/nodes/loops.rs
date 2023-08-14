@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use anathema_values::{StoreRef, Container, List, PathId, ScopeId, Truthy, ValueRef};
+use anathema_values::{Container, List, PathId, ScopeId, ScopeValue, StoreRef, Truthy, ValueRef};
 
-use crate::attribute::Attribute;
 use crate::expression::{EvaluationContext, FromContext};
 use crate::{Expression, NodeId, NodeKind, Nodes};
 
@@ -13,7 +12,7 @@ enum State {
 
 pub struct LoopState<Output: FromContext> {
     scope: ScopeId,
-    collection: Attribute<Output::Value>,
+    collection: ScopeValue<Output::Value>,
     expressions: Arc<[Expression<Output>]>,
     binding: PathId,
     expression_index: usize,
@@ -26,7 +25,7 @@ impl<Output: FromContext> LoopState<Output> {
     pub(crate) fn new(
         scope: ScopeId,
         binding: PathId,
-        collection: Attribute<Output::Value>,
+        collection: ScopeValue<Output::Value>,
         expressions: Arc<[Expression<Output>]>,
     ) -> Self {
         Self {
@@ -43,44 +42,32 @@ impl<Output: FromContext> LoopState<Output> {
 
     fn load_value(
         &mut self,
-        bucket: &StoreRef<'_, Output::Value>,
+        store: &StoreRef<'_, Output::Value>,
         parent: &NodeId,
     ) -> Option<Result<(), Output::Err>> {
-        let value_read = bucket.read();
+        let value_read = store.read();
 
+        // value = [1, 2, 3]
+        // value = path_id
+        // value = 1
         let value = match &self.collection {
-            Attribute::Dyn(col) => value_read
+            ScopeValue::Dyn(col) => value_read
                 .getv2::<List<_>>(*col)?
                 .iter()
                 .skip(self.value_index)
-                .next()?,
+                .next()
+                .map(|val| ScopeValue::Dyn(*val))?,
+            ScopeValue::List(list) => list.get(self.value_index).cloned()?,
+            ScopeValue::Static(val) => return None,
+            _ => panic!(),
         };
-
-        let collection = match &self.collection {
-            Attribute::Dyn(col) => value_read.getv2::<List<_>>(*col)?,
-            Attribute::Static(val) => {
-                let val: &Container<_> = &*val;
-                match val {
-                    Container::List(ref list) => panic!(),
-                    _ => return None,
-                }
-            }
-            Attribute::List(attribs) => {}
-        };
-
-        // No more items to produce
-        if self.value_index == collection.len() {
-            return None;
-        }
-
-        let value = *collection.iter().skip(self.value_index).next()?;
-        bucket.scope_value(self.binding, value, self.scope);
 
         self.value_index += 1;
+        store.scope_value(self.binding, value, self.scope);
 
         for expr in &*self.expressions {
             let node = match expr.to_node(
-                &EvaluationContext::new(bucket, self.scope),
+                &EvaluationContext::new(store, self.scope),
                 parent.child(self.nodes.len()),
             ) {
                 Ok(node) => self.nodes.push(node),

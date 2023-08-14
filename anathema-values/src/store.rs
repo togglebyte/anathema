@@ -68,7 +68,7 @@ pub struct StoreRef<'a, T> {
 }
 
 impl<'a, T: Truthy> StoreRef<'a, T> {
-    pub fn check_true(&self, value_ref: ValueRef<T>) -> bool {
+    pub fn check_true(&self, value_ref: ValueRef<Container<T>>) -> bool {
         self.values
             .read()
             .get(value_ref.index)

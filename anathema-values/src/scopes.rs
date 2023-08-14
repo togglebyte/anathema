@@ -7,8 +7,8 @@ use crate::{Container, ValueRef};
 
 #[derive(Debug, PartialEq)]
 pub enum ScopeValue<T> {
-    Static(Arc<T>),
     Dyn(ValueRef<Container<T>>),
+    Static(Arc<T>),
     List(Box<[ScopeValue<T>]>),
 }
 

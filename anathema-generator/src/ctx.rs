@@ -1,17 +1,16 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use anathema_values::{StoreRef, Listen, ScopeId};
+use anathema_values::{Listen, ScopeId, ScopeValue, StoreRef};
 
-use crate::attribute::ExpressionValue;
-use crate::{FromContext, NodeId, Attribute, ExpressionValue};
+use crate::{ExpressionValue, ExpressionValues, FromContext, NodeId};
 
 pub struct DataCtx<'a, T: FromContext> {
     pub bucket: &'a StoreRef<'a, T::Value>,
     node_id: &'a NodeId,
     scope: Option<ScopeId>,
     inner: &'a T::Ctx,
-    attributes: &'a ExpressionValue<T::Value>,
+    attributes: &'a ExpressionValues<T::Value>,
     _p: PhantomData<T::Notifier>,
 }
 
@@ -21,7 +20,7 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
         node_id: &'a NodeId,
         scope: Option<ScopeId>,
         inner: &'a T::Ctx,
-        attributes: &'a ExpressionValue<T::Value>,
+        attributes: &'a ExpressionValues<T::Value>,
     ) -> Self {
         Self {
             bucket,
@@ -33,22 +32,30 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
         }
     }
 
-    pub fn get(&self, key: &str) -> Attribute<T::Value> {
+    /// Get the value for widget attribute.
+    /// This is used when composing widgets via the `from_context`.
+    ///
+    /// This will subscribe the widget node to a value.
+    pub fn get(&self, key: &str) -> ScopeValue<T::Value> {
         match self.attributes.get(key) {
-            Some(ExpressionValue::Dyn(path)) => {
-                let val = self.bucket.by_path_or_empty(*path, self.scope);
-                // subscribe to value
-                T::Notifier::subscribe(val, self.node_id.clone());
-                Attribute::Dyn(val)
-            }
+            // Some(ExpressionValue::Dyn(path)) => {
+            //     let val = self.bucketAttribute::Static(value.clone()),.by_path_or_empty(*path, self.scope);
+            //     // subscribe to value
+            //     if let ScopeValue::Dyn(val) = val {
+            //         T::Notifier::subscribe(val, self.node_id.clone());
+            //     }
+            //     val
+            // }
+            Some(val) => val.to_scope_value::<T::Notifier>(self.bucket, self.scope, self.node_id),
             None => {
                 let path = self.bucket.get_or_insert_path(key);
                 let val = self.bucket.by_path_or_empty(path, self.scope);
                 // subscribe to value
-                T::Notifier::subscribe(val, self.node_id.clone());
-                Attribute::Dyn(val)
+                if let ScopeValue::Dyn(val) = val {
+                    T::Notifier::subscribe(val, self.node_id.clone());
+                }
+                val
             }
-            Some(ExpressionValue::Static(value)) => Attribute::Static(value.clone()),
         }
     }
 }

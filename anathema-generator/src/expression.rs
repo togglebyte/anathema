@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
-use anathema_values::{AsSlice, StoreRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef};
+use anathema_values::{AsSlice, StoreRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef, ScopeValue};
 
-use crate::attribute::{ExpressionValue, Attribute};
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, ExpressionValue};
+use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, ExpressionValue, ExpressionValues};
 
 pub struct EvaluationContext<'a, Val> {
-    bucket: &'a StoreRef<'a, Val>,
+    store: &'a StoreRef<'a, Val>,
     scope: Option<ScopeId>,
 }
 
@@ -16,7 +15,7 @@ impl<'a, Val> EvaluationContext<'a, Val> {
     pub fn new(bucket: &'a StoreRef<'a, Val>, scope: impl Into<Option<ScopeId>>) -> Self {
         Self {
             scope: scope.into(),
-            bucket,
+            store: bucket,
         }
     }
 }
@@ -30,7 +29,7 @@ pub enum Expression<Output: FromContext> {
     Node {
         context: Output::Ctx,
         children: Arc<[Expression<Output>]>,
-        attributes: ExpressionValue<Output::Value>,
+        attributes: ExpressionValues<Output::Value>,
     },
     Loop {
         collection: ExpressionValue<Output::Value>,
@@ -41,14 +40,14 @@ pub enum Expression<Output: FromContext> {
 }
 
 impl<Output: FromContext> Expression<Output> {
-    pub fn to_node(
+    pub(crate) fn to_node(
         &self,
         eval: &EvaluationContext<'_, Output::Value>,
         node_id: NodeId,
     ) -> Result<Node<Output>, Output::Err> {
         match self {
             Self::Node { context, children, attributes } => {
-                let context = DataCtx::new(eval.bucket, &node_id, eval.scope, context, attributes);
+                let context = DataCtx::new(eval.store, &node_id, eval.scope, context, attributes);
                 let output = Output::from_context(context)?;
                 let nodes = children
                     .iter()
@@ -62,16 +61,8 @@ impl<Output: FromContext> Expression<Output> {
                 binding,
                 body,
             } => {
-                let collection: Attribute<_> = match collection {
-                    ExpressionValue::Dyn(collection) => {
-                        let value_ref = eval.bucket.by_path_or_empty(*collection, eval.scope);
-                        Output::Notifier::subscribe(value_ref, node_id.clone());
-                        value_ref.into()
-                    }
-                    ExpressionValue::Static(val) => Attribute::Static(Arc::clone(val)),
-                };
-
-                let scope = eval.bucket.new_scope(eval.scope);
+                let collection = collection.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
+                let scope = eval.store.new_scope(eval.scope);
                 let state = LoopState::new(scope, *binding, collection, body.clone());
                 Ok(NodeKind::Collection(state).to_node(node_id))
             }
@@ -80,11 +71,11 @@ impl<Output: FromContext> Expression<Output> {
                 for (cond, expressions) in flows {
                     let cond = match cond {
                         ControlFlowExpr::If(val) => {
-                            let val = val.to_attrib::<Output::Notifier>(eval.bucket, eval.scope, &node_id);
+                            let val = val.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
                             ControlFlow::If(val)
                         }
                         ControlFlowExpr::Else(Some(val)) => {
-                            let val = val.to_attrib::<Output::Notifier>(eval.bucket, eval.scope, &node_id);
+                            let val = val.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
                             ControlFlow::Else(Some(val))
                         }
                         ControlFlowExpr::Else(None) => ControlFlow::Else(None),

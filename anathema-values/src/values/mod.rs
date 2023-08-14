@@ -44,6 +44,17 @@ pub trait TryFromValue<T> {
     fn from_value(val: &Container<T>) -> Option<&Self::Output>;
 }
 
+impl<T> TryFromValue<T> for List<T> {
+    type Output = List<T>;
+
+    fn from_value(val: &Container<T>) -> Option<&Self::Output> {
+        match val {
+            Container::List(list) => Some(list),
+            _ => None
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 //   - From value mut -
 // -----------------------------------------------------------------------------
