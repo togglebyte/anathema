@@ -90,10 +90,10 @@ where
 //     where for<'a> &'a mut T: TryFrom<&'a mut Value> + Clone,
 // {
 //     fn deref_mut(&mut self) -> &mut Self::Target {
-//         match &mut self.source {
-//             ScopeValue::Static(val) => val.try_into().ok(),
-//             ScopeValue::Dyn(_) => &mut self.value,
-//             ScopeValue::List(_) => None,
+//         match self {
+//             Self::Static(val) => val,
+//             Self::Dyn { value, .. } => value,
+//             // Self::List(_) => None,
 //         }
 //     }
 // }

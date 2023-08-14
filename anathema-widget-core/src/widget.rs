@@ -313,8 +313,8 @@ impl FromContext for WidgetContainer {
 
         let data = ctx.bucket.read();
 
-        let display = Cached::<Display>::new(ctx.get("display"), &data);
-        let background = Cached::new(ctx.get("background"), &data);
+        let display = Cached::<Display>::new(display, &data);
+        let background = Cached::new(background, &data);
 
         drop(data);
 

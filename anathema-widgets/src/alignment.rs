@@ -21,8 +21,7 @@ use crate::layout::single::Single;
 /// ```
 pub struct Alignment {
     /// The alignment
-    pub alignment_attrib: Cached<Value>,
-    pub alignment: Align,
+    pub alignment: Cached<Align>,
 }
 
 impl Alignment {
@@ -30,10 +29,9 @@ impl Alignment {
     pub const KIND: &'static str = "Alignment";
 
     /// Create a new instance of an `Alignment` widget
-    pub fn new(alignment_attrib: Attribute<Value>) -> Self {
+    pub fn new(alignment: Cached<Align>) -> Self {
         Self { 
-            alignment_attrib,
-            alignment: Align::Left,
+            alignment,
         }
     }
 }
@@ -49,19 +47,20 @@ impl Widget for Alignment {
         mut ctx: LayoutCtx,
         data: &BucketRef<'_>,
     ) -> Result<Size> {
-        let bucket = data.read();
-        if let Some(Value::Alignment(alignment)) = self.alignment_attrib.load(&bucket) {
-            self.alignment = *alignment;
-        }
+        panic!()
+        // let bucket = data.read();
+        // if let Some(Value::Alignment(alignment)) = self.alignment_attrib.load(&bucket) {
+        //     self.alignment = *alignment;
+        // }
 
-        let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout(children, data)?;
-        let size = layout.size()?;
-        if size == Size::ZERO {
-            Ok(Size::ZERO)
-        } else {
-            layout.expand_horz().expand_vert().size()
-        }
+        // let mut layout = Layouts::new(Single, &mut ctx);
+        // layout.layout(children, data)?;
+        // let size = layout.size()?;
+        // if size == Size::ZERO {
+        //     Ok(Size::ZERO)
+        // } else {
+        //     layout.expand_horz().expand_vert().size()
+        // }
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -71,7 +70,7 @@ impl Widget for Alignment {
             let child_width = child.outer_size().width as i32;
             let child_height = child.outer_size().height as i32;
 
-            let child_offset = match self.alignment {
+            let child_offset = match self.alignment.unwrap_or(Align::TopLeft) {
                 Align::TopLeft => Pos::ZERO,
                 Align::Top => Pos::new(width / 2 - child_width / 2, 0),
                 Align::TopRight => Pos::new(width - child_width, 0),
@@ -95,6 +94,8 @@ pub(crate) struct AlignmentFactory;
 impl WidgetFactory for AlignmentFactory {
     fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
         let alignment = data.get("align");
+        let read = data.bucket.read();
+        let alignment = Cached::new(alignment, &read);
         let widget = Alignment::new(alignment);
         Ok(Box::new(widget))
     }
