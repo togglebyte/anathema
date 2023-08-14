@@ -93,9 +93,7 @@ impl<T> Slab<T> {
 
         match entry {
             Entry::Occupied(val) => val,
-            Entry::Vacant(..) => unreachable!(
-                "this can't happen as we make sure it's occupied when getting the generation..."
-            ),
+            Entry::Vacant(..) => panic!("removal of vacant entry"),
         }
     }
 
