@@ -2,7 +2,7 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::{Attribute, DataCtx, FromContext, NodeId};
+use anathema_generator::{DataCtx, FromContext, NodeId};
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{Listen, Listeners, ValueRef};
 

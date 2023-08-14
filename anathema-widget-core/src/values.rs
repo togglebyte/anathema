@@ -5,7 +5,7 @@ use std::fmt;
 
 pub use anathema_render::Color;
 use anathema_render::Style;
-use anathema_values::{List, Map, PathId, Truthy};
+use anathema_values::{List, PathId, Truthy};
 
 use crate::layout::{Align, Axis, Direction, Padding};
 
@@ -69,9 +69,9 @@ pub enum Value {
     /// Direction
     Direction(Direction),
     /// A list of values.
-    List(List<Value>),
+    // List(List<Value>),
     /// A map of values.
-    Map(Map<Value>),
+    // Map(Map<Value>),
     /// A number.
     Number(Number),
     /// String: this is only available from the user data context.
@@ -84,8 +84,8 @@ impl Truthy for Value {
         match self {
             Self::Bool(b) => *b,
             Self::String(s) if s.is_empty() => false,
-            Self::List(list) => !list.is_empty(),
-            Self::Map(map) => panic!(),
+            // Self::List(list) => !list.is_empty(),
+            // Self::Map(map) => panic!(),
             _ => true,
         }
     }
