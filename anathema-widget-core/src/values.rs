@@ -2,17 +2,107 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 pub use anathema_render::Color;
 use anathema_render::Style;
-use anathema_values::{List, PathId, Truthy};
+use anathema_values::{Container, List, PathId, ScopeValue, Truthy, ValueRef};
 
 use crate::layout::{Align, Axis, Direction, Padding};
+use crate::ReadOnly;
+
+// // -----------------------------------------------------------------------------
+// //   - Cached with default -
+// // -----------------------------------------------------------------------------
+// pub struct CachedDefault<T: Default> {
+//     val_ref: ScopedValue<T>,
+//     value: T,
+// }
+
+// impl<T: Default> CachedDefault<T> {
+//     fn update(&mut self, store: &()) {
+//     }
+// }
+
+// impl<T: Default> Deref for CachedDefault<T> {
+//     type Target = T;
+
+//     fn deref(&self) -> &Self::Target {
+//         &self.value
+//     }
+
+// }
+
+// impl<T: Default> DerefMut for CachedDefault<T> {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.value
+//     }
+// }
+
+// -----------------------------------------------------------------------------
+//   - Cached -
+// -----------------------------------------------------------------------------
+pub enum Cached<T> {
+    Static(Option<T>),
+    Dyn {
+        source: ScopeValue<Value>,
+        value: Option<T>,
+    },
+}
+
+impl<T> Cached<T>
+where
+    T: TryFrom<Value> + Clone,
+{
+    pub fn new(source: ScopeValue<Value>, data: &ReadOnly) -> Self {
+        match source {
+            ScopeValue::Dyn(value_ref) => {
+                let value = data.get(value_ref).and_then(|cont| match cont {
+                    Container::Value(val) => val.clone().try_into().ok(),
+                    _ => panic!(),
+                });
+                Self::Dyn { value, source }
+            }
+            ScopeValue::Static(val) => Self::Static(val.deref().clone().try_into().ok()),
+            ScopeValue::List(_) => panic!("decide what to do with lists"),
+        }
+    }
+
+    fn update(&mut self, store: &()) {}
+}
+
+impl<T> Deref for Cached<T>
+where
+    for<'a> &'a T: TryFrom<&'a Value> + Clone,
+{
+    type Target = Option<T>;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Static(val) => val,
+            Self::Dyn { value, .. } => value,
+            // Self::List(_) => None,
+        }
+    }
+}
+
+// impl<T> DerefMut for Cached<T>
+//     where for<'a> &'a mut T: TryFrom<&'a mut Value> + Clone,
+// {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         match &mut self.source {
+//             ScopeValue::Static(val) => val.try_into().ok(),
+//             ScopeValue::Dyn(_) => &mut self.value,
+//             ScopeValue::List(_) => None,
+//         }
+//     }
+// }
 
 /// Determine how a widget should be displayed and laid out
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Display {
     /// Show the widget, this is the default
+    #[default]
     Show,
     /// Include the widget as part of the layout but don't render it
     Hide,
@@ -193,6 +283,17 @@ impl_from_val!(String, String);
 
 macro_rules! impl_try_from {
     ($ret:ty, $variant:ident) => {
+        impl TryFrom<Value> for $ret {
+            type Error = ();
+
+            fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+                match value {
+                    Value::$variant(a) => Ok(a),
+                    _ => Err(()),
+                }
+            }
+        }
+
         impl<'a> TryFrom<&'a Value> for &'a $ret {
             type Error = ();
 
@@ -228,7 +329,7 @@ impl_try_from!(String, String);
 
 macro_rules! try_from_int {
     ($int:ty) => {
-        impl<'a> std::convert::TryFrom<&'a Value> for &'a $int {
+        impl<'a> TryFrom<&'a Value> for &'a $int {
             type Error = ();
 
             fn try_from(value: &'a Value) -> std::result::Result<Self, Self::Error> {
@@ -292,20 +393,20 @@ impl fmt::Display for Value {
             // Self::DataBinding(val) => write!(f, "{:?}", val),
             Self::Display(val) => write!(f, "{:?}", val),
             Self::Direction(val) => write!(f, "{:?}", val),
-            Self::List(val) => write!(f, "{:?}", val),
-            Self::Map(val) => {
-                // TODO: oops
-                panic!()
-                // write!(f, "{{ ")?;
-                // let s = val
-                //     .iter()
-                //     .map(|(k, v)| format!("{k}: {v}"))
-                //     .collect::<Vec<_>>()
-                //     .join(", ");
-                // write!(f, "{s}")?;
-                // write!(f, " }}")?;
-                // Ok(())
-            }
+            // Self::List(val) => write!(f, "{:?}", val),
+            // Self::Map(val) => {
+            //     // TODO: oops
+            //     panic!()
+            //     // write!(f, "{{ ")?;
+            //     // let s = val
+            //     //     .iter()
+            //     //     .map(|(k, v)| format!("{k}: {v}"))
+            //     //     .collect::<Vec<_>>()
+            //     //     .join(", ");
+            //     // write!(f, "{s}")?;
+            //     // write!(f, " }}")?;
+            //     // Ok(())
+            // }
             Self::Number(val) => write!(f, "{}", val),
             Self::String(val) => write!(f, "{}", val),
         }

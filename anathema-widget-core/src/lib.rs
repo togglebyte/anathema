@@ -26,7 +26,7 @@ mod values;
 // pub use crate::attributes::{Attribute, Attributes};
 pub use crate::factory::{WidgetFactory, Factory};
 pub use crate::layout::{Align, Axis, Direction, LocalPos, Padding, Pos, Region};
-pub use crate::values::{Color, Display, Number, Value};
+pub use crate::values::{Color, Display, Number, Value, Cached};
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
 
 pub type Nodes = anathema_generator::Nodes<WidgetContainer>;

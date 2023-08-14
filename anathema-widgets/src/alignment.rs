@@ -1,10 +1,10 @@
-use anathema_generator::{Attribute, DataCtx};
+use anathema_generator::DataCtx;
 use anathema_render::Size;
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Align, Layouts};
 use anathema_widget_core::{
-    AnyWidget, Nodes, Pos, ReadOnly, Value, Widget, WidgetContainer, WidgetFactory, BucketRef,
+    AnyWidget, Nodes, Pos, ReadOnly, Value, Widget, WidgetContainer, WidgetFactory, BucketRef, Cached,
 };
 
 use crate::layout::single::Single;
@@ -21,7 +21,7 @@ use crate::layout::single::Single;
 /// ```
 pub struct Alignment {
     /// The alignment
-    pub alignment_attrib: Attribute<Value>,
+    pub alignment_attrib: Cached<Value>,
     pub alignment: Align,
 }
 

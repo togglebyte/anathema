@@ -12,6 +12,7 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::factory::Factory;
 use crate::notifications::X;
+use crate::values::Cached;
 use crate::{BucketRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
 
 // Layout:
@@ -153,8 +154,8 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub(crate) background: Option<Color>,
-    pub(crate) display: Display,
+    pub(crate) background: Cached<Color>,
+    pub(crate) display: Cached<Display>,
     pub(crate) padding: Padding,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
@@ -234,7 +235,7 @@ impl WidgetContainer {
         constraints: Constraints,
         bucket: &BucketRef<'_>,
     ) -> Result<Size> {
-        match self.display {
+        match self.display.unwrap_or(Display::Show) {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
@@ -265,7 +266,7 @@ impl WidgetContainer {
     }
 
     pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
-        if let Display::Hide | Display::Exclude = self.display {
+        if let Some(Display::Hide | Display::Exclude) = *self.display {
             return;
         }
 
@@ -283,7 +284,7 @@ impl WidgetContainer {
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
-        let color = self.background?;
+        let color = (*self.background)?;
         let width = self.size.width;
 
         let background_str = format!("{:width$}", "", width = width);
@@ -312,17 +313,8 @@ impl FromContext for WidgetContainer {
 
         let data = ctx.bucket.read();
 
-        let display = display
-            .load(&data)
-            .and_then(|val| match val {
-                Value::Display(disp) => Some(*disp),
-                _ => None,
-            })
-            .unwrap_or(Display::Show);
-        let background = background.load(&data).and_then(|val| match val {
-            Value::Color(col) => Some(*col),
-            _ => None,
-        });
+        let display = Cached::<Display>::new(ctx.get("display"), &data);
+        let background = Cached::new(ctx.get("background"), &data);
 
         drop(data);
 

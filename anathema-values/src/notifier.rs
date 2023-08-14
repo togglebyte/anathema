@@ -86,8 +86,8 @@ impl<T> Notifier<T> {
     }
 
     pub fn notify(&self, value_ref: ValueRef<Container<T>>, change: Action<T>) {
-        let banana = Change(value_ref, change);
-        self.sender.send(banana);
+        let change = Change(value_ref, change);
+        self.sender.send(change);
     }
 }
 
