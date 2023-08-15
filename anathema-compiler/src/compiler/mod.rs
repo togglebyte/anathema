@@ -1,4 +1,4 @@
-use crate::{StringId, ValueId, TextId};
+use crate::{StringId, ValueId};
 
 use self::optimizer::Expression;
 pub(crate) use self::optimizer::Optimizer;
@@ -30,7 +30,7 @@ pub enum Instruction {
         key: StringId,
         value: ValueId,
     },
-    LoadText(TextId),
+    LoadText(ValueId),
 }
 
 enum Branch {
@@ -99,7 +99,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_text(&mut self, index: TextId) -> Result<()> {
+    fn compile_text(&mut self, index: ValueId) -> Result<()> {
         self.output.push(Instruction::LoadText(index));
         Ok(())
     }

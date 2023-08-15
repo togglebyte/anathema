@@ -47,20 +47,14 @@ impl Widget for Alignment {
         mut ctx: LayoutCtx,
         data: &BucketRef<'_>,
     ) -> Result<Size> {
-        panic!()
-        // let bucket = data.read();
-        // if let Some(Value::Alignment(alignment)) = self.alignment_attrib.load(&bucket) {
-        //     self.alignment = *alignment;
-        // }
-
-        // let mut layout = Layouts::new(Single, &mut ctx);
-        // layout.layout(children, data)?;
-        // let size = layout.size()?;
-        // if size == Size::ZERO {
-        //     Ok(Size::ZERO)
-        // } else {
-        //     layout.expand_horz().expand_vert().size()
-        // }
+        let mut layout = Layouts::new(Single, &mut ctx);
+        layout.layout(children, data)?;
+        let size = layout.size()?;
+        if size == Size::ZERO {
+            Ok(Size::ZERO)
+        } else {
+            layout.expand_horz().expand_vert().size()
+        }
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {

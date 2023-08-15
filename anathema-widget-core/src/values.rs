@@ -59,16 +59,18 @@ where
             ScopeValue::Dyn(value_ref) => {
                 let value = data.get(value_ref).and_then(|cont| match cont {
                     Container::Value(val) => val.clone().try_into().ok(),
+                    // TODO: omg
                     _ => panic!(),
                 });
                 Self::Dyn { value, source }
             }
             ScopeValue::Static(val) => Self::Static(val.deref().clone().try_into().ok()),
+            // TODO: what do we do with lists?
             ScopeValue::List(_) => panic!("decide what to do with lists"),
         }
     }
 
-    fn update(&mut self, store: &()) {}
+    fn update(&mut self, data: &ReadOnly) {}
 }
 
 impl<T> Deref for Cached<T>

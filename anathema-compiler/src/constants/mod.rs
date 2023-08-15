@@ -5,17 +5,17 @@ pub(crate) use storage::Storage;
 
 use self::paths::Paths;
 use self::strings::Strings;
-use self::texts::Texts;
+// use self::texts::Texts;
 use self::values::Values;
 
 pub use self::strings::StringId;
 pub use self::values::ValueId;
-pub use self::texts::TextId;
+// pub use self::texts::TextId;
 
 mod paths;
 mod storage;
 mod strings;
-mod texts;
+// mod texts;
 mod values;
 
 // -----------------------------------------------------------------------------
@@ -24,7 +24,7 @@ mod values;
 
 pub struct Constants {
     strings: Strings,
-    texts: Texts,
+    // texts: Texts,
     values: Values,
     paths: Paths,
 }
@@ -33,7 +33,7 @@ impl Constants {
     pub fn new() -> Self {
         Self {
             strings: Strings::empty(),
-            texts: Texts::empty(),
+            // texts: Texts::empty(),
             values: Values::empty(),
             paths: Paths::empty(),
         }

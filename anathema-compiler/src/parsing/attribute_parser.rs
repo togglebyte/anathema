@@ -29,8 +29,8 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
 
         let value = match next {
             Kind::String(val) =>  {
-                let attributes = parse_expression_value(val, self.constants);
-                return Ok(ExpressionValue::List(attributes));
+                let value = parse_expression_value(val, self.constants);
+                return Ok(value);
             },
             Kind::Hex(r, g, b) => Value::Color(Color::Rgb { r, g, b }),
             Kind::Ident(b @ (TRUE | FALSE)) => Value::Bool(b == TRUE),
@@ -123,7 +123,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             | Kind::EOF => return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "" })),
         };
 
-        Ok(ExpressionValue::Static(Arc::new(Container::Single(value))))
+        Ok(ExpressionValue::Static(Arc::new(value)))
     }
 
     fn try_parse_path(&mut self, ident: &str) -> Result<PathId> {

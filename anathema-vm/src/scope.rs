@@ -1,5 +1,5 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{ControlFlowExpr, Expression, ExpressionValue, TextExpr};
+use anathema_generator::{ControlFlowExpr, Expression, ExpressionValue};
 use anathema_values::StoreMut;
 use anathema_widget_core::{Value, WidgetContainer, WidgetMeta};
 

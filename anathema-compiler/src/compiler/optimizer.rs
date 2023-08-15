@@ -1,4 +1,4 @@
-use crate::{parsing::parser::Expression as ParseExpr, StringId, ValueId, TextId};
+use crate::{parsing::parser::Expression as ParseExpr, StringId, ValueId};
 
 enum ControlFlow {
     If(ValueId),
@@ -21,7 +21,7 @@ pub(crate) enum Expression {
         size: usize,
     },
     View(ValueId),
-    LoadText(TextId),
+    LoadText(ValueId),
     LoadAttribute {
         key: StringId,
         value: ValueId,

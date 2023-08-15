@@ -7,11 +7,11 @@ use anathema_widget_core::{Number, Value};
 use super::attribute_parser::AttributeParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token};
-use crate::{Constants, StringId, TextId, ValueId};
+use crate::{Constants, StringId, ValueId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
-    LoadText(TextId),
+    LoadText(ValueId),
     LoadAttribute { key: StringId, value: ValueId },
     View(ValueId),
     Node(StringId),
@@ -457,7 +457,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         let ret = match self.lexer.peek() {
             Ok(Token(Kind::String(s), _)) => {
                 let text = parse_expression_value(s, self.constants);
-                let index = self.constants.store_text(text);
+                let index = self.constants.store_value(text);
                 let _ = self.lexer.next();
                 Ok(Some(Expression::LoadText(index)))
             }
@@ -529,60 +529,54 @@ pub(super) fn parse_expression_value(
     text: &str,
     consts: &mut Constants,
 ) -> ExpressionValue<Value> {
-    panic!()
-    // let mut fragments = vec![];
-    // let mut chars = text.char_indices().peekable();
-    // let mut pos = 0;
+    let mut fragments = vec![];
+    let mut chars = text.char_indices().peekable();
+    let mut pos = 0;
 
-    // while let Some(c) = chars.next() {
-    //     let next = chars.peek();
-    //     match (c, next) {
-    //         ((i, '{'), Some((_, '{'))) => {
-    //             let frag = &text[pos..i];
-    //             if !frag.is_empty() {
-    //                 let text_fragment = frag.replace("\\\"", "\"");
-    //                 fragments.push(ExpressionValue::Static(Arc::new(Value::String(
-    //                     text_fragment,
-    //                 ))));
-    //             }
-    //             pos = i;
-    //         }
-    //         ((i, '}'), Some((_, '}'))) => {
-    //             let frag = &text[pos + 2..i].trim();
-    //             if !frag.is_empty() {
-    //                 let mut lexer = Lexer::new(frag);
-    //                 if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
-    //                     if let Ok(path) = parse_path(&mut lexer, ident) {
-    //                         let path_id = consts.store_path(path);
-    //                         fragments.push(ExpressionValue::Dyn(path_id));
-    //                     }
-    //                 }
-    //             }
-    //             pos = i + 2;
-    //         }
-    //         _ => {}
-    //     }
-    // }
+    while let Some(c) = chars.next() {
+        let next = chars.peek();
+        match (c, next) {
+            ((i, '{'), Some((_, '{'))) => {
+                let frag = &text[pos..i];
+                if !frag.is_empty() {
+                    let text_fragment = frag.replace("\\\"", "\"");
+                    fragments.push(ExpressionValue::Static(Arc::new(Value::String(
+                        text_fragment,
+                    ))));
+                }
+                pos = i;
+            }
+            ((i, '}'), Some((_, '}'))) => {
+                let frag = &text[pos + 2..i].trim();
+                if !frag.is_empty() {
+                    let mut lexer = Lexer::new(frag);
+                    if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
+                        if let Ok(path) = parse_path(&mut lexer, ident) {
+                            let path_id = consts.store_path(path);
+                            fragments.push(ExpressionValue::Dyn(path_id));
+                        }
+                    }
+                }
+                pos = i + 2;
+            }
+            _ => {}
+        }
+    }
 
-    // let remainder = &text[pos..];
+    let remainder = &text[pos..];
 
-    // if !remainder.is_empty() {
-    //     let text_fragment = remainder.replace("\\\"", "\"");
-    //     fragments.push(FragmentExpr::String(text_fragment));
-    // }
+    if !remainder.is_empty() {
+        let text_fragment = remainder.replace("\\\"", "\"");
+        fragments.push(ExpressionValue::Static(Arc::new(Value::String(text_fragment))));
+    }
 
-    // // TODO: would it make sense to return a static string directly instead of a vec?
-    // // if fragments.len() == 1 && fragments[0].is_string() {
-    // //     let s = match fragments.remove(0) {
-    // //         FragmentExpr::String(s) => s,
-    // //         _ => unreachable!(),
-    // //     };
-    // //     TextExpr::String(s)
-    // // } else {
-    // //     TextExpr::Fragments(fragments)
-    // // }
-
-    // fragments
+    // There is at least one fragment value so it's 
+    // fine to call `remove` here.
+    if fragments.len() == 1 {
+        ExpressionValue::List(fragments.into())
+    } else {
+        fragments.remove(0)
+    }
 }
 
 // -----------------------------------------------------------------------------
