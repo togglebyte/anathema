@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use anathema_values::{Container, List, PathId, ScopeId, ScopeValue, StoreRef, Truthy, ValueRef};
 
-use crate::expression::{EvaluationContext, FromContext};
-use crate::{Expression, NodeId, NodeKind, Nodes};
+use crate::{expression::{EvaluationContext, FromContext}, Expression, NodeId};
+
+use super::{Nodes, NodeKind};
 
 enum State {
     LoadValue,

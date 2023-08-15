@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use anathema_values::{AsSlice, StoreRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef, ScopeValue};
 
+use crate::nodes::{Node, NodeKind, Nodes};
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{DataCtx, Node, NodeId, NodeKind, Nodes, ExpressionValue, ExpressionValues};
+use crate::{DataCtx, NodeId, ExpressionValue, ExpressionValues};
 
 pub struct EvaluationContext<'a, Val> {
     store: &'a StoreRef<'a, Val>,

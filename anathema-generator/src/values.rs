@@ -13,7 +13,7 @@ pub struct ExpressionValues<T> {
     inner: HashMap<String, ExpressionValue<T>>,
 }
 
-impl<T> ExpressionValues<T> {
+impl<T: Clone> ExpressionValues<T> {
     pub fn empty() -> Self {
         Self {
             inner: HashMap::new(),
@@ -68,6 +68,16 @@ impl<T> ExpressionValue<T> {
                     .map(|val| val.to_scope_value::<N>(store, scope, node_id))
                     .collect::<Box<_>>(),
             ),
+        }
+    }
+}
+
+impl<T> Clone for ExpressionValue<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Dyn(path) => Self::Dyn(*path),
+            Self::Static(arc) => Self::Static(arc.clone()),
+            Self::List(list) => Self::List(list.clone()),
         }
     }
 }

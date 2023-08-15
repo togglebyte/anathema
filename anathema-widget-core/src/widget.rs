@@ -2,7 +2,7 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::{DataCtx, FromContext, NodeId};
+use anathema_generator::{DataCtx, FromContext, NodeId, ExpressionValue};
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{Listen, Listeners, ValueRef};
 
@@ -333,5 +333,5 @@ impl FromContext for WidgetContainer {
 /// Meta data needed to construct a `WidgetContainer` from a `Node`
 pub struct WidgetMeta {
     pub ident: String,
-    pub text: Option<()>,
+    pub text: Option<ExpressionValue<Value>>,
 }

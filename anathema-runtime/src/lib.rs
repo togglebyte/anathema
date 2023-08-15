@@ -2,7 +2,7 @@ use std::io::{stdout, Stdout};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anathema_generator::{EvaluationContext, Expression, Nodes, NodeId};
+use anathema_generator::{Expression, Nodes, NodeId, make_it_so};
 use anathema_render::{size, Attributes, Screen, Size};
 use anathema_values::{Store, ReadOnly};
 use anathema_vm::Expressions;
@@ -63,22 +63,15 @@ where
         let constraints = Constraints::new(Some(size.width), Some(size.height));
         let screen = Screen::new(size);
 
-        let nodes = {
-            let bucket_ref = bucket.read();
-            let eval_ctx = EvaluationContext::new(&bucket_ref, None);
-            expressions
-                .into_iter()
-                .enumerate()
-                .map(|(i, expr)| expr.to_node(&eval_ctx, NodeId::new(i)))
-                .collect::<Result<Vec<_>>>()?
-        };
+        let bucket_ref = bucket.read();
+        let nodes = make_it_so(expressions, bucket_ref)?;
 
         let inst = Self {
             output: stdout,
             meta: Meta::new(size),
             screen,
             constraints,
-            nodes: Nodes::new(nodes),
+            nodes,
             bucket,
             events,
             event_receiver,

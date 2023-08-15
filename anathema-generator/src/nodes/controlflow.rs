@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use anathema_values::{StoreRef, Container, ScopeId, Truthy, ValueRef, ScopeValue};
+use anathema_values::{Container, ScopeId, ScopeValue, StoreRef, Truthy, ValueRef};
 
+use super::{Nodes, NodeKind};
 use crate::expression::{ControlFlowExpr, EvaluationContext, FromContext};
-use crate::{Expression, NodeId, NodeKind, Nodes};
+use crate::{Expression, NodeId};
 
 pub(crate) enum ControlFlow<Val> {
     If(ScopeValue<Val>),
@@ -13,13 +14,11 @@ pub(crate) enum ControlFlow<Val> {
 impl<Val: Truthy> ControlFlow<Val> {
     fn eval(&self, store: &StoreRef<'_, Val>) -> bool {
         match self {
-            Self::If(val) | Self::Else(Some(val)) => {
-                match val {
-                    ScopeValue::Dyn(val) => store.check_true(*val),
-                    ScopeValue::Static(val) => val.is_true(),
-                    ScopeValue::List(list) => list.is_empty(),
-                }
-            }
+            Self::If(val) | Self::Else(Some(val)) => match val {
+                ScopeValue::Dyn(val) => store.check_true(*val),
+                ScopeValue::Static(val) => val.is_true(),
+                ScopeValue::List(list) => list.is_empty(),
+            },
             Self::Else(None) => true,
         }
     }
