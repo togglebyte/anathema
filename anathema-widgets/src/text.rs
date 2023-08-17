@@ -1,13 +1,35 @@
-use anathema_generator::{Attribute, DataCtx};
+use std::fmt::Write;
+
+use anathema_generator::DataCtx;
 use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, BucketRef, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, BucketRef, Cached, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, X,
 };
 use unicode_width::UnicodeWidthStr;
 
 use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
+
+pub struct CachedString {
+    cache: Cached<Value>,
+    string: String,
+}
+
+impl CachedString {
+    fn as_str(&self) -> &str {
+        self.string.as_str()
+    }
+}
+
+impl From<Cached<Value>> for CachedString {
+    fn from(cache: Cached<Value>) -> Self {
+        Self {
+            string: cache.to_string(),
+            cache,
+        }
+    }
+}
 
 // -----------------------------------------------------------------------------
 //     - Text -
@@ -28,17 +50,14 @@ use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 ///
 /// A `Text` widget will be as wide as its text.
 pub struct Text {
-    word_wrap_attrib: Attribute<Value>,
-    text_alignment_attrib: Attribute<Value>,
-
     /// Word wrapping
-    pub word_wrap: Wrap,
+    pub word_wrap: Cached<Wrap>,
     /// Text alignment. Note that text alignment only aligns the text inside the parent widget,
     /// this will not force the text to the right side of the output, for that use
     /// [`Alignment`](crate::Alignment).
-    pub text_alignment: TextAlignment,
+    pub text_alignment: Cached<TextAlignment>,
     /// Text
-    pub text: String,
+    pub text: CachedString,
     /// Text style
     pub style: Style,
 
@@ -51,20 +70,20 @@ impl Text {
     fn text_and_style<'a>(
         &'a self,
         entry: &Entry,
-        children: Vec<&'a WidgetContainer>,
+        children: &[&'a WidgetContainer],
     ) -> (&'a str, Style) {
         let widget_index = match entry {
             Entry::All { index, .. } => index,
             Entry::Range(Range { slice, .. }) => slice,
             Entry::Newline => {
-                unreachable!("when painting the lines, the NewLine is always skipped")
+                unreachable!("when painting the lines, the `Entry::NewLine` is always skipped")
             }
         };
 
         let (text, style) = if *widget_index == 0 {
             (self.text.as_str(), self.style)
         } else {
-            let span = children[widget_index - 1].to_ref::<TextSpan>();
+            let span = &children[widget_index - 1].to_ref::<TextSpan>();
             (span.text.as_str(), span.style)
         };
 
@@ -78,7 +97,7 @@ impl Text {
     fn paint_line(
         &self,
         range: &mut std::ops::Range<usize>,
-        children: Vec<&WidgetContainer>,
+        children: &[&WidgetContainer],
         y: usize,
         ctx: &mut PaintCtx<'_, WithSize>,
     ) {
@@ -93,7 +112,11 @@ impl Text {
         }
 
         let max_width = self.layout.size().width;
-        match self.text_alignment {
+        match self
+            .text_alignment
+            .value_ref()
+            .unwrap_or(&TextAlignment::Left)
+        {
             TextAlignment::Left => {}
             TextAlignment::Centre => pos.x = max_width / 2 - line_width / 2,
             TextAlignment::Right => pos.x = max_width - line_width,
@@ -125,18 +148,12 @@ impl Widget for Text {
         mut ctx: LayoutCtx,
         data: &BucketRef<'_>,
     ) -> Result<Size> {
+        self.layout = TextLayout::ZERO;
         let bucket = data.read();
-        if let Some(Value::String(wrap)) = self.word_wrap_attrib.load(&bucket) {
-            self.word_wrap = Wrap::from(wrap.as_str());
-        }
-
-        if let Some(Value::String(align)) = self.text_alignment_attrib.load(&bucket) {
-            self.text_alignment = TextAlignment::from(align.as_str());
-        }
-
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
-        self.layout.set_wrap(self.word_wrap);
+        self.layout
+            .set_wrap(*self.word_wrap.value_ref().unwrap_or(&Wrap::Normal));
         self.layout.process(self.text.as_str());
 
         drop(bucket);
@@ -164,14 +181,14 @@ impl Widget for Text {
             match entry {
                 Entry::All { .. } | Entry::Range(_) => range.end += 1,
                 Entry::Newline => {
-                    self.paint_line(&mut range, children, y, &mut ctx);
+                    self.paint_line(&mut range, &children, y, &mut ctx);
                     y += 1;
                     continue;
                 }
             };
         }
 
-        self.paint_line(&mut range, children, y, &mut ctx);
+        self.paint_line(&mut range, &children, y, &mut ctx);
     }
 
     fn position<'ctx>(&mut self, _: &mut Nodes, _: PositionCtx) {
@@ -223,38 +240,34 @@ pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
     fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap_attrib = data.get("wrap");
-        let text_alignment_attrib = data.get("text-align");
-
-        // widget.word_wrap = values
-        //     .get_attrib("wrap")
-        //     .and_then(Value::to_str)
-        //     .map(From::from)
-        //     .unwrap_or(Wrap::Normal);
-
-        // widget.text_alignment = values
-        //     .get_attrib("text-align")
-        //     .and_then(Value::to_str)
-        //     .map(From::from)
-        //     .unwrap_or(TextAlignment::Left);
+        let word_wrap = data
+            .get("wrap")
+            .and_then(|scope_val| Cached::<Wrap>::new(scope_val, &data))
+            .unwrap_or(Cached::Value(Wrap::Normal));
+        let text_alignment = data
+            .get("text-align")
+            .and_then(|scope_val| Cached::new(scope_val, &data))
+            .unwrap_or(Cached::Value(TextAlignment::Left));
 
         // TODO: we do need them styles
         // widget.style = values.style();
 
-        // if let Some(text) = data.text {
-        //     widget.text = values.text_to_string(text).to_string();
-        // }
+        // TODO: force the existence of a value
+        let text = data
+            .text
+            .as_ref()
+            .map(|s| s.to_scope_value::<X>(data.store, data.scope, data.node_id));
 
-        let text = data.text.map(|s| s.load_string(data.bucket));
+        let text = text
+            .and_then(|scope_val| Cached::new(scope_val, &data))
+            .expect("a text widget always has a text field");
 
         let mut widget = Text {
-            word_wrap: Wrap::Normal,
-            word_wrap_attrib,
-            text_alignment: TextAlignment::Left,
-            text_alignment_attrib,
+            word_wrap,
+            text_alignment,
             style: Style::new(),
             layout: TextLayout::ZERO,
-            text: data.text.unwrap_or(TextPath::empty()),
+            text: text.into(),
         };
 
         Ok(Box::new(widget))

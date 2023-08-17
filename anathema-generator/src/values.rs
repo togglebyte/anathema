@@ -9,6 +9,7 @@ use crate::NodeId;
 // -----------------------------------------------------------------------------
 //   - Expression attributes -
 // -----------------------------------------------------------------------------
+#[derive(Debug)]
 pub struct ExpressionValues<T> {
     inner: HashMap<String, ExpressionValue<T>>,
 }
@@ -32,6 +33,7 @@ impl<T: Clone> ExpressionValues<T> {
 // -----------------------------------------------------------------------------
 //   - Expression attribute -
 // -----------------------------------------------------------------------------
+#[derive(Debug)]
 pub enum ExpressionValue<T> {
     Dyn(PathId),
     Static(Arc<T>),
@@ -43,7 +45,7 @@ impl<T> ExpressionValue<T> {
         Self::Static(Arc::new(val))
     }
 
-    pub(crate) fn to_scope_value<N: Listen<Value = T, Key = NodeId>>(
+    pub fn to_scope_value<N: Listen<Value = T, Key = NodeId>>(
         &self,
         store: &StoreRef<'_, T>,
         scope: Option<ScopeId>,
@@ -54,9 +56,7 @@ impl<T> ExpressionValue<T> {
                 let val = store.by_path_or_empty(*path_id, scope);
                 if let ScopeValue::Dyn(val) = val {
                     // NOTE: this is most certainly going to lead to bugs
-                    // Here is where we subscribe node kinds like for loops and controlflow.
-                    // There are really only two places where we subscribe to values: here, and
-                    // when we load attributes for the widgets.
+                    // Here is where we subscribe to values
                     N::subscribe(val, node_id.clone());
                 }
                 val

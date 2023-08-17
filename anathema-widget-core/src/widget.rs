@@ -154,8 +154,8 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub(crate) background: Cached<Color>,
-    pub(crate) display: Cached<Display>,
+    pub(crate) background: Option<Cached<Color>>,
+    pub(crate) display: Option<Cached<Display>>,
     pub(crate) padding: Padding,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
@@ -235,7 +235,8 @@ impl WidgetContainer {
         constraints: Constraints,
         bucket: &BucketRef<'_>,
     ) -> Result<Size> {
-        match self.display.unwrap_or(Display::Show) {
+        let display = Display::Show;//self.display.and_then(|val| val.value_ref().unwrap_or(&Display::Show));
+        match display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
@@ -266,7 +267,8 @@ impl WidgetContainer {
     }
 
     pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
-        if let Some(Display::Hide | Display::Exclude) = *self.display {
+        let display = Some(Display::Show);
+        if let Some(Display::Hide | Display::Exclude) = display {
             return;
         }
 
@@ -284,7 +286,7 @@ impl WidgetContainer {
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
-        let color = (*self.background)?;
+        let color = self.background.as_ref().and_then(|val| val.value_ref().map(|col| *col))?;
         let width = self.size.width;
 
         let background_str = format!("{:width$}", "", width = width);
@@ -307,16 +309,9 @@ impl FromContext for WidgetContainer {
     type Value = crate::Value;
 
     fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
-        let display = ctx.get("display");
-        let background = ctx.get("background");
+        let display = ctx.get("display").and_then(|d| Cached::<Display>::new(d, &ctx));
+        let background = ctx.get("background").and_then(|b| Cached::new(b, &ctx));
         let padding = ctx.get("padding");
-
-        let data = ctx.bucket.read();
-
-        let display = Cached::<Display>::new(display, &data);
-        let background = Cached::new(background, &data);
-
-        drop(data);
 
         let container = WidgetContainer {
             display,
@@ -331,6 +326,7 @@ impl FromContext for WidgetContainer {
 }
 
 /// Meta data needed to construct a `WidgetContainer` from a `Node`
+#[derive(Debug)]
 pub struct WidgetMeta {
     pub ident: String,
     pub text: Option<ExpressionValue<Value>>,

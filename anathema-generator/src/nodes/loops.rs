@@ -60,7 +60,6 @@ impl<Output: FromContext> LoopState<Output> {
                 .map(|val| ScopeValue::Dyn(*val))?,
             ScopeValue::List(list) => list.get(self.value_index).cloned()?,
             ScopeValue::Static(val) => return None,
-            _ => panic!(),
         };
 
         self.value_index += 1;

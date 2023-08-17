@@ -1,14 +1,14 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use anathema_values::{Listen, ScopeId, ScopeValue, StoreRef};
+use anathema_values::{Listen, ScopeId, ScopeValue, StoreRef, ValueRef, Container};
 
 use crate::{ExpressionValue, ExpressionValues, FromContext, NodeId};
 
 pub struct DataCtx<'a, T: FromContext> {
-    pub bucket: &'a StoreRef<'a, T::Value>,
-    node_id: &'a NodeId,
-    scope: Option<ScopeId>,
+    pub store: &'a StoreRef<'a, T::Value>,
+    pub node_id: &'a NodeId,
+    pub scope: Option<ScopeId>,
     inner: &'a T::Ctx,
     attributes: &'a ExpressionValues<T::Value>,
     _p: PhantomData<T::Notifier>,
@@ -23,7 +23,7 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
         attributes: &'a ExpressionValues<T::Value>,
     ) -> Self {
         Self {
-            bucket,
+            store: bucket,
             node_id,
             scope,
             inner,
@@ -35,28 +35,18 @@ impl<'a, T: FromContext> DataCtx<'a, T> {
     /// Get the value for widget attribute.
     /// This is used when composing widgets via the `from_context`.
     ///
-    /// This will subscribe the widget node to a value.
-    pub fn get(&self, key: &str) -> ScopeValue<T::Value> {
-        match self.attributes.get(key) {
-            // Some(ExpressionValue::Dyn(path)) => {
-            //     let val = self.bucketAttribute::Static(value.clone()),.by_path_or_empty(*path, self.scope);
-            //     // subscribe to value
-            //     if let ScopeValue::Dyn(val) = val {
-            //         T::Notifier::subscribe(val, self.node_id.clone());
-            //     }
-            //     val
-            // }
-            Some(val) => val.to_scope_value::<T::Notifier>(self.bucket, self.scope, self.node_id),
-            None => {
-                let path = self.bucket.get_or_insert_path(key);
-                let val = self.bucket.by_path_or_empty(path, self.scope);
-                // subscribe to value
-                if let ScopeValue::Dyn(val) = val {
-                    T::Notifier::subscribe(val, self.node_id.clone());
-                }
-                val
-            }
-        }
+    /// This will subscribe the widget node to a value as long as the path exists.
+    pub fn get(&self, key: &str) -> Option<ScopeValue<T::Value>> {
+        let val = self.attributes.get(key)?;
+        let val = val.to_scope_value::<T::Notifier>(self.store, self.scope, self.node_id);
+        Some(val)
+    }
+
+    pub fn by_ref(&self, value_ref: ValueRef<Container<T::Value>>) -> Option<Container<T::Value>> {
+        // TODO: Second place we can subscribe to changes.
+        //       This is a nightmare.
+        T::Notifier::subscribe(value_ref, self.node_id.clone());
+        self.store.read().get(value_ref).cloned()
     }
 }
 

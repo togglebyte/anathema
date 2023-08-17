@@ -572,7 +572,7 @@ pub(super) fn parse_expression_value(
 
     // There is at least one fragment value so it's 
     // fine to call `remove` here.
-    if fragments.len() == 1 {
+    if fragments.len() > 1 {
         ExpressionValue::List(fragments.into())
     } else {
         fragments.remove(0)

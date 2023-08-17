@@ -3,7 +3,7 @@ use expression::EvaluationContext;
 
 pub use crate::ctx::DataCtx;
 pub use crate::expression::{ControlFlowExpr, Expression, FromContext};
-pub use crate::nodes::{Nodes, NodeId};
+pub use crate::nodes::{NodeId, Nodes};
 pub use crate::values::{ExpressionValue, ExpressionValues};
 
 mod ctx;

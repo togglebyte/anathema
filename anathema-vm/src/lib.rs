@@ -13,6 +13,7 @@ pub type Expressions = Vec<Expression<WidgetContainer>>;
 
 pub fn templates(src: &str, mut bucket: StoreMut<'_, Value>) -> Result<Expressions> {
     let (instructions, constants) = anathema_compiler::compile(src)?;
+
     for path in constants.paths().cloned() {
         bucket.insert_path(path);
     }

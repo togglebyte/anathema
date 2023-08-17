@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
-use anathema_values::{AsSlice, StoreRef, List, Listen, PathId, ScopeId, Truthy, Container, ValueRef, ScopeValue};
+use anathema_values::{
+    AsSlice, Container, List, Listen, PathId, ScopeId, ScopeValue, StoreRef, Truthy, ValueRef,
+};
 
-use crate::nodes::{Node, NodeKind, Nodes};
 use crate::nodes::controlflow::{ControlFlow, ControlFlows};
 use crate::nodes::loops::LoopState;
-use crate::{DataCtx, NodeId, ExpressionValue, ExpressionValues};
+use crate::nodes::{Node, NodeKind, Nodes};
+use crate::{DataCtx, ExpressionValue, ExpressionValues, NodeId};
 
 pub struct EvaluationContext<'a, Val> {
     store: &'a StoreRef<'a, Val>,
@@ -21,11 +23,13 @@ impl<'a, Val> EvaluationContext<'a, Val> {
     }
 }
 
+#[derive(Debug)]
 pub enum ControlFlowExpr<T> {
     If(ExpressionValue<T>),
     Else(Option<ExpressionValue<T>>),
 }
 
+#[derive(Debug)]
 pub enum Expression<Output: FromContext> {
     Node {
         context: Output::Ctx,
@@ -47,7 +51,11 @@ impl<Output: FromContext> Expression<Output> {
         node_id: NodeId,
     ) -> Result<Node<Output>, Output::Err> {
         match self {
-            Self::Node { context, children, attributes } => {
+            Self::Node {
+                context,
+                children,
+                attributes,
+            } => {
                 let context = DataCtx::new(eval.store, &node_id, eval.scope, context, attributes);
                 let output = Output::from_context(context)?;
                 let nodes = children
@@ -62,7 +70,8 @@ impl<Output: FromContext> Expression<Output> {
                 binding,
                 body,
             } => {
-                let collection = collection.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
+                let collection =
+                    collection.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
                 let scope = eval.store.new_scope(eval.scope);
                 let state = LoopState::new(scope, *binding, collection, body.clone());
                 Ok(NodeKind::Collection(state).to_node(node_id))
@@ -72,11 +81,15 @@ impl<Output: FromContext> Expression<Output> {
                 for (cond, expressions) in flows {
                     let cond = match cond {
                         ControlFlowExpr::If(val) => {
-                            let val = val.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
+                            let val = val.to_scope_value::<Output::Notifier>(
+                                eval.store, eval.scope, &node_id,
+                            );
                             ControlFlow::If(val)
                         }
                         ControlFlowExpr::Else(Some(val)) => {
-                            let val = val.to_scope_value::<Output::Notifier>(eval.store, eval.scope, &node_id);
+                            let val = val.to_scope_value::<Output::Notifier>(
+                                eval.store, eval.scope, &node_id,
+                            );
                             ControlFlow::Else(Some(val))
                         }
                         ControlFlowExpr::Else(None) => ControlFlow::Else(None),
@@ -92,7 +105,7 @@ impl<Output: FromContext> Expression<Output> {
 
 pub trait FromContext: Sized {
     type Ctx;
-    type Value: Truthy + Clone;
+    type Value: Truthy + Clone + std::fmt::Debug;
     type Err;
     type Notifier: Listen<Key = NodeId, Value = Self::Value>;
 

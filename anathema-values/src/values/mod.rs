@@ -15,7 +15,7 @@ mod valueref;
 
 /// Represent a value stored.
 /// Both `Map` and `List` contains `ValueRef<T>` rather than `T`
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Container<T> {
     /// The empty value is used a placeholder. This makes it possible
     /// to associate a signal or such to a value that does not exist yet.
@@ -69,6 +69,18 @@ pub trait TryFromValueMut<T> {
 // -----------------------------------------------------------------------------
 pub trait IntoValue<T> {
     fn into_value(self, bucket: &mut StoreMut<'_, T>) -> Container<T>;
+}
+
+impl<T: IntoValue<T>> IntoValue<T> for Vec<T> {
+    fn into_value(self, bucket: &mut StoreMut<'_, T>) -> Container<T> {
+
+        for val in self {
+        }
+
+        panic!()
+        // let list = List
+        // Container::List(list)
+    }
 }
 
 // Truthy

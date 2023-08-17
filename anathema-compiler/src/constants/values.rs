@@ -5,6 +5,7 @@ use anathema_generator::ExpressionValue;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ValueId(usize);
 
+#[derive(Debug)]
 pub struct Values(Slab<ExpressionValue<Value>>);
 
 impl Values {

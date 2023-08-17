@@ -1,4 +1,5 @@
 use anathema_render::Size;
+use anathema_widget_core::Value;
 use unicode_width::UnicodeWidthChar;
 
 fn is_word_boundary(c: char) -> bool {
@@ -30,12 +31,17 @@ pub enum TextAlignment {
     Right,
 }
 
-impl From<&str> for TextAlignment {
-    fn from(s: &str) -> Self {
-        match s {
-            "centre" | "center" => Self::Centre,
-            "right" => Self::Right,
-            _ => Self::Left,
+impl TryFrom<Value> for TextAlignment {
+    type Error = ();
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::String(s) => Ok(match s.as_str() {
+                "centre" | "center" => Self::Centre,
+                "right" => Self::Right,
+                _ => Self::Left,
+            }),
+            _ => Err(()),
         }
     }
 }
@@ -53,12 +59,17 @@ pub enum Wrap {
     Overflow,
 }
 
-impl From<&str> for Wrap {
-    fn from(s: &str) -> Self {
-        match s {
-            "overflow" => Self::Overflow,
-            "break" => Self::WordBreak,
-            _ => Self::Normal,
+impl TryFrom<Value> for Wrap {
+    type Error = ();
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::String(s) => Ok(match s.as_str() {
+                "overflow" => Self::Overflow,
+                "break" => Self::WordBreak,
+                _ => Self::Normal,
+            }),
+            _ => Err(()),
         }
     }
 }

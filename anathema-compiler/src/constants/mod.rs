@@ -22,9 +22,9 @@ mod values;
 //   - Constants -
 // -----------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct Constants {
     strings: Strings,
-    // texts: Texts,
     values: Values,
     paths: Paths,
 }
@@ -33,7 +33,6 @@ impl Constants {
     pub fn new() -> Self {
         Self {
             strings: Strings::empty(),
-            // texts: Texts::empty(),
             values: Values::empty(),
             paths: Paths::empty(),
         }

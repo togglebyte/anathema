@@ -4,101 +4,100 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
+use anathema_generator::DataCtx;
 pub use anathema_render::Color;
 use anathema_render::Style;
 use anathema_values::{Container, List, PathId, ScopeValue, Truthy, ValueRef};
 
 use crate::layout::{Align, Axis, Direction, Padding};
-use crate::ReadOnly;
-
-// // -----------------------------------------------------------------------------
-// //   - Cached with default -
-// // -----------------------------------------------------------------------------
-// pub struct CachedDefault<T: Default> {
-//     val_ref: ScopedValue<T>,
-//     value: T,
-// }
-
-// impl<T: Default> CachedDefault<T> {
-//     fn update(&mut self, store: &()) {
-//     }
-// }
-
-// impl<T: Default> Deref for CachedDefault<T> {
-//     type Target = T;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.value
-//     }
-
-// }
-
-// impl<T: Default> DerefMut for CachedDefault<T> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.value
-//     }
-// }
+use crate::{ReadOnly, WidgetContainer};
 
 // -----------------------------------------------------------------------------
 //   - Cached -
 // -----------------------------------------------------------------------------
+fn cache_container<T: TryFrom<Value> + Clone>(
+    container: Container<Value>,
+    data: &DataCtx<'_, WidgetContainer>,
+) -> Option<Cached<T>> {
+    match container {
+        Container::Value(val) => Some(Cached::Value(T::try_from(val).ok()?)),
+        Container::Empty => None,
+        Container::List(list) => {
+            let items = list
+                .iter()
+                .cloned()
+                .filter_map(|val| data.by_ref(val))
+                .filter_map(|val| cache_container::<T>(val, data))
+                .collect::<Vec<_>>();
+            Some(Cached::List(items))
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum Cached<T> {
-    Static(Option<T>),
+    Value(T),
     Dyn {
-        source: ScopeValue<Value>,
-        value: Option<T>,
+        value_ref: ValueRef<Container<Value>>,
+        value: Option<Box<Cached<T>>>,
     },
+    List(Vec<Cached<T>>),
 }
 
 impl<T> Cached<T>
 where
     T: TryFrom<Value> + Clone,
 {
-    pub fn new(source: ScopeValue<Value>, data: &ReadOnly) -> Self {
+    pub fn new(source: ScopeValue<Value>, data: &DataCtx<'_, WidgetContainer>) -> Option<Self> {
         match source {
-            ScopeValue::Dyn(value_ref) => {
-                let value = data.get(value_ref).and_then(|cont| match cont {
-                    Container::Value(val) => val.clone().try_into().ok(),
-                    // TODO: omg
-                    _ => panic!(),
-                });
-                Self::Dyn { value, source }
+            ScopeValue::Static(val) => Some(Self::Value(val.deref().clone().try_into().ok()?)),
+            ScopeValue::List(ref list) => {
+                let values = list
+                    .iter()
+                    .cloned()
+                    .filter_map(|sv| Cached::new(sv, data))
+                    .collect();
+
+                Some(Self::List(values))
             }
-            ScopeValue::Static(val) => Self::Static(val.deref().clone().try_into().ok()),
-            // TODO: what do we do with lists?
-            ScopeValue::List(_) => panic!("decide what to do with lists"),
+            ScopeValue::Dyn(value_ref) => {
+                // Lookup the value and subscribe to it.
+                // If the value points to another dyn value OR a list, evalute the value,
+                // otherwise just Dyn { ref, value }
+
+                let value = data.by_ref(value_ref)?;
+                let cached_val = Cached::Dyn {
+                    value_ref,
+                    value: cache_container::<T>(value, data).map(Box::new),
+                };
+
+                Some(cached_val)
+            }
+        }
+    }
+
+    pub fn value_ref(&self) -> Option<&T> {
+        match self {
+            Self::Value(val) => Some(val),
+            Self::Dyn { value: Some(value), .. } => value.value_ref(),
+            Self::Dyn { .. } => None,
+            Self::List(_) => None,
         }
     }
 
     fn update(&mut self, data: &ReadOnly) {}
 }
 
-impl<T> Deref for Cached<T>
-where
-    for<'a> &'a T: TryFrom<&'a Value> + Clone,
-{
-    type Target = Option<T>;
-
-    fn deref(&self) -> &Self::Target {
+impl<T: fmt::Display> fmt::Display for Cached<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Static(val) => val,
-            Self::Dyn { value, .. } => value,
-            // Self::List(_) => None,
+            Self::Dyn { .. } => write!(f, ""),
+            Self::Dyn { value: Some(value), .. } => write!(f, "{value}"),
+            Self::List(values) => values.iter().try_for_each(|value| write!(f, "{value}")),
+            Self::Value(value) => write!(f, "{value}"),
         }
     }
 }
-
-// impl<T> DerefMut for Cached<T>
-//     where for<'a> &'a mut T: TryFrom<&'a mut Value> + Clone,
-// {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         match self {
-//             Self::Static(val) => val,
-//             Self::Dyn { value, .. } => value,
-//             // Self::List(_) => None,
-//         }
-//     }
-// }
 
 /// Determine how a widget should be displayed and laid out
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -144,7 +143,7 @@ impl Truthy for Number {
 }
 
 /// A value.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Value {
     /// Alignment.
     Alignment(Align),
@@ -160,10 +159,6 @@ pub enum Value {
     Display(Display),
     /// Direction
     Direction(Direction),
-    /// A list of values.
-    // List(List<Value>),
-    /// A map of values.
-    // Map(Map<Value>),
     /// A number.
     Number(Number),
     /// String: this is only available from the user data context.
@@ -392,23 +387,8 @@ impl fmt::Display for Value {
             Self::Axis(val) => write!(f, "{:?}", val),
             Self::Bool(val) => write!(f, "{}", val),
             Self::Color(val) => write!(f, "{:?}", val),
-            // Self::DataBinding(val) => write!(f, "{:?}", val),
             Self::Display(val) => write!(f, "{:?}", val),
             Self::Direction(val) => write!(f, "{:?}", val),
-            // Self::List(val) => write!(f, "{:?}", val),
-            // Self::Map(val) => {
-            //     // TODO: oops
-            //     panic!()
-            //     // write!(f, "{{ ")?;
-            //     // let s = val
-            //     //     .iter()
-            //     //     .map(|(k, v)| format!("{k}: {v}"))
-            //     //     .collect::<Vec<_>>()
-            //     //     .join(", ");
-            //     // write!(f, "{s}")?;
-            //     // write!(f, " }}")?;
-            //     // Ok(())
-            // }
             Self::Number(val) => write!(f, "{}", val),
             Self::String(val) => write!(f, "{}", val),
         }
@@ -431,14 +411,6 @@ impl Value {
             _ => None,
         }
     }
-
-    // /// The value as an optional path
-    // pub fn to_data_binding(&self) -> Option<&PathId> {
-    //     match self {
-    //         Self::DataBinding(val) => Some(val),
-    //         _ => None,
-    //     }
-    // }
 
     /// The value as an optional signed integer.
     /// This will cast any numerical value into an `i64`.
@@ -518,5 +490,32 @@ impl Value {
             Self::String(s) => Some(s),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use anathema_values::Store;
+
+    use super::*;
+
+    #[test]
+    fn cached_string_from_lists() {
+        let mut store = Store::empty();
+        let write = store.write();
+        write.insert_at_path("names", vec!["Fin", "Bob", "Alice"]);
+
+        // bucket: &'a StoreRef<'a, T::Value>,
+        // node_id: &'a NodeId,
+        // scope: Option<ScopeId>,
+        // inner: &'a T::Ctx,
+        // attributes: &'a ExpressionValues<T::Value>,
+
+        // let data = DataCtx::<'_, WidgetContainer>::new();
+        // // let source = ScopeValue<Value>;
+        // // let cs = CachedString::new(value);
+
+        // // let expected = "hello Fin!";
+        // // assert_eq!(expected, actual);
     }
 }
