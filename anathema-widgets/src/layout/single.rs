@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::Layout;
-use anathema_widget_core::{WidgetContainer, Nodes, BucketRef};
+use anathema_widget_core::{WidgetContainer, Nodes, StoreRef};
 
 pub struct Single;
 
@@ -11,7 +11,7 @@ impl Layout for Single {
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
-        bucket: &BucketRef<'_>,
+        bucket: &StoreRef<'_>,
         size: &mut Size,
     ) -> Result<()> {
         let constraints = ctx.padded_constraints();

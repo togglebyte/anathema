@@ -18,60 +18,94 @@ use crate::{ReadOnly, WidgetContainer};
 fn cache_container<T: TryFrom<Value> + Clone>(
     container: Container<Value>,
     data: &DataCtx<'_, WidgetContainer>,
-) -> Option<Cached<T>> {
+) -> Cached<T> {
     match container {
-        Container::Value(val) => Some(Cached::Value(T::try_from(val).ok()?)),
-        Container::Empty => None,
+        Container::Value(val) => {
+            let Ok(val) = T::try_from(val) else {
+                return Cached::Empty;
+            };
+            Cached::Value(val)
+        }
+        Container::Empty => Cached::Empty,
         Container::List(list) => {
             let items = list
                 .iter()
                 .cloned()
                 .filter_map(|val| data.by_ref(val))
-                .filter_map(|val| cache_container::<T>(val, data))
+                .map(|val| cache_container::<T>(val, data))
+                .filter(Cached::is_empty)
                 .collect::<Vec<_>>();
-            Some(Cached::List(items))
+            Cached::List(items)
         }
     }
 }
 
 #[derive(Debug)]
 pub enum Cached<T> {
+    Empty,
     Value(T),
     Dyn {
         value_ref: ValueRef<Container<Value>>,
-        value: Option<Box<Cached<T>>>,
+        value: Box<Cached<T>>,
     },
     List(Vec<Cached<T>>),
+}
+
+impl<T> Cached<T> {
+    fn is_empty(&self) -> bool {
+        match self {
+            Self::Empty => true,
+            _ => false,
+        }
+    }
 }
 
 impl<T> Cached<T>
 where
     T: TryFrom<Value> + Clone,
 {
-    pub fn new(source: ScopeValue<Value>, data: &DataCtx<'_, WidgetContainer>) -> Option<Self> {
+    pub fn new_or(key: &str, data: &DataCtx<'_, WidgetContainer>, alt: T) -> Self {
+        match Cached::<T>::new(key, &data) {
+            Cached::Empty => Cached::Value(alt),
+            val @ _ => val,
+        }
+    }
+
+    pub fn new(key: &str, data: &DataCtx<'_, WidgetContainer>) -> Self {
+        let Some(scope_val) = data.get("display") else {
+            return Self::Empty;
+        };
+        Cached::<T>::from_scope_val(scope_val, &data)
+    }
+
+    pub fn from_scope_val(source: ScopeValue<Value>, data: &DataCtx<'_, WidgetContainer>) -> Self {
         match source {
-            ScopeValue::Static(val) => Some(Self::Value(val.deref().clone().try_into().ok()?)),
+            ScopeValue::Static(val) => match T::try_from(val.deref().clone()) {
+                Ok(val) => Self::Value(val),
+                Err(_) => Self::Empty,
+            },
             ScopeValue::List(ref list) => {
                 let values = list
                     .iter()
                     .cloned()
-                    .filter_map(|sv| Cached::new(sv, data))
+                    .map(|sv| Cached::from_scope_val(sv, data))
+                    .filter(Cached::is_empty)
                     .collect();
 
-                Some(Self::List(values))
+                Self::List(values)
             }
             ScopeValue::Dyn(value_ref) => {
                 // Lookup the value and subscribe to it.
                 // If the value points to another dyn value OR a list, evalute the value,
                 // otherwise just Dyn { ref, value }
 
-                let value = data.by_ref(value_ref)?;
-                let cached_val = Cached::Dyn {
-                    value_ref,
-                    value: cache_container::<T>(value, data).map(Box::new),
-                };
-
-                Some(cached_val)
+                match data.by_ref(value_ref) {
+                    None => Cached::Empty,
+                    Some(value) => Cached::Dyn {
+                        value_ref,
+                        value: Box::new(cache_container::<T>(value, data)),
+                    },
+                }
             }
         }
     }
@@ -79,20 +113,35 @@ where
     pub fn value_ref(&self) -> Option<&T> {
         match self {
             Self::Value(val) => Some(val),
-            Self::Dyn { value: Some(value), .. } => value.value_ref(),
-            Self::Dyn { .. } => None,
-            Self::List(_) => None,
+            Self::Dyn { value, .. } => value.value_ref(),
+            Self::Empty | Self::List(_) => None,
         }
     }
 
     fn update(&mut self, data: &ReadOnly) {}
 }
 
+impl<T> Cached<T>
+where
+    T: TryFrom<Value> + Copy,
+{
+    /// Single values only.
+    /// This will panic if called on a list or a map
+    pub fn or(&self, alt: T) -> T {
+        match self {
+            Self::Empty => alt,
+            Self::Value(val) => *val,
+            Self::Dyn { value, .. } => value.or(alt),
+            Self::List(_) => panic!("called `or` on a list"),
+        }
+    }
+}
+
 impl<T: fmt::Display> fmt::Display for Cached<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Dyn { .. } => write!(f, ""),
-            Self::Dyn { value: Some(value), .. } => write!(f, "{value}"),
+            Self::Empty => write!(f, ""),
+            Self::Dyn { value, .. } => write!(f, "{value}"),
             Self::List(values) => values.iter().try_for_each(|value| write!(f, "{value}")),
             Self::Value(value) => write!(f, "{value}"),
         }

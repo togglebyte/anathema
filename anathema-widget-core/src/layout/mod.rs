@@ -6,7 +6,7 @@ use anathema_render::{ScreenPos, Size};
 pub use self::constraints::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{BucketRef, Nodes, WidgetContainer};
+use crate::{StoreRef, Nodes, WidgetContainer};
 
 mod constraints;
 
@@ -15,7 +15,7 @@ pub trait Layout {
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
-        bucket: &BucketRef<'_>,
+        bucket: &StoreRef<'_>,
         size: &mut Size,
     ) -> Result<()>;
 }
@@ -38,7 +38,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout(&mut self, children: &mut Nodes, bucket: &BucketRef<'_>) -> Result<&mut Self> {
+    pub fn layout(&mut self, children: &mut Nodes, bucket: &StoreRef<'_>) -> Result<&mut Self> {
         self.layout.layout(self.ctx, children, bucket, &mut self.size)?;
         Ok(self)
     }

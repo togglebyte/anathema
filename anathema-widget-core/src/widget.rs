@@ -13,7 +13,7 @@ use crate::error::Result;
 use crate::factory::Factory;
 use crate::notifications::X;
 use crate::values::Cached;
-use crate::{BucketRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
+use crate::{StoreRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
 
 // Layout:
 // 1. Receive constraints
@@ -37,7 +37,7 @@ pub trait Widget {
         &mut self,
         children: &mut Nodes,
         ctx: LayoutCtx,
-        data: &BucketRef<'_>,
+        data: &StoreRef<'_>,
     ) -> Result<Size>;
 
     /// By the time this function is called the widget container
@@ -62,7 +62,7 @@ pub trait AnyWidget {
         &mut self,
         children: &mut Nodes,
         ctx: LayoutCtx,
-        data: &BucketRef<'_>,
+        data: &StoreRef<'_>,
     ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
@@ -81,7 +81,7 @@ impl Widget for Box<dyn AnyWidget> {
         &mut self,
         children: &mut Nodes,
         ctx: LayoutCtx,
-        data: &BucketRef<'_>,
+        data: &StoreRef<'_>,
     ) -> Result<Size> {
         self.deref_mut().layout_any(children, ctx, data)
     }
@@ -108,7 +108,7 @@ impl<T: Widget + 'static> AnyWidget for T {
         &mut self,
         children: &mut Nodes,
         ctx: LayoutCtx,
-        data: &BucketRef<'_>,
+        data: &StoreRef<'_>,
     ) -> Result<Size> {
         self.layout(children, ctx, data)
     }
@@ -135,7 +135,7 @@ impl Widget for Box<dyn Widget> {
         &mut self,
         children: &mut Nodes,
         layout: LayoutCtx,
-        data: &BucketRef<'_>,
+        data: &StoreRef<'_>,
     ) -> Result<Size> {
         self.as_mut().layout(children, layout, data)
     }
@@ -154,8 +154,8 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub(crate) background: Option<Cached<Color>>,
-    pub(crate) display: Option<Cached<Display>>,
+    pub(crate) background: Cached<Color>,
+    pub(crate) display: Cached<Display>,
     pub(crate) padding: Padding,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
@@ -233,9 +233,9 @@ impl WidgetContainer {
         &mut self,
         children: &mut Nodes,
         constraints: Constraints,
-        bucket: &BucketRef<'_>,
+        bucket: &StoreRef<'_>,
     ) -> Result<Size> {
-        let display = Display::Show;//self.display.and_then(|val| val.value_ref().unwrap_or(&Display::Show));
+        let display = self.display.or(Display::Show);
         match display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
@@ -267,8 +267,7 @@ impl WidgetContainer {
     }
 
     pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
-        let display = Some(Display::Show);
-        if let Some(Display::Hide | Display::Exclude) = display {
+        if let Display::Hide | Display::Exclude = self.display.or(Display::Show) {
             return;
         }
 
@@ -286,12 +285,12 @@ impl WidgetContainer {
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
-        let color = self.background.as_ref().and_then(|val| val.value_ref().map(|col| *col))?;
+        let color = self.background.value_ref()?;
         let width = self.size.width;
 
         let background_str = format!("{:width$}", "", width = width);
         let mut style = Style::new();
-        style.set_bg(color);
+        style.set_bg(*color);
 
         for y in 0..self.size.height {
             let pos = LocalPos::new(0, y);
@@ -309,8 +308,8 @@ impl FromContext for WidgetContainer {
     type Value = crate::Value;
 
     fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
-        let display = ctx.get("display").and_then(|d| Cached::<Display>::new(d, &ctx));
-        let background = ctx.get("background").and_then(|b| Cached::new(b, &ctx));
+        let display = Cached::new_or("display", &ctx, Display::Show);
+        let background = Cached::new("background", &ctx);
         let padding = ctx.get("padding");
 
         let container = WidgetContainer {

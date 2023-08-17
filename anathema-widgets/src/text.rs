@@ -5,7 +5,7 @@ use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, BucketRef, Cached, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, X,
+    AnyWidget, StoreRef, Cached, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, X,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -146,7 +146,7 @@ impl Widget for Text {
         &mut self,
         children: &mut Nodes,
         mut ctx: LayoutCtx,
-        data: &BucketRef<'_>,
+        data: &StoreRef<'_>,
     ) -> Result<Size> {
         self.layout = TextLayout::ZERO;
         let bucket = data.read();
@@ -222,7 +222,7 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, _: &mut Nodes, _: LayoutCtx, _: &BucketRef<'_>) -> Result<Size> {
+    fn layout(&mut self, _: &mut Nodes, _: LayoutCtx, _: &StoreRef<'_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
@@ -240,14 +240,8 @@ pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
     fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap = data
-            .get("wrap")
-            .and_then(|scope_val| Cached::<Wrap>::new(scope_val, &data))
-            .unwrap_or(Cached::Value(Wrap::Normal));
-        let text_alignment = data
-            .get("text-align")
-            .and_then(|scope_val| Cached::new(scope_val, &data))
-            .unwrap_or(Cached::Value(TextAlignment::Left));
+        let word_wrap = Cached::new_or("wrap", &data, Wrap::Normal);
+        let text_alignment = Cached::new_or("text-align", &data, TextAlignment::Left);
 
         // TODO: we do need them styles
         // widget.style = values.style();
@@ -259,7 +253,7 @@ impl WidgetFactory for TextFactory {
             .map(|s| s.to_scope_value::<X>(data.store, data.scope, data.node_id));
 
         let text = text
-            .and_then(|scope_val| Cached::new(scope_val, &data))
+            .map(|scope_val| Cached::from_scope_val(scope_val, &data))
             .expect("a text widget always has a text field");
 
         let mut widget = Text {

@@ -32,4 +32,4 @@ pub use crate::notifications::X;
 
 pub type Nodes = anathema_generator::Nodes<WidgetContainer>;
 pub type ReadOnly<'a> = anathema_values::ReadOnly<'a, Value>;
-pub type BucketRef<'a> = anathema_values::StoreRef<'a, Value>;
+pub type StoreRef<'a> = anathema_values::StoreRef<'a, Value>;
