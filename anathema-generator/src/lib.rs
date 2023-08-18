@@ -6,10 +6,13 @@ pub use crate::expression::{ControlFlowExpr, Expression, FromContext};
 pub use crate::nodes::{NodeId, Nodes};
 pub use crate::values::{ExpressionValue, ExpressionValues};
 
+// #[cfg(test)]
+mod testing;
+
 mod ctx;
 mod expression;
 mod nodes;
-mod testing;
+
 mod values;
 
 pub fn make_it_so<'a, T: FromContext>(

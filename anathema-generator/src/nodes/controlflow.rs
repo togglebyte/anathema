@@ -6,6 +6,7 @@ use super::{Nodes, NodeKind};
 use crate::expression::{ControlFlowExpr, EvaluationContext, FromContext};
 use crate::{Expression, NodeId};
 
+#[derive(Debug)]
 pub(crate) enum ControlFlow<Val> {
     If(ScopeValue<Val>),
     Else(Option<ScopeValue<Val>>),
@@ -24,6 +25,7 @@ impl<Val: Truthy> ControlFlow<Val> {
     }
 }
 
+#[derive(Debug)]
 pub struct ControlFlows<Output: FromContext> {
     pub(crate) nodes: Nodes<Output>,
     flows: Vec<(ControlFlow<Output::Value>, Arc<[Expression<Output>]>)>,

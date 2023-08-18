@@ -2,15 +2,16 @@ use std::sync::Arc;
 
 use anathema_values::{Container, List, PathId, ScopeId, ScopeValue, StoreRef, Truthy, ValueRef};
 
-use crate::{expression::{EvaluationContext, FromContext}, Expression, NodeId};
-
-use super::{Nodes, NodeKind};
+use super::{NodeKind, Nodes};
+use crate::expression::{EvaluationContext, FromContext};
+use crate::{Expression, NodeId};
 
 enum State {
     LoadValue,
     ProduceNode,
 }
 
+#[derive(Debug)]
 pub struct LoopState<Output: FromContext> {
     scope: ScopeId,
     collection: ScopeValue<Output::Value>,
@@ -80,11 +81,11 @@ impl<Output: FromContext> LoopState<Output> {
 
     pub(super) fn next(
         &mut self,
-        bucket: &StoreRef<'_, Output::Value>,
+        store: &StoreRef<'_, Output::Value>,
         parent: &NodeId,
     ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
         if self.node_index == self.nodes.len() {
-            self.load_value(bucket, parent)?;
+            self.load_value(store, parent)?;
         }
 
         let nodes = self.nodes.inner[self.node_index..].iter_mut();
@@ -95,11 +96,11 @@ impl<Output: FromContext> LoopState<Output> {
                     self.node_index += 1;
                     return Some(Ok((value, children)));
                 }
-                NodeKind::Collection(nodes) => match nodes.next(bucket, &node.id) {
+                NodeKind::Collection(nodes) => match nodes.next(store, &node.id) {
                     last @ Some(_) => return last,
                     None => self.node_index += 1,
                 },
-                NodeKind::ControlFlow(flows) => match flows.next(bucket, &node.id) {
+                NodeKind::ControlFlow(flows) => match flows.next(store, &node.id) {
                     last @ Some(_) => return last,
                     None => self.node_index += 1,
                 },
