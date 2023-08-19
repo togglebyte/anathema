@@ -129,7 +129,7 @@ impl<'a, T> StoreRef<'a, T> {
             .expect("assumed path exists")
     }
 
-    pub fn scope_value(&self, path_id: PathId, value: ScopeValue<T>, scope: ScopeId) {
+    pub fn scope_value(&self, path_id: PathId, value: ScopeValue<T>, scope: ScopeId) -> Option<ScopeValue<T>> {
         self.scopes.write().insert(path_id, value, scope)
     }
 }
@@ -171,13 +171,13 @@ pub struct StoreMut<'a, T> {
 }
 
 impl<'a, T> StoreMut<'a, T> {
-    pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<Container<T>> {
-        self.slab.remove(value_ref.index)
-    }
+    //pub(crate) fn remove(&mut self, value_ref: ValueRef<T>) -> Generation<Container<T>> {
+    //    self.slab.remove(value_ref.index)
+    //}
 
-    pub fn push(&mut self, value: T) -> ValueRef<Container<T>> {
-        self.slab.push(Container::Value(value))
-    }
+    //pub fn push(&mut self, value: T) -> ValueRef<Container<T>> {
+    //    self.slab.push(Container::Value(value))
+    //}
 
     pub fn insert_path(&mut self, path: impl Into<Path>) -> PathId {
         let path = path.into();
@@ -205,54 +205,61 @@ impl<'a, T> StoreMut<'a, T> {
     where
         V: IntoValue<T>,
     {
-        let value = value.into_value(&mut *self);
-        let value_ref = self.slab.push(value);
-        self.scopes.insert(path_id, ScopeValue::Dyn(value_ref), None);
-        value_ref
+        panic!("figure out if it makes sense to replace or just overwrite");
+        // let value = value.into_value(&mut *self);
+        // TODO: this can't always use Container::Value, it would make no sense!
+        // match self.scopes.root.remove_dyn(path_id) {
+        //     Some(value_ref) => self.slab.replace(value_ref, Container::Value(value)),
+        //     None => {
+        //         let value_ref = self.slab.push(Container::Value(value));
+        //         self.scopes.insert(path_id, ScopeValue::Dyn(value_ref), None);
+        //         value_ref
+        //     }
+        // }
     }
 
-    // // TODO: rename this to something more sensible
-    // pub fn getv2<V>(&self, path: impl Into<Path>) -> Option<&V::Output>
-    // where
-    //     V: TryFromValue<T>,
-    // {
-    //     let path = path.into();
-    //     let path_id = self.paths.write().get_or_insert(path);
-    //     self.get(path_id).and_then(|v| V::from_value(v))
-    // }
+    //// // TODO: rename this to something more sensible
+    //// pub fn getv2<V>(&self, path: impl Into<Path>) -> Option<&V::Output>
+    //// where
+    ////     V: TryFromValue<T>,
+    //// {
+    ////     let path = path.into();
+    ////     let path_id = self.paths.write().get_or_insert(path);
+    ////     self.get(path_id).and_then(|v| V::from_value(v))
+    //// }
 
-    // // TODO: rename this, you know the drill
-    // pub fn getv2_mut<V>(&mut self, path: impl Into<Path>) -> Option<&mut V::Output>
-    // where
-    //     V: TryFromValueMut<T>,
-    // {
-    //     let path = path.into();
-    //     let path_id = self.paths.write().get_or_insert(path);
-    //     self.get_mut(path_id).and_then(|v| V::from_value(v))
-    // }
+    //// // TODO: rename this, you know the drill
+    //// pub fn getv2_mut<V>(&mut self, path: impl Into<Path>) -> Option<&mut V::Output>
+    //// where
+    ////     V: TryFromValueMut<T>,
+    //// {
+    ////     let path = path.into();
+    ////     let path_id = self.paths.write().get_or_insert(path);
+    ////     self.get_mut(path_id).and_then(|v| V::from_value(v))
+    //// }
 
-    // pub fn get(&self, path_id: PathId) -> Option<&Generation<Container<T>>> {
-    //     let ScopeValue::Dyn(value_ref) = self.scopes.get(path_id, None)? else { return None };
-    //     self.slab
-    //         .get(value_ref.index)
-    //         .filter(|val| val.compare_generation(value_ref.gen))
-    // }
+    //// pub fn get(&self, path_id: PathId) -> Option<&Generation<Container<T>>> {
+    ////     let ScopeValue::Dyn(value_ref) = self.scopes.get(path_id, None)? else { return None };
+    ////     self.slab
+    ////         .get(value_ref.index)
+    ////         .filter(|val| val.compare_generation(value_ref.gen))
+    //// }
 
-    // pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Container<T>>> {
-    //     let value_ref = self.scopes.get(path_id, None)?;
-    //     self.by_ref_mut(value_ref)
-    // }
+    //// pub fn get_mut(&mut self, path_id: PathId) -> Option<&mut Generation<Container<T>>> {
+    ////     let value_ref = self.scopes.get(path_id, None)?;
+    ////     self.by_ref_mut(value_ref)
+    //// }
 
-    pub fn by_ref_mut(
-        &mut self,
-        value_ref: ValueRef<Container<T>>,
-    ) -> Option<&mut Generation<Container<T>>> {
-        // Notify here
-        self.notifier.notify(value_ref, Action::Modified);
-        self.slab
-            .get_mut(value_ref.index)
-            .filter(|val| val.compare_generation(value_ref.gen))
-    }
+    //pub fn by_ref_mut(
+    //    &mut self,
+    //    value_ref: ValueRef<Container<T>>,
+    //) -> Option<&mut Generation<Container<T>>> {
+    //    // Notify here
+    //    self.notifier.notify(value_ref, Action::Modified);
+    //    self.slab
+    //        .get_mut(value_ref.index)
+    //        .filter(|val| val.compare_generation(value_ref.gen))
+    //}
 }
 
 #[cfg(test)]

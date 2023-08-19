@@ -64,6 +64,8 @@ impl Meta {
     }
 
     pub(super) fn update(&mut self, mut bucket: StoreMut<'_, Value>, nodes: &Nodes) {
+        // let back = bucket.insert_at_path("time", Value::String(format!("{:?}", self.timings.paint)));
+        // let x = back;
         // let root: Path = META.into();
 
         // let size: Path = root.compose(SIZE);

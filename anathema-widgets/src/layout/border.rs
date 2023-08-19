@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::{Constraints, Layout};
-use anathema_widget_core::WidgetContainer;
+use anathema_widget_core::{WidgetContainer, Nodes, StoreRef};
 
 pub struct BorderLayout {
     pub min_width: Option<usize>,
@@ -15,8 +15,9 @@ pub struct BorderLayout {
 impl Layout for BorderLayout {
     fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        ctx: &mut LayoutCtx,
+        children: &mut Nodes,
+        store: &StoreRef<'_>,
         size: &mut Size,
     ) -> Result<()> {
         // If there is a min width / height, make sure the minimum constraints
@@ -46,11 +47,8 @@ impl Layout for BorderLayout {
 
         let border_size = self.border_size;
 
-        let mut values = ctx.values.next();
-        let mut gen = Generator::new(&ctx.templates, &mut values);
-
-        *size = match gen.next(&mut values).transpose()? {
-            Some(mut widget) => {
+        *size = match children.next(store).transpose()? {
+            Some((mut widget, children)) => {
                 let mut constraints = ctx.padded_constraints();
 
                 // Shrink the constraint for the child to fit inside the border
@@ -77,10 +75,12 @@ impl Layout for BorderLayout {
                     return Err(Error::InsufficientSpaceAvailble);
                 }
 
-                let mut size =
-                    widget.layout(constraints, &values)? + border_size + ctx.padding_size();
-
-                children.push(widget);
+                let size = match widget.layout(children, constraints, store) {
+                    Ok(s) => s,
+                    Err(Error::InsufficientSpaceAvailble) => return Ok(()),
+                    err @ Err(_) => err?,
+                };
+                let mut size = size + border_size + ctx.padding_size();
 
                 if let Some(min_width) = self.min_width {
                     size.width = size.width.max(min_width);

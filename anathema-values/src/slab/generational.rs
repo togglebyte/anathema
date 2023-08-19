@@ -101,6 +101,16 @@ impl<T> GenerationSlab<T> {
         }
     }
 
+    // TODO: Is replace the best thing here?
+    // pub(crate) fn replace(&mut self, index: Idx, value: T) -> Generation<T> {
+    //     let Entry::Occupied(Generation { gen, value }) = self.inner[index] else {
+    //         panic!("replacing vacant entry")
+    //     };
+
+    //     let next_gen = gen + 1;
+    //     *value = value;
+    // }
+
     #[cfg(test)]
     fn count(&self) -> usize {
         self.inner
@@ -198,4 +208,20 @@ mod test {
         slab.push(789);
         assert_eq!(None, slab.next_id);
     }
+
+    // #[test]
+    // fn replace_existing_value() {
+    //     let mut slab = get_slab();
+    //     let value_ref = slab.replace(1, 20);
+    //     let entry = slab.get(value_ref.index).unwrap();
+    //     assert_eq!(entry.gen, 1);
+    //     assert_eq!(*entry, 20);
+    // }
+
+    // #[test]
+    // #[should_panic(expected = "replacing vacant entry")]
+    // fn replace_non_existent_value() {
+    //     let mut slab = get_slab();
+    //     let value_ref = slab.replace(999, 20);
+    // }
 }

@@ -3,7 +3,7 @@ pub mod layout;
 // pub mod testing;
 
 mod alignment;
-// mod border;
+mod border;
 // mod expand;
 // mod hstack;
 // mod position;
@@ -20,7 +20,7 @@ use anathema_widget_core::Factory;
 //   - Export widgets -
 // -----------------------------------------------------------------------------
 pub use crate::alignment::Alignment;
-// pub use crate::border::{Border, BorderStyle, Sides};
+pub use crate::border::{Border, BorderStyle, Sides};
 // pub use crate::expand::Expand;
 // pub use crate::hstack::HStack;
 // pub use crate::position::Position;
@@ -35,7 +35,7 @@ pub use crate::text::{Text, TextSpan};
 // -----------------------------------------------------------------------------
 mod factories {
     pub(super) use crate::alignment::AlignmentFactory;
-    // pub(super) use crate::border::BorderFactory;
+    pub(super) use crate::border::BorderFactory;
     // pub(super) use crate::expand::ExpandFactory;
     // pub(super) use crate::hstack::HStackFactory;
     // pub(super) use crate::position::PositionFactory;
@@ -50,7 +50,7 @@ mod factories {
 pub fn register_default_widgets() -> Result<()> {
     let results = [
         Factory::register("alignment".to_string(), factories::AlignmentFactory),
-        // Factory::register("border".to_string(), factories::BorderFactory),
+        Factory::register("border".to_string(), factories::BorderFactory),
         // Factory::register("expand".to_string(), factories::ExpandFactory),
         // Factory::register("hstack".to_string(), factories::HStackFactory),
         // Factory::register("position".to_string(), factories::PositionFactory),

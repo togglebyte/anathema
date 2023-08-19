@@ -11,7 +11,7 @@ use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::factory::Factory;
-use crate::notifications::X;
+use crate::notifications::Listener;
 use crate::values::Cached;
 use crate::{StoreRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
 
@@ -304,7 +304,7 @@ impl WidgetContainer {
 impl FromContext for WidgetContainer {
     type Ctx = WidgetMeta;
     type Err = crate::error::Error;
-    type Notifier = X;
+    type Notifier = Listener;
     type Value = crate::Value;
 
     fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {

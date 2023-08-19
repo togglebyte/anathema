@@ -5,7 +5,7 @@ use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, StoreRef, Cached, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, X,
+    AnyWidget, StoreRef, Cached, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, Listener,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -250,7 +250,7 @@ impl WidgetFactory for TextFactory {
         let text = data
             .text
             .as_ref()
-            .map(|s| s.to_scope_value::<X>(data.store, data.scope, data.node_id));
+            .map(|s| s.to_scope_value::<Listener>(data.store, data.scope, data.node_id));
 
         let text = text
             .map(|scope_val| Cached::from_scope_val(scope_val, &data))
@@ -272,6 +272,7 @@ pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
     fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+        panic!("oh my, we should have this one day!");
         let mut widget = TextSpan::new();
         // if let Some(text) = text {
         //     widget.text = values.text_to_string(text).to_string();

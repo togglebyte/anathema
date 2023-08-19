@@ -4,13 +4,13 @@ use std::sync::Arc;
 pub use valueref::ValueRef;
 
 pub use self::list::List;
-// pub use self::map::Map;
+pub use self::map::Map;
 use crate::store::StoreMut;
 use crate::hashmap::{HashMap, IntMap};
 use crate::Path;
 
 mod list;
-// mod map;
+mod map;
 mod valueref;
 
 /// Represent a value stored.
@@ -22,7 +22,7 @@ pub enum Container<T> {
     Empty,
     Value(T),
     List(List<T>),
-    // Map(Map<T>),
+    Map(Map<T>),
 }
 
 impl<T: Debug> Debug for Container<T> {
@@ -31,6 +31,7 @@ impl<T: Debug> Debug for Container<T> {
             Self::Empty => write!(f, "Value::Empty"),
             Self::Value(val) => write!(f, "Value::Value({val:?})"),
             Self::List(list) => write!(f, "Value::List(<len: {}>)", list.len()),
+            Self::Map(map) => write!(f, "Value::Map(<len: {}>)", map.len()),
         }
     }
 }
@@ -69,18 +70,6 @@ pub trait TryFromValueMut<T> {
 // -----------------------------------------------------------------------------
 pub trait IntoValue<T> {
     fn into_value(self, bucket: &mut StoreMut<'_, T>) -> Container<T>;
-}
-
-impl<T: IntoValue<T>> IntoValue<T> for Vec<T> {
-    fn into_value(self, bucket: &mut StoreMut<'_, T>) -> Container<T> {
-
-        for val in self {
-        }
-
-        panic!()
-        // let list = List
-        // Container::List(list)
-    }
 }
 
 // Truthy

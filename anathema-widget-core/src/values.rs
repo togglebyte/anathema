@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 use anathema_generator::DataCtx;
 pub use anathema_render::Color;
@@ -33,7 +34,7 @@ fn cache_container<T: TryFrom<Value> + Clone>(
                 .cloned()
                 .filter_map(|val| data.by_ref(val))
                 .map(|val| cache_container::<T>(val, data))
-                .filter(Cached::is_empty)
+                .filter(Cached::not_empty)
                 .collect::<Vec<_>>();
             Cached::List(items)
         }
@@ -52,10 +53,22 @@ pub enum Cached<T> {
 }
 
 impl<T> Cached<T> {
-    fn is_empty(&self) -> bool {
+    fn not_empty(&self) -> bool {
         match self {
-            Self::Empty => true,
-            _ => false,
+            Self::Empty => false,
+            _ => true,
+        }
+    }
+
+    pub fn map<F, O>(&self, f: F) -> Option<O>
+    where
+        F: Fn(&T) -> O,
+    {
+        match self {
+            Self::Empty => None,
+            Self::List(_) => None,
+            Self::Value(val) => Some(f(val)),
+            Self::Dyn { value, .. } => value.map(f),
         }
     }
 }
@@ -89,7 +102,7 @@ where
                     .iter()
                     .cloned()
                     .map(|sv| Cached::from_scope_val(sv, data))
-                    .filter(Cached::is_empty)
+                    .filter(Cached::not_empty)
                     .collect();
 
                 Self::List(values)
@@ -132,6 +145,15 @@ where
             Self::Empty => alt,
             Self::Value(val) => *val,
             Self::Dyn { value, .. } => value.or(alt),
+            Self::List(_) => panic!("called `or` on a list"),
+        }
+    }
+
+    pub fn value(&self) -> Option<T> {
+        match self {
+            Self::Empty => None,
+            Self::Value(val) => Some(*val),
+            Self::Dyn { value, .. } => value.value(),
             Self::List(_) => panic!("called `or` on a list"),
         }
     }
@@ -325,7 +347,6 @@ impl_from_val!(Color, Color);
 impl_from_val!(Display, Display);
 impl_from_val!(Number, Number);
 impl_from_val!(String, String);
-// impl_from_val!(HashMap<String, Value>, Map);
 
 macro_rules! impl_try_from {
     ($ret:ty, $variant:ident) => {
@@ -371,10 +392,20 @@ impl_try_from!(Color, Color);
 impl_try_from!(Display, Display);
 impl_try_from!(Number, Number);
 impl_try_from!(String, String);
-// impl_try_from!(HashMap<String, Value>, Map);
 
 macro_rules! try_from_int {
     ($int:ty) => {
+        impl TryFrom<Value> for $int {
+            type Error = ();
+
+            fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+                match value {
+                    Value::Number(Number::Unsigned(num)) => Ok(num),
+                    _ => Err(()),
+                }
+            }
+        }
+
         impl<'a> TryFrom<&'a Value> for &'a $int {
             type Error = ();
 
@@ -403,6 +434,17 @@ try_from_int!(u64);
 
 macro_rules! try_from_signed_int {
     ($int:ty) => {
+        impl std::convert::TryFrom<Value> for $int {
+            type Error = ();
+
+            fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+                match value {
+                    Value::Number(Number::Signed(num)) => Ok(num),
+                    _ => Err(()),
+                }
+            }
+        }
+
         impl<'a> std::convert::TryFrom<&'a Value> for &'a $int {
             type Error = ();
 
@@ -428,6 +470,28 @@ macro_rules! try_from_signed_int {
 }
 
 try_from_signed_int!(i64);
+
+impl TryFrom<Value> for usize {
+    type Error = ();
+
+    fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Value::Number(Number::Unsigned(num)) => Ok(num as usize),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<Value> for isize {
+    type Error = ();
+
+    fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Value::Number(Number::Signed(num)) => Ok(num as isize),
+            _ => Err(()),
+        }
+    }
+}
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -539,32 +603,5 @@ impl Value {
             Self::String(s) => Some(s),
             _ => None,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use anathema_values::Store;
-
-    use super::*;
-
-    #[test]
-    fn cached_string_from_lists() {
-        let mut store = Store::empty();
-        let write = store.write();
-        write.insert_at_path("names", vec!["Fin", "Bob", "Alice"]);
-
-        // bucket: &'a StoreRef<'a, T::Value>,
-        // node_id: &'a NodeId,
-        // scope: Option<ScopeId>,
-        // inner: &'a T::Ctx,
-        // attributes: &'a ExpressionValues<T::Value>,
-
-        // let data = DataCtx::<'_, WidgetContainer>::new();
-        // // let source = ScopeValue<Value>;
-        // // let cs = CachedString::new(value);
-
-        // // let expected = "hello Fin!";
-        // // assert_eq!(expected, actual);
     }
 }

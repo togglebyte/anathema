@@ -200,63 +200,9 @@ where
 
 #[cfg(test)]
 mod test {
+    use anathema_values::Store;
+
     use super::*;
     use crate::expression::FromContext;
-    use crate::testing::Widget;
-
-    #[test]
-    fn eval_for_loop() {
-        // let (expressions, bucket) = crate::testing::expressions();
-        // let bucket_ref = bucket.read();
-        // let mut ctx = EvaluationContext::new(&bucket_ref, None);
-
-        // let nodes = expressions
-        //     .iter()
-        //     .filter_map(|expr| expr.to_node(&ctx))
-        //     .collect();
-
-        // // let nodes = Nodes::new(vec![expres
-
-        // // let mut nodes = Nodes::<Widget>::new(nodes);
-
-        // // assert_eq!("root", nodes.next(&bucket.read()).unwrap().ident);
-        // // assert_eq!(
-        // //     "inner loopy child 1",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!(
-        // //     "inner loopy child 2",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!(
-        // //     "inner loopy child 1",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!(
-        // //     "inner loopy child 2",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!("loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
-        // // assert_eq!("loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
-        // // assert_eq!(
-        // //     "inner loopy child 1",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!(
-        // //     "inner loopy child 2",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!(
-        // //     "inner loopy child 1",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!(
-        // //     "inner loopy child 2",
-        // //     nodes.next(&bucket_ref).unwrap().ident
-        // // );
-        // // assert_eq!("loopy child 1", nodes.next(&bucket_ref).unwrap().ident);
-        // // assert_eq!("loopy child 2", nodes.next(&bucket_ref).unwrap().ident);
-        // // assert_eq!("truthy", nodes.next(&bucket_ref).unwrap().ident);
-        // // assert_eq!("last", nodes.next(&bucket_ref).unwrap().ident);
-    }
+    use crate::testing::{Widget, expression, for_expression};
 }

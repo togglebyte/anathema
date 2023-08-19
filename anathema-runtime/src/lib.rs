@@ -2,9 +2,9 @@ use std::io::{stdout, Stdout};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anathema_generator::{Expression, Nodes, NodeId, make_it_so};
+use anathema_generator::{make_it_so, Expression, NodeId, Nodes};
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::{Store, ReadOnly};
+use anathema_values::{ReadOnly, Store};
 use anathema_vm::Expressions;
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
@@ -31,7 +31,7 @@ pub struct Runtime<E, ER> {
     output: Stdout,
     constraints: Constraints,
     nodes: Nodes<WidgetContainer>,
-    bucket: Store<Value>,
+    store: Store<Value>,
     events: E,
     event_receiver: ER,
 }
@@ -72,7 +72,7 @@ where
             screen,
             constraints,
             nodes,
-            bucket,
+            store: bucket,
             events,
             event_receiver,
             enable_meta: false,
@@ -88,7 +88,7 @@ where
     }
 
     fn layout(&mut self) -> Result<()> {
-        let bucket = self.bucket.read();
+        let bucket = self.store.read();
         for (widget, children) in self.nodes.iter_mut() {
             widget.layout(children, self.constraints, &bucket)?;
         }
@@ -97,7 +97,7 @@ where
     }
 
     fn position(&mut self) {
-        let bucket = self.bucket.read().read();
+        let bucket = self.store.read().read();
         for (widget, children) in self.nodes.iter_mut() {
             widget.position(children, Pos::ZERO);
         }
@@ -109,6 +109,8 @@ where
         }
     }
 
+    fn changes(&self) {}
+
     pub fn run(mut self) -> Result<()> {
         if self.enable_mouse {
             Screen::enable_mouse(&mut self.output)?;
@@ -116,11 +118,15 @@ where
 
         self.screen.clear_all(&mut self.output)?;
 
+        self.layout()?;
+        self.position();
+        self.paint();
+
         'run: loop {
             while let Some(event) = self.event_receiver.next() {
                 let event = self
                     .events
-                    .event(event, self.bucket.write(), &mut self.nodes);
+                    .event(event, self.store.write(), &mut self.nodes);
 
                 match event {
                     Event::Resize(width, height) => {
@@ -142,11 +148,11 @@ where
             }
 
             let total = Instant::now();
-            self.layout()?;
+            // self.layout()?;
             self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
-            self.position();
+            // self.position();
             self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
@@ -160,7 +166,7 @@ where
             self.screen.erase();
 
             if self.enable_meta {
-                self.meta.update(self.bucket.write(), &self.nodes);
+                self.meta.update(self.store.write(), &self.nodes);
             }
         }
     }

@@ -61,13 +61,13 @@ impl<T> Scopes<T> {
         path_id: PathId,
         value: ScopeValue<T>,
         scope: impl Into<Option<ScopeId>>,
-    ) {
+    ) -> Option<ScopeValue<T>> {
         let scope = scope
             .into()
             .and_then(|id| self.scopes.get_mut(id.0))
             .unwrap_or_else(|| &mut self.root);
 
-        scope.insert(path_id, value);
+        scope.insert(path_id, value)
     }
 
     pub fn remove(&mut self, scope_id: impl Into<ScopeId>) {
@@ -112,8 +112,15 @@ impl<T> Scope<T> {
         self.values.get(&path.0)
     }
 
-    fn insert(&mut self, path: PathId, value: ScopeValue<T>) {
-        self.values.insert(path.0, value);
+    fn insert(&mut self, path: PathId, value: ScopeValue<T>) -> Option<ScopeValue<T>> {
+        self.values.insert(path.0, value)
+    }
+
+    pub(crate) fn remove_dyn(&mut self, path: PathId) -> Option<ValueRef<Container<T>>> {
+        match self.values.remove(&path.0) {
+            Some(ScopeValue::Dyn(value_ref)) => Some(value_ref),
+            _ => None
+        }
     }
 }
 

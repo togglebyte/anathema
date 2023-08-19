@@ -14,9 +14,9 @@ fn sub_to_value(node_id: NodeId, val: ValueRef<AVValue<Value>>) {
 }
 
 // TODO: rename this because X is a bad name
-pub struct X;
+pub struct Listener;
 
-impl Listen for X {
+impl Listen for Listener {
     type Key = NodeId;
     type Value = Value;
 

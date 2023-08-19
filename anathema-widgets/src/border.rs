@@ -1,9 +1,10 @@
+use anathema_generator::DataCtx;
 use anathema_render::{Size, Style};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Layouts;
 use anathema_widget_core::{
-    AnyWidget, LocalPos, TextPath, Value, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, Cached, LocalPos, Nodes, StoreRef, Value, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthChar;
 
@@ -64,6 +65,18 @@ impl From<&str> for Sides {
     }
 }
 
+impl TryFrom<Value> for Sides {
+    type Error = ();
+
+    fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Value::String(s) => Ok(Sides::from(s.as_str())),
+            _ => Err(()),
+        }
+    }
+}
+
+
 // -----------------------------------------------------------------------------
 //   - Border types -
 // -----------------------------------------------------------------------------
@@ -93,12 +106,17 @@ pub enum BorderStyle {
     Custom(String),
 }
 
-impl From<&str> for BorderStyle {
-    fn from(s: &str) -> Self {
-        match s {
-            "thin" => Self::Thin,
-            "thick" => Self::Thick,
-            raw => Self::Custom(raw.to_string()),
+impl TryFrom<Value> for BorderStyle {
+    type Error = ();
+
+    fn try_from(value: Value) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Value::String(s) => Ok(match s.as_ref() {
+                "thin" => Self::Thin,
+                "thick" => Self::Thick,
+                raw => Self::Custom(raw.to_string()),
+            }),
+            _ => Err(()),
         }
     }
 }
@@ -129,24 +147,24 @@ impl BorderStyle {
 /// If a border has no size (width and height) and no child then nothing will be rendered.
 ///
 /// To render a border with no child provide a width and a height.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Border {
     /// Which sides of the border should be rendered.
-    pub sides: Sides,
+    pub sides: Cached<Sides>,
     /// All the characters for the border, starting from the top left moving clockwise.
     /// This means the top-left corner is `edges[0]`, the top if `edges[1]` and the top right is
     /// `edges[2]` etc.
     pub edges: [char; 8],
     /// The width of the border. This will make the constraints tight for the width.
-    pub width: Option<usize>,
+    pub width: Cached<usize>,
     /// The height of the border. This will make the constraints tight for the height.
-    pub height: Option<usize>,
+    pub height: Cached<usize>,
     /// The minimum width of the border. This will force the minimum constrained width to expand to
     /// this value.
-    pub min_width: Option<usize>,
+    pub min_width: Cached<usize>,
     /// The minimum height of the border. This will force the minimum constrained height to expand to
     /// this value.
-    pub min_height: Option<usize>,
+    pub min_height: Cached<usize>,
     /// The style of the border.
     pub style: Style,
 }
@@ -162,45 +180,46 @@ impl Border {
     /// let border = Border::new(BorderStyle::Thin, Sides::ALL, None, None);
     /// ```
     pub fn new(
-        style: BorderStyle,
-        sides: Sides,
-        width: impl Into<Option<usize>>,
-        height: impl Into<Option<usize>>,
+        border_style: Cached<BorderStyle>,
+        sides: Cached<Sides>,
+        width: Cached<usize>,
+        height: Cached<usize>,
+        min_width: Cached<usize>,
+        min_height: Cached<usize>,
     ) -> Self {
-        let width = width.into();
-        let height = height.into();
-
-        let edges = style.edges();
+        let edges = border_style.value_ref().unwrap_or(&BorderStyle::Thin).edges();
 
         Self {
             sides,
             edges,
             width,
             height,
-            min_width: None,
-            min_height: None,
+            min_width,
+            min_height,
             style: Style::new(),
         }
     }
 
-    /// Create a "thin" border with an optional width and height
-    pub fn thin(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self::new(BorderStyle::Thin, Sides::ALL, width, height)
-    }
+    // /// Create a "thin" border with an optional width and height
+    // pub fn thin(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
+    //     Self::new(BorderStyle::Thin, Sides::ALL, width, height)
+    // }
 
-    /// Create a "thick" border with an optional width and height
-    pub fn thick(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
-        Self::new(BorderStyle::Thick, Sides::ALL, width, height)
-    }
+    // /// Create a "thick" border with an optional width and height
+    // pub fn thick(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
+    //     Self::new(BorderStyle::Thick, Sides::ALL, width, height)
+    // }
 
     fn border_size(&self) -> Size {
         // Get the size of the border (thickness).
         // This is NOT including the child.
         let mut border_width = 0;
-        if self.sides.contains(Sides::LEFT) {
+        let sides = self.sides.or(Sides::ALL);
+
+        if sides.contains(Sides::LEFT) {
             let mut width = self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0);
 
-            if self.sides.contains(Sides::TOP | Sides::BOTTOM) {
+            if sides.contains(Sides::TOP | Sides::BOTTOM) {
                 let corner = self.edges[BORDER_EDGE_TOP_LEFT].width().unwrap_or(0);
                 width = width.max(corner);
 
@@ -210,10 +229,10 @@ impl Border {
             border_width += width;
         }
 
-        if self.sides.contains(Sides::RIGHT) {
+        if sides.contains(Sides::RIGHT) {
             let mut width = self.edges[BORDER_EDGE_RIGHT].width().unwrap_or(0);
 
-            if self.sides.contains(Sides::TOP | Sides::BOTTOM) {
+            if sides.contains(Sides::TOP | Sides::BOTTOM) {
                 let corner = self.edges[BORDER_EDGE_TOP_RIGHT].width().unwrap_or(0);
                 width = width.max(corner);
 
@@ -225,10 +244,10 @@ impl Border {
 
         // Set the height of the border it self (thickness)
         let mut border_height = 0;
-        if self.sides.contains(Sides::TOP) {
+        if sides.contains(Sides::TOP) {
             let mut height = 1;
 
-            if self.sides.contains(Sides::LEFT | Sides::RIGHT) {
+            if sides.contains(Sides::LEFT | Sides::RIGHT) {
                 let corner = self.edges[BORDER_EDGE_TOP_LEFT].width().unwrap_or(0);
                 height = height.max(corner);
 
@@ -238,10 +257,10 @@ impl Border {
             border_height += height;
         }
 
-        if self.sides.contains(Sides::BOTTOM) {
+        if sides.contains(Sides::BOTTOM) {
             let mut height = 1;
 
-            if self.sides.contains(Sides::LEFT | Sides::RIGHT) {
+            if sides.contains(Sides::LEFT | Sides::RIGHT) {
                 let corner = self.edges[BORDER_EDGE_BOTTOM_LEFT].width().unwrap_or(0);
                 height = height.max(corner);
 
@@ -255,58 +274,61 @@ impl Border {
     }
 }
 
-impl Default for Border {
-    fn default() -> Self {
-        Self::new(BorderStyle::Thin, Sides::ALL, None, None)
-    }
-}
+// impl Default for Border {
+//     fn default() -> Self {
+//         Self::new(BorderStyle::Thin, Sides::ALL, None, None)
+//     }
+// }
 
 impl Widget for Border {
     fn kind(&self) -> &'static str {
         Self::KIND
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut Nodes,
+        mut ctx: LayoutCtx,
+        data: &StoreRef<'_>,
     ) -> Result<Size> {
         let border_layout = BorderLayout {
-            min_height: self.min_height,
-            min_width: self.min_width,
-            height: self.height,
-            width: self.width,
+            min_height: self.min_height.value(),
+            min_width: self.min_width.value(),
+            height: self.height.value(),
+            width: self.width.value(),
             border_size: self.border_size(),
         };
         let mut layout = Layouts::new(border_layout, &mut ctx);
-        layout.layout(children)?.size()
+        layout.layout(children, data)?.size()
     }
 
-    fn position<'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        let child = match children.first_mut() {
+    fn position(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {
+        let (child, children) = match children.first_mut() {
             Some(child) => child,
             None => return,
         };
 
-        if self.sides.contains(Sides::TOP) {
+        let sides = self.sides.or(Sides::ALL);
+        if sides.contains(Sides::TOP) {
             ctx.pos.y += 1;
         }
 
-        if self.sides.contains(Sides::LEFT) {
+        if sides.contains(Sides::LEFT) {
             ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as i32;
         }
 
-        child.position(ctx.pos);
+        child.position(children, ctx.pos);
     }
 
-    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
+    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
         // Draw the child
-        if let Some(child) = children.first_mut() {
+        if let Some((child, children)) = children.first_mut() {
             let clipping_region = ctx.create_region();
 
-            let child_ctx = ctx.sub_context(Some(&clipping_region));
+            // let child_ctx = ctx.sub_context(Some(&clipping_region));
+            let child_ctx = ctx.sub_context(None);
 
-            child.paint(child_ctx);
+            child.paint(children, child_ctx);
         }
 
         // Draw the border
@@ -321,46 +343,47 @@ impl Widget for Border {
 
         // Top left
         let pos = LocalPos::ZERO;
-        if self.sides.contains(Sides::LEFT | Sides::TOP) {
+        let sides = self.sides.or(Sides::ALL);
+        if sides.contains(Sides::LEFT | Sides::TOP) {
             ctx.put(self.edges[BORDER_EDGE_TOP_LEFT], self.style, pos);
-        } else if self.sides.contains(Sides::TOP) {
+        } else if sides.contains(Sides::TOP) {
             ctx.put(self.edges[BORDER_EDGE_TOP], self.style, pos);
-        } else if self.sides.contains(Sides::LEFT) {
+        } else if sides.contains(Sides::LEFT) {
             ctx.put(self.edges[BORDER_EDGE_LEFT], self.style, pos);
         }
 
         // Top right
         let pos = LocalPos::new(width.saturating_sub(1), 0);
-        if self.sides.contains(Sides::RIGHT | Sides::TOP) {
+        if sides.contains(Sides::RIGHT | Sides::TOP) {
             ctx.put(self.edges[BORDER_EDGE_TOP_RIGHT], self.style, pos);
-        } else if self.sides.contains(Sides::TOP) {
+        } else if sides.contains(Sides::TOP) {
             ctx.put(self.edges[BORDER_EDGE_TOP], self.style, pos);
-        } else if self.sides.contains(Sides::RIGHT) {
+        } else if sides.contains(Sides::RIGHT) {
             ctx.put(self.edges[BORDER_EDGE_RIGHT], self.style, pos);
         }
 
         // Bottom left
         let pos = LocalPos::new(0, height.saturating_sub(1));
-        if self.sides.contains(Sides::LEFT | Sides::BOTTOM) {
+        if sides.contains(Sides::LEFT | Sides::BOTTOM) {
             ctx.put(self.edges[BORDER_EDGE_BOTTOM_LEFT], self.style, pos);
-        } else if self.sides.contains(Sides::BOTTOM) {
+        } else if sides.contains(Sides::BOTTOM) {
             ctx.put(self.edges[BORDER_EDGE_BOTTOM], self.style, pos);
-        } else if self.sides.contains(Sides::LEFT) {
+        } else if sides.contains(Sides::LEFT) {
             ctx.put(self.edges[BORDER_EDGE_LEFT], self.style, pos);
         }
 
         // Bottom right
         let pos = LocalPos::new(width.saturating_sub(1), height.saturating_sub(1));
-        if self.sides.contains(Sides::RIGHT | Sides::BOTTOM) {
+        if sides.contains(Sides::RIGHT | Sides::BOTTOM) {
             ctx.put(self.edges[BORDER_EDGE_BOTTOM_RIGHT], self.style, pos);
-        } else if self.sides.contains(Sides::BOTTOM) {
+        } else if sides.contains(Sides::BOTTOM) {
             ctx.put(self.edges[BORDER_EDGE_BOTTOM], self.style, pos);
-        } else if self.sides.contains(Sides::RIGHT) {
+        } else if sides.contains(Sides::RIGHT) {
             ctx.put(self.edges[BORDER_EDGE_RIGHT], self.style, pos);
         }
 
         // Top
-        if self.sides.contains(Sides::TOP) {
+        if sides.contains(Sides::TOP) {
             for i in 1..width.saturating_sub(1) {
                 let pos = LocalPos::new(i, 0);
                 ctx.put(self.edges[BORDER_EDGE_TOP], self.style, pos);
@@ -368,7 +391,7 @@ impl Widget for Border {
         }
 
         // Bottom
-        if self.sides.contains(Sides::BOTTOM) {
+        if sides.contains(Sides::BOTTOM) {
             for i in 1..width.saturating_sub(1) {
                 let pos = LocalPos::new(i, height.saturating_sub(1));
                 ctx.put(self.edges[BORDER_EDGE_BOTTOM], self.style, pos);
@@ -376,7 +399,7 @@ impl Widget for Border {
         }
 
         // Left
-        if self.sides.contains(Sides::LEFT) {
+        if sides.contains(Sides::LEFT) {
             for i in 1..height.saturating_sub(1) {
                 let pos = LocalPos::new(0, i);
                 ctx.put(self.edges[BORDER_EDGE_LEFT], self.style, pos);
@@ -384,7 +407,7 @@ impl Widget for Border {
         }
 
         // Right
-        if self.sides.contains(Sides::RIGHT) {
+        if sides.contains(Sides::RIGHT) {
             for i in 1..height.saturating_sub(1) {
                 let pos = LocalPos::new(width.saturating_sub(1), i);
                 ctx.put(self.edges[BORDER_EDGE_RIGHT], self.style, pos);
@@ -396,30 +419,21 @@ impl Widget for Border {
 pub(crate) struct BorderFactory;
 
 impl WidgetFactory for BorderFactory {
-    fn make(
-        &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let border_style = values
-            .get_attrib("border-style")
-            .and_then(Value::to_str)
-            .map(From::from)
-            .unwrap_or(BorderStyle::Thin);
+    fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+        let border_style = Cached::new_or("border-style", &data, BorderStyle::Thin);
+        let sides = Cached::new_or("sides", &data, Sides::ALL);
 
-        let sides = values
-            .get_attrib("sides")
-            .and_then(Value::to_str)
-            .map(From::from)
-            .unwrap_or(Sides::ALL);
+        let mut widget = Border::new(
+            border_style,
+            sides,
+            Cached::new("width", &data),
+            Cached::new("height", &data),
+            Cached::new("min_width", &data),
+            Cached::new("min_height", &data),
+        );
 
-        let width = values.width();
-        let height = values.height();
+        // widget.style = values.style();
 
-        let mut widget = Border::new(border_style, sides, width, height);
-        widget.min_width = values.min_width();
-        widget.min_height = values.min_height();
-        widget.style = values.style();
         Ok(Box::new(widget))
     }
 }

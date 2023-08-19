@@ -11,13 +11,13 @@ impl Layout for Single {
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
-        bucket: &StoreRef<'_>,
+        store: &StoreRef<'_>,
         size: &mut Size,
     ) -> Result<()> {
         let constraints = ctx.padded_constraints();
 
-        if let Some((widget, children)) = children.next(bucket).transpose()? {
-            *size = match widget.layout(children, constraints, bucket) {
+        if let Some((widget, children)) = children.next(store).transpose()? {
+            *size = match widget.layout(children, constraints, store) {
                 Ok(s) => s,
                 Err(Error::InsufficientSpaceAvailble) => return Ok(()),
                 err @ Err(_) => err?,

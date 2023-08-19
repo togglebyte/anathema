@@ -28,7 +28,7 @@ pub use crate::factory::{WidgetFactory, Factory};
 pub use crate::layout::{Align, Axis, Direction, LocalPos, Padding, Pos, Region};
 pub use crate::values::{Color, Display, Number, Value, Cached};
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer, WidgetMeta};
-pub use crate::notifications::X;
+pub use crate::notifications::Listener;
 
 pub type Nodes = anathema_generator::Nodes<WidgetContainer>;
 pub type ReadOnly<'a> = anathema_values::ReadOnly<'a, Value>;
