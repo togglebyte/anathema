@@ -1,12 +1,92 @@
-use parking_lot::{RwLock, RwLockReadGuard, RwLockUpgradableReadGuard, RwLockWriteGuard};
+use std::ops::Deref;
+use std::cell::{Ref, RefCell, RefMut};
+use std::sync::Arc;
 
+use parking_lot::{
+    Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard, RwLockWriteGuard,
+};
+
+pub use self::map::Map;
+use self::map::MapRef;
 use crate::generation::Generation;
+use crate::hashmap::{HashMap, IntMap};
 use crate::notifier::{Action, Notifier};
 use crate::path::Paths;
-use crate::scopes::{Scopes, ScopeValue};
+use crate::scopes::{ScopeValue, Scopes};
 use crate::slab::GenerationSlab;
 use crate::values::{IntoValue, TryFromValue, TryFromValueMut};
 use crate::{Container, Path, PathId, ScopeId, Truthy, ValueRef};
+
+mod map;
+
+struct Values2<T>(RefCell<GenerationSlab<Container<T>>>);
+
+impl<T> Default for Values2<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T> Values2<T> {
+    fn get(&self, value_ref: ValueRef<Container<T>>) -> Option<Ref<'_, Container<T>>> {
+        let borrow = self.0.borrow();
+
+        panic!()
+        // Some(wrong)
+        // panic!()
+        // let () = Ref::map(borrow, |slab| slab.get(value_ref.index));
+    }
+
+    fn get_mut(&self, value_ref: ValueRef<Container<T>>) -> Option<RefMut<'_, Container<T>>> {
+        panic!()
+    }
+
+    // Will panic if the value does not exist or isn't a map
+    fn get_map(&self, value_ref: ValueRef<Container<T>>) -> Ref<'_, Map<T>> {
+        let slab = self.0.borrow();
+        Ref::map(slab, |gen| {
+            let cont: &Container<_> = &*gen.get(value_ref.index).unwrap();
+            match cont {
+                Container::Map(map) => map,
+                _ => panic!(),
+            }
+        })
+    }
+
+    fn push(&self, value: Container<T>) -> ValueRef<Container<T>> {
+        self.0.borrow_mut().push(value)
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Store 2 -
+// -----------------------------------------------------------------------------
+pub struct Store2<T> {
+    root: Map<T>,
+    values: Values2<T>,
+    paths: Paths,
+    scopes: Scopes<T>,
+    notifier: Notifier<T>,
+}
+
+impl<T> Store2<T> {
+    pub fn new() -> Self {
+        let (sender, receiver) = flume::unbounded();
+
+        Self {
+            root: Map::new(),
+            values: Values2::default(),
+            notifier: Notifier::new(sender),
+            paths: Paths::empty(),
+            scopes: Scopes::new(),
+        }
+    }
+
+    pub fn get(&self, path: impl Into<Path>) -> Option<ValueRef<Container<T>>> {
+        let path_id = self.paths.get(&path.into())?;
+        self.root.get(path_id)
+    }
+}
 
 // -----------------------------------------------------------------------------
 //   - Global bucket -
@@ -114,22 +194,12 @@ impl<'a, T> StoreRef<'a, T> {
         self.scopes.write().new_scope(parent)
     }
 
-    pub fn get_or_insert_path(&self, path: impl Into<Path>) -> PathId {
-        self.paths.write().get_or_insert(path.into())
-    }
-
-    pub fn get_path(&self, path: impl Into<Path>) -> Option<PathId> {
-        self.paths.read().get(&path.into())
-    }
-
-    pub fn get_path_unchecked(&self, path: impl Into<Path>) -> PathId {
-        self.paths
-            .read()
-            .get(&path.into())
-            .expect("assumed path exists")
-    }
-
-    pub fn scope_value(&self, path_id: PathId, value: ScopeValue<T>, scope: ScopeId) -> Option<ScopeValue<T>> {
+    pub fn scope_value(
+        &self,
+        path_id: PathId,
+        value: ScopeValue<T>,
+        scope: ScopeId,
+    ) -> Option<ScopeValue<T>> {
         self.scopes.write().insert(path_id, value, scope)
     }
 }
@@ -264,54 +334,46 @@ impl<'a, T> StoreMut<'a, T> {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::hashmap::HashMap;
-    // use crate::{List, Map};
+    use super::*;
+    use crate::hashmap::HashMap;
+    use crate::List;
 
-    // fn make_test_bucket() -> Store<u32> {
-    //     let mut bucket = Store::empty();
-    //     bucket.write().insert_at_path("count", 123u32);
-    //     bucket.write().insert_at_path("len", 10);
-    //     bucket
-    // }
+    #[test]
+    fn store_from_map() {
+        // let mut store = Store2::<String>::new();
+        // let values = store.values();
+        // values.new_map();
 
-    // #[test]
-    // fn bucket_mut_get() {
-    //     let mut bucket = make_test_bucket();
-    //     let bucket = bucket.write();
-    //     let count = bucket.getv2::<u32>("count").unwrap();
-    //     let len = bucket.getv2::<u32>("len").unwrap();
-    //     assert_eq!(123, *count);
-    //     assert_eq!(10, *len);
-    // }
+        // let mut hm = store.new_map();
+        // hm.insert("name", Container::Value("Fin".into()));
+        // // values.insert("people",
 
-    // #[test]
-    // fn bucket_mut_get_mut() {
-    //     let mut bucket = make_test_bucket();
-    //     let mut bucket = bucket.write();
-    //     *bucket.getv2_mut::<u32>("count").unwrap() = 5u32;
-    //     let actual = bucket.getv2_mut::<u32>("count").unwrap();
-    //     assert_eq!(5, *actual);
-    // }
+        // // {
+        // //     let mut hm = store.new_map();
+        // //     hm.insert("name", Container::Value("Fin".into()));
+        // //     let mut people = store.new_map();
+        // //     people.insert("fin", Container::Map(hm));
+        // //     store.root.insert("people", people);
+        // // }
 
-    // #[test]
-    // fn bucket_mut_insert_list() {
-    //     let mut bucket = make_test_bucket();
-    //     let mut bucket = bucket.write();
-    //     bucket.insert_at_path("list", vec![1, 2, 3]);
-    //     let list: &List<u32> = bucket.getv2::<List<u32>>("list").unwrap();
-    //     assert_eq!(list.len(), 3);
-    // }
+        // // let values = store.values();
+        // // let people = store.get("people").unwrap();
+        // // let people = values.get_map(people).unwrap();
+        // // let fin = people.get("fin").unwrap();
+        // // let fin = values.get_map(fin).unwrap();
 
-    // #[test]
-    // fn bucket_ref_get() {
-    //     let bucket = make_test_bucket();
-    //     let bucket = bucket.read();
-    //     let count_value_ref = ValueRef::new(0, 0);
-    //     let len_value_ref = ValueRef::new(1, 0);
-    //     let count = bucket.get(count_value_ref).unwrap();
-    //     let len = bucket.get(len_value_ref).unwrap();
-    //     assert_eq!(Container::Single(123), **count);
-    //     assert_eq!(Container::Single(10), **len);
-    // }
+        // // panic!("{fin:#?}");
+
+        // // let value_ref: ValueRef<Container<String>> = store.get("name").unwrap();
+        // // let expected = "Fin";
+        // // let values = store.values();
+        // // let actual: &str = values.get_single(value_ref).unwrap();
+        // // assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn store_from_nested_maps() {
+        // let mut hm = HashMap::new();
+        // hm.insert("user".to_string(), Container::Map());
+    }
 }

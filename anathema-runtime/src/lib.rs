@@ -22,6 +22,7 @@ use crate::events::{EventProvider, Events};
 pub mod events;
 mod frame;
 mod meta;
+mod view;
 
 pub struct Runtime<E, ER> {
     pub enable_meta: bool,
@@ -54,7 +55,7 @@ where
         events: E,
         event_receiver: ER,
     ) -> Result<Self> {
-        register_default_widgets();
+        register_default_widgets()?;
         enable_raw_mode()?;
         let mut stdout = stdout();
         Screen::hide_cursor(&mut stdout)?;

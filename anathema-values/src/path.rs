@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -31,8 +32,9 @@ impl Deref for PathId {
 /// Paths are insert and fetch only.
 /// Once a path is written into `Paths` it should never be removed
 /// as the index in the `Vec<Path>` is the path id
+#[derive(Debug, Default)]
 pub struct Paths {
-    inner: HashMap<Path, PathId>,
+    inner: RefCell<HashMap<Path, PathId>>,
 }
 
 impl Paths {
@@ -43,18 +45,18 @@ impl Paths {
     }
 
     pub(crate) fn get(&self, path: &Path) -> Option<PathId> {
-        self.inner.get(path).copied()
+        self.inner.borrow().get(path).copied()
     }
 
-    pub(crate) fn get_or_insert(&mut self, path: Path) -> PathId {
-        *self.inner.entry(path).or_insert_with(next)
+    pub(crate) fn get_or_insert(&self, path: Path) -> PathId {
+        *self.inner.borrow_mut().entry(path).or_insert_with(next)
     }
 }
 
 impl From<Vec<Path>> for Paths {
     fn from(paths: Vec<Path>) -> Self {
         Self {
-            inner: paths.into_iter().map(|p| (p, next())).collect(),
+            inner: RefCell::new(paths.into_iter().map(|p| (p, next())).collect()),
         }
     }
 }

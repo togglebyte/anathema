@@ -4,18 +4,18 @@ use std::sync::Arc;
 pub use valueref::ValueRef;
 
 pub use self::list::List;
-pub use self::map::Map;
-use crate::store::StoreMut;
+// pub use self::map::Map;
+use crate::store::{StoreMut, Map};
 use crate::hashmap::{HashMap, IntMap};
 use crate::Path;
 
 mod list;
-mod map;
+// mod map;
 mod valueref;
 
 /// Represent a value stored.
 /// Both `Map` and `List` contains `ValueRef<T>` rather than `T`
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 pub enum Container<T> {
     /// The empty value is used a placeholder. This makes it possible
     /// to associate a signal or such to a value that does not exist yet.

@@ -1,9 +1,11 @@
+use std::fmt::{self, Debug};
 use super::Idx;
 use crate::{generation::{Generation, GenerationId}, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Entry -
 // -----------------------------------------------------------------------------
+#[derive(Debug)]
 enum Entry<T> {
     Occupied(Generation<T>),
     Vacant(GenerationId, Option<Idx>),
@@ -12,8 +14,8 @@ enum Entry<T> {
 // -----------------------------------------------------------------------------
 //   - Generation slab -
 // -----------------------------------------------------------------------------
-// TODO: make this pub(crate) once the bucket api is sensible
-pub struct GenerationSlab<T> {
+#[derive(Debug)]
+pub(crate) struct GenerationSlab<T> {
     inner: Vec<Entry<T>>,
     next_id: Option<Idx>,
 }
@@ -123,6 +125,23 @@ impl<T> GenerationSlab<T> {
     }
 }
 
+impl<T> std::ops::IndexMut<Idx> for GenerationSlab<T> {
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
+        match &mut self.inner[index] {
+            Entry::Occupied(generation) => &mut *generation,
+            Entry::Vacant(..) => panic!("no value at index {index}"),
+        }
+    }
+}
+
+impl<T> std::ops::Index<Idx> for GenerationSlab<T> {
+    type Output = T;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -209,6 +228,7 @@ mod test {
         assert_eq!(None, slab.next_id);
     }
 
+    // TODO: Clean up these tests. Either impl or bin
     // #[test]
     // fn replace_existing_value() {
     //     let mut slab = get_slab();

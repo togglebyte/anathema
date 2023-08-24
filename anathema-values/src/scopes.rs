@@ -32,9 +32,16 @@ impl From<usize> for ScopeId {
     }
 }
 
+#[derive(Debug)]
 pub struct Scopes<T> {
     root: Scope<T>,
     scopes: Slab<Scope<T>>,
+}
+
+impl<T> Default for Scopes<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T> Scopes<T> {
@@ -88,6 +95,7 @@ impl<T> Scopes<T> {
     }
 }
 
+#[derive(Debug, Default)]
 struct Scope<T> {
     values: IntMap<ScopeValue<T>>,
     parent: Option<ScopeId>,
@@ -119,7 +127,7 @@ impl<T> Scope<T> {
     pub(crate) fn remove_dyn(&mut self, path: PathId) -> Option<ValueRef<Container<T>>> {
         match self.values.remove(&path.0) {
             Some(ScopeValue::Dyn(value_ref)) => Some(value_ref),
-            _ => None
+            _ => None,
         }
     }
 }

@@ -2,7 +2,6 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
-use anathema_generator::{DataCtx, FromContext, NodeId, ExpressionValue};
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{Listen, Listeners, ValueRef};
 
@@ -10,9 +9,7 @@ use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::factory::Factory;
-use crate::notifications::Listener;
-use crate::values::Cached;
+// use crate::values::Cached;
 use crate::{StoreRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
 
 // Layout:
@@ -154,8 +151,8 @@ impl Widget for Box<dyn Widget> {
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
 pub struct WidgetContainer {
-    pub(crate) background: Cached<Color>,
-    pub(crate) display: Cached<Display>,
+    pub(crate) background: Option<Color>,
+    pub(crate) display: Display,
     pub(crate) padding: Padding,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
@@ -235,8 +232,7 @@ impl WidgetContainer {
         constraints: Constraints,
         bucket: &StoreRef<'_>,
     ) -> Result<Size> {
-        let display = self.display.or(Display::Show);
-        match display {
+        match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
@@ -267,7 +263,7 @@ impl WidgetContainer {
     }
 
     pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
-        if let Display::Hide | Display::Exclude = self.display.or(Display::Show) {
+        if let Display::Hide | Display::Exclude = self.display {
             return;
         }
 
@@ -285,12 +281,12 @@ impl WidgetContainer {
     }
 
     fn paint_background(&self, ctx: &mut PaintCtx<'_, WithSize>) -> Option<()> {
-        let color = self.background.value_ref()?;
+        let color = self.background?;
         let width = self.size.width;
 
         let background_str = format!("{:width$}", "", width = width);
         let mut style = Style::new();
-        style.set_bg(*color);
+        style.set_bg(color);
 
         for y in 0..self.size.height {
             let pos = LocalPos::new(0, y);
@@ -301,32 +297,32 @@ impl WidgetContainer {
     }
 }
 
-impl FromContext for WidgetContainer {
-    type Ctx = WidgetMeta;
-    type Err = crate::error::Error;
-    type Notifier = Listener;
-    type Value = crate::Value;
+// impl FromContext for WidgetContainer {
+//     type Ctx = WidgetMeta;
+//     type Err = crate::error::Error;
+//     type Notifier = Listener;
+//     type Value = crate::Value;
 
-    fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
-        let display = Cached::new_or("display", &ctx, Display::Show);
-        let background = Cached::new("background", &ctx);
-        let padding = ctx.get("padding");
+//     fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
+//         let display = Cached::new_or("display", &ctx, Display::Show);
+//         let background = Cached::new("background", &ctx);
+//         let padding = ctx.get("padding");
 
-        let container = WidgetContainer {
-            display,
-            background,
-            padding: Padding::ZERO,
-            size: Size::ZERO,
-            pos: Pos::ZERO,
-            inner: Factory::exec(ctx)?,
-        };
-        Ok(container)
-    }
-}
+//         let container = WidgetContainer {
+//             display,
+//             background,
+//             padding: Padding::ZERO,
+//             size: Size::ZERO,
+//             pos: Pos::ZERO,
+//             inner: Factory::exec(ctx)?,
+//         };
+//         Ok(container)
+//     }
+// }
 
-/// Meta data needed to construct a `WidgetContainer` from a `Node`
-#[derive(Debug)]
-pub struct WidgetMeta {
-    pub ident: String,
-    pub text: Option<ExpressionValue<Value>>,
-}
+// /// Meta data needed to construct a `WidgetContainer` from a `Node`
+// #[derive(Debug)]
+// pub struct WidgetMeta {
+//     pub ident: String,
+//     pub text: Option<ExpressionValue<Value>>,
+// }
