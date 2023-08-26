@@ -47,7 +47,7 @@ pub enum Expression<Output: FromContext> {
 impl<Output: FromContext> Expression<Output> {
     pub(crate) fn to_node(
         &self,
-        eval: &EvaluationContext<'_, Output::Value>,
+        state: &mut T,
         node_id: impl Into<NodeId>,
     ) -> Result<Node<Output>, Output::Err> {
         let node_id = node_id.into();
@@ -57,7 +57,7 @@ impl<Output: FromContext> Expression<Output> {
                 children,
                 attributes,
             } => {
-                let context = DataCtx::new(eval.store, &node_id, eval.scope, context, attributes);
+                let context = DataCtx::new(&node_id, eval.scope, context, attributes);
                 let output = Output::from_context(context)?;
                 let nodes = children
                     .iter()

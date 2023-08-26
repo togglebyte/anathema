@@ -1,31 +1,25 @@
-use anathema_values::StoreRef;
-use expression::EvaluationContext;
-
-pub use crate::ctx::DataCtx;
-pub use crate::expression::{ControlFlowExpr, Expression, FromContext};
-pub use crate::nodes::{NodeId, Nodes};
-pub use crate::values::{ExpressionValue, ExpressionValues};
+mod expressions;
+mod nodes;
+mod values;
 
 // #[cfg(test)]
 mod testing;
 
-mod ctx;
-mod expression;
-mod nodes;
+use std::rc::Rc;
 
-mod values;
+use anathema_values::State;
+use expressions::{EvalState, Expressions};
+pub use nodes::{NodeId, Nodes};
+pub use values::{Attributes, Value};
 
-pub fn make_it_so<'a, T: FromContext>(
-    expressions: Vec<Expression<T>>,
-    store: StoreRef<T::Value>,
-) -> Result<Nodes<T>, T::Err> {
-    let eval = EvaluationContext::new(&store, None);
+// TODO: rename this amazingly named trait
+pub trait Flap: Sized + std::fmt::Debug {
+    type Meta: ?Sized + std::fmt::Debug;
+    type Err;
 
-    let nodes = expressions
-        .into_iter()
-        .enumerate()
-        .map(|(i, expr)| expr.to_node(&eval, NodeId::new(i)))
-        .collect::<Result<_, _>>()?;
+    fn do_it(meta: &Rc<Self::Meta>, state: &impl State) -> Result<Self, Self::Err>;
+}
 
-    Ok(Nodes::new(nodes))
+pub fn make_it_so<Ctx: Flap>(expressions: Expressions<Ctx>) -> Nodes<Ctx> {
+    Nodes::new(Rc::new(expressions), EvalState::new())
 }

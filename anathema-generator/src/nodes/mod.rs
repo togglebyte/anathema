@@ -1,208 +1,110 @@
-use std::fmt::{self, Debug};
-use std::iter::once;
-use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::rc::Rc;
 
-use anathema_values::{Container, List, PathId, ScopeId, StoreRef, Truthy, ValueRef};
+use anathema_values::State;
 
-use self::controlflow::ControlFlows;
-use self::loops::LoopState;
-use crate::expression::{EvaluationContext, FromContext};
-use crate::Expression;
+pub use self::id::NodeId;
+use crate::expressions::{EvalState, Expression, Expressions, Loop};
+use crate::Flap;
 
-pub(crate) mod controlflow;
-pub(crate) mod loops;
+mod id;
 
-// TODO: One possible solution to the partial rebuild
-//       could be message passing.
-//
-//       enum Change {
-//          Add,
-//          Remove(NodeId),
-//          Update,
-//          Swap(NodeId, NodeId)
-//       }
-
-// TODO: overflowing a u16 should use the Vec variant
-enum NodeIdV2 {
-    Small([u16; 15]),
-    Large(Vec<usize>),
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-#[repr(transparent)]
-pub struct NodeId(Vec<usize>);
-
-impl NodeId {
-    pub fn new(id: usize) -> Self {
-        Self(vec![id])
-    }
-
-    pub fn child(&self, next: usize) -> Self {
-        let mut v = Vec::with_capacity(self.0.len() + 1);
-        v.extend(&self.0);
-        v.push(next);
-        Self(v)
-    }
-}
-
-impl From<Vec<usize>> for NodeId {
-    fn from(values: Vec<usize>) -> Self {
-        Self(values)
-    }
-}
-
-impl From<usize> for NodeId {
-    fn from(value: usize) -> Self {
-        Self::new(value)
-    }
-}
-
-pub trait RemoveTrigger: Default {
-    fn remove(&mut self);
-}
-
-fn next() -> NodeId {
-    static NEXT: AtomicUsize = AtomicUsize::new(0);
-    NodeId(vec![NEXT.fetch_add(1, Ordering::Relaxed)])
-}
-
-pub struct Node<Output: FromContext> {
-    id: NodeId,
-    kind: NodeKind<Output>,
-}
-
-impl<Output: FromContext> Node<Output> {
-    pub fn id(&self) -> &NodeId {
-        &self.id
-    }
-
-    #[cfg(test)]
-    pub fn single(self) -> Option<(Output, Nodes<Output>)> {
-        match self.kind {
-            NodeKind::Single(output, children) => Some((output, children)),
-            _ => None,
-        }
-    }
-}
-
-impl<T> Debug for Node<T>
-where
-    T: FromContext + Debug,
-    T::Value: Debug,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Node")
-            .field("id", &self.id)
-            .field("kind", &self.kind)
-            .finish()
-    }
-}
-
-/// A single node in the node tree
 #[derive(Debug)]
-pub enum NodeKind<Output: FromContext> {
-    Single(Output, Nodes<Output>),
-    Collection(LoopState<Output>),
-    ControlFlow(ControlFlows<Output>),
-}
-
-impl<Output: FromContext> NodeKind<Output> {
-    pub(crate) fn to_node(self, id: NodeId) -> Node<Output> {
-        Node { id, kind: self }
-    }
+pub struct Node<Ctx: Flap> {
+    node_id: NodeId,
+    kind: NodeKind<Ctx>,
 }
 
 #[derive(Debug)]
-pub struct Nodes<Output: FromContext> {
-    index: usize,
-    inner: Vec<Node<Output>>,
+pub enum NodeKind<Ctx: Flap> {
+    Single(Ctx, Nodes<Ctx>),
+    Loop { body: Nodes<Ctx>, l: Rc<Loop> },
 }
 
-impl<Output> Nodes<Output>
-where
-    Output: FromContext,
-{
-    pub fn new(nodes: Vec<Node<Output>>) -> Self {
+#[derive(Debug)]
+pub struct Nodes<Ctx: Flap> {
+    expressions: Rc<Expressions<Ctx>>,
+    inner: Vec<Node<Ctx>>,
+    eval_state: EvalState,
+    current_node: usize,
+}
+
+impl<Ctx: Flap> Nodes<Ctx> {
+    pub(crate) fn new(expressions: Rc<Expressions<Ctx>>, eval_state: EvalState) -> Self {
         Self {
-            inner: nodes,
-            index: 0,
+            expressions,
+            inner: vec![],
+            eval_state,
+            current_node: 0,
         }
     }
 
-    pub(crate) fn empty() -> Self {
-        Self::new(vec![])
-    }
-
-    fn push(&mut self, node: Node<Output>) {
-        self.inner.push(node);
-    }
-
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
-
-    /// Generate more nodes if needed (and there is enough information to produce more)
-    pub fn next(
-        &mut self,
-        bucket: &StoreRef<'_, Output::Value>,
-    ) -> Option<Result<(&mut Output, &mut Nodes<Output>), Output::Err>> {
-        let nodes = self.inner[self.index..].iter_mut();
-
-        for node in nodes {
-            match &mut node.kind {
-                NodeKind::Single(output, children) => {
-                    self.index += 1;
-                    return Some(Ok((output, children)));
-                }
-                NodeKind::Collection(loop_state) => match loop_state.next(bucket, &node.id) {
-                    last @ Some(_) => return last,
-                    None => self.index += 1,
-                },
-                NodeKind::ControlFlow(flows) => match flows.next(bucket, &node.id) {
-                    last @ Some(_) => return last,
-                    None => self.index += 1,
-                },
+    pub fn next(&mut self, state: &impl State) -> Option<Result<(&mut Ctx, &mut Nodes<Ctx>), Ctx::Err>> {
+        if self.inner.len() == self.current_node {
+            match self.expressions.next(&mut self.eval_state, state)? {
+                Ok(node) => self.inner.push(node),
+                Err(e) => return Some(Err(e)),
             }
         }
 
-        None
-    }
+        let node = match &mut self.inner[self.current_node].kind {
+            NodeKind::Single(output, nodes) => {
+                self.current_node += 1;
+                Some(Ok((output, nodes)))
+            }
+            _ => {
+                panic!()
+                // self.next(state)
+            }
+        };
 
-    pub fn iter_mut(&mut self) -> Box<dyn Iterator<Item = (&mut Output, &mut Self)> + '_> {
-        let iter = self
-            .inner
-            .iter_mut()
-            .map(
-                |node| -> Box<dyn Iterator<Item = (&mut Output, &mut Self)>> {
-                    match &mut node.kind {
-                        NodeKind::Single(output, nodes) => Box::new(once((output, nodes))),
-                        NodeKind::Collection(state) => state.nodes.iter_mut(),
-                        NodeKind::ControlFlow(flows) => flows.nodes.iter_mut(),
-                    }
-                },
-            )
-            .flatten();
+        node
 
-        Box::new(iter)
-    }
+        // loop {
+        //     let node = expressions.next(&mut self.eval_state)?;
+        //     match node {
+        //         Ok(node) => nodes.push(node),
+        //         Err(e) => return Some(Err(e)),
+        //     }
 
-    pub fn first_mut(&mut self) -> Option<(&mut Output, &mut Self)> {
-        let first_node = self.inner.first_mut()?;
-        match &mut first_node.kind {
-            NodeKind::Single(output, children) => Some((output, children)),
-            NodeKind::Collection(state) => state.nodes.first_mut(),
-            NodeKind::ControlFlow(flows) => flows.nodes.first_mut(),
-        }
+        //     let nodes = &mut *nodes;
+        //     if let NodeKind::Single(val, nodes) = &mut nodes.last_mut()?.kind {
+        //         break Some(Ok((val, nodes)));
+        //     } else {
+        //         continue;
+        //     }
+        // }
     }
 }
 
-#[cfg(test)]
-mod test {
-    use anathema_values::Store;
-
-    use super::*;
-    use crate::expression::FromContext;
-    use crate::testing::{Widget, expression, for_expression};
+pub(crate) fn expression_to_node<Ctx: Flap>(
+    expr: &Expression<Ctx>,
+    node_id: NodeId,
+    state: &impl State,
+) -> Option<Result<Node<Ctx>, Ctx::Err>> {
+    match expr {
+        Expression::Node {
+            children, context, ..
+        } => {
+            let node = Ctx::do_it(context, state).map(|output| {
+                let eval_state = EvalState::with_parent(&node_id);
+                Node {
+                    node_id,
+                    kind: NodeKind::Single(output, Nodes::new(children.clone(), eval_state)),
+                }
+            });
+            Some(node)
+        }
+        Expression::Loop(state, body) => {
+            // None
+            let node = Node {
+                kind: NodeKind::Loop {
+                    body: Nodes::new(body.clone(), EvalState::with_parent(&node_id)),
+                    l: state.clone(),
+                },
+                node_id,
+            };
+            Some(Ok(node))
+        }
+        Expression::ControlFlow(state) => None,
+    }
 }
