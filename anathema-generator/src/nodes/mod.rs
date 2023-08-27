@@ -1,110 +1,115 @@
+use std::ops::DerefMut;
 use std::rc::Rc;
 
-use anathema_values::State;
+use anathema_values::{State, Path};
 
 pub use self::id::NodeId;
-use crate::expressions::{EvalState, Expression, Expressions, Loop};
-use crate::Flap;
+use crate::expressions::Expression;
+use crate::{IntoWidget, Value};
 
 mod id;
 
 #[derive(Debug)]
-pub struct Node<Ctx: Flap> {
-    node_id: NodeId,
-    kind: NodeKind<Ctx>,
+pub struct Node<Widget: IntoWidget> {
+    pub node_id: NodeId,
+    pub kind: NodeKind<Widget>,
+}
+
+#[cfg(test)]
+impl<Widget: IntoWidget> Node<Widget> {
+    pub(crate) fn single(&mut self) -> (&mut Widget, &mut Nodes<Widget>) {
+        match &mut self.kind {
+            NodeKind::Single(inner, nodes) => (inner, nodes),
+            _ => panic!()
+        }
+    }
 }
 
 #[derive(Debug)]
-pub enum NodeKind<Ctx: Flap> {
-    Single(Ctx, Nodes<Ctx>),
-    Loop { body: Nodes<Ctx>, l: Rc<Loop> },
+pub enum NodeKind<Widget: IntoWidget> {
+    Single(Widget, Nodes<Widget>),
+    Loop {
+        body: Nodes<Widget>,
+        binding: Path,
+        collection: Box<[Value]>,
+        value_index: usize,
+    },
 }
 
 #[derive(Debug)]
-pub struct Nodes<Ctx: Flap> {
-    expressions: Rc<Expressions<Ctx>>,
-    inner: Vec<Node<Ctx>>,
-    eval_state: EvalState,
-    current_node: usize,
+// TODO: possibly optimise this by making nodes optional on the node
+pub struct Nodes<Widget: IntoWidget> {
+    expressions: Rc<[Expression<Widget>]>,
+    inner: Vec<Node<Widget>>,
+    active_loop: Option<Box<Node<Widget>>>,
+    expr_index: usize,
+    next_id: NodeId,
 }
 
-impl<Ctx: Flap> Nodes<Ctx> {
-    pub(crate) fn new(expressions: Rc<Expressions<Ctx>>, eval_state: EvalState) -> Self {
+impl<Widget: IntoWidget> Nodes<Widget> {
+    pub(crate) fn new(expressions: Rc<[Expression<Widget>]>, next_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
-            eval_state,
-            current_node: 0,
+            active_loop: None,
+            expr_index: 0,
+            next_id,
         }
     }
 
-    pub fn next(&mut self, state: &impl State) -> Option<Result<(&mut Ctx, &mut Nodes<Ctx>), Ctx::Err>> {
-        if self.inner.len() == self.current_node {
-            match self.expressions.next(&mut self.eval_state, state)? {
-                Ok(node) => self.inner.push(node),
-                Err(e) => return Some(Err(e)),
-            }
-        }
-
-        let node = match &mut self.inner[self.current_node].kind {
-            NodeKind::Single(output, nodes) => {
-                self.current_node += 1;
-                Some(Ok((output, nodes)))
-            }
-            _ => {
-                panic!()
-                // self.next(state)
-            }
-        };
-
-        node
-
-        // loop {
-        //     let node = expressions.next(&mut self.eval_state)?;
-        //     match node {
-        //         Ok(node) => nodes.push(node),
-        //         Err(e) => return Some(Err(e)),
-        //     }
-
-        //     let nodes = &mut *nodes;
-        //     if let NodeKind::Single(val, nodes) = &mut nodes.last_mut()?.kind {
-        //         break Some(Ok((val, nodes)));
-        //     } else {
-        //         continue;
-        //     }
-        // }
+    fn reset(&mut self) {
+        self.expr_index = 0;
     }
-}
 
-pub(crate) fn expression_to_node<Ctx: Flap>(
-    expr: &Expression<Ctx>,
-    node_id: NodeId,
-    state: &impl State,
-) -> Option<Result<Node<Ctx>, Ctx::Err>> {
-    match expr {
-        Expression::Node {
-            children, context, ..
-        } => {
-            let node = Ctx::do_it(context, state).map(|output| {
-                let eval_state = EvalState::with_parent(&node_id);
-                Node {
-                    node_id,
-                    kind: NodeKind::Single(output, Nodes::new(children.clone(), eval_state)),
+    fn eval_active_loop(&mut self, state: &mut Widget::State) -> Option<Result<(), Widget::Err>> {
+        if let Some(active_loop) = self.active_loop.as_mut() {
+            let Node {
+                kind:
+                    NodeKind::Loop {
+                        body,
+                        loop_repr,
+                        value_index,
+                    },
+                node_id: parent_id,
+            } = active_loop.deref_mut()
+            else { unreachable!() };
+
+            match body.next(state) {
+                result @ Some(_) => return result,
+                None => {
+                    *value_index += 1;
+                    if *value_index == loop_repr.collection.len() {
+                        self.inner.push(*self.active_loop.take().expect(""));
+                    } else {
+                        // Scope the value
+                        body.reset();
+                    }
                 }
-            });
-            Some(node)
+            }
         }
-        Expression::Loop(state, body) => {
-            // None
-            let node = Node {
-                kind: NodeKind::Loop {
-                    body: Nodes::new(body.clone(), EvalState::with_parent(&node_id)),
-                    l: state.clone(),
-                },
-                node_id,
-            };
-            Some(Ok(node))
+
+        self.next(state)
+    }
+
+    pub fn next(&mut self, state: &mut Widget::State) -> Option<Result<(), Widget::Err>> {
+        if let ret @ Some(_) = self.eval_active_loop(state) {
+            return ret;
         }
-        Expression::ControlFlow(state) => None,
+
+        let expr = self.expressions.get(self.expr_index)?;
+        let node = match expr.eval(state, self.next_id.clone()) {
+            Ok(node) => node,
+            Err(e) => return Some(Err(e)),
+        };
+        match node.kind {
+            NodeKind::Loop { .. } => {
+                self.active_loop = Some(node.into());
+                self.next(state)
+            }
+            NodeKind::Single(element, node) => {
+                self.expr_index += 1;
+                Some(Ok(()))
+            }
+        }
     }
 }

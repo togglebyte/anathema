@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 use anathema_values::{Path, State};
 
-use crate::expressions::{Expression, Expressions, Loop};
-use crate::{Attributes, Flap, Value};
+use crate::expressions::Expression;
+use crate::{Attributes, IntoWidget, Value};
 
 // // -----------------------------------------------------------------------------
 // //   - Helper impls -
@@ -117,23 +117,15 @@ impl From<()> for Attributes {
     }
 }
 
-impl<T: Flap> From<()> for Expressions<T> {
-    fn from((): ()) -> Self {
-        Expressions::new(vec![])
-    }
-}
-
-impl<T: Flap, const N: usize> From<[Expression<T>; N]> for Expressions<T> {
-    fn from(expressions: [Expression<T>; N]) -> Self {
-        Expressions::new(expressions.into())
-    }
-}
-
 impl<T: std::fmt::Display> From<T> for Value {
     fn from(s: T) -> Self {
         let s = s.to_string();
         Self::Static(s.into())
     }
+}
+
+fn real() {
+    let v: Vec<()> = [].into();
 }
 
 // -----------------------------------------------------------------------------
@@ -144,41 +136,47 @@ pub(crate) struct Widget {
     pub ident: Rc<str>,
 }
 
-impl Flap for Widget {
+impl IntoWidget for Widget {
     type Err = ();
     type Meta = str;
+    type State = ();
 
-    fn do_it(meta: &Rc<Self::Meta>, state: &impl State) -> Result<Self, Self::Err> {
-        Ok(Self {
-            ident: meta.clone(),
-        })
+    fn create_widget(
+        meta: &Rc<Self::Meta>,
+        state: &Self::State,
+        attributes: &Attributes,
+    ) -> Result<Self, Self::Err> {
+        Ok(Widget { ident: meta.clone() })
+    }
+
+    fn layout(&mut self, children: &mut crate::Nodes<Self>) {
     }
 }
 
 pub(crate) fn expression(
     context: impl Into<Rc<str>>,
     attributes: impl Into<Attributes>,
-    children: impl Into<Expressions<Widget>>,
+    children: impl Into<Vec<Expression<Widget>>>,
 ) -> Expression<Widget> {
     let children = children.into();
     Expression::Node {
         context: context.into(),
         attributes: attributes.into(),
-        children: Rc::new(children),
+        children: children.into(),
     }
 }
 
 pub(crate) fn for_expression<const N: usize>(
     binding: impl Into<Path>,
     collection: [impl Into<Value>; N],
-    body: impl Into<Expressions<Widget>>,
+    body: impl Into<Vec<Expression<Widget>>>,
 ) -> Expression<Widget> {
     let collection = collection.map(Into::into);
     let binding = binding.into();
-    Expression::Loop(
-        Loop::new(binding, collection.into()).into(),
-        body.into().into(),
-    )
+    Expression::Loop {
+        body: body.into().into(),
+        loop_repr: Rc::new(Loop::new(binding, collection.into())),
+    }
 }
 
 // pub(crate) fn controlflow<E>(

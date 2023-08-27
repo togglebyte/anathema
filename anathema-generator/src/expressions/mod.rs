@@ -1,82 +1,60 @@
 mod controlflow;
-mod loops;
 
 use std::rc::Rc;
 
-use anathema_values::State;
+use anathema_values::{Path, State};
 use controlflow::Cond;
-pub(crate) use loops::Loop;
 
 use self::controlflow::FlowState;
-use crate::nodes::{expression_to_node, Node, Nodes};
-use crate::{Attributes, Flap, NodeId};
+use crate::nodes::{Node, NodeKind, Nodes};
+use crate::{Attributes, IntoWidget, NodeId, Value};
 
 #[derive(Debug)]
-pub(crate) struct EvalState {
-    parent: Option<NodeId>,
-    pub(crate) current_expr: usize,
-    next_id: usize,
-}
-
-impl EvalState {
-    pub fn new() -> Self {
-        Self {
-            current_expr: 0,
-            next_id: 0,
-            parent: None,
-        }
-    }
-
-    pub(crate) fn with_parent(parent: &NodeId) -> Self {
-        Self {
-            parent: Some(parent.clone()),
-            ..Self::new()
-        }
-    }
-
-    fn next_id(&mut self) -> NodeId {
-        self.next_id += 1;
-        match &self.parent {
-            Some(parent) => parent.child(self.next_id - 1),
-            None => (self.next_id - 1).into(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Expression<Ctx: Flap> {
+pub enum Expression<Widget: IntoWidget> {
     Node {
-        context: Rc<Ctx::Meta>,
+        context: Rc<Widget::Meta>,
         attributes: Attributes,
-        children: Rc<Expressions<Ctx>>,
+        children: Rc<[Expression<Widget>]>,
     },
-    Loop(Rc<Loop>, Rc<Expressions<Ctx>>),
+    Loop {
+        body: Rc<[Expression<Widget>]>,
+        binding: Path,
+        collection: Value,
+    },
     ControlFlow(FlowState),
 }
 
-#[derive(Debug)]
-pub struct Expressions<Ctx: Flap>(Vec<Expression<Ctx>>);
-
-impl<Ctx: Flap> Expressions<Ctx> {
-    pub fn new(inner: Vec<Expression<Ctx>>) -> Self {
-        Self(inner)
-    }
-
-    pub(crate) fn next(&self, eval: &mut EvalState, state: &impl State) -> Option<Result<Node<Ctx>, Ctx::Err>> {
-        let expression = &self.0[eval.current_expr];
-        let output = expression_to_node(expression, eval.next_id(), state);
-
-        if output.is_none() {
-            eval.current_expr += 1;
-
-            if eval.current_expr == self.0.len() {
-                return None;
+impl<Widget: IntoWidget> Expression<Widget> {
+    pub(crate) fn eval(
+        &self,
+        state: &mut Widget::State,
+        node_id: NodeId,
+    ) -> Result<Node<Widget>, Widget::Err> {
+        let node = match self {
+            Self::Node {
+                context,
+                attributes,
+                children,
+            } => {
+                let item = Widget::create_widget(context, state, attributes)?;
+                Node {
+                    kind: NodeKind::Single(item, Nodes::new(children.clone(), node_id.child(0))),
+                    node_id,
+                }
             }
+            Self::Loop { body, binding, collection } => Node {
+                kind: NodeKind::Loop {
+                    body: Nodes::new(body.clone(), node_id.child(0)),
+                    binding: binding.clone(),
+                    collection: eval the collection,
+                    value_index: 0,
+                },
+                node_id,
+            },
+            _ => panic!(),
+        };
 
-            self.next(eval, state)
-        } else {
-            output
-        }
+        Ok(node)
     }
 }
 
@@ -87,23 +65,22 @@ mod test {
 
     #[test]
     fn eval_node() {
-        let expr = expression("text", (), ());
-        let mut eval_state = EvalState::new();
-        let n = expression_to_node(&expr, eval_state.next_id());
-        // assert_eq!(expected, actual);
+        let expr = expression("text", (), []);
+        let mut node = expr.eval(&mut (), 0.into()).unwrap();
+        let (widget, _) = node.single();
+        assert_eq!("text", &*widget.ident);
     }
 
     #[test]
     fn eval_for() {
-        let expr = for_expression(
-            "item", 
-            [1, 2, 3],
-            [expression("text", (), ())]
-        );
-        let expressions = Expressions::new(vec![expr]);
-        let mut eval_state = EvalState::new();
-        let n = expressions.next(&mut eval_state).unwrap().unwrap();
-        panic!("{n:#?}");
-        // assert_eq!(expected, actual);
+        let expr = for_expression("item", [1, 2, 3], [expression("text", (), [])]);
+        let node = expr.eval(&mut (), 0.into()).unwrap();
+        assert!(matches!(
+            node,
+            Node {
+                kind: NodeKind::Loop { .. },
+                ..
+            }
+        ));
     }
 }
