@@ -1,10 +1,10 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
-use anathema_values::{Path, State};
+use anathema_values::{Path, State, ScopeValue};
 
 use crate::expressions::Expression;
-use crate::{Attributes, IntoWidget, Value};
+use crate::{Attributes, IntoWidget};
 
 // // -----------------------------------------------------------------------------
 // //   - Helper impls -
@@ -117,13 +117,6 @@ impl From<()> for Attributes {
     }
 }
 
-impl<T: std::fmt::Display> From<T> for Value {
-    fn from(s: T) -> Self {
-        let s = s.to_string();
-        Self::Static(s.into())
-    }
-}
-
 fn real() {
     let v: Vec<()> = [].into();
 }
@@ -160,7 +153,7 @@ pub(crate) fn expression(
 ) -> Expression<Widget> {
     let children = children.into();
     Expression::Node {
-        context: context.into(),
+        meta: context.into(),
         attributes: attributes.into(),
         children: children.into(),
     }
@@ -168,14 +161,15 @@ pub(crate) fn expression(
 
 pub(crate) fn for_expression<const N: usize>(
     binding: impl Into<Path>,
-    collection: [impl Into<Value>; N],
+    collection: [impl Into<ScopeValue>; N],
     body: impl Into<Vec<Expression<Widget>>>,
 ) -> Expression<Widget> {
     let collection = collection.map(Into::into);
     let binding = binding.into();
     Expression::Loop {
         body: body.into().into(),
-        loop_repr: Rc::new(Loop::new(binding, collection.into())),
+        binding,
+        collection: collection.map(Into::into).into(),
     }
 }
 

@@ -1,5 +1,3 @@
-use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
-
 // pub use store::{ReadOnly, Store, StoreMut, StoreRef};
 // pub use values::List;
 
@@ -20,6 +18,6 @@ mod path;
 
 
 pub use crate::path::{Path, PathId};
-pub use v2::{State, Value};
+pub use v2::{State, Value, ScopeValue, Scope, Context};
 
 mod v2;
