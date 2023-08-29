@@ -2,7 +2,7 @@ mod controlflow;
 
 use std::rc::Rc;
 
-use anathema_values::{Path, State, ScopeValue, Scope, Context};
+use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State};
 use controlflow::Cond;
 
 use self::controlflow::FlowState;
@@ -31,7 +31,6 @@ impl<Widget: IntoWidget> Expression<Widget> {
         scope: &mut Scope<'_>,
         node_id: NodeId,
     ) -> Result<Node<Widget>, Widget::Err> {
-
         let node = match self {
             Self::Node {
                 meta,
@@ -50,11 +49,15 @@ impl<Widget: IntoWidget> Expression<Widget> {
                 binding,
                 collection,
             } => {
-                let collection = match collection {
-                    ScopeValue::List(values) => Rc::clone(values),
-                    ScopeValue::Static(string) => Rc::new([]),
-                    ScopeValue::Dyn(path) => scope.lookup_list(path),
+                let collection: Collection = match collection {
+                    ScopeValue::List(values) => Collection::Rc(values.clone()),
+                    ScopeValue::Static(string) => Collection::Empty,
+                    ScopeValue::Dyn(path) => scope
+                        .lookup_list(path)
+                        .map(Collection::Rc)
+                        .unwrap_or_else(|| state.get_collection(path).unwrap_or(Collection::Empty)),
                 };
+
                 Node {
                     kind: NodeKind::Loop {
                         body: Nodes::new(body.clone(), node_id.child(0)),

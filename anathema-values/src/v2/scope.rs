@@ -19,6 +19,23 @@ use crate::{Path, State};
 //     }
 // }
 
+#[derive(Debug)]
+pub enum Collection {
+    Rc(Rc<[ScopeValue]>),
+    State { path: Path, len: usize },
+    Empty,
+}
+
+impl Collection {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Empty => 0,
+            Self::Rc(col) => col.len(),
+            Self::State { len, .. } => *len,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ScopeValue {
     Static(Rc<str>),
@@ -82,7 +99,7 @@ impl<'a> Scope<'a> {
             .or_else(|| self.parent.and_then(|parent| parent.lookup(path)))
     }
 
-    pub fn lookup_list(&self, path: &Path) -> Rc<[ScopeValue]> {
+    pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
         let value = self
             .inner
             .get(path)
@@ -90,8 +107,8 @@ impl<'a> Scope<'a> {
             .or_else(|| self.parent.and_then(|parent| parent.lookup(path)));
 
         match value {
-            Some(ScopeValue::List(value)) => value.clone(),
-            _ => Rc::new([]),
+            Some(ScopeValue::List(value)) => Some(value.clone()),
+            _ => None
         }
     }
 

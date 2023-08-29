@@ -14,8 +14,8 @@ mod path;
 // mod store;
 // mod values;
 
+pub use v2::{Collection, Context, List, Map, Scope, ScopeValue, Slab, State, Value};
 
 pub use crate::path::{Path, PathId};
-pub use v2::{State, Value, ScopeValue, Scope, Context, Slab};
 
 mod v2;

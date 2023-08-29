@@ -1,7 +1,8 @@
+use std::borrow::Cow;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
-use anathema_values::{Path, ScopeValue, State, Scope};
+use anathema_values::{Path, ScopeValue, State, Scope, Collection};
 
 pub use self::id::NodeId;
 use crate::expressions::Expression;
@@ -31,7 +32,7 @@ pub enum NodeKind<Widget: IntoWidget> {
     Loop {
         body: Nodes<Widget>,
         binding: Path,
-        collection: Rc<[ScopeValue]>,
+        collection: Collection,
         value_index: usize,
     },
 }
@@ -84,7 +85,18 @@ impl<Widget: IntoWidget> Nodes<Widget> {
                     if *value_index == collection.len() {
                         self.inner.push(*self.active_loop.take().expect(""));
                     } else {
-                        // Scope the value
+                        // TODO: Possible perf bump
+                        //       Don't clone, use references for the widget
+                        let value = match collection {
+                            Collection::Rc(list) => Cow::Owned(list[*value_index].clone()),
+                            Collection::State { path, .. } => {
+                                let path = path.compose(*value_index);
+                                Cow::Owned(ScopeValue::Dyn(path))
+                            }
+                            Collection::Empty => panic!(), // TODO: should probably not panic
+                        };
+
+                        scope.scope(binding.clone(), value);
                         body.reset();
                     }
                 }
