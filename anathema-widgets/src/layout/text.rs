@@ -1,5 +1,4 @@
 use anathema_render::Size;
-use anathema_widget_core::Value;
 use unicode_width::UnicodeWidthChar;
 
 fn is_word_boundary(c: char) -> bool {

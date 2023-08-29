@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::{Constraints, Layout};
-use anathema_widget_core::{WidgetContainer, Nodes, StoreRef};
+use anathema_widget_core::{WidgetContainer, Nodes};
 
 pub struct BorderLayout {
     pub min_width: Option<usize>,

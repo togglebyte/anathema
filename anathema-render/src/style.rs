@@ -206,6 +206,7 @@ impl Style {
 
 bitflags::bitflags! {
     /// Style attributes
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct Attributes: u8 {
         /// Make the characters bold (in supported output)
         const BOLD =        0b0000_0001;

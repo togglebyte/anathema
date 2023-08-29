@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use anathema_widget_core::{WidgetContainer, Value, Nodes};
-use anathema_values::StoreMut;
+use anathema_widget_core::{WidgetContainer, Nodes};
 use crossterm::event::{read, Event as CTEvent};
 pub use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,
@@ -25,6 +24,8 @@ pub enum Event {
     MouseScrollDown(u16, u16, KeyModifiers),
     MouseScrollMoved(u16, u16, KeyModifiers),
     MouseScrollUp(u16, u16, KeyModifiers),
+    MouseScrollLeft(u16, u16, KeyModifiers),
+    MouseScrollRight(u16, u16, KeyModifiers),
     MouseUp(u16, u16, MouseButton, KeyModifiers),
     Resize(u16, u16),
 }
@@ -70,6 +71,8 @@ impl From<CTEvent> for Event {
                 MouseEventKind::Moved => Self::MouseMove(m.column, m.row, m.modifiers),
                 MouseEventKind::ScrollDown => Self::MouseScrollDown(m.column, m.row, m.modifiers),
                 MouseEventKind::ScrollUp => Self::MouseScrollUp(m.column, m.row, m.modifiers),
+                MouseEventKind::ScrollLeft => Self::MouseScrollLeft(m.column, m.row, m.modifiers),
+                MouseEventKind::ScrollRight => Self::MouseScrollRight(m.column, m.row, m.modifiers),
             },
             CTEvent::Resize(width, height) => Self::Resize(width, height),
         }
@@ -77,19 +80,19 @@ impl From<CTEvent> for Event {
 }
 
 pub trait Events {
-    fn event(&mut self, event: Event, ctx: StoreMut<'_, Value>, tree: &mut Nodes) -> Event;
+    fn event(&mut self, event: Event, tree: &mut Nodes) -> Event;
 }
 
 pub struct DefaultEvents<F>(pub F)
 where
-    F: FnMut(Event, StoreMut<'_, Value>, &mut Nodes) -> Event;
+    F: FnMut(Event, &mut Nodes) -> Event;
 
 impl<F> Events for DefaultEvents<F>
 where
-    F: FnMut(Event, StoreMut<'_, Value>, &mut Nodes) -> Event,
+    F: FnMut(Event, &mut Nodes) -> Event,
 {
-    fn event(&mut self, event: Event, ctx: StoreMut<'_, Value>, tree: &mut Nodes) -> Event {
-        (self.0)(event, ctx, tree)
+    fn event(&mut self, event: Event, tree: &mut Nodes) -> Event {
+        (self.0)(event, tree)
     }
 }
 

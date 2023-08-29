@@ -1,15 +1,19 @@
 use std::any::Any;
+use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 use std::sync::Arc;
 
+use anathema_generator::{Attributes, IntoWidget};
 use anathema_render::{Color, ScreenPos, Size, Style};
+use anathema_values::{Context, ScopeValue, State};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 // use crate::values::Cached;
-use crate::{StoreRef, Display, LocalPos, Nodes, Padding, Pos, ReadOnly, Region, Value};
+use crate::{Display, LocalPos, Nodes, Padding, Pos, Region};
 
 // Layout:
 // 1. Receive constraints
@@ -29,12 +33,7 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout(
-        &mut self,
-        children: &mut Nodes,
-        ctx: LayoutCtx,
-        data: &StoreRef<'_>,
-    ) -> Result<Size>;
+    fn layout(&mut self, children: &mut Nodes, ctx: LayoutCtx) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
@@ -42,10 +41,11 @@ pub trait Widget {
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
     fn paint<'tpl>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
-        for (widget, children) in children.iter_mut() {
-            let ctx = ctx.sub_context(None);
-            widget.paint(children, ctx);
-        }
+        panic!()
+        // for (widget, children) in children.iter_mut() {
+        //     let ctx = ctx.sub_context(None);
+        //     widget.paint(children, ctx);
+        // }
     }
 }
 
@@ -54,12 +54,7 @@ pub trait AnyWidget {
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn layout_any(
-        &mut self,
-        children: &mut Nodes,
-        ctx: LayoutCtx,
-        data: &StoreRef<'_>,
-    ) -> Result<Size>;
+    fn layout_any(&mut self, children: &mut Nodes, ctx: LayoutCtx) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
@@ -73,13 +68,8 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout(
-        &mut self,
-        children: &mut Nodes,
-        ctx: LayoutCtx,
-        data: &StoreRef<'_>,
-    ) -> Result<Size> {
-        self.deref_mut().layout_any(children, ctx, data)
+    fn layout(&mut self, children: &mut Nodes, ctx: LayoutCtx) -> Result<Size> {
+        self.deref_mut().layout_any(children, ctx)
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -100,13 +90,8 @@ impl<T: Widget + 'static> AnyWidget for T {
         self
     }
 
-    fn layout_any(
-        &mut self,
-        children: &mut Nodes,
-        ctx: LayoutCtx,
-        data: &StoreRef<'_>,
-    ) -> Result<Size> {
-        self.layout(children, ctx, data)
+    fn layout_any(&mut self, children: &mut Nodes, ctx: LayoutCtx) -> Result<Size> {
+        self.layout(children, ctx)
     }
 
     fn kind_any(&self) -> &'static str {
@@ -127,13 +112,8 @@ impl Widget for Box<dyn Widget> {
         self.as_ref().kind()
     }
 
-    fn layout(
-        &mut self,
-        children: &mut Nodes,
-        layout: LayoutCtx,
-        data: &StoreRef<'_>,
-    ) -> Result<Size> {
-        self.as_mut().layout(children, layout, data)
+    fn layout(&mut self, children: &mut Nodes, layout: LayoutCtx) -> Result<Size> {
+        self.as_mut().layout(children, layout)
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -229,13 +209,12 @@ impl WidgetContainer {
         &mut self,
         children: &mut Nodes,
         constraints: Constraints,
-        bucket: &StoreRef<'_>,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
-                let size = self.inner.layout(children, layout, bucket)?;
+                let size = self.inner.layout(children, layout)?;
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards
@@ -296,6 +275,29 @@ impl WidgetContainer {
     }
 }
 
+impl Debug for WidgetContainer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
+
+impl IntoWidget for WidgetContainer {
+    type Err = ();
+    type Meta = WidgetMeta;
+
+    fn create_widget<S: State>(
+        meta: &Rc<Self::Meta>,
+        context: Context<'_, '_, S>,
+        attributes: &Attributes,
+    ) -> std::result::Result<Self, Self::Err> {
+        todo!()
+    }
+
+    fn layout(&mut self, children: &mut anathema_generator::Nodes<Self>) {
+        todo!()
+    }
+}
+
 // impl FromContext for WidgetContainer {
 //     type Ctx = WidgetMeta;
 //     type Err = crate::error::Error;
@@ -319,9 +321,9 @@ impl WidgetContainer {
 //     }
 // }
 
-// /// Meta data needed to construct a `WidgetContainer` from a `Node`
-// #[derive(Debug)]
-// pub struct WidgetMeta {
-//     pub ident: String,
-//     pub text: Option<ExpressionValue<Value>>,
-// }
+/// Meta data needed to construct a `WidgetContainer` from a `Node`
+#[derive(Debug)]
+pub struct WidgetMeta {
+    pub ident: String,
+    pub text: Option<ScopeValue>,
+}

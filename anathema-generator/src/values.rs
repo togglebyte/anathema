@@ -10,4 +10,8 @@ impl Attributes {
     pub fn empty() -> Self {
         Self(HashMap::new())
     }
+
+    pub fn set(&mut self, key: impl Into<String>, value: ScopeValue) {
+        self.0.insert(key.into(), value);
+    }
 }

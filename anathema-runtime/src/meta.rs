@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use anathema_render::Size;
-use anathema_widget_core::{Number, Value, Nodes};
-use anathema_values::{StoreMut, Path};
+use anathema_widget_core::Nodes;
+use anathema_values::Path;
 
 use crate::frame::Frame;
 

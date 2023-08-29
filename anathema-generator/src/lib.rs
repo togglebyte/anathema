@@ -10,16 +10,15 @@ mod testing;
 use std::rc::Rc;
 
 use anathema_values::{Context, State, Scope};
-use expressions::Expression;
+pub use expressions::{Loop, SingleNode, Expression};
 pub use nodes::{NodeId, Nodes};
 pub use values::Attributes;
 
 pub trait IntoWidget: Sized + Debug {
     type Meta: ?Sized + Debug;
-    type State: State;
     type Err;
 
-    fn create_widget(meta: &Rc<Self::Meta>, context: Context<'_, '_, Self::State>, attributes: &Attributes) -> Result<Self, Self::Err>;
+    fn create_widget<S: State>(meta: &Rc<Self::Meta>, context: Context<'_, '_, S>, attributes: &Attributes) -> Result<Self, Self::Err>;
 
     fn layout(&mut self, children: &mut Nodes<Self>);
 }

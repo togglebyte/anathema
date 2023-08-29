@@ -69,6 +69,7 @@ impl From<String> for ScopeValue {
     }
 }
 
+#[derive(Debug)]
 pub struct Scope<'a> {
     inner: HashMap<Path, Cow<'a, ScopeValue>>,
     parent: Option<&'a Scope<'a>>,
@@ -86,10 +87,22 @@ impl<'a> Scope<'a> {
         self.inner.insert(path, value);
     }
 
+    pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
+        let value = match collection {
+            Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
+            Collection::State { path, .. } => {
+                let path = path.compose(value_index);
+                Cow::Owned(ScopeValue::Dyn(path))
+            }
+            Collection::Empty => return,
+        };
+
+        self.scope(binding, value);
+    }
+
     pub fn lookup_parent(&self, path: &Path) -> Option<&'a ScopeValue> {
-        self.parent
-            .and_then(|parent| parent.lookup(path))
-            // .map(Deref::deref)
+        self.parent.and_then(|parent| parent.lookup(path))
+        // .map(Deref::deref)
     }
 
     pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
@@ -108,7 +121,7 @@ impl<'a> Scope<'a> {
 
         match value {
             Some(ScopeValue::List(value)) => Some(value.clone()),
-            _ => None
+            _ => None,
         }
     }
 
@@ -124,23 +137,21 @@ pub struct Context<'a, 'val, S> {
 
 impl<'a, 'val, S: State> Context<'a, 'val, S> {
     pub fn new(state: &'a S, scope: &'a mut Scope<'val>) -> Self {
-        Self {
-            state,
-            scope,
-        }
+        Self { state, scope }
     }
 
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<T>(&self, path: &Path) -> Option<T> 
-        where T: for<'magic> TryFrom<&'magic ScopeValue>
+    pub fn get<T>(&self, path: &Path) -> Option<T>
+    where
+        T: for<'magic> TryFrom<&'magic ScopeValue>,
     {
         match self.scope.lookup(&path) {
             Some(val) => match val {
                 ScopeValue::Dyn(path) => self.get(path),
                 val => T::try_from(val).ok(),
-            }
+            },
             None => self.state.get_typed(&path),
         }
     }
@@ -168,8 +179,12 @@ mod test {
         // let ScopeValue::Static(actual) = inner.lookup(&"list".into()).unwrap() else { panic!() };
         // assert_eq!("hello world", &**actual);
 
-        let Cow::Borrowed(ScopeValue::Static(lhs)) = inner.lookup(&"lark".into()).unwrap() else { panic!() };
-        let Cow::Owned(ScopeValue::Static(rhs)) = inner.lookup(&"lol".into()).unwrap() else { panic!() };
+        let Cow::Borrowed(ScopeValue::Static(lhs)) = inner.lookup(&"lark".into()).unwrap() else {
+            panic!()
+        };
+        let Cow::Owned(ScopeValue::Static(rhs)) = inner.lookup(&"lol".into()).unwrap() else {
+            panic!()
+        };
         assert_eq!(lhs, rhs);
 
         // let ScopeValue::Static(actual) = inner.lookup(&"lol".into()).unwrap() else { panic!() };

@@ -1,77 +1,126 @@
-mod controlflow;
-
 use std::rc::Rc;
 
 use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State};
-use controlflow::Cond;
 
-use self::controlflow::FlowState;
-use crate::nodes::{Node, NodeKind, Nodes};
+use self::controlflow::{Else, If};
+use crate::nodes::{LoopNode, Node, NodeKind, Nodes};
 use crate::{Attributes, IntoWidget, NodeId};
 
+mod controlflow;
+
+// -----------------------------------------------------------------------------
+//   - A single Node -
+// -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub enum Expression<Widget: IntoWidget> {
-    Node {
-        meta: Rc<Widget::Meta>,
-        attributes: Attributes,
-        children: Rc<[Expression<Widget>]>,
-    },
-    Loop {
-        body: Rc<[Expression<Widget>]>,
-        binding: Path,
-        collection: ScopeValue,
-    },
-    ControlFlow(FlowState),
+pub struct SingleNode<Widget: IntoWidget> {
+    pub meta: Rc<Widget::Meta>,
+    pub attributes: Attributes,
+    pub children: Rc<[Expression<Widget>]>,
 }
 
-impl<Widget: IntoWidget> Expression<Widget> {
-    pub(crate) fn eval(
+impl<Widget: IntoWidget> SingleNode<Widget> {
+    fn eval<S: State>(
         &self,
-        state: &mut Widget::State,
+        state: &mut S,
         scope: &mut Scope<'_>,
         node_id: NodeId,
     ) -> Result<Node<Widget>, Widget::Err> {
-        let node = match self {
-            Self::Node {
-                meta,
-                attributes,
-                children,
-            } => {
-                let context = Context::new(state, scope);
-                let item = Widget::create_widget(meta, context, attributes)?;
-                Node {
-                    kind: NodeKind::Single(item, Nodes::new(children.clone(), node_id.child(0))),
-                    node_id,
-                }
-            }
-            Self::Loop {
-                body,
-                binding,
-                collection,
-            } => {
-                let collection: Collection = match collection {
-                    ScopeValue::List(values) => Collection::Rc(values.clone()),
-                    ScopeValue::Static(string) => Collection::Empty,
-                    ScopeValue::Dyn(path) => scope
-                        .lookup_list(path)
-                        .map(Collection::Rc)
-                        .unwrap_or_else(|| state.get_collection(path).unwrap_or(Collection::Empty)),
-                };
+        let context = Context::new(state, scope);
+        let item = Widget::create_widget(&self.meta, context, &self.attributes)?;
+        let node = Node {
+            kind: NodeKind::Single(item, Nodes::new(self.children.clone(), node_id.child(0))),
+            node_id,
+        };
+        Ok(node)
+    }
+}
 
-                Node {
-                    kind: NodeKind::Loop {
-                        body: Nodes::new(body.clone(), node_id.child(0)),
-                        binding: binding.clone(),
-                        collection,
-                        value_index: 0,
-                    },
-                    node_id,
-                }
-            }
-            _ => panic!(),
+// -----------------------------------------------------------------------------
+//   - Loop -
+// -----------------------------------------------------------------------------
+#[derive(Debug)]
+pub struct Loop<Widget: IntoWidget> {
+    pub body: Rc<[Expression<Widget>]>,
+    pub binding: Path,
+    pub collection: ScopeValue,
+}
+
+impl<Widget: IntoWidget> Loop<Widget> {
+    fn eval<S: State>(
+        &self,
+        state: &mut S,
+        scope: &mut Scope<'_>,
+        node_id: NodeId,
+    ) -> Result<Node<Widget>, Widget::Err> {
+        let collection: Collection = match &self.collection {
+            ScopeValue::List(values) => Collection::Rc(values.clone()),
+            ScopeValue::Static(string) => Collection::Empty,
+            ScopeValue::Dyn(path) => scope
+                .lookup_list(path)
+                .map(Collection::Rc)
+                .unwrap_or_else(|| state.get_collection(path).unwrap_or(Collection::Empty)),
+        };
+
+        scope.scope_collection(self.binding.clone(), &collection, 0);
+
+        let node = Node {
+            kind: NodeKind::Loop(LoopNode {
+                body: Nodes::new(self.body.clone(), node_id.child(0)),
+                binding: self.binding.clone(),
+                collection,
+                value_index: 0,
+            }),
+            node_id,
         };
 
         Ok(node)
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Controlflow -
+// -----------------------------------------------------------------------------
+#[derive(Debug)]
+pub struct ControlFlow<Widget: IntoWidget> {
+    if_expr: If<Widget>,
+    elses: Vec<Else<Widget>>,
+}
+
+impl<Widget: IntoWidget> ControlFlow<Widget> {
+    fn eval<S: State>(
+        &self,
+        state: &mut S,
+        scope: &mut Scope<'_>,
+        node_id: NodeId,
+    ) -> Result<Node<Widget>, Widget::Err> {
+        if self.if_expr.is_true(scope, state) {}
+
+        panic!()
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Expression -
+// -----------------------------------------------------------------------------
+#[derive(Debug)]
+pub enum Expression<Widget: IntoWidget> {
+    Node(SingleNode<Widget>),
+    Loop(Loop<Widget>),
+    ControlFlow(ControlFlow<Widget>),
+}
+
+impl<Widget: IntoWidget> Expression<Widget> {
+    pub(crate) fn eval<S: State>(
+        &self,
+        state: &mut S,
+        scope: &mut Scope<'_>,
+        node_id: NodeId,
+    ) -> Result<Node<Widget>, Widget::Err> {
+        match self {
+            Self::Node(node) => node.eval(state, scope, node_id),
+            Self::Loop(loop_expr) => loop_expr.eval(state, scope, node_id),
+            Self::ControlFlow(controlflow) => controlflow.eval(state, scope, node_id),
+        }
     }
 }
 

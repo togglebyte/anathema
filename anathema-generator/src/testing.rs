@@ -1,9 +1,9 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
-use anathema_values::{Path, State, ScopeValue};
+use anathema_values::{Context, Path, ScopeValue, State};
 
-use crate::expressions::Expression;
+use crate::expressions::{Expression, Loop, SingleNode};
 use crate::{Attributes, IntoWidget};
 
 // // -----------------------------------------------------------------------------
@@ -136,14 +136,15 @@ impl IntoWidget for Widget {
 
     fn create_widget(
         meta: &Rc<Self::Meta>,
-        state: &Self::State,
+        context: Context<'_, '_, Self::State>,
         attributes: &Attributes,
     ) -> Result<Self, Self::Err> {
-        Ok(Widget { ident: meta.clone() })
+        Ok(Widget {
+            ident: meta.clone(),
+        })
     }
 
-    fn layout(&mut self, children: &mut crate::Nodes<Self>) {
-    }
+    fn layout(&mut self, children: &mut crate::Nodes<Self>) {}
 }
 
 pub(crate) fn expression(
@@ -152,11 +153,11 @@ pub(crate) fn expression(
     children: impl Into<Vec<Expression<Widget>>>,
 ) -> Expression<Widget> {
     let children = children.into();
-    Expression::Node {
+    Expression::Node(SingleNode {
         meta: context.into(),
         attributes: attributes.into(),
         children: children.into(),
-    }
+    })
 }
 
 pub(crate) fn for_expression<const N: usize>(
@@ -166,11 +167,11 @@ pub(crate) fn for_expression<const N: usize>(
 ) -> Expression<Widget> {
     let collection = collection.map(Into::into);
     let binding = binding.into();
-    Expression::Loop {
+    Expression::Loop(Loop {
         body: body.into().into(),
         binding,
         collection: collection.map(Into::into).into(),
-    }
+    })
 }
 
 // pub(crate) fn controlflow<E>(

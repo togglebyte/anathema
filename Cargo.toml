@@ -6,18 +6,18 @@ edition = "2021"
 [dependencies]
 anathema-compiler = { path = "./anathema-compiler" }
 anathema-render = { path = "./anathema-render" }
-# anathema-runtime = { path = "./anathema-runtime" }
+anathema-runtime = { path = "./anathema-runtime" }
 anathema-values = { path = "./anathema-values" }
 anathema-vm = { path = "./anathema-vm" }
-# anathema-widget-core = { path = "./anathema-widget-core" }
-# anathema-generator = { path = "./anathema-generator" }
+anathema-widget-core = { path = "./anathema-widget-core" }
+anathema-generator = { path = "./anathema-generator" }
 # anathema-widgets = { path = "./anathema-widgets" }
 # anathema-value-derive = { path = "./anathema-value-derive" }
 
 [workspace.dependencies]
+bitflags = "2.4.0"
+crossterm = "0.27.0"
 unicode-width = "0.1.10"
-crossterm = "0.25.0"
-bitflags = "1.3.2"
 thiserror = "1.0.40"
 flume = "0.10.14"
 parking_lot = "0.12.1"
@@ -26,11 +26,11 @@ parking_lot = "0.12.1"
 members = [
     "anathema-compiler",
     "anathema-render",
-    # "anathema-runtime",
+    "anathema-runtime",
     "anathema-values",
     "anathema-vm",
-    # "anathema-widget-core",
-    # "anathema-generator",
+    "anathema-widget-core",
+    "anathema-generator",
     # "anathema-widgets",
     # "anathema-value-derive",
 ]
