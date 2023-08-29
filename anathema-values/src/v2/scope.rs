@@ -116,7 +116,7 @@ impl<'a, 'val, S: State> Context<'a, 'val, S> {
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    fn get<T>(&self, path: &Path) -> Option<T> 
+    pub fn get<T>(&self, path: &Path) -> Option<T> 
         where T: for<'magic> TryFrom<&'magic ScopeValue>
     {
         match self.scope.lookup(&path) {

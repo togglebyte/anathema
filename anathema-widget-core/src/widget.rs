@@ -3,7 +3,6 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{Listen, Listeners, ValueRef};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;

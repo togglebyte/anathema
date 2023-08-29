@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_widget_core::Number;
+// use anathema_widget_core::Number;
 
 use crate::error::{Error, Result};
 
@@ -13,7 +13,7 @@ pub(crate) enum Kind<'src> {
     Comment,
     LDoubleCurly,
     RDoubleCurly,
-    Hex(u8, u8, u8),
+    // Hex(u8, u8, u8),
     For,
     In,
     If,
@@ -22,7 +22,7 @@ pub(crate) enum Kind<'src> {
     Ident(&'src str),
     Index(usize),
     Newline,
-    Number(Number),
+    // Number(&'src str),
     Fullstop,
     LBracket,
     RBracket,
@@ -128,10 +128,10 @@ impl<'src> Lexer<'src> {
             // -----------------------------------------------------------------------------
             ('a'..='z' | 'A'..='Z' | '_', _) => Ok(self.take_ident(index).to_token(index)),
 
-            // -----------------------------------------------------------------------------
-            //     - Number -
-            // -----------------------------------------------------------------------------
-            ('0'..='9' | '-' | '+', _) => self.take_number(index),
+            // // -----------------------------------------------------------------------------
+            // //     - Number -
+            // // -----------------------------------------------------------------------------
+            // ('0'..='9' | '-' | '+', _) => self.take_number(index),
 
             // -----------------------------------------------------------------------------
             //     - String -
@@ -143,10 +143,10 @@ impl<'src> Lexer<'src> {
             // -----------------------------------------------------------------------------
             _ if c.is_whitespace() && c != '\n' => Ok(self.take_whitespace().to_token(index)),
 
-            // -----------------------------------------------------------------------------
-            //     - Hex values -
-            // -----------------------------------------------------------------------------
-            ('#', Some('0'..='9' | 'a'..='f' | 'A'..='F')) => self.take_hex_values(index),
+            // // -----------------------------------------------------------------------------
+            // //     - Hex values -
+            // // -----------------------------------------------------------------------------
+            // ('#', Some('0'..='9' | 'a'..='f' | 'A'..='F')) => self.take_hex_values(index),
 
             // -----------------------------------------------------------------------------
             //     - Done -
@@ -185,41 +185,41 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    fn take_number(&mut self, index: usize) -> Result<Token<'src>> {
-        let mut end = index;
-        let mut parse_float = &self.src[index..=index] == ".";
+    // fn take_number(&mut self, index: usize) -> Result<Token<'src>> {
+        // let mut end = index;
+        // let mut parse_float = &self.src[index..=index] == ".";
 
-        let signed = &self.src[index..=index] == "-"
-            || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
+        // let signed = &self.src[index..=index] == "-"
+        //     || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
 
-        while let Some((e, c @ ('0'..='9' | '-' | '.' | '+'))) = self.chars.peek() {
-            if *c == '.' {
-                parse_float = true;
-            }
-            end = *e;
-            self.chars.next();
-        }
+        // while let Some((e, c @ ('0'..='9' | '-' | '.' | '+'))) = self.chars.peek() {
+        //     if *c == '.' {
+        //         parse_float = true;
+        //     }
+        //     end = *e;
+        //     self.chars.next();
+        // }
 
-        let input = &self.src[index..=end];
-        let kind = match parse_float {
-            true => match input.parse::<f64>() {
-                Ok(num) => Ok(Kind::Number(Number::Float(num))),
-                Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-            },
-            false => match signed {
-                true => match input.parse::<i64>() {
-                    Ok(num) => Ok(Kind::Number(Number::Signed(num))),
-                    Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-                },
-                false => match input.parse::<u64>() {
-                    Ok(num) => Ok(Kind::Number(Number::Unsigned(num))),
-                    Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-                },
-            },
-        }?;
+        // let input = &self.src[index..=end];
+        // let kind = match parse_float {
+        //     true => match input.parse::<f64>() {
+        //         Ok(num) => Ok(Kind::Number(Number::Float(num))),
+        //         Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
+        //     },
+        //     false => match signed {
+        //         true => match input.parse::<i64>() {
+        //             Ok(num) => Ok(Kind::Number(Number::Signed(num))),
+        //             Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
+        //         },
+        //         false => match input.parse::<u64>() {
+        //             Ok(num) => Ok(Kind::Number(Number::Unsigned(num))),
+        //             Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
+        //         },
+        //     },
+        // }?;
 
-        Ok(Token(kind, index))
-    }
+        // Ok(Token(kind, index))
+    // }
 
     fn take_ident(&mut self, index: usize) -> Kind<'src> {
         let mut end = index;
@@ -291,44 +291,44 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    fn take_hex_values(&mut self, index: usize) -> Result<Token<'src>> {
-        let index = index + 1; // consume #
-        const SHORT: usize = 3;
-        const LONG: usize = 6;
+    // fn take_hex_values(&mut self, index: usize) -> Result<Token<'src>> {
+    //     let index = index + 1; // consume #
+    //     const SHORT: usize = 3;
+    //     const LONG: usize = 6;
 
-        let mut end = index;
-        while let Some((_, '0'..='9' | 'a'..='f' | 'A'..='F')) = self.chars.peek() {
-            let _ = self.chars.next();
-            end += 1;
-        }
+    //     let mut end = index;
+    //     while let Some((_, '0'..='9' | 'a'..='f' | 'A'..='F')) = self.chars.peek() {
+    //         let _ = self.chars.next();
+    //         end += 1;
+    //     }
 
-        let hex = &self.src[index..end];
-        let len = hex.len();
-        if len != 3 && len != 6 {
-            return Err(Error::invalid_hex_value(index..end, self.src));
-        }
+    //     let hex = &self.src[index..end];
+    //     let len = hex.len();
+    //     if len != 3 && len != 6 {
+    //         return Err(Error::invalid_hex_value(index..end, self.src));
+    //     }
 
-        let kind = match len {
-            SHORT => {
-                let r = u8::from_str_radix(&hex[0..1], 16).expect("already parsed");
-                let r = r << 4 | r;
-                let g = u8::from_str_radix(&hex[1..2], 16).expect("already parsed");
-                let g = g << 4 | g;
-                let b = u8::from_str_radix(&hex[2..3], 16).expect("already parsed");
-                let b = b << 4 | b;
-                Kind::Hex(r, g, b)
-            }
-            LONG => {
-                let r = u8::from_str_radix(&hex[0..2], 16).expect("already parsed");
-                let g = u8::from_str_radix(&hex[2..4], 16).expect("already parsed");
-                let b = u8::from_str_radix(&hex[4..6], 16).expect("already parsed");
-                Kind::Hex(r, g, b)
-            }
-            _ => unreachable!(),
-        };
+    //     let kind = match len {
+    //         SHORT => {
+    //             let r = u8::from_str_radix(&hex[0..1], 16).expect("already parsed");
+    //             let r = r << 4 | r;
+    //             let g = u8::from_str_radix(&hex[1..2], 16).expect("already parsed");
+    //             let g = g << 4 | g;
+    //             let b = u8::from_str_radix(&hex[2..3], 16).expect("already parsed");
+    //             let b = b << 4 | b;
+    //             Kind::Hex(r, g, b)
+    //         }
+    //         LONG => {
+    //             let r = u8::from_str_radix(&hex[0..2], 16).expect("already parsed");
+    //             let g = u8::from_str_radix(&hex[2..4], 16).expect("already parsed");
+    //             let b = u8::from_str_radix(&hex[4..6], 16).expect("already parsed");
+    //             Kind::Hex(r, g, b)
+    //         }
+    //         _ => unreachable!(),
+    //     };
 
-        Ok(Token(kind, index))
-    }
+    //     Ok(Token(kind, index))
+    // }
 }
 
 #[cfg(test)]

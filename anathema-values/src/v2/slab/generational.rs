@@ -1,6 +1,8 @@
 use std::fmt::{self, Debug};
+
 use super::Idx;
-use crate::{generation::{Generation, GenerationId}, ValueRef};
+use crate::generation::{Generation, GenerationId};
+use crate::ValueRef;
 
 // -----------------------------------------------------------------------------
 //   - Entry -

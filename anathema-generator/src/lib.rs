@@ -19,13 +19,11 @@ pub trait IntoWidget: Sized + Debug {
     type State: State;
     type Err;
 
-    // fn create_widget(meta: &Rc<Self::Meta>, state: &Self::State, scope: &Scope, attributes: &Attributes) -> Result<Self, Self::Err>;
     fn create_widget(meta: &Rc<Self::Meta>, context: Context<'_, '_, Self::State>, attributes: &Attributes) -> Result<Self, Self::Err>;
 
     fn layout(&mut self, children: &mut Nodes<Self>);
 }
 
 pub fn make_it_so<Widget: IntoWidget>(expressions: Vec<Expression<Widget>>) -> Nodes<Widget> {
-    panic!()
-    // Nodes::new(Rc::new(expressions), EvalState::new())
+    Nodes::new(expressions.into(), 0.into())
 }

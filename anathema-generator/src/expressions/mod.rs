@@ -59,12 +59,6 @@ impl<Widget: IntoWidget> Expression<Widget> {
                     kind: NodeKind::Loop {
                         body: Nodes::new(body.clone(), node_id.child(0)),
                         binding: binding.clone(),
-                        // y = [ [1,2], [3,4] ]
-                        // x = [1,2]
-                        // a = 1
-                        // for x in y
-                        //     for a in x
-                        //         text a
                         collection,
                         value_index: 0,
                     },

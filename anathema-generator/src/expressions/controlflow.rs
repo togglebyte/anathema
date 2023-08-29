@@ -1,6 +1,8 @@
+use anathema_values::ScopeValue;
+
 pub enum Cond {
-    If,
-    Else(Option<()>),
+    If(ScopeValue),
+    Else(Option<ScopeValue>),
 }
 
 #[derive(Debug)]
