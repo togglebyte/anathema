@@ -1,10 +1,11 @@
 use std::borrow::Cow;
+use std::ops::Deref;
 
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::scope::{Collection, Context, Scope, ScopeValue};
-pub use self::value::Value;
 pub use self::slab::Slab;
+pub use self::value::Value;
 use crate::Path;
 
 mod list;
@@ -13,11 +14,8 @@ mod scope;
 mod slab;
 mod value;
 
-
 pub trait State {
     fn get(&self, key: &Path) -> Option<Cow<'_, str>>;
-
-    fn get_typed<T>(&self, key: &Path) -> Option<T>;
 
     fn get_collection(&self, key: &Path) -> Option<Collection>;
 }
@@ -30,10 +28,6 @@ impl State for () {
     }
 
     fn get_collection(&self, key: &Path) -> Option<Collection> {
-        None
-    }
-
-    fn get_typed<T>(&self, key: &Path) -> Option<T> {
         None
     }
 }

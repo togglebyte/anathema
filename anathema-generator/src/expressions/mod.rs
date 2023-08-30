@@ -13,20 +13,20 @@ mod controlflow;
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub struct SingleNode<Widget: IntoWidget> {
-    pub meta: Rc<Widget::Meta>,
+    pub meta: Rc<Widget>,
     pub attributes: Attributes,
     pub children: Rc<[Expression<Widget>]>,
 }
 
-impl<Widget: IntoWidget> SingleNode<Widget> {
+impl<WidgetMeta: IntoWidget> SingleNode<WidgetMeta> {
     fn eval<S: State>(
         &self,
         state: &mut S,
         scope: &mut Scope<'_>,
         node_id: NodeId,
-    ) -> Result<Node<Widget>, Widget::Err> {
+    ) -> Result<Node<WidgetMeta>, WidgetMeta::Err> {
         let context = Context::new(state, scope);
-        let item = Widget::create_widget(&self.meta, context, &self.attributes)?;
+        let item = self.meta.create_widget(context, &self.attributes)?;
         let node = Node {
             kind: NodeKind::Single(item, Nodes::new(self.children.clone(), node_id.child(0))),
             node_id,

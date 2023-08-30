@@ -123,7 +123,7 @@ impl<'vm> Scope<'vm> {
         &mut self,
         ident: StringId,
         scope_size: usize,
-    ) -> Result<Expression<WidgetContainer>> {
+    ) -> Result<Expression<WidgetMeta>> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = Attributes::empty();

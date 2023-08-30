@@ -281,19 +281,15 @@ impl Debug for WidgetContainer {
     }
 }
 
-impl IntoWidget for WidgetContainer {
+impl IntoWidget for WidgetMeta {
     type Err = ();
     type Meta = WidgetMeta;
+    type Widget = WidgetContainer;
 
-    fn create_widget<S: State>(
-        meta: &Rc<Self::Meta>,
-        context: Context<'_, '_, S>,
+    fn create_widget(&self,
+        context: Context<'_, '_>,
         attributes: &Attributes,
-    ) -> std::result::Result<Self, Self::Err> {
-        todo!()
-    }
-
-    fn layout(&mut self, children: &mut anathema_generator::Nodes<Self>) {
+    ) -> std::result::Result<Self::Widget, Self::Err> {
         todo!()
     }
 }

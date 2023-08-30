@@ -24,9 +24,9 @@ pub(crate) struct LoopNode<Widget: IntoWidget> {
 }
 
 #[derive(Debug)]
-pub struct Node<Widget: IntoWidget> {
+pub struct Node<WidgetMeta: IntoWidget> {
     pub node_id: NodeId,
-    pub(crate) kind: NodeKind<Widget>,
+    pub(crate) kind: NodeKind<WidgetMeta>,
 }
 
 #[cfg(test)]
@@ -40,13 +40,13 @@ impl<Widget: IntoWidget> Node<Widget> {
 }
 
 #[derive(Debug)]
-pub(crate) enum NodeKind<Widget: IntoWidget> {
-    Single(Widget, Nodes<Widget>),
-    Loop(LoopNode<Widget>),
+pub(crate) enum NodeKind<WidgetMeta: IntoWidget> {
+    Single(WidgetMeta::Widget, Nodes<WidgetMeta>),
+    Loop(LoopNode<WidgetMeta>),
     ControlFlow {
-        if_node: If<Widget>,
-        elses: Vec<Else<Widget>>,
-        body: Nodes<Widget>,
+        if_node: If<WidgetMeta>,
+        elses: Vec<Else<WidgetMeta>>,
+        body: Nodes<WidgetMeta>,
     },
 }
 
@@ -60,8 +60,8 @@ pub struct Nodes<Widget: IntoWidget> {
     next_id: NodeId,
 }
 
-impl<Widget: IntoWidget> Nodes<Widget> {
-    pub(crate) fn new(expressions: Rc<[Expression<Widget>]>, next_id: NodeId) -> Self {
+impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
+    pub(crate) fn new(expressions: Rc<[Expression<WidgetMeta>]>, next_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
@@ -79,7 +79,7 @@ impl<Widget: IntoWidget> Nodes<Widget> {
         &mut self,
         state: &mut S,
         scope: &mut Scope<'_>,
-    ) -> Option<Result<(), Widget::Err>> {
+    ) -> Option<Result<(), WidgetMeta::Err>> {
         if let Some(active_loop) = self.active_loop.as_mut() {
             let Node {
                 kind: NodeKind::Loop(loop_node),
@@ -122,7 +122,7 @@ impl<Widget: IntoWidget> Nodes<Widget> {
         &mut self,
         state: &mut S,
         scope: &mut Scope<'_>,
-    ) -> Option<Result<(), Widget::Err>> {
+    ) -> Option<Result<(), WidgetMeta::Err>> {
         if let ret @ Some(_) = self.eval_active_loop(state, scope) {
             return ret;
         }
@@ -145,10 +145,10 @@ impl<Widget: IntoWidget> Nodes<Widget> {
         }
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut Widget, &mut Nodes<Widget>)> + '_ {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)> + '_ {
         self.inner
             .iter_mut()
-            .map(|node| -> Box<dyn Iterator<Item = (&mut Widget, &mut Nodes<Widget>)>> {
+            .map(|node| -> Box<dyn Iterator<Item = (&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)>> {
                 match &mut node.kind {
                     NodeKind::Single(widget, nodes) => Box::new(std::iter::once((widget, nodes))),
                     NodeKind::Loop(LoopNode { body, .. }) => Box::new(body.iter_mut()),

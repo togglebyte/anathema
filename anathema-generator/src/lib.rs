@@ -17,10 +17,9 @@ pub use values::Attributes;
 pub trait IntoWidget: Sized + Debug {
     type Meta: ?Sized + Debug;
     type Err;
+    type Widget: Debug;
 
-    fn create_widget<S: State>(meta: &Rc<Self::Meta>, context: Context<'_, '_, S>, attributes: &Attributes) -> Result<Self, Self::Err>;
-
-    fn layout(&mut self, children: &mut Nodes<Self>);
+    fn create_widget(&self, context: Context<'_, '_>, attributes: &Attributes) -> Result<Self::Widget, Self::Err>;
 }
 
 pub fn make_it_so<Widget: IntoWidget>(expressions: Vec<Expression<Widget>>) -> Nodes<Widget> {

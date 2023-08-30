@@ -9,7 +9,7 @@ use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::views::View;
-use anathema_widget_core::{Pos, WidgetContainer};
+use anathema_widget_core::{Pos, WidgetMeta};
 // use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
@@ -30,7 +30,7 @@ pub struct Runtime<E, ER> {
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
-    nodes: Nodes<WidgetContainer>,
+    nodes: Nodes<WidgetMeta>,
     events: E,
     event_receiver: ER,
 }

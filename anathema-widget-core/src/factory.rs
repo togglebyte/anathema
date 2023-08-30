@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_generator::DataCtx;
+use anathema_values::{Context, State};
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
 use crate::widget::AnyWidget;
-use crate::WidgetContainer;
+use crate::{WidgetContainer, WidgetMeta};
 
-const RESERVED_NAMES: &[&str] = &["if", "for", "else"];
+const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with"];
 
 pub trait WidgetFactory: Send + Sync {
     fn make(
         &self,
-        data: DataCtx<WidgetContainer>,
+        data: Context<'_, '_>,
     ) -> Result<Box<dyn AnyWidget>>;
 }
 
@@ -22,11 +22,11 @@ static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = On
 pub struct Factory;
 
 impl Factory {
-    pub fn exec(ctx: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+    pub fn exec(ctx: Context<'_, '_>, meta: &WidgetMeta) -> Result<Box<dyn AnyWidget>> {
         let factories = FACTORIES.get_or_init(Default::default).read();
         let factory = factories
-            .get(&ctx.ident)
-            .ok_or_else(|| Error::UnregisteredWidget(ctx.ident.clone()))?;
+            .get(&meta.ident)
+            .ok_or_else(|| Error::UnregisteredWidget(meta.ident.clone()))?;
         let widget = factory.make(ctx)?;
         Ok(Box::new(widget))
     }

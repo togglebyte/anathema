@@ -130,13 +130,13 @@ impl<'a> Scope<'a> {
     }
 }
 
-pub struct Context<'a, 'val, S> {
-    state: &'a S,
+pub struct Context<'a, 'val> {
+    state: &'a mut dyn State,
     scope: &'a Scope<'val>,
 }
 
-impl<'a, 'val, S: State> Context<'a, 'val, S> {
-    pub fn new(state: &'a S, scope: &'a mut Scope<'val>) -> Self {
+impl<'a, 'val> Context<'a, 'val> {
+    pub fn new(state: &'a mut dyn State, scope: &'a mut Scope<'val>) -> Self {
         Self { state, scope }
     }
 
@@ -146,13 +146,14 @@ impl<'a, 'val, S: State> Context<'a, 'val, S> {
     pub fn get<T>(&self, path: &Path) -> Option<T>
     where
         T: for<'magic> TryFrom<&'magic ScopeValue>,
+        T: for<'magic> TryFrom<Cow<'magic, str>>,
     {
         match self.scope.lookup(&path) {
             Some(val) => match val {
                 ScopeValue::Dyn(path) => self.get(path),
                 val => T::try_from(val).ok(),
             },
-            None => self.state.get_typed(&path),
+            None => self.state.get(&path).and_then(|val| val.try_into().ok()),
         }
     }
 }
