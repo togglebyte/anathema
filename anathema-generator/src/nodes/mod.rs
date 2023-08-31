@@ -58,6 +58,7 @@ pub struct Nodes<Widget: IntoWidget> {
     active_loop: Option<Box<Node<Widget>>>,
     expr_index: usize,
     next_id: NodeId,
+    node_index: usize,
 }
 
 impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
@@ -68,11 +69,13 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
             active_loop: None,
             expr_index: 0,
             next_id,
+            node_index: 0,
         }
     }
 
     fn reset(&mut self) {
         self.expr_index = 0;
+        self.node_index = 0;
     }
 
     fn eval_active_loop<S: State>(
@@ -118,11 +121,11 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
         None
     }
 
-    pub fn next<S: State>(
+    fn next<S: State>(
         &mut self,
         state: &mut S,
         scope: &mut Scope<'_>,
-    ) -> Option<Result<(), WidgetMeta::Err>> {
+    ) -> Option<Result<WidgetMeta::Output, WidgetMeta::Err>> {
         if let ret @ Some(_) = self.eval_active_loop(state, scope) {
             return ret;
         }
@@ -132,6 +135,7 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
             Ok(node) => node,
             Err(e) => return Some(Err(e)),
         };
+
         match node.kind {
             NodeKind::Loop { .. } => {
                 self.active_loop = Some(node.into());
@@ -139,10 +143,15 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
             }
             NodeKind::Single(element, node) => {
                 self.expr_index += 1;
-                Some(Ok(()))
+                let context = Context::new(state, scope);
+                let size = element.layout(layout, context);
+                Some(Ok(size))
             }
             NodeKind::ControlFlow { .. } => panic!(),
         }
+    }
+    
+    pub fn layout(&mut self, layout: LayoutCtx, context: Context<'_, '_>) -> WidgetMeta::Output {
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)> + '_ {
@@ -156,6 +165,10 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
                 }
             })
             .flatten()
+    }
+
+    pub fn first_mut(&mut self) -> Option<(&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)> {
+        self.iter_mut().next()
     }
 }
 

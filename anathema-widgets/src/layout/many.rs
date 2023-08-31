@@ -121,6 +121,47 @@ impl Layout for Many {
     fn layout<'widget, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx<'widget, 'parent>,
+        widget: &mut WidgetContainer,
+        children: &mut Nodes,
+        size: &mut Size,
+    ) -> Result<()> {
+        if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
+            children.push(widget);
+            return Ok(());
+        }
+
+        let widget_constraints = {
+            let mut constraints = ctx.padded_constraints();
+            if self.unconstrained {
+                match self.axis {
+                    Axis::Vertical => constraints.unbound_height(),
+                    Axis::Horizontal => constraints.unbound_width(),
+                }
+            }
+            constraints
+        };
+
+        let mut widget_size = match widget.layout(widget_constraints, children, &values) {
+            Ok(s) => s,
+            Err(Error::InsufficientSpaceAvailble) => break,
+            err @ Err(_) => err?,
+        };
+
+        if self.offset.skip(&mut widget_size) {
+            return Ok(());
+        }
+
+        children.push(widget);
+        used_size.apply(widget_size);
+
+        if used_size.no_space_left() {
+            break;
+        }
+    }
+
+    fn layout<'widget, 'parent>(
+        &mut self,
+        ctx: &mut LayoutCtx<'widget, 'parent>,
         children: &mut Vec<WidgetContainer>,
         size: &mut Size,
     ) -> Result<()> {

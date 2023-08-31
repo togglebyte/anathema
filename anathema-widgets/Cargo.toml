@@ -11,5 +11,6 @@ testing = ["anathema-widget-core/testing"]
 anathema-render = { path = "../anathema-render" }
 anathema-widget-core = { path = "../anathema-widget-core" }
 anathema-generator = { path = "../anathema-generator" }
+anathema-values = { path = "../anathema-values" }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }

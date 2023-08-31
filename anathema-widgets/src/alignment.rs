@@ -1,11 +1,9 @@
-use anathema_generator::Context;
 use anathema_render::Size;
+use anathema_values::Context;
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Align, Layouts};
-use anathema_widget_core::{
-    AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory, Cached,
-};
+use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory};
 
 use crate::layout::single::Single;
 
@@ -21,7 +19,7 @@ use crate::layout::single::Single;
 /// ```
 pub struct Alignment {
     /// The alignment
-    pub alignment: Cached<Align>,
+    pub alignment: Align,
 }
 
 impl Alignment {
@@ -29,10 +27,8 @@ impl Alignment {
     pub const KIND: &'static str = "Alignment";
 
     /// Create a new instance of an `Alignment` widget
-    pub fn new(alignment: Cached<Align>) -> Self {
-        Self { 
-            alignment,
-        }
+    pub fn new(alignment: Align) -> Self {
+        Self { alignment }
     }
 }
 
@@ -41,20 +37,16 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout(
-        &mut self,
-        children: &mut Nodes,
-        mut ctx: LayoutCtx,
-        data: &StoreRef<'_>,
-    ) -> Result<Size> {
-        let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout(children, data)?;
-        let size = layout.size()?;
-        if size == Size::ZERO {
-            Ok(Size::ZERO)
-        } else {
-            layout.expand_horz().expand_vert().size()
-        }
+    fn layout(&mut self, children: &mut Nodes, mut layout: LayoutCtx, data: Context<'_, '_>) -> Result<Size> {
+        panic!()
+        // let mut layout = Layouts::new(Single, &mut ctx);
+        // layout.layout(children, data)?;
+        // let size = layout.size()?;
+        // if size == Size::ZERO {
+        //     Ok(Size::ZERO)
+        // } else {
+        //     layout.expand_horz().expand_vert().size()
+        // }
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -64,7 +56,7 @@ impl Widget for Alignment {
             let child_width = child.outer_size().width as i32;
             let child_height = child.outer_size().height as i32;
 
-            let child_offset = match self.alignment.or(Align::TopLeft) {
+            let child_offset = match self.alignment {
                 Align::TopLeft => Pos::ZERO,
                 Align::Top => Pos::new(width / 2 - child_width / 2, 0),
                 Align::TopRight => Pos::new(width - child_width, 0),
@@ -83,11 +75,46 @@ impl Widget for Alignment {
     }
 }
 
+// Frame 1
+// Constraint = 100
+// list_a = [1, 2, 3]
+// list_b = [1, 2, 3]
+//
+// Template:
+//
+// border
+//    vstack  height 3
+//        for x in list_a
+//            text x
+//
+//    vstack height 3
+//        for x in list_b
+//            text x
+//
+
+// Frame 2
+// Constraint = 100
+// list_a = [1, 2, 3]
+// list_b = [1, 2, 4] <- only thing that has changed
+//
+// Template:
+//
+// border
+//    vstack  height 3
+//        for x in list_a
+//            text x
+//
+//    vstack height 3
+//        for x in list_b
+//            text x
+//
+
+
 pub(crate) struct AlignmentFactory;
 
 impl WidgetFactory for AlignmentFactory {
-    fn make<S: State>(&self, data: Context<'_, '_, S>) -> Result<Box<dyn AnyWidget>> {
-        let alignment: Aligment = data.get("align").into();// Cached::new_or("align", &data, Align::TopLeft);
+    fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
+        let alignment: Align = data.get(&"align".into()).unwrap_or(Align::TopLeft); // Cached::new_or("align", &data, Align::TopLeft);
         let widget = Alignment::new(alignment);
         Ok(Box::new(widget))
     }

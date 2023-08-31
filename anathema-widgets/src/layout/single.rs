@@ -11,19 +11,19 @@ impl Layout for Single {
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
-        store: &StoreRef<'_>,
         size: &mut Size,
     ) -> Result<()> {
-        let constraints = ctx.padded_constraints();
+        panic!()
+        // let constraints = ctx.padded_constraints();
 
-        if let Some((widget, children)) = children.next(store).transpose()? {
-            *size = match widget.layout(children, constraints, store) {
-                Ok(s) => s,
-                Err(Error::InsufficientSpaceAvailble) => return Ok(()),
-                err @ Err(_) => err?,
-            };
-        }
+        // if let Some((widget, children)) = children.next(store).transpose()? {
+        //     *size = match widget.layout(children, constraints, store) {
+        //         Ok(s) => s,
+        //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
+        //         err @ Err(_) => err?,
+        //     };
+        // }
 
-        Ok(())
+        // Ok(())
     }
 }

@@ -145,15 +145,15 @@ impl<'a, 'val> Context<'a, 'val> {
     /// This will recursively lookup dynamic values
     pub fn get<T>(&self, path: &Path) -> Option<T>
     where
-        T: for<'magic> TryFrom<&'magic ScopeValue>,
-        T: for<'magic> TryFrom<Cow<'magic, str>>,
+        T: for<'magic> TryFrom<&'magic str>,
     {
         match self.scope.lookup(&path) {
             Some(val) => match val {
                 ScopeValue::Dyn(path) => self.get(path),
-                val => T::try_from(val).ok(),
+                ScopeValue::Static(s) => T::try_from(s).ok(),
+                ScopeValue::List(_) => None,
             },
-            None => self.state.get(&path).and_then(|val| val.try_into().ok()),
+            None => self.state.get(&path).and_then(|val| val.as_ref().try_into().ok()),
         }
     }
 }

@@ -17,6 +17,8 @@ pub trait Layout {
         children: &mut Nodes,
         size: &mut Size,
     ) -> Result<()>;
+
+    fn finalize(&mut self, nodes: &mut Nodes) -> Size;
 }
 
 // -----------------------------------------------------------------------------
@@ -38,7 +40,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     }
 
     pub fn layout(&mut self, children: &mut Nodes) -> Result<&mut Self> {
-        self.layout.layout(self.ctx, children, &mut self.size)?;
+        children.layout(&mut self.layout)?;
         Ok(self)
     }
 
@@ -52,8 +54,9 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         self
     }
 
-    pub fn size(&self) -> Result<Size> {
-        Ok(self.size)
+    pub fn size(&self, children: &mut Nodes) -> Result<Size> {
+        let size = self.layout.finalize(children)?;
+        Ok(size)
     }
 }
 
@@ -152,6 +155,26 @@ pub enum Align {
     TopLeft,
     /// Centre
     Centre,
+}
+
+impl TryFrom<&str> for Align {
+    type Error = ();
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        let wrap = match value {
+            "top" => Self::Top,
+            "top-right" => Self::TopRight,
+            "right" => Self::Right,
+            "bottom-right" => Self::BottomRight,
+            "bottom" => Self::Bottom,
+            "bottom-left" => Self::BottomLeft,
+            "left" => Self::Left,
+            "top-left" => Self::Left,
+            "centre" | "center" => Self::Centre,
+            _ => Self::Top,
+        };
+        Ok(wrap)
+    }
 }
 
 impl Display for Align {

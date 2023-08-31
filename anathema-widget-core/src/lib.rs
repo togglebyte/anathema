@@ -9,7 +9,7 @@ mod id;
 mod factory;
 pub mod layout;
 // pub mod template;
-pub mod views;
+// pub mod views;
 mod widget;
 // mod path;
 // mod fragment;

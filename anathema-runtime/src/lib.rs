@@ -8,11 +8,11 @@ use anathema_vm::Expressions;
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::views::View;
 use anathema_widget_core::{Pos, WidgetMeta};
 // use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
+use view::View;
 
 use self::frame::Frame;
 // use self::meta::Meta;
@@ -23,10 +23,10 @@ mod frame;
 // mod meta;
 mod view;
 
-pub struct Runtime<E, ER> {
+pub struct Runtime<E, ER, V> {
     pub enable_meta: bool,
     pub enable_mouse: bool,
-    // meta: Meta,
+    views: V,
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
@@ -35,23 +35,19 @@ pub struct Runtime<E, ER> {
     event_receiver: ER,
 }
 
-impl<E, ER> Drop for Runtime<E, ER> {
+impl<E, ER, V> Drop for Runtime<E, ER, V> {
     fn drop(&mut self) {
         let _ = Screen::show_cursor(&mut self.output);
         let _ = disable_raw_mode();
     }
 }
 
-impl<E, ER> Runtime<E, ER>
+impl<E, ER, V: View> Runtime<E, ER, V>
 where
     E: Events,
     ER: EventProvider,
 {
-    pub fn new(
-        expressions: Expressions,
-        events: E,
-        event_receiver: ER,
-    ) -> Result<Self> {
+    pub fn new(expressions: Expressions, events: E, event_receiver: ER, views: V) -> Result<Self> {
         // register_default_widgets()?;
         enable_raw_mode()?;
         let mut stdout = stdout();
@@ -65,7 +61,7 @@ where
 
         let inst = Self {
             output: stdout,
-            // meta: Meta::new(size),
+            views,
             screen,
             constraints,
             nodes,
@@ -78,31 +74,24 @@ where
         Ok(inst)
     }
 
-    pub fn register_view(&mut self, name: impl Into<String>, view: impl View + 'static) {
-        panic!()
-        // self.ctx.views.register(name.into(), view);
-    }
-
     fn layout(&mut self) -> Result<()> {
-        for (widget, children) in self.nodes.iter_mut() {
-            panic!()
-            // widget.layout(children, self.constraints, &bucket)?;
-        }
+        let layout = LayoutCtx::new(self.constraints, Padding::ZERO);
+        let mut scope = Scope::root();
+        let mut context = Context::new(&mut self.state, &mut scope);
 
-        Ok(())
+        let single_layout = Single::new();
+        self.nodes.layout(layout, context);
     }
 
     fn position(&mut self) {
         for (widget, children) in self.nodes.iter_mut() {
-            panic!()
-            // widget.position(children, Pos::ZERO);
+            widget.position(children, Pos::ZERO);
         }
     }
 
     fn paint(&mut self) {
         for (widget, children) in self.nodes.iter_mut() {
-            panic!()
-        //     widget.paint(children, PaintCtx::new(&mut self.screen, None));
+            widget.paint(children, PaintCtx::new(&mut self.screen, None));
         }
     }
 

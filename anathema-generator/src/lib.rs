@@ -18,6 +18,7 @@ pub trait IntoWidget: Sized + Debug {
     type Meta: ?Sized + Debug;
     type Err;
     type Widget: Debug;
+    type Output;
 
     fn create_widget(&self, context: Context<'_, '_>, attributes: &Attributes) -> Result<Self::Widget, Self::Err>;
 }
