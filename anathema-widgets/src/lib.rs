@@ -8,7 +8,7 @@ mod alignment;
 // mod hstack;
 // mod position;
 // mod spacer;
-// mod text;
+mod text;
 // mod viewport;
 // mod vstack;
 // mod zstack;

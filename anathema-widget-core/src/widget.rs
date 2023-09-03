@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use anathema_generator::{Attributes, IntoWidget};
+use crate::generator::Attributes;
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{Context, ScopeValue, State};
 
@@ -12,8 +12,8 @@ use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-// use crate::values::Cached;
-use crate::{Display, LocalPos, Nodes, Padding, Pos, Region};
+use crate::generator::Nodes;
+use crate::{Display, LocalPos, Padding, Pos, Region};
 
 // Layout:
 // 1. Receive constraints
@@ -219,6 +219,7 @@ impl WidgetContainer {
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards
+                //       or stop reflow (which ever we decide to do)
 
                 self.size = size;
                 self.size.width += self.padding.left + self.padding.right;
@@ -282,41 +283,6 @@ impl Debug for WidgetContainer {
     }
 }
 
-impl IntoWidget for WidgetMeta {
-    type Err = ();
-    type Meta = WidgetMeta;
-    type Widget = WidgetContainer;
-
-    fn create_widget(&self,
-        context: Context<'_, '_>,
-        attributes: &Attributes,
-    ) -> std::result::Result<Self::Widget, Self::Err> {
-        todo!()
-    }
-}
-
-// impl FromContext for WidgetContainer {
-//     type Ctx = WidgetMeta;
-//     type Err = crate::error::Error;
-//     type Notifier = Listener;
-//     type Value = crate::Value;
-
-//     fn from_context(ctx: DataCtx<'_, Self>) -> Result<Self> {
-//         let display = Cached::new_or("display", &ctx, Display::Show);
-//         let background = Cached::new("background", &ctx);
-//         let padding = ctx.get("padding");
-
-//         let container = WidgetContainer {
-//             display,
-//             background,
-//             padding: Padding::ZERO,
-//             size: Size::ZERO,
-//             pos: Pos::ZERO,
-//             inner: Factory::exec(ctx)?,
-//         };
-//         Ok(container)
-//     }
-// }
 
 /// Meta data needed to construct a `WidgetContainer` from a `Node`
 #[derive(Debug)]

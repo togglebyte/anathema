@@ -1,4 +1,4 @@
-use anathema_widget_core::Nodes;
+use anathema_widget_core::generator::Nodes;
 use flume::{Sender, Receiver};
 
 impl View for () {

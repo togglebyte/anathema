@@ -2,12 +2,15 @@ use std::borrow::Cow;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
-use anathema_values::{Collection, Path, Scope, ScopeValue, State, Context};
+use anathema_render::Size;
+use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State};
 
 use self::controlflow::{Else, If};
 pub use self::id::NodeId;
-use crate::expressions::Expression;
-use crate::IntoWidget;
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
+use crate::generator::expressions::Expression;
+use crate::WidgetContainer;
 
 mod controlflow;
 mod id;
@@ -16,22 +19,22 @@ mod id;
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub(crate) struct LoopNode<Widget: IntoWidget> {
-    pub(crate) body: Nodes<Widget>,
+pub(crate) struct LoopNode {
+    pub(crate) body: Nodes,
     pub(crate) binding: Path,
     pub(crate) collection: Collection,
     pub(crate) value_index: usize,
 }
 
 #[derive(Debug)]
-pub struct Node<WidgetMeta: IntoWidget> {
+pub struct Node {
     pub node_id: NodeId,
-    pub(crate) kind: NodeKind<WidgetMeta>,
+    pub(crate) kind: NodeKind,
 }
 
 #[cfg(test)]
-impl<Widget: IntoWidget> Node<Widget> {
-    pub(crate) fn single(&mut self) -> (&mut Widget, &mut Nodes<Widget>) {
+impl Node {
+    pub(crate) fn single(&mut self) -> (&mut WidgetContainer, &mut Nodes) {
         match &mut self.kind {
             NodeKind::Single(inner, nodes) => (inner, nodes),
             _ => panic!(),
@@ -40,29 +43,29 @@ impl<Widget: IntoWidget> Node<Widget> {
 }
 
 #[derive(Debug)]
-pub(crate) enum NodeKind<WidgetMeta: IntoWidget> {
-    Single(WidgetMeta::Widget, Nodes<WidgetMeta>),
-    Loop(LoopNode<WidgetMeta>),
+pub(crate) enum NodeKind {
+    Single(WidgetContainer, Nodes),
+    Loop(LoopNode),
     ControlFlow {
-        if_node: If<WidgetMeta>,
-        elses: Vec<Else<WidgetMeta>>,
-        body: Nodes<WidgetMeta>,
+        if_node: If,
+        elses: Vec<Else>,
+        body: Nodes,
     },
 }
 
 #[derive(Debug)]
 // TODO: possibly optimise this by making nodes optional on the node
-pub struct Nodes<Widget: IntoWidget> {
-    expressions: Rc<[Expression<Widget>]>,
-    inner: Vec<Node<Widget>>,
-    active_loop: Option<Box<Node<Widget>>>,
+pub struct Nodes {
+    expressions: Rc<[Expression]>,
+    inner: Vec<Node>,
+    active_loop: Option<Box<Node>>,
     expr_index: usize,
     next_id: NodeId,
     node_index: usize,
 }
 
-impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
-    pub(crate) fn new(expressions: Rc<[Expression<WidgetMeta>]>, next_id: NodeId) -> Self {
+impl Nodes {
+    pub(crate) fn new(expressions: Rc<[Expression]>, next_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
@@ -78,11 +81,12 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
         self.node_index = 0;
     }
 
-    fn eval_active_loop<S: State>(
+    fn eval_active_loop(
         &mut self,
-        state: &mut S,
-        scope: &mut Scope<'_>,
-    ) -> Option<Result<(), WidgetMeta::Err>> {
+        state: &mut dyn State,
+        scope: &mut Scope,
+        layout: &mut LayoutCtx,
+    ) -> Option<Result<Size>> {
         if let Some(active_loop) = self.active_loop.as_mut() {
             let Node {
                 kind: NodeKind::Loop(loop_node),
@@ -92,27 +96,23 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
                 unreachable!()
             };
 
-            let ScopeValue::Static(item) = scope.lookup(&"item".into()).unwrap() else {
-                panic!()
-            };
-            let item: &str = &*item;
-
-            match loop_node.body.next(state, scope) {
+            match loop_node.body.next(state, scope, layout) {
                 result @ Some(_) => return result,
                 None => {
-                    loop_node.value_index += 1;
-                    if loop_node.value_index == loop_node.collection.len() {
+                    if loop_node.value_index + 1 == loop_node.collection.len() {
                         self.inner.push(*self.active_loop.take().expect(""));
                         self.expr_index += 1;
                     } else {
+                        let mut scope = scope.from_self();
                         scope.scope_collection(
                             loop_node.binding.clone(),
                             &loop_node.collection,
                             loop_node.value_index,
                         );
                         loop_node.body.reset();
+                        loop_node.value_index += 1;
 
-                        return self.next(state, scope);
+                        return self.next(state, &mut scope, layout);
                     }
                 }
             }
@@ -121,55 +121,55 @@ impl<WidgetMeta: IntoWidget> Nodes<WidgetMeta> {
         None
     }
 
-    pub fn next<S: State>(
+    pub fn next(
         &mut self,
-        state: &mut S,
+        state: &mut dyn State,
         scope: &mut Scope<'_>,
-    ) -> Option<Result<(), WidgetMeta::Err>> {
-        if let ret @ Some(_) = self.eval_active_loop(state, scope) {
+        layout: &mut LayoutCtx,
+    ) -> Option<Result<Size>> {
+        if let ret @ Some(_) = self.eval_active_loop(state, scope, layout) {
             return ret;
         }
 
         let expr = self.expressions.get(self.expr_index)?;
-        let node = match expr.eval(state, scope, self.next_id.clone()) {
+        let mut node = match expr.eval(state, scope, self.next_id.clone()) {
             Ok(node) => node,
             Err(e) => return Some(Err(e)),
         };
 
-        match node.kind {
-            NodeKind::Single(element, nodes) => {
+        match &mut node.kind {
+            NodeKind::Single(widget, nodes) => {
                 self.expr_index += 1;
-                let context = Context::new(state, scope);
-                // let size = element.layout(nodes, layout, context);
-                Some(Ok(()))
+                let data = Context::new(state, scope);
+                let size = widget.layout(nodes, layout.constraints, data);
+                Some(size)
             }
             NodeKind::Loop { .. } => {
                 self.active_loop = Some(node.into());
-                self.next(state, scope)
+                self.next(state, scope, layout)
             }
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
-    
-    // pub fn layout(&mut self, layout: LayoutCtx, context: Context<'_, '_>) -> Result<WidgetMeta::Output> {
-    //     self.node_index = 0;
-    //     self.next()
-    // }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)> + '_ {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes)> + '_ {
         self.inner
             .iter_mut()
-            .map(|node| -> Box<dyn Iterator<Item = (&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)>> {
-                match &mut node.kind {
-                    NodeKind::Single(widget, nodes) => Box::new(std::iter::once((widget, nodes))),
-                    NodeKind::Loop(LoopNode { body, .. }) => Box::new(body.iter_mut()),
-                    NodeKind::ControlFlow { body, .. } => Box::new(body.iter_mut()),
-                }
-            })
+            .map(
+                |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer, &mut Nodes)>> {
+                    match &mut node.kind {
+                        NodeKind::Single(widget, nodes) => {
+                            Box::new(std::iter::once((widget, nodes)))
+                        }
+                        NodeKind::Loop(LoopNode { body, .. }) => Box::new(body.iter_mut()),
+                        NodeKind::ControlFlow { body, .. } => Box::new(body.iter_mut()),
+                    }
+                },
+            )
             .flatten()
     }
 
-    pub fn first_mut(&mut self) -> Option<(&mut WidgetMeta::Widget, &mut Nodes<WidgetMeta>)> {
+    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer, &mut Nodes)> {
         self.iter_mut().next()
     }
 }

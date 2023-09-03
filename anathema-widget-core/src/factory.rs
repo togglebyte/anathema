@@ -5,8 +5,9 @@ use anathema_values::{Context, State};
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
+use crate::generator::SingleNode;
 use crate::widget::AnyWidget;
-use crate::{WidgetContainer, WidgetMeta};
+use crate::WidgetContainer;
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with"];
 
@@ -22,11 +23,11 @@ static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = On
 pub struct Factory;
 
 impl Factory {
-    pub fn exec(ctx: Context<'_, '_>, meta: &WidgetMeta) -> Result<Box<dyn AnyWidget>> {
+    pub fn exec(ctx: Context<'_, '_>, node: &SingleNode) -> Result<Box<dyn AnyWidget>> {
         let factories = FACTORIES.get_or_init(Default::default).read();
         let factory = factories
-            .get(&meta.ident)
-            .ok_or_else(|| Error::UnregisteredWidget(meta.ident.clone()))?;
+            .get(&node.ident)
+            .ok_or_else(|| Error::UnregisteredWidget(node.ident.clone()))?;
         let widget = factory.make(ctx)?;
         Ok(Box::new(widget))
     }

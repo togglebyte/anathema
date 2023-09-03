@@ -27,28 +27,28 @@ impl LayoutCtx {
     }
 
     pub fn padded_constraints(&self) -> Constraints {
-        if self.padding != Padding::ZERO {
-            let padding = self.padding;
-            let mut constraints = self.constraints;
-
-            if !constraints.is_width_unbounded() 
-                constraints.max_width = constraints
-                    .max_width
-                   .saturating_sub(padding.left + padding.right);
-                constraints.min_width = constraints.min_width.min(constraints.max_width);
-            }
-
-            if !constraints.is_height_unbounded() {
-                constraints.max_height = constraints
-                    .max_height
-                    .saturating_sub(padding.top + padding.bottom);
-                constraints.min_height = constraints.min_height.min(constraints.max_height);
-
-                constraints
-            }
-        } else {
-            self.constraints
+        if self.padding == Padding::ZERO {
+            return self.constraints;
         }
+
+        let padding = self.padding;
+        let mut constraints = self.constraints;
+
+        if !constraints.is_width_unbounded() {
+            constraints.max_width = constraints
+                .max_width
+               .saturating_sub(padding.left + padding.right);
+            constraints.min_width = constraints.min_width.min(constraints.max_width);
+        }
+
+        if !constraints.is_height_unbounded() {
+            constraints.max_height = constraints
+                .max_height
+                .saturating_sub(padding.top + padding.bottom);
+            constraints.min_height = constraints.min_height.min(constraints.max_height);
+        }
+
+        constraints
     }
 
     pub fn padding_size(&self) -> Size {

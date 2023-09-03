@@ -2,8 +2,9 @@ use anathema_render::Size;
 use anathema_values::Context;
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Nodes;
 use anathema_widget_core::layout::{Align, Layouts};
-use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory};
+use anathema_widget_core::{AnyWidget, Pos, Widget, WidgetContainer, WidgetFactory};
 
 use crate::layout::single::Single;
 
@@ -37,16 +38,21 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout(&mut self, children: &mut Nodes, mut layout: LayoutCtx, data: Context<'_, '_>) -> Result<Size> {
-        panic!()
-        // let mut layout = Layouts::new(Single, &mut ctx);
-        // layout.layout(children, data)?;
+    fn layout(
+        &mut self,
+        children: &mut Nodes,
+        mut layout: LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size> {
+        let mut layout = Layouts::new(Single(Size::ZERO), &mut layout);
+        layout.layout(children, data)?;
         // let size = layout.size()?;
         // if size == Size::ZERO {
         //     Ok(Size::ZERO)
         // } else {
         //     layout.expand_horz().expand_vert().size()
         // }
+        panic!()
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -108,7 +114,6 @@ impl Widget for Alignment {
 //        for x in list_b
 //            text x
 //
-
 
 pub(crate) struct AlignmentFactory;
 

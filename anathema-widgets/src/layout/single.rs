@@ -1,29 +1,36 @@
 use anathema_render::Size;
+use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
+use anathema_widget_core::generator::Nodes;
 use anathema_widget_core::layout::Layout;
-use anathema_widget_core::{WidgetContainer, Nodes}; 
+use anathema_widget_core::WidgetContainer;
 
-pub struct Single;
+pub struct Single(pub Size);
 
 impl Layout for Single {
     fn layout<'widget, 'parent>(
         &mut self,
         ctx: &mut LayoutCtx,
         children: &mut Nodes,
-        size: &mut Size,
+        data: Context<'_, '_>,
     ) -> Result<()> {
-        panic!()
-        // let constraints = ctx.padded_constraints();
+        let constraints = ctx.padded_constraints();
 
-        // if let Some((widget, children)) = children.next(store).transpose()? {
+        if let Some(size) = children.next(data.state, data.scope, ctx).transpose()? {
+            self.0 = size;
+            // TODO do we need to deal with insufficient space here?
         //     *size = match widget.layout(children, constraints, store) {
         //         Ok(s) => s,
         //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
         //         err @ Err(_) => err?,
         //     };
-        // }
+        }
 
-        // Ok(())
+        Ok(())
+    }
+
+    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
+        self.0
     }
 }

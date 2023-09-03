@@ -1,35 +1,13 @@
 use std::fmt::Write;
 
-use anathema_generator::DataCtx;
 use anathema_render::{Size, Style};
+use anathema_values::Context;
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::{
-    AnyWidget, StoreRef, Cached, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, Listener,
-};
+use anathema_widget_core::{AnyWidget, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory};
 use unicode_width::UnicodeWidthStr;
 
 use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
-
-pub struct CachedString {
-    cache: Cached<Value>,
-    string: String,
-}
-
-impl CachedString {
-    fn as_str(&self) -> &str {
-        self.string.as_str()
-    }
-}
-
-impl From<Cached<Value>> for CachedString {
-    fn from(cache: Cached<Value>) -> Self {
-        Self {
-            string: cache.to_string(),
-            cache,
-        }
-    }
-}
 
 // -----------------------------------------------------------------------------
 //     - Text -
@@ -51,13 +29,13 @@ impl From<Cached<Value>> for CachedString {
 /// A `Text` widget will be as wide as its text.
 pub struct Text {
     /// Word wrapping
-    pub word_wrap: Cached<Wrap>,
+    pub word_wrap: Wrap,
     /// Text alignment. Note that text alignment only aligns the text inside the parent widget,
     /// this will not force the text to the right side of the output, for that use
     /// [`Alignment`](crate::Alignment).
-    pub text_alignment: Cached<TextAlignment>,
+    pub text_alignment: TextAlignment,
     /// Text
-    pub text: CachedString,
+    pub text: String,
     /// Text style
     pub style: Style,
 
@@ -112,11 +90,7 @@ impl Text {
         }
 
         let max_width = self.layout.size().width;
-        match self
-            .text_alignment
-            .value_ref()
-            .unwrap_or(&TextAlignment::Left)
-        {
+        match self.text_alignment {
             TextAlignment::Left => {}
             TextAlignment::Centre => pos.x = max_width / 2 - line_width / 2,
             TextAlignment::Right => pos.x = max_width - line_width,
@@ -146,7 +120,7 @@ impl Widget for Text {
         &mut self,
         children: &mut Nodes,
         mut ctx: LayoutCtx,
-        data: &StoreRef<'_>,
+        data: Context<'_, '_>,
     ) -> Result<Size> {
         self.layout = TextLayout::ZERO;
         let bucket = data.read();
@@ -222,7 +196,7 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, _: &mut Nodes, _: LayoutCtx, _: &StoreRef<'_>) -> Result<Size> {
+    fn layout(&mut self, _: &mut Nodes, _: LayoutCtx, _: Context<'_, '_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
@@ -239,9 +213,11 @@ impl Widget for TextSpan {
 pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
-    fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap = Cached::new_or("wrap", &data, Wrap::Normal);
-        let text_alignment = Cached::new_or("text-align", &data, TextAlignment::Left);
+    fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
+        let word_wrap = data.get(&"wrap".into()).unwrap_or(Wrap::Normal);
+        let text_alignment = data
+            .get(&"text-align".into())
+            .unwrap_or(TextAlignment::Left);
 
         // TODO: we do need them styles
         // widget.style = values.style();
@@ -271,7 +247,7 @@ impl WidgetFactory for TextFactory {
 pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
-    fn make(&self, data: DataCtx<WidgetContainer>) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
         panic!("oh my, we should have this one day!");
         let mut widget = TextSpan::new();
         // if let Some(text) = text {

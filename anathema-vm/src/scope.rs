@@ -1,10 +1,9 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_generator::{Loop, SingleNode, Expression, Attributes};
+use anathema_widget_core::generator::{Loop, SingleNode, Expression, Attributes};
 use anathema_values::ScopeValue;
 use anathema_widget_core::{WidgetContainer, WidgetMeta};
 
 use crate::error::Result;
-use crate::Expressions;
 
 static FILE_BUG_REPORT: &str =
     "consts have been modified, this is a bug with Anathema, file a bug report please";
@@ -22,7 +21,7 @@ impl<'vm> Scope<'vm> {
         }
     }
 
-    pub fn exec(&mut self) -> Result<Expressions> {
+    pub fn exec(&mut self) -> Result<Vec<Expression>> {
         let mut nodes = vec![];
 
         if self.instructions.is_empty() {
@@ -123,7 +122,7 @@ impl<'vm> Scope<'vm> {
         &mut self,
         ident: StringId,
         scope_size: usize,
-    ) -> Result<Expression<WidgetMeta>> {
+    ) -> Result<Expression> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
         let mut attributes = Attributes::empty();
@@ -149,13 +148,9 @@ impl<'vm> Scope<'vm> {
         let scope = self.instructions.drain(..scope_size).collect();
         let children = Scope::new(scope, &self.consts).exec()?;
 
-        let meta = WidgetMeta {
+        let node = Expression::Node(SingleNode {
             ident: ident.to_string(),
             text,
-        }.into();
-
-        let node = Expression::Node(SingleNode {
-            meta,
             attributes,
             children: children.into(),
         });

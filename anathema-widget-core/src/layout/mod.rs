@@ -2,21 +2,18 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
+use anathema_values::{Context, Scope, State};
 
 pub use self::constraints::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::{Nodes, WidgetContainer};
+use crate::generator::Nodes;
+use crate::widget::WidgetContainer;
 
 mod constraints;
 
 pub trait Layout {
-    fn layout(
-        &mut self,
-        ctx: &mut LayoutCtx,
-        children: &mut Nodes,
-        size: &mut Size,
-    ) -> Result<()>;
+    fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<()>;
 
     fn finalize(&mut self, nodes: &mut Nodes) -> Size;
 }
@@ -39,9 +36,12 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout(&mut self, children: &mut Nodes) -> Result<&mut Self> {
-        children.layout(&mut self.layout)?;
-        Ok(self)
+    pub fn layout(&mut self, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
+        while let Some(res) = children.next(data.state, data.scope, self.ctx) {
+            res?;
+        }
+        let size = self.layout.finalize(children);
+        Ok(size)
     }
 
     pub fn expand_horz(&mut self) -> &mut Self {
@@ -52,11 +52,6 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     pub fn expand_vert(&mut self) -> &mut Self {
         self.size.height = self.ctx.constraints.max_height;
         self
-    }
-
-    pub fn size(&self, children: &mut Nodes) -> Result<Size> {
-        let size = self.layout.finalize(children)?;
-        Ok(size)
     }
 }
 

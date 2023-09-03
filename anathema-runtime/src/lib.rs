@@ -2,13 +2,13 @@ use std::io::{stdout, Stdout};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anathema_generator::{make_it_so, Expression, NodeId, Nodes};
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_vm::Expressions;
-use anathema_widget_core::contexts::PaintCtx;
+use anathema_values::{Context, Scope};
+use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::{make_it_so, Expression, NodeId, Nodes};
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::{Pos, WidgetMeta};
+use anathema_widget_core::{Padding, Pos, WidgetMeta};
 // use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
@@ -30,7 +30,7 @@ pub struct Runtime<E, ER, V> {
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
-    nodes: Nodes<WidgetMeta>,
+    nodes: Nodes,
     events: E,
     event_receiver: ER,
 }
@@ -47,7 +47,12 @@ where
     E: Events,
     ER: EventProvider,
 {
-    pub fn new(expressions: Expressions, events: E, event_receiver: ER, views: V) -> Result<Self> {
+    pub fn new(
+        expressions: Vec<Expression>,
+        events: E,
+        event_receiver: ER,
+        views: V,
+    ) -> Result<Self> {
         // register_default_widgets()?;
         enable_raw_mode()?;
         let mut stdout = stdout();
@@ -74,13 +79,13 @@ where
         Ok(inst)
     }
 
+    // TODO: move this into views
     fn layout(&mut self) -> Result<()> {
-        let layout = LayoutCtx::new(self.constraints, Padding::ZERO);
-        let mut scope = Scope::root();
-        let mut context = Context::new(&mut self.state, &mut scope);
-
-        let single_layout = Single::new();
-        self.nodes.layout(layout, context);
+        let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
+        let mut scope = Scope::new(None);
+        let mut state = panic!();
+        while let Some(Ok(_size)) = self.nodes.next(&mut state, &mut scope, &mut layout_ctx) {}
+        Ok(())
     }
 
     fn position(&mut self) {
