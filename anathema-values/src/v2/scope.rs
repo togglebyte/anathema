@@ -87,6 +87,8 @@ impl<'a> Scope<'a> {
         self.inner.insert(path, value);
     }
 
+    /// Scope a value for a collection.
+    /// TODO: Review if the whole cloning business here makes sense
     pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
         let value = match collection {
             Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
@@ -131,8 +133,8 @@ impl<'a> Scope<'a> {
 }
 
 pub struct Context<'a, 'val> {
-    state: &'a mut dyn State,
-    scope: &'a Scope<'val>,
+    pub state: &'a mut dyn State,
+    pub scope: &'a mut Scope<'val>,
 }
 
 impl<'a, 'val> Context<'a, 'val> {
@@ -165,30 +167,18 @@ mod test {
     #[test]
     fn scope_value() {
         let mut root = Scope::new(None);
-        // root.scope(
-        //     "list".into(),
-        //     ScopeValue::List(Rc::new([ScopeValue::Static("hello world".into())])),
-        // );
-        root.scope("lol".into(), Cow::Owned(ScopeValue::Static("lolly".into())));
+        root.scope("value".into(), Cow::Owned(ScopeValue::Static("hello world".into())));
 
         let mut inner = Scope::new(Some(&root));
-        let value = inner.lookup_parent(&"lol".into()).unwrap();
-        // let scope_value = value[0].clone();
-        // inner.scope("list".into(), scope_value);
-        inner.scope("lark".into(), Cow::Borrowed(value));
+        let value = inner.lookup_parent(&"value".into()).unwrap();
+        inner.scope("shadow".into(), Cow::Borrowed(value));
 
-        // let ScopeValue::Static(actual) = inner.lookup(&"list".into()).unwrap() else { panic!() };
-        // assert_eq!("hello world", &**actual);
-
-        let Cow::Borrowed(ScopeValue::Static(lhs)) = inner.lookup(&"lark".into()).unwrap() else {
+        let ScopeValue::Static(lhs) = inner.lookup(&"shadow".into()).unwrap() else {
             panic!()
         };
-        let Cow::Owned(ScopeValue::Static(rhs)) = inner.lookup(&"lol".into()).unwrap() else {
+        let ScopeValue::Static(rhs) = inner.lookup(&"value".into()).unwrap() else {
             panic!()
         };
         assert_eq!(lhs, rhs);
-
-        // let ScopeValue::Static(actual) = inner.lookup(&"lol".into()).unwrap() else { panic!() };
-        // assert_eq!("lolly", &**actual);
     }
 }
