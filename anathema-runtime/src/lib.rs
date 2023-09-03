@@ -6,7 +6,7 @@ use anathema_render::{size, Attributes, Screen, Size};
 use anathema_values::{Context, Scope};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::{make_it_so, Expression, NodeId, Nodes};
+use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::{Padding, Pos};
 // use anathema_widgets::register_default_widgets;

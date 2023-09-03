@@ -2,7 +2,6 @@ use anathema_render::ScreenPos;
 
 pub mod contexts;
 pub mod error;
-mod id;
 mod factory;
 pub mod layout;
 mod widget;

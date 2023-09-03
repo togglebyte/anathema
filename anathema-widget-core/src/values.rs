@@ -153,6 +153,19 @@ pub enum Display {
     Exclude,
 }
 
+impl TryFrom<&str> for Display {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let display = match value {
+            "hide" => Self::Hide,
+            "exclude" => Self::Exclude,
+            _ => Self::Show,
+        };
+        Ok(display)
+    }
+}
+
 // /// A number
 // #[derive(Debug, Copy, Clone, PartialEq)]
 // pub enum Number {

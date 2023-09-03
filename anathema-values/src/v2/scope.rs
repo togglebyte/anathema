@@ -3,21 +3,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::hashmap::HashMap;
-use crate::{Path, State};
-
-// State
-// name:       "string here"
-// collection: [1, 2, 3]
-//
-// for name in state.collection {
-//     // scope level 1
-//     name = 1
-//
-//     for lark in state.collection {
-//         // scope level 2
-//         text name
-//     }
-// }
+use crate::{NodeId, Path, State};
 
 #[derive(Debug)]
 pub enum Collection {
@@ -145,33 +131,56 @@ impl<'a, 'val> Context<'a, 'val> {
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<T>(&self, path: &Path) -> Option<T>
+    pub fn get<T>(&self, path: &Path, node_id: &NodeId) -> Option<T>
     where
         T: for<'magic> TryFrom<&'magic str>,
     {
         match self.scope.lookup(&path) {
             Some(val) => match val {
-                ScopeValue::Dyn(path) => self.get(path),
+                ScopeValue::Dyn(path) => self.get(path, node_id),
                 ScopeValue::Static(s) => T::try_from(s).ok(),
                 ScopeValue::List(_) => None,
             },
-            None => self.state.get(&path).and_then(|val| val.as_ref().try_into().ok()),
+            None => self
+                .state
+                .get(&path, node_id)
+                .and_then(|val| val.as_ref().try_into().ok()),
         }
     }
 
-    pub fn attribute<T, K>(&self, key: impl AsRef<str>, node_id: &K) -> Option<T> {
-        None
+    pub fn attribute<T>(
+        &self,
+        key: impl AsRef<str>,
+        node_id: &NodeId,
+        attributes: &HashMap<String, ScopeValue>,
+    ) -> Option<T>
+    where
+        T: for<'magic> TryFrom<&'magic str>,
+    {
+        let attrib = attributes.get(key.as_ref())?;
+
+        match attrib {
+            ScopeValue::Static(val) => val.as_ref().try_into().ok(),
+            ScopeValue::Dyn(path) => self.get(path, node_id),
+            _ => None,
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::testing::*;
+
+    type Sub = usize;
 
     #[test]
     fn scope_value() {
         let mut root = Scope::new(None);
-        root.scope("value".into(), Cow::Owned(ScopeValue::Static("hello world".into())));
+        root.scope(
+            "value".into(),
+            Cow::Owned(ScopeValue::Static("hello world".into())),
+        );
 
         let mut inner = Scope::new(Some(&root));
         let value = inner.lookup_parent(&"value".into()).unwrap();
@@ -184,5 +193,22 @@ mod test {
             panic!()
         };
         assert_eq!(lhs, rhs);
+    }
+
+    #[test]
+    fn dynamic_attribute() {
+        let mut state = TestState::new();
+        let mut root = Scope::new(None);
+        let mut ctx = Context::new(&mut state, &mut root);
+        let mut attributes = HashMap::new();
+        attributes.insert(
+            "name".to_string(),
+            ScopeValue::Dyn(Path::Key("name".into())),
+        );
+
+        let id = 123.into();
+        let name: Option<String> = ctx.attribute("name", &id, &attributes);
+
+        assert_eq!("Dirk Gently", name.unwrap());
     }
 }

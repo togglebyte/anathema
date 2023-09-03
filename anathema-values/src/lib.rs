@@ -14,7 +14,10 @@ mod path;
 // mod store;
 // mod values;
 
-pub use v2::{Collection, Context, List, Map, Scope, ScopeValue, Slab, State, Value};
+// #[cfg(testing)]
+pub mod testing;
+
+pub use v2::{Collection, Context, List, Map, Scope, ScopeValue, Slab, State, Value, NodeId};
 
 pub use crate::path::{Path, PathId};
 

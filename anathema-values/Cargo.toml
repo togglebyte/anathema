@@ -8,11 +8,9 @@ debug = true
 debuginfo-level = 1
 
 [dependencies]
-flume = "0.11.0"
-# parking_lot = { workspace = true }
-# flume = { workspace = true }
+parking_lot = { workspace = true }
+flume = { workspace = true }
 integer-hasher = "0.1.1"
-parking_lot = "0.12.1"
 
 [dev-dependencies]
 criterion = "0.5.1"

@@ -159,7 +159,7 @@ pub struct WidgetContainer {
     pub(crate) padding: Padding,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
-    size: Size,
+    pub(crate) size: Size,
 }
 
 impl WidgetContainer {

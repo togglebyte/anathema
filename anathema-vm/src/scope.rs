@@ -125,7 +125,7 @@ impl<'vm> Scope<'vm> {
     ) -> Result<Expression> {
         let ident = self.consts.lookup_string(ident).expect(FILE_BUG_REPORT);
 
-        let mut attributes = Attributes::empty();
+        let mut attributes = Attributes::new();
         let mut text = None::<ScopeValue>;
         let mut ip = 0;
 
@@ -134,7 +134,7 @@ impl<'vm> Scope<'vm> {
                 Some(Instruction::LoadAttribute { key, value }) => {
                     let key = self.consts.lookup_string(*key).expect(FILE_BUG_REPORT);
                     let value = self.consts.lookup_value(*value).expect(FILE_BUG_REPORT);
-                    attributes.set(key.to_string(), value.clone());
+                    attributes.insert(key.to_string(), value.clone());
                 }
                 Some(Instruction::LoadText(i)) => text = self.consts.lookup_value(*i).cloned(),
                 _ => break,

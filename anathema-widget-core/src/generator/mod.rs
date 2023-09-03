@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 use anathema_values::{Context, State, Scope};
 pub use expressions::{Loop, SingleNode, Expression};
-pub use nodes::{NodeId, Nodes};
+pub use nodes::Nodes;
 pub use values::Attributes;
 
 pub fn make_it_so(expressions: Vec<Expression>) -> Nodes {

@@ -3,17 +3,15 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 
 use anathema_render::Size;
-use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State};
+use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, State};
 
 use self::controlflow::{Else, If};
-pub use self::id::NodeId;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Expression;
 use crate::WidgetContainer;
 
 mod controlflow;
-mod id;
 
 // -----------------------------------------------------------------------------
 //   - Loop -

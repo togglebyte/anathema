@@ -111,6 +111,20 @@ impl Padding {
     }
 }
 
+impl TryFrom<&str> for Padding {
+    type Error = ();
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        panic!()
+        // let text_align = match value {
+        //     "centre" | "center" => Self::Centre,
+        //     "right" => Self::Right,
+        //     _ => Self::Left,
+        // };
+        // Ok(text_align)
+    }
+}
+
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is
 /// [`Align::TopLeft`])
 ///

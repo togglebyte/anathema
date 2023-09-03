@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
 use anathema_render::Size;
-use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State};
+use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, State};
 
 use self::controlflow::{Else, If};
 use crate::error::Result;
 use crate::generator::nodes::{LoopNode, Node, NodeKind, Nodes};
-use crate::generator::{Attributes, NodeId};
-use crate::{Display, Factory, Padding, WidgetContainer, Pos};
+use crate::generator::Attributes;
+use crate::{Display, Factory, Padding, Pos, WidgetContainer};
 
 mod controlflow;
 
@@ -31,16 +31,21 @@ impl SingleNode {
     ) -> Result<Node> {
         let context = Context::new(state, scope);
         let inner = Factory::exec(context, &self)?;
-        let widget =panic!();
+        // TODO: okay this is just silly?!
+        let context = Context::new(state, scope);
 
-//             WidgetContainer {
-//             background: self.attributes.get("background"),
-//             display: self.attributes.get("display").unwrap_or(Display::Show),
-//             padding: self.attributes.get("padding").unwrap_or(Padding::ZERO),
-//             pos: Pos::ZERO,
-//             size: Size::ZERO,
-//             inner,
-//         };
+        let widget = WidgetContainer {
+            background: context.attribute("background", &node_id, &self.attributes),
+            display: context
+                .attribute("display", &node_id, &self.attributes)
+                .unwrap_or(Display::Show),
+            padding: context
+                .attribute("padding", &node_id, &self.attributes)
+                .unwrap_or(Padding::ZERO),
+            pos: Pos::ZERO,
+            size: Size::ZERO,
+            inner,
+        };
         let node = Node {
             kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
             node_id,
