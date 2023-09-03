@@ -3,7 +3,7 @@ mod scope;
 mod vm;
 
 use anathema_widget_core::generator::Expression;
-use anathema_widget_core::WidgetMeta;
+
 pub use vm::VirtualMachine;
 
 use self::error::Result;

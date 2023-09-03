@@ -1,7 +1,7 @@
 use anathema_compiler::{Constants, Instruction, StringId};
 use anathema_widget_core::generator::{Loop, SingleNode, Expression, Attributes};
 use anathema_values::ScopeValue;
-use anathema_widget_core::{WidgetContainer, WidgetMeta};
+
 
 use crate::error::Result;
 
@@ -32,7 +32,7 @@ impl<'vm> Scope<'vm> {
             let instruction = self.instructions.remove(0);
             match instruction {
                 Instruction::View(id) => {
-                    let id = self
+                    let _id = self
                         .consts
                         .lookup_value(id)
                         .cloned()
@@ -66,7 +66,7 @@ impl<'vm> Scope<'vm> {
 
                     nodes.push(template);
                 }
-                Instruction::If { cond, size } => {
+                Instruction::If { cond: _, size: _ } => {
                     // TODO: need to figure out the value expressions
                     panic!()
                     // let cond = self
