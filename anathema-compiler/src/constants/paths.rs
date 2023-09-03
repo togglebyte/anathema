@@ -1,4 +1,4 @@
-use anathema_values::{Path, Slab, PathId};
+use anathema_values::{Path, PathId};
 
 use super::Storage;
 

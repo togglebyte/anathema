@@ -1,4 +1,4 @@
-use anathema_values::{Path, Slab, PathId, ScopeValue};
+use anathema_values::{Path, PathId, ScopeValue};
 pub(crate) use storage::Storage;
 
 use self::paths::Paths;

@@ -158,6 +158,10 @@ impl<'a, 'val> Context<'a, 'val> {
             None => self.state.get(&path).and_then(|val| val.as_ref().try_into().ok()),
         }
     }
+
+    pub fn attribute<T, K>(&self, key: impl AsRef<str>, node_id: &K) -> Option<T> {
+        None
+    }
 }
 
 #[cfg(test)]

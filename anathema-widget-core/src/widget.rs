@@ -4,7 +4,6 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::generator::Attributes;
 use anathema_render::{Color, ScreenPos, Size, Style};
 use anathema_values::{Context, ScopeValue, State};
 
@@ -12,7 +11,7 @@ use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::Nodes;
+use crate::generator::{Attributes, Nodes, SingleNode};
 use crate::{Display, LocalPos, Padding, Pos, Region};
 
 // Layout:
@@ -33,7 +32,12 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout(&mut self, children: &mut Nodes, ctx: LayoutCtx, data: Context<'_, '_>) -> Result<Size>;
+    fn layout(
+        &mut self,
+        children: &mut Nodes,
+        ctx: LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
@@ -54,7 +58,12 @@ pub trait AnyWidget {
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn layout_any(&mut self, children: &mut Nodes, layout: LayoutCtx, data: Context<'_, '_>) -> Result<Size>;
+    fn layout_any(
+        &mut self,
+        children: &mut Nodes,
+        layout: LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
@@ -68,7 +77,12 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout(&mut self, children: &mut Nodes, layout: LayoutCtx, data: Context<'_, '_>) -> Result<Size> {
+    fn layout(
+        &mut self,
+        children: &mut Nodes,
+        layout: LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size> {
         self.deref_mut().layout_any(children, layout, data)
     }
 
@@ -90,7 +104,12 @@ impl<T: Widget + 'static> AnyWidget for T {
         self
     }
 
-    fn layout_any(&mut self, children: &mut Nodes, layout: LayoutCtx, data: Context<'_, '_>) -> Result<Size> {
+    fn layout_any(
+        &mut self,
+        children: &mut Nodes,
+        layout: LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size> {
         self.layout(children, layout, data)
     }
 
@@ -112,7 +131,12 @@ impl Widget for Box<dyn Widget> {
         self.as_ref().kind()
     }
 
-    fn layout(&mut self, children: &mut Nodes, layout: LayoutCtx, data: Context<'_, '_>) -> Result<Size> {
+    fn layout(
+        &mut self,
+        children: &mut Nodes,
+        layout: LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size> {
         self.as_mut().layout(children, layout, data)
     }
 
@@ -209,7 +233,7 @@ impl WidgetContainer {
         &mut self,
         children: &mut Nodes,
         constraints: Constraints,
-        data: Context<'_, '_>
+        data: Context<'_, '_>,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
@@ -281,12 +305,4 @@ impl Debug for WidgetContainer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
-}
-
-
-/// Meta data needed to construct a `WidgetContainer` from a `Node`
-#[derive(Debug)]
-pub struct WidgetMeta {
-    pub ident: String,
-    pub text: Option<ScopeValue>,
 }

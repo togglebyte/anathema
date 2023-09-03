@@ -1,10 +1,10 @@
-use std::sync::Arc;
+
 
 use anathema_render::Color;
-use anathema_values::{Path, PathId, ScopeValue};
+use anathema_values::{Path, ScopeValue};
 // use anathema_widget_core::{Align, Axis, Direction, Display, Value};
 
-use super::fields;
+
 use super::parser::{parse_path, parse_scope_value};
 use crate::error::{ErrorKind, Result};
 use crate::lexer::{Kind, Lexer};
@@ -23,7 +23,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         Self { lexer, constants }
     }
 
-    pub(super) fn parse(&mut self, left: &'src str) -> Result<ScopeValue> {
+    pub(super) fn parse(&mut self, _left: &'src str) -> Result<ScopeValue> {
         let next = self.lexer.next()?.0;
 
         let value = match next {

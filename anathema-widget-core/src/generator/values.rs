@@ -14,4 +14,8 @@ impl Attributes {
     pub fn set(&mut self, key: impl Into<String>, value: ScopeValue) {
         self.0.insert(key.into(), value);
     }
+
+    pub fn get(&self, key: impl AsRef<str>) -> Option<&ScopeValue> {
+        self.0.get(key.as_ref())
+    }
 }

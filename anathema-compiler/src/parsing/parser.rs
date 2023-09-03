@@ -1,4 +1,4 @@
-use std::sync::Arc;
+
 
 use anathema_values::{Path, ScopeValue};
 // use anathema_widget_core::{Number, Value};
@@ -525,8 +525,8 @@ impl Iterator for Parser<'_, '_> {
 //     - Parse `ExpressionValue` -
 // -----------------------------------------------------------------------------
 pub(super) fn parse_scope_value(
-    text: &str,
-    consts: &mut Constants,
+    _text: &str,
+    _consts: &mut Constants,
 ) -> ScopeValue {
     panic!()
     // let mut fragments = vec![];
