@@ -15,12 +15,12 @@ use events::Event;
 use view::View;
 
 use self::frame::Frame;
-// use self::meta::Meta;
+use self::meta::Meta;
 use crate::events::{EventProvider, Events};
 
 pub mod events;
 mod frame;
-// mod meta;
+mod meta;
 mod view;
 
 pub struct Runtime<E, ER, S> {
@@ -34,6 +34,7 @@ pub struct Runtime<E, ER, S> {
     nodes: Nodes,
     events: E,
     event_receiver: ER,
+    meta: Meta,
 }
 
 impl<E, ER, S> Drop for Runtime<E, ER, S> {
@@ -75,6 +76,7 @@ where
             event_receiver,
             enable_meta: false,
             enable_mouse: false,
+            meta: Meta::new(size),
         };
 
         Ok(inst)
@@ -142,26 +144,26 @@ where
                 }
             }
 
+            self.meta.count = self.nodes.count();
             let total = Instant::now();
             self.layout()?;
-            // self.meta.timings.layout = total.elapsed();
+            self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
             self.position();
-            // self.meta.timings.position = now.elapsed();
+            self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
             self.paint();
-            // self.meta.timings.paint = now.elapsed();
+            self.meta.timings.paint = now.elapsed();
 
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
-            // self.meta.timings.render = now.elapsed();
-            // self.meta.timings.total = total.elapsed();
+            self.meta.timings.render = now.elapsed();
+            self.meta.timings.total = total.elapsed();
             self.screen.erase();
 
             if self.enable_meta {
-                // self.meta.update(self.store.write(), &self.nodes);
             }
         }
     }

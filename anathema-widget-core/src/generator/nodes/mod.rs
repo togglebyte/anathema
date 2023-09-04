@@ -59,7 +59,7 @@ pub struct Nodes {
     active_loop: Option<Box<Node>>,
     expr_index: usize,
     next_id: NodeId,
-    node_index: usize,
+    cache_index: usize,
 }
 
 impl Nodes {
@@ -70,13 +70,24 @@ impl Nodes {
             active_loop: None,
             expr_index: 0,
             next_id,
-            node_index: 0,
+            cache_index: 0,
         }
+    }
+    
+    pub fn count(&self) -> usize { 
+        self.inner.iter().map(|node| {
+            match &node.kind {
+                NodeKind::Single(_, nodes) => 1 + nodes.count(),
+                NodeKind::Loop(LoopNode { body, .. }) => body.count(),
+                NodeKind::ControlFlow { .. } => panic!(),
+            }
+
+        }).sum()
     }
 
     fn reset(&mut self) {
         self.expr_index = 0;
-        self.node_index = 0;
+        self.cache_index = 0;
     }
 
     fn eval_active_loop<F>(
@@ -86,7 +97,8 @@ impl Nodes {
         layout: &mut LayoutCtx,
         f: &mut F,
     ) -> Option<Result<bool>>
-        where F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>)
+    where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
     {
         if let Some(active_loop) = self.active_loop.as_mut() {
             let Node {
@@ -122,8 +134,14 @@ impl Nodes {
         None
     }
 
-    pub fn for_each<F>(&mut self, state: &mut dyn State, scope: &mut Scope<'_>, mut layout: LayoutCtx, mut f: F) 
-        where F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>)
+    pub fn for_each<F>(
+        &mut self,
+        state: &mut dyn State,
+        scope: &mut Scope<'_>,
+        mut layout: LayoutCtx,
+        mut f: F,
+    ) where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
     {
         loop {
             match self.next(state, scope, &mut layout, &mut f) {
@@ -133,15 +151,46 @@ impl Nodes {
         }
     }
 
+    fn get_cached<F>(
+        &mut self,
+        state: &mut dyn State,
+        scope: &mut Scope<'_>,
+        layout: &mut LayoutCtx,
+        f: &mut F,
+    ) -> Option<Result<bool>> 
+    where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
+    {
+        let node = self.inner.get_mut(self.cache_index)?;
+        self.cache_index += 1;
+
+        match &mut node.kind {
+            NodeKind::Single(widget, nodes) => {
+                let data = Context::new(state, scope);
+                f(widget, nodes, data);
+                Some(Ok(true))
+        }
+        NodeKind::Loop(LoopNode { body, .. }) => body.next(state, scope, layout, f),
+            NodeKind::ControlFlow { .. } => panic!(),
+        }
+    }
+
     pub fn next<F>(
         &mut self,
         state: &mut dyn State,
         scope: &mut Scope<'_>,
         layout: &mut LayoutCtx,
-        f: &mut F
-    ) -> Option<Result<bool>> 
-        where F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>)
+        f: &mut F,
+    ) -> Option<Result<bool>>
+    where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
     {
+        // Check if there is a cached value, if so: use that
+        match self.get_cached(state, scope, layout, f) {
+            ret @ Some(_) => return ret,
+            _ => ()
+        }
+
         if let ret @ Some(_) = self.eval_active_loop(state, scope, layout, f) {
             return Some(Ok(true));
             // return ret;
