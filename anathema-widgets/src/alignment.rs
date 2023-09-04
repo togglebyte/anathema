@@ -45,14 +45,12 @@ impl Widget for Alignment {
         data: Context<'_, '_>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(Single, &mut layout);
-        layout.layout(children, data)?;
-        // let size = layout.size()?;
-        // if size == Size::ZERO {
-        //     Ok(Size::ZERO)
-        // } else {
-        //     layout.expand_horz().expand_vert().size()
-        // }
-        panic!()
+        let size = layout.layout(children, data)?;
+        if size == Size::ZERO {
+            Ok(Size::ZERO)
+        } else {
+            Ok(layout.expand_horz().expand_vert().size())
+        }
     }
 
     fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {

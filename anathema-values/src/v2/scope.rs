@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::str::FromStr;
 
 use crate::hashmap::HashMap;
 use crate::{NodeId, Path, State};
@@ -166,9 +167,30 @@ impl<'a, 'val> Context<'a, 'val> {
         }
     }
 
+    pub fn primitive<T>(
+        &self,
+        key: impl AsRef<str>,
+        node_id: &NodeId,
+        attributes: &HashMap<String, ScopeValue>,
+    ) -> Option<T>
+    where
+        T: FromStr,
+    {
+        let attrib = attributes.get(key.as_ref())?;
+
+        match attrib {
+            ScopeValue::Static(val) => T::from_str(val.as_ref()).ok(),
+            ScopeValue::Dyn(path) => self
+                .get::<String>(path, node_id)
+                .as_deref()
+                .and_then(|s| T::from_str(s).ok()),
+            _ => None,
+        }
+    }
+
     pub fn list_to_string(&self, list: &Rc<[ScopeValue]>, buffer: &mut String, node_id: &NodeId) {
         for val in list.iter() {
-            match val { 
+            match val {
                 ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
                 ScopeValue::Dyn(path) => buffer.push_str(&self.get_string(path, node_id)),
                 ScopeValue::Static(s) => buffer.push_str(s),
@@ -191,7 +213,7 @@ impl<'a, 'val> Context<'a, 'val> {
                 .state
                 .get(&path, node_id)
                 .and_then(|val| val.as_ref().try_into().ok())
-                .unwrap_or_else(String::new)
+                .unwrap_or_else(String::new),
         }
     }
 }

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anathema_values::State;
 use anathema_widget_core::WidgetContainer;
 use anathema_widget_core::generator::Nodes;
 use crossterm::event::{read, Event as CTEvent};
@@ -80,20 +81,20 @@ impl From<CTEvent> for Event {
     }
 }
 
-pub trait Events {
-    fn event(&mut self, event: Event, tree: &mut Nodes) -> Event;
+pub trait Events<S: State> {
+    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event;
 }
 
-pub struct DefaultEvents<F>(pub F)
+pub struct DefaultEvents<F, S>(pub F, pub std::marker::PhantomData<S>)
 where
-    F: FnMut(Event, &mut Nodes) -> Event;
+    F: FnMut(Event, &mut Nodes, &mut S) -> Event;
 
-impl<F> Events for DefaultEvents<F>
+impl<F, S: State> Events<S> for DefaultEvents<F, S>
 where
-    F: FnMut(Event, &mut Nodes) -> Event,
+    F: FnMut(Event, &mut Nodes, &mut S) -> Event,
 {
-    fn event(&mut self, event: Event, tree: &mut Nodes) -> Event {
-        (self.0)(event, tree)
+    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event {
+        (self.0)(event, tree, state)
     }
 }
 

@@ -46,7 +46,7 @@ impl<E, ER, S> Drop for Runtime<E, ER, S> {
 
 impl<E, ER, S: State> Runtime<E, ER, S>
 where
-    E: Events,
+    E: Events<S>,
     ER: EventProvider,
 {
     pub fn new(
@@ -86,8 +86,9 @@ where
     fn layout(&mut self) -> Result<()> {
         let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
         let mut scope = Scope::new(None);
+        self.nodes.reset_cache();
         self.nodes.for_each(&mut self.state, &mut scope, layout_ctx, |widget, children, context| {
-            widget.layout(children, layout_ctx.constraints, context);
+            widget.layout(children, layout_ctx.constraints, context)
         });
         Ok(())
     }
@@ -106,6 +107,10 @@ where
 
     fn changes(&self) {
         let dirty_nodes = drain_dirty_nodes();
+        
+        if dirty_nodes.len() > 0 {
+            // update here
+        }
     }
 
     pub fn run(mut self) -> Result<()> {
@@ -123,7 +128,7 @@ where
             while let Some(event) = self.event_receiver.next() {
                 let event = self
                     .events
-                    .event(event, &mut self.nodes);
+                    .event(event, &mut self.nodes, &mut self.state);
 
                 match event {
                     Event::Resize(width, height) => {
@@ -143,6 +148,8 @@ where
                     _ => {}
                 }
             }
+
+            self.changes();
 
             self.meta.count = self.nodes.count();
             let total = Instant::now();

@@ -12,11 +12,15 @@ impl Layout for Single {
     fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
          let constraints = ctx.padded_constraints();
 
-         let mut size = Size::ZERO;
-         children.next(data.state, data.scope, ctx, &mut |widget, children, data| {
-             // TODO: unwrap? eww...
-             size = widget.layout(children, constraints, data).unwrap();
+         let size = children.next(data.state, data.scope, ctx, &mut |widget, children, data| {
+             widget.layout(children, constraints, data)
          });
+
+         match size {
+             Some(Err(Error::InsufficientSpaceAvailble)) => return Ok(Size::ZERO),
+             Some(size) => size,
+             None => Ok(Size::ZERO),
+         }
 
          // TODO do we need to deal with insufficient space here?
          //     *size = match widget.layout(children, constraints, store) {
@@ -24,8 +28,6 @@ impl Layout for Single {
          //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
          //         err @ Err(_) => err?,
          //     };
-
-         Ok(size)
     }
 
     fn finalize(&mut self, nodes: &mut Nodes) -> Size {

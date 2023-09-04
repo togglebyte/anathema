@@ -2,12 +2,12 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
-use crate::NodeId;
-
 use super::DIRTY_NODES;
+use crate::NodeId;
 
 #[derive(Debug)]
 pub struct Value<T> {
+    // TODO: do we need the generation anymore?
     gen: usize,
     pub(crate) inner: T,
     subscribers: RefCell<Vec<NodeId>>,
@@ -27,10 +27,7 @@ impl<T> Value<T> {
     }
 }
 
-impl<T> Deref for Value<T>
-where
-    for<'a> Cow<'a, str>: From<T>,
-{
+impl<T> Deref for Value<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -38,10 +35,7 @@ where
     }
 }
 
-impl<T> DerefMut for Value<T>
-where
-    for<'a> Cow<'a, str>: From<T>,
-{
+impl<T> DerefMut for Value<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.gen = self.gen.wrapping_add(1);
 
@@ -67,9 +61,8 @@ impl<'a> From<&'a Value<usize>> for Cow<'a, str> {
 
 #[cfg(test)]
 mod test {
-    use crate::v2::drain_dirty_nodes;
-
     use super::*;
+    use crate::v2::drain_dirty_nodes;
 
     #[test]
     fn notify_subscriber() {

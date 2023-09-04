@@ -5,7 +5,7 @@ use anathema_values::{Context, ScopeValue, NodeId};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::Attributes;
-use anathema_widget_core::{AnyWidget, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory};
+use anathema_widget_core::{AnyWidget, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, style};
 use unicode_width::UnicodeWidthStr;
 
 use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
@@ -132,14 +132,15 @@ impl Widget for Text {
         children.for_each(data.state, data.scope, ctx, |span, inner_children, data| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
-                return;
+                return Ok(Size::ZERO);
             }
 
             let Some(inner_span) = span.try_to_mut::<TextSpan>() else {
-                return;
+                return Ok(Size::ZERO);
             };
 
             self.layout.process(inner_span.text.as_str());
+            Ok(self.layout.size())
         });
 
         Ok(self.layout.size())
@@ -221,9 +222,6 @@ impl WidgetFactory for TextFactory {
         let word_wrap = data.attribute("wrap", node_id, attributes).unwrap_or(Wrap::Normal);
         let text_alignment = data.attribute("text-align", node_id, attributes).unwrap_or(TextAlignment::Left);
 
-        // TODO: we do need them styles
-        // widget.style = values.style();
-
         let text = match text {
             Some(ScopeValue::Static(s)) => s.to_string(),
             Some(ScopeValue::Dyn(path)) => data.get_string(path, node_id),
@@ -238,7 +236,7 @@ impl WidgetFactory for TextFactory {
         let mut widget = Text {
             word_wrap,
             text_alignment,
-            style: Style::new(),
+            style: style(&data, attributes, node_id),
             layout: TextLayout::ZERO,
             text,
         };

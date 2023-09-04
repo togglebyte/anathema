@@ -37,8 +37,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     }
 
     pub fn layout(&mut self, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
-        self.layout(children, data);
-        panic!()
+        self.layout.layout(self.ctx, children, data)
         // while let Some(res) = children.next(data.state, data.scope, self.ctx) {
         //     res?;
         // }
@@ -54,6 +53,10 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     pub fn expand_vert(&mut self) -> &mut Self {
         self.size.height = self.ctx.constraints.max_height;
         self
+    }
+
+    pub fn size(&self) -> Size {
+        self.size
     }
 }
 

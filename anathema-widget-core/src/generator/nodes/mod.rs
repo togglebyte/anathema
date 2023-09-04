@@ -30,6 +30,16 @@ pub struct Node {
     pub(crate) kind: NodeKind,
 }
 
+impl Node {
+    fn reset_cache(&mut self) {
+        match &mut self.kind {
+            NodeKind::Single(_, nodes) => nodes.reset_cache(),
+            NodeKind::Loop(LoopNode { body, .. }) => body.reset_cache(),
+            NodeKind::ControlFlow { .. } => panic!(),
+        }
+    }
+}
+
 #[cfg(test)]
 impl Node {
     pub(crate) fn single(&mut self) -> (&mut WidgetContainer, &mut Nodes) {
@@ -73,21 +83,28 @@ impl Nodes {
             cache_index: 0,
         }
     }
-    
-    pub fn count(&self) -> usize { 
-        self.inner.iter().map(|node| {
-            match &node.kind {
+
+    pub fn count(&self) -> usize {
+        self.inner
+            .iter()
+            .map(|node| match &node.kind {
                 NodeKind::Single(_, nodes) => 1 + nodes.count(),
                 NodeKind::Loop(LoopNode { body, .. }) => body.count(),
                 NodeKind::ControlFlow { .. } => panic!(),
-            }
-
-        }).sum()
+            })
+            .sum()
     }
 
     fn reset(&mut self) {
         self.expr_index = 0;
         self.cache_index = 0;
+    }
+
+    pub fn reset_cache(&mut self) {
+        self.cache_index = 0;
+        for node in &mut self.inner {
+            node.reset_cache();
+        }
     }
 
     fn eval_active_loop<F>(
@@ -96,9 +113,9 @@ impl Nodes {
         scope: &mut Scope,
         layout: &mut LayoutCtx,
         f: &mut F,
-    ) -> Option<Result<bool>>
+    ) -> Option<Result<Size>>
     where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
         if let Some(active_loop) = self.active_loop.as_mut() {
             let Node {
@@ -141,11 +158,11 @@ impl Nodes {
         mut layout: LayoutCtx,
         mut f: F,
     ) where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
         loop {
             match self.next(state, scope, &mut layout, &mut f) {
-                Some(Ok(true)) => continue,
+                Some(Ok(_)) => continue,
                 _ => break,
             }
         }
@@ -157,9 +174,9 @@ impl Nodes {
         scope: &mut Scope<'_>,
         layout: &mut LayoutCtx,
         f: &mut F,
-    ) -> Option<Result<bool>> 
+    ) -> Option<Result<Size>>
     where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
         let node = self.inner.get_mut(self.cache_index)?;
         self.cache_index += 1;
@@ -167,10 +184,9 @@ impl Nodes {
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
                 let data = Context::new(state, scope);
-                f(widget, nodes, data);
-                Some(Ok(true))
-        }
-        NodeKind::Loop(LoopNode { body, .. }) => body.next(state, scope, layout, f),
+                Some(f(widget, nodes, data))
+            }
+            NodeKind::Loop(LoopNode { body, .. }) => body.next(state, scope, layout, f),
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
@@ -181,19 +197,18 @@ impl Nodes {
         scope: &mut Scope<'_>,
         layout: &mut LayoutCtx,
         f: &mut F,
-    ) -> Option<Result<bool>>
+    ) -> Option<Result<Size>>
     where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>),
+        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
         // Check if there is a cached value, if so: use that
         match self.get_cached(state, scope, layout, f) {
             ret @ Some(_) => return ret,
-            _ => ()
+            _ => (),
         }
 
         if let ret @ Some(_) = self.eval_active_loop(state, scope, layout, f) {
-            return Some(Ok(true));
-            // return ret;
+            return ret;
         }
 
         let expr = self.expressions.get(self.expr_index)?;
@@ -206,9 +221,9 @@ impl Nodes {
             NodeKind::Single(widget, nodes) => {
                 self.expr_index += 1;
                 let data = Context::new(state, scope);
-                f(widget, nodes, data);
+                let res = f(widget, nodes, data);
                 self.inner.push(node);
-                Some(Ok(true))
+                Some(res)
                 // let size = widget.layout(nodes, layout.constraints, data);
                 // Some(size)
             }
