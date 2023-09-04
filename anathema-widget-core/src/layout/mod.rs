@@ -13,7 +13,7 @@ use crate::widget::WidgetContainer;
 mod constraints;
 
 pub trait Layout {
-    fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<()>;
+    fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size>;
 
     fn finalize(&mut self, nodes: &mut Nodes) -> Size;
 }
@@ -37,11 +37,13 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     }
 
     pub fn layout(&mut self, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
-        while let Some(res) = children.next(data.state, data.scope, self.ctx) {
-            res?;
-        }
-        let size = self.layout.finalize(children);
-        Ok(size)
+        self.layout(children, data);
+        panic!()
+        // while let Some(res) = children.next(data.state, data.scope, self.ctx) {
+        //     res?;
+        // }
+        // let size = self.layout.finalize(children);
+        // Ok(size)
     }
 
     pub fn expand_horz(&mut self) -> &mut Self {

@@ -132,6 +132,11 @@ impl Widget for Text {
 
         drop(bucket);
 
+        children.for_each(|widget, inner_children| {
+            // works here because we don't care
+            // about the childrens children
+        });
+
         while let Some((span, children)) = children.next(data).transpose()? {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {

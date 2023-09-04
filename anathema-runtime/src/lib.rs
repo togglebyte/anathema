@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::{Context, Scope};
+use anathema_values::{Context, Scope, State};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
@@ -83,8 +83,10 @@ where
     fn layout(&mut self) -> Result<()> {
         let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
         let mut scope = Scope::new(None);
-        let mut state = panic!();
-        while let Some(Ok(_size)) = self.nodes.next(&mut state, &mut scope, &mut layout_ctx) {}
+        let mut state = ();
+        self.nodes.for_each(&mut state, &mut scope, layout_ctx, |widget, children, context| {
+            widget.layout(children, layout_ctx.constraints, context);
+        });
         Ok(())
     }
 

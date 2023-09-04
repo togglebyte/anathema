@@ -120,54 +120,11 @@ impl Many {
 impl Layout for Many {
     fn layout<'widget, 'parent>(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'parent>,
-        widget: &mut WidgetContainer,
-        children: &mut Nodes,
-        size: &mut Size,
-    ) -> Result<()> {
-        if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
-            children.push(widget);
-            return Ok(());
-        }
-
-        let widget_constraints = {
-            let mut constraints = ctx.padded_constraints();
-            if self.unconstrained {
-                match self.axis {
-                    Axis::Vertical => constraints.unbound_height(),
-                    Axis::Horizontal => constraints.unbound_width(),
-                }
-            }
-            constraints
-        };
-
-        let mut widget_size = match widget.layout(widget_constraints, children, &values) {
-            Ok(s) => s,
-            Err(Error::InsufficientSpaceAvailble) => break,
-            err @ Err(_) => err?,
-        };
-
-        if self.offset.skip(&mut widget_size) {
-            return Ok(());
-        }
-
-        children.push(widget);
-        used_size.apply(widget_size);
-
-        if used_size.no_space_left() {
-            break;
-        }
-    }
-
-    fn layout<'widget, 'parent>(
-        &mut self,
-        ctx: &mut LayoutCtx<'widget, 'parent>,
         children: &mut Vec<WidgetContainer>,
-        size: &mut Size,
-    ) -> Result<()> {
-        let mut values = ctx.values.next();
-        let mut gen = Generator::new(&ctx.templates, &mut values);
-        let max_constraints = ctx.padded_constraints();
+        layout: &mut LayoutCtx,
+        context: &mut Context<'widget, 'parent>,
+    ) -> Result<Size> {
+        let max_constraints = layout.padded_constraints();
 
         let mut used_size = SizeMod::new(
             Size::new(max_constraints.max_width, max_constraints.max_height),
@@ -175,8 +132,32 @@ impl Layout for Many {
         );
 
         if let Direction::Backward = self.direction {
-            gen.flip();
+            // gen.flip();
         }
+
+        children.for_each(context.state, context.scope, layout, |widget, children, context| {
+            if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
+                return std::ops::ControlFlow::Contiunue(());
+            }
+
+            let widget_constraints = {
+                let mut constraints = max_constraints;
+                if self.unconstrained {
+                    match self.axis {
+                        Axis::Vertical => constraints.unbound_height(),
+                        Axis::Horizontal => constraints.unbound_width(),
+                    }
+                }
+                constraints
+            };
+
+            let mut widget_size = match widget.layout(widget_constraints, inner_children, &values) {
+                Ok(s) => s,
+                Err(Error::InsufficientSpaceAvailble) => break,
+                err @ Err(_) => err?,
+            };
+
+        });
 
         while let Some(mut widget) = gen.next(&mut values).transpose()? {
             // Ignore spacers and expanders

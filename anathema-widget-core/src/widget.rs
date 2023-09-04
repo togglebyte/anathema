@@ -45,11 +45,10 @@ pub trait Widget {
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
     fn paint<'tpl>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
-        panic!()
-        // for (widget, children) in children.iter_mut() {
-        //     let ctx = ctx.sub_context(None);
-        //     widget.paint(children, ctx);
-        // }
+        for (widget, children) in children.iter_mut() {
+            let ctx = ctx.sub_context(None);
+            widget.paint(children, ctx);
+        }
     }
 }
 
