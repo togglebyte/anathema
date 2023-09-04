@@ -165,6 +165,35 @@ impl<'a, 'val> Context<'a, 'val> {
             _ => None,
         }
     }
+
+    pub fn list_to_string(&self, list: &Rc<[ScopeValue]>, buffer: &mut String, node_id: &NodeId) {
+        for val in list.iter() {
+            match val { 
+                ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
+                ScopeValue::Dyn(path) => buffer.push_str(&self.get_string(path, node_id)),
+                ScopeValue::Static(s) => buffer.push_str(s),
+            }
+        }
+    }
+
+    pub fn get_string(&self, path: &Path, node_id: &NodeId) -> String {
+        match self.scope.lookup(path) {
+            Some(val) => match val {
+                ScopeValue::Dyn(path) => self.get_string(path, node_id),
+                ScopeValue::Static(s) => s.to_string(),
+                ScopeValue::List(list) => {
+                    let mut buffer = String::new();
+                    self.list_to_string(list, &mut buffer, node_id);
+                    buffer
+                }
+            },
+            None => self
+                .state
+                .get(&path, node_id)
+                .and_then(|val| val.as_ref().try_into().ok())
+                .unwrap_or_else(String::new)
+        }
+    }
 }
 
 #[cfg(test)]

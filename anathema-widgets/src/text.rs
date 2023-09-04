@@ -1,9 +1,10 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::Context;
+use anathema_values::{Context, ScopeValue, NodeId};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::{AnyWidget, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory};
 use unicode_width::UnicodeWidthStr;
 
@@ -123,31 +124,23 @@ impl Widget for Text {
         data: Context<'_, '_>,
     ) -> Result<Size> {
         self.layout = TextLayout::ZERO;
-        let bucket = data.read();
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
-        self.layout
-            .set_wrap(*self.word_wrap.value_ref().unwrap_or(&Wrap::Normal));
+        self.layout.set_wrap(self.word_wrap);
         self.layout.process(self.text.as_str());
 
-        drop(bucket);
-
-        children.for_each(|widget, inner_children| {
-            // works here because we don't care
-            // about the childrens children
-        });
-
-        while let Some((span, children)) = children.next(data).transpose()? {
+        children.for_each(data.state, data.scope, ctx, |span, inner_children, data| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
-                continue;
+                return;
             }
 
             let Some(inner_span) = span.try_to_mut::<TextSpan>() else {
-                continue;
+                return;
             };
+
             self.layout.process(inner_span.text.as_str());
-        }
+        });
 
         Ok(self.layout.size())
     }
@@ -218,31 +211,36 @@ impl Widget for TextSpan {
 pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
-    fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap = data.get(&"wrap".into()).unwrap_or(Wrap::Normal);
-        let text_alignment = data
-            .get(&"text-align".into())
-            .unwrap_or(TextAlignment::Left);
+    fn make(
+        &self,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ScopeValue>,
+        node_id: &NodeId
+    ) -> Result<Box<dyn AnyWidget>> {
+        let word_wrap = data.attribute("wrap", node_id, attributes).unwrap_or(Wrap::Normal);
+        let text_alignment = data.attribute("text-align", node_id, attributes).unwrap_or(TextAlignment::Left);
 
         // TODO: we do need them styles
         // widget.style = values.style();
 
-        // TODO: force the existence of a value
-        let text = data
-            .text
-            .as_ref()
-            .map(|s| s.to_scope_value::<Listener>(data.store, data.scope, data.node_id));
-
-        let text = text
-            .map(|scope_val| Cached::from_scope_val(scope_val, &data))
-            .expect("a text widget always has a text field");
+        let text = match text {
+            Some(ScopeValue::Static(s)) => s.to_string(),
+            Some(ScopeValue::Dyn(path)) => data.get_string(path, node_id),
+            Some(ScopeValue::List(list)) => {
+                let mut buf = String::new();
+                data.list_to_string(list, &mut buf, node_id);
+                buf
+            }
+            None => String::new(),
+        };
 
         let mut widget = Text {
             word_wrap,
             text_alignment,
             style: Style::new(),
             layout: TextLayout::ZERO,
-            text: text.into(),
+            text,
         };
 
         Ok(Box::new(widget))
@@ -252,16 +250,25 @@ impl WidgetFactory for TextFactory {
 pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
-    fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
-        panic!("oh my, we should have this one day!");
-        let mut widget = TextSpan::new();
-        // if let Some(text) = text {
-        //     widget.text = values.text_to_string(text).to_string();
-        // }
-        // widget.style = values.style();
-
-        Ok(Box::new(widget))
+    fn make(
+        &self,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ScopeValue>,
+        noden_id: &NodeId
+    ) -> Result<Box<dyn AnyWidget>> {
+        todo!()
     }
+    // fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
+    //     panic!("oh my, we should have this one day!");
+    //     let mut widget = TextSpan::new();
+    //     // if let Some(text) = text {
+    //     //     widget.text = values.text_to_string(text).to_string();
+    //     // }
+    //     // widget.style = values.style();
+
+    //     Ok(Box::new(widget))
+    // }
 }
 
 #[cfg(test)]

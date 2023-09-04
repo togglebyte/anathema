@@ -30,9 +30,6 @@ impl SingleNode {
         node_id: NodeId,
     ) -> Result<Node> {
         let context = Context::new(state, scope);
-        let inner = Factory::exec(context, &self)?;
-        // TODO: okay this is just silly?!
-        let context = Context::new(state, scope);
 
         let widget = WidgetContainer {
             background: context.attribute("background", &node_id, &self.attributes),
@@ -44,7 +41,7 @@ impl SingleNode {
                 .unwrap_or(Padding::ZERO),
             pos: Pos::ZERO,
             size: Size::ZERO,
-            inner,
+            inner: Factory::exec(context, &self, &node_id)?,
         };
         let node = Node {
             kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),

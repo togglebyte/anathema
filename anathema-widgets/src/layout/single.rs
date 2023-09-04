@@ -6,31 +6,53 @@ use anathema_widget_core::generator::Nodes;
 use anathema_widget_core::layout::Layout;
 use anathema_widget_core::WidgetContainer;
 
-pub struct Single(pub Size);
+pub struct Single;
 
 impl Layout for Single {
-    fn layout<'widget, 'parent>(
-        &mut self,
-        ctx: &mut LayoutCtx,
-        children: &mut Nodes,
-        data: Context<'_, '_>,
-    ) -> Result<()> {
-        let constraints = ctx.padded_constraints();
+    fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
+         let constraints = ctx.padded_constraints();
 
-        if let Some(size) = children.next(data.state, data.scope, ctx).transpose()? {
-            self.0 = size;
-            // TODO do we need to deal with insufficient space here?
-        //     *size = match widget.layout(children, constraints, store) {
-        //         Ok(s) => s,
-        //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
-        //         err @ Err(_) => err?,
-        //     };
-        }
+         let mut size = Size::ZERO;
+         children.next(data.state, data.scope, ctx, &mut |widget, children, data| {
+             // TODO: unwrap? eww...
+             size = widget.layout(children, constraints, data).unwrap();
+         });
 
-        Ok(())
+         // TODO do we need to deal with insufficient space here?
+         //     *size = match widget.layout(children, constraints, store) {
+         //         Ok(s) => s,
+         //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
+         //         err @ Err(_) => err?,
+         //     };
+
+         Ok(size)
     }
 
     fn finalize(&mut self, nodes: &mut Nodes) -> Size {
-        self.0
+        todo!()
     }
+    // fn layout<'widget, 'parent>(
+    //     &mut self,
+    //     ctx: &mut LayoutCtx,
+    //     children: &mut Nodes,
+    //     data: Context<'_, '_>,
+    // ) -> Result<()> {
+    //     let constraints = ctx.padded_constraints();
+
+    //     if let Some(size) = children.next(data.state, data.scope, ctx).transpose()? {
+    //         self.0 = size;
+    //         // TODO do we need to deal with insufficient space here?
+    //     //     *size = match widget.layout(children, constraints, store) {
+    //     //         Ok(s) => s,
+    //     //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
+    //     //         err @ Err(_) => err?,
+    //     //     };
+    //     }
+
+    //     Ok(())
+    // }
+
+    // fn finalize(&mut self, nodes: &mut Nodes) -> Size {
+    //     self.0
+    // }
 }

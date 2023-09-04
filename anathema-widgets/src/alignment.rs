@@ -1,8 +1,8 @@
 use anathema_render::Size;
-use anathema_values::Context;
+use anathema_values::{Context, NodeId, ScopeValue};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::Nodes;
+use anathema_widget_core::generator::{Nodes, Attributes};
 use anathema_widget_core::layout::{Align, Layouts};
 use anathema_widget_core::{AnyWidget, Pos, Widget, WidgetContainer, WidgetFactory};
 
@@ -44,7 +44,7 @@ impl Widget for Alignment {
         mut layout: LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
-        let mut layout = Layouts::new(Single(Size::ZERO), &mut layout);
+        let mut layout = Layouts::new(Single, &mut layout);
         layout.layout(children, data)?;
         // let size = layout.size()?;
         // if size == Size::ZERO {
@@ -118,8 +118,14 @@ impl Widget for Alignment {
 pub(crate) struct AlignmentFactory;
 
 impl WidgetFactory for AlignmentFactory {
-    fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
-        let alignment: Align = data.get(&"align".into()).unwrap_or(Align::TopLeft); // Cached::new_or("align", &data, Align::TopLeft);
+    fn make(
+        &self,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ScopeValue>,
+        node_id: &NodeId
+    ) -> Result<Box<dyn AnyWidget>> {
+        let alignment = data.attribute("align", node_id, attributes).unwrap_or(Align::TopLeft); // Cached::new_or("align", &data, Align::TopLeft);
         let widget = Alignment::new(alignment);
         Ok(Box::new(widget))
     }
