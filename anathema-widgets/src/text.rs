@@ -40,6 +40,7 @@ pub struct Text {
     /// Text style
     pub style: Style,
 
+    text_src: ScopeValue,
     layout: TextLayout,
 }
 
@@ -120,7 +121,7 @@ impl Widget for Text {
     fn layout<'widget, 'parent>(
         &mut self,
         children: &mut Nodes,
-        mut ctx: LayoutCtx,
+        ctx: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
         self.layout = TextLayout::ZERO;
@@ -129,15 +130,25 @@ impl Widget for Text {
         self.layout.set_wrap(self.word_wrap);
         self.layout.process(self.text.as_str());
 
+        match &self.text_src {
+            ScopeValue::Static(s) => {},
+            ScopeValue::Dyn(path) => {
+                self.text.clear();
+                self.text.push_str(&data.get_string_no_sub(path));
+            }
+            ScopeValue::List(list) => {
+                self.text.clear();
+                data.list_to_string_no_sub(list, &mut self.text);
+            }
+        }
+
         children.for_each(data.state, data.scope, ctx, |span, inner_children, data| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
                 return Ok(Size::ZERO);
             }
 
-            let Some(inner_span) = span.try_to_mut::<TextSpan>() else {
-                return Ok(Size::ZERO);
-            };
+            let inner_span = span.to_ref::<TextSpan>();
 
             self.layout.process(inner_span.text.as_str());
             Ok(self.layout.size())
@@ -171,23 +182,18 @@ impl Widget for Text {
 }
 
 /// Represents a chunk of text with its own style
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct TextSpan {
     /// The text
     pub text: String,
     /// Style for the text
     pub style: Style,
+
+    text_src: ScopeValue,
 }
 
 impl TextSpan {
     const KIND: &'static str = "TextSpan";
-
-    pub fn new() -> Self {
-        Self {
-            text: String::new(),
-            style: Style::new(),
-        }
-    }
 }
 
 impl Widget for TextSpan {
@@ -195,7 +201,7 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn layout(&mut self, _: &mut Nodes, _: LayoutCtx, _: Context<'_, '_>) -> Result<Size> {
+    fn layout(&mut self, _: &mut Nodes, _: &mut LayoutCtx, _: Context<'_, '_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
@@ -216,21 +222,22 @@ impl WidgetFactory for TextFactory {
         &self,
         data: Context<'_, '_>,
         attributes: &Attributes,
-        text: Option<&ScopeValue>,
+        text_src: Option<&ScopeValue>,
         node_id: &NodeId
     ) -> Result<Box<dyn AnyWidget>> {
         let word_wrap = data.attribute("wrap", node_id, attributes).unwrap_or(Wrap::Normal);
         let text_alignment = data.attribute("text-align", node_id, attributes).unwrap_or(TextAlignment::Left);
 
-        let text = match text {
-            Some(ScopeValue::Static(s)) => s.to_string(),
-            Some(ScopeValue::Dyn(path)) => data.get_string(path, node_id),
-            Some(ScopeValue::List(list)) => {
+        let text_src = text_src.cloned().expect("a text widget always has a text value");
+
+        let text = match &text_src {
+            ScopeValue::Static(s) => s.to_string(),
+            ScopeValue::Dyn(path) => data.get_string(path, node_id),
+            ScopeValue::List(list) => {
                 let mut buf = String::new();
                 data.list_to_string(list, &mut buf, node_id);
                 buf
             }
-            None => String::new(),
         };
 
         let mut widget = Text {
@@ -239,6 +246,7 @@ impl WidgetFactory for TextFactory {
             style: style(&data, attributes, node_id),
             layout: TextLayout::ZERO,
             text,
+            text_src,
         };
 
         Ok(Box::new(widget))
@@ -253,20 +261,28 @@ impl WidgetFactory for SpanFactory {
         data: Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ScopeValue>,
-        noden_id: &NodeId
+        node_id: &NodeId
     ) -> Result<Box<dyn AnyWidget>> {
-        todo!()
-    }
-    // fn make(&self, data: Context<'_, '_>) -> Result<Box<dyn AnyWidget>> {
-    //     panic!("oh my, we should have this one day!");
-    //     let mut widget = TextSpan::new();
-    //     // if let Some(text) = text {
-    //     //     widget.text = values.text_to_string(text).to_string();
-    //     // }
-    //     // widget.style = values.style();
+        let text_src = text.cloned().expect("text span always have a text value");
 
-    //     Ok(Box::new(widget))
-    // }
+        let text = match &text_src {
+            ScopeValue::Static(s) => s.to_string(),
+            ScopeValue::Dyn(path) => data.get_string(path, node_id),
+            ScopeValue::List(list) => {
+                let mut buf = String::new();
+                data.list_to_string(list, &mut buf, node_id);
+                buf
+            }
+        };
+
+        let widget = TextSpan {
+            text,
+            text_src,
+            style: style(&data, attributes, node_id),
+        };
+
+        Ok(Box::new(widget))
+    }
 }
 
 #[cfg(test)]

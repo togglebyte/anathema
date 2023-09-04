@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 use super::DIRTY_NODES;
 use crate::NodeId;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Value<T> {
     // TODO: do we need the generation anymore?
     gen: usize,

@@ -29,13 +29,17 @@ pub trait Widget {
         "[widget]"
     }
 
+    fn blop(&self) -> &dyn Any {
+        panic!()
+    }
+
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
     fn layout(
         &mut self,
         children: &mut Nodes,
-        ctx: LayoutCtx,
+        ctx: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size>;
 
@@ -44,7 +48,7 @@ pub trait Widget {
     /// of the children.
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
-    fn paint<'tpl>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
         for (widget, children) in children.iter_mut() {
             let ctx = ctx.sub_context(None);
             widget.paint(children, ctx);
@@ -60,7 +64,7 @@ pub trait AnyWidget {
     fn layout_any(
         &mut self,
         children: &mut Nodes,
-        layout: LayoutCtx,
+        layout: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size>;
 
@@ -76,10 +80,14 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
+    fn blop(&self) -> &dyn Any {
+        self.deref().as_any_ref()
+    }
+
     fn layout(
         &mut self,
         children: &mut Nodes,
-        layout: LayoutCtx,
+        layout: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
         self.deref_mut().layout_any(children, layout, data)
@@ -106,7 +114,7 @@ impl<T: Widget + 'static> AnyWidget for T {
     fn layout_any(
         &mut self,
         children: &mut Nodes,
-        layout: LayoutCtx,
+        layout: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
         self.layout(children, layout, data)
@@ -133,7 +141,7 @@ impl Widget for Box<dyn Widget> {
     fn layout(
         &mut self,
         children: &mut Nodes,
-        layout: LayoutCtx,
+        layout: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
         self.as_mut().layout(children, layout, data)
@@ -162,10 +170,14 @@ pub struct WidgetContainer {
 }
 
 impl WidgetContainer {
+    pub fn kind(&self) -> &'static str {
+        self.inner.kind()
+    }
+
     pub fn to_ref<T: 'static>(&self) -> &T {
         let kind = self.inner.kind();
 
-        match self.inner.deref().as_any_ref().downcast_ref::<T>() {
+        match self.try_to_ref() {
             Some(t) => t,
             None => panic!("invalid widget type, found `{kind}`"),
         }
@@ -174,18 +186,34 @@ impl WidgetContainer {
     pub fn to_mut<T: 'static>(&mut self) -> &mut T {
         let kind = self.inner.kind();
 
-        match self.inner.deref_mut().as_any_mut().downcast_mut::<T>() {
+        match self.try_to_mut() {
             Some(t) => t,
             None => panic!("invalid widget type, found `{kind}`"),
         }
     }
 
     pub fn try_to_ref<T: 'static>(&self) -> Option<&T> {
-        self.inner.deref().as_any_ref().downcast_ref::<T>()
+        let kind = self.inner.kind();
+
+        let any = self
+            .inner
+            .deref()
+            .as_any_ref()
+            .downcast_ref::<Box<dyn AnyWidget>>()
+            .expect("this should always be a boxed AnyWidget");
+
+        any.deref().as_any_ref().downcast_ref::<T>()
     }
 
     pub fn try_to_mut<T: 'static>(&mut self) -> Option<&mut T> {
-        self.inner.deref_mut().as_any_mut().downcast_mut::<T>()
+        let any = self
+            .inner
+            .deref_mut()
+            .as_any_mut()
+            .downcast_mut::<Box<dyn AnyWidget>>()
+            .expect("this should always be a boxed AnyWidget");
+
+        any.deref_mut().as_any_mut().downcast_mut::<T>()
     }
 
     pub fn pos(&self) -> Pos {
@@ -224,10 +252,6 @@ impl WidgetContainer {
         )
     }
 
-    pub fn kind(&self) -> &'static str {
-        self.inner.kind()
-    }
-
     pub fn layout<'parent>(
         &mut self,
         children: &mut Nodes,
@@ -237,8 +261,8 @@ impl WidgetContainer {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let layout = LayoutCtx::new(constraints, self.padding);
-                let size = self.inner.layout(children, layout, data)?;
+                let mut layout = LayoutCtx::new(constraints, self.padding);
+                let size = self.inner.layout(children, &mut layout, data)?;
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards

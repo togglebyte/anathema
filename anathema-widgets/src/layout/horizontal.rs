@@ -16,12 +16,16 @@ impl Horizontal {
 }
 
 impl Layout for Horizontal {
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
-        size: &mut Size,
-    ) -> Result<()> {
-        self.0.layout(ctx, children, size)
+        layout: &mut LayoutCtx,
+        children: &mut anathema_widget_core::Nodes,
+        data: anathema_values::Context<'_, '_>,
+    ) -> Result<Size> {
+        self.0.layout(layout, children, data)
+    }
+
+    fn finalize(&mut self, nodes: &mut anathema_widget_core::Nodes) -> Size {
+        todo!()
     }
 }

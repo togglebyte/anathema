@@ -1,10 +1,10 @@
 use anathema_render::Size;
+use anathema_values::{Context, NodeId, ScopeValue};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::Layouts;
-use anathema_widget_core::{
-    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::{AnyWidget, Widget, WidgetContainer, WidgetFactory, Nodes};
 
 use crate::layout::stacked::Stacked;
 
@@ -72,37 +72,31 @@ impl Widget for ZStack {
         "ZStack"
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut Nodes,
+        layout: &mut LayoutCtx,
+        data: Context<'_, '_>,
     ) -> Result<Size> {
         if let Some(min_width) = self.min_width {
-            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
         }
         if let Some(min_height) = self.min_height {
-            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
         }
         if let Some(width) = self.width {
-            ctx.constraints.make_width_tight(width);
+            layout.constraints.make_width_tight(width);
         }
         if let Some(height) = self.height {
-            ctx.constraints.make_height_tight(height);
+            layout.constraints.make_height_tight(height);
         }
 
-        Layouts::new(Stacked, &mut ctx).layout(children)?.size()
+        Layouts::new(Stacked, layout).layout(children, data)
     }
 
-    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        for widget in children {
-            widget.position(ctx.pos);
-        }
-    }
-
-    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
-        for child in children {
-            let ctx = ctx.sub_context(None);
-            child.paint(ctx);
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        for (widget, children) in children.iter_mut() {
+            widget.position(children, ctx.pos);
         }
     }
 }
@@ -112,14 +106,16 @@ pub(crate) struct ZStackFactory;
 impl WidgetFactory for ZStackFactory {
     fn make(
         &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ScopeValue>,
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let width = values.width();
-        let height = values.height();
+        let width = data.primitive("width", node_id, attributes);
+        let height = data.primitive("height", node_id, attributes);
         let mut widget = ZStack::new(width, height);
-        widget.min_width = values.min_width();
-        widget.min_height = values.min_height();
+        widget.min_width = data.primitive("min-width", node_id, attributes);
+        widget.min_height = data.primitive("min-height", node_id, attributes);
         Ok(Box::new(widget))
     }
 }

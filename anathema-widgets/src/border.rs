@@ -267,7 +267,7 @@ impl Widget for Border {
     fn layout(
         &mut self,
         children: &mut Nodes,
-        mut layout: LayoutCtx,
+        layout: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
         let border_layout = BorderLayout {
@@ -277,7 +277,7 @@ impl Widget for Border {
             width: self.width,
             border_size: self.border_size(),
         };
-        let mut layout = Layouts::new(border_layout, &mut layout);
+        let mut layout = Layouts::new(border_layout, layout);
         layout.layout(children, data)
     }
 

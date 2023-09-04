@@ -1,10 +1,10 @@
 use anathema_render::Size;
+use anathema_values::{Context, NodeId, ScopeValue};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::Layouts;
-use anathema_widget_core::{
-    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::{AnyWidget, Widget, WidgetContainer, WidgetFactory, Nodes};
 
 use crate::layout::spacers::SpacerLayout;
 
@@ -32,20 +32,23 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(&mut self, mut ctx: LayoutCtx<'_, '_>, _: &mut Vec<WidgetContainer>) -> Result<Size> {
-        // debug_assert!(
-        //     ctx.constraints.is_width_tight() && ctx.constraints.is_height_tight(),
-        //     "the layout context needs to be tight for a spacer"
-        // );
+    fn layout(
+        &mut self,
+        children: &mut anathema_widget_core::Nodes,
+        mut layout: &mut LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> Result<Size> {
+        debug_assert!(
+            layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),
+            "the layout context needs to be tight for a spacer"
+        );
 
-        Layouts::new(SpacerLayout, &mut ctx)
-            .layout(&mut vec![])?
-            .size()
+        Layouts::new(SpacerLayout, layout).layout(children, data)
     }
 
-    fn position<'ctx>(&mut self, _: PositionCtx, _: &mut [WidgetContainer]) {}
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {}
 
-    fn paint<'ctx>(&mut self, _: PaintCtx<'_, WithSize>, _: &mut [WidgetContainer]) {}
+    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {}
 }
 
 pub(crate) struct SpacerFactory;
@@ -53,8 +56,10 @@ pub(crate) struct SpacerFactory;
 impl WidgetFactory for SpacerFactory {
     fn make(
         &self,
-        _: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text_src: Option<&ScopeValue>,
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         Ok(Box::new(Spacer))
     }

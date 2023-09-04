@@ -1,8 +1,9 @@
 use anathema_render::Size;
+use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Constraints};
-use anathema_widget_core::WidgetContainer;
+use anathema_widget_core::{WidgetContainer, Nodes};
 
 use crate::Expand;
 
@@ -44,18 +45,19 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 pub fn layout(
-    ctx: &mut LayoutCtx<'_, '_>,
-    children: &mut Vec<WidgetContainer>,
+    ctx: &mut LayoutCtx,
+    children: &mut Nodes,
     axis: Axis,
+    data: Context<'_, '_>,
 ) -> Result<Size> {
     let expansions = children
         .iter_mut()
-        .filter(|c| c.kind() == Expand::KIND)
+        .filter(|(c, _)| c.kind() == Expand::KIND)
         .collect::<Vec<_>>();
 
     let factors = expansions
         .iter()
-        .map(|w| w.to_ref::<Expand>().factor)
+        .map(|(w, _)| w.to_ref::<Expand>().factor)
         .collect::<Vec<_>>();
 
     let mut size = Size::ZERO;
@@ -70,7 +72,7 @@ pub fn layout(
         Axis::Vertical => distribute_size(&factors, ctx.constraints.max_height),
     };
 
-    for (sub_size, expanded_widget) in std::iter::zip(sizes, expansions) {
+    for (sub_size, (expanded_widget, nodes)) in std::iter::zip(sizes, expansions) {
         let constraints = match axis {
             Axis::Horizontal => {
                 let mut constraints = Constraints::new(sub_size, ctx.constraints.max_height);
@@ -88,7 +90,8 @@ pub fn layout(
             }
         };
 
-        let widget_size = expanded_widget.layout(constraints, ctx.values)?;
+        let context = Context::new(data.state, data.scope);
+        let widget_size = expanded_widget.layout(nodes, constraints, context)?;
 
         match axis {
             Axis::Horizontal => {

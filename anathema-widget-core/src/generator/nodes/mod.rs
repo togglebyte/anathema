@@ -155,13 +155,13 @@ impl Nodes {
         &mut self,
         state: &mut dyn State,
         scope: &mut Scope<'_>,
-        mut layout: LayoutCtx,
+        layout: &mut LayoutCtx,
         mut f: F,
     ) where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
         loop {
-            match self.next(state, scope, &mut layout, &mut f) {
+            match self.next(state, scope, layout, &mut f) {
                 Some(Ok(_)) => continue,
                 _ => break,
             }
@@ -233,38 +233,6 @@ impl Nodes {
             }
             NodeKind::ControlFlow { .. } => panic!(),
         }
-    }
-
-    pub fn next_old_thing(
-        &mut self,
-        state: &mut dyn State,
-        scope: &mut Scope<'_>,
-        layout: &mut LayoutCtx,
-    ) -> Option<Result<Size>> {
-        panic!()
-        // if let ret @ Some(_) = self.eval_active_loop(state, scope, layout) {
-        //     return ret;
-        // }
-
-        // let expr = self.expressions.get(self.expr_index)?;
-        // let mut node = match expr.eval(state, scope, self.next_id.clone()) {
-        //     Ok(node) => node,
-        //     Err(e) => return Some(Err(e)),
-        // };
-
-        // match &mut node.kind {
-        //     NodeKind::Single(widget, nodes) => {
-        //         self.expr_index += 1;
-        //         let data = Context::new(state, scope);
-        //         let size = widget.layout(nodes, layout.constraints, data);
-        //         Some(size)
-        //     }
-        //     NodeKind::Loop { .. } => {
-        //         self.active_loop = Some(node.into());
-        //         self.next(state, scope, layout)
-        //     }
-        //     NodeKind::ControlFlow { .. } => panic!(),
-        // }
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes)> + '_ {

@@ -13,8 +13,9 @@ use crate::widget::WidgetContainer;
 mod constraints;
 
 pub trait Layout {
-    fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size>;
+    fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size>;
 
+    // TODO: is there any point to this function anymore?
     fn finalize(&mut self, nodes: &mut Nodes) -> Size;
 }
 
@@ -230,6 +231,18 @@ pub enum Axis {
     Vertical,
 }
 
+impl TryFrom<&str> for Axis {
+    type Error = ();
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "horz" | "horizontal" => Ok(Self::Horizontal),
+            "vert" | "vertical" => Ok(Self::Vertical),
+            _ => Err(())
+        }
+    }
+}
+
 /// Direction
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Direction {
@@ -242,6 +255,18 @@ impl Direction {
         match self {
             Self::Forward => Self::Backward,
             Self::Backward => Self::Forward,
+        }
+    }
+}
+
+impl TryFrom<&str> for Direction {
+    type Error = ();
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "forward" => Ok(Self::Forward),
+            "backward" => Ok(Self::Backward),
+            _ => Err(())
         }
     }
 }

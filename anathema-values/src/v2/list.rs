@@ -36,3 +36,20 @@ impl<T> List<T> {
         self.inner.get(*index).and_then(|val| val.inner.get(rhs, node_id))
     }
 }
+
+impl<T> From<Vec<T>> for List<T> {
+    fn from(value: Vec<T>) -> Self {
+        let inner = value.into_iter().map(Value::new).collect();
+        Self { inner }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn create_list() {
+        let list = List::from(vec![1, 2, 3]);
+    }
+}

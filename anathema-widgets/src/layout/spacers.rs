@@ -1,23 +1,27 @@
 use anathema_render::Size;
+use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Layout};
-use anathema_widget_core::WidgetContainer;
+use anathema_widget_core::{WidgetContainer, Nodes};
 
 use crate::Spacer;
 
 pub struct SpacerLayout;
 
 impl Layout for SpacerLayout {
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        ctx: &mut LayoutCtx<'widget, 'parent>,
-        _children: &mut Vec<WidgetContainer>,
-        size: &mut Size,
-    ) -> Result<()> {
-        *size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
+        ctx: &mut LayoutCtx,
+        children: &mut Nodes,
+        data: Context<'_, '_>,
+    ) -> Result<Size> {
+        let size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
+        Ok(size)
+    }
 
-        Ok(())
+    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
+        todo!()
     }
 }
 
@@ -26,12 +30,13 @@ impl Layout for SpacerLayout {
 /// does the layout of the children of a single [`Spacer`],
 /// whereas this does the layout of multiple [`Spacer`]s.
 pub fn layout(
-    ctx: &mut LayoutCtx<'_, '_>,
-    children: &mut Vec<WidgetContainer>,
+    ctx: &mut LayoutCtx,
+    children: &mut Nodes,
     axis: Axis,
+    data: Context<'_, '_>,
 ) -> Result<Size> {
     let mut final_size = Size::ZERO;
-    let count = children.iter().filter(|c| c.kind() == Spacer::KIND).count();
+    let count = children.iter_mut().filter(|(c, _)| c.kind() == Spacer::KIND).count();
 
     if count == 0 {
         return Ok(final_size);
@@ -49,8 +54,8 @@ pub fn layout(
         }
     };
 
-    for spacer in children.iter_mut().filter(|c| c.kind() == Spacer::KIND) {
-        let size = spacer.layout(constraints, ctx.values)?;
+    for (spacer, nodes) in children.iter_mut().filter(|(c, _)| c.kind() == Spacer::KIND) {
+        let size = spacer.layout(nodes, constraints, Context::new(data.state, data.scope))?;
 
         match axis {
             Axis::Horizontal => {

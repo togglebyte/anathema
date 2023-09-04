@@ -1,10 +1,10 @@
 use anathema_render::Size;
+use anathema_values::{Context, NodeId, ScopeValue};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge};
-use anathema_widget_core::{
-    AnyWidget, Pos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory};
 
 use crate::layout::single::Single;
 
@@ -92,24 +92,25 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut Nodes,
+        layout: &mut LayoutCtx,
+        data: Context<'_, '_>,
     ) -> Result<Size> {
-        let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout(children)?;
+        let mut layout = Layouts::new(Single, layout);
+        layout.layout(children, data)?;
         if let HorzEdge::Right(_) = self.horz_edge {
             layout.expand_horz();
         }
         if let VertEdge::Bottom(_) = self.vert_edge {
             layout.expand_vert();
         }
-        layout.size()
+        Ok(layout.size())
     }
 
-    fn position<'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        let child = match children.first_mut() {
+    fn position<'tpl>(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {
+        let (child, children) = match children.first_mut() {
             Some(c) => c,
             None => return,
         };
@@ -127,7 +128,7 @@ impl Widget for Position {
         };
 
         ctx.pos += Pos::new(x, y);
-        child.position(ctx.pos);
+        child.position(children, ctx.pos);
     }
 }
 
@@ -136,20 +137,22 @@ pub(crate) struct PositionFactory;
 impl WidgetFactory for PositionFactory {
     fn make(
         &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ScopeValue>,
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let horz_edge = match values.left() {
+        let horz_edge = match data.primitive("left", node_id, attributes) {
             Some(left) => HorzEdge::Left(left),
-            None => match values.right() {
+            None => match data.primitive("right", node_id, attributes) {
                 Some(right) => HorzEdge::Right(right),
                 None => HorzEdge::Left(0),
             },
         };
 
-        let vert_edge = match values.top() {
+        let vert_edge = match data.primitive("top", node_id, attributes) {
             Some(top) => VertEdge::Top(top),
-            None => match values.bottom() {
+            None => match data.primitive("bottom", node_id, attributes) {
                 Some(bottom) => VertEdge::Bottom(bottom),
                 None => VertEdge::Top(0),
             },

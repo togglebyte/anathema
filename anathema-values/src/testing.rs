@@ -29,6 +29,19 @@ impl State for TestState {
         }
     }
 
+    fn get_no_sub(&self, key: &Path) -> Option<Cow<'_, str>> {
+        match key {
+            Path::Key(s) => match s.as_str() {
+                "name" => {
+                    Some((&self.name).into())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+
     fn get_collection(&self, key: &Path) -> Option<crate::Collection> {
         todo!()
     }

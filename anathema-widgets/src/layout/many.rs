@@ -1,8 +1,9 @@
 use anathema_render::Size;
+use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::{Axis, Constraints, Direction, Layout};
-use anathema_widget_core::{Generator, WidgetContainer};
+use anathema_widget_core::{Nodes, WidgetContainer};
 
 use super::{expand, spacers};
 use crate::{Expand, Spacer};
@@ -118,11 +119,11 @@ impl Many {
 }
 
 impl Layout for Many {
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        children: &mut Vec<WidgetContainer>,
         layout: &mut LayoutCtx,
-        context: &mut Context<'widget, 'parent>,
+        children: &mut Nodes,
+        data: Context<'_, '_>,
     ) -> Result<Size> {
         let max_constraints = layout.padded_constraints();
 
@@ -132,79 +133,61 @@ impl Layout for Many {
         );
 
         if let Direction::Backward = self.direction {
+            panic!("this has to be done at some point...");
             // gen.flip();
         }
 
-        children.for_each(context.state, context.scope, layout, |widget, children, context| {
-            if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
-                return std::ops::ControlFlow::Contiunue(());
-            }
-
-            let widget_constraints = {
-                let mut constraints = max_constraints;
-                if self.unconstrained {
-                    match self.axis {
-                        Axis::Vertical => constraints.unbound_height(),
-                        Axis::Horizontal => constraints.unbound_width(),
-                    }
+        let mut size = Size::ZERO;
+        children.for_each(
+            data.state,
+            data.scope,
+            layout,
+            |widget, children, context| {
+                if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
+                    return Ok(Size::ZERO);
                 }
-                constraints
-            };
 
-            let mut widget_size = match widget.layout(widget_constraints, inner_children, &values) {
-                Ok(s) => s,
-                Err(Error::InsufficientSpaceAvailble) => break,
-                err @ Err(_) => err?,
-            };
-
-        });
-
-        while let Some(mut widget) = gen.next(&mut values).transpose()? {
-            // Ignore spacers and expanders
-            if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
-                children.push(widget);
-                continue;
-            }
-
-            let widget_constraints = {
-                let mut constraints = max_constraints;
-                if self.unconstrained {
-                    match self.axis {
-                        Axis::Vertical => constraints.unbound_height(),
-                        Axis::Horizontal => constraints.unbound_width(),
+                let widget_constraints = {
+                    let mut constraints = max_constraints;
+                    if self.unconstrained {
+                        match self.axis {
+                            Axis::Vertical => constraints.unbound_height(),
+                            Axis::Horizontal => constraints.unbound_width(),
+                        }
                     }
+                    constraints
+                };
+
+                let mut widget_size = widget.layout(children, widget_constraints, context)?;
+
+                if self.offset.skip(&mut widget_size) {
+                    return Ok(Size::ZERO);
                 }
-                constraints
-            };
 
-            let mut widget_size = match widget.layout(widget_constraints, &values) {
-                Ok(s) => s,
-                Err(Error::InsufficientSpaceAvailble) => break,
-                err @ Err(_) => err?,
-            };
+                used_size.apply(widget_size);
 
-            if self.offset.skip(&mut widget_size) {
-                continue;
-            }
+                if used_size.no_space_left() {
+                    return Err(Error::InsufficientSpaceAvailble);
+                }
 
-            children.push(widget);
-            used_size.apply(widget_size);
+                Ok(widget_size)
+            },
+        );
 
-            if used_size.no_space_left() {
-                break;
-            }
-        }
-
-        // Apply spacer and expand if the layout is unconstrained
+        // Apply spacer and expand if the layout is constrained
         if !self.unconstrained {
-            let mut exp_ctx = *ctx;
-            exp_ctx.constraints = used_size.to_constraints();
-            let expanded_size = expand::layout(&mut exp_ctx, children, self.axis)?;
-            used_size.apply(expanded_size);
+            {
+                let mut exp_ctx = *layout;
+                exp_ctx.constraints = used_size.to_constraints();
+                let data = Context::new(data.state, data.scope);
+                let expanded_size = expand::layout(&mut exp_ctx, children, self.axis, data)?;
+                used_size.apply(expanded_size);
+            }
 
-            let mut space_ctx = *ctx;
+            let mut space_ctx = *layout;
             space_ctx.constraints = used_size.to_constraints();
-            let spacer_size = spacers::layout(&mut space_ctx, children, self.axis)?;
+            let data = Context::new(data.state, data.scope);
+            let spacer_size = spacers::layout(&mut space_ctx, children, self.axis, data)?;
             used_size.apply(spacer_size);
         }
 
@@ -225,6 +208,10 @@ impl Layout for Many {
             }
         }
 
-        Ok(())
+        Ok(size)
+    }
+
+    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
+        todo!()
     }
 }

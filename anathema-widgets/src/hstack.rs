@@ -1,10 +1,10 @@
 use anathema_render::Size;
+use anathema_values::{Context, ScopeValue, NodeId};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::{Direction, Layouts};
-use anathema_widget_core::{
-    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::{AnyWidget, Nodes, Widget, WidgetContainer, WidgetFactory};
 
 use crate::layout::horizontal::Horizontal;
 
@@ -58,33 +58,32 @@ impl Widget for HStack {
         "HStack"
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut Nodes,
+        layout: &mut LayoutCtx,
+        data: Context<'_, '_>,
     ) -> Result<Size> {
         if let Some(width) = self.width {
-            ctx.constraints.max_width = ctx.constraints.max_width.min(width);
+            layout.constraints.max_width = layout.constraints.max_width.min(width);
         }
         if let Some(height) = self.height {
-            ctx.constraints.max_height = ctx.constraints.max_height.min(height);
+            layout.constraints.max_height = layout.constraints.max_height.min(height);
         }
         if let Some(min_width) = self.min_width {
-            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
         }
         if let Some(min_height) = self.min_height {
-            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Horizontal::new(Direction::Forward), &mut ctx)
-            .layout(children)?
-            .size()
+        Layouts::new(Horizontal::new(Direction::Forward), layout).layout(children, data)
     }
 
-    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
         let mut pos = ctx.pos;
-        for widget in children {
-            widget.position(pos);
+        for (widget, children) in children.iter_mut() {
+            widget.position(children, pos);
             pos.x += widget.outer_size().width as i32;
         }
     }
@@ -95,14 +94,16 @@ pub(crate) struct HStackFactory;
 impl WidgetFactory for HStackFactory {
     fn make(
         &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ScopeValue>,
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let width = values.width();
-        let height = values.height();
+        let width = data.primitive("width", node_id, attributes);
+        let height = data.primitive("height", node_id, attributes);
         let mut widget = HStack::new(width, height);
-        widget.min_width = values.min_width();
-        widget.min_height = values.min_height();
+        widget.min_width = data.primitive("min-width", node_id, attributes);
+        widget.min_height = data.primitive("min-height", node_id, attributes);
         Ok(Box::new(widget))
     }
 }

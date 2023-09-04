@@ -9,10 +9,10 @@ use anathema_widget_core::WidgetContainer;
 pub struct Single;
 
 impl Layout for Single {
-    fn layout(&mut self, ctx: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
-         let constraints = ctx.padded_constraints();
+    fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
+         let constraints = layout.padded_constraints();
 
-         let size = children.next(data.state, data.scope, ctx, &mut |widget, children, data| {
+         let size = children.next(data.state, data.scope, layout, &mut |widget, children, data| {
              widget.layout(children, constraints, data)
          });
 

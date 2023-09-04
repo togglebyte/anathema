@@ -198,6 +198,16 @@ impl<'a, 'val> Context<'a, 'val> {
         }
     }
 
+    pub fn list_to_string_no_sub(&self, list: &Rc<[ScopeValue]>, buffer: &mut String) {
+        for val in list.iter() {
+            match val {
+                ScopeValue::List(list) => self.list_to_string_no_sub(list, buffer),
+                ScopeValue::Dyn(path) => buffer.push_str(&self.get_string_no_sub(path)),
+                ScopeValue::Static(s) => buffer.push_str(s),
+            }
+        }
+    }
+
     pub fn get_string(&self, path: &Path, node_id: &NodeId) -> String {
         match self.scope.lookup(path) {
             Some(val) => match val {
@@ -212,6 +222,25 @@ impl<'a, 'val> Context<'a, 'val> {
             None => self
                 .state
                 .get(&path, node_id)
+                .and_then(|val| val.as_ref().try_into().ok())
+                .unwrap_or_else(String::new),
+        }
+    }
+
+    pub fn get_string_no_sub(&self, path: &Path) -> String {
+        match self.scope.lookup(path) {
+            Some(val) => match val {
+                ScopeValue::Dyn(path) => self.get_string_no_sub(path),
+                ScopeValue::Static(s) => s.to_string(),
+                ScopeValue::List(list) => {
+                    let mut buffer = String::new();
+                    self.list_to_string_no_sub(list, &mut buffer);
+                    buffer
+                }
+            },
+            None => self
+                .state
+                .get_no_sub(&path)
                 .and_then(|val| val.as_ref().try_into().ok())
                 .unwrap_or_else(String::new),
         }

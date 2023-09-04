@@ -1,4 +1,5 @@
 use std::io::{stdout, Stdout};
+use std::ops::DerefMut;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -87,8 +88,9 @@ where
         let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
         let mut scope = Scope::new(None);
         self.nodes.reset_cache();
-        self.nodes.for_each(&mut self.state, &mut scope, layout_ctx, |widget, children, context| {
-            widget.layout(children, layout_ctx.constraints, context)
+        let constraints = layout_ctx.constraints;
+        self.nodes.for_each(&mut self.state, &mut scope, &mut layout_ctx, |widget, children, context| {
+            widget.layout(children, constraints, context)
         });
         Ok(())
     }
@@ -151,23 +153,23 @@ where
 
             self.changes();
 
-            self.meta.count = self.nodes.count();
+            *self.meta.count = self.nodes.count();
             let total = Instant::now();
             self.layout()?;
-            self.meta.timings.layout = total.elapsed();
+            *self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
             self.position();
-            self.meta.timings.position = now.elapsed();
+            *self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
             self.paint();
-            self.meta.timings.paint = now.elapsed();
+            *self.meta.timings.paint = now.elapsed();
 
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
-            self.meta.timings.render = now.elapsed();
-            self.meta.timings.total = total.elapsed();
+            *self.meta.timings.render = now.elapsed();
+            *self.meta.timings.total = total.elapsed();
             self.screen.erase();
 
             if self.enable_meta {

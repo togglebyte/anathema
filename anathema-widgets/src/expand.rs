@@ -1,10 +1,10 @@
 use anathema_render::{Size, Style};
+use anathema_values::{Context, NodeId, ScopeValue};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
+use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::{Axis, Layouts};
-use anathema_widget_core::{
-    AnyWidget, LocalPos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::{AnyWidget, LocalPos, Widget, WidgetContainer, WidgetFactory, Nodes};
 
 use crate::layout::single::Single;
 
@@ -95,32 +95,33 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout(
         &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
+        children: &mut anathema_widget_core::Nodes,
+        mut layout: &mut LayoutCtx,
+        data: Context<'_, '_>,
     ) -> Result<Size> {
-        let mut size = Layouts::new(Single, &mut ctx).layout(children)?.size()?;
+        let mut size = Layouts::new(Single, layout).layout(children, data)?;
 
         match self.axis {
-            Some(Axis::Horizontal) => size.width = ctx.constraints.max_width,
-            Some(Axis::Vertical) => size.height = ctx.constraints.max_height,
+            Some(Axis::Horizontal) => size.width = layout.constraints.max_width,
+            Some(Axis::Vertical) => size.height = layout.constraints.max_height,
             None => {
-                size.width = ctx.constraints.max_width;
-                size.height = ctx.constraints.max_height;
+                size.width = layout.constraints.max_width;
+                size.height = layout.constraints.max_height;
             }
         }
 
         Ok(size)
     }
 
-    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        if let Some(c) = children.first_mut() {
-            c.position(ctx.pos)
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        if let Some((widget, children)) = children.first_mut() {
+            widget.position(children, ctx.pos)
         }
     }
 
-    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
+    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
         if !self.fill.is_empty() {
             for y in 0..ctx.local_size.height {
                 let mut used_width = 0;
@@ -134,9 +135,9 @@ impl Widget for Expand {
             }
         }
 
-        if let Some(child) = children.first_mut() {
+        if let Some((widget, children)) = children.first_mut() {
             let ctx = ctx.sub_context(None);
-            child.paint(ctx);
+            widget.paint(children, ctx);
         }
     }
 }
@@ -146,12 +147,14 @@ pub(crate) struct ExpandFactory;
 impl WidgetFactory for ExpandFactory {
     fn make(
         &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
+        data: Context<'_, '_>,
+        attributes: &Attributes,
+        text_src: Option<&ScopeValue>,
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let axis = values.axis();
-        let factor = values.factor();
-        let fill = values.fill().map(|s| s.to_string());
+        let axis = data.attribute("axis", node_id, attributes);
+        let factor = data.primitive("factor", node_id, attributes);
+        let fill = data.attribute("fill", node_id, attributes);
         Ok(Box::new(Expand::new(factor, axis, fill)))
     }
 }
