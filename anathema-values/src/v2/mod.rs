@@ -25,7 +25,6 @@ pub fn drain_dirty_nodes() -> Vec<NodeId> {
     DIRTY_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
 }
 
-
 pub trait State {
     fn get(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, str>>;
 

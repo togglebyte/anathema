@@ -23,9 +23,9 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval<S: State>(
+    fn eval(
         &self,
-        state: &mut S,
+        state: &mut dyn State,
         scope: &mut Scope<'_>,
         node_id: NodeId,
     ) -> Result<Node> {
@@ -62,9 +62,9 @@ pub struct Loop {
 }
 
 impl Loop {
-    fn eval<S: State>(
+    fn eval(
         &self,
-        state: &mut S,
+        state: &mut dyn State,
         scope: &mut Scope<'_>,
         node_id: NodeId,
     ) -> Result<Node> {
@@ -101,9 +101,9 @@ pub struct ControlFlow {
 }
 
 impl ControlFlow {
-    fn eval<S: State>(
+    fn eval(
         &self,
-        state: &mut S,
+        state: &mut dyn State,
         scope: &mut Scope<'_>,
         node_id: NodeId,
     ) -> Result<Node> {
@@ -130,12 +130,11 @@ impl Expression {
         scope: &mut Scope,
         node_id: NodeId,
     ) -> Result<Node> {
-        panic!()
-        // match self {
-        //     Self::Node(node) => node.eval(state, scope, node_id),
-        //     Self::Loop(loop_expr) => loop_expr.eval(state, scope, node_id),
-        //     Self::ControlFlow(controlflow) => controlflow.eval(state, scope, node_id),
-        // }
+        match self {
+            Self::Node(node) => node.eval(state, scope, node_id),
+            Self::Loop(loop_expr) => loop_expr.eval(state, scope, node_id),
+            Self::ControlFlow(controlflow) => controlflow.eval(state, scope, node_id),
+        }
     }
 }
 

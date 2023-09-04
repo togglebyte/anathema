@@ -17,7 +17,7 @@ mod path;
 // #[cfg(testing)]
 pub mod testing;
 
-pub use v2::{Collection, Context, List, Map, Scope, ScopeValue, Slab, State, Value, NodeId};
+pub use v2::{Collection, Context, List, Map, Scope, ScopeValue, Slab, State, Value, NodeId, drain_dirty_nodes};
 
 pub use crate::path::{Path, PathId};
 

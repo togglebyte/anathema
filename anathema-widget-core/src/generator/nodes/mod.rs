@@ -126,9 +126,9 @@ impl Nodes {
         where F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>)
     {
         loop {
-            let cont = self.next(state, scope, &mut layout, &mut f).unwrap().unwrap();
-            if !cont {
-                break;
+            match self.next(state, scope, &mut layout, &mut f) {
+                Some(Ok(true)) => continue,
+                _ => break,
             }
         }
     }
@@ -158,7 +158,8 @@ impl Nodes {
                 self.expr_index += 1;
                 let data = Context::new(state, scope);
                 f(widget, nodes, data);
-                panic!();
+                self.inner.push(node);
+                Some(Ok(true))
                 // let size = widget.layout(nodes, layout.constraints, data);
                 // Some(size)
             }

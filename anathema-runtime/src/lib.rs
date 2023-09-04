@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::{Context, Scope, State};
+use anathema_values::{Context, Scope, State, drain_dirty_nodes};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
@@ -102,7 +102,9 @@ where
         }
     }
 
-    fn changes(&self) {}
+    fn changes(&self) {
+        let dirty_nodes = drain_dirty_nodes();
+    }
 
     pub fn run(mut self) -> Result<()> {
         if self.enable_mouse {
@@ -141,15 +143,15 @@ where
             }
 
             let total = Instant::now();
-            // self.layout()?;
+            self.layout()?;
             // self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
-            // self.position();
+            self.position();
             // self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
-            // self.paint();
+            self.paint();
             // self.meta.timings.paint = now.elapsed();
 
             let now = Instant::now();

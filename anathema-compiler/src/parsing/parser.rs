@@ -525,58 +525,54 @@ impl Iterator for Parser<'_, '_> {
 //     - Parse `ExpressionValue` -
 // -----------------------------------------------------------------------------
 pub(super) fn parse_scope_value(
-    _text: &str,
-    _consts: &mut Constants,
+    text: &str,
+    consts: &mut Constants,
 ) -> ScopeValue {
-    panic!()
-    // let mut fragments = vec![];
-    // let mut chars = text.char_indices().peekable();
-    // let mut pos = 0;
+    let mut fragments = vec![];
+    let mut chars = text.char_indices().peekable();
+    let mut pos = 0;
 
-    // while let Some(c) = chars.next() {
-    //     let next = chars.peek();
-    //     match (c, next) {
-    //         ((i, '{'), Some((_, '{'))) => {
-    //             let frag = &text[pos..i];
-    //             if !frag.is_empty() {
-    //                 let text_fragment = frag.replace("\\\"", "\"");
-    //                 fragments.push(ExpressionValue::Static(Arc::new(Value::String(
-    //                     text_fragment,
-    //                 ))));
-    //             }
-    //             pos = i;
-    //         }
-    //         ((i, '}'), Some((_, '}'))) => {
-    //             let frag = &text[pos + 2..i].trim();
-    //             if !frag.is_empty() {
-    //                 let mut lexer = Lexer::new(frag);
-    //                 if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
-    //                     if let Ok(path) = parse_path(&mut lexer, ident) {
-    //                         let path_id = consts.store_path(path);
-    //                         fragments.push(ExpressionValue::Dyn(path_id));
-    //                     }
-    //                 }
-    //             }
-    //             pos = i + 2;
-    //         }
-    //         _ => {}
-    //     }
-    // }
+    while let Some(c) = chars.next() {
+        let next = chars.peek();
+        match (c, next) {
+            ((i, '{'), Some((_, '{'))) => {
+                let frag = &text[pos..i];
+                if !frag.is_empty() {
+                    let text_fragment = frag.replace("\\\"", "\"");
+                    fragments.push(ScopeValue::Static(text_fragment.into()));
+                }
+                pos = i;
+            }
+            ((i, '}'), Some((_, '}'))) => {
+                let frag = &text[pos + 2..i].trim();
+                if !frag.is_empty() {
+                    let mut lexer = Lexer::new(frag);
+                    if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
+                        if let Ok(path) = parse_path(&mut lexer, ident) {
+                            fragments.push(ScopeValue::Dyn(path));
+                        }
+                    }
+                }
+                pos = i + 2;
+            }
+            _ => {}
+        }
+    }
 
-    // let remainder = &text[pos..];
+    let remainder = &text[pos..];
 
-    // if !remainder.is_empty() {
-    //     let text_fragment = remainder.replace("\\\"", "\"");
-    //     fragments.push(ExpressionValue::Static(Arc::new(Value::String(text_fragment))));
-    // }
+    if !remainder.is_empty() {
+        let text_fragment = remainder.replace("\\\"", "\"");
+        fragments.push(ScopeValue::Static(text_fragment.into()));
+    }
 
-    // // There is at least one fragment value so it's 
-    // // fine to call `remove` here.
-    // if fragments.len() > 1 {
-    //     ExpressionValue::List(fragments.into())
-    // } else {
-    //     fragments.remove(0)
-    // }
+    // There is at least one fragment value so it's 
+    // fine to call `remove` here.
+    if fragments.len() > 1 {
+        ScopeValue::List(fragments.into())
+    } else {
+        fragments.remove(0)
+    }
 }
 
 // -----------------------------------------------------------------------------
