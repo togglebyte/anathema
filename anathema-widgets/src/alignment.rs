@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_values::{Context, NodeId, ScopeValue};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::{Nodes, Attributes};
+use anathema_widget_core::generator::{Attributes, Nodes};
 use anathema_widget_core::layout::{Align, Layouts};
 use anathema_widget_core::{AnyWidget, Pos, Widget, WidgetContainer, WidgetFactory};
 
@@ -121,9 +121,11 @@ impl WidgetFactory for AlignmentFactory {
         data: Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ScopeValue>,
-        node_id: &NodeId
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let alignment = data.attribute("align", node_id, attributes).unwrap_or(Align::TopLeft); // Cached::new_or("align", &data, Align::TopLeft);
+        let alignment = data
+            .attribute("align", node_id.into(), attributes)
+            .unwrap_or(Align::TopLeft);
         let widget = Alignment::new(alignment);
         Ok(Box::new(widget))
     }

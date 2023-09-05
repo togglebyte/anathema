@@ -30,9 +30,6 @@ impl Layout for Single {
          //     };
     }
 
-    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
-        todo!()
-    }
     // fn layout<'widget, 'parent>(
     //     &mut self,
     //     ctx: &mut LayoutCtx,

@@ -33,6 +33,6 @@ impl<T> Map<T> {
     {
         let Path::Composite(lhs, rhs) = key else { return None };
         let Path::Key(key) = lhs.deref() else { return None };
-        self.inner.get(key).and_then(|val| val.inner.get(rhs, node_id))
+        self.inner.get(key).and_then(|val| val.inner.get(rhs, Some(node_id)))
     }
 }

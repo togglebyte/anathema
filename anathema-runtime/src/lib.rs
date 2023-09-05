@@ -130,7 +130,7 @@ where
             while let Some(event) = self.event_receiver.next() {
                 let event = self
                     .events
-                    .event(event, &mut self.nodes, &mut self.state);
+                    .event(event, &mut self.nodes, &mut self.state, &self.meta);
 
                 match event {
                     Event::Resize(width, height) => {
@@ -155,7 +155,7 @@ where
 
             *self.meta.count = self.nodes.count();
             let total = Instant::now();
-            self.layout()?;
+            // self.layout()?;
             *self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();

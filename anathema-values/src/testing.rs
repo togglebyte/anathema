@@ -16,11 +16,13 @@ impl TestState {
 }
 
 impl State for TestState {
-    fn get(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, str>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, str>> {
         match key {
             Path::Key(s) => match s.as_str() {
                 "name" => {
-                    self.name.subscribe(node_id.clone());
+                    if let Some(node_id) = node_id.cloned() {
+                        self.name.subscribe(node_id);
+                    }
                     Some((&self.name).into())
                 }
                 _ => None,
@@ -28,19 +30,6 @@ impl State for TestState {
             _ => None,
         }
     }
-
-    fn get_no_sub(&self, key: &Path) -> Option<Cow<'_, str>> {
-        match key {
-            Path::Key(s) => match s.as_str() {
-                "name" => {
-                    Some((&self.name).into())
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
 
     fn get_collection(&self, key: &Path) -> Option<crate::Collection> {
         todo!()

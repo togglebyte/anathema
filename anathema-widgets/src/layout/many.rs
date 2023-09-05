@@ -210,8 +210,4 @@ impl Layout for Many {
 
         Ok(size)
     }
-
-    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
-        todo!()
-    }
 }

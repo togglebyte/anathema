@@ -134,11 +134,11 @@ impl Widget for Text {
             ScopeValue::Static(s) => {},
             ScopeValue::Dyn(path) => {
                 self.text.clear();
-                self.text.push_str(&data.get_string_no_sub(path));
+                self.text.push_str(&data.get_string(path, None));
             }
             ScopeValue::List(list) => {
                 self.text.clear();
-                data.list_to_string_no_sub(list, &mut self.text);
+                data.list_to_string(list, &mut self.text, None);
             }
         }
 
@@ -225,17 +225,17 @@ impl WidgetFactory for TextFactory {
         text_src: Option<&ScopeValue>,
         node_id: &NodeId
     ) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap = data.attribute("wrap", node_id, attributes).unwrap_or(Wrap::Normal);
-        let text_alignment = data.attribute("text-align", node_id, attributes).unwrap_or(TextAlignment::Left);
+        let word_wrap = data.attribute("wrap", node_id.into(), attributes).unwrap_or(Wrap::Normal);
+        let text_alignment = data.attribute("text-align", node_id.into(), attributes).unwrap_or(TextAlignment::Left);
 
         let text_src = text_src.cloned().expect("a text widget always has a text value");
 
         let text = match &text_src {
             ScopeValue::Static(s) => s.to_string(),
-            ScopeValue::Dyn(path) => data.get_string(path, node_id),
+            ScopeValue::Dyn(path) => data.get_string(path, node_id.into()),
             ScopeValue::List(list) => {
                 let mut buf = String::new();
-                data.list_to_string(list, &mut buf, node_id);
+                data.list_to_string(list, &mut buf, node_id.into());
                 buf
             }
         };
@@ -267,10 +267,10 @@ impl WidgetFactory for SpanFactory {
 
         let text = match &text_src {
             ScopeValue::Static(s) => s.to_string(),
-            ScopeValue::Dyn(path) => data.get_string(path, node_id),
+            ScopeValue::Dyn(path) => data.get_string(path, node_id.into()),
             ScopeValue::List(list) => {
                 let mut buf = String::new();
-                data.list_to_string(list, &mut buf, node_id);
+                data.list_to_string(list, &mut buf, node_id.into());
                 buf
             }
         };

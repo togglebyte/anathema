@@ -37,7 +37,7 @@ impl<T> List<T> {
     {
         let Path::Composite(lhs, rhs) = key.deref() else { return None };
         let Path::Index(index) = lhs.deref() else { return None };
-        self.inner.get(*index).and_then(|val| val.inner.get(rhs, node_id))
+        self.inner.get(*index).and_then(|val| val.inner.get(rhs, Some(node_id)))
     }
 }
 

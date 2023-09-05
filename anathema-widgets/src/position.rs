@@ -142,17 +142,17 @@ impl WidgetFactory for PositionFactory {
         text: Option<&ScopeValue>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let horz_edge = match data.primitive("left", node_id, attributes) {
+        let horz_edge = match data.primitive("left", node_id.into(), attributes) {
             Some(left) => HorzEdge::Left(left),
-            None => match data.primitive("right", node_id, attributes) {
+            None => match data.primitive("right", node_id.into(), attributes) {
                 Some(right) => HorzEdge::Right(right),
                 None => HorzEdge::Left(0),
             },
         };
 
-        let vert_edge = match data.primitive("top", node_id, attributes) {
+        let vert_edge = match data.primitive("top", node_id.into(), attributes) {
             Some(top) => VertEdge::Top(top),
-            None => match data.primitive("bottom", node_id, attributes) {
+            None => match data.primitive("bottom", node_id.into(), attributes) {
                 Some(bottom) => VertEdge::Bottom(bottom),
                 None => VertEdge::Top(0),
             },

@@ -14,9 +14,6 @@ mod constraints;
 
 pub trait Layout {
     fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size>;
-
-    // TODO: is there any point to this function anymore?
-    fn finalize(&mut self, nodes: &mut Nodes) -> Size;
 }
 
 // -----------------------------------------------------------------------------

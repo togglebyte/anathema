@@ -61,8 +61,9 @@ impl<'a> From<&'a Value<usize>> for Cow<'a, str> {
 
 #[cfg(test)]
 mod test {
+    use crate::drain_dirty_nodes;
+
     use super::*;
-    use crate::v2::drain_dirty_nodes;
 
     #[test]
     fn notify_subscriber() {

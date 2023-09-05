@@ -25,8 +25,4 @@ impl Layout for Vertical {
     ) -> Result<Size> {
         self.0.layout(layout, children, data)
     }
-
-    fn finalize(&mut self, nodes: &mut anathema_widget_core::Nodes) -> Size {
-        todo!()
-    }
 }

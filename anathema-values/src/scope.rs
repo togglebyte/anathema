@@ -132,7 +132,7 @@ impl<'a, 'val> Context<'a, 'val> {
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<T>(&self, path: &Path, node_id: &NodeId) -> Option<T>
+    pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<T>
     where
         T: for<'magic> TryFrom<&'magic str>,
     {
@@ -144,7 +144,7 @@ impl<'a, 'val> Context<'a, 'val> {
             },
             None => self
                 .state
-                .get(&path, node_id)
+                .get(&path, node_id.into())
                 .and_then(|val| val.as_ref().try_into().ok()),
         }
     }
@@ -152,7 +152,7 @@ impl<'a, 'val> Context<'a, 'val> {
     pub fn attribute<T>(
         &self,
         key: impl AsRef<str>,
-        node_id: &NodeId,
+        node_id: Option<&NodeId>,
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<T>
     where
@@ -170,7 +170,7 @@ impl<'a, 'val> Context<'a, 'val> {
     pub fn primitive<T>(
         &self,
         key: impl AsRef<str>,
-        node_id: &NodeId,
+        node_id: Option<&NodeId>,
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<T>
     where
@@ -188,7 +188,7 @@ impl<'a, 'val> Context<'a, 'val> {
         }
     }
 
-    pub fn list_to_string(&self, list: &Rc<[ScopeValue]>, buffer: &mut String, node_id: &NodeId) {
+    pub fn list_to_string(&self, list: &Rc<[ScopeValue]>, buffer: &mut String, node_id: Option<&NodeId>) {
         for val in list.iter() {
             match val {
                 ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
@@ -198,17 +198,7 @@ impl<'a, 'val> Context<'a, 'val> {
         }
     }
 
-    pub fn list_to_string_no_sub(&self, list: &Rc<[ScopeValue]>, buffer: &mut String) {
-        for val in list.iter() {
-            match val {
-                ScopeValue::List(list) => self.list_to_string_no_sub(list, buffer),
-                ScopeValue::Dyn(path) => buffer.push_str(&self.get_string_no_sub(path)),
-                ScopeValue::Static(s) => buffer.push_str(s),
-            }
-        }
-    }
-
-    pub fn get_string(&self, path: &Path, node_id: &NodeId) -> String {
+    pub fn get_string(&self, path: &Path, node_id: Option<&NodeId>) -> String {
         match self.scope.lookup(path) {
             Some(val) => match val {
                 ScopeValue::Dyn(path) => self.get_string(path, node_id),
@@ -222,25 +212,6 @@ impl<'a, 'val> Context<'a, 'val> {
             None => self
                 .state
                 .get(&path, node_id)
-                .and_then(|val| val.as_ref().try_into().ok())
-                .unwrap_or_else(String::new),
-        }
-    }
-
-    pub fn get_string_no_sub(&self, path: &Path) -> String {
-        match self.scope.lookup(path) {
-            Some(val) => match val {
-                ScopeValue::Dyn(path) => self.get_string_no_sub(path),
-                ScopeValue::Static(s) => s.to_string(),
-                ScopeValue::List(list) => {
-                    let mut buffer = String::new();
-                    self.list_to_string_no_sub(list, &mut buffer);
-                    buffer
-                }
-            },
-            None => self
-                .state
-                .get_no_sub(&path)
                 .and_then(|val| val.as_ref().try_into().ok())
                 .unwrap_or_else(String::new),
         }

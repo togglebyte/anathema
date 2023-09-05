@@ -129,8 +129,4 @@ impl Layout for BorderLayout {
             }
         }
     }
-
-    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
-        todo!()
-    }
 }

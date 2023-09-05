@@ -32,12 +32,12 @@ impl SingleNode {
         let context = Context::new(state, scope);
 
         let widget = WidgetContainer {
-            background: context.attribute("background", &node_id, &self.attributes),
+            background: context.attribute("background", Some(&node_id), &self.attributes),
             display: context
-                .attribute("display", &node_id, &self.attributes)
+                .attribute("display", Some(&node_id), &self.attributes)
                 .unwrap_or(Display::Show),
             padding: context
-                .attribute("padding", &node_id, &self.attributes)
+                .attribute("padding", Some(&node_id), &self.attributes)
                 .unwrap_or(Padding::ZERO),
             pos: Pos::ZERO,
             size: Size::ZERO,

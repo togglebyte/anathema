@@ -14,11 +14,11 @@ const FOCUS: &'static str = "focus";
 const COUNT: &'static str = "count";
 
 #[derive(Debug)]
-pub(super) struct Meta {
-    pub(super) size: Value<Size>,
-    pub(super) timings: Value<Timings>,
-    pub(super) focus: bool,
-    pub(super) count: Value<usize>,
+pub struct Meta {
+    pub size: Value<Size>,
+    pub timings: Value<Timings>,
+    pub focus: bool,
+    pub count: Value<usize>,
 }
 
 impl Meta {
@@ -33,10 +33,10 @@ impl Meta {
 }
 
 #[derive(Debug, Default)]
-pub(super) struct Timings {
-    pub(super) layout: Value<Duration>,
-    pub(super) position: Value<Duration>,
-    pub(super) paint: Value<Duration>,
-    pub(super) render: Value<Duration>,
-    pub(super) total: Value<Duration>,
+pub struct Timings {
+    pub layout: Value<Duration>,
+    pub position: Value<Duration>,
+    pub paint: Value<Duration>,
+    pub render: Value<Duration>,
+    pub total: Value<Duration>,
 }

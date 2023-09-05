@@ -32,8 +32,4 @@ impl Layout for Stacked {
 
         Ok(Size { width, height })
     }
-
-    fn finalize(&mut self, nodes: &mut anathema_widget_core::Nodes) -> Size {
-        todo!()
-    }
 }

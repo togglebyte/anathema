@@ -404,20 +404,20 @@ impl WidgetFactory for BorderFactory {
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         let border_style = data
-            .attribute("border-style", node_id, attributes)
+            .attribute("border-style", node_id.into(), attributes)
             .unwrap_or(BorderStyle::Thin);
         let sides = data
-            .attribute("sides", node_id, attributes)
+            .attribute("sides", node_id.into(), attributes)
             .unwrap_or(Sides::ALL);
 
         let edges = border_style.edges();
         let mut widget = Border {
             edges,
             sides,
-            width: data.primitive("width", node_id, attributes),
-            height: data.primitive("height", node_id, attributes),
-            min_width: data.primitive("min_width", node_id, attributes),
-            min_height: data.primitive("min_height", node_id, attributes),
+            width: data.primitive("width", node_id.into(), attributes),
+            height: data.primitive("height", node_id.into(), attributes),
+            min_width: data.primitive("min_width", node_id.into(), attributes),
+            min_height: data.primitive("min_height", node_id.into(), attributes),
             style: style(&data, attributes, node_id),
         };
 

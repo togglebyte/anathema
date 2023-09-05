@@ -24,6 +24,18 @@ pub(crate) struct LoopNode {
     pub(crate) value_index: usize,
 }
 
+impl LoopNode {
+    fn scope(&mut self, scope: &mut Scope) {
+        scope.scope_collection(
+            self.binding.clone(),
+            &self.collection,
+            self.value_index,
+        );
+        self.body.reset();
+        self.value_index += 1;
+    }
+}
+
 #[derive(Debug)]
 pub struct Node {
     pub node_id: NodeId,
@@ -66,7 +78,7 @@ pub(crate) enum NodeKind {
 pub struct Nodes {
     expressions: Rc<[Expression]>,
     pub inner: Vec<Node>,
-    active_loop: Option<Box<Node>>,
+    active_loop: Option<usize>,
     expr_index: usize,
     next_id: NodeId,
     cache_index: usize,
@@ -117,11 +129,13 @@ impl Nodes {
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
-        if let Some(active_loop) = self.active_loop.as_mut() {
+        if let Some(active_loop) = self.active_loop {
+            let active_loop = &mut self.inner[active_loop];
+
             let Node {
                 kind: NodeKind::Loop(loop_node),
                 node_id: parent_id,
-            } = active_loop.deref_mut()
+            } = active_loop
             else {
                 unreachable!()
             };
@@ -130,19 +144,11 @@ impl Nodes {
                 result @ Some(_) => return result,
                 None => {
                     if loop_node.value_index + 1 == loop_node.collection.len() {
-                        self.inner.push(*self.active_loop.take().expect(""));
+                        self.active_loop.take();
                         self.expr_index += 1;
                     } else {
-                        let mut scope = scope.from_self();
-                        scope.scope_collection(
-                            loop_node.binding.clone(),
-                            &loop_node.collection,
-                            loop_node.value_index,
-                        );
-                        loop_node.body.reset();
-                        loop_node.value_index += 1;
-
-                        return self.next(state, &mut scope, layout, f);
+                        loop_node.scope(scope);
+                        return self.next(state, scope, layout, f);
                     }
                 }
             }
@@ -201,11 +207,12 @@ impl Nodes {
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
-        // Check if there is a cached value, if so: use that
-        match self.get_cached(state, scope, layout, f) {
-            ret @ Some(_) => return ret,
-            _ => (),
-        }
+
+        // // Check if there is a cached value, if so: use that
+        // match self.get_cached(state, scope, layout, f) {
+        //     ret @ Some(_) => return ret,
+        //     _ => (),
+        // }
 
         if let ret @ Some(_) = self.eval_active_loop(state, scope, layout, f) {
             return ret;
@@ -217,8 +224,6 @@ impl Nodes {
             Err(e) => return Some(Err(e)),
         };
 
-        let k = &node.kind;
-
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
                 self.expr_index += 1;
@@ -227,9 +232,12 @@ impl Nodes {
                 self.inner.push(node);
                 Some(res)
             }
-            NodeKind::Loop { .. } => {
-                self.active_loop = Some(node.into());
-                self.next(state, scope, layout, f)
+            NodeKind::Loop(loop_node) => {
+                self.active_loop = Some(self.inner.len());
+                let mut scope = scope.from_self();
+                loop_node.scope(&mut scope);
+                self.inner.push(node);
+                self.next(state, &mut scope, layout, f)
             }
             NodeKind::ControlFlow { .. } => panic!(),
         }

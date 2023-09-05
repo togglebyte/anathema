@@ -8,6 +8,8 @@ pub use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,
 };
 
+use crate::meta::Meta;
+
 pub mod flume;
 
 #[derive(Debug, Copy, Clone)]
@@ -82,19 +84,19 @@ impl From<CTEvent> for Event {
 }
 
 pub trait Events<S: State> {
-    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event;
+    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S, meta: &Meta) -> Event;
 }
 
 pub struct DefaultEvents<F, S>(pub F, pub std::marker::PhantomData<S>)
 where
-    F: FnMut(Event, &mut Nodes, &mut S) -> Event;
+    F: FnMut(Event, &mut Nodes, &mut S, &Meta) -> Event;
 
 impl<F, S: State> Events<S> for DefaultEvents<F, S>
 where
-    F: FnMut(Event, &mut Nodes, &mut S) -> Event,
+    F: FnMut(Event, &mut Nodes, &mut S, &Meta) -> Event,
 {
-    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event {
-        (self.0)(event, tree, state)
+    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S, meta: &Meta) -> Event {
+        (self.0)(event, tree, state, meta)
     }
 }
 

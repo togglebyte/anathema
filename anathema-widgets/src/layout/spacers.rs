@@ -19,10 +19,6 @@ impl Layout for SpacerLayout {
         let size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
         Ok(size)
     }
-
-    fn finalize(&mut self, nodes: &mut Nodes) -> Size {
-        todo!()
-    }
 }
 
 /// Layout spacers.

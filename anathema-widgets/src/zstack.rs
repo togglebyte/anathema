@@ -111,11 +111,11 @@ impl WidgetFactory for ZStackFactory {
         text: Option<&ScopeValue>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let width = data.primitive("width", node_id, attributes);
-        let height = data.primitive("height", node_id, attributes);
+        let width = data.primitive("width", node_id.into(), attributes);
+        let height = data.primitive("height", node_id.into(), attributes);
         let mut widget = ZStack::new(width, height);
-        widget.min_width = data.primitive("min-width", node_id, attributes);
-        widget.min_height = data.primitive("min-height", node_id, attributes);
+        widget.min_width = data.primitive("min-width", node_id.into(), attributes);
+        widget.min_height = data.primitive("min-height", node_id.into(), attributes);
         Ok(Box::new(widget))
     }
 }
