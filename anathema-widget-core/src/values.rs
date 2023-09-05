@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 pub use anathema_render::Color;
 use anathema_render::Style;
-use anathema_values::{List, PathId, ScopeValue};
+use anathema_values::{List, ScopeValue};
 
 use crate::layout::{Align, Axis, Direction, Padding};
 use crate::WidgetContainer;

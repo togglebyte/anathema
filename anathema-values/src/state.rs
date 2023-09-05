@@ -6,6 +6,7 @@ use crate::{NodeId, Path, Collection};
 pub trait State {
     fn get(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, str>>;
 
+    // TODO: remove this. Maybe take an optional node id on `get`
     fn get_no_sub(&self, key: &Path) -> Option<Cow<'_, str>>;
 
     fn get_collection(&self, key: &Path) -> Option<Collection>;

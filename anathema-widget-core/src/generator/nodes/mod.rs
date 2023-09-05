@@ -65,7 +65,7 @@ pub(crate) enum NodeKind {
 // TODO: possibly optimise this by making nodes optional on the node
 pub struct Nodes {
     expressions: Rc<[Expression]>,
-    inner: Vec<Node>,
+    pub inner: Vec<Node>,
     active_loop: Option<Box<Node>>,
     expr_index: usize,
     next_id: NodeId,
@@ -217,6 +217,8 @@ impl Nodes {
             Err(e) => return Some(Err(e)),
         };
 
+        let k = &node.kind;
+
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
                 self.expr_index += 1;
@@ -224,8 +226,6 @@ impl Nodes {
                 let res = f(widget, nodes, data);
                 self.inner.push(node);
                 Some(res)
-                // let size = widget.layout(nodes, layout.constraints, data);
-                // Some(size)
             }
             NodeKind::Loop { .. } => {
                 self.active_loop = Some(node.into());

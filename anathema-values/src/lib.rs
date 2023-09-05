@@ -1,24 +1,32 @@
-// pub use store::{ReadOnly, Store, StoreMut, StoreRef};
-// pub use values::List;
+use std::cell::RefCell;
 
-// pub use crate::notifier::{Listen, Listeners};
-// pub use crate::path::{Path, PathId};
-// pub use crate::scopes::{ScopeId, ScopeValue};
-// pub use crate::values::{AsSlice, Container, Truthy, ValueRef};
+pub use self::id::NodeId;
+pub use self::list::List;
+pub use self::map::Map;
+pub use self::path::Path;
+pub use self::scope::{Collection, Context, Scope, ScopeValue};
+pub use self::slab::Slab;
+pub use self::state::State;
+pub use self::value::Value;
 
-mod generation;
 pub mod hashmap;
-// mod notifier;
 mod path;
-// mod scopes;
-// mod store;
-// mod values;
+
+mod id;
+mod list;
+mod map;
+mod scope;
+mod slab;
+mod state;
+mod value;
+
+thread_local! {
+    pub static DIRTY_NODES: RefCell<Vec<NodeId>> = Default::default();
+}
+
+pub fn drain_dirty_nodes() -> Vec<NodeId> {
+    DIRTY_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
+}
 
 // #[cfg(testing)]
 pub mod testing;
-
-pub use v2::{Collection, Context, List, Map, Scope, ScopeValue, Slab, State, Value, NodeId, drain_dirty_nodes};
-
-pub use crate::path::{Path, PathId};
-
-mod v2;

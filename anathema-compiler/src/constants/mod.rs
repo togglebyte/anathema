@@ -1,7 +1,7 @@
-use anathema_values::{Path, PathId, ScopeValue};
+use anathema_values::{Path, ScopeValue};
 pub(crate) use storage::Storage;
 
-use self::paths::Paths;
+// use self::paths::Paths;
 use self::strings::Strings;
 // use self::texts::Texts;
 use self::values::Values;
@@ -24,7 +24,7 @@ mod values;
 pub struct Constants {
     strings: Strings,
     values: Values,
-    paths: Paths,
+    // paths: Paths,
 }
 
 impl Constants {
@@ -32,7 +32,7 @@ impl Constants {
         Self {
             strings: Strings::empty(),
             values: Values::empty(),
-            paths: Paths::empty(),
+            // paths: Paths::empty(),
         }
     }
 
@@ -40,17 +40,17 @@ impl Constants {
         self.strings.push(string.into())
     }
 
-    pub fn paths(&self) -> impl Iterator<Item = &Path> + '_ {
-        self.paths.iter()
-    }
+    // pub fn paths(&self) -> impl Iterator<Item = &Path> + '_ {
+    //     self.paths.iter()
+    // }
 
     pub fn store_value(&mut self, value: ScopeValue) -> ValueId {
         self.values.push(value)
     }
 
-    pub fn store_path(&mut self, path: Path) -> PathId {
-        self.paths.push(path)
-    }
+    // pub fn store_path(&mut self, path: Path) -> PathId {
+    //     self.paths.push(path)
+    // }
 
     pub fn lookup_string(&self, index: StringId) -> Option<&str> {
         self.strings.get(index).map(String::as_str)
@@ -60,7 +60,7 @@ impl Constants {
         self.values.get(index)
     }
 
-    pub fn lookup_path(&self, path_id: PathId) -> Option<&Path> {
-        self.paths.get(path_id)
-    }
+    // pub fn lookup_path(&self, path_id: PathId) -> Option<&Path> {
+    //     self.paths.get(path_id)
+    // }
 }

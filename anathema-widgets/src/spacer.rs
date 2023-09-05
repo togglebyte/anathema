@@ -38,10 +38,10 @@ impl Widget for Spacer {
         mut layout: &mut LayoutCtx,
         data: Context<'_, '_>,
     ) -> Result<Size> {
-        debug_assert!(
-            layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),
-            "the layout context needs to be tight for a spacer"
-        );
+        // debug_assert!(
+        //     layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),
+        //     "the layout context needs to be tight for a spacer"
+        // );
 
         Layouts::new(SpacerLayout, layout).layout(children, data)
     }

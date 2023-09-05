@@ -14,6 +14,10 @@ impl<T> List<T> {
     pub fn empty() -> Self {
         Self::new(vec![])
     }
+     
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
 
     pub fn new(inner: Vec<Value<T>>) -> Self {
         Self { inner }
