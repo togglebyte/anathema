@@ -31,7 +31,7 @@ impl State for TestState {
         }
     }
 
-    fn get_collection(&self, key: &Path) -> Option<crate::Collection> {
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<crate::Collection> {
         todo!()
     }
 }

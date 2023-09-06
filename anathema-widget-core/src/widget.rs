@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{Context, ScopeValue, State};
+use anathema_values::{Context, ScopeValue, State, remove_node, NodeId};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
@@ -51,8 +51,8 @@ pub trait Widget {
         }
     }
 
-    fn update(&mut self, state: &mut dyn State) {
-    }
+    /// Called when a value the widget subscribes to has changed.
+    fn update(&mut self, state: &mut dyn State) {}
 }
 
 pub trait AnyWidget {
@@ -176,6 +176,7 @@ pub struct WidgetContainer {
     pub(crate) inner: Box<dyn AnyWidget>,
     pub(crate) pos: Pos,
     pub(crate) size: Size,
+    pub(crate) node_id: NodeId,
 }
 
 impl WidgetContainer {
@@ -340,5 +341,13 @@ impl WidgetContainer {
 impl Debug for WidgetContainer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
+    }
+}
+
+impl Drop for WidgetContainer {
+    fn drop(&mut self) {
+        let mut removed_node = NodeId::disposable();
+        std::mem::swap(&mut self.node_id, &mut removed_node);
+        remove_node(removed_node);
     }
 }

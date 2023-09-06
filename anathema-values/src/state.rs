@@ -6,7 +6,7 @@ use crate::{NodeId, Path, Collection};
 pub trait State {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, str>>;
 
-    fn get_collection(&self, key: &Path) -> Option<Collection>;
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Collection>;
 }
 
 impl State for Box<dyn State> {
@@ -14,8 +14,8 @@ impl State for Box<dyn State> {
         self.deref().get(key, node_id)
     }
 
-    fn get_collection(&self, key: &Path) -> Option<Collection> {
-        self.deref().get_collection(key)
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Collection> {
+        self.deref().get_collection(key, node_id)
     }
 }
 
@@ -26,7 +26,7 @@ impl State for () {
         None
     }
 
-    fn get_collection(&self, key: &Path) -> Option<Collection> {
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Collection> {
         None
     }
 }

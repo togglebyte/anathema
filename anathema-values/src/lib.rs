@@ -8,6 +8,7 @@ pub use self::scope::{Collection, Context, Scope, ScopeValue};
 pub use self::slab::Slab;
 pub use self::state::State;
 pub use self::value::Value;
+pub use crate::value::Change;
 
 pub mod hashmap;
 mod path;
@@ -21,11 +22,16 @@ mod state;
 mod value;
 
 thread_local! {
-    pub static DIRTY_NODES: RefCell<Vec<NodeId>> = Default::default();
+    static DIRTY_NODES: RefCell<Vec<(NodeId, Change)>> = Default::default();
+    static REMOVED_NODES: RefCell<Vec<NodeId>> = Default::default();
 }
 
-pub fn drain_dirty_nodes() -> Vec<NodeId> {
+pub fn drain_dirty_nodes() -> Vec<(NodeId, Change)> {
     DIRTY_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
+}
+
+pub fn remove_node(node: NodeId) {
+    REMOVED_NODES.with(|nodes| nodes.borrow_mut().push(node));
 }
 
 // #[cfg(testing)]

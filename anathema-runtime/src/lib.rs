@@ -110,9 +110,14 @@ where
     fn changes(&mut self) {
         let dirty_nodes = drain_dirty_nodes();
         
-        for node_id in dirty_nodes {
-            self.nodes.update(node_id.as_slice(), &mut self.state);
+        for (node_id, change) in dirty_nodes {
+            self.nodes.update(node_id.as_slice(), change, &mut self.state);
         }
+
+        // TODO: finish this. Need to figure out a good way to notify that
+        //       a values should have a sub removed.
+        // for node in removed_nodes() {
+        // }
     }
 
     pub fn run(mut self) -> Result<()> {

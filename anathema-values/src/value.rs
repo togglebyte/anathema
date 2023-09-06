@@ -5,10 +5,14 @@ use std::ops::{Deref, DerefMut};
 use super::DIRTY_NODES;
 use crate::NodeId;
 
+#[derive(Debug)]
+pub enum Change {
+    Modified,
+    Remove(usize),
+}
+
 #[derive(Debug, Default)]
 pub struct Value<T> {
-    // TODO: do we need the generation anymore?
-    gen: usize,
     pub(crate) inner: T,
     subscribers: RefCell<Vec<NodeId>>,
 }
@@ -17,7 +21,6 @@ impl<T> Value<T> {
     pub fn new(inner: T) -> Self {
         Self {
             inner,
-            gen: 0,
             subscribers: RefCell::new(vec![]),
         }
     }
@@ -37,10 +40,8 @@ impl<T> Deref for Value<T> {
 
 impl<T> DerefMut for Value<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.gen = self.gen.wrapping_add(1);
-
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push(s.clone()));
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Modified)));
         }
 
         &mut self.inner

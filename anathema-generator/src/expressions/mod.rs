@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State};
+use anathema_values::{Collection, Context, Path, Scope, ScopeValue, State, NodeId};
 
 use self::controlflow::{Else, If};
 use crate::nodes::{LoopNode, Node, NodeKind, Nodes};
-use crate::{Attributes, IntoWidget, NodeId};
+use crate::{Attributes, IntoWidget};
 
 mod controlflow;
 
@@ -58,7 +58,7 @@ impl<Widget: IntoWidget> Loop<Widget> {
             ScopeValue::Dyn(path) => scope
                 .lookup_list(path)
                 .map(Collection::Rc)
-                .unwrap_or_else(|| state.get_collection(path).unwrap_or(Collection::Empty)),
+                .unwrap_or_else(|| state.get_collection(path, Some(&node_id)).unwrap_or(Collection::Empty)),
         };
 
         scope.scope_collection(self.binding.clone(), &collection, 0);

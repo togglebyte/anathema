@@ -3,7 +3,7 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 
 use anathema_render::Size;
-use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, State};
+use anathema_values::{Change, Collection, Context, NodeId, Path, Scope, ScopeValue, State};
 
 use self::controlflow::{Else, If};
 use crate::contexts::LayoutCtx;
@@ -26,11 +26,7 @@ pub(crate) struct LoopNode {
 
 impl LoopNode {
     fn scope(&mut self, scope: &mut Scope) {
-        scope.scope_collection(
-            self.binding.clone(),
-            &self.collection,
-            self.value_index,
-        );
+        scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
         self.body.reset();
         self.value_index += 1;
     }
@@ -47,6 +43,18 @@ impl Node {
         match &mut self.kind {
             NodeKind::Single(_, nodes) => nodes.reset_cache(),
             NodeKind::Loop(LoopNode { body, .. }) => body.reset_cache(),
+            NodeKind::ControlFlow { .. } => panic!(),
+        }
+    }
+
+    fn update(&mut self, change: Change, state: &mut impl State) {
+        match &mut self.kind {
+            NodeKind::Single(widget, _) => widget.update(state),
+            NodeKind::Loop(LoopNode { body, .. }) => match change {
+                Change::Remove(index) if body.inner.len() == index + 1 => drop(body.inner.pop()),
+                Change::Remove(index) if body.inner.len() > index => drop(body.inner.remove(index)),
+                _ => (),
+            },
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
@@ -85,17 +93,24 @@ pub struct Nodes {
 }
 
 impl Nodes {
-    pub fn update(&mut self, node_id: &[usize], state: &mut impl State) {
-        match &mut self.inner[node_id[0]].kind {
-            NodeKind::Single(widget, children) => {
-                if node_id.len() > 1 {
-                    children.update(&node_id[1..], state);
-                } else {
-                    widget.update(state);
+    pub fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
+        for node in &mut self.inner {
+            if node.node_id.contains(node_id) {
+                if node.node_id.eq(node_id) {
+                    node.update(change, state);
+                    return;
+                }
+
+                match &mut node.kind {
+                    NodeKind::Single(widget, children) => {
+                        return children.update(&node_id, change, state)
+                    }
+                    NodeKind::Loop(loop_node) => {
+                        return loop_node.body.update(node_id, change, state)
+                    }
+                    _ => {}
                 }
             }
-            NodeKind::Loop(loop_node) => loop_node.body.update(&node_id[1..], state),
-            _ => {}
         }
     }
 

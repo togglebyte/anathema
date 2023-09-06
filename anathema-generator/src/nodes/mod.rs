@@ -2,15 +2,13 @@ use std::borrow::Cow;
 use std::ops::DerefMut;
 use std::rc::Rc;
 
-use anathema_values::{Collection, Path, Scope, ScopeValue, State, Context};
+use anathema_values::{Collection, Path, Scope, ScopeValue, State, Context, NodeId};
 
 use self::controlflow::{Else, If};
-pub use self::id::NodeId;
 use crate::expressions::Expression;
 use crate::IntoWidget;
 
 mod controlflow;
-mod id;
 
 // -----------------------------------------------------------------------------
 //   - Loop -

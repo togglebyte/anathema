@@ -42,11 +42,14 @@ impl SingleNode {
             pos: Pos::ZERO,
             size: Size::ZERO,
             inner: Factory::exec(context, &self, &node_id)?,
+            node_id: node_id.clone(),
         };
+
         let node = Node {
             kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
             node_id,
         };
+
         Ok(node)
     }
 }
@@ -74,7 +77,7 @@ impl Loop {
             ScopeValue::Dyn(path) => scope
                 .lookup_list(path)
                 .map(Collection::Rc)
-                .unwrap_or_else(|| state.get_collection(path).unwrap_or(Collection::Empty)),
+                .unwrap_or_else(|| state.get_collection(path, Some(&node_id)).unwrap_or(Collection::Empty)),
         };
 
         let node = Node {
