@@ -8,6 +8,12 @@ impl NodeId {
         Self(vec![id])
     }
 
+    pub fn next(&mut self) -> NodeId {
+        let ret = NodeId(self.0.clone());
+        self.0.last_mut().map(|v| *v += 1);
+        ret
+    }
+
     pub fn child(&self, next: usize) -> Self {
         let mut v = Vec::with_capacity(self.0.len() + 1);
         v.extend(&self.0);
