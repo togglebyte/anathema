@@ -129,6 +129,24 @@ impl<'a, 'val> Context<'a, 'val> {
         Self { state, scope }
     }
 
+    /// Resolve a value based on paths.
+    pub fn resolve(&self, value: &ScopeValue) -> ScopeValue {
+        match value {
+            ScopeValue::Static(_) => value.clone(),
+            ScopeValue::Dyn(path) => {
+                match self.scope.lookup(path) {
+                    Some(lark @ ScopeValue::Dyn(p)) => self.resolve(lark),
+                    Some(_) => value.clone(),
+                    None => ScopeValue::Dyn(path.clone()),
+                }
+            }
+            ScopeValue::List(list) => {
+                let values = list.iter().map(|v| self.resolve(v)).collect();
+                ScopeValue::List(values)
+            }
+        }
+    }
+
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values

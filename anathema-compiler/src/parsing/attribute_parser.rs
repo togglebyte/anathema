@@ -37,6 +37,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             //     Ok(ansi_val) => Value::Color(Color::AnsiValue(ansi_val)),
             //     Err(_e) => return Err(self.lexer.error(ErrorKind::InvalidNumber)),
             // },
+            Kind::Number(val) => val,
             Kind::Ident(val) => val.trim(),
                 // match left {
                 //     fields::ALIGNMENT => match val {

@@ -16,7 +16,7 @@ use events::Event;
 use view::View;
 
 use self::frame::Frame;
-use self::meta::Meta;
+pub use self::meta::Meta;
 use crate::events::{EventProvider, Events};
 
 pub mod events;
@@ -153,9 +153,9 @@ where
 
             self.changes();
 
-            *self.meta.count = self.nodes.count();
+            *self.meta.count = 123; //self.nodes.count();
             let total = Instant::now();
-            // self.layout()?;
+            self.layout()?;
             *self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();

@@ -22,7 +22,7 @@ pub(crate) enum Kind<'src> {
     Ident(&'src str),
     Index(usize),
     Newline,
-    // Number(&'src str),
+    Number(&'src str),
     Fullstop,
     LBracket,
     RBracket,
@@ -131,7 +131,7 @@ impl<'src> Lexer<'src> {
             // // -----------------------------------------------------------------------------
             // //     - Number -
             // // -----------------------------------------------------------------------------
-            // ('0'..='9' | '-' | '+', _) => self.take_number(index),
+            ('0'..='9' | '-' | '+', _) => self.take_number(index),
 
             // -----------------------------------------------------------------------------
             //     - String -
@@ -185,25 +185,26 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    // fn take_number(&mut self, index: usize) -> Result<Token<'src>> {
-        // let mut end = index;
-        // let mut parse_float = &self.src[index..=index] == ".";
+    fn take_number(&mut self, index: usize) -> Result<Token<'src>> {
+        let mut end = index;
+        let mut parse_float = &self.src[index..=index] == ".";
 
-        // let signed = &self.src[index..=index] == "-"
-        //     || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
+        let signed = &self.src[index..=index] == "-"
+            || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
 
-        // while let Some((e, c @ ('0'..='9' | '-' | '.' | '+'))) = self.chars.peek() {
-        //     if *c == '.' {
-        //         parse_float = true;
-        //     }
-        //     end = *e;
-        //     self.chars.next();
-        // }
+        while let Some((e, c @ ('0'..='9' | '-' | '.' | '+'))) = self.chars.peek() {
+            if *c == '.' {
+                parse_float = true;
+            }
+            end = *e;
+            self.chars.next();
+        }
 
-        // let input = &self.src[index..=end];
+        let input = &self.src[index..=end];
+        let kind = Kind::Number(input);
         // let kind = match parse_float {
         //     true => match input.parse::<f64>() {
-        //         Ok(num) => Ok(Kind::Number(Number::Float(num))),
+        //         Ok(num) => Ok(Kind::Number(num)),
         //         Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
         //     },
         //     false => match signed {
@@ -218,8 +219,8 @@ impl<'src> Lexer<'src> {
         //     },
         // }?;
 
-        // Ok(Token(kind, index))
-    // }
+        Ok(Token(kind, index))
+    }
 
     fn take_ident(&mut self, index: usize) -> Kind<'src> {
         let mut end = index;

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 use std::time::Duration;
 
 use anathema_render::Size;
@@ -22,13 +22,40 @@ pub struct Meta {
 }
 
 impl Meta {
-    pub(super) fn new(size: Size) -> Self {
+    pub fn new(size: Size) -> Self {
         Self {
             size: Value::new(size),
             timings: Value::new(Timings::default()),
             focus: true,
             count: Value::new(0),
         }
+    }
+}
+
+impl State for Meta {
+    fn get(&self, key: &Path, node_id: Option<&anathema_values::NodeId>) -> Option<std::borrow::Cow<'_, str>> {
+        match key {
+            Path::Key(key) => {
+                match key.as_str() {
+                    "count" => Some((&self.count).into()),
+                    _ => None,
+                }
+            }
+            Path::Composite(left, right) => {
+                let Path::Key(key) = left.deref() else {
+                    return None;
+                };
+                match key.as_str() {
+                    "timings" => self.timings.get(right, None),
+                    _ => None,
+                }
+            }
+            _ => None
+        }
+    }
+
+    fn get_collection(&self, key: &Path) -> Option<anathema_values::Collection> {
+        None
     }
 }
 
@@ -39,4 +66,26 @@ pub struct Timings {
     pub paint: Value<Duration>,
     pub render: Value<Duration>,
     pub total: Value<Duration>,
+}
+
+impl State for Timings {
+    fn get(&self, key: &Path, node_id: Option<&anathema_values::NodeId>) -> Option<std::borrow::Cow<'_, str>> {
+        match key {
+            Path::Key(key) => {
+                match key.as_str() {
+                    "layout" => Some(format!("{:?}", self.layout.deref()).into()),
+                    "position" => Some(format!("{:?}", self.position.deref()).into()),
+                    "paint" => Some(format!("{:?}", self.paint.deref()).into()),
+                    "render" => Some(format!("{:?}", self.render.deref()).into()),
+                    "total" => Some(format!("{:?}", self.total.deref()).into()),
+                    _ => None,
+                }
+            }
+            _ => None
+        }
+    }
+
+    fn get_collection(&self, key: &Path) -> Option<anathema_values::Collection> {
+        None
+    }
 }

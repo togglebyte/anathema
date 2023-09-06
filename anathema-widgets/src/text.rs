@@ -128,7 +128,6 @@ impl Widget for Text {
         let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
-        self.layout.process(self.text.as_str());
 
         match &self.text_src {
             ScopeValue::Static(s) => {},
@@ -141,6 +140,8 @@ impl Widget for Text {
                 data.list_to_string(list, &mut self.text, None);
             }
         }
+
+        self.layout.process(self.text.as_str());
 
         children.for_each(data.state, data.scope, ctx, |span, inner_children, data| {
             // Ignore any widget that isn't a span
@@ -228,7 +229,7 @@ impl WidgetFactory for TextFactory {
         let word_wrap = data.attribute("wrap", node_id.into(), attributes).unwrap_or(Wrap::Normal);
         let text_alignment = data.attribute("text-align", node_id.into(), attributes).unwrap_or(TextAlignment::Left);
 
-        let text_src = text_src.cloned().expect("a text widget always has a text value");
+        let text_src = data.resolve(text_src.expect("a text widget always has a text value"));
 
         let text = match &text_src {
             ScopeValue::Static(s) => s.to_string(),

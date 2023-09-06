@@ -109,7 +109,6 @@ impl Nodes {
 
     fn reset(&mut self) {
         self.expr_index = 0;
-        self.cache_index = 0;
     }
 
     pub fn reset_cache(&mut self) {
@@ -143,7 +142,7 @@ impl Nodes {
             match loop_node.body.next(state, scope, layout, f) {
                 result @ Some(_) => return result,
                 None => {
-                    if loop_node.value_index + 1 == loop_node.collection.len() {
+                    if loop_node.value_index >= loop_node.collection.len() {
                         self.active_loop.take();
                         self.expr_index += 1;
                     } else {
@@ -190,7 +189,8 @@ impl Nodes {
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
                 let data = Context::new(state, scope);
-                Some(f(widget, nodes, data))
+                let res = f(widget, nodes, data);
+                Some(res)
             }
             NodeKind::Loop(LoopNode { body, .. }) => body.next(state, scope, layout, f),
             NodeKind::ControlFlow { .. } => panic!(),
@@ -207,15 +207,14 @@ impl Nodes {
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
-
-        // // Check if there is a cached value, if so: use that
-        // match self.get_cached(state, scope, layout, f) {
-        //     ret @ Some(_) => return ret,
-        //     _ => (),
-        // }
-
         if let ret @ Some(_) = self.eval_active_loop(state, scope, layout, f) {
             return ret;
+        }
+
+        // Check if there is a cached value, if so: use that
+        match self.get_cached(state, scope, layout, f) {
+            ret @ Some(_) => return ret,
+            _ => (),
         }
 
         let expr = self.expressions.get(self.expr_index)?;
@@ -230,6 +229,7 @@ impl Nodes {
                 let data = Context::new(state, scope);
                 let res = f(widget, nodes, data);
                 self.inner.push(node);
+                self.cache_index = self.inner.len();
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
@@ -237,6 +237,7 @@ impl Nodes {
                 let mut scope = scope.from_self();
                 loop_node.scope(&mut scope);
                 self.inner.push(node);
+                self.cache_index = self.inner.len();
                 self.next(state, &mut scope, layout, f)
             }
             NodeKind::ControlFlow { .. } => panic!(),
