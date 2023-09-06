@@ -184,15 +184,21 @@ impl Nodes {
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
         let node = self.inner.get_mut(self.cache_index)?;
-        self.cache_index += 1;
 
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
                 let data = Context::new(state, scope);
                 let res = f(widget, nodes, data);
+                self.cache_index += 1;
                 Some(res)
             }
-            NodeKind::Loop(LoopNode { body, .. }) => body.next(state, scope, layout, f),
+            NodeKind::Loop(LoopNode { body, .. }) => {
+                let res = body.next(state, scope, layout, f);
+                if res.is_none() {
+                    self.cache_index += 1;
+                }
+                res
+            }
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }

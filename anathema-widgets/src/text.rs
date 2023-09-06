@@ -143,9 +143,11 @@ impl Widget for Text {
 
         self.layout.process(self.text.as_str());
 
+        let babies = children.count();
+
         children.for_each(data.state, data.scope, ctx, |span, inner_children, data| {
-            // Ignore any widget that isn't a span
-            if span.kind() != TextSpan::KIND {
+                // Ignore any widget that isn't a span
+                if span.kind() != TextSpan::KIND {
                 return Ok(Size::ZERO);
             }
 
@@ -264,7 +266,7 @@ impl WidgetFactory for SpanFactory {
         text: Option<&ScopeValue>,
         node_id: &NodeId
     ) -> Result<Box<dyn AnyWidget>> {
-        let text_src = text.cloned().expect("text span always have a text value");
+        let text_src = data.resolve(text.expect("a text widget always has a text value"));
 
         let text = match &text_src {
             ScopeValue::Static(s) => s.to_string(),

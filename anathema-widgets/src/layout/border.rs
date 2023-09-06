@@ -58,7 +58,6 @@ impl Layout for BorderLayout {
             data.scope,
             ctx,
             &mut |widget, children, data| {
-
                 // Shrink the constraint for the child to fit inside the border
                 constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
                     Some(w) => w,
@@ -88,6 +87,7 @@ impl Layout for BorderLayout {
                     Err(Error::InsufficientSpaceAvailble) => return Ok(Size::ZERO),
                     err @ Err(_) => err?,
                 };
+
                 let mut size = size + border_size + padding_size;
 
                 if let Some(min_width) = self.min_width {
@@ -106,10 +106,11 @@ impl Layout for BorderLayout {
                     size.height = constraints.max_height;
                 }
 
-                let size = Size {
-                    width: size.width.min(constraints.max_width),
-                    height: size.height.min(constraints.max_height),
-                };
+                // TODO: is this really needed? This is the cause for a bug
+                // let size = Size {
+                //     width: size.width.min(constraints.max_width),
+                //     height: size.height.min(constraints.max_height),
+                // };
 
                 Ok(size)
             },
