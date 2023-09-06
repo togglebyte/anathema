@@ -29,10 +29,6 @@ pub trait Widget {
         "[widget]"
     }
 
-    fn blop(&self) -> &dyn Any {
-        panic!()
-    }
-
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
@@ -54,6 +50,9 @@ pub trait Widget {
             widget.paint(children, ctx);
         }
     }
+
+    fn update(&mut self, state: &mut dyn State) {
+    }
 }
 
 pub trait AnyWidget {
@@ -73,15 +72,13 @@ pub trait AnyWidget {
     fn position_any(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
     fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>);
+
+    fn update_any(&mut self, state: &mut dyn State);
 }
 
 impl Widget for Box<dyn AnyWidget> {
     fn kind(&self) -> &'static str {
         self.deref().kind_any()
-    }
-
-    fn blop(&self) -> &dyn Any {
-        self.deref().as_any_ref()
     }
 
     fn layout(
@@ -99,6 +96,10 @@ impl Widget for Box<dyn AnyWidget> {
 
     fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
         self.deref_mut().paint_any(children, ctx)
+    }
+
+    fn update(&mut self, state: &mut dyn State) {
+        self.deref_mut().update_any(state)
     }
 }
 
@@ -131,6 +132,10 @@ impl<T: Widget + 'static> AnyWidget for T {
     fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
         self.paint(children, ctx)
     }
+
+    fn update_any(&mut self, state: &mut dyn State) {
+        self.update(state)
+    }
 }
 
 impl Widget for Box<dyn Widget> {
@@ -153,6 +158,10 @@ impl Widget for Box<dyn Widget> {
 
     fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>) {
         self.as_mut().paint(children, ctx)
+    }
+
+    fn update(&mut self, state: &mut dyn State) {
+        self.as_mut().update(state)
     }
 }
 
@@ -321,6 +330,10 @@ impl WidgetContainer {
         }
 
         Some(())
+    }
+
+    pub fn update(&mut self, state: &mut impl State) {
+        self.inner.update(state);
     }
 }
 

@@ -107,11 +107,11 @@ where
         }
     }
 
-    fn changes(&self) {
+    fn changes(&mut self) {
         let dirty_nodes = drain_dirty_nodes();
         
-        if dirty_nodes.len() > 0 {
-            // update here
+        for node_id in dirty_nodes {
+            self.nodes.update(node_id.as_slice(), &mut self.state);
         }
     }
 
@@ -153,7 +153,7 @@ where
 
             self.changes();
 
-            *self.meta.count = 123; //self.nodes.count();
+            *self.meta.count = self.nodes.count();
             let total = Instant::now();
             self.layout()?;
             *self.meta.timings.layout = total.elapsed();

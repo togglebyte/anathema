@@ -85,6 +85,20 @@ pub struct Nodes {
 }
 
 impl Nodes {
+    pub fn update(&mut self, node_id: &[usize], state: &mut impl State) {
+        match &mut self.inner[node_id[0]].kind {
+            NodeKind::Single(widget, children) => {
+                if node_id.len() > 1 {
+                    children.update(&node_id[1..], state);
+                } else {
+                    widget.update(state);
+                }
+            }
+            NodeKind::Loop(loop_node) => loop_node.body.update(&node_id[1..], state),
+            _ => {}
+        }
+    }
+
     pub(crate) fn new(expressions: Rc<[Expression]>, next_id: NodeId) -> Self {
         Self {
             expressions,

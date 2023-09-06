@@ -46,7 +46,7 @@ impl State for Meta {
                     return None;
                 };
                 match key.as_str() {
-                    "timings" => self.timings.get(right, None),
+                    "timings" => self.timings.get(right, node_id),
                     _ => None,
                 }
             }
@@ -73,10 +73,30 @@ impl State for Timings {
         match key {
             Path::Key(key) => {
                 match key.as_str() {
-                    "layout" => Some(format!("{:?}", self.layout.deref()).into()),
-                    "position" => Some(format!("{:?}", self.position.deref()).into()),
-                    "paint" => Some(format!("{:?}", self.paint.deref()).into()),
-                    "render" => Some(format!("{:?}", self.render.deref()).into()),
+                    "layout" => {
+                        if let Some(node_id) = node_id.cloned() {
+                            self.layout.subscribe(node_id);
+                        }
+                        Some(format!("{:?}", self.layout.deref()).into())
+                    }
+                    "position" => {
+                        if let Some(node_id) = node_id.cloned() {
+                            self.position.subscribe(node_id);
+                        }
+                        Some(format!("{:?}", self.position.deref()).into())
+                    }
+                    "paint" => {
+                        if let Some(node_id) = node_id.cloned() {
+                            self.paint.subscribe(node_id);
+                        }
+                        Some(format!("{:?}", self.paint.deref()).into())
+                    }
+                    "render" => {
+                        if let Some(node_id) = node_id.cloned() {
+                            self.render.subscribe(node_id);
+                        }
+                        Some(format!("{:?}", self.render.deref()).into())
+                    }
                     "total" => Some(format!("{:?}", self.total.deref()).into()),
                     _ => None,
                 }

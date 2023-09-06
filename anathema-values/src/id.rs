@@ -14,6 +14,10 @@ impl NodeId {
         v.push(next);
         Self(v)
     }
+
+    pub fn as_slice(&self) -> &[usize] {
+        &self.0
+    }
 }
 
 impl From<Vec<usize>> for NodeId {
