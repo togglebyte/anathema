@@ -51,8 +51,12 @@ impl Node {
         match &mut self.kind {
             NodeKind::Single(widget, _) => widget.update(state),
             NodeKind::Loop(LoopNode { body, .. }) => match change {
-                Change::Remove(index) if body.inner.len() == index + 1 => drop(body.inner.pop()),
-                Change::Remove(index) if body.inner.len() > index => drop(body.inner.remove(index)),
+                Change::Remove(index) if body.inner.len() == index + 1 => {
+                    drop(body.inner.pop())
+                }
+                Change::Remove(index) if body.inner.len() > index => {
+                    drop(body.inner.remove(index))
+                }
                 Change::Add => body.next_expr(),
                 _ => (),
             },
@@ -182,7 +186,7 @@ impl Nodes {
                 None => {
                     if loop_node.value_index >= loop_node.collection.len() {
                         self.active_loop.take();
-                        self.expr_index += 1;
+                        self.next_expr();
                     } else {
                         loop_node.scope(scope);
                         return self.next(state, scope, layout, f);
