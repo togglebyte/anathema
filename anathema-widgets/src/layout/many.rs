@@ -148,7 +148,7 @@ impl Layout for Many {
                 }
 
                 let widget_constraints = {
-                    let mut constraints = max_constraints;
+                    let mut constraints = used_size.to_constraints();
                     if self.unconstrained {
                         match self.axis {
                             Axis::Vertical => constraints.unbound_height(),

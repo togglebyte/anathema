@@ -53,6 +53,7 @@ impl Node {
             NodeKind::Loop(LoopNode { body, .. }) => match change {
                 Change::Remove(index) if body.inner.len() == index + 1 => drop(body.inner.pop()),
                 Change::Remove(index) if body.inner.len() > index => drop(body.inner.remove(index)),
+                Change::Add => body.next_expr(),
                 _ => (),
             },
             NodeKind::ControlFlow { .. } => panic!(),
@@ -93,6 +94,14 @@ pub struct Nodes {
 }
 
 impl Nodes {
+    fn next_expr(&mut self) {
+        if self.expr_index == self.expressions.len() {
+            self.expr_index = 0;
+        } else {
+            self.expr_index += 1;
+        }
+    }
+
     pub fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
         for node in &mut self.inner {
             if node.node_id.contains(node_id) {

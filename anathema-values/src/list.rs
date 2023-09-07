@@ -54,16 +54,20 @@ impl<T> List<T> {
     }
 
     pub fn pop(&mut self) -> Option<Value<T>> {
-        let ret = self.inner.pop();
+        let ret = self.inner.pop()?;
+        let index = self.inner.len();
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Remove(self.inner.len()))));
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Remove(index))));
         }
-        ret
+        Some(ret)
     }
 
     pub fn remove(&mut self, index: usize) -> Value<T> {
-        panic!()
-        // self.inner.remove(index)
+        let ret = self.inner.remove(index);
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Remove(index))));
+        }
+        ret
     }
 
     pub fn swap(&mut self, a: usize, b: usize) {
@@ -71,9 +75,11 @@ impl<T> List<T> {
         panic!()
     }
 
-    pub fn push(&mut self, value: Value<T>) {
-        // self.inner.push(value)
-        panic!()
+    pub fn push(&mut self, value: T) {
+        self.inner.push(Value::new(value));
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Add)));
+        }
     }
 
     pub fn insert(&mut self, index: usize, value: Value<T>) {

@@ -7,7 +7,8 @@ use crate::NodeId;
 
 #[derive(Debug)]
 pub enum Change {
-    Modified,
+    Update,
+    Add,
     Remove(usize),
 }
 
@@ -41,7 +42,7 @@ impl<T> Deref for Value<T> {
 impl<T> DerefMut for Value<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Modified)));
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Update)));
         }
 
         &mut self.inner
