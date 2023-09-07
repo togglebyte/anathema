@@ -26,6 +26,9 @@ pub(crate) struct LoopNode {
 
 impl LoopNode {
     fn scope(&mut self, scope: &mut Scope) {
+        if self.value_index == self.collection.len() {
+            return
+        }
         scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
         self.body.reset();
         self.value_index += 1;
@@ -50,14 +53,24 @@ impl Node {
     fn update(&mut self, change: Change, state: &mut impl State) {
         match &mut self.kind {
             NodeKind::Single(widget, _) => widget.update(state),
-            NodeKind::Loop(LoopNode { body, .. }) => match change {
-                Change::Remove(index) if body.inner.len() == index + 1 => {
-                    drop(body.inner.pop())
-                }
+            NodeKind::Loop(LoopNode { body, collection, value_index, .. }) => match change {
                 Change::Remove(index) if body.inner.len() > index => {
-                    drop(body.inner.remove(index))
+                    if body.inner.len() == index + 1 {
+                        body.inner.pop();
+                    } else {
+                        body.inner.remove(index);
+                    }
+                    if let Collection::State { len, .. } = collection {
+                        *len -= 1;
+                    }
+                    *value_index -= 1;
                 }
-                Change::Add => body.next_expr(),
+                Change::Add => {
+                    if let Collection::State { len, .. } = collection {
+                        *len += 1;
+                    }
+                    body.next_expr()
+                }
                 _ => (),
             },
             NodeKind::ControlFlow { .. } => panic!(),
@@ -90,7 +103,7 @@ pub(crate) enum NodeKind {
 // TODO: possibly optimise this by making nodes optional on the node
 pub struct Nodes {
     expressions: Rc<[Expression]>,
-    pub inner: Vec<Node>,
+    inner: Vec<Node>,
     active_loop: Option<usize>,
     expr_index: usize,
     next_id: NodeId,
@@ -234,8 +247,9 @@ impl Nodes {
                 self.cache_index += 1;
                 Some(res)
             }
-            NodeKind::Loop(LoopNode { body, .. }) => {
-                let res = body.next(state, scope, layout, f);
+            NodeKind::Loop(loop_node) => {
+                loop_node.scope(scope);
+                let res = loop_node.body.next(state, scope, layout, f);
                 if res.is_none() {
                     self.cache_index += 1;
                 }
