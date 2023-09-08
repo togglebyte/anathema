@@ -96,9 +96,7 @@ impl Nodes {
                     NodeKind::Single(widget, children) => {
                         return children.update(&node_id, change, state)
                     }
-                    NodeKind::Loop(loop_node) => {
-                        return loop_node.update(node_id, change, state)
-                    }
+                    NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),
                     _ => {}
                 }
             }
@@ -127,10 +125,6 @@ impl Nodes {
             .sum()
     }
 
-    fn reset(&mut self) {
-        self.expr_index = 0;
-    }
-
     pub fn reset_cache(&mut self) {
         self.cache_index = 0;
         for node in &mut self.inner {
@@ -138,44 +132,47 @@ impl Nodes {
         }
     }
 
-    fn eval_active_loop<F>(
-        &mut self,
-        state: &mut dyn State,
-        scope: &mut Scope,
-        layout: &mut LayoutCtx,
-        f: &mut F,
-    ) -> Option<Result<Size>>
-    where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
-    {
-        panic!()
-        // if let Some(active_loop) = self.active_loop {
-        //     let active_loop = &mut self.inner[active_loop];
+    // fn eval_active_loop<F>(
+    //     &mut self,
+    //     state: &mut dyn State,
+    //     scope: &mut Scope,
+    //     layout: &mut LayoutCtx,
+    //     loop_node: &mut LoopNode,
+    //     parent_id: &NodeId,
+    //     f: &mut F,
+    // ) -> Option<Result<Size>>
+    // where
+    //     F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
+    // {
+    //     // let active_loop = self.active_loop?;
+    //     // let active_loop = &mut self.inner[active_loop];
 
-        //     let Node {
-        //         kind: NodeKind::Loop(loop_node),
-        //         node_id: parent_id,
-        //     } = active_loop
-        //     else {
-        //         unreachable!()
-        //     };
+    //     // let Node {
+    //     //     kind: NodeKind::Loop(loop_node),
+    //     //     node_id: parent_id,
+    //     // } = active_loop
+    //     // else {
+    //     //     unreachable!()
+    //     // };
 
-        //     match loop_node.body.next(state, scope, layout, f) {
-        //         result @ Some(_) => return result,
-        //         None => {
-        //             if loop_node.value_index >= loop_node.collection.len() {
-        //                 self.active_loop.take();
-        //                 self.next_expr();
-        //             } else {
-        //                 loop_node.scope(scope);
-        //                 return self.next(state, scope, layout, f);
-        //             }
-        //         }
-        //     }
-        // }
+    //     // Here is where all the problems beings:
+    //     // The value used in the for-loop has to be scoped first...
 
-        // None
-    }
+    //     match loop_node.body.next(state, scope, layout, f) {
+    //         result @ Some(_) => return result,
+    //         None => {
+    //             // if loop_node.value_index >= loop_node.collection.len() {
+    //             //     self.active_loop.take();
+    //             //     self.next_expr();
+    //             // } else {
+    //             //     loop_node.scope(scope);
+    //             //     return self.next(state, scope, layout, f);
+    //             // }
+    //         }
+    //     }
+
+    //     None
+    // }
 
     pub fn for_each<F>(
         &mut self,
@@ -194,39 +191,6 @@ impl Nodes {
         }
     }
 
-    fn get_cached<F>(
-        &mut self,
-        state: &mut dyn State,
-        scope: &mut Scope<'_>,
-        layout: &mut LayoutCtx,
-        f: &mut F,
-    ) -> Option<Result<Size>>
-    where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
-    {
-        let node = self.inner.get_mut(self.cache_index)?;
-
-        match &mut node.kind {
-            NodeKind::Single(widget, nodes) => {
-                self.cache_index += 1;
-                let data = Context::new(state, scope);
-                let res = f(widget, nodes, data);
-                Some(res)
-            }
-            NodeKind::Loop(loop_node) => {
-                if !loop_node.scope(scope) {
-                //     return None;
-                }
-                let res = loop_node.body.next(state, scope, layout, f);
-                if res.is_none() {
-                    self.cache_index += 1;
-                }
-                res
-            }
-            NodeKind::ControlFlow { .. } => panic!(),
-        }
-    }
-
     pub fn next<F>(
         &mut self,
         state: &mut dyn State,
@@ -237,44 +201,52 @@ impl Nodes {
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
-        if let ret @ Some(_) = self.eval_active_loop(state, scope, layout, f) {
-            return ret;
+        // Evaluate the active loop if there is one
+        if let Some(node) = self.active_loop.map(|index| &mut self.inner[index]) {
+            match &mut node.kind {
+                NodeKind::Loop(loop_node) => match loop_node.body.next(state, scope, layout, f) {
+                    res @ Some(_) => return res,
+                    None if loop_node.scope(scope) => return self.next(state, scope, layout, f),
+                    None => {
+                        self.active_loop.take();
+                        return self.next(state, scope, layout, f);
+                    }
+                },
+                _ => unreachable!("only loop nodes are stored as active loops"),
+            }
         }
 
-        // Check if there is a cached value, if so: use that
-        match self.get_cached(state, scope, layout, f) {
-            ret @ Some(_) => return ret,
-            _ => (),
-        }
-
-        let expr = self.expressions.get(self.expr_index)?;
-        let mut node = match expr.eval(state, scope, self.next_id.next()) {
-            Ok(node) => node,
-            Err(e) => return Some(Err(e)),
+        let mut node = match self.inner.get_mut(self.cache_index) {
+            Some(node) => {
+                self.cache_index += 1;
+                node
+            }
+            None => {
+                let expr = self.expressions.get(self.expr_index)?;
+                match expr.eval(state, scope, self.next_id.next()) {
+                    Ok(node) => {
+                        self.expr_index += 1;
+                        let index = self.inner.len();
+                        self.inner.push(node);
+                        self.cache_index = self.inner.len();
+                        &mut self.inner[index]
+                    }
+                    Err(e) => return Some(Err(e)),
+                }
+            }
         };
 
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
-                self.expr_index += 1;
                 let data = Context::new(state, scope);
                 let res = f(widget, nodes, data);
-                self.inner.push(node);
-                self.cache_index = self.inner.len();
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
-                // loop
-                // 0:   No value to scope, so .... what to do
-                // 1..: Scope value, evaluate loop
-
-                self.active_loop = Some(self.inner.len());
                 let mut scope = scope.from_self();
-                if !loop_node.scope(&mut scope) {
-                    // self.active_loop.take();
-                    // self.expr_index += 1;
+                if loop_node.scope(&mut scope) {
+                    self.active_loop = Some(self.cache_index);
                 }
-                self.inner.push(node);
-                self.cache_index = self.inner.len();
                 self.next(state, &mut scope, layout, f)
             }
             NodeKind::ControlFlow { .. } => panic!(),

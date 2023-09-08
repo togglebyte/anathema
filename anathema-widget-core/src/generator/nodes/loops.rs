@@ -9,7 +9,7 @@ use crate::{WidgetContainer, contexts::LayoutCtx};
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub(crate) struct LoopNode {
-    body: Nodes,
+    pub(super) body: Nodes,
     binding: Path,
     collection: Collection,
     value_index: usize,
@@ -33,20 +33,19 @@ impl LoopNode {
         self.body.count()
     }
 
+    /// Scoping a value should only ever happen after an iteration
     pub(super) fn scope(&mut self, scope: &mut Scope) -> bool {
         if self.value_index >= self.collection.len() {
             return false;
         }
         scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
-        self.body.reset();
+        self.body.expr_index = 0;
         self.value_index += 1;
         true
     }
 
     pub(super) fn remove(&mut self, index: usize) {
-        if let Collection::State { len, .. } = &mut self.collection {
-            *len -= 1;
-        }
+        self.collection.remove();
         self.value_index -= 1;
         if index >= self.body.inner.len() {
             return;
@@ -55,9 +54,7 @@ impl LoopNode {
     }
 
     pub(super) fn add(&mut self) {
-        if let Collection::State { len, path, .. } = &mut self.collection {
-            *len += 1;
-        }
+        self.collection.add();
         self.body.next_expr()
     }
 

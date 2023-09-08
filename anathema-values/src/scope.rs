@@ -21,6 +21,24 @@ impl Collection {
             Self::State { len, .. } => *len,
         }
     }
+
+    /// Increase the length of a state collection.
+    /// This is a manual step for state bound lists
+    /// as we don't access the entire list, only 
+    /// one value at a time when needed.
+    pub fn add(&mut self) {
+        if let Collection::State { len, .. } = self {
+            *len += 1;
+        }
+    }
+
+    /// Decrease the length of a state collection.
+    /// This is a manual step (see `Self::add`)
+    pub fn remove(&mut self) {
+        if let Collection::State { len, .. } = self {
+            *len -= 1;
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
