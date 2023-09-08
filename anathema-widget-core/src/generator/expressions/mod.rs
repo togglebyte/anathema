@@ -5,9 +5,11 @@ use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, Stat
 
 use self::controlflow::{Else, If};
 use crate::error::Result;
-use crate::generator::nodes::{LoopNode, Node, NodeKind, Nodes};
+use crate::generator::nodes::{Node, NodeKind, Nodes};
 use crate::generator::Attributes;
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
+
+use super::nodes::LoopNode;
 
 mod controlflow;
 
@@ -23,12 +25,7 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval(
-        &self,
-        state: &mut dyn State,
-        scope: &mut Scope<'_>,
-        node_id: NodeId,
-    ) -> Result<Node> {
+    fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
         let context = Context::new(state, scope);
 
         let widget = WidgetContainer {
@@ -65,28 +62,27 @@ pub struct Loop {
 }
 
 impl Loop {
-    fn eval(
-        &self,
-        state: &mut dyn State,
-        scope: &mut Scope<'_>,
-        node_id: NodeId,
-    ) -> Result<Node> {
-        let collection: Collection = match &self.collection {
-            ScopeValue::List(values) => Collection::Rc(values.clone()),
-            ScopeValue::Static(string) => Collection::Empty,
-            ScopeValue::Dyn(path) => scope
-                .lookup_list(path)
-                .map(Collection::Rc)
-                .unwrap_or_else(|| state.get_collection(path, Some(&node_id)).unwrap_or(Collection::Empty)),
-        };
+    fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
+        let collection: Collection =
+            match &self.collection {
+                ScopeValue::List(values) => Collection::Rc(values.clone()),
+                ScopeValue::Static(string) => Collection::Empty,
+                ScopeValue::Dyn(path) => scope
+                    .lookup_list(path)
+                    .map(Collection::Rc)
+                    .unwrap_or_else(|| {
+                        state
+                            .get_collection(path, Some(&node_id))
+                            .unwrap_or(Collection::Empty)
+                    }),
+            };
 
         let node = Node {
-            kind: NodeKind::Loop(LoopNode {
-                body: Nodes::new(self.body.clone(), node_id.child(0)),
-                binding: self.binding.clone(),
+            kind: NodeKind::Loop(LoopNode::new(
+                Nodes::new(self.body.clone(), node_id.child(0)),
+                self.binding.clone(),
                 collection,
-                value_index: 0,
-            }),
+            )),
             node_id,
         };
 
@@ -104,12 +100,7 @@ pub struct ControlFlow {
 }
 
 impl ControlFlow {
-    fn eval(
-        &self,
-        state: &mut dyn State,
-        scope: &mut Scope<'_>,
-        node_id: NodeId,
-    ) -> Result<Node> {
+    fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
         if self.if_expr.is_true(scope, state) {}
 
         panic!()

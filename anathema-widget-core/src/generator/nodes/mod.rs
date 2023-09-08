@@ -6,34 +6,14 @@ use anathema_render::Size;
 use anathema_values::{Change, Collection, Context, NodeId, Path, Scope, ScopeValue, State};
 
 use self::controlflow::{Else, If};
+pub(crate) use self::loops::LoopNode;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Expression;
 use crate::WidgetContainer;
 
 mod controlflow;
-
-// -----------------------------------------------------------------------------
-//   - Loop -
-// -----------------------------------------------------------------------------
-#[derive(Debug)]
-pub(crate) struct LoopNode {
-    pub(crate) body: Nodes,
-    pub(crate) binding: Path,
-    pub(crate) collection: Collection,
-    pub(crate) value_index: usize,
-}
-
-impl LoopNode {
-    fn scope(&mut self, scope: &mut Scope) {
-        if self.value_index == self.collection.len() {
-            return
-        }
-        scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
-        self.body.reset();
-        self.value_index += 1;
-    }
-}
+mod loops;
 
 #[derive(Debug)]
 pub struct Node {
@@ -45,7 +25,7 @@ impl Node {
     fn reset_cache(&mut self) {
         match &mut self.kind {
             NodeKind::Single(_, nodes) => nodes.reset_cache(),
-            NodeKind::Loop(LoopNode { body, .. }) => body.reset_cache(),
+            NodeKind::Loop(loop_state) => loop_state.reset_cache(),
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
@@ -53,24 +33,9 @@ impl Node {
     fn update(&mut self, change: Change, state: &mut impl State) {
         match &mut self.kind {
             NodeKind::Single(widget, _) => widget.update(state),
-            NodeKind::Loop(LoopNode { body, collection, value_index, .. }) => match change {
-                Change::Remove(index) if body.inner.len() > index => {
-                    if body.inner.len() == index + 1 {
-                        body.inner.pop();
-                    } else {
-                        body.inner.remove(index);
-                    }
-                    if let Collection::State { len, .. } = collection {
-                        *len -= 1;
-                    }
-                    *value_index -= 1;
-                }
-                Change::Add => {
-                    if let Collection::State { len, .. } = collection {
-                        *len += 1;
-                    }
-                    body.next_expr()
-                }
+            NodeKind::Loop(loop_node) => match change {
+                Change::Remove(index) => loop_node.remove(index),
+                Change::Add => loop_node.add(),
                 _ => (),
             },
             NodeKind::ControlFlow { .. } => panic!(),
@@ -132,7 +97,7 @@ impl Nodes {
                         return children.update(&node_id, change, state)
                     }
                     NodeKind::Loop(loop_node) => {
-                        return loop_node.body.update(node_id, change, state)
+                        return loop_node.update(node_id, change, state)
                     }
                     _ => {}
                 }
@@ -156,7 +121,7 @@ impl Nodes {
             .iter()
             .map(|node| match &node.kind {
                 NodeKind::Single(_, nodes) => 1 + nodes.count(),
-                NodeKind::Loop(LoopNode { body, .. }) => body.count(),
+                NodeKind::Loop(loop_state) => loop_state.count(),
                 NodeKind::ControlFlow { .. } => panic!(),
             })
             .sum()
@@ -183,32 +148,33 @@ impl Nodes {
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
-        if let Some(active_loop) = self.active_loop {
-            let active_loop = &mut self.inner[active_loop];
+        panic!()
+        // if let Some(active_loop) = self.active_loop {
+        //     let active_loop = &mut self.inner[active_loop];
 
-            let Node {
-                kind: NodeKind::Loop(loop_node),
-                node_id: parent_id,
-            } = active_loop
-            else {
-                unreachable!()
-            };
+        //     let Node {
+        //         kind: NodeKind::Loop(loop_node),
+        //         node_id: parent_id,
+        //     } = active_loop
+        //     else {
+        //         unreachable!()
+        //     };
 
-            match loop_node.body.next(state, scope, layout, f) {
-                result @ Some(_) => return result,
-                None => {
-                    if loop_node.value_index >= loop_node.collection.len() {
-                        self.active_loop.take();
-                        self.next_expr();
-                    } else {
-                        loop_node.scope(scope);
-                        return self.next(state, scope, layout, f);
-                    }
-                }
-            }
-        }
+        //     match loop_node.body.next(state, scope, layout, f) {
+        //         result @ Some(_) => return result,
+        //         None => {
+        //             if loop_node.value_index >= loop_node.collection.len() {
+        //                 self.active_loop.take();
+        //                 self.next_expr();
+        //             } else {
+        //                 loop_node.scope(scope);
+        //                 return self.next(state, scope, layout, f);
+        //             }
+        //         }
+        //     }
+        // }
 
-        None
+        // None
     }
 
     pub fn for_each<F>(
@@ -242,13 +208,15 @@ impl Nodes {
 
         match &mut node.kind {
             NodeKind::Single(widget, nodes) => {
+                self.cache_index += 1;
                 let data = Context::new(state, scope);
                 let res = f(widget, nodes, data);
-                self.cache_index += 1;
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
-                loop_node.scope(scope);
+                if !loop_node.scope(scope) {
+                //     return None;
+                }
                 let res = loop_node.body.next(state, scope, layout, f);
                 if res.is_none() {
                     self.cache_index += 1;
@@ -295,9 +263,16 @@ impl Nodes {
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
+                // loop
+                // 0:   No value to scope, so .... what to do
+                // 1..: Scope value, evaluate loop
+
                 self.active_loop = Some(self.inner.len());
                 let mut scope = scope.from_self();
-                loop_node.scope(&mut scope);
+                if !loop_node.scope(&mut scope) {
+                    // self.active_loop.take();
+                    // self.expr_index += 1;
+                }
                 self.inner.push(node);
                 self.cache_index = self.inner.len();
                 self.next(state, &mut scope, layout, f)
@@ -315,7 +290,7 @@ impl Nodes {
                         NodeKind::Single(widget, nodes) => {
                             Box::new(std::iter::once((widget, nodes)))
                         }
-                        NodeKind::Loop(LoopNode { body, .. }) => Box::new(body.iter_mut()),
+                        NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow { body, .. } => Box::new(body.iter_mut()),
                     }
                 },

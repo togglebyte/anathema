@@ -143,6 +143,7 @@ where
                         self.screen.erase();
                         self.screen.render(&mut self.output)?;
                         self.screen.resize(size);
+                        self.screen.clear_all(&mut self.output)?;
 
                         self.constraints.max_width = size.width;
                         self.constraints.max_height = size.height;
