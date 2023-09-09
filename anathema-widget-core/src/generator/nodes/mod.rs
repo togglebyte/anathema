@@ -167,6 +167,7 @@ impl Nodes {
                     None if loop_node.scope(scope) => return self.next(state, scope, layout, f),
                     None => {
                         self.active_loop.take();
+                        scope.pop();
                         return self.next(state, scope, layout, f);
                     }
                 },
@@ -201,12 +202,12 @@ impl Nodes {
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
+                // TODO: this shouldn't be here and in the `scope` call, it's a hack
                 if loop_node.value_index < loop_node.collection.len() {
-                    let mut scope = scope.from_self();
-                    if loop_node.scope(&mut scope) {
+                    scope.push();
+                    if loop_node.scope(scope) {
                         self.active_loop = Some(self.cache_index - 1);
                     }
-                    return self.next(state, &mut scope, layout, f);
                 }
 
                 self.next(state, scope, layout, f)
