@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 use anathema_values::{Context, Path, ScopeValue, State};
 
-use crate::expressions::{Expression, Loop, SingleNode};
-use crate::{Attributes, IntoWidget};
+use crate::generator::expressions::{Expression, Loop, SingleNode};
+use crate::{Attributes, WidgetContainer, Widget, WidgetFactory, Factory};
 
 // // -----------------------------------------------------------------------------
 // //   - Helper impls -
@@ -111,50 +111,56 @@ use crate::{Attributes, IntoWidget};
 //     fn subscribe(value: ValueRef<Container<Self::Value>>, key: Self::Key) {}
 // }
 
-impl From<()> for Attributes {
-    fn from((): ()) -> Self {
-        Attributes::empty()
+struct TestWidget;
+
+impl Widget for TestWidget {
+    fn kind(&self) -> &'static str {
+        "test"
+    }
+
+    fn layout(
+        &mut self,
+        children: &mut crate::Nodes,
+        ctx: &mut crate::contexts::LayoutCtx,
+        data: Context<'_, '_>,
+    ) -> crate::error::Result<anathema_render::Size> {
+        todo!()
+    }
+
+    fn position<'tpl>(&mut self, children: &mut crate::Nodes, ctx: crate::contexts::PositionCtx) {
+        todo!()
     }
 }
 
-fn real() {
-    let v: Vec<()> = [].into();
-}
+struct TestWidgetFactory;
 
-// -----------------------------------------------------------------------------
-//   - Test widget -
-// -----------------------------------------------------------------------------
-#[derive(Debug, PartialEq, Clone)]
-pub(crate) struct Widget {
-    pub ident: Rc<str>,
-}
-
-impl IntoWidget for Widget {
-    type Err = ();
-    type Meta = str;
-    type State = ();
-
-    fn create_widget(
-        meta: &Rc<Self::Meta>,
-        context: Context<'_, '_, Self::State>,
+impl WidgetFactory for TestWidgetFactory {
+    fn make(
+        &self,
+        data: Context<'_, '_>,
         attributes: &Attributes,
-    ) -> Result<Self, Self::Err> {
-        Ok(Widget {
-            ident: meta.clone(),
-        })
+        text: Option<&ScopeValue>,
+        noden_id: &anathema_values::NodeId
+    ) -> crate::error::Result<Box<dyn crate::AnyWidget>> {
+        let widget = TestWidget;
+        Ok(Box::new(widget))
     }
+}
 
-    fn layout(&mut self, children: &mut crate::Nodes<Self>) {}
+pub(crate) fn register_test_widget() {
+    Factory::register("test", TestWidgetFactory);
 }
 
 pub(crate) fn expression(
-    context: impl Into<Rc<str>>,
+    ident: impl Into<String>,
+    text: impl Into<Option<ScopeValue>>,
     attributes: impl Into<Attributes>,
-    children: impl Into<Vec<Expression<Widget>>>,
-) -> Expression<Widget> {
+    children: impl Into<Vec<Expression>>,
+) -> Expression {
     let children = children.into();
     Expression::Node(SingleNode {
-        meta: context.into(),
+        ident: ident.into(),
+        text: text.into(),
         attributes: attributes.into(),
         children: children.into(),
     })
@@ -163,8 +169,8 @@ pub(crate) fn expression(
 pub(crate) fn for_expression<const N: usize>(
     binding: impl Into<Path>,
     collection: [impl Into<ScopeValue>; N],
-    body: impl Into<Vec<Expression<Widget>>>,
-) -> Expression<Widget> {
+    body: impl Into<Vec<Expression>>,
+) -> Expression {
     let collection = collection.map(Into::into);
     let binding = binding.into();
     Expression::Loop(Loop {

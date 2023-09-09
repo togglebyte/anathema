@@ -30,12 +30,16 @@ impl<T> List<T> {
         self.inner.len()
     }
 
-    pub fn lookup(&self, key: &Path) -> Option<Cow<'_, str>>
+    pub fn lookup(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, str>>
     where
         for<'a> &'a Value<T>: Into<Cow<'a, str>>,
     {
         let Path::Index(index) = key else { return None };
-        self.inner.get(*index).map(Into::into)
+        let value = self.inner.get(*index)?;
+        if let Some(node_id) = node_id.cloned() {
+            value.subscribe(node_id);
+        }
+        Some(value.into())
     }
 
     pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, str>>

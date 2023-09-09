@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
 use super::DIRTY_NODES;
@@ -15,19 +16,19 @@ pub enum Change {
 #[derive(Debug, Default)]
 pub struct Value<T> {
     pub(crate) inner: T,
-    subscribers: RefCell<Vec<NodeId>>,
+    subscribers: RefCell<HashSet<NodeId>>,
 }
 
 impl<T> Value<T> {
     pub fn new(inner: T) -> Self {
         Self {
             inner,
-            subscribers: RefCell::new(vec![]),
+            subscribers: RefCell::new(HashSet::new()),
         }
     }
 
     pub fn subscribe(&self, subscriber: NodeId) {
-        self.subscribers.borrow_mut().push(subscriber);
+        self.subscribers.borrow_mut().insert(subscriber);
     }
 }
 
@@ -63,9 +64,8 @@ impl<'a> From<&'a Value<usize>> for Cow<'a, str> {
 
 #[cfg(test)]
 mod test {
-    use crate::drain_dirty_nodes;
-
     use super::*;
+    use crate::drain_dirty_nodes;
 
     #[test]
     fn notify_subscriber() {

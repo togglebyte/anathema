@@ -5,7 +5,7 @@ mod nodes;
 mod values;
 
 // #[cfg(test)]
-// mod testing;
+mod testing;
 
 use std::rc::Rc;
 

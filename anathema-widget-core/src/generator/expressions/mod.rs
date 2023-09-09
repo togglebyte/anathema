@@ -135,21 +135,22 @@ impl Expression {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::*;
+    use crate::generator::testing::*;
 
     #[test]
     fn eval_node() {
+        register_test_widget();
         let mut scope = Scope::new(None);
-        let expr = expression("text", (), []);
+        let expr = expression("test", None, [], []);
         let mut node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
         let (widget, _) = node.single();
-        assert_eq!("text", &*widget.ident);
+        assert_eq!("test", widget.kind());
     }
 
     #[test]
     fn eval_for() {
         let mut scope = Scope::new(None);
-        let expr = for_expression("item", [1, 2, 3], [expression("text", (), [])]);
+        let expr = for_expression("item", [1, 2, 3], [expression("test", None, [], [])]);
         let node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
         assert!(matches!(
             node,

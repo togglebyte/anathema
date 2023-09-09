@@ -97,7 +97,7 @@ impl Nodes {
                         return children.update(&node_id, change, state)
                     }
                     NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),
-                    _ => {}
+                    _ => panic!("better sort this out"),
                 }
             }
         }
@@ -131,48 +131,6 @@ impl Nodes {
             node.reset_cache();
         }
     }
-
-    // fn eval_active_loop<F>(
-    //     &mut self,
-    //     state: &mut dyn State,
-    //     scope: &mut Scope,
-    //     layout: &mut LayoutCtx,
-    //     loop_node: &mut LoopNode,
-    //     parent_id: &NodeId,
-    //     f: &mut F,
-    // ) -> Option<Result<Size>>
-    // where
-    //     F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
-    // {
-    //     // let active_loop = self.active_loop?;
-    //     // let active_loop = &mut self.inner[active_loop];
-
-    //     // let Node {
-    //     //     kind: NodeKind::Loop(loop_node),
-    //     //     node_id: parent_id,
-    //     // } = active_loop
-    //     // else {
-    //     //     unreachable!()
-    //     // };
-
-    //     // Here is where all the problems beings:
-    //     // The value used in the for-loop has to be scoped first...
-
-    //     match loop_node.body.next(state, scope, layout, f) {
-    //         result @ Some(_) => return result,
-    //         None => {
-    //             // if loop_node.value_index >= loop_node.collection.len() {
-    //             //     self.active_loop.take();
-    //             //     self.next_expr();
-    //             // } else {
-    //             //     loop_node.scope(scope);
-    //             //     return self.next(state, scope, layout, f);
-    //             // }
-    //         }
-    //     }
-
-    //     None
-    // }
 
     pub fn for_each<F>(
         &mut self,
@@ -243,11 +201,15 @@ impl Nodes {
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
-                let mut scope = scope.from_self();
-                if loop_node.scope(&mut scope) {
-                    self.active_loop = Some(self.cache_index);
+                if loop_node.value_index < loop_node.collection.len() {
+                    let mut scope = scope.from_self();
+                    if loop_node.scope(&mut scope) {
+                        self.active_loop = Some(self.cache_index - 1);
+                    }
+                    return self.next(state, &mut scope, layout, f);
                 }
-                self.next(state, &mut scope, layout, f)
+
+                self.next(state, scope, layout, f)
             }
             NodeKind::ControlFlow { .. } => panic!(),
         }
@@ -277,38 +239,46 @@ impl Nodes {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
-    // use crate::testing::*;
+    use super::*;
+    use crate::generator::testing::*;
+    use crate::layout::Constraints;
+    use crate::Padding;
 
-    // #[test]
-    // fn generate_a_single_widget() {
-    //     let mut state = ();
-    //     let mut scope = Scope::new(None);
+    #[test]
+    fn generate_a_single_widget() {
+        register_test_widget();
+        let mut state = ();
+        let mut scope = Scope::new(None);
 
-    //     let expr = expression("text", (), []);
-    //     let mut node = expr.eval(&mut state, &mut scope, 0.into()).unwrap();
-    //     let (widget, nodes) = node.single();
+        let expr = expression("test", None, [], []);
+        let mut node = expr.eval(&mut state, &mut scope, 0.into()).unwrap();
+        let (widget, nodes) = node.single();
 
-    //     assert_eq!(&*widget.ident, "text");
-    // }
+        assert_eq!(widget.kind(), "test");
+    }
 
-    // #[test]
-    // fn for_loop() {
-    //     let mut state = ();
-    //     let mut scope = Scope::new(None);
+    #[test]
+    fn for_loop() {
+        register_test_widget();
+        let mut state = ();
+        let mut scope = Scope::new(None);
+        let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
 
-    //     let body = expression("text", (), []);
-    //     let for_loop = for_expression("item", [1, 2, 3], [body]);
-    //     let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
+        let body = expression("test", None, [], []);
+        let for_loop = for_expression("item", [1, 2, 3], [body]);
+        let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
 
-    //     let node_1 = nodes.next(&mut state, &mut scope);
-    //     let node_2 = nodes.next(&mut state, &mut scope);
-    //     let node_3 = nodes.next(&mut state, &mut scope);
-    //     let node_none = nodes.next(&mut state, &mut scope);
+        nodes.for_each(&mut state, &mut scope, &mut layout, |_, _, _| { Ok(Size::ZERO) });
+        panic!("this isn't done!");
 
-    //     assert!(node_1.is_some());
-    //     assert!(node_2.is_some());
-    //     assert!(node_3.is_some());
-    //     assert!(node_none.is_none());
-    // }
+        // let node_1 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // let node_2 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // let node_3 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // let node_none = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+
+        // assert!(node_1.is_some());
+        // assert!(node_2.is_some());
+        // assert!(node_3.is_some());
+        // assert!(node_none.is_none());
+    }
 }

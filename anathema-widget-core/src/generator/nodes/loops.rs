@@ -11,8 +11,8 @@ use crate::{WidgetContainer, contexts::LayoutCtx};
 pub(crate) struct LoopNode {
     pub(super) body: Nodes,
     binding: Path,
-    collection: Collection,
-    value_index: usize,
+    pub(super) collection: Collection,
+    pub(super) value_index: usize,
 }
 
 impl LoopNode {
@@ -55,7 +55,7 @@ impl LoopNode {
 
     pub(super) fn add(&mut self) {
         self.collection.add();
-        self.body.next_expr()
+        // self.body.next_expr()
     }
 
     pub(super) fn iter_mut(
