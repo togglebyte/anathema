@@ -46,10 +46,10 @@ impl LoopNode {
 
     pub(super) fn remove(&mut self, index: usize) {
         self.collection.remove();
-        self.value_index -= 1;
         if index >= self.body.inner.len() {
             return;
         }
+        self.value_index -= 1;
         self.body.inner.remove(index);
     }
 
