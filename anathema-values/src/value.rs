@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 use super::DIRTY_NODES;
 use crate::NodeId;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Change {
     Update,
     Add,
@@ -74,6 +74,6 @@ mod test {
         value.subscribe(id.clone());
         value.push_str(", updated");
 
-        assert_eq!(id, drain_dirty_nodes()[0]);
+        assert_eq!((id, Change::Update), drain_dirty_nodes()[0]);
     }
 }

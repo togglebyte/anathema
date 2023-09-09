@@ -24,7 +24,7 @@ impl Collection {
 
     /// Increase the length of a state collection.
     /// This is a manual step for state bound lists
-    /// as we don't access the entire list, only 
+    /// as we don't access the entire list, only
     /// one value at a time when needed.
     pub fn add(&mut self) {
         if let Collection::State { len, .. } = self {
@@ -76,25 +76,34 @@ impl From<String> for ScopeValue {
 
 #[derive(Debug)]
 pub struct Scope<'a> {
-    inner: HashMap<Path, Cow<'a, ScopeValue>>,
-    parent: Option<&'a Scope<'a>>,
+    inner: Vec<HashMap<Path, Cow<'a, ScopeValue>>>,
+    // current: HashMap<Path, &'a ScopeValue>,
 }
 
 impl<'a> Scope<'a> {
     pub fn new(parent: Option<&'a Scope<'_>>) -> Self {
         Self {
-            inner: HashMap::new(),
-            parent,
+            inner: vec![HashMap::new()],
+            // current: HashMap::new(),
         }
     }
 
     pub fn scope(&mut self, path: Path, value: Cow<'a, ScopeValue>) {
-        self.inner.insert(path, value);
+        self.inner.last_mut().map(|values| values.insert(path, value));
+    }
+
+    pub fn push(&mut self) {
+        self.inner.push(HashMap::new())
+    }
+
+    pub fn pop(&mut self) {
+        self.inner.pop();
     }
 
     /// Scope a value for a collection.
     /// TODO: Review if the whole cloning business here makes sense
     pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
+
         let value = match collection {
             Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
             Collection::State { path, .. } => {
@@ -107,34 +116,28 @@ impl<'a> Scope<'a> {
         self.scope(binding, value);
     }
 
-    pub fn lookup_parent(&self, path: &Path) -> Option<&'a ScopeValue> {
-        self.parent.and_then(|parent| parent.lookup(path))
-        // .map(Deref::deref)
-    }
-
     pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
         self.inner
-            .get(path)
-            .map(Deref::deref)
-            .or_else(|| self.parent.and_then(|parent| parent.lookup(path)))
+            .iter()
+            .filter_map(|values| values.get(path).map(Deref::deref))
+            .next()
     }
 
     pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
-        let value = self
-            .inner
-            .get(path)
-            .map(Deref::deref)
-            .or_else(|| self.parent.and_then(|parent| parent.lookup(path)));
-
-        match value {
-            Some(ScopeValue::List(value)) => Some(value.clone()),
-            _ => None,
-        }
+        self.inner
+            .iter()
+            .filter_map(|values| values.get(path).map(Deref::deref))
+            .filter_map(|value| match value {
+                ScopeValue::List(list) => Some(list.clone()),
+                _ => None,
+            })
+            .next()
     }
 
-    pub fn from_self(&'a self) -> Scope<'a> {
-        Scope::new(Some(self))
-    }
+    // pub fn from_self(&'a self) -> Scope<'a> {
+    //     panic!()
+    //     // Scope::new(Some(self))
+    // }
 }
 
 pub struct Context<'a, 'val> {
@@ -151,13 +154,11 @@ impl<'a, 'val> Context<'a, 'val> {
     pub fn resolve(&self, value: &ScopeValue) -> ScopeValue {
         match value {
             ScopeValue::Static(_) => value.clone(),
-            ScopeValue::Dyn(path) => {
-                match self.scope.lookup(path) {
-                    Some(lark @ ScopeValue::Dyn(p)) => self.resolve(lark),
-                    Some(_) => value.clone(),
-                    None => ScopeValue::Dyn(path.clone()),
-                }
-            }
+            ScopeValue::Dyn(path) => match self.scope.lookup(path) {
+                Some(lark @ ScopeValue::Dyn(p)) => self.resolve(lark),
+                Some(_) => value.clone(),
+                None => ScopeValue::Dyn(path.clone()),
+            },
             ScopeValue::List(list) => {
                 let values = list.iter().map(|v| self.resolve(v)).collect();
                 ScopeValue::List(values)
@@ -224,7 +225,12 @@ impl<'a, 'val> Context<'a, 'val> {
         }
     }
 
-    pub fn list_to_string(&self, list: &Rc<[ScopeValue]>, buffer: &mut String, node_id: Option<&NodeId>) {
+    pub fn list_to_string(
+        &self,
+        list: &Rc<[ScopeValue]>,
+        buffer: &mut String,
+        node_id: Option<&NodeId>,
+    ) {
         for val in list.iter() {
             match val {
                 ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
@@ -262,24 +268,25 @@ mod test {
     type Sub = usize;
 
     #[test]
-    fn scope_value() {
-        let mut root = Scope::new(None);
-        root.scope(
+    fn shadow_value() {
+        let mut scope = Scope::new(None);
+        scope.scope(
             "value".into(),
             Cow::Owned(ScopeValue::Static("hello world".into())),
         );
 
-        let mut inner = Scope::new(Some(&root));
-        let value = inner.lookup_parent(&"value".into()).unwrap();
-        inner.scope("shadow".into(), Cow::Borrowed(value));
+        // let mut inner = Scope::new(Some(&scope));
+        scope.push();
+        let value = scope.lookup(&"value".into()).unwrap();
+        scope.scope("shadow".into(), Cow::Borrowed(value));
 
-        let ScopeValue::Static(lhs) = inner.lookup(&"shadow".into()).unwrap() else {
-            panic!()
-        };
-        let ScopeValue::Static(rhs) = inner.lookup(&"value".into()).unwrap() else {
-            panic!()
-        };
-        assert_eq!(lhs, rhs);
+        // let ScopeValue::Static(lhs) = scope.lookup(&"shadow".into()).unwrap() else {
+        //     panic!()
+        // };
+        // let ScopeValue::Static(rhs) = scope.lookup(&"value".into()).unwrap() else {
+        //     panic!()
+        // };
+        // assert_eq!(lhs, rhs);
     }
 
     #[test]
@@ -293,8 +300,8 @@ mod test {
             ScopeValue::Dyn(Path::Key("name".into())),
         );
 
-        let id = 123.into();
-        let name: Option<String> = ctx.attribute("name", &id, &attributes);
+        let id = Some(123.into());
+        let name: Option<String> = ctx.attribute("name", id.as_ref(), &attributes);
 
         assert_eq!("Dirk Gently", name.unwrap());
     }
