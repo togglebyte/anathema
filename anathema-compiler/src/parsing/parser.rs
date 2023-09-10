@@ -325,7 +325,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
             let binding = self.constants.store_string(binding);
 
-            let data = AttributeParser::new(&mut self.lexer, &mut self.constants).parse("")?;
+            let data = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let data = self.constants.store_value(data);
             self.lexer.consume(true, false);
 
@@ -351,7 +351,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         } else if self.lexer.consume_if(Kind::If)? {
             self.lexer.consume(true, false);
 
-            let cond = AttributeParser::new(&mut self.lexer, &mut self.constants).parse("")?;
+            let cond = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let cond = self.constants.store_value(cond);
             self.lexer.consume(true, false);
 
@@ -367,7 +367,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         self.lexer.consume(true, false);
         if self.lexer.consume_if(Kind::View)? {
             self.lexer.consume(true, false);
-            let id = AttributeParser::new(&mut self.lexer, &mut self.constants).parse("")?;
+            let id = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let id = self.constants.store_value(id);
             self.lexer.consume(true, false);
             self.next_state();
@@ -412,7 +412,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         }
         self.lexer.consume(true, true);
 
-        let right = AttributeParser::new(&mut self.lexer, &mut self.constants).parse(left)?;
+        let right = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
         self.lexer.consume(true, true);
 
         // Consume comma

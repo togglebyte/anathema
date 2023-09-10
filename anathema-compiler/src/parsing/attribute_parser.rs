@@ -20,7 +20,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
         Self { lexer, constants }
     }
 
-    pub(super) fn parse(&mut self, _left: &'src str) -> Result<ScopeValue> {
+    pub(super) fn parse(&mut self) -> Result<ScopeValue> {
         let next = self.lexer.next()?.0;
 
         let value = match next {
@@ -250,7 +250,7 @@ mod test {
 
         let mut lexer = Lexer::new(src);
         let output = AttributeParser::new(&mut lexer, &mut Constants::new())
-            .parse("attrib")
+            .parse()
             .unwrap();
         let ScopeValue::Static(text) = output else {
             panic!()
