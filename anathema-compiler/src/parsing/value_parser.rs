@@ -10,12 +10,12 @@ use crate::Constants;
 const TRUE: &str = "true";
 const FALSE: &str = "false";
 
-pub(super) struct AttributeParser<'lexer, 'src> {
+pub(super) struct ValueParser<'lexer, 'src> {
     lexer: &'lexer mut Lexer<'src>,
     constants: &'lexer mut Constants,
 }
 
-impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
+impl<'lexer, 'src> ValueParser<'lexer, 'src> {
     pub(super) fn new(lexer: &'lexer mut Lexer<'src>, constants: &'lexer mut Constants) -> Self {
         Self { lexer, constants }
     }
@@ -249,7 +249,7 @@ mod test {
         let src = "\"hello, world\"";
 
         let mut lexer = Lexer::new(src);
-        let output = AttributeParser::new(&mut lexer, &mut Constants::new())
+        let output = ValueParser::new(&mut lexer, &mut Constants::new())
             .parse()
             .unwrap();
         let ScopeValue::Static(text) = output else {

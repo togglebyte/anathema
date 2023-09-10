@@ -3,7 +3,7 @@
 use anathema_values::{Path, ScopeValue};
 // use anathema_widget_core::{Number, Value};
 
-use super::attribute_parser::AttributeParser;
+use super::value_parser::ValueParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token};
 use crate::{Constants, StringId, ValueId};
@@ -20,6 +20,12 @@ pub enum Expression {
     ScopeStart,
     ScopeEnd,
     EOF,
+}
+
+pub enum Cond {
+    Value(ValueId),
+    And(Box<Cond>, Box<Cond>),
+    Or(Box<Cond>, Box<Cond>),
 }
 
 // -----------------------------------------------------------------------------
@@ -325,7 +331,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
             let binding = self.constants.store_string(binding);
 
-            let data = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
+            let data = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let data = self.constants.store_value(data);
             self.lexer.consume(true, false);
 
@@ -351,7 +357,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         } else if self.lexer.consume_if(Kind::If)? {
             self.lexer.consume(true, false);
 
-            let cond = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
+            let cond = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let cond = self.constants.store_value(cond);
             self.lexer.consume(true, false);
 
@@ -367,7 +373,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         self.lexer.consume(true, false);
         if self.lexer.consume_if(Kind::View)? {
             self.lexer.consume(true, false);
-            let id = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
+            let id = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let id = self.constants.store_value(id);
             self.lexer.consume(true, false);
             self.next_state();
@@ -412,7 +418,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         }
         self.lexer.consume(true, true);
 
-        let right = AttributeParser::new(&mut self.lexer, &mut self.constants).parse()?;
+        let right = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
         self.lexer.consume(true, true);
 
         // Consume comma
