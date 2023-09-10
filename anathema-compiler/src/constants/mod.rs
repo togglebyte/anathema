@@ -1,19 +1,18 @@
 use anathema_values::{Path, ScopeValue};
 pub(crate) use storage::Storage;
 
-// use self::paths::Paths;
-use self::strings::Strings;
-// use self::texts::Texts;
-use self::values::Values;
-
-pub use self::strings::StringId;
-pub use self::values::ValueId;
 pub use self::conditions::CondId;
+use self::conditions::Conditions;
+pub use self::strings::StringId;
+use self::strings::Strings;
+pub use self::values::ValueId;
+use self::values::Values;
+use crate::parsing::parser::Cond;
 
+mod conditions;
 mod paths;
 mod storage;
 mod strings;
-mod conditions;
 // mod texts;
 mod values;
 
@@ -46,7 +45,7 @@ impl Constants {
     }
 
     pub fn store_cond(&mut self, cond: Cond) -> CondId {
-        self.conditions.push(value)
+        self.conditions.push(cond)
     }
 
     pub fn lookup_string(&self, index: StringId) -> Option<&str> {

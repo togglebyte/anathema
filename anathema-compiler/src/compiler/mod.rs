@@ -1,8 +1,8 @@
-use crate::{StringId, ValueId, parsing::parser::Cond};
-
 use self::optimizer::Expression;
 pub(crate) use self::optimizer::Optimizer;
 use super::error::Result;
+use crate::parsing::parser::Cond;
+use crate::{CondId, StringId, ValueId};
 
 mod optimizer;
 
@@ -80,7 +80,11 @@ impl Compiler {
                 Expression::Else { cond, size } => {
                     self.compile_control_flow(Branch::Else(*cond), *size)
                 }
-                Expression::For { binding, data, size } => self.compile_for(*binding, *data, *size),
+                Expression::For {
+                    binding,
+                    data,
+                    size,
+                } => self.compile_for(*binding, *data, *size),
             }?;
         }
         Ok(())
@@ -210,7 +214,13 @@ mod test {
         ";
 
         let mut instructions = parse(src);
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
@@ -218,7 +228,13 @@ mod test {
                 scope_size: 0
             }
         );
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 1.into(), size: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 1.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
@@ -247,7 +263,10 @@ mod test {
     #[test]
     fn compile_if() {
         let expressions = vec![
-            Expression::If { cond: 0.into(), size: 1 },
+            Expression::If {
+                cond: 0.into(),
+                size: 1,
+            },
             Expression::Node {
                 ident: 0.into(),
                 scope_size: 0,
@@ -261,7 +280,13 @@ mod test {
         let compiler = Compiler::new(expressions);
         let mut instructions = compiler.compile().unwrap();
 
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
@@ -354,7 +379,13 @@ mod test {
         ";
 
         let mut instructions = parse(src);
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
@@ -397,7 +428,13 @@ mod test {
                 scope_size: 0
             }
         );
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
@@ -419,9 +456,27 @@ mod test {
         ";
 
         let mut instructions = parse(src);
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 3 });
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 2 });
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 3
+            }
+        );
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 2
+            }
+        );
+        assert_eq!(
+            instructions.remove(0),
+            Instruction::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
@@ -467,11 +522,17 @@ mod test {
         );
         assert_eq!(
             instructions.remove(0),
-            Instruction::LoadAttribute { key: 0.into(), value: 0.into() }
+            Instruction::LoadAttribute {
+                key: 0.into(),
+                value: 0.into()
+            }
         );
         assert_eq!(
             instructions.remove(0),
-            Instruction::LoadAttribute { key: 0.into(), value: 0.into() }
+            Instruction::LoadAttribute {
+                key: 0.into(),
+                value: 0.into()
+            }
         );
         assert!(instructions.is_empty());
     }
@@ -500,7 +561,10 @@ mod test {
         );
         assert_eq!(
             instructions.remove(0),
-            Instruction::LoadAttribute { key: 2.into(), value: 1.into() }
+            Instruction::LoadAttribute {
+                key: 2.into(),
+                value: 1.into()
+            }
         );
         assert_eq!(instructions.remove(0), Instruction::LoadText(2.into()));
         assert!(instructions.is_empty());

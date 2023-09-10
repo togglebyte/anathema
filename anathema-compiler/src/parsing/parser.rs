@@ -1,12 +1,10 @@
-
-
 use anathema_values::{Path, ScopeValue};
-// use anathema_widget_core::{Number, Value};
 
+// use anathema_widget_core::{Number, Value};
 use super::value_parser::ValueParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token};
-use crate::{Constants, StringId, ValueId};
+use crate::{CondId, Constants, StringId, ValueId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
@@ -358,12 +356,14 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         } else if self.lexer.consume_if(Kind::If)? {
             self.lexer.consume(true, false);
 
-            let cond = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
-            let cond = self.constants.store_value(cond);
+            let value = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
+            let value_id = self.constants.store_value(value);
+            let cond = Cond::Value(value_id);
+            let cond_id = self.constants.store_cond(cond);
             self.lexer.consume(true, false);
 
             self.next_state();
-            Ok(Some(Expression::If(cond)))
+            Ok(Some(Expression::If(cond_id)))
         } else {
             self.next_state();
             Ok(None)
@@ -531,10 +531,7 @@ impl Iterator for Parser<'_, '_> {
 // -----------------------------------------------------------------------------
 //     - Parse `ExpressionValue` -
 // -----------------------------------------------------------------------------
-pub(super) fn parse_scope_value(
-    text: &str,
-    consts: &mut Constants,
-) -> ScopeValue {
+pub(super) fn parse_scope_value(text: &str, consts: &mut Constants) -> ScopeValue {
     let mut fragments = vec![];
     let mut chars = text.char_indices().peekable();
     let mut pos = 0;
@@ -637,7 +634,10 @@ mod test {
         let src = "a [a: a]";
         let expected = vec![
             Expression::Node(0.into()),
-            Expression::LoadAttribute { key: 0.into(), value: 0.into() },
+            Expression::LoadAttribute {
+                key: 0.into(),
+                value: 0.into(),
+            },
             Expression::EOF,
         ];
 

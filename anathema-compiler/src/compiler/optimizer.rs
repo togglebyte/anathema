@@ -1,5 +1,5 @@
 use crate::parsing::parser::{Cond, Expression as ParseExpr};
-use crate::{StringId, ValueId};
+use crate::{StringId, ValueId, CondId};
 
 enum ControlFlow {
     If(CondId),
