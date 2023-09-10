@@ -1,4 +1,6 @@
-use anathema_values::{Slab, ScopeValue};
+use anathema_values::ScopeValue;
+
+use super::Storage;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ValueId(usize);
@@ -10,11 +12,11 @@ impl From<usize> for ValueId {
 }
 
 #[derive(Debug)]
-pub struct Values(Slab<ScopeValue>);
+pub struct Values(Storage<ScopeValue>);
 
 impl Values {
     pub(crate) fn empty() -> Self {
-        Self(Slab::empty())
+        Self(Storage::empty())
     }
 
     pub(crate) fn push(&mut self, value: ScopeValue) -> ValueId {

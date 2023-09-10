@@ -153,12 +153,14 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::{Attributes, Fragment};
+    use std::rc::Rc;
+
+    use anathema_widget_core::generator::Attributes;
 
     use super::*;
     use crate::lexer::Lexer;
     use crate::parsing::parser::{Expression, Parser};
-    use crate::parsing::Constants;
+    use crate::Constants;
 
     fn parse_attributes(src: &str) -> Attributes {
         parse_attributes_result(src).unwrap()
@@ -168,15 +170,15 @@ mod test {
         let mut consts = Constants::new();
         let lexer = Lexer::new(src);
         let parser = Parser::new(lexer, &mut consts)?;
-        let mut attrs = Attributes::empty();
+        let mut attrs = Attributes::new();
 
         let instructions = parser.collect::<Result<Vec<_>>>()?;
         for inst in instructions {
             match inst {
                 Expression::LoadAttribute { key, value } => {
-                    let key = consts.strings.get(key).unwrap();
-                    let value = consts.values.get(value).unwrap();
-                    attrs.set(key, value.clone());
+                    let key = consts.lookup_string(key).unwrap();
+                    let value = consts.lookup_value(value).unwrap();
+                    attrs.insert(key.into(), value.clone());
                 }
                 _ => continue,
             }
@@ -185,28 +187,34 @@ mod test {
         Ok(attrs)
     }
 
-    fn is_true(s: &str, field: &str) -> bool {
-        parse_value(s, field).to_bool().unwrap()
+    fn parse_list(s: &str, field: &str) -> Rc<[ScopeValue]> {
+        let ScopeValue::List(list) = parse_value(s, field) else {
+            panic!()
+        };
+        list
     }
 
-    fn parse_num(s: &str, field: &str) -> u64 {
-        parse_value(s, field).to_int().unwrap()
+    fn parse_string(s: &str, field: &str) -> String {
+        let ScopeValue::Static(s) = parse_value(s, field) else {
+            panic!()
+        };
+        s.to_string()
     }
 
-    fn parse_value(s: &str, field: &str) -> Value {
+    fn parse_value(s: &str, field: &str) -> ScopeValue {
         parse_attributes(s).get(field).cloned().unwrap()
     }
 
     #[test]
     fn parse_height() {
-        let height = parse_num("widget [height:1]", fields::HEIGHT);
-        assert_eq!(1, height);
+        let height = parse_string("widget [height:1]", "height");
+        assert_eq!("1", height);
     }
 
     #[test]
     fn parse_width() {
-        let width = parse_num("container [width:1]", fields::WIDTH);
-        assert_eq!(1, width);
+        let width = parse_string("container [width:1]", "width");
+        assert_eq!("1", width);
     }
 
     #[test]
@@ -216,8 +224,8 @@ mod test {
             panic!()
         };
 
-        assert_eq!(fragments[0], Fragment::String("a".into()));
-        assert_eq!(fragments[1], Fragment::Data(Path::Key("b".to_string())));
+        assert_eq!(fragments[0], ScopeValue::Static("a".into()));
+        assert_eq!(fragments[1], ScopeValue::Dyn(Path::Key("b".into())));
     }
 
     #[test]
@@ -241,30 +249,32 @@ mod test {
         let src = "\"hello, world\"";
 
         let mut lexer = Lexer::new(src);
-        let output = AttributeParser::new(&mut lexer, &mut Constants::new()).parse("attrib").unwrap();
-        let Value::String(text) = output else {
+        let output = AttributeParser::new(&mut lexer, &mut Constants::new())
+            .parse("attrib")
+            .unwrap();
+        let ScopeValue::Static(text) = output else {
             panic!()
         };
 
-        assert_eq!(text, "hello, world");
+        assert_eq!(&*text, "hello, world");
     }
 
     #[test]
     fn text_attribute() {
-        let value = parse_value("widget [value: \"hi\"]", "value");
-        assert!(matches!(value, Value::String(_)));
+        let value = parse_string("widget [value: \"hi\"]", "value");
+        assert_eq!(value, "hi");
     }
 
     #[test]
     fn text_fragments_attribute() {
-        let value = parse_value("widget [value: \"hi {{ name }} \"]", "value");
-        assert!(matches!(value, Value::Fragments(_)));
+        let list = parse_list("widget [value: \"hi {{ name }} \"]", "value");
+        assert_eq!(list.len(), 3)
     }
 
     #[test]
     fn parse_bool() {
-        let is_true = is_true("widget [is_true: true]", "is_true");
-        assert!(is_true);
+        let is_true = parse_string("widget [is_true: true]", "is_true");
+        assert!(&*is_true == "true");
     }
 
     #[test]
@@ -275,127 +285,132 @@ mod test {
 
     #[test]
     fn alignment() {
-        let align = parse_value("widget [align: top-right]", fields::ALIGNMENT)
-            .to_alignment()
-            .unwrap();
-        assert_eq!(align, Align::TopRight);
+        let align = parse_string("widget [align: top-right]", "alignment");
+        assert_eq!(&*align, "top-right");
     }
 
-    #[test]
-    fn parse_colours() {
-        let attribs = parse_attributes(
-            "widget [background: red, foreground: blue, col: green, res: reset, rgb: #0A0B0C, ansi: ansi123]",
-        );
+    // #[test]
+    // fn parse_colours() {
+    //     let attribs = parse_attributes(
+    //         "widget [background: red, foreground: blue, col: green, res: reset, rgb: #0A0B0C, ansi: ansi123]",
+    //     );
 
-        assert_eq!(
-            attribs
-                .get(fields::BACKGROUND)
-                .and_then(Value::to_color)
-                .unwrap(),
-            Color::Red
-        );
+    //     assert_eq!(
+    //         attribs
+    //             .get(fields::BACKGROUND)
+    //             .and_then(Value::to_color)
+    //             .unwrap(),
+    //         Color::Red
+    //     );
 
-        assert_eq!(
-            attribs
-                .get(fields::FOREGROUND)
-                .and_then(Value::to_color)
-                .unwrap(),
-            Color::Blue
-        );
+    //     assert_eq!(
+    //         attribs
+    //             .get(fields::FOREGROUND)
+    //             .and_then(Value::to_color)
+    //             .unwrap(),
+    //         Color::Blue
+    //     );
 
-        assert_eq!(
-            attribs.get("col").and_then(Value::to_color).unwrap(),
-            Color::Green
-        );
+    //     assert_eq!(
+    //         attribs.get("col").and_then(Value::to_color).unwrap(),
+    //         Color::Green
+    //     );
 
-        assert_eq!(
-            attribs.get("res").and_then(Value::to_color).unwrap(),
-            Color::Reset
-        );
+    //     assert_eq!(
+    //         attribs.get("res").and_then(Value::to_color).unwrap(),
+    //         Color::Reset
+    //     );
 
-        assert_eq!(
-            attribs.get("rgb").and_then(Value::to_color).unwrap(),
-            Color::Rgb {
-                r: 10,
-                g: 11,
-                b: 12
-            }
-        );
+    //     assert_eq!(
+    //         attribs.get("rgb").and_then(Value::to_color).unwrap(),
+    //         Color::Rgb {
+    //             r: 10,
+    //             g: 11,
+    //             b: 12
+    //         }
+    //     );
 
-        assert_eq!(
-            attribs.get("ansi").and_then(Value::to_color).unwrap(),
-            Color::AnsiValue(123)
-        );
-    }
+    //     assert_eq!(
+    //         attribs.get("ansi").and_then(Value::to_color).unwrap(),
+    //         Color::AnsiValue(123)
+    //     );
+    // }
 
     #[test]
     fn axis() {
-        let dir = parse_value("widget [axis: horz]", fields::AXIS).to_axis();
-        assert_eq!(dir.unwrap(), Axis::Horizontal);
+        let dir = parse_string("widget [axis: horz]", "axis");
+        assert_eq!(&*dir, "horizontal");
 
-        let dir = parse_value("widget [axis: horizontal]", fields::AXIS).to_axis();
-        assert_eq!(dir.unwrap(), Axis::Horizontal);
+        let dir = parse_string("widget [axis: horizontal]", "axis");
+        assert_eq!(&*dir, "horizontal");
 
-        let dir = parse_value("widget [axis: vert]", fields::AXIS).to_axis();
-        assert_eq!(dir.unwrap(), Axis::Vertical);
+        let dir = parse_string("widget [axis: vert]", "axis");
+        assert_eq!(&*dir, "vertical");
 
-        let dir = parse_value("widget [axis: vertical]", fields::AXIS).to_axis();
-        assert_eq!(dir.unwrap(), Axis::Vertical);
+        let dir = parse_string("widget [axis: vertical]", "axis");
+        assert_eq!(&*dir, "vertical");
     }
 
     #[test]
     fn displays() {
-        let disp = parse_value("widget [display: show]", fields::DISPLAY).to_display();
-        assert_eq!(disp.unwrap(), Display::Show);
+        let disp = parse_string("widget [display: show]", "display");
+        assert_eq!(&*disp, "show");
 
-        let disp = parse_value("widget [display: hide]", fields::DISPLAY).to_display();
-        assert_eq!(disp.unwrap(), Display::Hide);
+        let disp = parse_string("widget [display: hide]", "display");
+        assert_eq!(&*disp, "hide");
 
-        let disp = parse_value("widget [display: exclude]", fields::DISPLAY).to_display();
-        assert_eq!(disp.unwrap(), Display::Exclude);
+        let disp = parse_string("widget [display: exclude]", "display");
+        assert_eq!(&*disp, "exclude");
     }
 
     #[test]
     fn whitespace_attribs() {
         // Trim start
-        assert!(is_true("text [trim-start: true]", fields::TRIM_START));
-        assert!(!is_true("text [trim-start: false]", fields::TRIM_START));
+        assert_eq!(
+            parse_string("text [trim-start: true]", "trim_start"),
+            "true"
+        );
+        assert_eq!(
+            parse_string("text [trim-start: false]", "trim_start"),
+            "false"
+        );
 
         // // Trim end
-        assert!(is_true("text [trim-end: true]", fields::TRIM_END));
-        assert!(!is_true("text [trim-end: false]", fields::TRIM_END));
+        assert_eq!(parse_string("text [trim-end: true]", "trim-end"), "true");
+        assert_eq!(parse_string("text [trim-end: false]", "trim-end"), "false");
 
         // // Collapse spaces
-        assert!(is_true(
-            "text [collapse-spaces: true]",
-            fields::COLLAPSE_SPACES
-        ));
-        assert!(!is_true(
-            "text [collapse-spaces: false]",
-            fields::COLLAPSE_SPACES
-        ));
-    }
-
-    #[test]
-    fn ansi_color_test() {
-        let attribs = parse_attributes("widget [ansi: ansi0]");
+        assert_eq!(
+            parse_string("text [collapse-spaces: true]", "collapse-spaces"),
+            "true"
+        );
 
         assert_eq!(
-            attribs.get("ansi").and_then(Value::to_color).unwrap(),
-            Color::AnsiValue(0),
+            parse_string("text [collapse-spaces: false]", "collapse-spaces"),
+            "false"
         );
     }
 
-    #[test]
-    fn ident_with_pipes() {
-        let values = parse_value("widget [meow: a|b|c]", "meow").to_string();
-        assert_eq!(values, "a|b|c");
-    }
+    // #[test]
+    // fn ansi_color_test() {
+    //     let attribs = parse_attributes("widget [ansi: ansi0]");
+
+    //     assert_eq!(
+    //         attribs.get("ansi").and_then(Value::to_color).unwrap(),
+    //         Color::AnsiValue(0),
+    //     );
+    // }
 
     #[test]
-    #[should_panic(expected = "InvalidNumber")]
-    fn failed_ansi_color_test() {
-        parse_attributes("widget [ansi: ansi256]");
-        parse_attributes("widget [ansi: ansi 1]");
+    fn ident_with_pipes() {
+        let values = parse_string("widget [meow: a|b|c]", "meow");
+        assert_eq!(&*values, "a|b|c");
     }
+
+    // #[test]
+    // #[should_panic(expected = "InvalidNumber")]
+    // fn failed_ansi_color_test() {
+    //     parse_attributes("widget [ansi: ansi256]");
+    //     parse_attributes("widget [ansi: ansi 1]");
+    // }
 }

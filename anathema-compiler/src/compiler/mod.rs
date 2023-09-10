@@ -171,28 +171,28 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 3
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 1
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 2,
+                ident: 2.into(),
                 scope_size: 0
             }
         );
@@ -210,26 +210,26 @@ mod test {
         ";
 
         let mut instructions = parse(src);
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 1 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 1, size: 1 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 1.into(), size: 1 });
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 2,
+                ident: 2.into(),
                 scope_size: 0
             }
         );
@@ -247,13 +247,13 @@ mod test {
     #[test]
     fn compile_if() {
         let expressions = vec![
-            Expression::If { cond: 0, size: 1 },
+            Expression::If { cond: 0.into(), size: 1 },
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0,
             },
             Expression::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0,
             },
         ];
@@ -261,18 +261,18 @@ mod test {
         let compiler = Compiler::new(expressions);
         let mut instructions = compiler.compile().unwrap();
 
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 1 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -289,15 +289,15 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::For {
-                binding: 0,
-                data: 0,
+                binding: 0.into(),
+                data: 0.into(),
                 size: 1
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -316,23 +316,23 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::For {
-                binding: 0,
-                data: 0,
+                binding: 0.into(),
+                data: 0.into(),
                 size: 2
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::For {
-                binding: 1,
-                data: 1,
+                binding: 1.into(),
+                data: 1.into(),
                 size: 1
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 2,
+                ident: 2.into(),
                 scope_size: 0
             }
         );
@@ -354,25 +354,25 @@ mod test {
         ";
 
         let mut instructions = parse(src);
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 1 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Else {
-                cond: Some(0),
+                cond: Some(0.into()),
                 size: 1,
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -386,22 +386,22 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 2,
+                ident: 2.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 3,
+                ident: 3.into(),
                 scope_size: 0
             }
         );
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 1 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -419,20 +419,20 @@ mod test {
         ";
 
         let mut instructions = parse(src);
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 3 });
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 2 });
-        assert_eq!(instructions.remove(0), Instruction::If { cond: 0, size: 1 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 3 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 2 });
+        assert_eq!(instructions.remove(0), Instruction::If { cond: 0.into(), size: 1 });
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -446,11 +446,11 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
-        assert_eq!(instructions.remove(0), Instruction::LoadText(0));
+        assert_eq!(instructions.remove(0), Instruction::LoadText(0.into()));
         assert!(instructions.is_empty());
     }
 
@@ -461,17 +461,17 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
-            Instruction::LoadAttribute { key: 0, value: 0 }
+            Instruction::LoadAttribute { key: 0.into(), value: 0.into() }
         );
         assert_eq!(
             instructions.remove(0),
-            Instruction::LoadAttribute { key: 0, value: 0 }
+            Instruction::LoadAttribute { key: 0.into(), value: 0.into() }
         );
         assert!(instructions.is_empty());
     }
@@ -486,23 +486,23 @@ mod test {
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 3
             }
         );
-        assert_eq!(instructions.remove(0), Instruction::LoadText(0));
+        assert_eq!(instructions.remove(0), Instruction::LoadText(0.into()));
         assert_eq!(
             instructions.remove(0),
             Instruction::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             instructions.remove(0),
-            Instruction::LoadAttribute { key: 2, value: 0 }
+            Instruction::LoadAttribute { key: 2.into(), value: 1.into() }
         );
-        assert_eq!(instructions.remove(0), Instruction::LoadText(1));
+        assert_eq!(instructions.remove(0), Instruction::LoadText(2.into()));
         assert!(instructions.is_empty());
     }
 }

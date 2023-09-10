@@ -217,10 +217,10 @@ mod test {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parsing::parser::Parser;
-    use crate::parsing::Constants;
+    use crate::Constants;
 
     fn parse(src: &str) -> Vec<Expression> {
-        let mut ctx = Constants::default();
+        let mut ctx = Constants::new();
         let lexer = Lexer::new(src);
         let parser = Parser::new(lexer, &mut ctx).unwrap();
         let expr = parser.map(|e| e.unwrap()).collect();
@@ -238,14 +238,14 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 1
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -258,11 +258,11 @@ mod test {
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -277,11 +277,11 @@ mod test {
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -295,7 +295,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -313,29 +313,29 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::For {
-                data: 0,
-                binding: 1,
+                data: 0.into(),
+                binding: 1.into(),
                 size: 2
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -349,12 +349,12 @@ mod test {
                 a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 2 });
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 2 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -373,33 +373,33 @@ mod test {
         b
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 2 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 2 });
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -415,7 +415,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -431,18 +431,18 @@ mod test {
             x
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -460,7 +460,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -479,7 +479,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -496,23 +496,23 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 2
             }
         );
         assert_eq!(
             expressions.remove(0),
-            Expression::LoadAttribute { key: 1, value: 0 }
+            Expression::LoadAttribute { key: 1.into(), value: 0.into() }
         );
-        assert_eq!(expressions.remove(0), Expression::LoadText(0));
+        assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 2,
+                ident: 2.into(),
                 scope_size: 0
             }
         );
-        assert_eq!(expressions.remove(0), Expression::LoadText(0));
+        assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
         assert!(expressions.is_empty());
     }
 }

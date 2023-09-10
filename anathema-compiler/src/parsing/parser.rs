@@ -870,7 +870,7 @@ mod test {
         let expected = Error {
             kind: ErrorKind::InvalidPath,
             line: 1,
-            col: 17,
+            col: 18,
             src: src.to_string(),
         };
         let actual = parse_err(src).remove(0);

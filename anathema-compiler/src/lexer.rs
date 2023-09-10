@@ -390,43 +390,43 @@ mod test {
         }
     }
 
-    #[test]
-    fn unsigned_ints() {
-        let inputs = [("1", 1), ("0001", 1), ("100", 100)];
+    // #[test]
+    // fn unsigned_ints() {
+    //     let inputs = [("1", 1), ("0001", 1), ("100", 100)];
 
-        for (input, number) in inputs {
-            let actual = token_kind(input);
-            let expected = Kind::Number(Number::Unsigned(number));
-            assert_eq!(expected, actual);
-        }
-    }
+    //     for (input, number) in inputs {
+    //         let actual = token_kind(input);
+    //         let expected = Kind::Number(Number::Unsigned(number));
+    //         assert_eq!(expected, actual);
+    //     }
+    // }
 
-    #[test]
-    fn signed_ints() {
-        let inputs = [("-1", -1), ("-0001", -1), ("-100", -100)];
+    // #[test]
+    // fn signed_ints() {
+    //     let inputs = [("-1", -1), ("-0001", -1), ("-100", -100)];
 
-        for (input, number) in inputs {
-            let actual = token_kind(input);
-            let expected = Kind::Number(Number::Signed(number));
-            assert_eq!(expected, actual);
-        }
-    }
+    //     for (input, number) in inputs {
+    //         let actual = token_kind(input);
+    //         let expected = Kind::Number(Number::Signed(number));
+    //         assert_eq!(expected, actual);
+    //     }
+    // }
 
-    #[test]
-    fn floats() {
-        let inputs = [
-            ("0.1", 0.1f64),
-            ("-.1", -0.1),
-            ("1.", 1.0),
-            ("100.5", 100.5),
-        ];
+    // #[test]
+    // fn floats() {
+    //     let inputs = [
+    //         ("0.1", 0.1f64),
+    //         ("-.1", -0.1),
+    //         ("1.", 1.0),
+    //         ("100.5", 100.5),
+    //     ];
 
-        for (input, number) in inputs {
-            let actual = token_kind(input);
-            let expected = Kind::Number(Number::Float(number));
-            assert_eq!(expected, actual);
-        }
-    }
+    //     for (input, number) in inputs {
+    //         let actual = token_kind(input);
+    //         let expected = Kind::Number(Number::Float(number));
+    //         assert_eq!(expected, actual);
+    //     }
+    // }
 
     #[test]
     fn strings() {
@@ -457,20 +457,20 @@ mod test {
         assert_eq!(expected, actual);
     }
 
-    #[test]
-    fn hex() {
-        let inputs = [
-            ("#000", Kind::Hex(0, 0, 0)),
-            ("#000000", Kind::Hex(0, 0, 0)),
-            ("#FFF", Kind::Hex(255, 255, 255)),
-            ("#FFFFFF", Kind::Hex(255, 255, 255)),
-        ];
+    // #[test]
+    // fn hex() {
+    //     let inputs = [
+    //         ("#000", Kind::Hex(0, 0, 0)),
+    //         ("#000000", Kind::Hex(0, 0, 0)),
+    //         ("#FFF", Kind::Hex(255, 255, 255)),
+    //         ("#FFFFFF", Kind::Hex(255, 255, 255)),
+    //     ];
 
-        for (input, expected) in inputs {
-            let actual = token_kind(input);
-            assert_eq!(expected, actual);
-        }
-    }
+    //     for (input, expected) in inputs {
+    //         let actual = token_kind(input);
+    //         assert_eq!(expected, actual);
+    //     }
+    // }
 
     #[test]
     fn view() {

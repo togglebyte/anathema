@@ -41,7 +41,7 @@ impl Collection {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ScopeValue {
     Static(Rc<str>),
     List(Rc<[ScopeValue]>),
@@ -193,7 +193,7 @@ impl<'a, 'val> Context<'a, 'val> {
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<T>
     where
-        T: for<'magic> TryFrom<&'magic str>,
+        T: for<'attr> TryFrom<&'attr str>,
     {
         let attrib = attributes.get(key.as_ref())?;
 
