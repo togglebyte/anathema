@@ -285,7 +285,7 @@ mod test {
 
     #[test]
     fn alignment() {
-        let align = parse_string("widget [align: top-right]", "alignment");
+        let align = parse_string("widget [align: top-right]", "align");
         assert_eq!(&*align, "top-right");
     }
 
@@ -339,13 +339,13 @@ mod test {
     #[test]
     fn axis() {
         let dir = parse_string("widget [axis: horz]", "axis");
-        assert_eq!(&*dir, "horizontal");
+        assert_eq!(&*dir, "horz");
 
         let dir = parse_string("widget [axis: horizontal]", "axis");
         assert_eq!(&*dir, "horizontal");
 
         let dir = parse_string("widget [axis: vert]", "axis");
-        assert_eq!(&*dir, "vertical");
+        assert_eq!(&*dir, "vert");
 
         let dir = parse_string("widget [axis: vertical]", "axis");
         assert_eq!(&*dir, "vertical");
@@ -367,11 +367,11 @@ mod test {
     fn whitespace_attribs() {
         // Trim start
         assert_eq!(
-            parse_string("text [trim-start: true]", "trim_start"),
+            parse_string("text [trim-start: true]", "trim-start"),
             "true"
         );
         assert_eq!(
-            parse_string("text [trim-start: false]", "trim_start"),
+            parse_string("text [trim-start: false]", "trim-start"),
             "false"
         );
 

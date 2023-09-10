@@ -561,13 +561,11 @@ pub(super) fn parse_scope_value(
 
     let remainder = &text[pos..];
 
-    if !remainder.is_empty() {
+    if !remainder.is_empty() || fragments.is_empty() {
         let text_fragment = remainder.replace("\\\"", "\"");
         fragments.push(ScopeValue::Static(text_fragment.into()));
     }
 
-    // There is at least one fragment value so it's 
-    // fine to call `remove` here.
     if fragments.len() > 1 {
         ScopeValue::List(fragments.into())
     } else {

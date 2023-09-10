@@ -504,7 +504,7 @@ mod test {
             expressions.remove(0),
             Expression::LoadAttribute { key: 1.into(), value: 0.into() }
         );
-        assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
+        assert_eq!(expressions.remove(0), Expression::LoadText(1.into()));
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
@@ -512,7 +512,7 @@ mod test {
                 scope_size: 0
             }
         );
-        assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
+        assert_eq!(expressions.remove(0), Expression::LoadText(1.into()));
         assert!(expressions.is_empty());
     }
 }
