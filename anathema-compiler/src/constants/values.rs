@@ -3,6 +3,12 @@ use anathema_values::{Slab, ScopeValue};
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ValueId(usize);
 
+impl From<usize> for ValueId {
+    fn from(n: usize) -> Self {
+        Self(n)
+    }
+}
+
 #[derive(Debug)]
 pub struct Values(Slab<ScopeValue>);
 

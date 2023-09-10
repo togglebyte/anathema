@@ -1,10 +1,7 @@
-
-
 use anathema_render::Color;
 use anathema_values::{Path, ScopeValue};
+
 // use anathema_widget_core::{Align, Axis, Direction, Display, Value};
-
-
 use super::parser::{parse_path, parse_scope_value};
 use crate::error::{ErrorKind, Result};
 use crate::lexer::{Kind, Lexer};
@@ -30,7 +27,7 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             Kind::String(val) => {
                 let value = parse_scope_value(val, self.constants);
                 return Ok(value);
-            },
+            }
             // Kind::Hex(r, g, b) => Value::Color(Color::Rgb { r, g, b }),
             // Kind::Ident(b @ (TRUE | FALSE)) => Value::Bool(b == TRUE),
             // Kind::Ident(val) if val.starts_with("ansi") => match val[4..].parse::<u8>() {
@@ -39,57 +36,57 @@ impl<'lexer, 'src> AttributeParser<'lexer, 'src> {
             // },
             Kind::Number(val) => val,
             Kind::Ident(val) => val.trim(),
-                // match left {
-                //     fields::ALIGNMENT => match val {
-                //         "top" => Value::Alignment(Align::Top),
-                //         "top-right" => Value::Alignment(Align::TopRight),
-                //         "right" => Value::Alignment(Align::Right),
-                //         "bottom-right" => Value::Alignment(Align::BottomRight),
-                //         "bottom" => Value::Alignment(Align::Bottom),
-                //         "bottom-left" => Value::Alignment(Align::BottomLeft),
-                //         "left" => Value::Alignment(Align::Left),
-                //         "top-left" => Value::Alignment(Align::TopLeft),
-                //         "centre" | "center" => Value::Alignment(Align::Centre),
-                //         _ => {
-                //             return Err(self.lexer.error(ErrorKind::InvalidToken {
-                //                 expected: "alignment",
-                //             }))
-                //         }
-                //     },
-                //     fields::AXIS => match val {
-                //         "horizontal" | "horz" => Value::Axis(Axis::Horizontal),
-                //         "vertical" | "vert" => Value::Axis(Axis::Vertical),
-                //         _ => {
-                //             return Err(self
-                //                 .lexer
-                //                 .error(ErrorKind::InvalidToken { expected: "axis" }))
-                //         }
-                //     },
-                //     fields::ID => Value::String(val.to_string()),
-                //     fields::DISPLAY => match val {
-                //         "show" => Value::Display(Display::Show),
-                //         "hide" => Value::Display(Display::Hide),
-                //         "exclude" => Value::Display(Display::Exclude),
-                //         _ => {
-                //             return Err(self.lexer.error(ErrorKind::InvalidToken {
-                //                 expected: "display",
-                //             }))
-                //         }
-                //     },
-                //     fields::DIRECTION => match val {
-                //         "forward" => Value::Direction(Direction::Forward),
-                //         "backward" => Value::Direction(Direction::Backward),
-                //         _ => {
-                //             return Err(self
-                //                 .lexer
-                //                 .error(ErrorKind::InvalidToken { expected: "axis" }))
-                //         }
-                //     },
-                //     _custom_attribute => match self.try_parse_color(val) {
-                //         Some(color) => Value::Color(color),
-                //         None => Value::String(val.to_string()),
-                //     },
-                // }
+            // match left {
+            //     fields::ALIGNMENT => match val {
+            //         "top" => Value::Alignment(Align::Top),
+            //         "top-right" => Value::Alignment(Align::TopRight),
+            //         "right" => Value::Alignment(Align::Right),
+            //         "bottom-right" => Value::Alignment(Align::BottomRight),
+            //         "bottom" => Value::Alignment(Align::Bottom),
+            //         "bottom-left" => Value::Alignment(Align::BottomLeft),
+            //         "left" => Value::Alignment(Align::Left),
+            //         "top-left" => Value::Alignment(Align::TopLeft),
+            //         "centre" | "center" => Value::Alignment(Align::Centre),
+            //         _ => {
+            //             return Err(self.lexer.error(ErrorKind::InvalidToken {
+            //                 expected: "alignment",
+            //             }))
+            //         }
+            //     },
+            //     fields::AXIS => match val {
+            //         "horizontal" | "horz" => Value::Axis(Axis::Horizontal),
+            //         "vertical" | "vert" => Value::Axis(Axis::Vertical),
+            //         _ => {
+            //             return Err(self
+            //                 .lexer
+            //                 .error(ErrorKind::InvalidToken { expected: "axis" }))
+            //         }
+            //     },
+            //     fields::ID => Value::String(val.to_string()),
+            //     fields::DISPLAY => match val {
+            //         "show" => Value::Display(Display::Show),
+            //         "hide" => Value::Display(Display::Hide),
+            //         "exclude" => Value::Display(Display::Exclude),
+            //         _ => {
+            //             return Err(self.lexer.error(ErrorKind::InvalidToken {
+            //                 expected: "display",
+            //             }))
+            //         }
+            //     },
+            //     fields::DIRECTION => match val {
+            //         "forward" => Value::Direction(Direction::Forward),
+            //         "backward" => Value::Direction(Direction::Backward),
+            //         _ => {
+            //             return Err(self
+            //                 .lexer
+            //                 .error(ErrorKind::InvalidToken { expected: "axis" }))
+            //         }
+            //     },
+            //     _custom_attribute => match self.try_parse_color(val) {
+            //         Some(color) => Value::Color(color),
+            //         None => Value::String(val.to_string()),
+            //     },
+            // }
             // }
             // Kind::Number(val) => Value::Number(val),
             Kind::LDoubleCurly => {
@@ -168,7 +165,7 @@ mod test {
     }
 
     fn parse_attributes_result(src: &str) -> Result<Attributes> {
-        let mut consts = Constants::default();
+        let mut consts = Constants::new();
         let lexer = Lexer::new(src);
         let parser = Parser::new(lexer, &mut consts)?;
         let mut attrs = Attributes::empty();
@@ -214,8 +211,8 @@ mod test {
 
     #[test]
     fn string_fragments() {
-        let text = parse_scope_value("a{{b}}");
-        let TextPath::Fragments(fragments) = text else {
+        let text = parse_scope_value("a{{b}}", &mut Constants::new());
+        let ScopeValue::List(fragments) = text else {
             panic!()
         };
 
@@ -225,9 +222,11 @@ mod test {
 
     #[test]
     fn escaped_string() {
-        let text = parse_scope_value("a\\\"b");
-        let TextPath::String(s) = text else { panic!() };
-        assert_eq!(s, "a\"b");
+        let text = parse_scope_value("a\\\"b", &mut Constants::new());
+        let ScopeValue::Static(s) = text else {
+            panic!()
+        };
+        assert_eq!(&*s, "a\"b");
     }
 
     #[test]
@@ -242,7 +241,7 @@ mod test {
         let src = "\"hello, world\"";
 
         let mut lexer = Lexer::new(src);
-        let output = AttributeParser::new(&mut lexer).parse("attrib").unwrap();
+        let output = AttributeParser::new(&mut lexer, &mut Constants::new()).parse("attrib").unwrap();
         let Value::String(text) = output else {
             panic!()
         };

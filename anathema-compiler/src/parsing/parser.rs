@@ -605,7 +605,7 @@ mod test {
     use super::*;
 
     fn parse(src: &str) -> Vec<Result<Expression>> {
-        let mut consts = Constants::default();
+        let mut consts = Constants::new();
         let lexer = Lexer::new(src);
         let parser = Parser::new(lexer, &mut consts).unwrap();
         parser.collect()
@@ -622,7 +622,7 @@ mod test {
     #[test]
     fn parse_single_instruction() {
         let src = "a";
-        let expected = Expression::Node(0);
+        let expected = Expression::Node(0.into());
         let actual = parse_ok(src).remove(0);
         assert_eq!(expected, actual);
     }
@@ -631,8 +631,8 @@ mod test {
     fn parse_attributes() {
         let src = "a [a: a]";
         let expected = vec![
-            Expression::Node(0),
-            Expression::LoadAttribute { key: 0, value: 0 },
+            Expression::Node(0.into()),
+            Expression::LoadAttribute { key: 0.into(), value: 0.into() },
             Expression::EOF,
         ];
 
@@ -644,8 +644,8 @@ mod test {
     fn parse_text() {
         let src = "a 'a'      \n\n//some comments \n    ";
         let expected = vec![
-            Expression::Node(0),
-            Expression::LoadText(0),
+            Expression::Node(0.into()),
+            Expression::LoadText(0.into()),
             Expression::EOF,
         ];
 
@@ -663,15 +663,15 @@ mod test {
             a
             ";
         let expected = vec![
-            Expression::Node(0),
+            Expression::Node(0.into()),
             Expression::ScopeStart,
-            Expression::Node(1),
+            Expression::Node(1.into()),
             Expression::ScopeStart,
-            Expression::Node(2),
+            Expression::Node(2.into()),
             Expression::ScopeEnd,
-            Expression::Node(1),
+            Expression::Node(1.into()),
             Expression::ScopeEnd,
-            Expression::Node(0),
+            Expression::Node(0.into()),
             Expression::EOF,
         ];
 
@@ -684,11 +684,11 @@ mod test {
                     c
             ";
         let expected = vec![
-            Expression::Node(0),
+            Expression::Node(0.into()),
             Expression::ScopeStart,
-            Expression::Node(1),
+            Expression::Node(1.into()),
             Expression::ScopeStart,
-            Expression::Node(2),
+            Expression::Node(2.into()),
             Expression::ScopeEnd,
             Expression::ScopeEnd,
             Expression::EOF,
@@ -708,25 +708,25 @@ mod test {
         ";
         let mut instructions = parse_ok(src);
 
-        assert_eq!(instructions.remove(0), Expression::Node(0));
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
         assert_eq!(
             instructions.remove(0),
             Expression::For {
-                data: 0,
-                binding: 0
+                data: 0.into(),
+                binding: 0.into()
             }
         );
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
         assert_eq!(
             instructions.remove(0),
             Expression::For {
-                data: 0,
-                binding: 1
+                data: 0.into(),
+                binding: 1.into()
             }
         );
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::Node(0));
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
@@ -741,19 +741,19 @@ mod test {
             y
         ";
         let mut instructions = parse_ok(src);
-        assert_eq!(instructions.remove(0), Expression::Node(0));
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::Node(1));
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
         assert_eq!(
             instructions.remove(0),
             Expression::For {
-                data: 0,
-                binding: 0
+                data: 0.into(),
+                binding: 0.into()
             }
         );
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::Node(1));
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
     }
 
@@ -765,9 +765,9 @@ mod test {
         ";
         let mut instructions = parse_ok(src);
 
-        assert_eq!(instructions.remove(0), Expression::If(0));
+        assert_eq!(instructions.remove(0), Expression::If(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::Node(0));
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
     }
 
@@ -781,13 +781,13 @@ mod test {
         ";
         let mut instructions = parse_ok(src);
 
-        assert_eq!(instructions.remove(0), Expression::If(0));
+        assert_eq!(instructions.remove(0), Expression::If(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::Node(0));
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
         assert_eq!(instructions.remove(0), Expression::Else(None));
         assert_eq!(instructions.remove(0), Expression::ScopeStart);
-        assert_eq!(instructions.remove(0), Expression::Node(1));
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
         assert_eq!(instructions.remove(0), Expression::ScopeEnd);
     }
 
@@ -803,17 +803,17 @@ mod test {
         ";
         let mut expressions = parse_ok(src);
 
-        assert_eq!(expressions.remove(0), Expression::If(0));
+        assert_eq!(expressions.remove(0), Expression::If(0.into()));
         assert_eq!(expressions.remove(0), Expression::ScopeStart);
-        assert_eq!(expressions.remove(0), Expression::Node(0));
+        assert_eq!(expressions.remove(0), Expression::Node(0.into()));
         assert_eq!(expressions.remove(0), Expression::ScopeEnd);
-        assert_eq!(expressions.remove(0), Expression::Else(Some(0)));
+        assert_eq!(expressions.remove(0), Expression::Else(Some(0.into())));
         assert_eq!(expressions.remove(0), Expression::ScopeStart);
-        assert_eq!(expressions.remove(0), Expression::Node(1));
+        assert_eq!(expressions.remove(0), Expression::Node(1.into()));
         assert_eq!(expressions.remove(0), Expression::ScopeEnd);
         assert_eq!(expressions.remove(0), Expression::Else(None));
         assert_eq!(expressions.remove(0), Expression::ScopeStart);
-        assert_eq!(expressions.remove(0), Expression::Node(2));
+        assert_eq!(expressions.remove(0), Expression::Node(2.into()));
         assert_eq!(expressions.remove(0), Expression::ScopeEnd);
     }
 
@@ -821,7 +821,7 @@ mod test {
     fn parse_view() {
         let src = "view 'mail'";
         let mut expressions = parse_ok(src);
-        assert_eq!(expressions.remove(0), Expression::View(0));
+        assert_eq!(expressions.remove(0), Expression::View(0.into()));
     }
 
     #[test]
@@ -832,8 +832,8 @@ mod test {
         ";
 
         let mut expressions = parse_ok(src);
-        assert_eq!(expressions.remove(0), Expression::If(0));
-        assert_eq!(expressions.remove(0), Expression::Node(0));
+        assert_eq!(expressions.remove(0), Expression::If(0.into()));
+        assert_eq!(expressions.remove(0), Expression::Node(0.into()));
     }
 
     #[test]

@@ -3,6 +3,13 @@ use super::Storage;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct StringId(usize);
 
+impl From<usize> for StringId {
+    fn from(n: usize) -> Self {
+        Self(n)
+    }
+}
+
+
 #[derive(Debug)]
 pub struct Strings(Storage<String>);
 
