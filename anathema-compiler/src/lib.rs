@@ -8,7 +8,7 @@ mod constants;
 pub use compiler::Instruction;
 
 pub use crate::constants::Constants;
-pub use constants::{ValueId, StringId};
+pub use constants::{ValueId, StringId, CondId};
 
 /// Compile source into instructions and constants.
 pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {

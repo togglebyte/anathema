@@ -8,11 +8,12 @@ use self::values::Values;
 
 pub use self::strings::StringId;
 pub use self::values::ValueId;
-// pub use self::texts::TextId;
+pub use self::conditions::CondId;
 
 mod paths;
 mod storage;
 mod strings;
+mod conditions;
 // mod texts;
 mod values;
 
@@ -24,6 +25,7 @@ mod values;
 pub struct Constants {
     strings: Strings,
     values: Values,
+    conditions: Conditions,
 }
 
 impl Constants {
@@ -31,6 +33,7 @@ impl Constants {
         Self {
             strings: Strings::empty(),
             values: Values::empty(),
+            conditions: Conditions::empty(),
         }
     }
 
@@ -42,11 +45,19 @@ impl Constants {
         self.values.push(value)
     }
 
+    pub fn store_cond(&mut self, cond: Cond) -> CondId {
+        self.conditions.push(value)
+    }
+
     pub fn lookup_string(&self, index: StringId) -> Option<&str> {
         self.strings.get(index).map(String::as_str)
     }
 
     pub fn lookup_value(&self, index: ValueId) -> Option<&ScopeValue> {
         self.values.get(index)
+    }
+
+    pub fn lookup_cond(&self, index: CondId) -> Option<&Cond> {
+        self.conditions.get(index)
     }
 }

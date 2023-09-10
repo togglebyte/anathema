@@ -15,13 +15,14 @@ pub enum Expression {
     View(ValueId),
     Node(StringId),
     For { data: ValueId, binding: StringId },
-    If(ValueId),
-    Else(Option<ValueId>),
+    If(CondId),
+    Else(Option<CondId>),
     ScopeStart,
     ScopeEnd,
     EOF,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Cond {
     Value(ValueId),
     And(Box<Cond>, Box<Cond>),

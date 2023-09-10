@@ -1,21 +1,19 @@
-
-
-use crate::parsing::parser::Expression as ParseExpr;
+use crate::parsing::parser::{Cond, Expression as ParseExpr};
 use crate::{StringId, ValueId};
 
 enum ControlFlow {
-    If(ValueId),
-    Else(Option<ValueId>),
+    If(CondId),
+    Else(Option<CondId>),
 }
 
-#[derive(Debug, PartialEq, Clone, Eq)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub(crate) enum Expression {
     If {
-        cond: ValueId,
+        cond: CondId,
         size: usize,
     },
     Else {
-        cond: Option<ValueId>,
+        cond: Option<CondId>,
         size: usize,
     },
     For {
@@ -258,7 +256,13 @@ mod test {
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
@@ -277,7 +281,13 @@ mod test {
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
@@ -349,8 +359,20 @@ mod test {
                 a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 2 });
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 2
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
@@ -373,12 +395,11 @@ mod test {
         b
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 2 });
         assert_eq!(
             expressions.remove(0),
-            Expression::Node {
-                ident: 0.into(),
-                scope_size: 0
+            Expression::If {
+                cond: 0.into(),
+                size: 2
             }
         );
         assert_eq!(
@@ -388,7 +409,20 @@ mod test {
                 scope_size: 0
             }
         );
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 0.into(),
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
@@ -431,7 +465,13 @@ mod test {
             x
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0.into(), size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
@@ -502,7 +542,10 @@ mod test {
         );
         assert_eq!(
             expressions.remove(0),
-            Expression::LoadAttribute { key: 1.into(), value: 0.into() }
+            Expression::LoadAttribute {
+                key: 1.into(),
+                value: 0.into()
+            }
         );
         assert_eq!(expressions.remove(0), Expression::LoadText(1.into()));
         assert_eq!(
