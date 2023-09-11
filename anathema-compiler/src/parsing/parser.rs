@@ -1,5 +1,6 @@
 use anathema_values::{Path, ScopeValue};
 
+use super::cond_parser::CondParser;
 // use anathema_widget_core::{Number, Value};
 use super::value_parser::ValueParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
@@ -22,9 +23,10 @@ pub enum Expression {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Cond {
-    Value(ValueId),
+    Group(Vec<Cond>),
     And(Box<Cond>, Box<Cond>),
     Or(Box<Cond>, Box<Cond>),
+    Value(ValueId),
 }
 
 // -----------------------------------------------------------------------------
@@ -356,9 +358,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         } else if self.lexer.consume_if(Kind::If)? {
             self.lexer.consume(true, false);
 
-            let value = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
-            let value_id = self.constants.store_value(value);
-            let cond = Cond::Value(value_id);
+            let cond = CondParser::new(&mut self.lexer, &mut self.constants).parse()?;
             let cond_id = self.constants.store_cond(cond);
             self.lexer.consume(true, false);
 

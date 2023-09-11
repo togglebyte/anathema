@@ -116,6 +116,8 @@ impl<'lexer, 'src> ValueParser<'lexer, 'src> {
             | Kind::If
             | Kind::Else
             | Kind::View
+            | Kind::And
+            | Kind::Or
             | Kind::EOF => return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "" })),
         };
 

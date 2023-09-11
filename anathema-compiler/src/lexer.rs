@@ -30,6 +30,8 @@ pub(crate) enum Kind<'src> {
     RParen,
     String(&'src str),
     Indent(usize),
+    And,
+    Or,
     EOF,
 }
 
@@ -110,6 +112,14 @@ impl<'src> Lexer<'src> {
                 Ok(Kind::RDoubleCurly.to_token(index))
             }
             ('[', Some('0'..='9')) => self.take_index(index),
+            ('&', Some('&')) => {
+                let _ = self.chars.next();
+                Ok(Kind::And.to_token(index))
+            }
+            ('|', Some('|')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Or.to_token(index))
+            }
 
             // -----------------------------------------------------------------------------
             //     - Single tokens -
