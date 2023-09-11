@@ -119,25 +119,18 @@ impl<'a> Scope<'a> {
     pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
         self.inner
             .iter()
+            .rev()
             .filter_map(|values| values.get(path).map(Deref::deref))
             .next()
     }
 
     pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
-        self.inner
-            .iter()
-            .filter_map(|values| values.get(path).map(Deref::deref))
-            .filter_map(|value| match value {
+        self.lookup(path)
+            .and_then(|value| match value {
                 ScopeValue::List(list) => Some(list.clone()),
                 _ => None,
             })
-            .next()
     }
-
-    // pub fn from_self(&'a self) -> Scope<'a> {
-    //     panic!()
-    //     // Scope::new(Some(self))
-    // }
 }
 
 pub struct Context<'a, 'val> {
@@ -268,7 +261,7 @@ mod test {
     type Sub = usize;
 
     #[test]
-    fn shadow_value() {
+    fn scope_value() {
         let mut scope = Scope::new(None);
         scope.scope(
             "value".into(),
@@ -277,16 +270,21 @@ mod test {
 
         // let mut inner = Scope::new(Some(&scope));
         scope.push();
-        let value = scope.lookup(&"value".into()).unwrap();
-        scope.scope("shadow".into(), Cow::Borrowed(value));
+        scope.scope("value".into(), Cow::Owned(ScopeValue::Static("inner hello".into())));
 
-        // let ScopeValue::Static(lhs) = scope.lookup(&"shadow".into()).unwrap() else {
-        //     panic!()
-        // };
-        // let ScopeValue::Static(rhs) = scope.lookup(&"value".into()).unwrap() else {
-        //     panic!()
-        // };
-        // assert_eq!(lhs, rhs);
+        let value = scope.lookup(&"value".into()).unwrap();
+
+        let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
+            panic!()
+        };
+        assert_eq!(&**lhs, "inner hello");
+
+        scope.pop();
+
+        let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
+            panic!()
+        };
+        assert_eq!(&**lhs, "hello world");
     }
 
     #[test]
