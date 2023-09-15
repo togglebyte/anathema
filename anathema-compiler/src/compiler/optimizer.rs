@@ -218,9 +218,9 @@ mod test {
     use crate::Constants;
 
     fn parse(src: &str) -> Vec<Expression> {
-        let mut ctx = Constants::new();
-        let lexer = Lexer::new(src);
-        let parser = Parser::new(lexer, &mut ctx).unwrap();
+        let mut consts = Constants::new();
+        let lexer = Lexer::new(src, &mut consts);
+        let parser = Parser::new(lexer).unwrap();
         let expr = parser.map(|e| e.unwrap()).collect();
         let opt = Optimizer::new(expr);
         opt.optimize()

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::Storage;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -9,6 +11,11 @@ impl From<usize> for StringId {
     }
 }
 
+impl Display for StringId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug)]
 pub struct Strings(Storage<String>);

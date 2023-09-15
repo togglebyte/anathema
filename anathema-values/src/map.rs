@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use super::*;
 use crate::hashmap::HashMap;
+use crate::scope::StaticValue;
 use crate::Path;
 
 #[derive(Debug)]
@@ -27,12 +28,18 @@ impl<T> Map<T> {
         self.inner.get(key).map(Into::into)
     }
 
-    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, str>>
+    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, StaticValue>>
     where
         T: State,
     {
-        let Path::Composite(lhs, rhs) = key else { return None };
-        let Path::Key(key) = lhs.deref() else { return None };
-        self.inner.get(key).and_then(|val| val.inner.get(rhs, Some(node_id)))
+        let Path::Composite(lhs, rhs) = key else {
+            return None;
+        };
+        let Path::Key(key) = lhs.deref() else {
+            return None;
+        };
+        self.inner
+            .get(key)
+            .and_then(|val| val.inner.get(rhs, Some(node_id)))
     }
 }

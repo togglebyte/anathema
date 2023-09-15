@@ -4,6 +4,7 @@ pub(crate) mod compiler;
 pub(crate) mod lexer;
 pub(crate) mod parsing;
 mod constants;
+pub(crate) mod operator;
 
 pub use compiler::Instruction;
 
@@ -12,9 +13,9 @@ pub use constants::{ValueId, StringId, CondId};
 
 /// Compile source into instructions and constants.
 pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {
-    let lexer = lexer::Lexer::new(src);
     let mut constants = Constants::new();
-    let parser = parsing::parser::Parser::new(lexer, &mut constants)?;
+    let lexer = lexer::Lexer::new(src, &mut constants);
+    let parser = parsing::parser::Parser::new(lexer)?;
     let expressions = parser.collect::<error::Result<Vec<_>>>()?;
     let optimizer = compiler::Optimizer::new(expressions);
     let expressions = optimizer.optimize();

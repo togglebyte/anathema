@@ -2,6 +2,8 @@ use std::error::Error as StdError;
 use std::fmt::{self, Display, Formatter};
 use std::ops::Range;
 
+use crate::operator::Operator;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub(super) fn src_line_no(end: usize, src: &str) -> (usize, usize) {
@@ -20,7 +22,7 @@ pub(super) fn src_line_no(end: usize, src: &str) -> (usize, usize) {
     (line_no, col)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Error {
     pub kind: ErrorKind,
     pub line: usize,
@@ -31,6 +33,16 @@ pub struct Error {
 impl StdError for Error {}
 
 impl Error {
+    pub(crate) fn unexpected_eof(start: usize, src: &str) -> Self {
+        let (line, col) = src_line_no(start, src);
+        Self {
+            line,
+            col,
+            src: src.to_string(),
+            kind: ErrorKind::UnexpectedEof,
+        }
+    }
+
     pub(crate) fn unterminated_string(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.start, src);
         Self {
@@ -50,6 +62,7 @@ impl Error {
             kind: ErrorKind::InvalidNumber,
         }
     }
+
     pub(crate) fn invalid_index(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.end, src);
         Self {
@@ -82,23 +95,23 @@ impl Display for Error {
             .take(3);
 
         let msg = match &self.kind {
-            ErrorKind::UnterminatedString => "unterminated string".to_string(),
-            ErrorKind::UnterminatedAttributes => {
-                "unterminated attributes (missing `]`)".to_string()
-            }
-            ErrorKind::UnterminatedElement => "unterminated element".to_string(),
+            ErrorKind::UnterminatedString => "unterminated string".into(),
+            ErrorKind::UnterminatedAttributes => "unterminated attributes (missing `]`)".into(),
+            ErrorKind::UnterminatedElement => "unterminated element".into(),
             ErrorKind::InvalidToken { expected } => {
                 format!("invalid token. expected: {expected}")
             }
-            ErrorKind::InvalidNumber => "invalid number".to_string(),
-            ErrorKind::InvalidIndex => "invalid index".to_string(),
-            ErrorKind::InvalidPath => "invalid path".to_string(),
-            ErrorKind::InvalidHexValue => "invalid hex value".to_string(),
-            ErrorKind::UnexpectedEnd => "unexpected end".to_string(),
-            ErrorKind::TrailingPipe => "trailing pipe character".to_string(),
+            ErrorKind::InvalidNumber => "invalid number".into(),
+            ErrorKind::InvalidIndex => "invalid index".into(),
+            ErrorKind::InvalidPath => "invalid path".into(),
+            ErrorKind::InvalidHexValue => "invalid hex value".into(),
+            ErrorKind::UnexpectedEof => "unexpected end of file".into(),
+            ErrorKind::TrailingPipe => "trailing pipe character".into(),
             ErrorKind::InvalidUnindent => {
-                "unindent does not match previous indentation levels".to_string()
+                "dedent does not match previous indentation levels".into()
             }
+            ErrorKind::InvalidOperator(op) => "invalid operator: {op}".into(),
+            ErrorKind::UnexpectedToken(msg) => "unexpected token: {msg}".into(),
         };
 
         writeln!(f, "error on line {start_line}: {msg}")?;
@@ -116,7 +129,7 @@ impl Display for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
     UnterminatedString,
     UnterminatedElement,
@@ -125,8 +138,10 @@ pub enum ErrorKind {
     InvalidNumber,
     InvalidIndex,
     InvalidHexValue,
-    UnexpectedEnd,
+    UnexpectedEof,
     TrailingPipe,
     InvalidUnindent,
     InvalidPath,
+    InvalidOperator(Operator),
+    UnexpectedToken(String),
 }

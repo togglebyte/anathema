@@ -4,7 +4,7 @@ use super::cond_parser::CondParser;
 // use anathema_widget_core::{Number, Value};
 use super::value_parser::ValueParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
-use crate::lexer::{Kind, Lexer, Token};
+use crate::lexer::{Kind, Lexer, Token, Value};
 use crate::{CondId, Constants, StringId, ValueId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,7 +32,7 @@ pub enum Cond {
 // -----------------------------------------------------------------------------
 //     - Lexer extensions -
 // -----------------------------------------------------------------------------
-impl<'src> Lexer<'src> {
+impl<'src, 'consts> Lexer<'src, 'consts> {
     // -----------------------------------------------------------------------------
     //     - Errors -
     // -----------------------------------------------------------------------------
@@ -46,22 +46,11 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    // -----------------------------------------------------------------------------
-    //     - Token checks -
-    // -----------------------------------------------------------------------------
-    fn is_whitespace(&mut self) -> bool {
-        matches!(self.peek(), Ok(Token(Kind::Indent(_), _)))
+    pub(super) fn unexpected_token(&self, msg: &str) -> Error {
+        self.error(ErrorKind::UnexpectedToken(msg.into()))
     }
 
-    fn is_newline(&mut self) -> bool {
-        matches!(self.peek(), Ok(Token(Kind::Newline, _)))
-    }
-
-    fn is_comment(&mut self) -> bool {
-        matches!(self.peek(), Ok(Token(Kind::Comment, _)))
-    }
-
-    fn is_next_token(&mut self, kind: Kind) -> Result<bool> {
+    pub(crate) fn is_next_token(&mut self, kind: Kind) -> Result<bool> {
         match self.peek() {
             Ok(Token(other, _)) => Ok(kind.eq(other)),
             Err(e) => Err(e.clone()),
@@ -77,26 +66,9 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    // -----------------------------------------------------------------------------
-    //     - Consuming / peeking -
-    // -----------------------------------------------------------------------------
-    pub(super) fn consume(&mut self, whitespace: bool, newlines: bool) {
-        loop {
-            if whitespace && self.is_whitespace() {
-                let _ = self.next();
-            } else if newlines && self.is_newline() {
-                let _ = self.next();
-            } else if self.is_comment() {
-                let _ = self.next();
-            } else {
-                break;
-            }
-        }
-    }
-
-    pub(super) fn read_ident(&mut self) -> Result<&'src str> {
+    pub(super) fn read_ident(&mut self) -> Result<StringId> {
         match self.next() {
-            Ok(Token(Kind::Ident(ident), _)) => Ok(ident),
+            Ok(Token(Kind::Value(Value::Ident(ident)), _)) => Ok(ident),
             Ok(_) => Err(self.error(ErrorKind::InvalidToken {
                 expected: "identifier",
             })),
@@ -139,9 +111,8 @@ enum State {
 //     - Parser -
 // -----------------------------------------------------------------------------
 pub struct Parser<'src, 'consts> {
-    lexer: Lexer<'src>,
+    lexer: Lexer<'src, 'consts>,
     state: State,
-    constants: &'consts mut Constants,
     open_scopes: Vec<usize>,
     closed_scopes: Vec<usize>,
     base_indent: usize,
@@ -149,7 +120,7 @@ pub struct Parser<'src, 'consts> {
 }
 
 impl<'src, 'consts> Parser<'src, 'consts> {
-    pub(crate) fn new(mut lexer: Lexer<'src>, ctx: &'consts mut Constants) -> Result<Self> {
+    pub(crate) fn new(mut lexer: Lexer<'src, 'consts>) -> Result<Self> {
         lexer.consume(false, true);
         let base_indent = match lexer.peek() {
             Ok(Token(Kind::Indent(indent), _)) => *indent,
@@ -159,7 +130,6 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         let inst = Self {
             lexer,
             state: State::EnterScope,
-            constants: ctx,
             open_scopes: Vec::new(),
             closed_scopes: Vec::new(),
             base_indent,
@@ -223,7 +193,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     fn enter_scope(&mut self) -> Result<Option<Expression>> {
         let indent = self.lexer.read_indent().transpose()?;
 
-        if self.lexer.is_next_token(Kind::EOF)? {
+        if self.lexer.is_next_token(Kind::Eof)? {
             self.next_state();
             return Ok(None);
         }
@@ -295,7 +265,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     //     - Stage 2: Parse ident, For and If -
     // -----------------------------------------------------------------------------
     fn parse_ident(&mut self) -> Result<Option<Expression>> {
-        if self.lexer.is_next_token(Kind::EOF)? {
+        if self.lexer.is_next_token(Kind::Eof)? {
             self.state = State::Done;
             return Ok(None);
         }
@@ -308,9 +278,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             return Ok(None);
         }
 
-        let ident = self.lexer.read_ident()?;
+        let index = self.lexer.read_ident()?;
 
-        let index = self.constants.store_string(ident);
         self.lexer.consume(true, false);
         self.next_state();
         Ok(Some(Expression::Node(index)))
@@ -319,25 +288,24 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     fn parse_for(&mut self) -> Result<Option<Expression>> {
         self.lexer.consume(true, false);
         if self.lexer.consume_if(Kind::For)? {
-            self.lexer.consume(true, false);
-            let binding = self.lexer.read_ident()?;
-            self.lexer.consume(true, false);
+            panic!()
+            // self.lexer.consume(true, false);
+            // let binding = self.lexer.read_ident()?;
+            // self.lexer.consume(true, false);
 
-            if !matches!(self.lexer.peek(), Ok(Token(Kind::In, _))) {
-                return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "in" }));
-            }
-            // Consume `In`
-            let _ = self.lexer.next();
-            self.lexer.consume(true, false);
+            // if !matches!(self.lexer.peek(), Ok(Token(Kind::In, _))) {
+            //     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "in" }));
+            // }
+            // // Consume `In`
+            // let _ = self.lexer.next();
+            // self.lexer.consume(true, false);
 
-            let binding = self.constants.store_string(binding);
+            // let data = ValueParser::new(&mut self.lexer).parse()?;
+            // // let data = self.constants.store_value(data);
+            // // self.lexer.consume(true, false);
 
-            let data = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
-            let data = self.constants.store_value(data);
-            self.lexer.consume(true, false);
-
-            self.next_state();
-            Ok(Some(Expression::For { data, binding }))
+            // // self.next_state();
+            // // Ok(Some(Expression::For { data, binding }))
         } else {
             self.next_state();
             Ok(None)
@@ -356,14 +324,15 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
             Ok(Some(Expression::Else(cond)))
         } else if self.lexer.consume_if(Kind::If)? {
-            self.lexer.consume(true, false);
+            panic!()
+            // self.lexer.consume(true, false);
 
-            let cond = CondParser::new(&mut self.lexer, &mut self.constants).parse()?;
-            let cond_id = self.constants.store_cond(cond);
-            self.lexer.consume(true, false);
+            // let cond = CondParser::new(&mut self.lexer).parse()?;
+            // let cond_id = self.constants.store_cond(cond);
+            // self.lexer.consume(true, false);
 
-            self.next_state();
-            Ok(Some(Expression::If(cond_id)))
+            // self.next_state();
+            // Ok(Some(Expression::If(cond_id)))
         } else {
             self.next_state();
             Ok(None)
@@ -371,18 +340,19 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     }
 
     fn parse_view(&mut self) -> Result<Option<Expression>> {
-        self.lexer.consume(true, false);
-        if self.lexer.consume_if(Kind::View)? {
-            self.lexer.consume(true, false);
-            let id = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
-            let id = self.constants.store_value(id);
-            self.lexer.consume(true, false);
-            self.next_state();
-            Ok(Some(Expression::View(id)))
-        } else {
-            self.next_state();
-            Ok(None)
-        }
+        panic!()
+        // self.lexer.consume(true, false);
+        // if self.lexer.consume_if(Kind::View)? {
+        //     self.lexer.consume(true, false);
+        //     let id = ValueParser::new(&mut self.lexer).parse()?;
+        //     let id = self.constants.store_value(id);
+        //     self.lexer.consume(true, false);
+        //     self.next_state();
+        //     Ok(Some(Expression::View(id)))
+        // } else {
+        //     self.next_state();
+        //     Ok(None)
+        // }
     }
 
     // -----------------------------------------------------------------------------
@@ -403,38 +373,36 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     //     - Stage 4: Parse single attribute -
     // -----------------------------------------------------------------------------
     fn parse_attribute(&mut self) -> Result<Option<Expression>> {
-        self.lexer.consume(true, true);
+        panic!()
+        // self.lexer.consume(true, true);
 
-        // Check for the closing bracket
-        if self.lexer.consume_if(Kind::RBracket)? {
-            self.next_state();
-            return Ok(None);
-        }
+        // // Check for the closing bracket
+        // if self.lexer.consume_if(Kind::RBracket)? {
+        //     self.next_state();
+        //     return Ok(None);
+        // }
 
-        let left = self.lexer.read_ident()?;
-        self.lexer.consume(true, true);
+        // let key = self.lexer.read_ident()?;
+        // self.lexer.consume(true, true);
 
-        if !self.lexer.consume_if(Kind::Colon)? {
-            return Err(self.lexer.error(ErrorKind::InvalidToken { expected: ":" }));
-        }
-        self.lexer.consume(true, true);
+        // if !self.lexer.consume_if(Kind::Colon)? {
+        //     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: ":" }));
+        // }
+        // self.lexer.consume(true, true);
 
-        let right = ValueParser::new(&mut self.lexer, &mut self.constants).parse()?;
-        self.lexer.consume(true, true);
+        // let value = ValueParser::new(&mut self.lexer).parse()?;
+        // self.lexer.consume(true, true);
 
-        // Consume comma
-        if self.lexer.consume_if(Kind::Comma)? {
-            self.lexer.consume(true, true);
-        } else if self.lexer.consume_if(Kind::RBracket)? {
-            self.next_state();
-        } else {
-            return Err(self.lexer.error(ErrorKind::UnterminatedAttributes));
-        }
+        // // Consume comma
+        // if self.lexer.consume_if(Kind::Comma)? {
+        //     self.lexer.consume(true, true);
+        // } else if self.lexer.consume_if(Kind::RBracket)? {
+        //     self.next_state();
+        // } else {
+        //     return Err(self.lexer.error(ErrorKind::UnterminatedAttributes));
+        // }
 
-        let key = self.constants.store_string(left);
-        let value = self.constants.store_value(right);
-
-        Ok(Some(Expression::LoadAttribute { key, value }))
+        // Ok(Some(Expression::LoadAttribute { key, value }))
     }
 
     // -----------------------------------------------------------------------------
@@ -451,7 +419,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 
         if let Ok(Token(kind, _)) = self.lexer.peek() {
             match kind {
-                Kind::Newline | Kind::String(_) | Kind::LBracket | Kind::EOF => {}
+                Kind::Newline | Kind::Value(Value::String(_)) | Kind::LBracket | Kind::Eof => {}
                 _ => {
                     return Err(self.lexer.error(ErrorKind::InvalidToken {
                         expected: "either a new line, `[` or text",
@@ -461,11 +429,12 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         }
 
         let ret = match self.lexer.peek() {
-            Ok(Token(Kind::String(s), _)) => {
-                let text = parse_scope_value(s, self.constants);
-                let index = self.constants.store_value(text);
-                let _ = self.lexer.next();
-                Ok(Some(Expression::LoadText(index)))
+            Ok(Token(Kind::Value(Value::String(s)), _)) => {
+                panic!()
+                // let text = parse_scope_value(s, self.lexer.consts);
+                // let index = self.constants.store_value(text);
+                // let _ = self.lexer.next();
+                // Ok(Some(Expression::LoadText(index)))
             }
             _ => Ok(None),
         };
@@ -484,11 +453,11 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         let token = self.lexer.next().map(|t| t.0)?;
 
         let ret = match token {
-            Kind::EOF if !self.open_scopes.is_empty() => {
+            Kind::Eof if !self.open_scopes.is_empty() => {
                 self.open_scopes.pop();
                 return Ok(Some(Expression::ScopeEnd));
             }
-            Kind::EOF => return Ok(Some(Expression::EOF)),
+            Kind::Eof => return Ok(Some(Expression::EOF)),
             Kind::Newline => {
                 self.lexer.consume(false, true);
                 Ok(None)
@@ -532,49 +501,50 @@ impl Iterator for Parser<'_, '_> {
 //     - Parse `ExpressionValue` -
 // -----------------------------------------------------------------------------
 pub(super) fn parse_scope_value(text: &str, consts: &mut Constants) -> ScopeValue {
-    let mut fragments = vec![];
-    let mut chars = text.char_indices().peekable();
-    let mut pos = 0;
+    panic!()
+    // let mut fragments = vec![];
+    // let mut chars = text.char_indices().peekable();
+    // let mut pos = 0;
 
-    while let Some(c) = chars.next() {
-        let next = chars.peek();
-        match (c, next) {
-            ((i, '{'), Some((_, '{'))) => {
-                let frag = &text[pos..i];
-                if !frag.is_empty() {
-                    let text_fragment = frag.replace("\\\"", "\"");
-                    fragments.push(ScopeValue::Static(text_fragment.into()));
-                }
-                pos = i;
-            }
-            ((i, '}'), Some((_, '}'))) => {
-                let frag = &text[pos + 2..i].trim();
-                if !frag.is_empty() {
-                    let mut lexer = Lexer::new(frag);
-                    if let Ok(Token(Kind::Ident(ident), _)) = lexer.next() {
-                        if let Ok(path) = parse_path(&mut lexer, ident) {
-                            fragments.push(ScopeValue::Dyn(path));
-                        }
-                    }
-                }
-                pos = i + 2;
-            }
-            _ => {}
-        }
-    }
+    // while let Some(c) = chars.next() {
+    //     let next = chars.peek();
+    //     match (c, next) {
+    //         ((i, '{'), Some((_, '{'))) => {
+    //             let frag = &text[pos..i];
+    //             if !frag.is_empty() {
+    //                 let text_fragment = frag.replace("\\\"", "\"");
+    //                 fragments.push(ScopeValue::Static(text_fragment.into()));
+    //             }
+    //             pos = i;
+    //         }
+    //         ((i, '}'), Some((_, '}'))) => {
+    //             let frag = &text[pos + 2..i].trim();
+    //             if !frag.is_empty() {
+    //                 let mut lexer = Lexer::new(frag, consts);
+    //                 if let Ok(Token(Kind::Value(Value::Ident(ident)), _)) = lexer.next() {
+    //                     if let Ok(path) = parse_path(&mut lexer, ident) {
+    //                         fragments.push(ScopeValue::Dyn(path));
+    //                     }
+    //                 }
+    //             }
+    //             pos = i + 2;
+    //         }
+    //         _ => {}
+    //     }
+    // }
 
-    let remainder = &text[pos..];
+    // let remainder = &text[pos..];
 
-    if !remainder.is_empty() || fragments.is_empty() {
-        let text_fragment = remainder.replace("\\\"", "\"");
-        fragments.push(ScopeValue::Static(text_fragment.into()));
-    }
+    // if !remainder.is_empty() || fragments.is_empty() {
+    //     let text_fragment = remainder.replace("\\\"", "\"");
+    //     fragments.push(ScopeValue::Static(text_fragment.into()));
+    // }
 
-    if fragments.len() > 1 {
-        ScopeValue::List(fragments.into())
-    } else {
-        fragments.remove(0)
-    }
+    // if fragments.len() > 1 {
+    //     ScopeValue::List(fragments.into())
+    // } else {
+    //     fragments.remove(0)
+    // }
 }
 
 // -----------------------------------------------------------------------------
@@ -582,24 +552,25 @@ pub(super) fn parse_scope_value(text: &str, consts: &mut Constants) -> ScopeValu
 //  Note: this is not part of the `Parser` as this is used in other
 //  places to parse paths
 // -----------------------------------------------------------------------------
-pub(super) fn parse_path(lexer: &mut Lexer<'_>, ident: &str) -> Result<Path> {
-    let mut path = Path::Key(ident.to_owned());
+pub(super) fn parse_path(lexer: &mut Lexer<'_, '_>, ident: &str) -> Result<Path> {
+    panic!()
+    // let mut path = Path::Key(ident.to_owned());
 
-    loop {
-        match lexer.peek() {
-            Ok(Token(Kind::Fullstop, _)) => drop(lexer.next()?),
-            Ok(Token(Kind::Index(_), _)) => {}
-            _ => break,
-        }
+    // loop {
+    //     match lexer.peek() {
+    //         Ok(Token(Kind::Fullstop, _)) => drop(lexer.next()?),
+    //         Ok(Token(Kind::Value(Value::Index(_)), _)) => {}
+    //         _ => break,
+    //     }
 
-        match lexer.next() {
-            Ok(Token(Kind::Ident(ident), _)) => path = path.compose(Path::Key(ident.to_owned())),
-            Ok(Token(Kind::Index(index), _)) => path = path.compose(Path::Index(index)),
-            _ => return Err(lexer.error(ErrorKind::InvalidPath)),
-        }
-    }
+    //     match lexer.next() {
+    //         Ok(Token(Kind::Value(Value::Ident(ident)), _)) => path = path.compose(Path::Key(ident.to_owned())),
+    //         Ok(Token(Kind::Value(Value::Index(index)), _)) => path = path.compose(Path::Index(index)),
+    //         _ => return Err(lexer.error(ErrorKind::InvalidPath)),
+    //     }
+    // }
 
-    Ok(path)
+    // Ok(path)
 }
 
 #[cfg(test)]
@@ -608,8 +579,8 @@ mod test {
 
     fn parse(src: &str) -> Vec<Result<Expression>> {
         let mut consts = Constants::new();
-        let lexer = Lexer::new(src);
-        let parser = Parser::new(lexer, &mut consts).unwrap();
+        let lexer = Lexer::new(src, &mut consts);
+        let parser = Parser::new(lexer).unwrap();
         parser.collect()
     }
 

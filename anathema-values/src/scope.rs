@@ -1,8 +1,10 @@
+use std::fmt::{self, Display, Write};
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::str::FromStr;
 
+use anathema_render::{Color, Size, Style};
 use crate::hashmap::HashMap;
 use crate::{NodeId, Path, State};
 
@@ -42,8 +44,44 @@ impl Collection {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum StaticValue {
+    Str(Rc<str>),
+    Num(i64),
+    Float(f64),
+    Color(Color),
+}
+
+impl TryFrom<StaticValue> for Color {
+    type Error = ();
+
+    fn try_from(value: StaticValue) -> Result<Self, Self::Error> {
+        match value {
+            StaticValue::Color(color) => Ok(color),
+            _ => Err(())
+        }
+    }
+}
+
+impl Display for StaticValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Str(s) => write!(f, "{s}"),
+            Self::Num(num) => write!(f, "{num}"),
+            Self::Float(num) => write!(f, "{num}"),
+            Self::Color(color) => write!(f, "{color:?}"),
+        }
+    }
+}
+
+impl From<String> for StaticValue {
+    fn from(s: String) -> StaticValue {
+        StaticValue::Str(s.into())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum ScopeValue {
-    Static(Rc<str>),
+    Static(StaticValue),
     List(Rc<[ScopeValue]>),
     Dyn(Path),
 }
@@ -62,15 +100,15 @@ impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
 
 // TODO: add a testing flag for this
 impl From<i32> for ScopeValue {
-    fn from(s: i32) -> Self {
-        Self::Static(s.to_string().into())
+    fn from(num: i32) -> Self {
+        Self::Static(StaticValue::Num(num as i64))
     }
 }
 
 // TODO: add a testing flag for this
 impl From<String> for ScopeValue {
     fn from(s: String) -> Self {
-        Self::Static(s.into())
+        Self::Static(StaticValue::Str(s.into()))
     }
 }
 
@@ -164,7 +202,7 @@ impl<'a, 'val> Context<'a, 'val> {
     /// This will recursively lookup dynamic values
     pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<T>
     where
-        T: for<'magic> TryFrom<&'magic str>,
+        T: for<'b> TryFrom<&'b StaticValue>,
     {
         match self.scope.lookup(&path) {
             Some(val) => match val {
@@ -186,12 +224,12 @@ impl<'a, 'val> Context<'a, 'val> {
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<T>
     where
-        T: for<'attr> TryFrom<&'attr str>,
+        T: for<'attr> TryFrom<&'attr StaticValue>,
     {
         let attrib = attributes.get(key.as_ref())?;
 
         match attrib {
-            ScopeValue::Static(val) => val.as_ref().try_into().ok(),
+            ScopeValue::Static(val) => val.try_into().ok(),
             ScopeValue::Dyn(path) => self.get(path, node_id),
             _ => None,
         }
@@ -204,16 +242,13 @@ impl<'a, 'val> Context<'a, 'val> {
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<T>
     where
-        T: FromStr,
+        T: for<'b> TryFrom<&'b StaticValue>,
     {
         let attrib = attributes.get(key.as_ref())?;
 
         match attrib {
-            ScopeValue::Static(val) => T::from_str(val.as_ref()).ok(),
-            ScopeValue::Dyn(path) => self
-                .get::<String>(path, node_id)
-                .as_deref()
-                .and_then(|s| T::from_str(s).ok()),
+            ScopeValue::Static(val) => T::try_from(val).ok(),
+            ScopeValue::Dyn(path) => self.get::<T>(path, node_id),
             _ => None,
         }
     }
@@ -228,7 +263,7 @@ impl<'a, 'val> Context<'a, 'val> {
             match val {
                 ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
                 ScopeValue::Dyn(path) => buffer.push_str(&self.get_string(path, node_id)),
-                ScopeValue::Static(s) => buffer.push_str(s),
+                ScopeValue::Static(s) => drop(write!(buffer, "{s}")),
             }
         }
     }
@@ -247,7 +282,7 @@ impl<'a, 'val> Context<'a, 'val> {
             None => self
                 .state
                 .get(&path, node_id)
-                .and_then(|val| val.as_ref().try_into().ok())
+                .map(|val| val.to_string())
                 .unwrap_or_else(String::new),
         }
     }

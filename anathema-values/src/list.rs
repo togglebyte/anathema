@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use super::*;
 use crate::Path;
+use crate::scope::StaticValue;
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -30,9 +31,9 @@ impl<T> List<T> {
         self.inner.len()
     }
 
-    pub fn lookup(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, str>>
+    pub fn lookup(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>>
     where
-        for<'a> &'a Value<T>: Into<Cow<'a, str>>,
+        for<'a> &'a Value<T>: Into<Cow<'a, StaticValue>>,
     {
         let Path::Index(index) = key else { return None };
         let value = self.inner.get(*index)?;
@@ -42,7 +43,7 @@ impl<T> List<T> {
         Some(value.into())
     }
 
-    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, str>>
+    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, StaticValue>>
     where
         T: State,
     {

@@ -26,28 +26,29 @@ pub struct SingleNode {
 
 impl SingleNode {
     fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
-        let context = Context::new(state, scope);
+        panic!()
+        // let context = Context::new(state, scope);
 
-        let widget = WidgetContainer {
-            background: context.attribute("background", Some(&node_id), &self.attributes),
-            display: context
-                .attribute("display", Some(&node_id), &self.attributes)
-                .unwrap_or(Display::Show),
-            padding: context
-                .attribute("padding", Some(&node_id), &self.attributes)
-                .unwrap_or(Padding::ZERO),
-            pos: Pos::ZERO,
-            size: Size::ZERO,
-            inner: Factory::exec(context, &self, &node_id)?,
-            node_id: node_id.clone(),
-        };
+        // let widget = WidgetContainer {
+        //     background: context.attribute("background", Some(&node_id), &self.attributes),
+        //     display: context
+        //         .attribute("display", Some(&node_id), &self.attributes)
+        //         .unwrap_or(Display::Show),
+        //     padding: context
+        //         .attribute("padding", Some(&node_id), &self.attributes)
+        //         .unwrap_or(Padding::ZERO),
+        //     pos: Pos::ZERO,
+        //     size: Size::ZERO,
+        //     inner: Factory::exec(context, &self, &node_id)?,
+        //     node_id: node_id.clone(),
+        // };
 
-        let node = Node {
-            kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
-            node_id,
-        };
+        // let node = Node {
+        //     kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
+        //     node_id,
+        // };
 
-        Ok(node)
+        // Ok(node)
     }
 }
 

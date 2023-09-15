@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
 use super::DIRTY_NODES;
+use crate::scope::StaticValue;
 use crate::NodeId;
 
 #[derive(Debug, PartialEq)]
@@ -47,6 +48,12 @@ impl<T> DerefMut for Value<T> {
         }
 
         &mut self.inner
+    }
+}
+
+impl<'a> From<&'a Value<String>> for Cow<'a, StaticValue> {
+    fn from(value: &'a Value<String>) -> Self {
+        Cow::Owned(StaticValue::Str(value.inner.as_str().into()))
     }
 }
 

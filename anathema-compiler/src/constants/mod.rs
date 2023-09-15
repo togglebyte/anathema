@@ -13,7 +13,6 @@ mod conditions;
 mod paths;
 mod storage;
 mod strings;
-// mod texts;
 mod values;
 
 // -----------------------------------------------------------------------------

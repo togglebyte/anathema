@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use crate::scope::StaticValue;
 use crate::{NodeId, Path, State, Value};
 
 #[derive(Debug)]
@@ -16,7 +17,7 @@ impl TestState {
 }
 
 impl State for TestState {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, str>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>> {
         match key {
             Path::Key(s) => match s.as_str() {
                 "name" => {
