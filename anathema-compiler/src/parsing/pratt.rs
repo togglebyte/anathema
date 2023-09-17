@@ -4,24 +4,6 @@ use crate::error::{Error, ErrorKind, Result};
 use crate::lexer::{Kind, Lexer, Token, Value};
 use crate::operator::Operator;
 
-mod precedence {
-    pub(super) const Initial: u8 = 0;
-    pub(super) const Assignment: u8 = 1;
-    pub(super) const ModAssign: u8 = 2;
-    pub(super) const DivAssign: u8 = 3;
-    pub(super) const MulAssign: u8 = 4;
-    pub(super) const SubAssign: u8 = 5;
-    pub(super) const AddAssign: u8 = 6;
-    pub(super) const Or: u8 = 7;
-    pub(super) const And: u8 = 8;
-    pub(super) const Equality: u8 = 9;
-    pub(super) const LessGreater: u8 = 10;
-    pub(super) const AddSub: u8 = 11;
-    pub(super) const DivMulMod: u8 = 12;
-    pub(super) const Prefix: u8 = 13;
-    pub(super) const Call: u8 = 14;
-}
-
 struct PrattLexer<'src, 'consts> {
     inner: &'src mut Lexer<'src, 'consts>,
 }
@@ -58,162 +40,265 @@ struct PrattParser<'src, 'consts> {
     lexer: PrattLexer<'src, 'consts>,
 }
 
-#[derive(Debug)]
-enum Expr {
-    Unary {
-        op: Operator,
-        expr: Box<Expr>,
-    },
-    Binary {
-        op: Operator,
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
-    },
-    Value(Value),
-}
-
-impl Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Value(value) => write!(f, "{value}"),
-            Self::Unary { op, expr } => write!(f, "{op}{expr}"),
-            Self::Binary { op, lhs, rhs } => write!(f, "({op} {lhs} {rhs})"),
-        }
-    }
-}
-
 impl<'src, 'consts> PrattParser<'src, 'consts> {
     pub fn new(lexer: &'src mut Lexer<'src, 'consts>) -> Self {
         Self {
             lexer: PrattLexer::new(lexer),
         }
     }
+}
 
-    pub fn expr(&mut self) -> Result<Expr> {
-        self.expr_bp(precedence::Initial)
+pub mod prec {
+    pub const ASSIGNMENT: u8 = 1;
+    pub const CONDITIONAL: u8 = 2;
+    pub const SUM: u8 = 3;
+    pub const PRODUCT: u8 = 4;
+    pub const PREFIX: u8 = 6;
+    pub const CALL: u8 = 8;
+    pub const SELECTION: u8 = 9;
+    pub const SUBCRIPT: u8 = 10;
+}
+
+fn get_precedence(op: char) -> u8 {
+    match op {
+        '=' => prec::ASSIGNMENT,
+        '|' | '&' => prec::CONDITIONAL,
+        '+' | '-' => prec::SUM,
+        '*' | '/' => prec::PRODUCT,
+        '(' => prec::CALL,
+        '.' => prec::SELECTION,
+        '[' => prec::SUBCRIPT,
+        _ => 0,
     }
+}
 
-    fn prefix_binding_power(&mut self, op: Operator) -> Result<u8> {
-        let prec = match op {
-            Operator::Not | Operator::Plus | Operator::Minus => precedence::Prefix,
-            _ => return Err(self.lexer.error(ErrorKind::InvalidOperator(op))),
-        };
+#[derive(Debug)]
+pub enum Expr {
+    Unary {
+        op: char,
+        expr: Box<Expr>,
+    },
+    Binary {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+        op: char,
+    },
+    Bool(bool),
+    Num(u32),
+    Name(char),
+    Call(char, Vec<Expr>),
+    Array {
+        lhs: Box<Expr>,
+        index: Box<Expr>,
+    },
+}
 
-        Ok(prec)
-    }
-
-    // Expression with binding power
-    fn expr_bp(&mut self, precedence: u8) -> Result<Expr> {
-        let mut left = match self.lexer.next()?.0 {
-            Kind::Op(Operator::LParen) => {
-                let left = self.expr();
-                // TODO return err if the next expr is not RParen
-                left?
+impl Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::Unary { op, expr } => write!(f, "({op}{expr})"),
+            Expr::Binary { op, lhs, rhs } => write!(f, "({op} {lhs} {rhs})"),
+            Expr::Bool(b) => write!(f, "{b}"),
+            Expr::Num(b) => write!(f, "{b}"),
+            Expr::Name(b) => write!(f, "{b}"),
+            Expr::Array { lhs, index } => write!(f, "{lhs}[{index}]"),
+            Expr::Call(ident, args) => {
+                let s = args
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "{ident}({s})")
             }
-            Kind::Op(op) => {
-                let right_bp = self.prefix_binding_power(op)?;
-                let expr = Expr::Unary {
-                    op,
-                    expr: Box::new(self.expr_bp(right_bp)?),
-                };
-                return Ok(expr);
-            }
-            Kind::Value(value) => Expr::Value(value),
-            _ => {
-                return Err(self
-                    .lexer
-                    .unexpected_token("expected either a value or an operator"))
-            }
-        };
-
-        loop {
-            if let Ok(true) = self.lexer.is_next_token(Kind::Eof) {
-                break;
-            }
-
-            let Some(op) = self.lexer.peek_op() else {
-                break;
-            };
-
-            if let Some((l_prec, r_prec)) = infix_binding_power(op) {
-                if l_prec < precedence {
-                    break;
-                }
-
-                self.lexer.next();
-
-                left = Expr::Binary {
-                    lhs: Box::new(left),
-                    rhs: Box::new(self.expr()?),
-                    op,
-                };
-
-                continue;
-            }
-
-            break;
         }
-
-        Ok(left)
     }
 }
 
-fn infix_binding_power(op: Operator) -> Option<(u8, u8)> {
-    let prec = match op {
-        Operator::Equal => precedence::Assignment,
-        Operator::EqualEqual => precedence::Equality,
-        Operator::And => precedence::And,
-        Operator::Or => precedence::Or,
-        Operator::LessThan
-        | Operator::LessThanOrEqual
-        | Operator::GreaterThan
-        | Operator::GreaterThanOrEqual => precedence::LessGreater,
-        Operator::PlusEqual => precedence::AddAssign,
-        Operator::MinusEqual => precedence::SubAssign,
-        Operator::MulEqual => precedence::MulAssign,
-        Operator::DivEqual => precedence::DivAssign,
-        Operator::ModEqual => precedence::ModAssign,
+// pub fn expr(lexer: &mut Lexer) -> Expr {
+//     expr_bp(lexer, 0)
+// }
 
-        Operator::Plus => precedence::AddSub,
-        Operator::Minus => precedence::AddSub,
-        Operator::Equal => precedence::Assignment,
-        Operator::Mul => precedence::DivMulMod,
-        Operator::Mod => precedence::DivMulMod,
-        Operator::Div => precedence::DivMulMod,
-        Operator::LParen | Operator::RParen | Operator::Not => return None,
-    };
+// fn expr_bp(lexer: &mut Lexer, precedence: u8) -> Expr {
+//     let mut left = match lexer.next() {
+//         Token::Op('(') => {
+//             let left = expr(lexer);
+//             // Need to consume the closing bracket
+//             assert!(matches!(lexer.next(), Token::Op(')')));
+//             left
+//         }
+//         Token::Op(op) => Expr::Unary {
+//             op,
+//             expr: Box::new(expr_bp(lexer, prec::PREFIX)),
+//         },
+//         Token::Eof => panic!("unexpected eof"),
+//         Token::Number(n) => Expr::Num(n),
+//         Token::Ident(i) => Expr::Name(i),
+//         Token::Bool(b) => Expr::Bool(b),
+//     };
 
-    Some((prec - 1, prec))
-}
+//     loop {
+//         // postfix operators are just operators in the "LED" context that consume no right expression
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::Constants;
+//         // This could be EOF, which is fine.
+//         // It could also be any other token which would be
+//         // a syntax error, but I don't mind that just now
+//         let Token::Op(op) = lexer.peek() else {
+//             return left;
+//         };
 
-    fn prat(input: &str) -> Expr {
-        let mut consts = Constants::new();
-        let mut lexer = Lexer::new(input, &mut consts);
-        let mut prat = PrattParser::new(&mut lexer);
-        let expr = prat.expr().unwrap();
-        expr
-    }
+//         let token_prec = get_precedence(op);
 
-    #[test]
-    fn unary_expression() {
-        let expr = prat("!true");
-        assert_eq!(expr.to_string(), "!true");
-    }
+//         // If the current token precedence is higher than the current precedence, then we bind to the right,
+//         // otherwise we bind to the left
+//         if precedence >= token_prec {
+//             break;
+//         }
 
-    #[test]
-    fn binary_expression() {
-        let expr = prat("a + b");
-        assert_eq!(expr.to_string(), "(+ 0 1)");
-    }
+//         lexer.next();
 
-    #[test]
-    fn binary_mul_prec() {
-        let expr = prat("a + b * c");
-        assert_eq!(expr.to_string(), "(+ 0 (* 1 2))");
-    }
-}
+//         // Postfix parsing
+//         match op {
+//             '(' => {
+//                 parse_function(lexer, &mut left);
+//                 continue;
+//             }
+//             '[' => {
+//                 left = Expr::Array {
+//                     lhs: Box::new(left),
+//                     index: Box::new(expr(lexer)),
+//                 };
+//                 let Token::Op(']') = lexer.next() else {
+//                     panic!("invalid token");
+//                 };
+//                 continue;
+//             }
+//             _ => {}
+//         }
+
+//         let right = expr_bp(lexer, token_prec);
+//         left = Expr::Binary {
+//             lhs: Box::new(left),
+//             op,
+//             rhs: Box::new(right),
+//         };
+
+//         continue;
+//     }
+
+//     left
+// }
+
+// fn parse_function(lexer: &mut Lexer, left: &mut Expr) {
+//     let mut args = vec![];
+
+//     loop {
+//         match lexer.peek() {
+//             Token::Op(',') => {
+//                 lexer.next();
+//                 continue;
+//             }
+//             Token::Op(')') => {
+//                 lexer.next();
+//                 break;
+//             }
+//             t => (),
+//         }
+//         args.push(expr(lexer));
+//     }
+
+//     let Expr::Name(n) = left else {
+//         panic!("invalid function name: {left:?}")
+//     };
+
+//     *left = Expr::Call(*n, args);
+// }
+
+// // #[derive(Debug, Copy, Clone, PartialEq)]
+// // enum Token {
+// //     Ident(char),
+// //     Number(u32),
+// //     Bool(bool),
+// //     Op(char),
+// //     Eof,
+// // }
+
+// // impl Token {
+// //     fn new(c: char) -> Self {
+// //         match c {
+// //             'a'..='z' => Token::Ident(c),
+// //             '0'..='9' => Token::Number(c.to_digit(10).unwrap()),
+// //             'T' => Token::Bool(true),
+// //             'F' => Token::Bool(false),
+// //             _ => Token::Op(c),
+// //         }
+// //     }
+// // }
+
+// // // pub struct Lexer(Vec<Token>);
+
+// // // impl Lexer {
+// // //     pub fn new(src: &str) -> Self {
+// // //         let tokens = src
+// // //             .chars()
+// // //             .rev()
+// // //             .filter(|c| !c.is_whitespace())
+// // //             .map(Token::new)
+// // //             .collect();
+
+// // //         Self(tokens)
+// // //     }
+
+// // //     fn next(&mut self) -> Token {
+// // //         self.0.pop().unwrap_or(Token::Eof)
+// // //     }
+
+// // //     fn peek(&mut self) -> Token {
+// // //         self.0.last().copied().unwrap_or(Token::Eof)
+// // //     }
+// // // }
+
+// // // #[cfg(test)]
+// // // mod test {
+// // //     use super::*;
+
+// // //     fn parse(input: &str) -> String {
+// // //         let mut lexer = Lexer::new(input);
+// // //         expr(&mut lexer).to_string()
+// // //     }
+
+// // //     #[test]
+// // //     fn add_sub() {
+// // //         let input = "1 + 2";
+// // //         assert_eq!(parse(input), "(+ 1 2)");
+
+// // //         let input = "1 - 2";
+// // //         assert_eq!(parse(input), "(- 1 2)");
+// // //     }
+
+// // //     #[test]
+// // //     fn mul_div() {
+// // //         let input = "5 + 1 * 2";
+// // //         assert_eq!(parse(input), "(+ 5 (* 1 2))");
+
+// // //         let input = "5 - 1 / 2";
+// // //         assert_eq!(parse(input), "(- 5 (/ 1 2))");
+// // //     }
+
+// // //     #[test]
+// // //     fn brackets() {
+// // //         let input = "(5 + 1) * 2";
+// // //         assert_eq!(parse(input), "(* (+ 5 1) 2)");
+// // //     }
+
+// // //     #[test]
+// // //     fn function() {
+// // //         let input = "f(1, a + 2 * 3, 3)";
+// // //         assert_eq!(parse(input), "f(1, (+ a (* 2 3)), 3)");
+// // //     }
+
+// // //     #[test]
+// // //     fn function_no_args() {
+// // //         let input = "f()";
+// // //         assert_eq!(parse(input), "f()");
+// // //     }
+// // // }

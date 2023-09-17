@@ -13,7 +13,7 @@ impl From<usize> for StringId {
 
 impl Display for StringId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "<sid {}>", self.0)
     }
 }
 

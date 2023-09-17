@@ -15,10 +15,11 @@ pub use constants::{ValueId, StringId, CondId};
 pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {
     let mut constants = Constants::new();
     let lexer = lexer::Lexer::new(src, &mut constants);
-    let parser = parsing::parser::Parser::new(lexer)?;
-    let expressions = parser.collect::<error::Result<Vec<_>>>()?;
-    let optimizer = compiler::Optimizer::new(expressions);
-    let expressions = optimizer.optimize();
-    let compiler = compiler::Compiler::new(expressions);
-    Ok((compiler.compile()?, constants))
+    panic!()
+    // let parser = parsing::parser::Parser::new(lexer)?;
+    // let expressions = parser.collect::<error::Result<Vec<_>>>()?;
+    // let optimizer = compiler::Optimizer::new(expressions);
+    // let expressions = optimizer.optimize();
+    // let compiler = compiler::Compiler::new(expressions);
+    // Ok((compiler.compile()?, constants))
 }

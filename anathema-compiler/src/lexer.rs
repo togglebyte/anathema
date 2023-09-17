@@ -89,6 +89,14 @@ impl Display for Kind {
 #[derive(Debug)]
 pub struct Token(pub(crate) Kind, pub(crate) usize);
 
+impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
+    type Item = Result<Token>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
 pub struct Lexer<'src, 'consts> {
     pub(super) src: &'src str,
     pub(crate) consts: &'consts mut Constants,
