@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::hashmap::HashMap;
@@ -28,6 +28,11 @@ impl Deref for PathId {
     }
 }
 
+impl Display for PathId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<pid({})>", self.0)
+    }
+}
 
 /// Paths are insert and fetch only.
 /// Once a path is written into `Paths` it should never be removed

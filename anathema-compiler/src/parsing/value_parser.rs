@@ -4,7 +4,8 @@ use anathema_values::{Path, ScopeValue};
 // use anathema_widget_core::{Align, Axis, Direction, Display, Value};
 use super::parser::{parse_path, parse_scope_value};
 use crate::error::{ErrorKind, Result};
-use crate::lexer::{Kind, Lexer};
+use crate::lexer::Lexer;
+use crate::token::Kind;
 use crate::Constants;
 
 const TRUE: &str = "true";

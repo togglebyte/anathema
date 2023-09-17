@@ -1,49 +1,24 @@
 use std::fmt::{self, Display};
 
+use crate::Constants;
 use crate::error::{Error, ErrorKind, Result};
-use crate::lexer::{Kind, Lexer, Token, Value};
-use crate::operator::Operator;
+use crate::lexer::Lexer;
+use crate::token::{Kind, Operator, Token, Value, Tokens};
 
-struct PrattLexer<'src, 'consts> {
-    inner: &'src mut Lexer<'src, 'consts>,
+struct PrattParser<'src, 'tokens> {
+    tokens: &'tokens mut Tokens,
+    consts: &'tokens mut Constants,
+    src: &'src str,
 }
 
-impl<'src, 'consts> PrattLexer<'src, 'consts> {
-    fn new(inner: &'src mut Lexer<'src, 'consts>) -> Self {
-        Self { inner }
-    }
+// Parser -> PrattParser -> Expr -> OuterExpr
 
-    fn next(&mut self) -> Result<Token> {
-        let token = self.inner.next()?;
-        self.inner.consume(true, false);
-        Ok(token)
-    }
-
-    fn is_next_token(&mut self, kind: Kind) -> Result<bool> {
-        self.inner.is_next_token(kind)
-    }
-
-    fn peek_op(&mut self) -> Option<Operator> {
-        self.inner.peek_op()
-    }
-
-    fn error(&mut self, error_kind: ErrorKind) -> Error {
-        self.inner.error(error_kind)
-    }
-
-    fn unexpected_token(&self, msg: &str) -> Error {
-        self.inner.error(ErrorKind::UnexpectedToken(msg.into()))
-    }
-}
-
-struct PrattParser<'src, 'consts> {
-    lexer: PrattLexer<'src, 'consts>,
-}
-
-impl<'src, 'consts> PrattParser<'src, 'consts> {
-    pub fn new(lexer: &'src mut Lexer<'src, 'consts>) -> Self {
+impl<'src, 'tokens> PrattParser<'src, 'tokens> {
+    pub fn new(tokens: &'tokens mut Tokens, src: &'src str, consts: &'tokens mut Constants) -> Self {
         Self {
-            lexer: PrattLexer::new(lexer),
+            tokens,
+            consts,
+            src,
         }
     }
 }

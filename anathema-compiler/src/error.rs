@@ -2,7 +2,7 @@ use std::error::Error as StdError;
 use std::fmt::{self, Display, Formatter};
 use std::ops::Range;
 
-use crate::operator::Operator;
+use crate::token::Operator;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

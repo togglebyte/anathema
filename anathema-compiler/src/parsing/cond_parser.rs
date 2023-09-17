@@ -1,6 +1,7 @@
 use super::parser::Cond;
 use crate::error::{ErrorKind, Result};
-use crate::lexer::{Kind, Lexer, Token};
+use crate::lexer::Lexer;
+use crate::token::{Kind, Token};
 use crate::parsing::value_parser::ValueParser;
 use crate::{Constants, ValueId};
 

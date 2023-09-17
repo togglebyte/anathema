@@ -3,97 +3,24 @@ use std::iter::Peekable;
 use std::str::CharIndices;
 
 use crate::error::{Error, Result};
-use crate::operator::Operator;
+use crate::token::{Kind, Operator, Token, Value};
 use crate::{Constants, StringId};
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) enum Value {
-    Hex(u8, u8, u8),
-    Index(usize),
-    Number(u64),
-    Float(f64),
-    String(StringId),
-    Ident(StringId),
-    Bool(bool),
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Hex(r, g, b) => write!(f, "r:{r} g:{g} b:{b}"),
-            Self::Index(idx) => write!(f, "<idx {idx}>"),
-            Self::Number(num) => write!(f, "{num}"),
-            Self::Float(num) => write!(f, "{num}"),
-            Self::String(s) => write!(f, "\"{s}\""),
-            Self::Ident(id) => write!(f, "{id}"),
-            Self::Bool(b) => write!(f, "{b}"),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) enum Kind {
-    Colon,
-    Comma,
-    Comment,
-    LDoubleCurly,
-    RDoubleCurly,
-    For,
-    In,
-    If,
-    Else,
-    View,
-    Newline,
-    Fullstop,
-    LBracket,
-    RBracket,
-    Indent(usize),
-
-    Value(Value),
-    Op(Operator),
-
-    Eof,
-}
-
-impl Kind {
-    fn to_token(self, pos: usize) -> Token {
-        Token(self, pos)
-    }
-}
-
-impl Display for Kind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Colon => write!(f, ":"),
-            Self::Comma => write!(f, ","),
-            Self::Comment => write!(f, "// <comment>"),
-            Self::LDoubleCurly => write!(f, "{{"),
-            Self::RDoubleCurly => write!(f, "}}"),
-            Self::For => write!(f, "for"),
-            Self::In => write!(f, "in"),
-            Self::If => write!(f, "if"),
-            Self::Else => write!(f, "else"),
-            Self::View => write!(f, "<view>"),
-            Self::Newline => write!(f, "\\n"),
-            Self::Fullstop => write!(f, "."),
-            Self::LBracket => write!(f, "["),
-            Self::RBracket => write!(f, "]"),
-            Self::Indent(s) => write!(f, "<indent {s}>"),
-            Self::Value(v) => write!(f, "<value {v}>"),
-            Self::Op(o) => write!(f, "<op {o}>"),
-            Self::Eof => write!(f, "<Eof>"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Token(pub(crate) Kind, pub(crate) usize);
 
 impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
     type Item = Result<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        let token = match self.next.take() {
+            Some(val) => val,
+            Some(Ok(Token(Kind::Eof, _))) => return None,
+            None => self.next_token(),
+        };
+
+        if let Ok(token) = token.as_ref() {
+            self.current_pos = token.1;
+        }
+
+        Some(token)
     }
 }
 
@@ -116,28 +43,12 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
         }
     }
 
-    pub fn next(&mut self) -> Result<Token> {
-        let token = match self.next.take() {
-            Some(val) => val,
-            None => self.next_token(),
-        };
-
-        if let Ok(token) = token.as_ref() {
-            self.current_pos = token.1;
-        }
-
-        token
-    }
-
     pub(crate) fn peek_op(&mut self) -> Option<Operator> {
-        match &self.next {
-            Some(Ok(Token(Kind::Op(op), _))) => Some(*op),
-            Some(_) => None,
-            None => {
-                self.next = Some(self.next());
-                self.peek_op()
-            }
-        }
+        panic!()
+        // self.peek().ok().map(|t| match &t.0 {
+        //     Kind::Op(op) => Some(*op),
+        //     _ => None,
+        // })
     }
 
     // -----------------------------------------------------------------------------
@@ -173,13 +84,14 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
     }
 
     pub fn peek(&mut self) -> &Result<Token> {
-        match self.next {
-            Some(ref val) => val,
-            None => {
-                self.next = Some(self.next());
-                self.peek()
-            }
-        }
+        panic!()
+        // match self.next {
+        //     Some(ref val) => val,
+        //     None => {
+        //         self.next = Some(self.next());
+        //         self.peek()
+        //     }
+        // }
     }
 
     fn next_token(&mut self) -> Result<Token> {
@@ -238,7 +150,9 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             // -----------------------------------------------------------------------------
             //     - Ident -
             // -----------------------------------------------------------------------------
-            ('a'..='z' | 'A'..='Z' | '_', _) => Ok(self.take_ident_or_keyword(index).to_token(index)),
+            ('a'..='z' | 'A'..='Z' | '_', _) => {
+                Ok(self.take_ident_or_keyword(index).to_token(index))
+            }
 
             // -----------------------------------------------------------------------------
             //     - Number -
