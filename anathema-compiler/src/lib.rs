@@ -1,17 +1,16 @@
 pub mod error;
 
 pub(crate) mod compiler;
+mod constants;
 pub(crate) mod lexer;
 pub(crate) mod parsing;
-mod constants;
 pub(crate) mod token;
 
 pub use compiler::Instruction;
-
-pub use crate::constants::Constants;
-pub use constants::{ValueId, StringId, CondId};
+pub use constants::{CondId, StringId, ValueId};
 
 use self::token::Tokens;
+pub use crate::constants::Constants;
 
 /// Compile source into instructions and constants.
 pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {

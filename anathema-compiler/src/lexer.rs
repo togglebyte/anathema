@@ -60,8 +60,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
                 let _ = self.next();
             } else if newlines && self.is_newline() {
                 let _ = self.next();
-            } else if self.is_comment() {
-                let _ = self.next();
             } else {
                 break;
             }
@@ -77,10 +75,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
 
     fn is_newline(&mut self) -> bool {
         matches!(self.peek(), Ok(Token(Kind::Newline, _)))
-    }
-
-    fn is_comment(&mut self) -> bool {
-        matches!(self.peek(), Ok(Token(Kind::Comment, _)))
     }
 
     pub fn peek(&mut self) -> &Result<Token> {
@@ -106,7 +100,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             // -----------------------------------------------------------------------------
             //     - Double tokens -
             // -----------------------------------------------------------------------------
-            ('/', Some('/')) => Ok(self.take_comment().to_token(index)),
+            ('/', Some('/')) => self.next_token(),
             ('{', Some('{')) => {
                 let _ = self.chars.next();
                 Ok(Kind::LDoubleCurly.to_token(index))
@@ -132,13 +126,11 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             // -----------------------------------------------------------------------------
             //     - Single tokens -
             // -----------------------------------------------------------------------------
-            ('[', _) => Ok(Kind::LBracket.to_token(index)),
-            (']', _) => Ok(Kind::RBracket.to_token(index)),
             ('(', _) => Ok(Kind::Op(Operator::LParen).to_token(index)),
             (')', _) => Ok(Kind::Op(Operator::RParen).to_token(index)),
             (':', _) => Ok(Kind::Colon.to_token(index)),
-            (',', _) => Ok(Kind::Comma.to_token(index)),
-            ('.', _) => Ok(Kind::Fullstop.to_token(index)),
+            (',', _) => Ok(Kind::Op(Operator::Comma).to_token(index)),
+            ('.', _) => Ok(Kind::Op(Operator::Dot).to_token(index)),
             ('!', _) => Ok(Kind::Op(Operator::Not).to_token(index)),
             ('+', _) => Ok(Kind::Op(Operator::Plus).to_token(index)),
             ('-', _) => Ok(Kind::Op(Operator::Minus).to_token(index)),
@@ -287,20 +279,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
         }
     }
 
-    fn take_comment(&mut self) -> Kind {
-        loop {
-            match self.chars.peek() {
-                Some((_, c)) if *c == '\n' => break,
-                Some(_) => {
-                    let _ = self.chars.next();
-                    continue;
-                }
-                None => break,
-            }
-        }
-        Kind::Comment
-    }
-
     fn take_whitespace(&mut self) -> Kind {
         let mut count = 1;
 
@@ -314,10 +292,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             }
         }
 
-        match self.chars.peek() {
-            Some((_, '/')) => self.take_comment(),
-            _ => Kind::Indent(count),
-        }
+        Kind::Indent(count)
     }
 
     fn take_hex_values(&mut self, index: usize) -> Result<Token> {

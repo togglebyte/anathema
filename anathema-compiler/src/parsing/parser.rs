@@ -125,8 +125,8 @@ pub struct Parser<'src, 'consts> {
 impl<'src, 'consts> Parser<'src, 'consts> {
     pub(crate) fn new(mut tokens: Tokens, consts: &'consts mut Constants, src: &'src str) -> Result<Self> {
         tokens.consume_newlines();
-        let base_indent = match tokens.peek() {
-            Some(Token(Kind::Indent(indent), _)) => indent,
+        let base_indent = match tokens.peek().0 {
+            Kind::Indent(indent) => indent,
             _ => 0,
         };
 

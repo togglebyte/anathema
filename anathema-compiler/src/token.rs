@@ -6,6 +6,8 @@ use crate::StringId;
 pub enum Operator {
     LParen,
     RParen,
+    LBracket,
+    RBracket,
     Plus,
     Minus,
     Mul,
@@ -25,6 +27,8 @@ pub enum Operator {
     Not,
     And,
     Or,
+    Dot,
+    Comma,
 }
 
 impl Display for Operator {
@@ -32,6 +36,8 @@ impl Display for Operator {
         match self {
             Self::LParen => write!(f, "("),
             Self::RParen => write!(f, ")"),
+            Self::LBracket => write!(f, "["),
+            Self::RBracket => write!(f, "]"),
             Self::Plus => write!(f, "+"),
             Self::Minus => write!(f, "-"),
             Self::Mul => write!(f, "*"),
@@ -51,6 +57,8 @@ impl Display for Operator {
             Self::Not => write!(f, "!"),
             Self::And => write!(f, "&&"),
             Self::Or => write!(f, "||"),
+            Self::Dot => write!(f, "."),
+            Self::Comma => write!(f, ","),
         }
     }
 }
@@ -84,7 +92,6 @@ impl Display for Value {
 pub(crate) enum Kind {
     Colon,
     Comma,
-    Comment,
     LDoubleCurly,
     RDoubleCurly,
     For,
@@ -93,9 +100,6 @@ pub(crate) enum Kind {
     Else,
     View,
     Newline,
-    Fullstop,
-    LBracket,
-    RBracket,
     Indent(usize),
 
     Value(Value),
@@ -115,7 +119,6 @@ impl Display for Kind {
         match self {
             Self::Colon => write!(f, ":"),
             Self::Comma => write!(f, ","),
-            Self::Comment => write!(f, "// <comment>"),
             Self::LDoubleCurly => write!(f, "{{"),
             Self::RDoubleCurly => write!(f, "}}"),
             Self::For => write!(f, "for"),
@@ -124,9 +127,6 @@ impl Display for Kind {
             Self::Else => write!(f, "else"),
             Self::View => write!(f, "<view>"),
             Self::Newline => write!(f, "\\n"),
-            Self::Fullstop => write!(f, "."),
-            Self::LBracket => write!(f, "["),
-            Self::RBracket => write!(f, "]"),
             Self::Indent(s) => write!(f, "<indent {s}>"),
             Self::Value(v) => write!(f, "<value {v}>"),
             Self::Op(o) => write!(f, "<op {o}>"),
@@ -147,6 +147,10 @@ pub(crate) struct Tokens {
 impl Tokens {
     pub fn new(inner: Vec<Token>, eof: usize) -> Self {
         Self { inner, index: 0, eof }
+    }
+
+    pub fn consume(&mut self) {
+        let _ = self.next();
     }
 
     pub fn next(&mut self) -> Token {
@@ -175,7 +179,7 @@ impl Tokens {
         }
     }
 
-    pub fn peek(&self) -> Option<Token> {
-        self.inner.get(self.index).copied()
+    pub fn peek(&self) -> Token {
+        self.inner.get(self.index).copied().unwrap_or(Token(Kind::Eof, self.eof))
     }
 }
