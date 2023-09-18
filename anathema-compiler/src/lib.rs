@@ -17,7 +17,7 @@ pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {
     let mut constants = Constants::new();
     let lexer = lexer::Lexer::new(src, &mut constants);
     let tokens = Tokens::new(lexer.collect::<error::Result<_>>()?, src.len());
-    let parser = parsing::parser::Parser::new(tokens, &mut constants, src)?;
+    let parser = parsing::parser::Parser::new(tokens, &mut constants, src);
     let expressions = parser.collect::<error::Result<Vec<_>>>()?;
     let optimizer = compiler::Optimizer::new(expressions);
     let expressions = optimizer.optimize();

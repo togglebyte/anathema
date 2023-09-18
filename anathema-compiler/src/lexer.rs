@@ -10,17 +10,10 @@ impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
     type Item = Result<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let token = match self.next.take() {
-            Some(val) => val,
-            Some(Ok(Token(Kind::Eof, _))) => return None,
-            None => self.next_token(),
-        };
-
-        if let Ok(token) = token.as_ref() {
-            self.current_pos = token.1;
+        match self.next_token() {
+            Ok(Token(Kind::Eof, _)) => return None,
+            val => Some(val),
         }
-
-        Some(token)
     }
 }
 
@@ -28,7 +21,6 @@ pub struct Lexer<'src, 'consts> {
     pub(super) src: &'src str,
     pub(crate) consts: &'consts mut Constants,
     chars: Peekable<CharIndices<'src>>,
-    next: Option<Result<Token>>,
     pub(super) current_pos: usize,
 }
 
@@ -38,7 +30,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             chars: src.char_indices().peekable(),
             consts,
             src,
-            next: None,
             current_pos: 0,
         }
     }
@@ -100,16 +91,25 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             // -----------------------------------------------------------------------------
             //     - Double tokens -
             // -----------------------------------------------------------------------------
-            ('/', Some('/')) => self.next_token(),
+            ('/', Some('/')) => {
+                self.chars.next(); // consume the second slash
+                loop {
+                    if let Some((_, '\n')) | None = self.chars.peek() {
+                        self.chars.next();
+                        break;
+                    }
+                    self.chars.next();
+                }
+                self.next_token()
+            }
             ('{', Some('{')) => {
                 let _ = self.chars.next();
-                Ok(Kind::LDoubleCurly.to_token(index))
+                Ok(Kind::Op(Operator::LDoubleCurly).to_token(index))
             }
             ('}', Some('}')) => {
                 let _ = self.chars.next();
-                Ok(Kind::RDoubleCurly.to_token(index))
+                Ok(Kind::Op(Operator::RDoubleCurly).to_token(index))
             }
-            ('[', Some('0'..='9')) => self.take_index(index),
             ('&', Some('&')) => {
                 let _ = self.chars.next();
                 Ok(Kind::Op(Operator::And).to_token(index))
@@ -128,7 +128,9 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             // -----------------------------------------------------------------------------
             ('(', _) => Ok(Kind::Op(Operator::LParen).to_token(index)),
             (')', _) => Ok(Kind::Op(Operator::RParen).to_token(index)),
-            (':', _) => Ok(Kind::Colon.to_token(index)),
+            ('[', _) => Ok(Kind::Op(Operator::LBracket).to_token(index)),
+            (']', _) => Ok(Kind::Op(Operator::RBracket).to_token(index)),
+            (':', _) => Ok(Kind::Op(Operator::Colon).to_token(index)),
             (',', _) => Ok(Kind::Op(Operator::Comma).to_token(index)),
             ('.', _) => Ok(Kind::Op(Operator::Dot).to_token(index)),
             ('!', _) => Ok(Kind::Op(Operator::Not).to_token(index)),
@@ -259,26 +261,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
         }
     }
 
-    fn take_index(&mut self, index: usize) -> Result<Token> {
-        let mut end = index;
-        while let Some((e, '0'..='9')) = self.chars.peek() {
-            end = *e;
-            self.chars.next();
-        }
-        let s = self.src.as_bytes()[end];
-        match s {
-            b']' => {
-                let index = self.src[index + 1..end]
-                    .parse::<usize>()
-                    .map_err(|_| Error::invalid_index(index..end + 1, self.src))?;
-
-                let kind = Kind::Value(Value::Index(index));
-                Ok(kind.to_token(index))
-            }
-            _ => Err(Error::invalid_index(index..end + 1, self.src)),
-        }
-    }
-
     fn take_whitespace(&mut self) -> Kind {
         let mut count = 1;
 
@@ -339,33 +321,46 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
 mod test {
     use super::*;
     use crate::error::ErrorKind;
+    use crate::token::Tokens;
 
     fn token_kind(input: &str) -> Kind {
         let mut consts = Constants::new();
-        let kind = Lexer::new(input, &mut consts).next().unwrap().0;
+        let kind = Lexer::new(input, &mut consts).next().unwrap().unwrap().0;
         kind
+    }
+
+    fn operator(input: &str) -> Operator {
+        let mut consts = Constants::new();
+        let kind = Lexer::new(input, &mut consts).next().unwrap().unwrap().0;
+        match kind {
+            Kind::Op(op) => op,
+            _ => panic!("token is not an operator"),
+        }
     }
 
     fn error_kind(input: &str) -> ErrorKind {
         let mut consts = Constants::new();
-        let error_kind = Lexer::new(input, &mut consts).next().unwrap_err().kind;
+
+        let mut lexer = Lexer::new(input, &mut consts);
+        let error_kind = lexer.next().unwrap().unwrap_err().kind;
         error_kind
     }
 
     #[test]
     fn comment() {
-        let actual = token_kind("// hello world");
-        let expected = Kind::Comment;
-        assert_eq!(expected, actual);
+        let mut consts = Constants::new();
+        let input = "// hello world";
+        let mut lexer = Lexer::new(input, &mut consts);
+        assert!(lexer.next().is_none());
     }
 
     #[test]
     fn single_char_token() {
         let inputs = [
-            ("[", Kind::LBracket),
-            ("]", Kind::RBracket),
-            (":", Kind::Colon),
-            (",", Kind::Comma),
+            ("[", Kind::Op(Operator::LBracket)),
+            ("]", Kind::Op(Operator::RBracket)),
+            (":", Kind::Op(Operator::Colon)),
+            (",", Kind::Op(Operator::Comma)),
             ("\n", Kind::Newline),
         ];
 
@@ -378,13 +373,12 @@ mod test {
     #[test]
     fn double_char_token() {
         let inputs = [
-            ("//", Kind::Comment),
-            ("{{", Kind::LDoubleCurly),
-            ("}}", Kind::RDoubleCurly),
+            ("{{", Operator::LDoubleCurly),
+            ("}}", Operator::RDoubleCurly),
         ];
 
         for (input, expected) in inputs {
-            let actual = token_kind(input);
+            let actual = operator(input);
             assert_eq!(expected, actual);
         }
     }
@@ -400,65 +394,60 @@ mod test {
         }
     }
 
-    // #[test]
-    // fn unsigned_ints() {
-    //     let inputs = [("1", 1), ("0001", 1), ("100", 100)];
+    #[test]
+    fn unsigned_ints() {
+        let inputs = [("1", 1), ("0001", 1), ("100", 100)];
 
-    //     for (input, number) in inputs {
-    //         let actual = token_kind(input);
-    //         let expected = Kind::Number(Number::Unsigned(number));
-    //         assert_eq!(expected, actual);
-    //     }
-    // }
-
-    // #[test]
-    // fn signed_ints() {
-    //     let inputs = [("-1", -1), ("-0001", -1), ("-100", -100)];
-
-    //     for (input, number) in inputs {
-    //         let actual = token_kind(input);
-    //         let expected = Kind::Number(Number::Signed(number));
-    //         assert_eq!(expected, actual);
-    //     }
-    // }
+        for (input, number) in inputs {
+            let actual = token_kind(input);
+            let expected = Kind::Value(Value::Number(number));
+            assert_eq!(expected, actual);
+        }
+    }
 
     // #[test]
     // fn floats() {
     //     let inputs = [
     //         ("0.1", 0.1f64),
-    //         ("-.1", -0.1),
+    //         (".1", 0.1),
     //         ("1.", 1.0),
     //         ("100.5", 100.5),
     //     ];
 
     //     for (input, number) in inputs {
     //         let actual = token_kind(input);
-    //         let expected = Kind::Number(Number::Float(number));
+    //         let expected = Kind::Value(Value::Float(number));
     //         assert_eq!(expected, actual);
     //     }
     // }
 
-    // #[test]
-    // fn strings() {
-    //     let inputs = [
-    //         ("'single quote string'", "single quote string"),
-    //         (
-    //             "'single quote\n string with newline char'",
-    //             "single quote\n string with newline char",
-    //         ),
-    //         ("\"double quote string\"", "double quote string"),
-    //         ("\"double 'single inside'\"", "double 'single inside'"),
-    //         ("'single \"double inside\"'", "single \"double inside\""),
-    //         (r#""escape \"double\"""#, r#"escape \"double\""#),
-    //         ("''", ""), // empty string
-    //     ];
+    #[test]
+    fn strings() {
+        let inputs = [
+            ("'single quote string'", "single quote string"),
+            (
+                "'single quote\n string with newline char'",
+                "single quote\n string with newline char",
+            ),
+            ("\"double quote string\"", "double quote string"),
+            ("\"double 'single inside'\"", "double 'single inside'"),
+            ("'single \"double inside\"'", "single \"double inside\""),
+            (r#""escape \"double\"""#, r#"escape \"double\""#),
+            ("''", ""), // empty string
+        ];
 
-    //     for (input, s) in inputs {
-    //         let actual = token_kind(input);
-    //         let expected = Kind::String(s);
-    //         assert_eq!(expected, actual);
-    //     }
-    // }
+        let mut consts = Constants::new();
+
+        for (input, expected) in inputs {
+            let Kind::Value(Value::String(string_id)) =
+                Lexer::new(input, &mut consts).next().unwrap().unwrap().0
+            else {
+                panic!("invalid token")
+            };
+            let actual = consts.lookup_string(string_id).unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
 
     #[test]
     fn consume_whitespace() {
@@ -489,15 +478,15 @@ mod test {
         assert_eq!(Kind::View, token_kind(input));
     }
 
-    // #[test]
-    // fn invalid_hex() {
-    //     let inputs = ["#00", "#0000", "#1234567", "#FFX", "#F-A"];
+    #[test]
+    fn invalid_hex() {
+        let inputs = ["#00", "#0000", "#1234567", "#FFX", "#F-A"];
 
-    //     for input in inputs {
-    //         let actual = Lexer::new(input).next_token().unwrap_err().kind;
-    //         assert_eq!(actual, ErrorKind::InvalidHexValue);
-    //     }
-    // }
+        for input in inputs {
+            let actual = error_kind(input);
+            assert_eq!(actual, ErrorKind::InvalidHexValue);
+        }
+    }
 
     // #[test]
     // fn invalid_floats() {
@@ -508,22 +497,6 @@ mod test {
     //         assert_eq!(actual, ErrorKind::InvalidNumber);
     //     }
     // }
-
-    // #[test]
-    // fn invalid_number() {
-    //     let inputs = ["+-2"];
-
-    //     for input in inputs {
-    //         let actual = Lexer::new(input).next_token().unwrap_err().kind;
-    //         assert_eq!(actual, ErrorKind::InvalidNumber);
-    //     }
-    // }
-
-    #[test]
-    fn trailing_slash() {
-        let err = error_kind("/");
-        assert_eq!(err, ErrorKind::UnexpectedEof);
-    }
 
     #[test]
     fn unterminated_string() {

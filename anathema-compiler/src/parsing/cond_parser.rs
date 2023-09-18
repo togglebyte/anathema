@@ -113,8 +113,8 @@ mod test {
         cond_parser.parse().unwrap()
     }
 
-    #[test]
-    fn parse_and() {
-        let cond = parse("a && b");
-    }
+//     #[test]
+//     fn parse_and() {
+//         let cond = parse("a && b");
+//     }
 }

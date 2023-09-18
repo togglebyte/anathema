@@ -24,6 +24,7 @@ impl<'src, 'tokens> PrattParser<'src, 'tokens> {
 }
 
 pub mod prec {
+    pub const INITIAL: u8 = 0;
     pub const ASSIGNMENT: u8 = 1;
     pub const CONDITIONAL: u8 = 2;
     pub const SUM: u8 = 3;
@@ -94,11 +95,11 @@ pub(crate) fn expr(tokens: &mut Tokens) -> Expr {
 }
 
 fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
-    let mut left = match tokens.next().0 {
+    let mut left = match tokens.next_no_indent().0 {
         Kind::Op(Operator::LParen) => {
-            let left = expr(tokens);
+            let left = expr_bp(tokens, prec::INITIAL);
             // Need to consume the closing bracket
-            assert!(matches!(tokens.next().0, Kind::Op(Operator::RParen)));
+            assert!(matches!(tokens.next_no_indent().0, Kind::Op(Operator::RParen)));
             left
         }
         Kind::Op(op) => Expr::Unary {
@@ -123,7 +124,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         // This could be EOF, which is fine.
         // It could also be any other token which would be
         // a syntax error, but I don't mind that just now
-        let Kind::Op(op) = tokens.peek().0 else { return left; };
+        let Kind::Op(op) = tokens.peek_skip_indent().0 else { return left; };
 
         let token_prec = get_precedence(op);
 
@@ -144,9 +145,9 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
             Operator::LBracket => {
                 left = Expr::Array {
                     lhs: Box::new(left),
-                    index: Box::new(expr(tokens)),
+                    index: Box::new(expr_bp(tokens, prec::INITIAL)),
                 };
-                let Kind::Op(Operator::RBracket) = tokens.next().0 else {
+                let Kind::Op(Operator::RBracket) = tokens.next_no_indent().0 else {
                     panic!("invalid token");
                 };
                 continue;
@@ -171,7 +172,7 @@ fn parse_function(tokens: &mut Tokens, left: Expr) -> Expr {
     let mut args = vec![];
 
     loop {
-        match tokens.peek().0 {
+        match tokens.peek_skip_indent().0 {
             Kind::Op(Operator::Comma) => {
                 tokens.consume();
                 continue;
@@ -182,7 +183,7 @@ fn parse_function(tokens: &mut Tokens, left: Expr) -> Expr {
             }
             t => ()
         }
-        args.push(expr(tokens));
+        args.push(expr_bp(tokens, prec::INITIAL));
     }
 
     Expr::Call { fun: Box::new(left), args }
@@ -193,8 +194,11 @@ mod test {
     use super::*;
 
     fn parse(input: &str) -> String {
-        let mut lexer = Lexer::new(input);
-        expr(&mut lexer).to_string()
+        let mut consts = Constants::new();
+        let lexer = Lexer::new(input, &mut consts);
+        let tokens = lexer.collect::<Result<_>>().unwrap();
+        let mut tokens = Tokens::new(tokens, input.len());
+        expr(&mut tokens).to_string()
     }
 
     #[test]
@@ -223,13 +227,13 @@ mod test {
 
     #[test]
     fn function() {
-        let input = "f(1, a + 2 * 3, 3)";
-        assert_eq!(parse(input), "f(1, (+ a (* 2 3)), 3)");
+        let input = "fun(1, a + 2 * 3, 3)";
+        assert_eq!(parse(input), "<sid 0>(1, (+ <sid 1> (* 2 3)), 3)");
     }
 
     #[test]
     fn function_no_args() {
         let input = "f()";
-        assert_eq!(parse(input), "f()");
+        assert_eq!(parse(input), "<sid 0>()");
     }
 }

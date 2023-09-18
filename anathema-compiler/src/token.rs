@@ -8,6 +8,8 @@ pub enum Operator {
     RParen,
     LBracket,
     RBracket,
+    LDoubleCurly,
+    RDoubleCurly,
     Plus,
     Minus,
     Mul,
@@ -29,6 +31,7 @@ pub enum Operator {
     Or,
     Dot,
     Comma,
+    Colon,
 }
 
 impl Display for Operator {
@@ -59,6 +62,9 @@ impl Display for Operator {
             Self::Or => write!(f, "||"),
             Self::Dot => write!(f, "."),
             Self::Comma => write!(f, ","),
+            Self::Colon => write!(f, ":"),
+            Self::LDoubleCurly => write!(f, "{{"),
+            Self::RDoubleCurly => write!(f, "}}"),
         }
     }
 }
@@ -90,10 +96,6 @@ impl Display for Value {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum Kind {
-    Colon,
-    Comma,
-    LDoubleCurly,
-    RDoubleCurly,
     For,
     In,
     If,
@@ -117,10 +119,6 @@ impl Kind {
 impl Display for Kind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Colon => write!(f, ":"),
-            Self::Comma => write!(f, ","),
-            Self::LDoubleCurly => write!(f, "{{"),
-            Self::RDoubleCurly => write!(f, "}}"),
             Self::For => write!(f, "for"),
             Self::In => write!(f, "in"),
             Self::If => write!(f, "if"),
@@ -163,11 +161,25 @@ impl Tokens {
         }
     }
 
+    pub fn next_no_indent(&mut self) -> Token {
+        loop {
+            let token = self.next();
+
+            if let Kind::Indent(_) = token.0 {
+                continue
+            }
+
+            break token
+        }
+    }
+
     pub fn consume_indent(&mut self) {
         loop {
             if matches!(self.inner.get(self.index), Some(Token(Kind::Indent(_), _))) {
                 self.index += 1;
+                continue;
             }
+            break
         }
     }
 
@@ -175,11 +187,26 @@ impl Tokens {
         loop {
             if matches!(self.inner.get(self.index), Some(Token(Kind::Newline, _))) {
                 self.index += 1;
+                continue;
             }
+            break
         }
     }
 
     pub fn peek(&self) -> Token {
         self.inner.get(self.index).copied().unwrap_or(Token(Kind::Eof, self.eof))
+    }
+
+    pub fn peek_skip_indent(&mut self) -> Token {
+        loop {
+            let token = self.peek();
+
+            if let Kind::Indent(_) = token.0 {
+                self.index += 1;
+                continue;
+            }
+
+            break token
+        }
     }
 }
