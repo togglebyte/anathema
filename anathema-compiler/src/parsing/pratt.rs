@@ -43,7 +43,7 @@ fn get_precedence(op: Operator) -> u8 {
         Operator::Mul | Operator::Div => prec::PRODUCT,
         Operator::LParen => prec::CALL,
         Operator::Dot => prec::SELECTION,
-        Operator::RBracket => prec::SUBCRIPT,
+        Operator::LBracket => prec::SUBCRIPT,
         _ => 0,
     }
 }
@@ -235,5 +235,17 @@ mod test {
     fn function_no_args() {
         let input = "f()";
         assert_eq!(parse(input), "<sid 0>()");
+    }
+
+    #[test]
+    fn array_index() {
+        let input = "array[0][1]";
+        assert_eq!(parse(input), "<sid 0>[0][1]");
+    }
+
+    #[test]
+    fn dot_lookup() {
+        let input = "a.b.c";
+        assert_eq!(parse(input), "(. (. <sid 0> <sid 1>) <sid 2>)");
     }
 }
