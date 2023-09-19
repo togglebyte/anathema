@@ -147,6 +147,12 @@ impl From<usize> for Path {
     }
 }
 
+impl From<u64> for Path {
+    fn from(index: u64) -> Self {
+        Self::Index(index as usize)
+    }
+}
+
 impl From<&str> for Path {
     fn from(s: &str) -> Self {
         Self::Key(s.into())

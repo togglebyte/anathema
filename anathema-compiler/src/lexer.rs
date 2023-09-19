@@ -444,7 +444,7 @@ mod test {
             else {
                 panic!("invalid token")
             };
-            let actual = consts.lookup_string(string_id).unwrap();
+            let actual = consts.lookup_string(string_id);
             assert_eq!(actual, expected);
         }
     }

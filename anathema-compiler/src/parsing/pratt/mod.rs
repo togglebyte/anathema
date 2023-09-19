@@ -1,9 +1,14 @@
 use std::fmt::{self, Display};
 
-use crate::{Constants, StringId};
+use anathema_values::{NodeId, Scope, ScopeValue, State, ValueExpr};
+
+pub use self::eval::eval;
 use crate::error::{Error, ErrorKind, Result};
 use crate::lexer::Lexer;
-use crate::token::{Kind, Operator, Token, Value, Tokens};
+use crate::token::{Kind, Operator, Token, Tokens, Value};
+use crate::{Constants, StringId};
+
+mod eval;
 
 struct PrattParser<'src, 'tokens> {
     tokens: &'tokens mut Tokens,
@@ -11,10 +16,12 @@ struct PrattParser<'src, 'tokens> {
     src: &'src str,
 }
 
-// Parser -> PrattParser -> Expr -> OuterExpr
-
 impl<'src, 'tokens> PrattParser<'src, 'tokens> {
-    pub fn new(tokens: &'tokens mut Tokens, src: &'src str, consts: &'tokens mut Constants) -> Self {
+    pub fn new(
+        tokens: &'tokens mut Tokens,
+        src: &'src str,
+        consts: &'tokens mut Constants,
+    ) -> Self {
         Self {
             tokens,
             consts,
@@ -62,7 +69,10 @@ pub enum Expr {
     Bool(bool),
     Num(u64),
     Name(StringId),
-    Call { fun: Box<Expr>, args: Vec<Expr> },
+    Call {
+        fun: Box<Expr>,
+        args: Vec<Expr>,
+    },
     Array {
         lhs: Box<Expr>,
         index: Box<Expr>,
@@ -99,7 +109,10 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         Kind::Op(Operator::LParen) => {
             let left = expr_bp(tokens, prec::INITIAL);
             // Need to consume the closing bracket
-            assert!(matches!(tokens.next_no_indent().0, Kind::Op(Operator::RParen)));
+            assert!(matches!(
+                tokens.next_no_indent().0,
+                Kind::Op(Operator::RParen)
+            ));
             left
         }
         Kind::Op(op) => Expr::Unary {
@@ -112,7 +125,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
             Value::Bool(b) => Expr::Bool(b),
             // TODO: see panic
             _ => panic!("need to cover the rest of the values"),
-        }
+        },
         Kind::Eof => panic!("unexpected eof"),
         // TODO: see panic
         _ => panic!("we'll deal with this later"),
@@ -124,7 +137,9 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         // This could be EOF, which is fine.
         // It could also be any other token which would be
         // a syntax error, but I don't mind that just now
-        let Kind::Op(op) = tokens.peek_skip_indent().0 else { return left; };
+        let Kind::Op(op) = tokens.peek_skip_indent().0 else {
+            return left;
+        };
 
         let token_prec = get_precedence(op);
 
@@ -181,12 +196,15 @@ fn parse_function(tokens: &mut Tokens, left: Expr) -> Expr {
                 tokens.consume();
                 break;
             }
-            t => ()
+            t => (),
         }
         args.push(expr_bp(tokens, prec::INITIAL));
     }
 
-    Expr::Call { fun: Box::new(left), args }
+    Expr::Call {
+        fun: Box::new(left),
+        args,
+    }
 }
 
 #[cfg(test)]
@@ -198,7 +216,9 @@ mod test {
         let lexer = Lexer::new(input, &mut consts);
         let tokens = lexer.collect::<Result<_>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());
-        expr(&mut tokens).to_string()
+
+        let expression = expr(&mut tokens);
+        expression.to_string()
     }
 
     #[test]

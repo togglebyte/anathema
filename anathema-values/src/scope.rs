@@ -43,12 +43,34 @@ impl Collection {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Num {
+    Signed(i64),
+    Unsigned(u64),
+    Float(f64),
+}
+
+impl Display for Num {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Signed(n) => write!(f, "{n}"),
+            Self::Unsigned(n) => write!(f, "{n}"),
+            Self::Float(n) => write!(f, "{n}"),
+        }
+    }
+}
+
+// TODO: impl Add for Num
+
+// TODO: give this a better name.
+// If we evaluate a ValueExpr it should not always return a "static" value, the name
+// is confusing.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StaticValue {
     Str(Rc<str>),
-    Num(i64),
-    Float(f64),
+    Num(Num),
     Color(Color),
+    Bool(bool),
 }
 
 impl TryFrom<StaticValue> for Color {
@@ -67,8 +89,8 @@ impl Display for StaticValue {
         match self {
             Self::Str(s) => write!(f, "{s}"),
             Self::Num(num) => write!(f, "{num}"),
-            Self::Float(num) => write!(f, "{num}"),
             Self::Color(color) => write!(f, "{color:?}"),
+            Self::Bool(b) => write!(f, "{b:?}"),
         }
     }
 }
@@ -84,6 +106,7 @@ pub enum ScopeValue {
     Static(StaticValue),
     List(Rc<[ScopeValue]>),
     Dyn(Path),
+    Invalid,
 }
 
 impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
@@ -95,13 +118,6 @@ impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
         } else {
             ScopeValue::List(Rc::new(arr))
         }
-    }
-}
-
-// TODO: add a testing flag for this
-impl From<i32> for ScopeValue {
-    fn from(num: i32) -> Self {
-        Self::Static(StaticValue::Num(num as i64))
     }
 }
 
@@ -183,18 +199,20 @@ impl<'a, 'val> Context<'a, 'val> {
 
     /// Resolve a value based on paths.
     pub fn resolve(&self, value: &ScopeValue) -> ScopeValue {
-        match value {
-            ScopeValue::Static(_) => value.clone(),
-            ScopeValue::Dyn(path) => match self.scope.lookup(path) {
-                Some(lark @ ScopeValue::Dyn(p)) => self.resolve(lark),
-                Some(_) => value.clone(),
-                None => ScopeValue::Dyn(path.clone()),
-            },
-            ScopeValue::List(list) => {
-                let values = list.iter().map(|v| self.resolve(v)).collect();
-                ScopeValue::List(values)
-            }
-        }
+        // TODO toodles
+        panic!()
+        // match value {
+        //     ScopeValue::Static(_) => value.clone(),
+        //     ScopeValue::Dyn(path) => match self.scope.lookup(path) {
+        //         Some(lark @ ScopeValue::Dyn(p)) => self.resolve(lark),
+        //         Some(_) => value.clone(),
+        //         None => ScopeValue::Dyn(path.clone()),
+        //     },
+        //     ScopeValue::List(list) => {
+        //         let values = list.iter().map(|v| self.resolve(v)).collect();
+        //         ScopeValue::List(values)
+        //     }
+        // }
     }
 
     /// Try to find the value in the current scope,
@@ -204,17 +222,18 @@ impl<'a, 'val> Context<'a, 'val> {
     where
         T: for<'b> TryFrom<&'b StaticValue>,
     {
-        match self.scope.lookup(&path) {
-            Some(val) => match val {
-                ScopeValue::Dyn(path) => self.get(path, node_id),
-                ScopeValue::Static(s) => T::try_from(s).ok(),
-                ScopeValue::List(_) => None,
-            },
-            None => self
-                .state
-                .get(&path, node_id.into())
-                .and_then(|val| val.as_ref().try_into().ok()),
-        }
+        panic!()
+        // match self.scope.lookup(&path) {
+        //     Some(val) => match val {
+        //         ScopeValue::Dyn(path) => self.get(path, node_id),
+        //         ScopeValue::Static(s) => T::try_from(s).ok(),
+        //         ScopeValue::List(_) => None,
+        //     },
+        //     None => self
+        //         .state
+        //         .get(&path, node_id.into())
+        //         .and_then(|val| val.as_ref().try_into().ok()),
+        // }
     }
 
     pub fn attribute<T>(
@@ -259,32 +278,34 @@ impl<'a, 'val> Context<'a, 'val> {
         buffer: &mut String,
         node_id: Option<&NodeId>,
     ) {
-        for val in list.iter() {
-            match val {
-                ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
-                ScopeValue::Dyn(path) => buffer.push_str(&self.get_string(path, node_id)),
-                ScopeValue::Static(s) => drop(write!(buffer, "{s}")),
-            }
-        }
+        panic!()
+        // for val in list.iter() {
+        //     match val {
+        //         ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
+        //         ScopeValue::Dyn(path) => buffer.push_str(&self.get_string(path, node_id)),
+        //         ScopeValue::Static(s) => drop(write!(buffer, "{s}")),
+        //     }
+        // }
     }
 
     pub fn get_string(&self, path: &Path, node_id: Option<&NodeId>) -> String {
-        match self.scope.lookup(path) {
-            Some(val) => match val {
-                ScopeValue::Dyn(path) => self.get_string(path, node_id),
-                ScopeValue::Static(s) => s.to_string(),
-                ScopeValue::List(list) => {
-                    let mut buffer = String::new();
-                    self.list_to_string(list, &mut buffer, node_id);
-                    buffer
-                }
-            },
-            None => self
-                .state
-                .get(&path, node_id)
-                .map(|val| val.to_string())
-                .unwrap_or_else(String::new),
-        }
+        panic!()
+        // match self.scope.lookup(path) {
+        //     Some(val) => match val {
+        //         ScopeValue::Dyn(path) => self.get_string(path, node_id),
+        //         ScopeValue::Static(s) => s.to_string(),
+        //         ScopeValue::List(list) => {
+        //             let mut buffer = String::new();
+        //             self.list_to_string(list, &mut buffer, node_id);
+        //             buffer
+        //         }
+        //     },
+        //     None => self
+        //         .state
+        //         .get(&path, node_id)
+        //         .map(|val| val.to_string())
+        //         .unwrap_or_else(String::new),
+        // }
     }
 }
 

@@ -67,7 +67,6 @@ impl Loop {
         let collection: Collection =
             match &self.collection {
                 ScopeValue::List(values) => Collection::Rc(values.clone()),
-                ScopeValue::Static(string) => Collection::Empty,
                 ScopeValue::Dyn(path) => scope
                     .lookup_list(path)
                     .map(Collection::Rc)
@@ -76,6 +75,8 @@ impl Loop {
                             .get_collection(path, Some(&node_id))
                             .unwrap_or(Collection::Empty)
                     }),
+                ScopeValue::Static(_) 
+                | ScopeValue::Invalid => Collection::Empty,
             };
 
         let node = Node {

@@ -47,15 +47,11 @@ impl Constants {
         self.conditions.push(cond)
     }
 
-    pub fn lookup_string(&self, index: StringId) -> Option<&str> {
-        self.strings.get(index).map(String::as_str)
+    pub fn lookup_string(&self, index: StringId) -> &str {
+        self.strings.get(index).map(String::as_str).expect("consts have been modified, this is a bug with Anathema, file a bug report please")
     }
 
-    pub fn lookup_value(&self, index: ValueId) -> Option<&ScopeValue> {
-        self.values.get(index)
-    }
-
-    pub fn lookup_cond(&self, index: CondId) -> Option<&Cond> {
-        self.conditions.get(index)
+    pub fn lookup_value(&self, index: ValueId) -> &ScopeValue {
+        self.values.get(index).expect("consts have been modified, this is a bug with Anathema, file a bug report please")
     }
 }
