@@ -13,16 +13,6 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
         }
         Expr::Num(num) => ValueExpr::Num(Num::Unsigned(num)),
         Expr::Array { lhs, index } => {
-            // let ValueExpr::Path(lhs) = eval(*lhs, consts) else {
-            //     panic!("we'll deal with you later");
-            // };
-
-            // let path = match eval(*index, consts) {
-            //     ValueExpr::Path(path) => lhs.compose(path),
-            //     ValueExpr::Num(Num::Unsigned(num)) => lhs.compose(num),
-            //     _ => panic!("we'll deal with this later"),
-            // };
-            // ValueExpr::Path(path)
             let lhs = eval(*lhs, consts);
             let index = eval(*index, consts);
             ValueExpr::Index(lhs.into(), index.into())
@@ -45,6 +35,7 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 _ => panic!(),
             }
         }
+        Expr::Bool(b) => panic!(),
         _ => panic!(),
     }
 
@@ -109,5 +100,26 @@ mod test {
 
         let expr = eval_str("-123");
         assert_eq!(expr.to_string(), "-123");
+    }
+
+    #[test]
+    fn lookup() {
+        let expr = eval_str("a.b.c");
+        assert_eq!(expr.to_string(), "a.b.c");
+    }
+
+    #[test]
+    fn bool() {
+        let expr = eval_str("true");
+        assert_eq!(expr.to_string(), "true");
+
+        let expr = eval_str("!true");
+        assert_eq!(expr.to_string(), "false");
+
+        let expr = eval_str("!false");
+        assert_eq!(expr.to_string(), "true");
+
+        let expr = eval_str("!!false");
+        assert_eq!(expr.to_string(), "false");
     }
 }

@@ -5,9 +5,9 @@ use crate::{Context, NodeId, Path, ScopeValue, StaticValue};
 
 #[derive(Debug)]
 pub enum ValueExpr {
+    Num(Num),
     Ident(String),
     Value(Box<ScopeValue>),
-    Num(Num),
     Lookup(Box<ValueExpr>),
     Key(Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
