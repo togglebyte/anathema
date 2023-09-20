@@ -1,10 +1,11 @@
-use std::fmt::{self, Display, Write};
 use std::borrow::Cow;
-use std::ops::Deref;
+use std::fmt::{self, Display, Write};
+use std::ops::{Add, Deref, Mul, Sub, Div, Rem};
 use std::rc::Rc;
 use std::str::FromStr;
 
 use anathema_render::{Color, Size, Style};
+
 use crate::hashmap::HashMap;
 use crate::{NodeId, Path, State};
 
@@ -60,7 +61,180 @@ impl Display for Num {
     }
 }
 
-// TODO: impl Add for Num
+macro_rules! into_unsigned_num {
+    ($t:ty) => {
+        impl From<$t> for Num {
+            fn from(n: $t) -> Self {
+                Self::Unsigned(n as u64)
+            }
+        }
+    };
+}
+
+macro_rules! into_signed_num {
+    ($t:ty) => {
+        impl From<$t> for Num {
+            fn from(n: $t) -> Self {
+                Self::Signed(n as i64)
+            }
+        }
+    };
+}
+
+into_unsigned_num!(u8);
+into_unsigned_num!(u16);
+into_unsigned_num!(u32);
+into_unsigned_num!(u64);
+into_unsigned_num!(usize);
+
+into_signed_num!(i8);
+into_signed_num!(i16);
+into_signed_num!(i32);
+into_signed_num!(i64);
+into_signed_num!(isize);
+
+impl Mul for Num {
+    type Output = Num;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs * rhs),
+            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs * rhs),
+            _ => panic!(),
+        }
+    }
+}
+
+impl Add for Num {
+    type Output = Num;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs + rhs),
+            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs + rhs),
+
+
+            (Self::Signed(lhs), Self::Unsigned(rhs)) if lhs.is_negative() => {
+                if lhs.abs() as u64 >= rhs {
+                    Self::Signed(-((lhs.abs() as u64 - rhs) as i64))
+                } else {
+                    Self::Unsigned(rhs - lhs.abs() as u64)
+                }
+            }
+
+            (Self::Unsigned(lhs), Self::Signed(rhs)) if rhs.is_negative() => {
+                if rhs.abs() as u64 >= lhs {
+                    Self::Signed(-((rhs.abs() as u64 - lhs) as i64))
+                } else {
+                    Self::Unsigned(lhs - rhs.abs() as u64)
+                }
+            }
+
+            (Self::Signed(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs as u64 + rhs),
+            (Self::Unsigned(lhs), Self::Signed(rhs)) => Self::Unsigned(rhs as u64 + lhs),
+            _ => panic!(),
+        }
+    }
+}
+
+impl Sub for Num {
+    type Output = Num;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs - rhs),
+            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs - rhs),
+
+            (Self::Signed(lhs), Self::Unsigned(rhs)) => {
+                let lhs = lhs as i128;
+                let rhs = rhs as i128;
+                let res = lhs - rhs;
+                if res.is_negative() {
+                    Self::Signed(res as i64)
+                } else {
+                    Self::Unsigned(res as u64)
+                }
+            }
+            (Self::Unsigned(lhs), Self::Signed(rhs)) => {
+                let lhs = lhs as i128;
+                let rhs = rhs as i128;
+                let res = lhs - rhs;
+                if res.is_negative() {
+                    Self::Signed(res as i64)
+                } else {
+                    Self::Unsigned(res as u64)
+                }
+            }
+            _ => panic!(),
+        }
+    }
+}
+
+impl Div for Num {
+    type Output = Num;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs / rhs),
+            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs / rhs),
+
+            (Self::Signed(lhs), Self::Unsigned(rhs)) => {
+                let lhs = lhs as i128;
+                let rhs = rhs as i128;
+                let res = lhs / rhs;
+                if res.is_negative() {
+                    Self::Signed(res as i64)
+                } else {
+                    Self::Unsigned(res as u64)
+                }
+            }
+            (Self::Unsigned(lhs), Self::Signed(rhs)) => {
+                let lhs = lhs as i128;
+                let rhs = rhs as i128;
+                let res = lhs / rhs;
+                if res.is_negative() {
+                    Self::Signed(res as i64)
+                } else {
+                    Self::Unsigned(res as u64)
+                }
+            }
+            _ => panic!(),
+        }
+    }
+}
+
+impl Rem for Num {
+    type Output = Num;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs % rhs),
+            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs % rhs),
+
+            (Self::Signed(lhs), Self::Unsigned(rhs)) => {
+                let lhs = lhs as i128;
+                let rhs = rhs as i128;
+                let res = lhs % rhs;
+                if res.is_negative() {
+                    Self::Signed(res as i64)
+                } else {
+                    Self::Unsigned(res as u64)
+                }
+            }
+            (Self::Unsigned(lhs), Self::Signed(rhs)) => {
+                let lhs = lhs as i128;
+                let rhs = rhs as i128;
+                let res = lhs % rhs;
+                if res.is_negative() {
+                    Self::Signed(res as i64)
+                } else {
+                    Self::Unsigned(res as u64)
+                }
+            }
+            _ => panic!(),
+        }
+    }
+}
 
 // TODO: give this a better name.
 // If we evaluate a ValueExpr it should not always return a "static" value, the name
@@ -69,8 +243,8 @@ impl Display for Num {
 pub enum StaticValue {
     Str(Rc<str>),
     Num(Num),
-    Color(Color),
     Bool(bool),
+    Color(Color),
 }
 
 impl TryFrom<StaticValue> for Color {
@@ -79,7 +253,7 @@ impl TryFrom<StaticValue> for Color {
     fn try_from(value: StaticValue) -> Result<Self, Self::Error> {
         match value {
             StaticValue::Color(color) => Ok(color),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -92,6 +266,12 @@ impl Display for StaticValue {
             Self::Color(color) => write!(f, "{color:?}"),
             Self::Bool(b) => write!(f, "{b:?}"),
         }
+    }
+}
+
+impl From<bool> for StaticValue {
+    fn from(b: bool) -> StaticValue {
+        StaticValue::Bool(b)
     }
 }
 
@@ -143,7 +323,9 @@ impl<'a> Scope<'a> {
     }
 
     pub fn scope(&mut self, path: Path, value: Cow<'a, ScopeValue>) {
-        self.inner.last_mut().map(|values| values.insert(path, value));
+        self.inner
+            .last_mut()
+            .map(|values| values.insert(path, value));
     }
 
     pub fn push(&mut self) {
@@ -157,7 +339,6 @@ impl<'a> Scope<'a> {
     /// Scope a value for a collection.
     /// TODO: Review if the whole cloning business here makes sense
     pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
-
         let value = match collection {
             Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
             Collection::State { path, .. } => {
@@ -179,11 +360,10 @@ impl<'a> Scope<'a> {
     }
 
     pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
-        self.lookup(path)
-            .and_then(|value| match value {
-                ScopeValue::List(list) => Some(list.clone()),
-                _ => None,
-            })
+        self.lookup(path).and_then(|value| match value {
+            ScopeValue::List(list) => Some(list.clone()),
+            _ => None,
+        })
     }
 }
 
@@ -326,7 +506,10 @@ mod test {
 
         // let mut inner = Scope::new(Some(&scope));
         scope.push();
-        scope.scope("value".into(), Cow::Owned(ScopeValue::Static("inner hello".into())));
+        scope.scope(
+            "value".into(),
+            Cow::Owned(ScopeValue::Static("inner hello".into())),
+        );
 
         let value = scope.lookup(&"value".into()).unwrap();
 

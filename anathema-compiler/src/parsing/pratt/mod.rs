@@ -47,7 +47,7 @@ fn get_precedence(op: Operator) -> u8 {
         Operator::Equal => prec::ASSIGNMENT,
         Operator::Or | Operator::And => prec::CONDITIONAL,
         Operator::Plus | Operator::Minus => prec::SUM,
-        Operator::Mul | Operator::Div => prec::PRODUCT,
+        Operator::Mul | Operator::Div | Operator::Mod => prec::PRODUCT,
         Operator::LParen => prec::CALL,
         Operator::Dot => prec::SELECTION,
         Operator::LBracket => prec::SUBCRIPT,
@@ -68,7 +68,8 @@ pub enum Expr {
     },
     Bool(bool),
     Num(u64),
-    Name(StringId),
+    Ident(StringId),
+    Str(StringId),
     Call {
         fun: Box<Expr>,
         args: Vec<Expr>,
@@ -86,7 +87,8 @@ impl Display for Expr {
             Expr::Binary { op, lhs, rhs } => write!(f, "({op} {lhs} {rhs})"),
             Expr::Bool(b) => write!(f, "{b}"),
             Expr::Num(b) => write!(f, "{b}"),
-            Expr::Name(b) => write!(f, "{b}"),
+            Expr::Ident(sid) => write!(f, "{sid}"),
+            Expr::Str(sid) => write!(f, "\"{sid}\""),
             Expr::Array { lhs, index } => write!(f, "{lhs}[{index}]"),
             Expr::Call { fun, args } => {
                 let s = args
@@ -121,8 +123,10 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         },
         Kind::Value(value) => match value {
             Value::Number(n) => Expr::Num(n),
-            Value::Ident(ident) => Expr::Name(ident),
+            Value::Ident(ident) => Expr::Ident(ident),
+            Value::String(string_id) => Expr::Str(string_id),
             Value::Bool(b) => Expr::Bool(b),
+            Value::String(sid) => Expr::Str(sid),
             // TODO: see panic
             _ => panic!("need to cover the rest of the values"),
         },
@@ -267,5 +271,11 @@ mod test {
     fn dot_lookup() {
         let input = "a.b.c";
         assert_eq!(parse(input), "(. (. <sid 0> <sid 1>) <sid 2>)");
+    }
+
+    #[test]
+    fn modulo() {
+        let input = "5 + 1 % 2";
+        assert_eq!(parse(input), "(+ 5 (% 1 2))");
     }
 }
