@@ -107,7 +107,7 @@ impl Display for Error {
             ErrorKind::InvalidHexValue => "invalid hex value".into(),
             ErrorKind::UnexpectedEof => "unexpected end of file".into(),
             ErrorKind::TrailingPipe => "trailing pipe character".into(),
-            ErrorKind::InvalidUnindent => {
+            ErrorKind::InvalidDedent => {
                 "dedent does not match previous indentation levels".into()
             }
             ErrorKind::InvalidOperator(op) => "invalid operator: {op}".into(),
@@ -140,7 +140,7 @@ pub enum ErrorKind {
     InvalidHexValue,
     UnexpectedEof,
     TrailingPipe,
-    InvalidUnindent,
+    InvalidDedent,
     InvalidPath,
     InvalidOperator(Operator),
     UnexpectedToken(String),

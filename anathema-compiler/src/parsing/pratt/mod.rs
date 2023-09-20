@@ -10,26 +10,6 @@ use crate::{Constants, StringId};
 
 mod eval;
 
-struct PrattParser<'src, 'tokens> {
-    tokens: &'tokens mut Tokens,
-    consts: &'tokens mut Constants,
-    src: &'src str,
-}
-
-impl<'src, 'tokens> PrattParser<'src, 'tokens> {
-    pub fn new(
-        tokens: &'tokens mut Tokens,
-        src: &'src str,
-        consts: &'tokens mut Constants,
-    ) -> Self {
-        Self {
-            tokens,
-            consts,
-            src,
-        }
-    }
-}
-
 pub mod prec {
     pub const INITIAL: u8 = 0;
     pub const ASSIGNMENT: u8 = 1;
@@ -78,6 +58,7 @@ pub enum Expr {
         lhs: Box<Expr>,
         index: Box<Expr>,
     },
+    List(Vec<Expr>)
 }
 
 impl Display for Expr {
@@ -90,6 +71,10 @@ impl Display for Expr {
             Expr::Ident(sid) => write!(f, "{sid}"),
             Expr::Str(sid) => write!(f, "\"{sid}\""),
             Expr::Array { lhs, index } => write!(f, "{lhs}[{index}]"),
+            Expr::List(list) => {
+                let s = list.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(", ");
+                write!(f, "[{s}]")
+            }
             Expr::Call { fun, args } => {
                 let s = args
                     .iter()
@@ -108,6 +93,7 @@ pub(crate) fn expr(tokens: &mut Tokens) -> Expr {
 
 fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
     let mut left = match tokens.next_no_indent().0 {
+        Kind::Op(Operator::LBracket) => parse_collection(tokens),
         Kind::Op(Operator::LParen) => {
             let left = expr_bp(tokens, prec::INITIAL);
             // Need to consume the closing bracket
@@ -200,7 +186,7 @@ fn parse_function(tokens: &mut Tokens, left: Expr) -> Expr {
                 tokens.consume();
                 break;
             }
-            t => (),
+            _ => (),
         }
         args.push(expr_bp(tokens, prec::INITIAL));
     }
@@ -209,6 +195,27 @@ fn parse_function(tokens: &mut Tokens, left: Expr) -> Expr {
         fun: Box::new(left),
         args,
     }
+}
+
+fn parse_collection(tokens: &mut Tokens) -> Expr {
+    let mut elements = vec![];
+
+    loop {
+        match tokens.peek_skip_indent().0 {
+            Kind::Op(Operator::Comma) => {
+                tokens.consume();
+                continue;
+            }
+            Kind::Op(Operator::RBracket) => {
+                tokens.consume();
+                break;
+            }
+            _ => (),
+        }
+        elements.push(expr_bp(tokens, prec::INITIAL));
+    }
+
+    Expr::List(elements)
 }
 
 #[cfg(test)]
@@ -277,5 +284,17 @@ mod test {
     fn modulo() {
         let input = "5 + 1 % 2";
         assert_eq!(parse(input), "(+ 5 (% 1 2))");
+    }
+
+    #[test]
+    fn list() {
+        let input = "[1, 2, a, 4]";
+        assert_eq!(parse(input), "[1, 2, <sid 0>, 4]");
+    }
+
+    #[test]
+    fn nested_list() {
+        let input = "[1, [2, 3, [4, 5]]]";
+        assert_eq!(parse(input), "[1, [2, 3, [4, 5]]]");
     }
 }

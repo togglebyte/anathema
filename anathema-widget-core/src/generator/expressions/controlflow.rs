@@ -1,10 +1,10 @@
-use anathema_values::{ScopeValue, Scope, State};
+use anathema_values::{ScopeValue, Scope, State, ValueExpr, NodeId};
 
 use super::Expression;
 
 #[derive(Debug)]
 pub struct If {
-    pub cond: ScopeValue,
+    pub cond: ValueExpr,
     pub body: Vec<Expression>,
 }
 
@@ -16,13 +16,13 @@ pub struct If {
 //         text "it was true"
 
 impl If {
-    pub(super) fn is_true(&self, scope: &Scope<'_>, state: &mut dyn State) -> bool {
+    pub(super) fn is_true(&self, scope: &Scope<'_>, state: &mut dyn State, node_id: Option<&NodeId>) -> bool {
         panic!()
     }
 }
 
 #[derive(Debug)]
 pub struct Else {
-    pub cond: Option<ScopeValue>,
+    pub cond: Option<ValueExpr>,
     pub body: Vec<Expression>,
 }

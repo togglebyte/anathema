@@ -1,15 +1,14 @@
 use std::rc::Rc;
 
 use anathema_render::Size;
-use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, State};
+use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr};
 
-use self::controlflow::{Else, If};
+pub use self::controlflow::{Else, If};
+use super::nodes::LoopNode;
 use crate::error::Result;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
 use crate::generator::Attributes;
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
-
-use super::nodes::LoopNode;
 
 mod controlflow;
 
@@ -59,36 +58,36 @@ impl SingleNode {
 pub struct Loop {
     pub body: Rc<[Expression]>,
     pub binding: Path,
-    pub collection: ScopeValue,
+    pub collection: ValueExpr,
 }
 
 impl Loop {
     fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
-        let collection: Collection =
-            match &self.collection {
-                ScopeValue::List(values) => Collection::Rc(values.clone()),
-                ScopeValue::Dyn(path) => scope
-                    .lookup_list(path)
-                    .map(Collection::Rc)
-                    .unwrap_or_else(|| {
-                        state
-                            .get_collection(path, Some(&node_id))
-                            .unwrap_or(Collection::Empty)
-                    }),
-                ScopeValue::Static(_) 
-                | ScopeValue::Invalid => Collection::Empty,
-            };
+        panic!()
+        // let collection: Collection =
+        //     match &self.collection {
+        //         ScopeValue::List(values) => Collection::Rc(values.clone()),
+        //         ScopeValue::Dyn(path) => scope
+        //             .lookup_list(path)
+        //             .map(Collection::Rc)
+        //             .unwrap_or_else(|| {
+        //                 state
+        //                     .get_collection(path, Some(&node_id))
+        //                     .unwrap_or(Collection::Empty)
+        //             }),
+        //         ScopeValue::Static(_) | ScopeValue::Invalid => Collection::Empty,
+        //     };
 
-        let node = Node {
-            kind: NodeKind::Loop(LoopNode::new(
-                Nodes::new(self.body.clone(), node_id.child(0)),
-                self.binding.clone(),
-                collection,
-            )),
-            node_id,
-        };
+        // let node = Node {
+        //     kind: NodeKind::Loop(LoopNode::new(
+        //         Nodes::new(self.body.clone(), node_id.child(0)),
+        //         self.binding.clone(),
+        //         collection,
+        //     )),
+        //     node_id,
+        // };
 
-        Ok(node)
+        // Ok(node)
     }
 }
 
@@ -97,13 +96,13 @@ impl Loop {
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub struct ControlFlow {
-    if_expr: If,
-    elses: Vec<Else>,
+    pub if_expr: If,
+    pub elses: Vec<Else>,
 }
 
 impl ControlFlow {
     fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
-        if self.if_expr.is_true(scope, state) {}
+        if self.if_expr.is_true(scope, state, Some(&node_id)) {}
 
         panic!()
     }

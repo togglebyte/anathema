@@ -498,48 +498,50 @@ mod test {
 
     #[test]
     fn scope_value() {
-        let mut scope = Scope::new(None);
-        scope.scope(
-            "value".into(),
-            Cow::Owned(ScopeValue::Static("hello world".into())),
-        );
+        panic!("can't deref to str");
+        // let mut scope = Scope::new(None);
+        // scope.scope(
+        //     "value".into(),
+        //     Cow::Owned(ScopeValue::Static("hello world".into())),
+        // );
 
-        // let mut inner = Scope::new(Some(&scope));
-        scope.push();
-        scope.scope(
-            "value".into(),
-            Cow::Owned(ScopeValue::Static("inner hello".into())),
-        );
+        // // let mut inner = Scope::new(Some(&scope));
+        // scope.push();
+        // scope.scope(
+        //     "value".into(),
+        //     Cow::Owned(ScopeValue::Static("inner hello".into())),
+        // );
 
-        let value = scope.lookup(&"value".into()).unwrap();
+        // let value = scope.lookup(&"value".into()).unwrap();
 
-        let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
-            panic!()
-        };
-        assert_eq!(&**lhs, "inner hello");
+        // let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
+        //     panic!()
+        // };
+        // assert_eq!(&**lhs, "inner hello");
 
-        scope.pop();
+        // scope.pop();
 
-        let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
-            panic!()
-        };
-        assert_eq!(&**lhs, "hello world");
+        // let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
+        //     panic!()
+        // };
+        // assert_eq!(&**lhs, "hello world");
     }
 
     #[test]
     fn dynamic_attribute() {
-        let mut state = TestState::new();
-        let mut root = Scope::new(None);
-        let mut ctx = Context::new(&mut state, &mut root);
-        let mut attributes = HashMap::new();
-        attributes.insert(
-            "name".to_string(),
-            ScopeValue::Dyn(Path::Key("name".into())),
-        );
+        panic!("see above test");
+        // let mut state = TestState::new();
+        // let mut root = Scope::new(None);
+        // let mut ctx = Context::new(&mut state, &mut root);
+        // let mut attributes = HashMap::new();
+        // attributes.insert(
+        //     "name".to_string(),
+        //     ScopeValue::Dyn(Path::Key("name".into())),
+        // );
 
-        let id = Some(123.into());
-        let name: Option<String> = ctx.attribute("name", id.as_ref(), &attributes);
+        // let id = Some(123.into());
+        // let name: Option<String> = ctx.attribute("name", id.as_ref(), &attributes);
 
-        assert_eq!("Dirk Gently", name.unwrap());
+        // assert_eq!("Dirk Gently", name.unwrap());
     }
 }

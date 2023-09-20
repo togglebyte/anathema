@@ -10,7 +10,7 @@ mod testing;
 use std::rc::Rc;
 
 use anathema_values::{Context, State, Scope};
-pub use expressions::{Loop, SingleNode, Expression};
+pub use expressions::{Loop, SingleNode, Expression, If, Else, ControlFlow};
 pub use nodes::Nodes;
 pub use values::Attributes;
 

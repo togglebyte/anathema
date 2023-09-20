@@ -171,13 +171,14 @@ pub(crate) fn for_expression<const N: usize>(
     collection: [impl Into<ScopeValue>; N],
     body: impl Into<Vec<Expression>>,
 ) -> Expression {
-    let collection = collection.map(Into::into);
-    let binding = binding.into();
-    Expression::Loop(Loop {
-        body: body.into().into(),
-        binding,
-        collection: collection.map(Into::into).into(),
-    })
+    panic!()
+    // let collection = collection.map(Into::into);
+    // let binding = binding.into();
+    // Expression::Loop(Loop {
+    //     body: body.into().into(),
+    //     binding,
+    //     collection: collection.map(Into::into).into(),
+    // })
 }
 
 // pub(crate) fn controlflow<E>(

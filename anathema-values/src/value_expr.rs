@@ -1,17 +1,18 @@
 use std::fmt::Display;
+use std::rc::Rc;
 
 use crate::scope::Num;
 use crate::{Context, NodeId, Path, ScopeValue, StaticValue};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
     Value(StaticValue),
 
     Not(Box<ValueExpr>),
     Negative(Box<ValueExpr>),
     
-    Ident(String),
-    String(String),
+    Ident(Rc<str>),
+    String(Rc<str>),
     Key(Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
     Add(Box<ValueExpr>, Box<ValueExpr>),
@@ -86,33 +87,33 @@ impl ValueExpr {
     // }
 
     fn eval<T>(&self, context: &Context, node_id: Option<&NodeId>) -> &ScopeValue {
-        panic!()
-        // match self {
-        //     Self::Value(val) => val,
-        //     Self::Add(lhs, rhs) => {
-        //         panic!()
-        //         // let lhs = lhs.eval(scope, state, node_id).to_num() or return Invalid;
-        //         // let rhs = rhs.eval(scope, state, node_id).to_num() or return Invalid;
+        match self {
+            _=>panic!()
+            // Self::Value(val) => val,
+            // Self::Add(lhs, rhs) => {
+            //     panic!()
+            //     // let lhs = lhs.eval(scope, state, node_id).to_num() or return Invalid;
+            //     // let rhs = rhs.eval(scope, state, node_id).to_num() or return Invalid;
 
-        //         // match (lhs, rhs) {
+            //     // match (lhs, rhs) {
 
-        //         //     (Num::Unsigned(lhs), Num::Signed(rhs @ 0..=i64::MAX)) => lhs + rhs as u64,
-        //         //     (Num::Unsigned(lhs), Num::Signed(rhs) => {
-        //         //         let rhs = rhs.abs();
-        //         //         if lhs > rhs {
-        //         //             lhs + rhs
-        //         //         }
-        //         //     }
-        //         //     (Num::Unsigned(lhs), Num::Signed(rhs) => as i64,
-        //         //     (Num::Unsigned(lhs), Num::Float(rhs) => lhs as f64 + rhs
+            //     //     (Num::Unsigned(lhs), Num::Signed(rhs @ 0..=i64::MAX)) => lhs + rhs as u64,
+            //     //     (Num::Unsigned(lhs), Num::Signed(rhs) => {
+            //     //         let rhs = rhs.abs();
+            //     //         if lhs > rhs {
+            //     //             lhs + rhs
+            //     //         }
+            //     //     }
+            //     //     (Num::Unsigned(lhs), Num::Signed(rhs) => as i64,
+            //     //     (Num::Unsigned(lhs), Num::Float(rhs) => lhs as f64 + rhs
 
-        //         //     (Num::Unsigned(lhs), Num::Unsigned(rhs)) => lhs + rhs,
-        //         //     (Num::Signed(lhs), Num::Signed(rhs)) => lhs + rhs,
-        //         //     (Num::Float(lhs), Num::Float(rhs)) => lhs + rhs,
-        //         // }
-        //     }
-        //     _ => &ScopeValue::Invalid,
-        // }
+            //     //     (Num::Unsigned(lhs), Num::Unsigned(rhs)) => lhs + rhs,
+            //     //     (Num::Signed(lhs), Num::Signed(rhs)) => lhs + rhs,
+            //     //     (Num::Float(lhs), Num::Float(rhs)) => lhs + rhs,
+            //     // }
+            // }
+            // _ => &ScopeValue::Invalid,
+        }
     }
 }
 
@@ -122,6 +123,5 @@ mod test {
 
     #[test]
     fn resolve_something() {
-        panic!("oh my")
     }
 }

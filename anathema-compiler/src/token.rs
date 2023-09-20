@@ -197,6 +197,11 @@ impl Tokens {
         self.inner.get(self.index).copied().unwrap_or(Token(Kind::Eof, self.eof))
     }
 
+    pub fn previous(&self) -> Token {
+        assert!(self.index != 0);
+        self.inner.get(self.index - 1).copied().unwrap_or(Token(Kind::Eof, self.eof))
+    }
+
     pub fn peek_skip_indent(&mut self) -> Token {
         loop {
             let token = self.peek();
@@ -207,6 +212,16 @@ impl Tokens {
             }
 
             break token
+        }
+    }
+
+    pub fn read_indent(&mut self) -> Option<usize> {
+        match self.peek() {
+            Token(Kind::Indent(indent), _) => {
+                self.consume();
+                Some(indent)
+            }
+            _ => None
         }
     }
 }

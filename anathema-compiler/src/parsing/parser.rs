@@ -1,11 +1,10 @@
 use anathema_values::{Path, ScopeValue};
 
-use super::cond_parser::CondParser;
-use super::value_parser::ValueParser;
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::Lexer;
 use crate::token::{Kind, Token, Tokens, Value};
-use crate::{CondId, Constants, StringId, ValueId};
+use crate::{Constants, StringId, ValueId};
+use super::pratt::{eval, expr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
@@ -14,84 +13,11 @@ pub enum Expression {
     View(ValueId),
     Node(StringId),
     For { data: ValueId, binding: StringId },
-    If(CondId),
-    Else(Option<CondId>),
+    If(ValueId),
+    Else(Option<ValueId>),
     ScopeStart,
     ScopeEnd,
     EOF,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cond {
-    Group(Vec<Cond>),
-    And(Box<Cond>, Box<Cond>),
-    Or(Box<Cond>, Box<Cond>),
-    Value(ValueId),
-}
-
-// -----------------------------------------------------------------------------
-//     - Lexer extensions -
-// -----------------------------------------------------------------------------
-impl<'src, 'consts> Lexer<'src, 'consts> {
-    // -----------------------------------------------------------------------------
-    //     - Errors -
-    // -----------------------------------------------------------------------------
-    pub(super) fn error(&self, kind: ErrorKind) -> Error {
-        let (line, col) = src_line_no(self.current_pos, self.src);
-        Error {
-            line,
-            col,
-            src: self.src.to_string(),
-            kind,
-        }
-    }
-
-    pub(super) fn unexpected_token(&self, msg: &str) -> Error {
-        self.error(ErrorKind::UnexpectedToken(msg.into()))
-    }
-
-    pub(crate) fn is_next_token(&mut self, kind: Kind) -> Result<bool> {
-        match self.peek() {
-            Ok(Token(other, _)) => Ok(kind.eq(other)),
-            Err(e) => Err(e.clone()),
-        }
-    }
-
-    pub(super) fn consume_if(&mut self, kind: Kind) -> Result<bool> {
-        if self.is_next_token(kind)? {
-            let _ = self.next();
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
-    pub(super) fn read_ident(&mut self) -> Result<StringId> {
-        panic!()
-        // match self.next() {
-        //     Ok(Token(Kind::Value(Value::Ident(ident)), _)) => Ok(ident),
-        //     Ok(_) => Err(self.error(ErrorKind::InvalidToken {
-        //         expected: "identifier",
-        //     })),
-        //     Err(e) => Err(e),
-        // }
-    }
-
-    fn read_indent(&mut self) -> Option<Result<usize>> {
-        match self.peek() {
-            Ok(Token(Kind::Indent(indent), _)) => {
-                let indent = *indent;
-                let _ = self.next();
-                Some(Ok(indent))
-            }
-            Ok(_) => None,
-            Err(e) => {
-                let ret = Some(Err(e.clone()));
-                let _ = self.next();
-                ret
-            }
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -113,7 +39,7 @@ enum State {
 // -----------------------------------------------------------------------------
 pub struct Parser<'src, 'consts> {
     tokens: Tokens,
-    consts: &'consts Constants,
+    consts: &'consts mut Constants,
     src: &'src str,
     state: State,
     open_scopes: Vec<usize>,
@@ -142,6 +68,16 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         };
 
         inst
+    }
+
+    fn error(&self, kind: ErrorKind) -> Error {
+        let (line, col) = src_line_no(self.tokens.previous().1, self.src);
+        Error {
+            line,
+            col,
+            src: self.src.to_string(),
+            kind,
+        }
     }
 
     pub(crate) fn parse(&mut self) -> Result<Expression> {
@@ -196,65 +132,64 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     //     - Stage 1: Parse enter / exit scopes -
     // -----------------------------------------------------------------------------
     fn enter_scope(&mut self) -> Result<Option<Expression>> {
-        panic!()
-        // let indent = self.lexer.read_indent().transpose()?;
+        let indent = self.tokens.read_indent();
 
-        // if self.lexer.is_next_token(Kind::Eof)? {
-        //     self.next_state();
-        //     return Ok(None);
-        // }
+        if Kind::Eof == self.tokens.peek().0 {
+            self.next_state();
+            return Ok(None);
+        }
 
-        // let indent = match indent {
-        //     Some(indent) if indent < self.base_indent => {
-        //         return Err(self.lexer.error(ErrorKind::InvalidUnindent))
-        //     }
-        //     Some(indent) => Some(indent - self.base_indent),
-        //     None => None,
-        // };
+        let indent = match indent {
+            Some(indent) if indent < self.base_indent => {
+                return Err(self.error(ErrorKind::InvalidDedent))
+            }
+            Some(indent) => Some(indent - self.base_indent),
+            None => None,
+        };
 
-        // let ret = match indent {
-        //     // No indent but open scopes
-        //     None if !self.open_scopes.is_empty() => {
-        //         self.closed_scopes.extend(self.open_scopes.drain(..));
-        //         Ok(None)
-        //     }
-        //     // No indent, no open scopes
-        //     None => Ok(None),
-        //     // Indent
-        //     Some(indent) => match self.open_scopes.last() {
-        //         // Indent is bigger than previous: create another scope
-        //         Some(&last) if indent > last => {
-        //             self.open_scopes.push(indent);
-        //             Ok(Some(Expression::ScopeStart))
-        //         }
-        //         // Indent is smaller than previous: close larger scopes
-        //         Some(&last) if indent < last => {
-        //             if indent > 0 && !self.open_scopes.iter().any(|s| indent.eq(s)) {
-        //                 return Err(self.lexer.error(ErrorKind::InvalidUnindent));
-        //             }
+        let ret = match indent {
+            // No indent but open scopes
+            None if !self.open_scopes.is_empty() => {
+                self.closed_scopes.extend(self.open_scopes.drain(..));
+                Ok(None)
+            }
+            // No indent, no open scopes
+            None => Ok(None),
+            // Indent
+            Some(indent) => match self.open_scopes.last() {
+                // Indent is bigger than previous: create another scope
+                Some(&last) if indent > last => {
+                    self.open_scopes.push(indent);
+                    Ok(Some(Expression::ScopeStart))
+                }
+                // Indent is smaller than previous: close larger scopes
+                Some(&last) if indent < last => {
+                    if indent > 0 && !self.open_scopes.iter().any(|s| indent.eq(s)) {
+                        return Err(self.error(ErrorKind::InvalidDedent));
+                    }
 
-        //             self.open_scopes.retain(|&s| {
-        //                 if indent < s {
-        //                     self.closed_scopes.push(s);
-        //                     false
-        //                 } else {
-        //                     true
-        //                 }
-        //             });
+                    self.open_scopes.retain(|&s| {
+                        if indent < s {
+                            self.closed_scopes.push(s);
+                            false
+                        } else {
+                            true
+                        }
+                    });
 
-        //             Ok(None)
-        //         }
-        //         // There are no previous indents, and this indent is not zero
-        //         None if indent > 0 && self.open_scopes.is_empty() => {
-        //             self.open_scopes.push(indent);
-        //             Ok(Some(Expression::ScopeStart))
-        //         }
-        //         _ => Ok(None),
-        //     },
-        // };
+                    Ok(None)
+                }
+                // There are no previous indents, and this indent is not zero
+                None if indent > 0 && self.open_scopes.is_empty() => {
+                    self.open_scopes.push(indent);
+                    Ok(Some(Expression::ScopeStart))
+                }
+                _ => Ok(None),
+            },
+        };
 
-        // self.next_state();
-        // ret
+        self.next_state();
+        ret
     }
 
     fn exit_scope(&mut self) -> Result<Option<Expression>> {
@@ -271,53 +206,67 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     //     - Stage 2: Parse ident, For and If -
     // -----------------------------------------------------------------------------
     fn parse_ident(&mut self) -> Result<Option<Expression>> {
-        panic!()
-        // if self.lexer.is_next_token(Kind::Eof)? {
-        //     self.state = State::Done;
-        //     return Ok(None);
-        // }
+        if Kind::Eof == self.tokens.peek().0 {
+            self.state = State::Done;
+            return Ok(None);
+        }
 
-        // // Since the previous parse state was `ParseFor`, the tokens
-        // // might've been consumed.
-        // // If the next token is a newline char then move to the next state
-        // if self.lexer.is_next_token(Kind::Newline)? {
-        //     self.next_state();
-        //     return Ok(None);
-        // }
+        // Since the previous parse state was `ParseFor`, the tokens
+        // might've been consumed.
+        // If the next token is a newline char then move to the next state
+        if Kind::Newline == self.tokens.peek().0 {
+            self.next_state();
+            return Ok(None);
+        }
 
-        // let index = self.lexer.read_ident()?;
+        let string_id = match self.tokens.next().0 {
+            Kind::Value(Value::Ident(ident)) => ident,
+            _ => {
+                return Err(self.error(ErrorKind::InvalidToken {
+                    expected: "identifier",
+                }))
+            }
+        };
 
-        // self.lexer.consume(true, false);
-        // self.next_state();
-        // Ok(Some(Expression::Node(index)))
+        self.tokens.consume_indent();
+        self.next_state();
+        Ok(Some(Expression::Node(string_id)))
     }
 
     fn parse_for(&mut self) -> Result<Option<Expression>> {
-        self.tokens.consume_indent();
-        panic!()
-        // if self.lexer.consume_if(Kind::For)? {
-        //     panic!()
-        //     // self.lexer.consume(true, false);
-        //     // let binding = self.lexer.read_ident()?;
-        //     // self.lexer.consume(true, false);
+        if Kind::For != self.tokens.peek_skip_indent().0 {
+            self.next_state();
+            return Ok(None);
+        }
 
-        //     // if !matches!(self.lexer.peek(), Ok(Token(Kind::In, _))) {
-        //     //     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: "in" }));
-        //     // }
-        //     // // Consume `In`
-        //     // let _ = self.lexer.next();
-        //     // self.lexer.consume(true, false);
+        self.tokens.consume();
 
-        //     // let data = ValueParser::new(&mut self.lexer).parse()?;
-        //     // // let data = self.constants.store_value(data);
-        //     // // self.lexer.consume(true, false);
+        let binding = match self.tokens.next_no_indent().0 {
+            Kind::Value(Value::Ident(ident)) => ident,
+            _ => {
+                return Err(self.error(ErrorKind::InvalidToken {
+                    expected: "identifier",
+                }))
+            }
+        };
 
-        //     // // self.next_state();
-        //     // // Ok(Some(Expression::For { data, binding }))
-        // } else {
-        //     self.next_state();
-        //     Ok(None)
-        // }
+        // self.lexer.consume(true, false);
+
+        if Kind::In != self.tokens.peek_skip_indent().0 {
+            return Err(self.error(ErrorKind::InvalidToken { expected: "in" }));
+        }
+
+        // Consume `In`
+        self.tokens.consume();
+
+        let expr = expr(&mut self.tokens);
+        let value_expr = eval(expr, self.consts);
+
+        // let data = ValueParser::new(&mut self.lexer).parse()?;
+        let data = self.consts.store_value(value_expr);
+
+        self.next_state();
+        Ok(Some(Expression::For { data, binding }))
     }
 
     fn parse_if(&mut self) -> Result<Option<Expression>> {

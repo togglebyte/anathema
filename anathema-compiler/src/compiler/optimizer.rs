@@ -1,19 +1,19 @@
-use crate::parsing::parser::{Cond, Expression as ParseExpr};
-use crate::{StringId, ValueId, CondId};
+use crate::parsing::parser::Expression as ParseExpr;
+use crate::{StringId, ValueId};
 
 enum ControlFlow {
-    If(CondId),
-    Else(Option<CondId>),
+    If(ValueId),
+    Else(Option<ValueId>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub(crate) enum Expression {
     If {
-        cond: CondId,
+        cond: ValueId,
         size: usize,
     },
     Else {
-        cond: Option<CondId>,
+        cond: Option<ValueId>,
         size: usize,
     },
     For {

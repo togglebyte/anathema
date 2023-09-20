@@ -1,19 +1,18 @@
 use self::optimizer::Expression;
 pub(crate) use self::optimizer::Optimizer;
 use super::error::Result;
-use crate::parsing::parser::Cond;
-use crate::{CondId, StringId, ValueId};
+use crate::{StringId, ValueId};
 
 mod optimizer;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Instruction {
     If {
-        cond: CondId,
+        cond: ValueId,
         size: usize,
     },
     Else {
-        cond: Option<CondId>,
+        cond: Option<ValueId>,
         size: usize,
     },
     For {
@@ -34,8 +33,8 @@ pub enum Instruction {
 }
 
 enum Branch {
-    If(CondId),
-    Else(Option<CondId>),
+    If(ValueId),
+    Else(Option<ValueId>),
 }
 
 pub(super) struct Compiler {

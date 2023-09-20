@@ -1,15 +1,11 @@
-use anathema_values::{Path, ScopeValue};
+use anathema_values::{Path, ValueExpr};
 pub(crate) use storage::Storage;
 
-pub use self::conditions::CondId;
-use self::conditions::Conditions;
 pub use self::strings::StringId;
 use self::strings::Strings;
 pub use self::values::ValueId;
 use self::values::Values;
-use crate::parsing::parser::Cond;
 
-mod conditions;
 mod paths;
 mod storage;
 mod strings;
@@ -23,7 +19,6 @@ mod values;
 pub struct Constants {
     strings: Strings,
     values: Values,
-    conditions: Conditions,
 }
 
 impl Constants {
@@ -31,7 +26,6 @@ impl Constants {
         Self {
             strings: Strings::empty(),
             values: Values::empty(),
-            conditions: Conditions::empty(),
         }
     }
 
@@ -39,19 +33,19 @@ impl Constants {
         self.strings.push(string.into())
     }
 
-    pub fn store_value(&mut self, value: ScopeValue) -> ValueId {
+    pub fn store_value(&mut self, value: ValueExpr) -> ValueId {
         self.values.push(value)
     }
 
-    pub fn store_cond(&mut self, cond: Cond) -> CondId {
-        self.conditions.push(cond)
-    }
-
     pub fn lookup_string(&self, index: StringId) -> &str {
-        self.strings.get(index).map(String::as_str).expect("consts have been modified, this is a bug with Anathema, file a bug report please")
+        self.strings.get(index).map(String::as_str).expect(
+            "consts have been modified, this is a bug with Anathema, file a bug report please",
+        )
     }
 
-    pub fn lookup_value(&self, index: ValueId) -> &ScopeValue {
-        self.values.get(index).expect("consts have been modified, this is a bug with Anathema, file a bug report please")
+    pub fn lookup_value(&self, index: ValueId) -> ValueExpr {
+        self.values.get(index).cloned().expect(
+            "consts have been modified, this is a bug with Anathema, file a bug report please",
+        )
     }
 }

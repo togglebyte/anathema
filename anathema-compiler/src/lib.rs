@@ -7,7 +7,7 @@ pub(crate) mod parsing;
 pub(crate) mod token;
 
 pub use compiler::Instruction;
-pub use constants::{CondId, StringId, ValueId};
+pub use constants::{StringId, ValueId};
 
 use self::token::Tokens;
 pub use crate::constants::Constants;

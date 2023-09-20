@@ -1,4 +1,4 @@
-use anathema_values::ScopeValue;
+use anathema_values::ValueExpr;
 
 use super::Storage;
 
@@ -12,18 +12,18 @@ impl From<usize> for ValueId {
 }
 
 #[derive(Debug)]
-pub struct Values(Storage<ScopeValue>);
+pub struct Values(Storage<ValueExpr>);
 
 impl Values {
     pub(crate) fn empty() -> Self {
         Self(Storage::empty())
     }
 
-    pub(crate) fn push(&mut self, value: ScopeValue) -> ValueId {
+    pub(crate) fn push(&mut self, value: ValueExpr) -> ValueId {
         ValueId(self.0.push(value))
     }
 
-    pub(crate) fn get(&self, index: ValueId) -> Option<&ScopeValue> {
+    pub(crate) fn get(&self, index: ValueId) -> Option<&ValueExpr> {
         self.0.get(index.0)
     }
 }
