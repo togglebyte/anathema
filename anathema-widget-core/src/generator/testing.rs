@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
-use anathema_values::{Context, Path, ScopeValue, State};
+use anathema_values::{Context, Path, ScopeValue, State, ValueExpr};
 
 use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::{Attributes, WidgetContainer, Widget, WidgetFactory, Factory};
@@ -139,7 +139,7 @@ impl WidgetFactory for TestWidgetFactory {
         &self,
         data: Context<'_, '_>,
         attributes: &Attributes,
-        text: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         noden_id: &anathema_values::NodeId
     ) -> crate::error::Result<Box<dyn crate::AnyWidget>> {
         let widget = TestWidget;
@@ -153,7 +153,7 @@ pub(crate) fn register_test_widget() {
 
 pub(crate) fn expression(
     ident: impl Into<String>,
-    text: impl Into<Option<ScopeValue>>,
+    text: impl Into<Option<ValueExpr>>,
     attributes: impl Into<Attributes>,
     children: impl Into<Vec<Expression>>,
 ) -> Expression {

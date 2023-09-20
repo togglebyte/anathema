@@ -18,7 +18,7 @@ mod controlflow;
 #[derive(Debug)]
 pub struct SingleNode {
     pub ident: String,
-    pub text: Option<ScopeValue>,
+    pub text: Option<ValueExpr>,
     pub attributes: Attributes,
     pub children: Rc<[Expression]>,
 }

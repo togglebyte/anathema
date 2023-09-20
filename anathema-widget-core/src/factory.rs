@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_values::{Context, State, NodeId, ScopeValue};
+use anathema_values::{Context, State, NodeId, ValueExpr};
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
@@ -16,7 +16,7 @@ pub trait WidgetFactory: Send + Sync {
         &self,
         data: Context<'_, '_>,
         attributes: &Attributes,
-        text: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         noden_id: &NodeId
     ) -> Result<Box<dyn AnyWidget>>;
 }
