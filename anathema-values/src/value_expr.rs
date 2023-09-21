@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::rc::Rc;
 
 use crate::scope::Num;
-use crate::{Context, NodeId, Path, ScopeValue, StaticValue};
+use crate::{Context, NodeId, Path, Scope, ScopeValue, State, StaticValue};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
@@ -10,7 +10,7 @@ pub enum ValueExpr {
 
     Not(Box<ValueExpr>),
     Negative(Box<ValueExpr>),
-    
+
     Ident(Rc<str>),
     String(Rc<str>),
     List(Vec<ValueExpr>),
@@ -24,7 +24,6 @@ pub enum ValueExpr {
     Mod(Box<ValueExpr>, Box<ValueExpr>),
     Or(Box<ValueExpr>, Box<ValueExpr>),
 
-    Lookup(Box<ValueExpr>),
     Dot(Box<ValueExpr>, Box<ValueExpr>),
 
     Invalid,
@@ -35,7 +34,6 @@ impl Display for ValueExpr {
         match self {
             Self::Value(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
-            Self::Lookup(n) => write!(f, "{n}"),
             Self::Key(n) => write!(f, "{n}"),
             Self::Index(lhs, idx) => write!(f, "{lhs}[{idx}]"),
             Self::Dot(lhs, rhs) => write!(f, "{lhs}.{rhs}"),
@@ -83,46 +81,196 @@ where
 //     )
 //     text "{{ item.age + root_num - 1 }}"
 
+// y = [
+//    [1, 2, 3],
+//    [4, some_ident, 5],
+// ]
+//
+// sausages = [1, 2, 3, 4, 5, 6]
+// some_ident = 1
+//
+// for x in y // x = [4, some_ident, 5]
+//     for a in x
+//         text sausages[a]
+//
+// a -> some_ident -> 1 // this means we are storing `a` as an expression inside a `Scope`
+// sausages[1] -> 2
+
 impl ValueExpr {
-    // fn eval_num(&self, scope: &Scope, state: &mut impl State, node_id: Option<&NodeId>) -> ?? {
-    // }
-
-    fn eval<T>(&self, context: &Context, node_id: Option<&NodeId>) -> &ScopeValue {
+    pub fn eval<T>(
+        &self,
+        context: &mut Context<'_, '_, T>,
+        node_id: Option<&NodeId>,
+    ) -> Option<StaticValue> {
         match self {
-            _=>panic!()
-            // Self::Value(val) => val,
-            // Self::Add(lhs, rhs) => {
-            //     panic!()
-            //     // let lhs = lhs.eval(scope, state, node_id).to_num() or return Invalid;
-            //     // let rhs = rhs.eval(scope, state, node_id).to_num() or return Invalid;
-
-            //     // match (lhs, rhs) {
-
-            //     //     (Num::Unsigned(lhs), Num::Signed(rhs @ 0..=i64::MAX)) => lhs + rhs as u64,
-            //     //     (Num::Unsigned(lhs), Num::Signed(rhs) => {
-            //     //         let rhs = rhs.abs();
-            //     //         if lhs > rhs {
-            //     //             lhs + rhs
-            //     //         }
-            //     //     }
-            //     //     (Num::Unsigned(lhs), Num::Signed(rhs) => as i64,
-            //     //     (Num::Unsigned(lhs), Num::Float(rhs) => lhs as f64 + rhs
-
-            //     //     (Num::Unsigned(lhs), Num::Unsigned(rhs)) => lhs + rhs,
-            //     //     (Num::Signed(lhs), Num::Signed(rhs)) => lhs + rhs,
-            //     //     (Num::Float(lhs), Num::Float(rhs)) => lhs + rhs,
-            //     // }
-            // }
-            // _ => &ScopeValue::Invalid,
+            Self::Value(value) => Some(value.clone()),
+            expr @ (Self::Dot(..) | Self::Ident(_)) => {
+                let path = eval_path(expr, context, node_id)?;
+                context.get_scope(&path, node_id)
+            }
+            _ => panic!(),
         }
     }
 }
 
+fn eval_path<T>(expr: &ValueExpr, context: &mut Context<'_, '_, T>, node_id: Option<&NodeId>) -> Option<Path> {
+    let path = match expr {
+        ValueExpr::Ident(key) => Path::Key(key.to_string()),
+        ValueExpr::Dot(lhs, rhs) => Path::Composite(
+            eval_path(lhs, context, node_id)?.into(),
+            eval_path(rhs, context, node_id)?.into(),
+        ),
+        ValueExpr::Index(lhs, index) => {
+            let StaticValue::Num(Num::Unsigned(index)) = index.eval(context, node_id)? else { return None };
+            let collection = eval_path(lhs, context, node_id)?;
+            collection.compose(Path::Index(index as usize))
+        }
+        _ => return None,
+    };
+
+    Some(path)
+}
+
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
+    use std::ops::Deref;
+
     use super::*;
+    use crate::{List, Scope, State, Value};
+
+    struct Inner {
+        name: Value<String>,
+        names: List<String>,
+    }
+
+    impl State for Inner {
+        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>> {
+            match key {
+                Path::Key(key) if key == "name" => {
+                    let num: &str = &*self.name;
+                    return Some(Cow::Owned(StaticValue::Str(num.into())));
+                }
+                Path::Composite(lhs, rhs) => {
+                    let lhs: &Path = &*lhs;
+                    match lhs {
+                        Path::Key(key) if key == "names" => return self.names.lookup(rhs, node_id),
+                        _ => {}
+                    }
+
+                }
+                _ => {}
+            }
+
+            None
+        }
+
+        fn get_collection(
+            &self,
+            key: &Path,
+            node_id: Option<&NodeId>,
+        ) -> Option<crate::Collection> {
+            None
+        }
+    }
+
+    struct TheState {
+        counter: Value<usize>,
+        some_ident: Value<String>,
+        inner: Inner,
+    }
+
+    impl State for TheState {
+        fn get<T>(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>> {
+            match key {
+                Path::Key(key) if key == "counter" => {
+                    let num: usize = *self.counter;
+                    Some(Cow::Owned(StaticValue::Num(num.into())))
+                }
+                Path::Key(key) if key == "some_ident" => {
+                    let s: &str = &*self.some_ident;
+                    Some(Cow::Owned(StaticValue::Str(s.into())))
+                }
+                Path::Composite(lhs, rhs) => {
+                    let lhs: &Path = &*lhs;
+                    if let Path::Key(key) = lhs {
+                        if key == "inner" {
+                            return self.inner.get(rhs, node_id);
+                        }
+                    }
+                    None
+                }
+                _ => None,
+            }
+        }
+
+        fn get_collection(
+            &self,
+            key: &Path,
+            node_id: Option<&NodeId>,
+        ) -> Option<crate::Collection> {
+            None
+        }
+    }
 
     #[test]
     fn resolve_something() {
+        let mut scope = Scope::new(None);
+        scope.scope(
+            "a".into(),
+            Cow::Owned(ScopeValue::Expr(ValueExpr::Ident("some_ident".into()))),
+        );
+
+        scope.scope(
+            "some_ident".into(),
+            Cow::Owned(ScopeValue::Static(StaticValue::Num(Num::Unsigned(1)))),
+        );
+
+        // for x in y // x = [4, some_ident, 5]
+        //     for a in x
+        //         text sausages[a]
+
+        let mut state = TheState {
+            counter: Value::new(123),
+            some_ident: Value::new("Hello this is amazing!".to_string()),
+            inner: Inner {
+                name: Value::new("Fin the human".to_string()),
+                names: List::new(vec![
+                    Value::new("First".to_string()), 
+                    Value::new("Second".into()),
+                ]),
+            },
+        };
+
+        // let value_expr = ValueExpr::Ident("counter".into());
+        let node_id = NodeId::new(123);
+
+        // let val = value_expr
+        //     .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
+        //     .unwrap();
+
+        // panic!("{val:#?}");
+        // assert_eq!(val, "123");
+
+        // inner.name
+        // let value_expr = ValueExpr::Dot(
+        //     ValueExpr::Ident("inner".into()).into(),
+        //     ValueExpr::Index("name".into()).into(),
+        // );
+
+        let value_expr = ValueExpr::Dot(
+            ValueExpr::Ident("inner".into()).into(),
+            ValueExpr::Index(
+                ValueExpr::Ident("names".into()).into(),
+                ValueExpr::Ident("a".into()).into(),
+            )
+            .into(),
+        );
+
+        let val = value_expr
+            .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
+            .unwrap();
+
+        panic!("If you can read this things are pretty good: {val:#?}");
     }
 }

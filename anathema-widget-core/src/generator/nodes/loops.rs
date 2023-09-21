@@ -35,13 +35,14 @@ impl LoopNode {
 
     /// Scoping a value should only ever happen after an iteration
     pub(super) fn scope(&mut self, scope: &mut Scope) -> bool {
-        if self.value_index >= self.collection.len() {
-            return false;
-        }
-        scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
-        self.body.expr_index = 0;
-        self.value_index += 1;
-        true
+        panic!()
+        // if self.value_index >= self.collection.len() {
+        //     return false;
+        // }
+        // scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
+        // self.body.expr_index = 0;
+        // self.value_index += 1;
+        // true
     }
 
     pub(super) fn remove(&mut self, index: usize) {

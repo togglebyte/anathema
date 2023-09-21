@@ -11,8 +11,7 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
         Expr::Bool(b) => ValueExpr::from(b),
         Expr::Ident(string_id) => {
             let string = consts.lookup_string(string_id);
-            let expr = ValueExpr::Ident(string.into());
-            ValueExpr::Lookup(expr.into())
+            ValueExpr::Ident(string.into())
         }
         Expr::Str(string_id) => {
             let string = consts.lookup_string(string_id);

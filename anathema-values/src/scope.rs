@@ -7,7 +7,7 @@ use std::str::FromStr;
 use anathema_render::{Color, Size, Style};
 
 use crate::hashmap::HashMap;
-use crate::{NodeId, Path, State};
+use crate::{NodeId, Path, State, ValueExpr};
 
 #[derive(Debug)]
 pub enum Collection {
@@ -258,6 +258,17 @@ impl TryFrom<StaticValue> for Color {
     }
 }
 
+impl TryFrom<StaticValue> for usize {
+    type Error = ();
+
+    fn try_from(value: StaticValue) -> Result<Self, Self::Error> {
+        match value {
+            StaticValue::Num(Num::Unsigned(num)) => Ok(num as usize),
+            _ => Err(())
+        }
+    }
+}
+
 impl Display for StaticValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -284,22 +295,23 @@ impl From<String> for StaticValue {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScopeValue {
     Static(StaticValue),
-    List(Rc<[ScopeValue]>),
-    Dyn(Path),
+    Expr(ValueExpr),
+    // List(Rc<[ScopeValue]>),
+    // Dyn(Path),
     Invalid,
 }
 
-impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
-    fn from(arr: [ScopeValue; N]) -> Self {
-        if N == 1 {
-            arr.into_iter()
-                .next()
-                .expect("this is always going to be an array with a size of one")
-        } else {
-            ScopeValue::List(Rc::new(arr))
-        }
-    }
-}
+// impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
+//     fn from(arr: [ScopeValue; N]) -> Self {
+//         if N == 1 {
+//             arr.into_iter()
+//                 .next()
+//                 .expect("this is always going to be an array with a size of one")
+//         } else {
+//             ScopeValue::List(Rc::new(arr))
+//         }
+//     }
+// }
 
 // TODO: add a testing flag for this
 impl From<String> for ScopeValue {
@@ -311,14 +323,12 @@ impl From<String> for ScopeValue {
 #[derive(Debug)]
 pub struct Scope<'a> {
     inner: Vec<HashMap<Path, Cow<'a, ScopeValue>>>,
-    // current: HashMap<Path, &'a ScopeValue>,
 }
 
 impl<'a> Scope<'a> {
     pub fn new(parent: Option<&'a Scope<'_>>) -> Self {
         Self {
             inner: vec![HashMap::new()],
-            // current: HashMap::new(),
         }
     }
 
@@ -336,20 +346,20 @@ impl<'a> Scope<'a> {
         self.inner.pop();
     }
 
-    /// Scope a value for a collection.
-    /// TODO: Review if the whole cloning business here makes sense
-    pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
-        let value = match collection {
-            Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
-            Collection::State { path, .. } => {
-                let path = path.compose(value_index);
-                Cow::Owned(ScopeValue::Dyn(path))
-            }
-            Collection::Empty => return,
-        };
+    // /// Scope a value for a collection.
+    // /// TODO: Review if the whole cloning business here makes sense
+    // pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
+    //     let value = match collection {
+    //         Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
+    //         Collection::State { path, .. } => {
+    //             let path = path.compose(value_index);
+    //             Cow::Owned(ScopeValue::Dyn(path))
+    //         }
+    //         Collection::Empty => return,
+    //     };
 
-        self.scope(binding, value);
-    }
+    //     self.scope(binding, value);
+    // }
 
     pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
         self.inner
@@ -359,20 +369,20 @@ impl<'a> Scope<'a> {
             .next()
     }
 
-    pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
-        self.lookup(path).and_then(|value| match value {
-            ScopeValue::List(list) => Some(list.clone()),
-            _ => None,
-        })
-    }
+    // pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
+    //     self.lookup(path).and_then(|value| match value {
+    //         ScopeValue::List(list) => Some(list.clone()),
+    //         _ => None,
+    //     })
+    // }
 }
 
-pub struct Context<'a, 'val> {
-    pub state: &'a mut dyn State,
+pub struct Context<'a, 'val, T> {
+    pub state: &'a mut T, //dyn State,
     pub scope: &'a mut Scope<'val>,
 }
 
-impl<'a, 'val> Context<'a, 'val> {
+impl<'a, 'val, T: State> Context<'a, 'val, T> {
     pub fn new(state: &'a mut dyn State, scope: &'a mut Scope<'val>) -> Self {
         Self { state, scope }
     }
@@ -395,12 +405,27 @@ impl<'a, 'val> Context<'a, 'val> {
         // }
     }
 
+    pub fn get_scope(&mut self, path: &Path, node_id: Option<&NodeId>) -> Option<StaticValue> {
+        match self.scope.lookup(&path).cloned() {
+            Some(ScopeValue::Static(val)) => Some(val),
+            Some(val) => match val {
+                ScopeValue::Static(val) => Some(val),
+                ScopeValue::Expr(expr) => expr.eval(self, node_id),
+                ScopeValue::Invalid => panic!("lol"),
+            }
+            None => self
+                .state
+                .get(&path, node_id.into())
+                .map(|val| val.into_owned())
+        }
+    }
+
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<T>
+    pub fn get<U>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<U>
     where
-        T: for<'b> TryFrom<&'b StaticValue>,
+        U: for<'b> TryFrom<&'b StaticValue>,
     {
         panic!()
         // match self.scope.lookup(&path) {
@@ -416,40 +441,42 @@ impl<'a, 'val> Context<'a, 'val> {
         // }
     }
 
-    pub fn attribute<T>(
+    pub fn attribute<U>(
         &self,
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
         attributes: &HashMap<String, ScopeValue>,
-    ) -> Option<T>
+    ) -> Option<U>
     where
-        T: for<'attr> TryFrom<&'attr StaticValue>,
+        U: for<'attr> TryFrom<&'attr StaticValue>,
     {
-        let attrib = attributes.get(key.as_ref())?;
+        panic!()
+        // let attrib = attributes.get(key.as_ref())?;
 
-        match attrib {
-            ScopeValue::Static(val) => val.try_into().ok(),
-            ScopeValue::Dyn(path) => self.get(path, node_id),
-            _ => None,
-        }
+        // match attrib {
+        //     ScopeValue::Static(val) => val.try_into().ok(),
+        //     ScopeValue::Dyn(path) => self.get(path, node_id),
+        //     _ => None,
+        // }
     }
 
-    pub fn primitive<T>(
+    pub fn primitive<U>(
         &self,
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
         attributes: &HashMap<String, ScopeValue>,
-    ) -> Option<T>
+    ) -> Option<U>
     where
-        T: for<'b> TryFrom<&'b StaticValue>,
+        U: for<'b> TryFrom<&'b StaticValue>,
     {
-        let attrib = attributes.get(key.as_ref())?;
+        panic!()
+        // let attrib = attributes.get(key.as_ref())?;
 
-        match attrib {
-            ScopeValue::Static(val) => T::try_from(val).ok(),
-            ScopeValue::Dyn(path) => self.get::<T>(path, node_id),
-            _ => None,
-        }
+        // match attrib {
+        //     ScopeValue::Static(val) => T::try_from(val).ok(),
+        //     ScopeValue::Dyn(path) => self.get::<T>(path, node_id),
+        //     _ => None,
+        // }
     }
 
     pub fn list_to_string(
