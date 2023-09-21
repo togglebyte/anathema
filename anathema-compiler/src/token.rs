@@ -147,25 +147,29 @@ impl Tokens {
         Self { inner, index: 0, eof }
     }
 
+    pub fn slice(&self) -> &[Token] {
+        &self.inner[self.index..]
+    }
+
     pub fn consume(&mut self) {
         let _ = self.next();
     }
 
-    pub fn next(&mut self) -> Token {
+    pub fn next(&mut self) -> Kind {
         match self.inner.get(self.index).copied() {
             Some(token) => {
                 self.index += 1;
-                token
+                token.0
             }
-            None => Token(Kind::Eof, self.eof),
+            None => Kind::Eof,
         }
     }
 
-    pub fn next_no_indent(&mut self) -> Token {
+    pub fn next_no_indent(&mut self) -> Kind {
         loop {
             let token = self.next();
 
-            if let Kind::Indent(_) = token.0 {
+            if let Kind::Indent(_) = token {
                 continue
             }
 
@@ -193,8 +197,24 @@ impl Tokens {
         }
     }
 
-    pub fn peek(&self) -> Token {
-        self.inner.get(self.index).copied().unwrap_or(Token(Kind::Eof, self.eof))
+    pub fn consume_all_whitespace(&mut self) {
+        loop {
+            if matches!(self.inner.get(self.index), Some(Token(Kind::Indent(_), _))) {
+                self.index += 1;
+                continue;
+            }
+
+            if matches!(self.inner.get(self.index), Some(Token(Kind::Newline, _))) {
+                self.index += 1;
+                continue;
+            }
+
+            break
+        }
+    }
+
+    pub fn peek(&self) -> Kind {
+        self.inner.get(self.index).copied().unwrap_or(Token(Kind::Eof, self.eof)).0
     }
 
     pub fn previous(&self) -> Token {
@@ -202,11 +222,11 @@ impl Tokens {
         self.inner.get(self.index - 1).copied().unwrap_or(Token(Kind::Eof, self.eof))
     }
 
-    pub fn peek_skip_indent(&mut self) -> Token {
+    pub fn peek_skip_indent(&mut self) -> Kind {
         loop {
             let token = self.peek();
 
-            if let Kind::Indent(_) = token.0 {
+            if let Kind::Indent(_) = token {
                 self.index += 1;
                 continue;
             }
@@ -217,7 +237,7 @@ impl Tokens {
 
     pub fn read_indent(&mut self) -> Option<usize> {
         match self.peek() {
-            Token(Kind::Indent(indent), _) => {
+            Kind::Indent(indent) => {
                 self.consume();
                 Some(indent)
             }

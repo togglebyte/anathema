@@ -1,10 +1,10 @@
-use anathema_values::{Path, ScopeValue};
+use anathema_values::{Path, ScopeValue, ValueExpr};
 
+use super::pratt::{eval, expr};
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::Lexer;
-use crate::token::{Kind, Token, Tokens, Value};
+use crate::token::{Kind, Operator, Token, Tokens, Value};
 use crate::{Constants, StringId, ValueId};
-use super::pratt::{eval, expr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
@@ -30,7 +30,7 @@ enum State {
     ParseIdent,
     ParseAttributes,
     ParseAttribute,
-    ParseText,
+    ParseValue,
     Done,
 }
 
@@ -51,7 +51,7 @@ pub struct Parser<'src, 'consts> {
 impl<'src, 'consts> Parser<'src, 'consts> {
     pub(crate) fn new(mut tokens: Tokens, consts: &'consts mut Constants, src: &'src str) -> Self {
         tokens.consume_newlines();
-        let base_indent = match tokens.peek().0 {
+        let base_indent = match tokens.peek() {
             Kind::Indent(indent) => indent,
             _ => 0,
         };
@@ -80,6 +80,15 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         }
     }
 
+    fn read_ident(&mut self) -> Result<StringId> {
+        match self.tokens.next_no_indent() {
+            Kind::Value(Value::Ident(ident)) => Ok(ident),
+            _ => Err(self.error(ErrorKind::InvalidToken {
+                expected: "identifier",
+            })),
+        }
+    }
+
     pub(crate) fn parse(&mut self) -> Result<Expression> {
         // * It is okay to advance the state once and only once
         //   in any parse function using `self.next_state()`.
@@ -97,12 +106,12 @@ impl<'src, 'consts> Parser<'src, 'consts> {
                 State::ParseIdent => self.parse_ident(),
                 State::ParseAttributes => {
                     if !self.parse_attributes()? {
-                        self.state = State::ParseText
+                        self.state = State::ParseValue
                     }
                     Ok(None)
                 }
                 State::ParseAttribute => self.parse_attribute(),
-                State::ParseText => self.parse_text(),
+                State::ParseValue => self.parse_value(),
                 State::Done => self.parse_done(),
             };
 
@@ -122,8 +131,8 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             State::ParseView => self.state = State::ParseIdent,
             State::ParseIdent => self.state = State::ParseAttributes,
             State::ParseAttributes => self.state = State::ParseAttribute,
-            State::ParseAttribute => self.state = State::ParseText,
-            State::ParseText => self.state = State::Done,
+            State::ParseAttribute => self.state = State::ParseValue,
+            State::ParseValue => self.state = State::Done,
             State::Done => self.state = State::EnterScope,
         }
     }
@@ -134,7 +143,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     fn enter_scope(&mut self) -> Result<Option<Expression>> {
         let indent = self.tokens.read_indent();
 
-        if Kind::Eof == self.tokens.peek().0 {
+        if Kind::Eof == self.tokens.peek() {
             self.next_state();
             return Ok(None);
         }
@@ -206,7 +215,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     //     - Stage 2: Parse ident, For and If -
     // -----------------------------------------------------------------------------
     fn parse_ident(&mut self) -> Result<Option<Expression>> {
-        if Kind::Eof == self.tokens.peek().0 {
+        if Kind::Eof == self.tokens.peek() {
             self.state = State::Done;
             return Ok(None);
         }
@@ -214,19 +223,12 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         // Since the previous parse state was `ParseFor`, the tokens
         // might've been consumed.
         // If the next token is a newline char then move to the next state
-        if Kind::Newline == self.tokens.peek().0 {
+        if Kind::Newline == self.tokens.peek() {
             self.next_state();
             return Ok(None);
         }
 
-        let string_id = match self.tokens.next().0 {
-            Kind::Value(Value::Ident(ident)) => ident,
-            _ => {
-                return Err(self.error(ErrorKind::InvalidToken {
-                    expected: "identifier",
-                }))
-            }
-        };
+        let string_id = self.read_ident()?;
 
         self.tokens.consume_indent();
         self.next_state();
@@ -234,25 +236,16 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     }
 
     fn parse_for(&mut self) -> Result<Option<Expression>> {
-        if Kind::For != self.tokens.peek_skip_indent().0 {
+        if Kind::For != self.tokens.peek_skip_indent() {
             self.next_state();
             return Ok(None);
         }
 
         self.tokens.consume();
 
-        let binding = match self.tokens.next_no_indent().0 {
-            Kind::Value(Value::Ident(ident)) => ident,
-            _ => {
-                return Err(self.error(ErrorKind::InvalidToken {
-                    expected: "identifier",
-                }))
-            }
-        };
+        let binding = self.read_ident()?;
 
-        // self.lexer.consume(true, false);
-
-        if Kind::In != self.tokens.peek_skip_indent().0 {
+        if Kind::In != self.tokens.peek_skip_indent() {
             return Err(self.error(ErrorKind::InvalidToken { expected: "in" }));
         }
 
@@ -270,138 +263,146 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     }
 
     fn parse_if(&mut self) -> Result<Option<Expression>> {
-        self.tokens.consume_indent();
-        panic!()
+        if Kind::Else == self.tokens.peek_skip_indent() {
+            self.tokens.consume();
+            let cond = match self.parse_if()? {
+                Some(Expression::If(cond)) => Some(cond),
+                _ => None,
+            };
 
-        // if self.lexer.consume_if(Kind::Else)? {
-        //     self.lexer.consume(true, false);
+            Ok(Some(Expression::Else(cond)))
+        } else if Kind::If == self.tokens.peek_skip_indent() {
+            self.tokens.consume();
+            let expr = expr(&mut self.tokens);
+            let value_expr = eval(expr, self.consts);
+            let value_id = self.consts.store_value(value_expr);
 
-        //     let cond = match self.parse_if()? {
-        //         Some(Expression::If(cond)) => Some(cond),
-        //         _ => None,
-        //     };
-
-        //     Ok(Some(Expression::Else(cond)))
-        // } else if self.lexer.consume_if(Kind::If)? {
-        //     panic!()
-        //     // self.lexer.consume(true, false);
-
-        //     // let cond = CondParser::new(&mut self.lexer).parse()?;
-        //     // let cond_id = self.constants.store_cond(cond);
-        //     // self.lexer.consume(true, false);
-
-        //     // self.next_state();
-        //     // Ok(Some(Expression::If(cond_id)))
-        // } else {
-        //     self.next_state();
-        //     Ok(None)
-        // }
+            self.next_state();
+            Ok(Some(Expression::If(value_id)))
+        } else {
+            self.next_state();
+            Ok(None)
+        }
     }
 
     fn parse_view(&mut self) -> Result<Option<Expression>> {
-        panic!()
-        // self.lexer.consume(true, false);
-        // if self.lexer.consume_if(Kind::View)? {
-        //     self.lexer.consume(true, false);
-        //     let id = ValueParser::new(&mut self.lexer).parse()?;
-        //     let id = self.constants.store_value(id);
-        //     self.lexer.consume(true, false);
-        //     self.next_state();
-        //     Ok(Some(Expression::View(id)))
-        // } else {
-        //     self.next_state();
-        //     Ok(None)
-        // }
+        if Kind::View == self.tokens.peek_skip_indent() {
+            panic!("views should probably not have anything other than idents, so once the pratt parser does it's job, make sure it's an ident and nothing else");
+            // self.tokens.consume();
+            // self.lexer.consume(true, false);
+            // let id = ValueParser::new(&mut self.lexer).parse()?;
+            // let id = self.constants.store_value(id);
+            // self.lexer.consume(true, false);
+            // self.next_state();
+            // Ok(Some(Expression::View(id)))
+        } else {
+            self.next_state();
+            Ok(None)
+        }
     }
 
     // -----------------------------------------------------------------------------
     //     - Stage 3: Parse attributes -
     // -----------------------------------------------------------------------------
     fn parse_attributes(&mut self) -> Result<bool> {
-        self.tokens.consume_indent();
-        panic!()
-
-        // if self.lexer.consume_if(Kind::LBracket)? {
-        //     self.next_state();
-        //     Ok(true)
-        // } else {
-        //     Ok(false)
-        // }
+        if Kind::Op(Operator::LBracket) == self.tokens.peek_skip_indent() {
+            self.tokens.consume();
+            self.next_state();
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     // -----------------------------------------------------------------------------
     //     - Stage 4: Parse single attribute -
     // -----------------------------------------------------------------------------
     fn parse_attribute(&mut self) -> Result<Option<Expression>> {
-        panic!()
-        // self.lexer.consume(true, true);
+        // Check for the closing bracket
+        if Kind::Op(Operator::RBracket) == self.tokens.peek_skip_indent() {
+            self.tokens.consume();
+            self.next_state();
+            return Ok(None);
+        }
 
-        // // Check for the closing bracket
-        // if self.lexer.consume_if(Kind::RBracket)? {
-        //     self.next_state();
-        //     return Ok(None);
-        // }
+        let key = self.read_ident()?;
 
-        // let key = self.lexer.read_ident()?;
-        // self.lexer.consume(true, true);
+        self.tokens.consume_all_whitespace();
 
-        // if !self.lexer.consume_if(Kind::Colon)? {
-        //     return Err(self.lexer.error(ErrorKind::InvalidToken { expected: ":" }));
-        // }
-        // self.lexer.consume(true, true);
+        if Kind::Op(Operator::Colon) != self.tokens.peek_skip_indent() {
+            return Err(self.error(ErrorKind::InvalidToken { expected: ":" }));
+        }
 
-        // let value = ValueParser::new(&mut self.lexer).parse()?;
-        // self.lexer.consume(true, true);
+        self.tokens.consume();
+        self.tokens.consume_all_whitespace();
 
-        // // Consume comma
-        // if self.lexer.consume_if(Kind::Comma)? {
-        //     self.lexer.consume(true, true);
-        // } else if self.lexer.consume_if(Kind::RBracket)? {
-        //     self.next_state();
-        // } else {
-        //     return Err(self.lexer.error(ErrorKind::UnterminatedAttributes));
-        // }
+        let expr = expr(&mut self.tokens);
+        let value_expr = eval(expr, self.consts);
+        let value = self.consts.store_value(value_expr);
 
-        // Ok(Some(Expression::LoadAttribute { key, value }))
+        self.tokens.consume_all_whitespace();
+
+        // Consume comma
+        if Kind::Op(Operator::Comma) == self.tokens.peek() {
+            self.tokens.consume();
+            self.tokens.consume_all_whitespace();
+        } else if Kind::Op(Operator::RBracket) == self.tokens.peek() {
+            self.tokens.consume();
+            self.next_state();
+        } else {
+            return Err(self.error(ErrorKind::UnterminatedAttributes));
+        }
+
+        Ok(Some(Expression::LoadAttribute { key, value }))
     }
 
     // -----------------------------------------------------------------------------
-    //     - Stage 5: Parse text -
+    //     - Stage 5: Node value -
     // -----------------------------------------------------------------------------
-    fn parse_text(&mut self) -> Result<Option<Expression>> {
+    fn parse_value(&mut self) -> Result<Option<Expression>> {
         self.tokens.consume_indent();
-        panic!()
 
-        // // Only valid tokens here are:
-        // // * [
-        // // * \n
-        // // * Text
-        // // * EOF
+        // Only valid tokens here are:
+        // * [
+        // * \n
+        // * Text
+        // * EOF
+        match self.tokens.peek() {
+            Kind::Newline
+            | Kind::Value(Value::String(_))
+            | Kind::Op(Operator::LBracket)
+            | Kind::Eof => {}
+            _ => {
+                return Err(self.error(ErrorKind::InvalidToken {
+                    expected: "either a new line, `[` or text",
+                }))
+            }
+        }
 
-        // if let Ok(Token(kind, _)) = self.lexer.peek() {
-        //     match kind {
-        //         Kind::Newline | Kind::Value(Value::String(_)) | Kind::LBracket | Kind::Eof => {}
-        //         _ => {
-        //             return Err(self.lexer.error(ErrorKind::InvalidToken {
-        //                 expected: "either a new line, `[` or text",
-        //             }))
-        //         }
-        //     }
-        // }
+        if matches!(self.tokens.peek(), Kind::Newline | Kind::Eof) {
+            self.next_state();
+            return Ok(None);
+        }
 
-        // let ret = match self.lexer.peek() {
-        //     Ok(Token(Kind::Value(Value::String(s)), _)) => {
-        //         panic!()
-        //         // let text = parse_scope_value(s, self.lexer.consts);
-        //         // let index = self.constants.store_value(text);
-        //         // let _ = self.lexer.next();
-        //         // Ok(Some(Expression::LoadText(index)))
-        //     }
-        //     _ => Ok(None),
-        // };
+        let mut values = vec![];
 
-        // self.next_state();
-        // ret
+        loop {
+            if matches!(self.tokens.peek(), Kind::Newline | Kind::Eof) {
+                break;
+            }
+            let expression = expr(&mut self.tokens);
+            let value_expr = eval(expression, self.consts);
+            values.push(value_expr);
+        }
+
+        let value_id = match values.len() {
+            0 => panic!("invalid state"),
+            1 => self.consts.store_value(values.remove(0)),
+            _ => self.consts.store_value(ValueExpr::List(values)),
+        };
+
+        self.next_state();
+        Ok(Some(Expression::LoadText(value_id)))
     }
 
     // -----------------------------------------------------------------------------
@@ -410,27 +411,25 @@ impl<'src, 'consts> Parser<'src, 'consts> {
     //     or deal with EOF
     // -----------------------------------------------------------------------------
     fn parse_done(&mut self) -> Result<Option<Expression>> {
-        panic!()
-        // self.lexer.consume(true, false);
-        // let token = self.lexer.next().map(|t| t.0)?;
+        let token = self.tokens.next();
 
-        // let ret = match token {
-        //     Kind::Eof if !self.open_scopes.is_empty() => {
-        //         self.open_scopes.pop();
-        //         return Ok(Some(Expression::ScopeEnd));
-        //     }
-        //     Kind::Eof => return Ok(Some(Expression::EOF)),
-        //     Kind::Newline => {
-        //         self.lexer.consume(false, true);
-        //         Ok(None)
-        //     }
-        //     _ => Err(self.lexer.error(ErrorKind::InvalidToken {
-        //         expected: "new line",
-        //     })),
-        // };
+        let ret = match token {
+            Kind::Eof if !self.open_scopes.is_empty() => {
+                self.open_scopes.pop();
+                return Ok(Some(Expression::ScopeEnd));
+            }
+            Kind::Eof => return Ok(Some(Expression::EOF)),
+            Kind::Newline => {
+                self.tokens.consume_newlines();
+                Ok(None)
+            }
+            _ => Err(self.error(ErrorKind::InvalidToken {
+                expected: "new line",
+            })),
+        };
 
-        // self.next_state();
-        // ret
+        self.next_state();
+        ret
     }
 }
 
@@ -459,82 +458,6 @@ impl Iterator for Parser<'_, '_> {
     }
 }
 
-// -----------------------------------------------------------------------------
-//     - Parse `ExpressionValue` -
-// -----------------------------------------------------------------------------
-pub(super) fn parse_scope_value(text: &str, consts: &mut Constants) -> ScopeValue {
-    panic!()
-    // let mut fragments = vec![];
-    // let mut chars = text.char_indices().peekable();
-    // let mut pos = 0;
-
-    // while let Some(c) = chars.next() {
-    //     let next = chars.peek();
-    //     match (c, next) {
-    //         ((i, '{'), Some((_, '{'))) => {
-    //             let frag = &text[pos..i];
-    //             if !frag.is_empty() {
-    //                 let text_fragment = frag.replace("\\\"", "\"");
-    //                 fragments.push(ScopeValue::Static(text_fragment.into()));
-    //             }
-    //             pos = i;
-    //         }
-    //         ((i, '}'), Some((_, '}'))) => {
-    //             let frag = &text[pos + 2..i].trim();
-    //             if !frag.is_empty() {
-    //                 let mut lexer = Lexer::new(frag, consts);
-    //                 if let Ok(Token(Kind::Value(Value::Ident(ident)), _)) = lexer.next() {
-    //                     if let Ok(path) = parse_path(&mut lexer, ident) {
-    //                         fragments.push(ScopeValue::Dyn(path));
-    //                     }
-    //                 }
-    //             }
-    //             pos = i + 2;
-    //         }
-    //         _ => {}
-    //     }
-    // }
-
-    // let remainder = &text[pos..];
-
-    // if !remainder.is_empty() || fragments.is_empty() {
-    //     let text_fragment = remainder.replace("\\\"", "\"");
-    //     fragments.push(ScopeValue::Static(text_fragment.into()));
-    // }
-
-    // if fragments.len() > 1 {
-    //     ScopeValue::List(fragments.into())
-    // } else {
-    //     fragments.remove(0)
-    // }
-}
-
-// -----------------------------------------------------------------------------
-//     - Parse path -
-//  Note: this is not part of the `Parser` as this is used in other
-//  places to parse paths
-// -----------------------------------------------------------------------------
-pub(super) fn parse_path(lexer: &mut Lexer<'_, '_>, ident: &str) -> Result<Path> {
-    panic!()
-    // let mut path = Path::Key(ident.to_owned());
-
-    // loop {
-    //     match lexer.peek() {
-    //         Ok(Token(Kind::Fullstop, _)) => drop(lexer.next()?),
-    //         Ok(Token(Kind::Value(Value::Index(_)), _)) => {}
-    //         _ => break,
-    //     }
-
-    //     match lexer.next() {
-    //         Ok(Token(Kind::Value(Value::Ident(ident)), _)) => path = path.compose(Path::Key(ident.to_owned())),
-    //         Ok(Token(Kind::Value(Value::Index(index)), _)) => path = path.compose(Path::Index(index)),
-    //         _ => return Err(lexer.error(ErrorKind::InvalidPath)),
-    //     }
-    // }
-
-    // Ok(path)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -544,7 +467,8 @@ mod test {
         let lexer = Lexer::new(src, &mut consts);
         let tokens = Tokens::new(lexer.collect::<Result<Vec<_>>>().unwrap(), src.len());
         let parser = Parser::new(tokens, &mut consts, src);
-        parser.collect()
+        let expressions = parser.collect::<Vec<_>>();
+        expressions
     }
 
     fn parse_ok(src: &str) -> Vec<Expression> {
@@ -555,264 +479,257 @@ mod test {
         parse(src).into_iter().filter_map(Result::err).collect()
     }
 
-    // #[test]
-    // fn parse_single_instruction() {
-    //     let src = "a";
-    //     let expected = Expression::Node(0.into());
-    //     let actual = parse_ok(src).remove(0);
-    //     assert_eq!(expected, actual);
-    // }
+    #[test]
+    fn parse_single_instruction() {
+        let src = "a";
+        let expected = Expression::Node(0.into());
+        let actual = parse_ok(src).remove(0);
+        assert_eq!(expected, actual);
+    }
 
-    // #[test]
-    // fn parse_attributes() {
-    //     let src = "a [a: a]";
-    //     let expected = vec![
-    //         Expression::Node(0.into()),
-    //         Expression::LoadAttribute {
-    //             key: 0.into(),
-    //             value: 0.into(),
-    //         },
-    //         Expression::EOF,
-    //     ];
+    #[test]
+    fn parse_attributes() {
+        let src = "a [a: a]";
+        let expected = vec![
+            Expression::Node(0.into()),
+            Expression::LoadAttribute {
+                key: 0.into(),
+                value: 0.into(),
+            },
+            Expression::EOF,
+        ];
 
-    //     let actual = parse_ok(src);
-    //     assert_eq!(expected, actual);
-    // }
+        let actual = parse_ok(src);
+        assert_eq!(expected, actual);
+    }
 
-    // #[test]
-    // fn parse_text() {
-    //     let src = "a 'a'      \n\n//some comments \n    ";
-    //     let expected = vec![
-    //         Expression::Node(0.into()),
-    //         Expression::LoadText(0.into()),
-    //         Expression::EOF,
-    //     ];
+    #[test]
+    fn parse_text() {
+        let src = "a 'a'      \n\n//some comments \n    ";
+        let expected = vec![
+            Expression::Node(0.into()),
+            Expression::LoadText(0.into()),
+            Expression::EOF,
+        ];
 
-    //     let actual = parse_ok(src);
-    //     assert_eq!(expected, actual);
-    // }
+        let actual = parse_ok(src);
+        assert_eq!(expected, actual);
+    }
 
-    // #[test]
-    // fn parse_scopes() {
-    //     let src = "
-    //         a
-    //             b
-    //                 c
-    //             b
-    //         a
-    //         ";
-    //     let expected = vec![
-    //         Expression::Node(0.into()),
-    //         Expression::ScopeStart,
-    //         Expression::Node(1.into()),
-    //         Expression::ScopeStart,
-    //         Expression::Node(2.into()),
-    //         Expression::ScopeEnd,
-    //         Expression::Node(1.into()),
-    //         Expression::ScopeEnd,
-    //         Expression::Node(0.into()),
-    //         Expression::EOF,
-    //     ];
+    #[test]
+    fn parse_scopes() {
+        let src = "
+            a
+                b
+                    c
+                b
+            a
+            ";
+        let expected = vec![
+            Expression::Node(0.into()),
+            Expression::ScopeStart,
+            Expression::Node(1.into()),
+            Expression::ScopeStart,
+            Expression::Node(2.into()),
+            Expression::ScopeEnd,
+            Expression::Node(1.into()),
+            Expression::ScopeEnd,
+            Expression::Node(0.into()),
+            Expression::EOF,
+        ];
 
-    //     let actual = parse_ok(src);
-    //     assert_eq!(expected, actual);
+        let actual = parse_ok(src);
+        assert_eq!(expected, actual);
 
-    //     let src = "
-    //         a
-    //             b
-    //                 c
-    //         ";
-    //     let expected = vec![
-    //         Expression::Node(0.into()),
-    //         Expression::ScopeStart,
-    //         Expression::Node(1.into()),
-    //         Expression::ScopeStart,
-    //         Expression::Node(2.into()),
-    //         Expression::ScopeEnd,
-    //         Expression::ScopeEnd,
-    //         Expression::EOF,
-    //     ];
+        let src = "
+            a
+                b
+                    c
+            ";
+        let expected = vec![
+            Expression::Node(0.into()),
+            Expression::ScopeStart,
+            Expression::Node(1.into()),
+            Expression::ScopeStart,
+            Expression::Node(2.into()),
+            Expression::ScopeEnd,
+            Expression::ScopeEnd,
+            Expression::EOF,
+        ];
 
-    //     let actual = parse_ok(src);
-    //     assert_eq!(expected, actual);
-    // }
+        let actual = parse_ok(src);
+        assert_eq!(expected, actual);
+    }
 
-    // #[test]
-    // fn parse_nested_for_loops() {
-    //     let src = "
-    //     x
-    //         for x in {{ data }}
-    //             for y in {{ data }}
-    //                 x
-    //     ";
-    //     let mut instructions = parse_ok(src);
+    #[test]
+    fn parse_nested_for_loops() {
+        let src = "
+        x
+            for x in data 
+                for y in data 
+                    x
+        ";
+        let mut instructions = parse_ok(src);
 
-    //     assert_eq!(instructions.remove(0), Expression::Node(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(
-    //         instructions.remove(0),
-    //         Expression::For {
-    //             data: 0.into(),
-    //             binding: 0.into()
-    //         }
-    //     );
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(
-    //         instructions.remove(0),
-    //         Expression::For {
-    //             data: 0.into(),
-    //             binding: 1.into()
-    //         }
-    //     );
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(instructions.remove(0), Expression::Node(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    // }
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(
+            instructions.remove(0),
+            Expression::For {
+                data: 0.into(),
+                binding: 0.into()
+            }
+        );
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(
+            instructions.remove(0),
+            Expression::For {
+                data: 0.into(),
+                binding: 2.into()
+            }
+        );
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+    }
 
-    // #[test]
-    // fn parse_scopes_and_for() {
-    //     let src = "
-    //     x
-    //         y
-    //     for x in {{ data }}
-    //         y
-    //     ";
-    //     let mut instructions = parse_ok(src);
-    //     assert_eq!(instructions.remove(0), Expression::Node(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(instructions.remove(0), Expression::Node(1.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    //     assert_eq!(
-    //         instructions.remove(0),
-    //         Expression::For {
-    //             data: 0.into(),
-    //             binding: 0.into()
-    //         }
-    //     );
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(instructions.remove(0), Expression::Node(1.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    // }
+    #[test]
+    fn parse_scopes_and_for() {
+        let src = "
+        x
+            y
+        for x in data 
+            y
+        ";
+        let mut instructions = parse_ok(src);
+        assert_eq!(instructions.remove(0), Expression::Node(0.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+        assert_eq!(
+            instructions.remove(0),
+            Expression::For {
+                data: 0.into(),
+                binding: 0.into()
+            }
+        );
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+    }
 
-    // #[test]
-    // fn parse_if() {
-    //     let src = "
-    //     if {{ data }}
-    //         x
-    //     ";
-    //     let mut instructions = parse_ok(src);
+    #[test]
+    fn parse_if() {
+        let src = "
+        if data 
+            x
+        ";
+        let mut instructions = parse_ok(src);
 
-    //     assert_eq!(instructions.remove(0), Expression::If(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(instructions.remove(0), Expression::Node(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    // }
+        assert_eq!(instructions.remove(0), Expression::If(0.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+    }
 
-    // #[test]
-    // fn parse_else() {
-    //     let src = "
-    //     if {{ data }}
-    //         x
-    //     else
-    //         y
-    //     ";
-    //     let mut instructions = parse_ok(src);
+    #[test]
+    fn parse_else() {
+        let src = "
+        if data 
+            x
+        else
+            y
+        ";
+        let mut instructions = parse_ok(src);
 
-    //     assert_eq!(instructions.remove(0), Expression::If(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(instructions.remove(0), Expression::Node(0.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    //     assert_eq!(instructions.remove(0), Expression::Else(None));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(instructions.remove(0), Expression::Node(1.into()));
-    //     assert_eq!(instructions.remove(0), Expression::ScopeEnd);
-    // }
+        assert_eq!(instructions.remove(0), Expression::If(0.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(instructions.remove(0), Expression::Node(1.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+        assert_eq!(instructions.remove(0), Expression::Else(None));
+        assert_eq!(instructions.remove(0), Expression::ScopeStart);
+        assert_eq!(instructions.remove(0), Expression::Node(2.into()));
+        assert_eq!(instructions.remove(0), Expression::ScopeEnd);
+    }
 
-    // #[test]
-    // fn parse_if_else_if_else() {
-    //     let src = "
-    //     if {{ data }}
-    //         x
-    //     else if {{ data }}
-    //         y
-    //     else
-    //         z
-    //     ";
-    //     let mut expressions = parse_ok(src);
+    #[test]
+    fn parse_if_else_if_else() {
+        let src = "
+        if data 
+            x
+        else if data 
+            y
+        else
+            z
+        ";
+        let mut expressions = parse_ok(src);
 
-    //     assert_eq!(expressions.remove(0), Expression::If(0.into()));
-    //     assert_eq!(expressions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(expressions.remove(0), Expression::Node(0.into()));
-    //     assert_eq!(expressions.remove(0), Expression::ScopeEnd);
-    //     assert_eq!(expressions.remove(0), Expression::Else(Some(0.into())));
-    //     assert_eq!(expressions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(expressions.remove(0), Expression::Node(1.into()));
-    //     assert_eq!(expressions.remove(0), Expression::ScopeEnd);
-    //     assert_eq!(expressions.remove(0), Expression::Else(None));
-    //     assert_eq!(expressions.remove(0), Expression::ScopeStart);
-    //     assert_eq!(expressions.remove(0), Expression::Node(2.into()));
-    //     assert_eq!(expressions.remove(0), Expression::ScopeEnd);
-    // }
+        assert_eq!(expressions.remove(0), Expression::If(0.into()));
+        assert_eq!(expressions.remove(0), Expression::ScopeStart);
+        assert_eq!(expressions.remove(0), Expression::Node(1.into()));
+        assert_eq!(expressions.remove(0), Expression::ScopeEnd);
+        assert_eq!(expressions.remove(0), Expression::Else(Some(0.into())));
+        assert_eq!(expressions.remove(0), Expression::ScopeStart);
+        assert_eq!(expressions.remove(0), Expression::Node(2.into()));
+        assert_eq!(expressions.remove(0), Expression::ScopeEnd);
+        assert_eq!(expressions.remove(0), Expression::Else(None));
+        assert_eq!(expressions.remove(0), Expression::ScopeStart);
+        assert_eq!(expressions.remove(0), Expression::Node(3.into()));
+        assert_eq!(expressions.remove(0), Expression::ScopeEnd);
+    }
 
-    // #[test]
-    // fn parse_view() {
-    //     let src = "view 'mail'";
-    //     let mut expressions = parse_ok(src);
-    //     assert_eq!(expressions.remove(0), Expression::View(0.into()));
-    // }
+    #[test]
+    fn parse_view() {
+        let src = "view 'mail'";
+        let mut expressions = parse_ok(src);
+        assert_eq!(expressions.remove(0), Expression::View(0.into()));
+    }
 
-    // #[test]
-    // fn parse_empty_if() {
-    //     let src = "
-    //         if {{ x }}
-    //         x
-    //     ";
+    #[test]
+    fn parse_empty_if() {
+        let src = "
+            if x 
+            x
+        ";
 
-    //     let mut expressions = parse_ok(src);
-    //     assert_eq!(expressions.remove(0), Expression::If(0.into()));
-    //     assert_eq!(expressions.remove(0), Expression::Node(0.into()));
-    // }
+        let mut expressions = parse_ok(src);
+        assert_eq!(expressions.remove(0), Expression::If(0.into()));
+        assert_eq!(expressions.remove(0), Expression::Node(0.into()));
+    }
 
-    // #[test]
-    // fn parse_no_instruction() {
-    //     let src = "";
-    //     let expected: Vec<Expression> = vec![Expression::EOF];
-    //     let actual = parse_ok(src);
-    //     assert_eq!(expected, actual);
+    #[test]
+    fn parse_no_instruction() {
+        let src = "";
+        let expected: Vec<Expression> = vec![Expression::EOF];
+        let actual = parse_ok(src);
+        assert_eq!(expected, actual);
 
-    //     let src = "\n// comment         \n";
-    //     let expected: Vec<Expression> = vec![Expression::EOF];
-    //     let actual = parse_ok(src);
-    //     assert_eq!(expected, actual);
-    // }
+        let src = "\n// comment         \n";
+        let expected: Vec<Expression> = vec![Expression::EOF];
+        let actual = parse_ok(src);
+        assert_eq!(expected, actual);
+    }
 
-    // #[test]
-    // fn parse_invalid_token_after_text() {
-    //     let src = "a 'a' 'b'";
-    //     let expected = Error {
-    //         kind: ErrorKind::InvalidToken {
-    //             expected: "new line",
-    //         },
-    //         line: 1,
-    //         col: 7,
-    //         src: src.to_string(),
-    //     };
-    //     let actual = parse_err(src).remove(0);
-    //     assert_eq!(expected, actual);
-    // }
+    #[test]
+    fn parse_text_with_multiple_values() {
+        let src = "a 'a' 'b'";
+        let mut expressions = parse_ok(src);
+        assert_eq!(expressions.remove(0), Expression::Node(0.into()));
+        assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
+    }
 
-    // #[test]
-    // fn parse_invalid_path() {
-    //     let src = "node [path: {{ a.-b.c }}]";
-    //     let expected = Error {
-    //         kind: ErrorKind::InvalidPath,
-    //         line: 1,
-    //         col: 18,
-    //         src: src.to_string(),
-    //     };
-    //     let actual = parse_err(src).remove(0);
-    //     assert_eq!(expected, actual);
-    // }
+    #[test]
+    fn parse_invalid_path() {
+        let src = "node [path:  a.-b.c ]";
+        let expected = Error {
+            kind: ErrorKind::InvalidPath,
+            line: 1,
+            col: 18,
+            src: src.to_string(),
+        };
+        let actual = parse_err(src).remove(0);
+        assert_eq!(expected, actual);
+    }
 }

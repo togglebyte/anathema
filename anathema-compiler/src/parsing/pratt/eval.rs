@@ -79,7 +79,7 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                     }
                     _ => ValueExpr::Negative(expr.into()),
                 },
-                _ => panic!(),
+                _ => panic!("operator: {op:#?}"),
             }
         }
         _ => panic!(),

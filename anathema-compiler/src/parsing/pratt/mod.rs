@@ -92,13 +92,13 @@ pub(crate) fn expr(tokens: &mut Tokens) -> Expr {
 }
 
 fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
-    let mut left = match tokens.next_no_indent().0 {
+    let mut left = match tokens.next_no_indent() {
         Kind::Op(Operator::LBracket) => parse_collection(tokens),
         Kind::Op(Operator::LParen) => {
             let left = expr_bp(tokens, prec::INITIAL);
             // Need to consume the closing bracket
             assert!(matches!(
-                tokens.next_no_indent().0,
+                tokens.next_no_indent(),
                 Kind::Op(Operator::RParen)
             ));
             left
@@ -118,7 +118,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         },
         Kind::Eof => panic!("unexpected eof"),
         // TODO: see panic
-        _ => panic!("we'll deal with this later"),
+        kind @ _ => panic!("we'll deal with this later: {kind:#?}"),
     };
 
     loop {
@@ -127,7 +127,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         // This could be EOF, which is fine.
         // It could also be any other token which would be
         // a syntax error, but I don't mind that just now
-        let Kind::Op(op) = tokens.peek_skip_indent().0 else {
+        let Kind::Op(op) = tokens.peek_skip_indent() else {
             return left;
         };
 
@@ -152,7 +152,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
                     lhs: Box::new(left),
                     index: Box::new(expr_bp(tokens, prec::INITIAL)),
                 };
-                let Kind::Op(Operator::RBracket) = tokens.next_no_indent().0 else {
+                let Kind::Op(Operator::RBracket) = tokens.next_no_indent() else {
                     panic!("invalid token");
                 };
                 continue;
@@ -177,7 +177,7 @@ fn parse_function(tokens: &mut Tokens, left: Expr) -> Expr {
     let mut args = vec![];
 
     loop {
-        match tokens.peek_skip_indent().0 {
+        match tokens.peek_skip_indent() {
             Kind::Op(Operator::Comma) => {
                 tokens.consume();
                 continue;
@@ -201,7 +201,7 @@ fn parse_collection(tokens: &mut Tokens) -> Expr {
     let mut elements = vec![];
 
     loop {
-        match tokens.peek_skip_indent().0 {
+        match tokens.peek_skip_indent() {
             Kind::Op(Operator::Comma) => {
                 tokens.consume();
                 continue;

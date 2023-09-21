@@ -13,6 +13,7 @@ pub enum ValueExpr {
     
     Ident(Rc<str>),
     String(Rc<str>),
+    List(Vec<ValueExpr>),
     Key(Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
     Add(Box<ValueExpr>, Box<ValueExpr>),
