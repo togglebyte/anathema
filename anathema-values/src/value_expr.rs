@@ -1,18 +1,17 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::scope::Num;
-use crate::{Context, NodeId, Path, Scope, ScopeValue, State, StaticValue};
+use crate::scope::{Num, Owned};
+use crate::{Context, NodeId, Path, Scope, ScopeValue, State, Value, ValueRef};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
-    Value(StaticValue),
+    Value(Value),
 
     Not(Box<ValueExpr>),
     Negative(Box<ValueExpr>),
 
     Ident(Rc<str>),
-    String(Rc<str>),
     List(Vec<ValueExpr>),
     Key(Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
@@ -51,7 +50,7 @@ impl Display for ValueExpr {
 
 impl<T> From<T> for ValueExpr
 where
-    T: Into<StaticValue>,
+    T: Into<Value>,
 {
     fn from(val: T) -> Self {
         Self::Value(val.into())
@@ -99,21 +98,25 @@ where
 impl ValueExpr {
     pub fn eval<T>(
         &self,
-        context: &mut Context<'_, '_, T>,
+        context: &mut Context<'_, '_>,
         node_id: Option<&NodeId>,
-    ) -> Option<StaticValue> {
+    ) -> Option<&T> 
+        where 
+            for<'b> &'b T: TryFrom<&'b Value>,
+            for<'b> &'b T: TryFrom<ValueRef<'b>>,
+    {
         match self {
-            Self::Value(value) => Some(value.clone()),
+            Self::Value(value) => value.try_into().ok(),
             expr @ (Self::Dot(..) | Self::Ident(_)) => {
                 let path = eval_path(expr, context, node_id)?;
-                context.get_scope(&path, node_id)
+                context.get(&path, node_id)
             }
             _ => panic!(),
         }
     }
 }
 
-fn eval_path<T>(expr: &ValueExpr, context: &mut Context<'_, '_, T>, node_id: Option<&NodeId>) -> Option<Path> {
+fn eval_path(expr: &ValueExpr, context: &mut Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
     let path = match expr {
         ValueExpr::Ident(key) => Path::Key(key.to_string()),
         ValueExpr::Dot(lhs, rhs) => Path::Composite(
@@ -121,7 +124,7 @@ fn eval_path<T>(expr: &ValueExpr, context: &mut Context<'_, '_, T>, node_id: Opt
             eval_path(rhs, context, node_id)?.into(),
         ),
         ValueExpr::Index(lhs, index) => {
-            let StaticValue::Num(Num::Unsigned(index)) = index.eval(context, node_id)? else { return None };
+            let index = index.eval::<&u64>(context, node_id)?;
             let collection = eval_path(lhs, context, node_id)?;
             collection.compose(Path::Index(index as usize))
         }
@@ -137,19 +140,19 @@ mod test {
     use std::ops::Deref;
 
     use super::*;
-    use crate::{List, Scope, State, Value};
+    use crate::{List, Scope, State, StateValue};
 
     struct Inner {
-        name: Value<String>,
+        name: StateValue<String>,
         names: List<String>,
     }
 
     impl State for Inner {
-        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>> {
+        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, Value>> {
             match key {
                 Path::Key(key) if key == "name" => {
                     let num: &str = &*self.name;
-                    return Some(Cow::Owned(StaticValue::Str(num.into())));
+                    return Some(Cow::Owned(Value::Str(num.into())));
                 }
                 Path::Composite(lhs, rhs) => {
                     let lhs: &Path = &*lhs;
@@ -175,21 +178,21 @@ mod test {
     }
 
     struct TheState {
-        counter: Value<usize>,
-        some_ident: Value<String>,
+        counter: StateValue<usize>,
+        some_ident: StateValue<String>,
         inner: Inner,
     }
 
     impl State for TheState {
-        fn get<T>(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>> {
+        fn get<T>(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, Value>> {
             match key {
                 Path::Key(key) if key == "counter" => {
                     let num: usize = *self.counter;
-                    Some(Cow::Owned(StaticValue::Num(num.into())))
+                    Some(Cow::Owned(Value::Num(num.into())))
                 }
                 Path::Key(key) if key == "some_ident" => {
                     let s: &str = &*self.some_ident;
-                    Some(Cow::Owned(StaticValue::Str(s.into())))
+                    Some(Cow::Owned(Value::Str(s.into())))
                 }
                 Path::Composite(lhs, rhs) => {
                     let lhs: &Path = &*lhs;
@@ -223,7 +226,7 @@ mod test {
 
         scope.scope(
             "some_ident".into(),
-            Cow::Owned(ScopeValue::Static(StaticValue::Num(Num::Unsigned(1)))),
+            Cow::Owned(ScopeValue::Static(Value::Num(Num::Unsigned(1)))),
         );
 
         // for x in y // x = [4, some_ident, 5]
@@ -231,13 +234,13 @@ mod test {
         //         text sausages[a]
 
         let mut state = TheState {
-            counter: Value::new(123),
-            some_ident: Value::new("Hello this is amazing!".to_string()),
+            counter: StateValue::new(123),
+            some_ident: StateValue::new("Hello this is amazing!".to_string()),
             inner: Inner {
-                name: Value::new("Fin the human".to_string()),
+                name: StateValue::new("Fin the human".to_string()),
                 names: List::new(vec![
-                    Value::new("First".to_string()), 
-                    Value::new("Second".into()),
+                    StateValue::new("First".to_string()), 
+                    StateValue::new("Second".into()),
                 ]),
             },
         };

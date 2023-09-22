@@ -20,7 +20,7 @@ pub use crate::layout::{Align, Axis, Direction, LocalPos, Padding, Pos, Region};
 pub use crate::values::{Color, Display};
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer};
 
-pub fn style(context: &Context<'_, '_>, attributes: &Attributes, node_id: &NodeId) -> Style {
+pub fn style<T>(context: &Context<'_, '_>, attributes: &Attributes, node_id: &NodeId) -> Style {
     panic!()
     // let mut style = Style::new();
 

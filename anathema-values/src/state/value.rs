@@ -3,8 +3,8 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use super::DIRTY_NODES;
-use crate::scope::StaticValue;
+use crate::DIRTY_NODES;
+use crate::scope::Value;
 use crate::NodeId;
 
 #[derive(Debug, PartialEq)]
@@ -15,12 +15,12 @@ pub enum Change {
 }
 
 #[derive(Debug, Default)]
-pub struct Value<T> {
+pub struct StateValue<T> {
     pub(crate) inner: T,
     subscribers: RefCell<HashSet<NodeId>>,
 }
 
-impl<T> Value<T> {
+impl<T> StateValue<T> {
     pub fn new(inner: T) -> Self {
         Self {
             inner,
@@ -33,7 +33,7 @@ impl<T> Value<T> {
     }
 }
 
-impl<T> Deref for Value<T> {
+impl<T> Deref for StateValue<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -41,7 +41,7 @@ impl<T> Deref for Value<T> {
     }
 }
 
-impl<T> DerefMut for Value<T> {
+impl<T> DerefMut for StateValue<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         for s in self.subscribers.borrow().iter() {
             DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Update)));
@@ -51,20 +51,20 @@ impl<T> DerefMut for Value<T> {
     }
 }
 
-impl<'a> From<&'a Value<String>> for Cow<'a, StaticValue> {
-    fn from(value: &'a Value<String>) -> Self {
-        Cow::Owned(StaticValue::Str(value.inner.as_str().into()))
+impl<'a> From<&'a StateValue<String>> for Cow<'a, Value> {
+    fn from(value: &'a StateValue<String>) -> Self {
+        Cow::Owned(Value::Str(value.inner.as_str().into()))
     }
 }
 
-impl<'a> From<&'a Value<String>> for Cow<'a, str> {
-    fn from(value: &'a Value<String>) -> Self {
+impl<'a> From<&'a StateValue<String>> for Cow<'a, str> {
+    fn from(value: &'a StateValue<String>) -> Self {
         Cow::Borrowed(&value.inner)
     }
 }
 
-impl<'a> From<&'a Value<usize>> for Cow<'a, str> {
-    fn from(value: &'a Value<usize>) -> Self {
+impl<'a> From<&'a StateValue<usize>> for Cow<'a, str> {
+    fn from(value: &'a StateValue<usize>) -> Self {
         Cow::Owned(value.inner.to_string())
     }
 }
@@ -77,7 +77,7 @@ mod test {
     #[test]
     fn notify_subscriber() {
         let id: NodeId = 123.into();
-        let mut value = Value::new("hello world".to_string());
+        let mut value = StateValue::new("hello world".to_string());
         value.subscribe(id.clone());
         value.push_str(", updated");
 

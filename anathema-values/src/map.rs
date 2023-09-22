@@ -3,12 +3,12 @@ use std::ops::Deref;
 
 use super::*;
 use crate::hashmap::HashMap;
-use crate::scope::StaticValue;
+use crate::scope::Value;
 use crate::Path;
 
 #[derive(Debug)]
 pub struct Map<T> {
-    inner: HashMap<String, Value<T>>,
+    inner: HashMap<String, StateValue<T>>,
 }
 
 impl<T> Map<T> {
@@ -16,19 +16,19 @@ impl<T> Map<T> {
         Self::new(HashMap::new())
     }
 
-    pub fn new(inner: HashMap<String, Value<T>>) -> Self {
+    pub fn new(inner: HashMap<String, StateValue<T>>) -> Self {
         Self { inner }
     }
 
     pub fn lookup(&self, key: &Path) -> Option<Cow<'_, str>>
     where
-        for<'a> &'a Value<T>: Into<Cow<'a, str>>,
+        for<'a> &'a StateValue<T>: Into<Cow<'a, str>>,
     {
         let Path::Key(key) = key else { return None };
         self.inner.get(key).map(Into::into)
     }
 
-    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<Cow<'_, StaticValue>>
+    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<ValueRef<'_>>
     where
         T: State,
     {

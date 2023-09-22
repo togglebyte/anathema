@@ -1,23 +1,23 @@
 use std::borrow::Cow;
 
-use crate::scope::StaticValue;
-use crate::{NodeId, Path, State, Value};
+use crate::scope::ValueRef;
+use crate::{NodeId, Path, State, StateValue};
 
 #[derive(Debug)]
 pub struct TestState {
-    name: Value<String>,
+    name: StateValue<String>,
 }
 
 impl TestState {
     pub fn new() -> Self {
         Self {
-            name: Value::new("Dirk Gently".to_string()),
+            name: StateValue::new("Dirk Gently".to_string()),
         }
     }
 }
 
 impl State for TestState {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, StaticValue>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
             Path::Key(s) => match s.as_str() {
                 "name" => {

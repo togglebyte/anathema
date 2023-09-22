@@ -295,18 +295,4 @@ mod test {
         let input = "[1, [2, 3, [4, 5]]]";
         assert_eq!(parse(input), "[1, [2, 3, [4, 5]]]");
     }
-
-    #[test]
-    fn throw_me_away_good_sir() {
-        let input = "inner.names[a]";
-
-        let mut consts = Constants::new();
-        let lexer = Lexer::new(input, &mut consts);
-        let tokens = lexer.collect::<Result<_>>().unwrap();
-        let mut tokens = Tokens::new(tokens, input.len());
-
-        let output = expr(&mut tokens);
-        let output = eval(output, &consts);
-        panic!("{output:#?}");
-    }
 }

@@ -236,43 +236,38 @@ impl Rem for Num {
     }
 }
 
-// TODO: give this a better name.
-// If we evaluate a ValueExpr it should not always return a "static" value, the name
-// is confusing.
-#[derive(Debug, Clone, PartialEq)]
-pub enum StaticValue {
-    Str(Rc<str>),
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Owned {
     Num(Num),
     Bool(bool),
     Color(Color),
 }
 
-impl TryFrom<StaticValue> for Color {
+impl TryFrom<Owned> for Color {
     type Error = ();
 
-    fn try_from(value: StaticValue) -> Result<Self, Self::Error> {
+    fn try_from(value: Owned) -> Result<Self, Self::Error> {
         match value {
-            StaticValue::Color(color) => Ok(color),
+            Owned::Color(color) => Ok(color),
             _ => Err(()),
         }
     }
 }
 
-impl TryFrom<StaticValue> for usize {
+impl TryFrom<Owned> for usize {
     type Error = ();
 
-    fn try_from(value: StaticValue) -> Result<Self, Self::Error> {
+    fn try_from(value: Owned) -> Result<Self, Self::Error> {
         match value {
-            StaticValue::Num(Num::Unsigned(num)) => Ok(num as usize),
+            Owned::Num(Num::Unsigned(num)) => Ok(num as usize),
             _ => Err(())
         }
     }
 }
 
-impl Display for StaticValue {
+impl Display for Owned {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Str(s) => write!(f, "{s}"),
             Self::Num(num) => write!(f, "{num}"),
             Self::Color(color) => write!(f, "{color:?}"),
             Self::Bool(b) => write!(f, "{b:?}"),
@@ -280,21 +275,41 @@ impl Display for StaticValue {
     }
 }
 
-impl From<bool> for StaticValue {
-    fn from(b: bool) -> StaticValue {
-        StaticValue::Bool(b)
+pub enum ValueRef<'a> {
+    Str(&'a str),
+    Owned(Owned),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Value {
+    Str(Rc<str>),
+    Owned(Owned),
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Str(s) => write!(f, "{s}"),
+            Self::Owned(owned) => write!(f, "{owned}"),
+        }
     }
 }
 
-impl From<String> for StaticValue {
-    fn from(s: String) -> StaticValue {
-        StaticValue::Str(s.into())
+impl From<bool> for Value {
+    fn from(b: bool) -> Value {
+        Value::Owned(Owned::Bool(b))
+    }
+}
+
+impl From<String> for Value {
+    fn from(s: String) -> Value {
+        Value::Str(s.into())
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScopeValue {
-    Static(StaticValue),
+    Static(Value),
     Expr(ValueExpr),
     // List(Rc<[ScopeValue]>),
     // Dyn(Path),
@@ -316,7 +331,7 @@ pub enum ScopeValue {
 // TODO: add a testing flag for this
 impl From<String> for ScopeValue {
     fn from(s: String) -> Self {
-        Self::Static(StaticValue::Str(s.into()))
+        Self::Static(Value::Str(s.into()))
     }
 }
 
@@ -377,12 +392,12 @@ impl<'a> Scope<'a> {
     // }
 }
 
-pub struct Context<'a, 'val, T> {
-    pub state: &'a mut T, //dyn State,
+pub struct Context<'a, 'val> {
+    pub state: &'a mut dyn State,
     pub scope: &'a mut Scope<'val>,
 }
 
-impl<'a, 'val, T: State> Context<'a, 'val, T> {
+impl<'a, 'val> Context<'a, 'val> {
     pub fn new(state: &'a mut dyn State, scope: &'a mut Scope<'val>) -> Self {
         Self { state, scope }
     }
@@ -405,27 +420,28 @@ impl<'a, 'val, T: State> Context<'a, 'val, T> {
         // }
     }
 
-    pub fn get_scope(&mut self, path: &Path, node_id: Option<&NodeId>) -> Option<StaticValue> {
-        match self.scope.lookup(&path).cloned() {
-            Some(ScopeValue::Static(val)) => Some(val),
-            Some(val) => match val {
-                ScopeValue::Static(val) => Some(val),
-                ScopeValue::Expr(expr) => expr.eval(self, node_id),
-                ScopeValue::Invalid => panic!("lol"),
-            }
-            None => self
-                .state
-                .get(&path, node_id.into())
-                .map(|val| val.into_owned())
-        }
-    }
+//     pub fn get_scope(&mut self, path: &Path, node_id: Option<&NodeId>) -> Option<Value> {
+//         match self.scope.lookup(&path).cloned() {
+//             Some(ScopeValue::Static(val)) => Some(val),
+//             Some(val) => match val {
+//                 ScopeValue::Static(val) => Some(val),
+//                 ScopeValue::Expr(expr) => expr.eval(self, node_id),
+//                 ScopeValue::Invalid => panic!("lol"),
+//             }
+//             None => self
+//                 .state
+//                 .get(&path, node_id.into())
+//                 .map(|val| val.into_owned())
+//         }
+//     }
 
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<U>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<U>
+    pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&T>
     where
-        U: for<'b> TryFrom<&'b StaticValue>,
+        for<'b> &'b T: TryFrom<&'b Value>,
+        for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
         panic!()
         // match self.scope.lookup(&path) {
@@ -448,7 +464,7 @@ impl<'a, 'val, T: State> Context<'a, 'val, T> {
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<U>
     where
-        U: for<'attr> TryFrom<&'attr StaticValue>,
+        U: for<'attr> TryFrom<&'attr Value>,
     {
         panic!()
         // let attrib = attributes.get(key.as_ref())?;
@@ -467,7 +483,7 @@ impl<'a, 'val, T: State> Context<'a, 'val, T> {
         attributes: &HashMap<String, ScopeValue>,
     ) -> Option<U>
     where
-        U: for<'b> TryFrom<&'b StaticValue>,
+        U: for<'b> TryFrom<&'b Value>,
     {
         panic!()
         // let attrib = attributes.get(key.as_ref())?;
