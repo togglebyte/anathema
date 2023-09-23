@@ -2,8 +2,7 @@ use std::borrow::Cow;
 use std::ops::Deref;
 
 use super::*;
-use crate::Path;
-use crate::scope::Value;
+use crate::{Path, Value};
 
 #[derive(Debug)]
 pub struct List<T> {

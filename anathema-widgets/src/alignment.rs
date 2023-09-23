@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Context, NodeId, ScopeValue};
+use anathema_values::{Context, NodeId, ScopeValue, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{Attributes, Nodes};
@@ -120,7 +120,7 @@ impl WidgetFactory for AlignmentFactory {
         &self,
         data: Context<'_, '_>,
         attributes: &Attributes,
-        text: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         let alignment = data

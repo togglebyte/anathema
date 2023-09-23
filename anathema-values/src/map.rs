@@ -3,8 +3,7 @@ use std::ops::Deref;
 
 use super::*;
 use crate::hashmap::HashMap;
-use crate::scope::Value;
-use crate::Path;
+use crate::{Path, Value};
 
 #[derive(Debug)]
 pub struct Map<T> {

@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 use std::fmt::{self, Display, Write};
-use std::ops::{Add, Deref, Mul, Sub, Div, Rem};
+use std::ops::{Add, Deref, Div, Mul, Rem, Sub};
 use std::rc::Rc;
 use std::str::FromStr;
 
 use anathema_render::{Color, Size, Style};
 
 use crate::hashmap::HashMap;
-use crate::{NodeId, Path, State, ValueExpr};
+use crate::{NodeId, Path, State, Value, ValueExpr, ValueRef};
 
 #[derive(Debug)]
 pub enum Collection {
@@ -44,269 +44,6 @@ impl Collection {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Num {
-    Signed(i64),
-    Unsigned(u64),
-    Float(f64),
-}
-
-impl Display for Num {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Signed(n) => write!(f, "{n}"),
-            Self::Unsigned(n) => write!(f, "{n}"),
-            Self::Float(n) => write!(f, "{n}"),
-        }
-    }
-}
-
-macro_rules! into_unsigned_num {
-    ($t:ty) => {
-        impl From<$t> for Num {
-            fn from(n: $t) -> Self {
-                Self::Unsigned(n as u64)
-            }
-        }
-    };
-}
-
-macro_rules! into_signed_num {
-    ($t:ty) => {
-        impl From<$t> for Num {
-            fn from(n: $t) -> Self {
-                Self::Signed(n as i64)
-            }
-        }
-    };
-}
-
-into_unsigned_num!(u8);
-into_unsigned_num!(u16);
-into_unsigned_num!(u32);
-into_unsigned_num!(u64);
-into_unsigned_num!(usize);
-
-into_signed_num!(i8);
-into_signed_num!(i16);
-into_signed_num!(i32);
-into_signed_num!(i64);
-into_signed_num!(isize);
-
-impl Mul for Num {
-    type Output = Num;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs * rhs),
-            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs * rhs),
-            _ => panic!(),
-        }
-    }
-}
-
-impl Add for Num {
-    type Output = Num;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs + rhs),
-            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs + rhs),
-
-
-            (Self::Signed(lhs), Self::Unsigned(rhs)) if lhs.is_negative() => {
-                if lhs.abs() as u64 >= rhs {
-                    Self::Signed(-((lhs.abs() as u64 - rhs) as i64))
-                } else {
-                    Self::Unsigned(rhs - lhs.abs() as u64)
-                }
-            }
-
-            (Self::Unsigned(lhs), Self::Signed(rhs)) if rhs.is_negative() => {
-                if rhs.abs() as u64 >= lhs {
-                    Self::Signed(-((rhs.abs() as u64 - lhs) as i64))
-                } else {
-                    Self::Unsigned(lhs - rhs.abs() as u64)
-                }
-            }
-
-            (Self::Signed(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs as u64 + rhs),
-            (Self::Unsigned(lhs), Self::Signed(rhs)) => Self::Unsigned(rhs as u64 + lhs),
-            _ => panic!(),
-        }
-    }
-}
-
-impl Sub for Num {
-    type Output = Num;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs - rhs),
-            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs - rhs),
-
-            (Self::Signed(lhs), Self::Unsigned(rhs)) => {
-                let lhs = lhs as i128;
-                let rhs = rhs as i128;
-                let res = lhs - rhs;
-                if res.is_negative() {
-                    Self::Signed(res as i64)
-                } else {
-                    Self::Unsigned(res as u64)
-                }
-            }
-            (Self::Unsigned(lhs), Self::Signed(rhs)) => {
-                let lhs = lhs as i128;
-                let rhs = rhs as i128;
-                let res = lhs - rhs;
-                if res.is_negative() {
-                    Self::Signed(res as i64)
-                } else {
-                    Self::Unsigned(res as u64)
-                }
-            }
-            _ => panic!(),
-        }
-    }
-}
-
-impl Div for Num {
-    type Output = Num;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs / rhs),
-            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs / rhs),
-
-            (Self::Signed(lhs), Self::Unsigned(rhs)) => {
-                let lhs = lhs as i128;
-                let rhs = rhs as i128;
-                let res = lhs / rhs;
-                if res.is_negative() {
-                    Self::Signed(res as i64)
-                } else {
-                    Self::Unsigned(res as u64)
-                }
-            }
-            (Self::Unsigned(lhs), Self::Signed(rhs)) => {
-                let lhs = lhs as i128;
-                let rhs = rhs as i128;
-                let res = lhs / rhs;
-                if res.is_negative() {
-                    Self::Signed(res as i64)
-                } else {
-                    Self::Unsigned(res as u64)
-                }
-            }
-            _ => panic!(),
-        }
-    }
-}
-
-impl Rem for Num {
-    type Output = Num;
-
-    fn rem(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs % rhs),
-            (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs % rhs),
-
-            (Self::Signed(lhs), Self::Unsigned(rhs)) => {
-                let lhs = lhs as i128;
-                let rhs = rhs as i128;
-                let res = lhs % rhs;
-                if res.is_negative() {
-                    Self::Signed(res as i64)
-                } else {
-                    Self::Unsigned(res as u64)
-                }
-            }
-            (Self::Unsigned(lhs), Self::Signed(rhs)) => {
-                let lhs = lhs as i128;
-                let rhs = rhs as i128;
-                let res = lhs % rhs;
-                if res.is_negative() {
-                    Self::Signed(res as i64)
-                } else {
-                    Self::Unsigned(res as u64)
-                }
-            }
-            _ => panic!(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Owned {
-    Num(Num),
-    Bool(bool),
-    Color(Color),
-}
-
-impl TryFrom<Owned> for Color {
-    type Error = ();
-
-    fn try_from(value: Owned) -> Result<Self, Self::Error> {
-        match value {
-            Owned::Color(color) => Ok(color),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<Owned> for usize {
-    type Error = ();
-
-    fn try_from(value: Owned) -> Result<Self, Self::Error> {
-        match value {
-            Owned::Num(Num::Unsigned(num)) => Ok(num as usize),
-            _ => Err(())
-        }
-    }
-}
-
-impl Display for Owned {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Num(num) => write!(f, "{num}"),
-            Self::Color(color) => write!(f, "{color:?}"),
-            Self::Bool(b) => write!(f, "{b:?}"),
-        }
-    }
-}
-
-pub enum ValueRef<'a> {
-    Str(&'a str),
-    Owned(Owned),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Value {
-    Str(Rc<str>),
-    Owned(Owned),
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Str(s) => write!(f, "{s}"),
-            Self::Owned(owned) => write!(f, "{owned}"),
-        }
-    }
-}
-
-impl From<bool> for Value {
-    fn from(b: bool) -> Value {
-        Value::Owned(Owned::Bool(b))
-    }
-}
-
-impl From<String> for Value {
-    fn from(s: String) -> Value {
-        Value::Str(s.into())
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScopeValue {
     Static(Value),
@@ -337,29 +74,29 @@ impl From<String> for ScopeValue {
 
 #[derive(Debug)]
 pub struct Scope<'a> {
-    inner: Vec<HashMap<Path, Cow<'a, ScopeValue>>>,
+    parent: Option<&'a Scope<'a>>,
+    inner: HashMap<Path, Cow<'a, ScopeValue>>,
 }
 
 impl<'a> Scope<'a> {
     pub fn new(parent: Option<&'a Scope<'_>>) -> Self {
         Self {
-            inner: vec![HashMap::new()],
+            parent,
+            inner: HashMap::new(),
         }
     }
 
     pub fn scope(&mut self, path: Path, value: Cow<'a, ScopeValue>) {
-        self.inner
-            .last_mut()
-            .map(|values| values.insert(path, value));
+        self.inner.insert(path, value);
     }
 
-    pub fn push(&mut self) {
-        self.inner.push(HashMap::new())
-    }
+    // pub fn push(&mut self) {
+    //     self.inner.push(HashMap::new())
+    // }
 
-    pub fn pop(&mut self) {
-        self.inner.pop();
-    }
+    // pub fn pop(&mut self) {
+    //     self.inner.pop();
+    // }
 
     // /// Scope a value for a collection.
     // /// TODO: Review if the whole cloning business here makes sense
@@ -378,10 +115,8 @@ impl<'a> Scope<'a> {
 
     pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
         self.inner
-            .iter()
-            .rev()
-            .filter_map(|values| values.get(path).map(Deref::deref))
-            .next()
+            .get(path).map(Deref::deref)
+            .or_else(|| self.parent.and_then(|parent| parent.lookup(path)))
     }
 
     // pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
@@ -393,12 +128,12 @@ impl<'a> Scope<'a> {
 }
 
 pub struct Context<'a, 'val> {
-    pub state: &'a mut dyn State,
-    pub scope: &'a mut Scope<'val>,
+    pub state: &'a dyn State,
+    pub scope: &'a Scope<'val>,
 }
 
 impl<'a, 'val> Context<'a, 'val> {
-    pub fn new(state: &'a mut dyn State, scope: &'a mut Scope<'val>) -> Self {
+    pub fn new(state: &'a dyn State, scope: &'a mut Scope<'val>) -> Self {
         Self { state, scope }
     }
 
@@ -420,25 +155,25 @@ impl<'a, 'val> Context<'a, 'val> {
         // }
     }
 
-//     pub fn get_scope(&mut self, path: &Path, node_id: Option<&NodeId>) -> Option<Value> {
-//         match self.scope.lookup(&path).cloned() {
-//             Some(ScopeValue::Static(val)) => Some(val),
-//             Some(val) => match val {
-//                 ScopeValue::Static(val) => Some(val),
-//                 ScopeValue::Expr(expr) => expr.eval(self, node_id),
-//                 ScopeValue::Invalid => panic!("lol"),
-//             }
-//             None => self
-//                 .state
-//                 .get(&path, node_id.into())
-//                 .map(|val| val.into_owned())
-//         }
-//     }
+    //     pub fn get_scope(&mut self, path: &Path, node_id: Option<&NodeId>) -> Option<Value> {
+    //         match self.scope.lookup(&path).cloned() {
+    //             Some(ScopeValue::Static(val)) => Some(val),
+    //             Some(val) => match val {
+    //                 ScopeValue::Static(val) => Some(val),
+    //                 ScopeValue::Expr(expr) => expr.eval(self, node_id),
+    //                 ScopeValue::Invalid => panic!("lol"),
+    //             }
+    //             None => self
+    //                 .state
+    //                 .get(&path, node_id.into())
+    //                 .map(|val| val.into_owned())
+    //         }
+    //     }
 
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&T>
+    pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&'val T>
     where
         for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
-use crate::scope::ValueRef;
-use crate::{NodeId, Path, State, StateValue};
+use crate::{NodeId, Path, State, StateValue, ValueRef};
 
 #[derive(Debug)]
 pub struct TestState {

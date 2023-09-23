@@ -1,9 +1,8 @@
 use std::borrow::Cow;
 use std::ops::Deref;
 
-use crate::scope::ValueRef;
-use crate::{Collection, NodeId, Path};
 pub use self::value::{Change, StateValue};
+use crate::{Collection, NodeId, Path, ValueRef};
 
 mod value;
 

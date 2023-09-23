@@ -16,7 +16,7 @@ pub struct If {
 //         text "it was true"
 
 impl If {
-    pub(super) fn is_true(&self, scope: &Scope<'_>, state: &mut dyn State, node_id: Option<&NodeId>) -> bool {
+    pub(super) fn is_true(&self, scope: &Scope<'_>, state: &dyn State, node_id: Option<&NodeId>) -> bool {
         panic!()
     }
 }

@@ -3,9 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::DIRTY_NODES;
-use crate::scope::Value;
-use crate::NodeId;
+use crate::{NodeId, Value, DIRTY_NODES};
 
 #[derive(Debug, PartialEq)]
 pub enum Change {

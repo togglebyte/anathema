@@ -24,7 +24,7 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
+    fn eval(&self, state: &dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
         panic!()
         // let context = Context::new(state, scope);
 
@@ -62,7 +62,7 @@ pub struct Loop {
 }
 
 impl Loop {
-    fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
+    fn eval(&self, state: &dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
         panic!()
         // let collection: Collection =
         //     match &self.collection {
@@ -101,7 +101,7 @@ pub struct ControlFlow {
 }
 
 impl ControlFlow {
-    fn eval(&self, state: &mut dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
+    fn eval(&self, state: &dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
         if self.if_expr.is_true(scope, state, Some(&node_id)) {}
 
         panic!()
@@ -121,7 +121,7 @@ pub enum Expression {
 impl Expression {
     pub(crate) fn eval(
         &self,
-        state: &mut dyn State,
+        state: &dyn State,
         scope: &mut Scope,
         node_id: NodeId,
     ) -> Result<Node> {

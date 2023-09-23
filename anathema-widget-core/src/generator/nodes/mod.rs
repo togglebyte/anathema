@@ -134,7 +134,7 @@ impl Nodes {
 
     pub fn for_each<F>(
         &mut self,
-        state: &mut dyn State,
+        state: &dyn State,
         scope: &mut Scope<'_>,
         layout: &mut LayoutCtx,
         mut f: F,
@@ -151,8 +151,8 @@ impl Nodes {
 
     pub fn next<F>(
         &mut self,
-        state: &mut dyn State,
-        scope: &mut Scope<'_>,
+        state: &dyn State,
+        scope: &Scope<'_>,
         layout: &mut LayoutCtx,
         f: &mut F,
     ) -> Option<Result<Size>>
@@ -167,7 +167,8 @@ impl Nodes {
                     None if loop_node.scope(scope) => return self.next(state, scope, layout, f),
                     None => {
                         self.active_loop.take();
-                        scope.pop();
+                        panic!("pop the scope?");
+                        // scope.pop();
                         return self.next(state, scope, layout, f);
                     }
                 },
@@ -204,7 +205,7 @@ impl Nodes {
             NodeKind::Loop(loop_node) => {
                 // TODO: this shouldn't be here and in the `scope` call, it's a hack
                 if loop_node.value_index < loop_node.collection.len() {
-                    scope.push();
+                    // scope.push();
                     if loop_node.scope(scope) {
                         self.active_loop = Some(self.cache_index - 1);
                     }

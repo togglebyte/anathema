@@ -4,11 +4,11 @@ pub use self::id::NodeId;
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::path::Path;
-pub use self::scope::{Collection, Context, Num, Owned, Scope, ScopeValue};
+pub use self::scope::{Collection, Context, Scope, ScopeValue};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
 pub use self::value_expr::ValueExpr;
-pub use self::{Value, ValueRef};
+pub use self::value::{Value, ValueRef, Num, Owned};
 
 pub mod hashmap;
 mod path;
@@ -35,5 +35,5 @@ pub fn remove_node(node: NodeId) {
     REMOVED_NODES.with(|nodes| nodes.borrow_mut().push(node));
 }
 
-// #[cfg(testing)]
+#[cfg(testing)]
 pub mod testing;

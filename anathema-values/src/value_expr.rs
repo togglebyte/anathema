@@ -1,8 +1,7 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::scope::{Num, Owned};
-use crate::{Context, NodeId, Path, Scope, ScopeValue, State, Value, ValueRef};
+use crate::{Context, NodeId, Num, Owned, Path, Scope, ScopeValue, State, Value, ValueRef};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
@@ -96,27 +95,27 @@ where
 // sausages[1] -> 2
 
 impl ValueExpr {
-    pub fn eval<T>(
-        &self,
-        context: &mut Context<'_, '_>,
-        node_id: Option<&NodeId>,
-    ) -> Option<&T> 
-        where 
-            for<'b> &'b T: TryFrom<&'b Value>,
-            for<'b> &'b T: TryFrom<ValueRef<'b>>,
+    pub fn eval<'val, T: 'val>(&'val self, context: &Context<'_, 'val>, node_id: Option<&NodeId>) -> Option<&'val T>
+    where
+        for<'b> &'b T: TryFrom<&'b Value>,
+        for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
         match self {
             Self::Value(value) => value.try_into().ok(),
             expr @ (Self::Dot(..) | Self::Ident(_)) => {
                 let path = eval_path(expr, context, node_id)?;
-                context.get(&path, node_id)
+                context.get::<T>(&path, node_id)
             }
             _ => panic!(),
         }
     }
 }
 
-fn eval_path(expr: &ValueExpr, context: &mut Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
+fn eval_path(
+    expr: &ValueExpr,
+    context: &Context<'_, '_>,
+    node_id: Option<&NodeId>,
+) -> Option<Path> {
     let path = match expr {
         ValueExpr::Ident(key) => Path::Key(key.to_string()),
         ValueExpr::Dot(lhs, rhs) => Path::Composite(
@@ -124,7 +123,7 @@ fn eval_path(expr: &ValueExpr, context: &mut Context<'_, '_>, node_id: Option<&N
             eval_path(rhs, context, node_id)?.into(),
         ),
         ValueExpr::Index(lhs, index) => {
-            let index = index.eval::<&u64>(context, node_id)?;
+            let index = *index.eval::<u64>(context, node_id)?;
             let collection = eval_path(lhs, context, node_id)?;
             collection.compose(Path::Index(index as usize))
         }
@@ -160,7 +159,6 @@ mod test {
                         Path::Key(key) if key == "names" => return self.names.lookup(rhs, node_id),
                         _ => {}
                     }
-
                 }
                 _ => {}
             }
@@ -239,7 +237,7 @@ mod test {
             inner: Inner {
                 name: StateValue::new("Fin the human".to_string()),
                 names: List::new(vec![
-                    StateValue::new("First".to_string()), 
+                    StateValue::new("First".to_string()),
                     StateValue::new("Second".into()),
                 ]),
             },
