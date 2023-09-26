@@ -123,11 +123,12 @@ impl WidgetFactory for AlignmentFactory {
         text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let alignment = data
-            .attribute("align", node_id.into(), attributes)
-            .unwrap_or(Align::TopLeft);
-        let widget = Alignment::new(alignment);
-        Ok(Box::new(widget))
+        panic!()
+        // let alignment = data
+        //     .attribute("align", node_id.into(), attributes)
+        //     .unwrap_or(Align::TopLeft);
+        // let widget = Alignment::new(alignment);
+        // Ok(Box::new(widget))
     }
 }
 
