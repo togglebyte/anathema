@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::{NodeId, Value, DIRTY_NODES};
+use crate::{NodeId, Value, ValueRef, DIRTY_NODES, Owned};
 
 #[derive(Debug, PartialEq)]
 pub enum Change {
@@ -49,21 +49,15 @@ impl<T> DerefMut for StateValue<T> {
     }
 }
 
-impl<'a> From<&'a StateValue<String>> for Cow<'a, Value> {
+impl<'a> From<&'a StateValue<String>> for ValueRef<'a> {
     fn from(value: &'a StateValue<String>) -> Self {
-        Cow::Owned(Value::Str(value.inner.as_str().into()))
+        ValueRef::Str(value.inner.as_str())
     }
 }
 
-impl<'a> From<&'a StateValue<String>> for Cow<'a, str> {
-    fn from(value: &'a StateValue<String>) -> Self {
-        Cow::Borrowed(&value.inner)
-    }
-}
-
-impl<'a> From<&'a StateValue<usize>> for Cow<'a, str> {
-    fn from(value: &'a StateValue<usize>) -> Self {
-        Cow::Owned(value.inner.to_string())
+impl<'a, T: Into<Owned> + Copy> From<&'a StateValue<T>> for ValueRef<'a> {
+    fn from(value: &'a StateValue<T>) -> Self {
+        ValueRef::Owned(value.inner.into())
     }
 }
 

@@ -35,5 +35,4 @@ pub fn remove_node(node: NodeId) {
     REMOVED_NODES.with(|nodes| nodes.borrow_mut().push(node));
 }
 
-#[cfg(testing)]
 pub mod testing;

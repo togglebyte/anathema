@@ -16,6 +16,21 @@ pub enum ValueRef<'a> {
 }
 
 // -----------------------------------------------------------------------------
+//   - From for value ref -
+// -----------------------------------------------------------------------------
+impl<'a> From<&'a str> for ValueRef<'a> {
+    fn from(value: &'a str) -> Self {
+        ValueRef::Str(value)
+    }
+}
+
+impl<'a, T: Into<Owned> + Copy> From<&'a T> for ValueRef<'a> {
+    fn from(value: &'a T) -> Self {
+        ValueRef::Owned((*value).into())
+    }
+}
+
+// -----------------------------------------------------------------------------
 //   - Value -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Clone, PartialEq)]
@@ -65,6 +80,28 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(owned) => panic!(),//owned.try_into(),
+            _ => Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a Value> for &'a str {
+    type Error = ();
+
+    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Str(s) => Ok(s),
+            _ => Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<ValueRef<'a>> for &'a str {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+        match value {
+            ValueRef::Str(s) => Ok(s),
             _ => Err(())
         }
     }

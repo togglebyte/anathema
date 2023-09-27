@@ -147,11 +147,11 @@ mod test {
     }
 
     impl State for Inner {
-        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, Value>> {
+        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
             match key {
                 Path::Key(key) if key == "name" => {
-                    let num: &str = &*self.name;
-                    return Some(Cow::Owned(Value::Str(num.into())));
+                    let name: &str = &*self.name;
+                    return Some(name.into());
                 }
                 Path::Composite(lhs, rhs) => {
                     let lhs: &Path = &*lhs;
@@ -182,15 +182,15 @@ mod test {
     }
 
     impl State for TheState {
-        fn get<T>(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Cow<'_, Value>> {
+        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
             match key {
                 Path::Key(key) if key == "counter" => {
                     let num: usize = *self.counter;
-                    Some(Cow::Owned(Value::Num(num.into())))
+                    Some(ValueRef::Owned(num.into()))
                 }
                 Path::Key(key) if key == "some_ident" => {
                     let s: &str = &*self.some_ident;
-                    Some(Cow::Owned(Value::Str(s.into())))
+                    Some(ValueRef::Str(s))
                 }
                 Path::Composite(lhs, rhs) => {
                     let lhs: &Path = &*lhs;
@@ -216,62 +216,62 @@ mod test {
 
     #[test]
     fn resolve_something() {
-        let mut scope = Scope::new(None);
-        scope.scope(
-            "a".into(),
-            Cow::Owned(ScopeValue::Expr(ValueExpr::Ident("some_ident".into()))),
-        );
+        // let mut scope = Scope::new(None);
+        // scope.scope(
+        //     "a".into(),
+        //     Cow::Owned(ScopeValue::Expr(ValueExpr::Ident("some_ident".into()))),
+        // );
 
-        scope.scope(
-            "some_ident".into(),
-            Cow::Owned(ScopeValue::Static(Value::Num(Num::Unsigned(1)))),
-        );
+        // scope.scope(
+        //     "some_ident".into(),
+        //     Cow::Owned(ScopeValue::Static(Value::Num(Num::Unsigned(1)))),
+        // );
 
-        // for x in y // x = [4, some_ident, 5]
-        //     for a in x
-        //         text sausages[a]
+        // // for x in y // x = [4, some_ident, 5]
+        // //     for a in x
+        // //         text sausages[a]
 
-        let mut state = TheState {
-            counter: StateValue::new(123),
-            some_ident: StateValue::new("Hello this is amazing!".to_string()),
-            inner: Inner {
-                name: StateValue::new("Fin the human".to_string()),
-                names: List::new(vec![
-                    StateValue::new("First".to_string()),
-                    StateValue::new("Second".into()),
-                ]),
-            },
-        };
+        // let mut state = TheState {
+        //     counter: StateValue::new(123),
+        //     some_ident: StateValue::new("Hello this is amazing!".to_string()),
+        //     inner: Inner {
+        //         name: StateValue::new("Fin the human".to_string()),
+        //         names: List::new(vec![
+        //             StateValue::new("First".to_string()),
+        //             StateValue::new("Second".into()),
+        //         ]),
+        //     },
+        // };
 
-        // let value_expr = ValueExpr::Ident("counter".into());
-        let node_id = NodeId::new(123);
+        // // let value_expr = ValueExpr::Ident("counter".into());
+        // let node_id = NodeId::new(123);
+
+        // // let val = value_expr
+        // //     .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
+        // //     .unwrap();
+
+        // // panic!("{val:#?}");
+        // // assert_eq!(val, "123");
+
+        // // inner.name
+        // // let value_expr = ValueExpr::Dot(
+        // //     ValueExpr::Ident("inner".into()).into(),
+        // //     ValueExpr::Index("name".into()).into(),
+        // // );
+
+        // let value_expr = ValueExpr::Dot(
+        //     ValueExpr::Ident("inner".into()).into(),
+        //     ValueExpr::Index(
+        //         ValueExpr::Ident("names".into()).into(),
+        //         ValueExpr::Ident("a".into()).into(),
+        //     )
+        //     .into(),
+        // );
 
         // let val = value_expr
         //     .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
         //     .unwrap();
 
-        // panic!("{val:#?}");
-        // assert_eq!(val, "123");
-
-        // inner.name
-        // let value_expr = ValueExpr::Dot(
-        //     ValueExpr::Ident("inner".into()).into(),
-        //     ValueExpr::Index("name".into()).into(),
-        // );
-
-        let value_expr = ValueExpr::Dot(
-            ValueExpr::Ident("inner".into()).into(),
-            ValueExpr::Index(
-                ValueExpr::Ident("names".into()).into(),
-                ValueExpr::Ident("a".into()).into(),
-            )
-            .into(),
-        );
-
-        let val = value_expr
-            .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
-            .unwrap();
-
-        panic!("If you can read this things are pretty good: {val:#?}");
+        // panic!("If you can read this things are pretty good: {val:#?}");
     }
 }

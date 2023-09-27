@@ -46,13 +46,15 @@ impl Collection {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScopeValue {
+    /// Static values are "cheap" to clone / copy.
     Static(Value),
-    Expr(ValueExpr),
+    // Expr(ValueExpr),
     // List(Rc<[ScopeValue]>),
-    // Dyn(Path),
+    Dyn(Path),
     Invalid,
 }
 
+// TODO: do we even need this? - 2023-09-26
 // impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
 //     fn from(arr: [ScopeValue; N]) -> Self {
 //         if N == 1 {
@@ -90,13 +92,9 @@ impl<'a> Scope<'a> {
         self.inner.insert(path, value);
     }
 
-    // pub fn push(&mut self) {
-    //     self.inner.push(HashMap::new())
-    // }
-
-    // pub fn pop(&mut self) {
-    //     self.inner.pop();
-    // }
+    pub fn reparent(&self) -> Scope<'_> {
+        Scope::new(Some(self))
+    }
 
     // /// Scope a value for a collection.
     // /// TODO: Review if the whole cloning business here makes sense
@@ -115,7 +113,8 @@ impl<'a> Scope<'a> {
 
     pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
         self.inner
-            .get(path).map(Deref::deref)
+            .get(path)
+            .map(Deref::deref)
             .or_else(|| self.parent.and_then(|parent| parent.lookup(path)))
     }
 
@@ -127,7 +126,7 @@ impl<'a> Scope<'a> {
     // }
 }
 
-pub struct Context<'a, 'val> {
+pub struct Context<'a: 'val, 'val> {
     pub state: &'a dyn State,
     pub scope: &'a Scope<'val>,
 }
@@ -173,42 +172,41 @@ impl<'a, 'val> Context<'a, 'val> {
     /// Try to find the value in the current scope,
     /// if there is no value fallback to look for the value in the state.
     /// This will recursively lookup dynamic values
-    pub fn get<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&'val T>
+    pub fn get<T: ?Sized>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&'val T>
     where
         for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
-        panic!()
-        // match self.scope.lookup(&path) {
-        //     Some(val) => match val {
-        //         ScopeValue::Dyn(path) => self.get(path, node_id),
-        //         ScopeValue::Static(s) => T::try_from(s).ok(),
-        //         ScopeValue::List(_) => None,
-        //     },
-        //     None => self
-        //         .state
-        //         .get(&path, node_id.into())
-        //         .and_then(|val| val.as_ref().try_into().ok()),
-        // }
+        match self.scope.lookup(&path) {
+            Some(val) => match val {
+                ScopeValue::Dyn(path) => self.get(path, node_id),
+                ScopeValue::Static(s) => <&T>::try_from(s).ok(),
+                ScopeValue::Invalid => None,
+            },
+            None => self
+                .state
+                .get(&path, node_id.into())
+                .and_then(|val| val.try_into().ok()),
+        }
     }
 
-    pub fn attribute<U>(
+    pub fn attribute<T: ?Sized>(
         &self,
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
-        attributes: &HashMap<String, ScopeValue>,
-    ) -> Option<U>
+        attributes: &'val HashMap<String, ScopeValue>,
+    ) -> Option<&'val T>
     where
-        U: for<'attr> TryFrom<&'attr Value>,
+        for<'b> &'b T: TryFrom<&'b Value>,
+        for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
-        panic!()
-        // let attrib = attributes.get(key.as_ref())?;
+        let attrib = attributes.get(key.as_ref())?;
 
-        // match attrib {
-        //     ScopeValue::Static(val) => val.try_into().ok(),
-        //     ScopeValue::Dyn(path) => self.get(path, node_id),
-        //     _ => None,
-        // }
+        match attrib {
+            ScopeValue::Static(val) => val.try_into().ok(),
+            ScopeValue::Dyn(path) => self.get(path, node_id),
+            _ => None,
+        }
     }
 
     pub fn primitive<U>(
@@ -276,50 +274,34 @@ mod test {
 
     #[test]
     fn scope_value() {
-        panic!("can't deref to str");
-        // let mut scope = Scope::new(None);
-        // scope.scope(
-        //     "value".into(),
-        //     Cow::Owned(ScopeValue::Static("hello world".into())),
-        // );
+        let mut scope = Scope::new(None);
+        scope.scope("value".into(), Cow::Owned("hello world".to_string().into()));
 
-        // // let mut inner = Scope::new(Some(&scope));
-        // scope.push();
-        // scope.scope(
-        //     "value".into(),
-        //     Cow::Owned(ScopeValue::Static("inner hello".into())),
-        // );
+        let mut inner = scope.reparent();
 
-        // let value = scope.lookup(&"value".into()).unwrap();
+        inner.scope("value".into(), Cow::Owned("inner hello".to_string().into()));
+        let value = inner.lookup(&"value".into()).unwrap();
 
-        // let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
-        //     panic!()
-        // };
-        // assert_eq!(&**lhs, "inner hello");
+        let ScopeValue::Static(Value::Str(lhs)) = value else { panic!() };
+        assert_eq!(&**lhs, "inner hello");
 
-        // scope.pop();
-
-        // let ScopeValue::Static(lhs) = scope.lookup(&"value".into()).unwrap() else {
-        //     panic!()
-        // };
-        // assert_eq!(&**lhs, "hello world");
+        let ScopeValue::Static(Value::Str(lhs)) = scope.lookup(&"value".into()).unwrap() else { panic!() }; 
+        assert_eq!(&**lhs, "hello world");
     }
 
     #[test]
     fn dynamic_attribute() {
-        panic!("see above test");
-        // let mut state = TestState::new();
-        // let mut root = Scope::new(None);
-        // let mut ctx = Context::new(&mut state, &mut root);
-        // let mut attributes = HashMap::new();
-        // attributes.insert(
-        //     "name".to_string(),
-        //     ScopeValue::Dyn(Path::Key("name".into())),
-        // );
+        let mut state = TestState::new();
+        let mut root = Scope::new(None);
+        let mut ctx = Context::new(&mut state, &mut root);
+        let mut attributes: HashMap<String, ScopeValue> = HashMap::new();
+        attributes.insert(
+            "name".to_string(),
+            ScopeValue::Dyn(Path::Key("name".into())),
+        );
 
-        // let id = Some(123.into());
-        // let name: Option<String> = ctx.attribute("name", id.as_ref(), &attributes);
-
-        // assert_eq!("Dirk Gently", name.unwrap());
+        let id = Some(123.into());
+        let name: &str = ctx.attribute("name", id.as_ref(), &attributes).unwrap();
+        assert_eq!("Dirk Gently", name);
     }
 }

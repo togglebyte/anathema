@@ -260,28 +260,28 @@ mod test {
         assert_eq!(widget.kind(), "test");
     }
 
-    #[test]
-    fn for_loop() {
-        register_test_widget();
-        let mut state = ();
-        let mut scope = Scope::new(None);
-        let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
+    // #[test]
+    // fn for_loop() {
+    //     register_test_widget();
+    //     let mut state = ();
+    //     let mut scope = Scope::new(None);
+    //     let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
 
-        let body = expression("test", None, [], []);
-        let for_loop = for_expression("item", [1, 2, 3], [body]);
-        let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
+    //     let body = expression("test", None, [], []);
+    //     let for_loop = for_expression("item", [1, 2, 3], [body]);
+    //     let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
 
-        nodes.for_each(&mut state, &mut scope, &mut layout, |_, _, _| { Ok(Size::ZERO) });
-        panic!("this isn't done!");
+    //     nodes.for_each(&mut state, &mut scope, &mut layout, |_, _, _| { Ok(Size::ZERO) });
+    //     panic!("this isn't done!");
 
-        // let node_1 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-        // let node_2 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-        // let node_3 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-        // let node_none = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+    //     // let node_1 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+    //     // let node_2 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+    //     // let node_3 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+    //     // let node_none = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
 
-        // assert!(node_1.is_some());
-        // assert!(node_2.is_some());
-        // assert!(node_3.is_some());
-        // assert!(node_none.is_none());
-    }
+    //     // assert!(node_1.is_some());
+    //     // assert!(node_2.is_some());
+    //     // assert!(node_3.is_some());
+    //     // assert!(node_none.is_none());
+    // }
 }

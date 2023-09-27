@@ -11,6 +11,24 @@ pub enum Owned {
     Color(Color),
 }
 
+impl<T: Into<Num>> From<T> for Owned {
+    fn from(val: T) -> Self {
+        Self::Num(val.into())
+    }
+}
+
+impl From<bool> for Owned {
+    fn from(val: bool) -> Self {
+        Self::Bool(val)
+    }
+}
+
+impl From<Color> for Owned {
+    fn from(val: Color) -> Self {
+        Self::Color(val)
+    }
+}
+
 impl TryFrom<Owned> for Color {
     type Error = ();
 
@@ -43,6 +61,8 @@ impl<'a> TryFrom<&'a Owned> for &'a u64 {
         }
     }
 }
+
+// TODO: add the rest of the types to TryFrom
 
 impl Display for Owned {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

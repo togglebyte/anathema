@@ -150,15 +150,16 @@ mod test {
 
     #[test]
     fn eval_for() {
-        let mut scope = Scope::new(None);
-        let expr = for_expression("item", [1, 2, 3], [expression("test", None, [], [])]);
-        let node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
-        assert!(matches!(
-            node,
-            Node {
-                kind: NodeKind::Loop { .. },
-                ..
-            }
-        ));
+        panic!()
+        // let mut scope = Scope::new(None);
+        // let expr = for_expression("item", [1, 2, 3], [expression("test", None, [], [])]);
+        // let node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
+        // assert!(matches!(
+        //     node,
+        //     Node {
+        //         kind: NodeKind::Loop { .. },
+        //         ..
+        //     }
+        // ));
     }
 }
