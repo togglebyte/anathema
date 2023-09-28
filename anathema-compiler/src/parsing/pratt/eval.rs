@@ -67,6 +67,7 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                     _ => unreachable!(),
                 }
             }
+            Operator::EqualEqual => ValueExpr::Equality(eval(*lhs, consts).into(), eval(*rhs, consts).into()),
             _ => panic!(),
         },
         Expr::Unary { op, expr } => {

@@ -20,6 +20,7 @@ pub enum ValueExpr {
     Negative(Box<ValueExpr>),
     And(Box<ValueExpr>, Box<ValueExpr>),
     Or(Box<ValueExpr>, Box<ValueExpr>),
+    Equality(Box<ValueExpr>, Box<ValueExpr>),
 
     Ident(Rc<str>),
     Dot(Box<ValueExpr>, Box<ValueExpr>),
@@ -61,6 +62,7 @@ impl Display for ValueExpr {
             }
             Self::And(lhs, rhs) => write!(f, "{lhs} && {rhs}"),
             Self::Or(lhs, rhs) => write!(f, "{lhs} || {rhs}"),
+            Self::Equality(lhs, rhs) => write!(f, "{lhs} == {rhs}"),
             Self::Invalid => write!(f, "<invalid>"),
         }
     }
@@ -80,6 +82,36 @@ impl ValueExpr {
     // Value from expression = borrow
     // Value from scope = own
 
+    fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
+        match self.eval_value(context, node_id) {
+            Some(ValueRef::Owned(Owned::Bool(true))) => true,
+            _ => false,
+        }
+    }
+
+    fn eval_number(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Num> {
+        match self.eval_value(context, node_id)? {
+            ValueRef::Owned(Owned::Num(num)) => Some(num),
+            _ => None,
+        }
+    }
+
+
+    fn eval_path(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
+        match self {
+            _ => panic!("not done here!")
+            // Self::Ident(Path::from(&**path)) => {
+            //     // Is the ident a path or a value?
+            //     context.is_this_a_path?
+            // }
+            // Self::Index(lhs, index) => {
+            //     // let lhs = lhs.eval_path(context, node_id)?;
+            //     // let index = index.eval_number(context, node_id)?;
+            //     // Some(lhs.into().compose(index))
+            // }
+        }
+    }
+
     pub fn eval_value<'a, 'val>(
         &'a self,
         context: &Context<'a, 'val>,
@@ -87,44 +119,70 @@ impl ValueExpr {
     ) -> Option<ValueRef<'_>> {
         match self {
             Self::Value(Value::Owned(value)) => Some(ValueRef::Owned(*value)),
-            Self::Ident(path) => context.lookup(&Path::from(&**path), node_id),
+            Self::Not(expr) => {
+                let b = expr.eval_bool(context, node_id);
+                Some(ValueRef::Owned((!b).into()))
+            }
+            Self::Equality(lhs, rhs) => {
+                let lhs = lhs.eval_value(context, node_id)?;
+                let rhs = rhs.eval_value(context, node_id)?;
+                Some(ValueRef::Owned((lhs == rhs).into()))
+            },
+
+            // -----------------------------------------------------------------------------
+            //   - Maths -
+            // -----------------------------------------------------------------------------
             Self::Add(lhs, rhs) => {
-                let ValueRef::Owned(Owned::Num(lhs)) = lhs.eval_value(context, node_id)? else {
-                    return None; // TODO: this should be invalid value
-                };
-                let ValueRef::Owned(Owned::Num(rhs)) = rhs.eval_value(context, node_id)? else {
-                    return None; // TODO: this should be invalid value
-                };
+                let lhs = lhs.eval_number(context, node_id)?;
+                let rhs = rhs.eval_number(context, node_id)?;
                 Some(ValueRef::Owned(Owned::Num(lhs + rhs)))
             }
             Self::Sub(lhs, rhs) => {
-                let ValueRef::Owned(Owned::Num(lhs)) = lhs.eval_value(context, node_id)? else {
-                    return None; // TODO: this should be invalid value
-                };
-                let ValueRef::Owned(Owned::Num(rhs)) = rhs.eval_value(context, node_id)? else {
-                    return None; // TODO: this should be invalid value
-                };
+                let lhs = lhs.eval_number(context, node_id)?;
+                let rhs = rhs.eval_number(context, node_id)?;
                 Some(ValueRef::Owned(Owned::Num(lhs - rhs)))
             }
+            Self::Mul(lhs, rhs) => {
+                let lhs = lhs.eval_number(context, node_id)?;
+                let rhs = rhs.eval_number(context, node_id)?;
+                Some(ValueRef::Owned(Owned::Num(lhs * rhs)))
+            }
+            Self::Mod(lhs, rhs) => {
+                let lhs = lhs.eval_number(context, node_id)?;
+                let rhs = rhs.eval_number(context, node_id)?;
+                Some(ValueRef::Owned(Owned::Num(lhs % rhs)))
+            }
+            Self::Div(lhs, rhs) => {
+                let lhs = lhs.eval_number(context, node_id)?;
+                let rhs = rhs.eval_number(context, node_id)?;
+                if rhs.is_zero() {
+                    return None;
+                }
+                Some(ValueRef::Owned(Owned::Num(lhs / rhs)))
+            }
             Self::Negative(expr) => {
-                let ValueRef::Owned(Owned::Num(num)) = expr.eval_value(context, node_id)? else {
-                    return None; // TODO: this should be invalid value
-                };
+                let num = expr.eval_number(context, node_id)?;
                 Some(ValueRef::Owned(Owned::Num(num.to_negative())))
             }
-            // Self::Dot(lhs, rhs) => {
-            //     let lhs = lhs.eval_path(context);
-            //     let rhs = rhs.eval_path(context);
-            //     let path = lhs.compose(rhs);
-            //     context.lookup(&path)
-            // }
-            // Self::Index(lhs, index) => {
-            //     let lhs = lhs.eval_path(context);
-            //     let index = index.eval_num(context);
-            //     let path = lhs.compose(index);
-            //     context.lookup(&path)
-            // }
-            // Self::Value(val) => val,
+
+            // -----------------------------------------------------------------------------
+            //   - Paths -
+            // -----------------------------------------------------------------------------
+            Self::Ident(path) => context.lookup(&Path::from(&**path), node_id),
+            Self::Dot(lhs, rhs) => {
+                panic!("not done");
+                // let lhs = lhs.eval_path(context);
+                // let rhs = rhs.eval_path(context);
+                // let path = lhs.compose(rhs);
+                // context.lookup(&path)
+            }
+            Self::Index(lhs, index) => {
+                panic!("not quite there...");
+                // let lhs = lhs.eval_path(context);
+                // let index = index.eval_num(context);
+                // let path = lhs.compose(index);
+                // context.lookup(&path)
+            }
             // _ => Invalid
             _ => panic!(),
         }
@@ -224,56 +282,63 @@ mod test {
     use std::ops::Deref;
 
     use super::*;
-    use crate::testing::{add, ident, inum, neg, sub, unum, TestState};
+    use crate::testing::{add, boolean, div, ident, inum, modulo, mul, neg, sub, unum, TestState, not, eq, dot};
     use crate::{List, Scope, State, StateValue};
 
-    fn something(expr: Box<ValueExpr>, scope: &Scope<'_>, expected: ValueRef<'_>) {
-        let state = TestState::new();
-        let context = Context::new(&state, scope);
-        let node_id = 0.into();
-
-        let Some(value) = expr.eval_value(&context, Some(&node_id)) else {
-            panic!("in here");
-        };
-        assert_eq!(value, expected);
-    }
-
-    fn something_owned(expr: Box<ValueExpr>, scope: &Scope<'_>, expected: impl Into<Owned>) {
-        let state = TestState::new();
-        let context = Context::new(&state, scope);
-        let node_id = 0.into();
-
-        let Some(value) = expr.eval_value(&context, Some(&node_id)) else {
-            panic!("in here");
-        };
-        assert_eq!(value, ValueRef::Owned(expected.into()));
-    }
-
     #[test]
-    fn test_add_dyn() {
+    fn add_dyn() {
         let expr = add(neg(inum(1)), neg(unum(2)));
         expr.test_eval([("counter", 2.into())]).expect_owned(-3);
     }
 
     #[test]
-    fn test_add_static() {
+    fn add_static() {
         let expr = add(neg(inum(1)), neg(unum(2)));
         expr.test_eval([]).expect_owned(-3);
     }
 
     #[test]
-    fn test_sub_static() {
+    fn sub_static() {
         let expr = sub(unum(10), unum(2));
         expr.test_eval([]).expect_owned(8u8);
     }
 
     #[test]
-    fn something_list() {
-        // expr.eval_collection();
+    fn mul_static() {
+        let expr = mul(unum(10), unum(2));
+        expr.test_eval([]).expect_owned(20u8);
     }
 
     #[test]
-    fn something_bool() {
-        // expr.eval_bool();
+    fn div_static() {
+        let expr = div(unum(10), unum(2));
+        expr.test_eval([]).expect_owned(5u8);
+    }
+
+    #[test]
+    fn mod_static() {
+        let expr = modulo(unum(5), unum(3));
+        expr.test_eval([]).expect_owned(2u8);
+    }
+
+    #[test]
+    fn bools() {
+        let expr = ident("is_false");
+        expr.test_eval([("is_false", false.into())]).expect_owned(false);
+
+        let expr = not(ident("is_false"));
+        expr.test_eval([("is_false", false.into())]).expect_owned(true);
+
+        let expr = eq(ident("one"), ident("one"));
+        expr.test_eval([("one", 1.into())]).expect_owned(true);
+
+        let expr = not(eq(ident("one"), ident("two")));
+        expr.test_eval([("one", 1.into()), ("two", 2.into())]).expect_owned(true);
+    }
+
+    #[test]
+    fn dot_eval() {
+        let expr = dot(ident("a"), ident("b"));
+        // expr.test_eval([("one", 1.into()), ("two", 2.into())]).expect_owned(true);
     }
 }

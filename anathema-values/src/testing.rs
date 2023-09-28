@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::{
     Context, List, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, Value, ValueExpr,
-    ValueRef,
+    ValueRef, Map,
 };
 
 #[derive(Debug)]
@@ -11,10 +11,41 @@ struct Inner {
     names: List<String>,
 }
 
+impl Inner {
+    pub fn new() -> Self {
+        Self {
+            name: StateValue::new("Fiddle McStick".into()),
+            names: List::empty(),
+        }
+    }
+}
+
+impl State for Inner {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+        match key {
+            Path::Key(s) => match s.as_str() {
+                "name" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.name.subscribe(node_id);
+                    }
+                    Some((&self.name).into())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<crate::Collection> {
+        todo!()
+    }
+}
+
 #[derive(Debug)]
 pub struct TestState {
     name: StateValue<String>,
     counter: StateValue<usize>,
+    inner: Inner,
 }
 
 impl TestState {
@@ -22,6 +53,7 @@ impl TestState {
         Self {
             name: StateValue::new("Dirk Gently".to_string()),
             counter: StateValue::new(0),
+            inner: Inner::new(),
         }
     }
 }
@@ -44,6 +76,12 @@ impl State for TestState {
                 }
                 _ => None,
             },
+            Path::Composite(lhs, rhs) => {
+                match &**lhs {
+                    Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
@@ -132,7 +170,15 @@ pub fn dot(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
 //   - Maths -
 // -----------------------------------------------------------------------------
 pub fn mul(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
-    ValueExpr::Sub(lhs, rhs).into()
+    ValueExpr::Mul(lhs, rhs).into()
+}
+
+pub fn div(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Div(lhs, rhs).into()
+}
+
+pub fn modulo(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Mod(lhs, rhs).into()
 }
 
 pub fn sub(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
@@ -154,7 +200,7 @@ pub fn inum(int: i64) -> Box<ValueExpr> {
     ValueExpr::Value(Value::Owned(Owned::from(int))).into()
 }
 
-pub fn bool(b: bool) -> Box<ValueExpr> {
+pub fn boolean(b: bool) -> Box<ValueExpr> {
     ValueExpr::Value(Value::Owned(Owned::from(b))).into()
 }
 
@@ -171,4 +217,12 @@ pub fn list<E: Into<ValueExpr>>(input: impl IntoIterator<Item = E>) -> Box<Value
 // -----------------------------------------------------------------------------
 pub fn neg(expr: Box<ValueExpr>) -> Box<ValueExpr> {
     ValueExpr::Negative(expr).into()
+}
+
+pub fn not(expr: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Not(expr).into()
+}
+
+pub fn eq(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Equality(lhs, rhs).into()
 }

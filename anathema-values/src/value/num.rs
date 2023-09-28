@@ -13,6 +13,15 @@ impl Num {
         Self::Signed(-self.to_i128() as i64)
     }
 
+    pub fn is_zero(&self) -> bool {
+        match self {
+            Self::Signed(0) 
+            | Self::Unsigned(0)
+            | Self::Float(0.0) => true,
+            _  => false
+        }
+    }
+
     fn to_i128(self) -> i128 {
         match self {
             Self::Signed(num) => num as i128,

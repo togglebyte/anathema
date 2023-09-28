@@ -209,4 +209,15 @@ mod test {
         let name: &str = ctx.attribute("name", id.as_ref(), &attributes).unwrap();
         assert_eq!("Dirk Gently", name);
     }
+
+    #[test]
+    fn context_lookup() {
+        let state = TestState::new();
+        let mut scope = Scope::new(None);
+        let context = Context::new(&state, &scope);
+
+        let path = Path::from("inner").compose("name");
+        let value = context.lookup(&path, None).unwrap();
+        panic!("{value:#?}");
+    }
 }
