@@ -1,8 +1,6 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_values::{ScopeValue, ValueExpr};
-use anathema_widget_core::generator::{
-    Attributes, ControlFlow, Else, Expression, If, Loop, SingleNode,
-};
+use anathema_values::{Attributes, ScopeValue, ValueExpr};
+use anathema_widget_core::generator::{ControlFlow, Else, Expression, If, Loop, SingleNode};
 
 use crate::error::Result;
 

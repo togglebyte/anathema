@@ -1,6 +1,5 @@
 use anathema_render::{ScreenPos, Style};
-use anathema_values::{Context, NodeId};
-use generator::Attributes;
+use anathema_values::{Attributes, Context, NodeId};
 
 pub mod contexts;
 pub mod error;

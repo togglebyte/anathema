@@ -1,28 +1,36 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::{Context, NodeId, Num, Owned, Path, Scope, ScopeValue, State, Value, ValueRef};
+use crate::{
+    Collection, Context, NodeId, Num, Owned, Path, Scope, ScopeValue, State, Value, ValueRef,
+};
 
+pub enum OrPath<T> {
+    Val(T),
+    Path(Path),
+    None,
+}
+
+// TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
     Value(Value),
 
     Not(Box<ValueExpr>),
     Negative(Box<ValueExpr>),
+    And(Box<ValueExpr>, Box<ValueExpr>),
+    Or(Box<ValueExpr>, Box<ValueExpr>),
 
     Ident(Rc<str>),
-    List(Vec<ValueExpr>),
-    Key(Box<ValueExpr>),
+    Dot(Box<ValueExpr>, Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
+
+    List(Rc<[ValueExpr]>),
     Add(Box<ValueExpr>, Box<ValueExpr>),
     Sub(Box<ValueExpr>, Box<ValueExpr>),
     Div(Box<ValueExpr>, Box<ValueExpr>),
     Mul(Box<ValueExpr>, Box<ValueExpr>),
-    And(Box<ValueExpr>, Box<ValueExpr>),
     Mod(Box<ValueExpr>, Box<ValueExpr>),
-    Or(Box<ValueExpr>, Box<ValueExpr>),
-
-    Dot(Box<ValueExpr>, Box<ValueExpr>),
 
     Invalid,
 }
@@ -32,7 +40,6 @@ impl Display for ValueExpr {
         match self {
             Self::Value(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
-            Self::Key(n) => write!(f, "{n}"),
             Self::Index(lhs, idx) => write!(f, "{lhs}[{idx}]"),
             Self::Dot(lhs, rhs) => write!(f, "{lhs}.{rhs}"),
             Self::Not(expr) => write!(f, "!{expr}"),
@@ -42,7 +49,19 @@ impl Display for ValueExpr {
             Self::Mul(lhs, rhs) => write!(f, "{lhs} * {rhs}"),
             Self::Div(lhs, rhs) => write!(f, "{lhs} / {rhs}"),
             Self::Mod(lhs, rhs) => write!(f, "{lhs} % {rhs}"),
-            _ => panic!("{self:#?}"),
+            Self::List(list) => {
+                write!(
+                    f,
+                    "[{}]",
+                    list.iter()
+                        .map(|val| val.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
+            Self::And(lhs, rhs) => write!(f, "{lhs} && {rhs}"),
+            Self::Or(lhs, rhs) => write!(f, "{lhs} || {rhs}"),
+            Self::Invalid => write!(f, "<invalid>"),
         }
     }
 }
@@ -56,46 +75,63 @@ where
     }
 }
 
-// ItemState {
-//     name: Value<String>,
-//     age: Value<usize>,
-// }
-//
-// RootState {
-//    collection: List<ItemState>,
-//    root_num: Value<u32>,
-// }
-//
-// Template
-// --------
-//
-// // scope value `item` from collection, subscribe for-loop to `collection`
-// for item in collection
-//     ValueExpr::Add(
-//         ValueExpr::Val(Dyn("item", "age")), ValueExpr::Sub(
-//             Dyn("root_num"),
-//             Static(1)
-//         )
-//     )
-//     text "{{ item.age + root_num - 1 }}"
-
-// y = [
-//    [1, 2, 3],
-//    [4, some_ident, 5],
-// ]
-//
-// sausages = [1, 2, 3, 4, 5, 6]
-// some_ident = 1
-//
-// for x in y // x = [4, some_ident, 5]
-//     for a in x
-//         text sausages[a]
-//
-// a -> some_ident -> 1 // this means we are storing `a` as an expression inside a `Scope`
-// sausages[1] -> 2
-
 impl ValueExpr {
-    pub fn eval<'val, T: 'val>(&'val self, context: &Context<'_, 'val>, node_id: Option<&NodeId>) -> Option<&'val T>
+
+    // Value from state = borrow
+    // Value from expression = borrow
+    // Value from scope = own
+
+    pub fn eval_value(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> () {
+        match self {
+            Self::Ident(path) => context.lookup(&path.into()),
+            Self::Dot(lhs, rhs) => {
+                let lhs = lhs.eval_path(context);
+                let rhs = rhs.eval_path(context);
+                let path = lhs.compose(rhs);
+                context.lookup(&path)
+            }
+            Self::Index(lhs, index) => {
+                let lhs = lhs.eval_path(context);
+                let index = index.eval_num(context);
+                let path = lhs.compose(index);
+                context.lookup(&path)
+            }
+            Self::Value(val) => val,
+            _ => Invalid
+        }
+    }
+
+    // The context is required here:
+    // for x in list
+    //     text x + 1
+    //
+    // This has to resolve `x` as a scoped value,
+    // and then evalute the expression x + 1
+    pub fn value(&self, context: &Context<'_, '_>) -> OrPath<&Value> {
+        match self {
+            Self::Value(val) => OrPath::Val(val),
+            Self::Ident(key) => OrPath::Path(Path::from(&**key)),
+            // Self::Add(lhs, rhs) => eval_add(lhs, rhs, context),
+            // Self::Sub(lhs, rhs) => eval_add(lhs, rhs, context),
+
+            // a.b(1, 2, false)[1][2]
+
+            // Self::Index(lhs, index) => OrPath::Path(Path::Index(&**key)),
+            _ => {
+                panic!()
+            }
+        }
+    }
+
+    pub fn list(&self) -> OrPath<Rc<[ValueExpr]>> {
+        panic!()
+    }
+
+    pub fn eval<'val, T: 'val + ?Sized>(
+        &'val self,
+        context: &Context<'_, 'val>,
+        node_id: Option<&NodeId>,
+    ) -> Option<&'val T>
     where
         for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,
@@ -108,6 +144,26 @@ impl ValueExpr {
             }
             _ => panic!(),
         }
+    }
+
+    pub fn eval_collection(
+        &self,
+        context: &Context<'_, '_>,
+        node_id: Option<&NodeId>,
+    ) -> Collection {
+        panic!()
+        // match self {
+        //     Self::List(list) => Collection::Rc(list.clone()),
+        //     _ => {
+
+        //         let Some(path) = eval_path(self, context, node_id) else {
+        //             return Collection::Empty;
+        //         };
+
+        //         context.resolve(path);
+        //         panic!()
+        //     }
+        // }
     }
 }
 
@@ -139,139 +195,24 @@ mod test {
     use std::ops::Deref;
 
     use super::*;
+    use crate::testing::{unum, add, ident, TestState};
     use crate::{List, Scope, State, StateValue};
 
-    struct Inner {
-        name: StateValue<String>,
-        names: List<String>,
-    }
+    #[test]
+    fn test_add_dyn() {
+        let state = TestState::new();
+        let mut scope = Scope::new(None);
+        let context = Context::new(&state, &mut scope);
+        let expr = add(ident("counter"), unum(1));
+        expr.eval_value(&context);
 
-    impl State for Inner {
-        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
-            match key {
-                Path::Key(key) if key == "name" => {
-                    let name: &str = &*self.name;
-                    return Some(name.into());
-                }
-                Path::Composite(lhs, rhs) => {
-                    let lhs: &Path = &*lhs;
-                    match lhs {
-                        Path::Key(key) if key == "names" => return self.names.lookup(rhs, node_id),
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
-
-            None
-        }
-
-        fn get_collection(
-            &self,
-            key: &Path,
-            node_id: Option<&NodeId>,
-        ) -> Option<crate::Collection> {
-            None
-        }
-    }
-
-    struct TheState {
-        counter: StateValue<usize>,
-        some_ident: StateValue<String>,
-        inner: Inner,
-    }
-
-    impl State for TheState {
-        fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
-            match key {
-                Path::Key(key) if key == "counter" => {
-                    let num: usize = *self.counter;
-                    Some(ValueRef::Owned(num.into()))
-                }
-                Path::Key(key) if key == "some_ident" => {
-                    let s: &str = &*self.some_ident;
-                    Some(ValueRef::Str(s))
-                }
-                Path::Composite(lhs, rhs) => {
-                    let lhs: &Path = &*lhs;
-                    if let Path::Key(key) = lhs {
-                        if key == "inner" {
-                            return self.inner.get(rhs, node_id);
-                        }
-                    }
-                    None
-                }
-                _ => None,
-            }
-        }
-
-        fn get_collection(
-            &self,
-            key: &Path,
-            node_id: Option<&NodeId>,
-        ) -> Option<crate::Collection> {
-            None
-        }
+        // expr.eval_collection();
+        // expr.eval_bool();
     }
 
     #[test]
-    fn resolve_something() {
-        // let mut scope = Scope::new(None);
-        // scope.scope(
-        //     "a".into(),
-        //     Cow::Owned(ScopeValue::Expr(ValueExpr::Ident("some_ident".into()))),
-        // );
-
-        // scope.scope(
-        //     "some_ident".into(),
-        //     Cow::Owned(ScopeValue::Static(Value::Num(Num::Unsigned(1)))),
-        // );
-
-        // // for x in y // x = [4, some_ident, 5]
-        // //     for a in x
-        // //         text sausages[a]
-
-        // let mut state = TheState {
-        //     counter: StateValue::new(123),
-        //     some_ident: StateValue::new("Hello this is amazing!".to_string()),
-        //     inner: Inner {
-        //         name: StateValue::new("Fin the human".to_string()),
-        //         names: List::new(vec![
-        //             StateValue::new("First".to_string()),
-        //             StateValue::new("Second".into()),
-        //         ]),
-        //     },
-        // };
-
-        // // let value_expr = ValueExpr::Ident("counter".into());
-        // let node_id = NodeId::new(123);
-
-        // // let val = value_expr
-        // //     .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
-        // //     .unwrap();
-
-        // // panic!("{val:#?}");
-        // // assert_eq!(val, "123");
-
-        // // inner.name
-        // // let value_expr = ValueExpr::Dot(
-        // //     ValueExpr::Ident("inner".into()).into(),
-        // //     ValueExpr::Index("name".into()).into(),
-        // // );
-
-        // let value_expr = ValueExpr::Dot(
-        //     ValueExpr::Ident("inner".into()).into(),
-        //     ValueExpr::Index(
-        //         ValueExpr::Ident("names".into()).into(),
-        //         ValueExpr::Ident("a".into()).into(),
-        //     )
-        //     .into(),
-        // );
-
-        // let val = value_expr
-        //     .eval(&mut Context::new(&mut state, &mut scope), Some(&node_id))
-        //     .unwrap();
-
-        // panic!("If you can read this things are pretty good: {val:#?}");
+    fn test_add_static() {
+        // let expr = add(
+        // assert_eq!(expected, actual);
     }
 }

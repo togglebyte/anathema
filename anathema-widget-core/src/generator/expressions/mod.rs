@@ -1,13 +1,12 @@
 use std::rc::Rc;
 
 use anathema_render::Size;
-use anathema_values::{Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr};
+use anathema_values::{Attributes, Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr};
 
 pub use self::controlflow::{Else, If};
 use super::nodes::LoopNode;
 use crate::error::Result;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
-use crate::generator::Attributes;
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
 
 mod controlflow;
@@ -24,30 +23,25 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval(&self, state: &dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
-        panic!()
-        // let context = Context::new(state, scope);
+    fn eval<'a: 'val, 'val>(&self, state: &'a dyn State, scope: &'a mut Scope<'val>, node_id: NodeId) -> Result<Node> {
+        let context = Context::new(state, scope);
 
-        // let widget = WidgetContainer {
-        //     background: context.attribute("background", Some(&node_id), &self.attributes),
-        //     display: context
-        //         .attribute("display", Some(&node_id), &self.attributes)
-        //         .unwrap_or(Display::Show),
-        //     padding: context
-        //         .attribute("padding", Some(&node_id), &self.attributes)
-        //         .unwrap_or(Padding::ZERO),
-        //     pos: Pos::ZERO,
-        //     size: Size::ZERO,
-        //     inner: Factory::exec(context, &self, &node_id)?,
-        //     node_id: node_id.clone(),
-        // };
+        let widget = WidgetContainer {
+            background: context.attribute("background", Some(&node_id), &self.attributes).map(|val| *val),
+            display: panic!(), // context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show),
+            padding: panic!(), // context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO),
+            pos: Pos::ZERO,
+            size: Size::ZERO,
+            inner: Factory::exec(context, &self, &node_id)?,
+            node_id: node_id.clone(),
+        };
 
-        // let node = Node {
-        //     kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
-        //     node_id,
-        // };
+        let node = Node {
+            kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
+            node_id,
+        };
 
-        // Ok(node)
+        Ok(node)
     }
 }
 
@@ -62,32 +56,32 @@ pub struct Loop {
 }
 
 impl Loop {
-    fn eval(&self, state: &dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
-        panic!()
-        // let collection: Collection =
-        //     match &self.collection {
-        //         ScopeValue::List(values) => Collection::Rc(values.clone()),
-        //         ScopeValue::Dyn(path) => scope
-        //             .lookup_list(path)
-        //             .map(Collection::Rc)
-        //             .unwrap_or_else(|| {
-        //                 state
-        //                     .get_collection(path, Some(&node_id))
-        //                     .unwrap_or(Collection::Empty)
-        //             }),
-        //         ScopeValue::Static(_) | ScopeValue::Invalid => Collection::Empty,
-        //     };
+    fn eval<'a: 'val, 'val>(&self, state: &'a dyn State, scope: &'a mut Scope<'val>, node_id: NodeId) -> Result<Node> {
+        let ctx = Context::new(state, scope);
+        let collection = self.collection.eval_collection(&ctx, Some(&node_id));
+            // match &self.collection {
+            //     ScopeValue::List(values) => Collection::Rc(values.clone()),
+            //     ScopeValue::Dyn(path) => scope
+            //         .lookup_list(path)
+            //         .map(Collection::Rc)
+            //         .unwrap_or_else(|| {
+            //             state
+            //                 .get_collection(path, Some(&node_id))
+            //                 .unwrap_or(Collection::Empty)
+            //         }),
+            //     ScopeValue::Static(_) | ScopeValue::Invalid => Collection::Empty,
+            // };
 
-        // let node = Node {
-        //     kind: NodeKind::Loop(LoopNode::new(
-        //         Nodes::new(self.body.clone(), node_id.child(0)),
-        //         self.binding.clone(),
-        //         collection,
-        //     )),
-        //     node_id,
-        // };
+        let node = Node {
+            kind: NodeKind::Loop(LoopNode::new(
+                Nodes::new(self.body.clone(), node_id.child(0)),
+                self.binding.clone(),
+                collection,
+            )),
+            node_id,
+        };
 
-        // Ok(node)
+        Ok(node)
     }
 }
 
@@ -119,10 +113,10 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub(crate) fn eval(
+    pub(crate) fn eval<'a: 'val, 'val>(
         &self,
-        state: &dyn State,
-        scope: &mut Scope,
+        state: &'a dyn State,
+        scope: &'a mut Scope<'a>,
         node_id: NodeId,
     ) -> Result<Node> {
         match self {

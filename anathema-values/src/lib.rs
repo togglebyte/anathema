@@ -22,6 +22,8 @@ mod state;
 mod value;
 mod value_expr;
 
+pub type Attributes = hashmap::HashMap<String, ValueExpr>;
+
 thread_local! {
     static DIRTY_NODES: RefCell<Vec<(NodeId, Change)>> = Default::default();
     static REMOVED_NODES: RefCell<Vec<NodeId>> = Default::default();

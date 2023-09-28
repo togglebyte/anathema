@@ -398,7 +398,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         let value_id = match values.len() {
             0 => panic!("invalid state"),
             1 => self.consts.store_value(values.remove(0)),
-            _ => self.consts.store_value(ValueExpr::List(values)),
+            _ => self.consts.store_value(ValueExpr::List(values.into())),
         };
 
         self.next_state();

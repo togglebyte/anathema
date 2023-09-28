@@ -5,13 +5,13 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{Context, ScopeValue, State, remove_node, NodeId};
+use anathema_values::{Attributes, Context, ScopeValue, State, remove_node, NodeId};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::{Attributes, Nodes, SingleNode};
+use crate::generator::{Nodes, SingleNode};
 use crate::{Display, LocalPos, Padding, Pos, Region};
 
 // Layout:

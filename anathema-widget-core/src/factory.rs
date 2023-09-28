@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_values::{Context, State, NodeId, ValueExpr};
+use anathema_values::{Attributes, Context, State, NodeId, ValueExpr};
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
-use crate::generator::{SingleNode, Attributes};
+use crate::generator::SingleNode;
 use crate::widget::AnyWidget;
 use crate::WidgetContainer;
 

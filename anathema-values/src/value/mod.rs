@@ -1,6 +1,8 @@
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
+use anathema_render::Color;
+
 pub use self::num::Num;
 pub use self::owned::Owned;
 
@@ -79,7 +81,7 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
-            ValueRef::Owned(owned) => panic!(),//owned.try_into(),
+            ValueRef::Owned(owned) => panic!(), //owned.try_into(),
             _ => Err(())
         }
     }
@@ -103,6 +105,29 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a str {
         match value {
             ValueRef::Str(s) => Ok(s),
             _ => Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a Value> for &'a Color {
+    type Error = ();
+
+    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Owned(Owned::Color(col)) => Ok(col),
+            _ => Err(())
+        }
+    }
+}
+
+impl<'a> TryFrom<ValueRef<'a>> for &'a Color {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+        match value {
+            // ValueRef::Str(s) => Ok(s),
+            // _ => Err(())
+            _ => panic!(),
         }
     }
 }
