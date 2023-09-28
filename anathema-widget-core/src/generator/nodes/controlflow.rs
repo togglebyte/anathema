@@ -7,12 +7,12 @@ use crate::generator::Nodes;
 
 #[derive(Debug)]
 pub struct If {
-    pub cond: ScopeValue,
+    pub cond: (), //ScopeValue,
     pub body: Rc<[Expression]>,
 }
 
 #[derive(Debug)]
 pub struct Else {
-    pub cond: Option<ScopeValue>,
+    pub cond: Option<()>, //Option<ScopeValue>,
     pub body: Rc<[Expression]>,
 }

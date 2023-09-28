@@ -44,11 +44,10 @@ impl Collection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ScopeValue {
-    /// Static values are "cheap" to clone / copy.
-    Static(Value),
-    Dyn(Path),
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ScopeValue<'a> {
+    Static(ValueRef<'a>),
+    Dyn(&'a Path),
 }
 
 // TODO: do we even need this? - 2023-09-26
@@ -64,17 +63,10 @@ pub enum ScopeValue {
 //     }
 // }
 
-// TODO: add a testing flag for this
-impl From<String> for ScopeValue {
-    fn from(s: String) -> Self {
-        Self::Static(Value::Str(s.into()))
-    }
-}
-
 #[derive(Debug)]
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    inner: HashMap<Path, Cow<'a, ScopeValue>>,
+    inner: HashMap<Path, ScopeValue<'a>>,
 }
 
 impl<'a> Scope<'a> {
@@ -85,47 +77,21 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn scope(&mut self, path: Path, value: Cow<'a, ScopeValue>) {
-        self.inner.insert(path, value);
-    }
-
     pub fn reparent(&self) -> Scope<'_> {
         Scope::new(Some(self))
     }
 
-    // /// Scope a value for a collection.
-    // /// TODO: Review if the whole cloning business here makes sense
-    // pub fn scope_collection(&mut self, binding: Path, collection: &Collection, value_index: usize) {
-    //     let value = match collection {
-    //         Collection::Rc(list) => Cow::Owned(list[value_index].clone()),
-    //         Collection::State { path, .. } => {
-    //             let path = path.compose(value_index);
-    //             Cow::Owned(ScopeValue::Dyn(path))
-    //         }
-    //         Collection::Empty => return,
-    //     };
-
-    //     self.scope(binding, value);
-    // }
-
-    pub fn lookup(&self, path: &Path) -> Option<&ScopeValue> {
-        let value = self.inner
-            .get(path)
-            .map(Deref::deref)
-            .or_else(|| self.parent.and_then(|parent| parent.lookup(path)))?;
-
-        match value {
-            ScopeValue::Dyn(path) => self.lookup(path),
-            _ => Some(value),
-        }
+    pub fn scope(&mut self, path: Path, value: ScopeValue<'a>) {
+        self.inner.insert(path, value);
     }
 
-    // pub fn lookup_list(&self, path: &Path) -> Option<Rc<[ScopeValue]>> {
-    //     self.lookup(path).and_then(|value| match value {
-    //         ScopeValue::List(list) => Some(list.clone()),
-    //         _ => None,
-    //     })
-    // }
+    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
+        match self.inner.get(path) {
+            Some(ScopeValue::Static(value)) => Some(*value),
+            Some(ScopeValue::Dyn(path)) => self.lookup(path),
+            None => self.parent?.lookup(path),
+        }
+    }
 }
 
 pub struct Context<'a: 'val, 'val> {
@@ -134,55 +100,14 @@ pub struct Context<'a: 'val, 'val> {
 }
 
 impl<'a, 'val> Context<'a, 'val> {
-    pub fn new(state: &'a dyn State, scope: &'a mut Scope<'val>) -> Self {
+    pub fn new(state: &'a dyn State, scope: &'a Scope<'val>) -> Self {
         Self { state, scope }
     }
 
-    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&'a Value | ValueRef<'a>> {
-        match self.scope.lookup(&path) {
-            Some(ScopeValue::Dyn(path) => self.lookup(path, node_id),
-            Some(ScopeValue::Static(val)) => {
-            }
-            None => {
-                let xx = self.state.get(&path, node_id);
-            }
-        }
-        None
-    }
-
-    /// Resolve a value based on paths.
-    pub fn resolve(&self, value: &ScopeValue) -> ScopeValue {
-        // TODO toodles
-        panic!()
-        // match value {
-        //     ScopeValue::Static(_) => value.clone(),
-        //     ScopeValue::Dyn(path) => match self.scope.lookup(path) {
-        //         Some(lark @ ScopeValue::Dyn(p)) => self.resolve(lark),
-        //         Some(_) => value.clone(),
-        //         None => ScopeValue::Dyn(path.clone()),
-        //     },
-        //     ScopeValue::List(list) => {
-        //         let values = list.iter().map(|v| self.resolve(v)).collect();
-        //         ScopeValue::List(values)
-        //     }
-        // }
-    }
-
-
-    pub fn get_scope(&mut self, path: &Path, node_id: Option<&NodeId>) -> Option<Value> {
-        panic!()
-        // match self.scope.lookup(&path).cloned() {
-        //     Some(ScopeValue::Static(val)) => Some(val),
-        //     Some(val) => match val {
-        //         ScopeValue::Static(val) => Some(val),
-        //         ScopeValue::Expr(expr) => expr.eval(self, node_id),
-        //         ScopeValue::Invalid => panic!("lol"),
-        //     },
-        //     None => self
-        //         .state
-        //         .get(&path, node_id.into())
-        //         .map(|val| val.into_owned()),
-        // }
+    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'a>> {
+        self.scope
+            .lookup(path)
+            .or_else(|| self.state.get(path, node_id))
     }
 
     /// Try to find the value in the current scope,
@@ -193,18 +118,8 @@ impl<'a, 'val> Context<'a, 'val> {
         for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
-        panic!()
-        // match self.scope.lookup(&path) {
-        //     Some(val) => match val {
-        //         ScopeValue::Dyn(path) => self.get(path, node_id),
-        //         ScopeValue::Static(s) => <&T>::try_from(s).ok(),
-        //         ScopeValue::Invalid => None,
-        //     },
-        //     None => self
-        //         .state
-        //         .get(&path, node_id.into())
-        //         .and_then(|val| val.try_into().ok()),
-        // }
+        self.lookup(path, node_id)
+            .and_then(|value_ref| <&T>::try_from(value_ref).ok())
     }
 
     pub fn attribute<T: ?Sized>(
@@ -269,22 +184,17 @@ mod test {
     #[test]
     fn scope_value() {
         let mut scope = Scope::new(None);
-        scope.scope("value".into(), Cow::Owned("hello world".to_string().into()));
+        scope.scope("value".into(), ScopeValue::Static(ValueRef::Str("hello world")));
 
         let mut inner = scope.reparent();
 
-        inner.scope("value".into(), Cow::Owned("inner hello".to_string().into()));
-        let value = inner.lookup(&"value".into()).unwrap();
+        inner.scope("value".into(), ScopeValue::Static(ValueRef::Str("inner hello")));
+        let ValueRef::Str(lhs) = inner.lookup(&"value".into()).unwrap() else { panic!() };
 
-        let ScopeValue::Static(Value::Str(lhs)) = value else {
-            panic!()
-        };
-        assert_eq!(&**lhs, "inner hello");
+        assert_eq!(lhs, "inner hello");
 
-        let ScopeValue::Static(Value::Str(lhs)) = scope.lookup(&"value".into()).unwrap() else {
-            panic!()
-        };
-        assert_eq!(&**lhs, "hello world");
+        let ValueRef::Str(lhs) = scope.lookup(&"value".into()).unwrap() else { panic!() };
+        assert_eq!(lhs, "hello world");
     }
 
     #[test]
@@ -293,10 +203,7 @@ mod test {
         let mut root = Scope::new(None);
         let mut ctx = Context::new(&mut state, &mut root);
         let mut attributes = Attributes::new();
-        attributes.insert(
-            "name".to_string(),
-            ValueExpr::Ident("name".into()),
-        );
+        attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
 
         let id = Some(123.into());
         let name: &str = ctx.attribute("name", id.as_ref(), &attributes).unwrap();

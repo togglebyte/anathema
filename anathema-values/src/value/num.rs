@@ -8,6 +8,20 @@ pub enum Num {
     Float(f64),
 }
 
+impl Num {
+    pub fn to_negative(self) -> Self {
+        Self::Signed(-self.to_i128() as i64)
+    }
+
+    fn to_i128(self) -> i128 {
+        match self {
+            Self::Signed(num) => num as i128,
+            Self::Unsigned(num) => num as i128,
+            Self::Float(num) => panic!("nah, not this one"),
+        }
+    }
+}
+
 impl Display for Num {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

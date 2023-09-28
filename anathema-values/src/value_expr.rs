@@ -76,28 +76,57 @@ where
 }
 
 impl ValueExpr {
-
     // Value from state = borrow
     // Value from expression = borrow
     // Value from scope = own
 
-    pub fn eval_value(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> () {
+    pub fn eval_value<'a, 'val>(
+        &'a self,
+        context: &Context<'a, 'val>,
+        node_id: Option<&NodeId>,
+    ) -> Option<ValueRef<'_>> {
         match self {
-            Self::Ident(path) => context.lookup(&path.into()),
-            Self::Dot(lhs, rhs) => {
-                let lhs = lhs.eval_path(context);
-                let rhs = rhs.eval_path(context);
-                let path = lhs.compose(rhs);
-                context.lookup(&path)
+            Self::Value(Value::Owned(value)) => Some(ValueRef::Owned(*value)),
+            Self::Ident(path) => context.lookup(&Path::from(&**path), node_id),
+            Self::Add(lhs, rhs) => {
+                let ValueRef::Owned(Owned::Num(lhs)) = lhs.eval_value(context, node_id)? else {
+                    return None; // TODO: this should be invalid value
+                };
+                let ValueRef::Owned(Owned::Num(rhs)) = rhs.eval_value(context, node_id)? else {
+                    return None; // TODO: this should be invalid value
+                };
+                Some(ValueRef::Owned(Owned::Num(lhs + rhs)))
             }
-            Self::Index(lhs, index) => {
-                let lhs = lhs.eval_path(context);
-                let index = index.eval_num(context);
-                let path = lhs.compose(index);
-                context.lookup(&path)
+            Self::Sub(lhs, rhs) => {
+                let ValueRef::Owned(Owned::Num(lhs)) = lhs.eval_value(context, node_id)? else {
+                    return None; // TODO: this should be invalid value
+                };
+                let ValueRef::Owned(Owned::Num(rhs)) = rhs.eval_value(context, node_id)? else {
+                    return None; // TODO: this should be invalid value
+                };
+                Some(ValueRef::Owned(Owned::Num(lhs - rhs)))
             }
-            Self::Value(val) => val,
-            _ => Invalid
+            Self::Negative(expr) => {
+                let ValueRef::Owned(Owned::Num(num)) = expr.eval_value(context, node_id)? else {
+                    return None; // TODO: this should be invalid value
+                };
+                Some(ValueRef::Owned(Owned::Num(num.to_negative())))
+            }
+            // Self::Dot(lhs, rhs) => {
+            //     let lhs = lhs.eval_path(context);
+            //     let rhs = rhs.eval_path(context);
+            //     let path = lhs.compose(rhs);
+            //     context.lookup(&path)
+            // }
+            // Self::Index(lhs, index) => {
+            //     let lhs = lhs.eval_path(context);
+            //     let index = index.eval_num(context);
+            //     let path = lhs.compose(index);
+            //     context.lookup(&path)
+            // }
+            // Self::Value(val) => val,
+            // _ => Invalid
+            _ => panic!(),
         }
     }
 
@@ -195,24 +224,56 @@ mod test {
     use std::ops::Deref;
 
     use super::*;
-    use crate::testing::{unum, add, ident, TestState};
+    use crate::testing::{add, ident, inum, neg, sub, unum, TestState};
     use crate::{List, Scope, State, StateValue};
+
+    fn something(expr: Box<ValueExpr>, scope: &Scope<'_>, expected: ValueRef<'_>) {
+        let state = TestState::new();
+        let context = Context::new(&state, scope);
+        let node_id = 0.into();
+
+        let Some(value) = expr.eval_value(&context, Some(&node_id)) else {
+            panic!("in here");
+        };
+        assert_eq!(value, expected);
+    }
+
+    fn something_owned(expr: Box<ValueExpr>, scope: &Scope<'_>, expected: impl Into<Owned>) {
+        let state = TestState::new();
+        let context = Context::new(&state, scope);
+        let node_id = 0.into();
+
+        let Some(value) = expr.eval_value(&context, Some(&node_id)) else {
+            panic!("in here");
+        };
+        assert_eq!(value, ValueRef::Owned(expected.into()));
+    }
 
     #[test]
     fn test_add_dyn() {
-        let state = TestState::new();
-        let mut scope = Scope::new(None);
-        let context = Context::new(&state, &mut scope);
-        let expr = add(ident("counter"), unum(1));
-        expr.eval_value(&context);
-
-        // expr.eval_collection();
-        // expr.eval_bool();
+        let expr = add(neg(inum(1)), neg(unum(2)));
+        expr.test_eval([("counter", 2.into())]).expect_owned(-3);
     }
 
     #[test]
     fn test_add_static() {
-        // let expr = add(
-        // assert_eq!(expected, actual);
+        let expr = add(neg(inum(1)), neg(unum(2)));
+        expr.test_eval([]).expect_owned(-3);
+    }
+
+    #[test]
+    fn test_sub_static() {
+        let expr = sub(unum(10), unum(2));
+        expr.test_eval([]).expect_owned(8u8);
+    }
+
+    #[test]
+    fn something_list() {
+        // expr.eval_collection();
+    }
+
+    #[test]
+    fn something_bool() {
+        // expr.eval_bool();
     }
 }
