@@ -1,7 +1,8 @@
-use crate::map::Mappy;
+use crate::hashmap::HashMap;
+use crate::map::Map;
 use crate::{
-    Context, List, Map, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, Value,
-    ValueExpr, ValueRef,
+    Context, List, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, Value,
+    ValueExpr, ValueRef, Collection
 };
 
 #[derive(Debug)]
@@ -33,10 +34,6 @@ impl State for Inner {
             },
             _ => None,
         }
-    }
-
-    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<crate::Collection> {
-        todo!()
     }
 }
 
@@ -89,15 +86,11 @@ impl State for TestState {
             },
             Path::Composite(lhs, rhs) => match &**lhs {
                 Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
-                Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
+                Path::Key(key) if key == "generic_map" => self.generic_map.gets(rhs, node_id),
                 _ => None,
             },
             _ => None,
         }
-    }
-
-    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<crate::Collection> {
-        todo!()
     }
 }
 

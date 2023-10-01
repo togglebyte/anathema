@@ -7,6 +7,7 @@ use crate::Path;
 #[derive(Debug)]
 pub struct Map<T> {
     inner: HashMap<String, StateValue<T>>,
+    subscribers: RefCell<Vec<NodeId>>,
 }
 
 impl<T> Map<T> {
@@ -20,6 +21,7 @@ impl<T> Map<T> {
             .map(|(k, v)| (k.into(), StateValue::new(v)));
         Self {
             inner: HashMap::from_iter(inner),
+            subscribers: RefCell::new(vec![]),
         }
     }
 
@@ -34,18 +36,29 @@ impl<T> Map<T> {
     }
 }
 
-// -----------------------------------------------------------------------------
-//   - Mappy -
-// -----------------------------------------------------------------------------
-pub trait Mappy: Debug {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>>;
-}
-
-impl<T: Debug> Mappy for Map<T>
+impl<T: Debug> Collection for HashMap<String, StateValue<T>>
 where
     for<'a> ValueRef<'a>: From<&'a T>,
 {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn gets(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+        match path {
+            Path::Key(key) => {
+                let value = self.get(key)?;
+                if let Some(node_id) = node_id.cloned() {
+                    value.subscribe(node_id);
+                }
+                Some((&value.inner).into())
+            }
+            _ => None,
+        }
+    }
+}
+
+impl<T: Debug> Collection for Map<T>
+where
+    for<'a> ValueRef<'a>: From<&'a T>,
+{
+    fn gets(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
             Path::Key(_) => {
                 let value = self.lookup(key, node_id)?;
@@ -58,8 +71,9 @@ where
                 let map = self
                     .lookup(&**lhs, node_id)
                     .map(|value| (&value.inner).into())?;
+
                 match map {
-                    ValueRef::Map(map) => map.get(rhs, node_id),
+                    ValueRef::Map(map) => map.gets(rhs, node_id),
                     _ => None,
                 }
             }
@@ -74,11 +88,10 @@ mod test {
     use crate::testing::TestState;
 
     #[test]
-    fn create_map() {
+    fn access_map() {
         let state = TestState::new();
-        let path = Path::from("generic_map");
-        let path = path.compose("second");
-        let x = state.get(&path, None);
-        panic!("{x:#?}");
+        let path = Path::from("generic_map").compose("inner").compose("second");
+        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None).unwrap() else { panic!() };
+        assert_eq!(x.to_i128(), 2);
     }
 }

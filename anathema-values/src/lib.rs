@@ -2,17 +2,18 @@ use std::cell::RefCell;
 
 pub use self::id::NodeId;
 pub use self::list::List;
-pub use self::map::Map;
 pub use self::path::Path;
-pub use self::scope::{Collection, Context, Scope, ScopeValue};
+pub use self::scope::{Context, Scope, ScopeValue};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
 pub use self::value_expr::ValueExpr;
 pub use self::value::{Value, ValueRef, Num, Owned};
+pub use self::collection::Collection;
 
 pub mod hashmap;
 mod path;
 
+mod collection;
 mod id;
 mod list;
 mod map;

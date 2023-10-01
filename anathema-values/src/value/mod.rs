@@ -5,8 +5,9 @@ use anathema_render::Color;
 
 pub use self::num::Num;
 pub use self::owned::Owned;
-use crate::map::Mappy;
-use crate::{Map, StateValue};
+use crate::hashmap::HashMap;
+use crate::map::Map;
+use crate::{Collection, StateValue};
 
 mod num;
 mod owned;
@@ -17,7 +18,7 @@ mod owned;
 #[derive(Debug, Copy, Clone)]
 pub enum ValueRef<'a> {
     Str(&'a str),
-    Map(&'a dyn Mappy),
+    Map(&'a dyn Collection),
     Owned(Owned),
 }
 
@@ -29,6 +30,15 @@ where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
     fn from(value: &'a Map<T>) -> Self {
+        Self::Map(value)
+    }
+}
+
+impl<'a, T: Debug> From<&'a HashMap<String, StateValue<T>>> for ValueRef<'a>
+where
+    for<'b> ValueRef<'b>: From<&'b T>,
+{
+    fn from(value: &'a HashMap<String, StateValue<T>>) -> Self {
         Self::Map(value)
     }
 }

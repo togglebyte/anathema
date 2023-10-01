@@ -11,12 +11,12 @@ use crate::{WidgetContainer, contexts::LayoutCtx};
 pub(crate) struct LoopNode {
     pub(super) body: Nodes,
     binding: Path,
-    pub(super) collection: Collection,
+    pub(super) collection: (),
     pub(super) value_index: usize,
 }
 
 impl LoopNode {
-    pub(crate) fn new(body: Nodes, binding: Path, collection: Collection) -> Self {
+    pub(crate) fn new(body: Nodes, binding: Path, collection: ()) -> Self {
         Self {
             body,
             binding,
@@ -46,16 +46,18 @@ impl LoopNode {
     }
 
     pub(super) fn remove(&mut self, index: usize) {
-        self.collection.remove();
-        if index >= self.body.inner.len() {
-            return;
-        }
-        self.value_index -= 1;
-        self.body.inner.remove(index);
+        panic!()
+        // self.collection.remove();
+        // if index >= self.body.inner.len() {
+        //     return;
+        // }
+        // self.value_index -= 1;
+        // self.body.inner.remove(index);
     }
 
     pub(super) fn add(&mut self) {
-        self.collection.add();
+        panic!()
+        // self.collection.add();
         // self.body.next_expr()
     }
 

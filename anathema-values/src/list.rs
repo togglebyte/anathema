@@ -41,21 +41,6 @@ impl<T> List<T> {
         Some(value.into())
     }
 
-    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<ValueRef<'_>>
-    where
-        T: State,
-    {
-        let Path::Composite(lhs, rhs) = key.deref() else {
-            return None;
-        };
-        let Path::Index(index) = lhs.deref() else {
-            return None;
-        };
-        self.inner
-            .get(*index)
-            .and_then(|val| val.inner.get(rhs, Some(node_id)))
-    }
-
     pub fn pop(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop()?;
         let index = self.inner.len();
@@ -95,6 +80,35 @@ impl<T> From<Vec<T>> for List<T> {
     fn from(value: Vec<T>) -> Self {
         let inner = value.into_iter().map(StateValue::new).collect();
         Self::new(inner)
+    }
+}
+
+impl<T: Debug> Collection for Map<T>
+where
+    for<'a> ValueRef<'a>: From<&'a T>,
+{
+    fn gets(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+        match key {
+            _ => panic!("this is the next thing to do")
+            // Path::Index(_) => {
+            //     let value = self.lookup(key, node_id)?;
+            //     if let Some(node_id) = node_id.cloned() {
+            //         value.subscribe(node_id);
+            //     }
+            //     Some((&value.inner).into())
+            // }
+            // Path::Composite(lhs, rhs) => {
+            //     let map = self
+            //         .lookup(&**lhs, node_id)
+            //         .map(|value| (&value.inner).into())?;
+
+            //     match map {
+            //         ValueRef::Map(map) => map.gets(rhs, node_id),
+            //         _ => None,
+            //     }
+            // }
+            // Path::Index(_) => None,
+        }
     }
 }
 
