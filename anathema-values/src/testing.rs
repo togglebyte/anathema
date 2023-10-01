@@ -1,8 +1,7 @@
-use std::borrow::Cow;
-
+use crate::map::Mappy;
 use crate::{
-    Context, List, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, Value, ValueExpr,
-    ValueRef, Map,
+    Context, List, Map, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, Value,
+    ValueExpr, ValueRef,
 };
 
 #[derive(Debug)]
@@ -46,6 +45,7 @@ pub struct TestState {
     name: StateValue<String>,
     counter: StateValue<usize>,
     inner: Inner,
+    generic_map: StateValue<Map<Map<usize>>>,
 }
 
 impl TestState {
@@ -54,6 +54,10 @@ impl TestState {
             name: StateValue::new("Dirk Gently".to_string()),
             counter: StateValue::new(0),
             inner: Inner::new(),
+            generic_map: StateValue::new(Map::new([(
+                "inner",
+                Map::new([("first", 1), ("second", 2)]),
+            )])),
         }
     }
 }
@@ -74,14 +78,20 @@ impl State for TestState {
                     }
                     Some((&self.counter).into())
                 }
+                "generic_map" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.generic_map.subscribe(node_id);
+                    }
+                    let map = ValueRef::Map(&self.generic_map.inner);
+                    Some(map)
+                }
                 _ => None,
             },
-            Path::Composite(lhs, rhs) => {
-                match &**lhs {
-                    Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
-                    _ => None,
-                }
-            }
+            Path::Composite(lhs, rhs) => match &**lhs {
+                Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
+                Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -118,21 +128,20 @@ impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
 //   - Extend value expression -
 // -----------------------------------------------------------------------------
 pub struct TestExpression<'a, S> {
-    state: S,
-    scope: Scope<'a>,
+    pub state: S,
+    pub scope: Scope<'a>,
     expr: Box<ValueExpr>,
 }
 
 impl<'a, S: State> TestExpression<'a, S> {
-    pub fn expect(&'a self) -> ValueRef<'a> {
+    pub fn eval(&'a self) -> Option<ValueRef<'a>> {
         let context = Context::new(&self.state, &self.scope);
         let node_id = 0.into();
-        let value_ref = self.expr.eval_value(&context, Some(&node_id)).unwrap();
-        value_ref
+        self.expr.eval_value(&context, Some(&node_id))
     }
 
     pub fn expect_owned(self, expected: impl Into<Owned>) {
-        let ValueRef::Owned(owned) = self.expect() else {
+        let ValueRef::Owned(owned) = self.eval().unwrap() else {
             panic!("not an owned value")
         };
         assert_eq!(owned, expected.into())
@@ -140,7 +149,7 @@ impl<'a, S: State> TestExpression<'a, S> {
 }
 
 impl ValueExpr {
-    pub fn test_eval<'a>(self, scope: impl Into<Scope<'a>>) -> TestExpression<'a, TestState> {
+    pub fn test<'a>(self, scope: impl Into<Scope<'a>>) -> TestExpression<'a, TestState> {
         let scope = scope.into();
 
         TestExpression {

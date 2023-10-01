@@ -1,8 +1,7 @@
-use std::borrow::Cow;
 use std::ops::Deref;
 
 use super::*;
-use crate::{Path, Value};
+use crate::Path;
 
 #[derive(Debug)]
 pub struct List<T> {

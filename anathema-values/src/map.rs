@@ -1,9 +1,8 @@
-use std::borrow::Cow;
-use std::ops::Deref;
+use std::fmt::Debug;
 
 use super::*;
 use crate::hashmap::HashMap;
-use crate::{Path, Value};
+use crate::Path;
 
 #[derive(Debug)]
 pub struct Map<T> {
@@ -12,33 +11,74 @@ pub struct Map<T> {
 
 impl<T> Map<T> {
     pub fn empty() -> Self {
-        Self::new(HashMap::new())
+        Self::new::<String>(HashMap::new())
     }
 
-    pub fn new(inner: HashMap<String, StateValue<T>>) -> Self {
-        Self { inner }
+    pub fn new<K: Into<String>>(inner: impl IntoIterator<Item = (K, T)>) -> Self {
+        let inner = inner
+            .into_iter()
+            .map(|(k, v)| (k.into(), StateValue::new(v)));
+        Self {
+            inner: HashMap::from_iter(inner),
+        }
     }
 
-    pub fn lookup(&self, key: &Path) -> Option<Cow<'_, str>>
+    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&StateValue<T>>
     where
-        for<'a> &'a StateValue<T>: Into<Cow<'a, str>>,
+        for<'a> ValueRef<'a>: From<&'a T>,
     {
-        let Path::Key(key) = key else { return None };
-        self.inner.get(key).map(Into::into)
+        match path {
+            Path::Key(key) => self.inner.get(key),
+            _ => None,
+        }
     }
+}
 
-    pub fn lookup_state(&self, key: &Path, node_id: &NodeId) -> Option<ValueRef<'_>>
-    where
-        T: State,
-    {
-        let Path::Composite(lhs, rhs) = key else {
-            return None;
-        };
-        let Path::Key(key) = lhs.deref() else {
-            return None;
-        };
-        self.inner
-            .get(key)
-            .and_then(|val| val.inner.get(rhs, Some(node_id)))
+// -----------------------------------------------------------------------------
+//   - Mappy -
+// -----------------------------------------------------------------------------
+pub trait Mappy: Debug {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>>;
+}
+
+impl<T: Debug> Mappy for Map<T>
+where
+    for<'a> ValueRef<'a>: From<&'a T>,
+{
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+        match key {
+            Path::Key(_) => {
+                let value = self.lookup(key, node_id)?;
+                if let Some(node_id) = node_id.cloned() {
+                    value.subscribe(node_id);
+                }
+                Some((&value.inner).into())
+            }
+            Path::Composite(lhs, rhs) => {
+                let map = self
+                    .lookup(&**lhs, node_id)
+                    .map(|value| (&value.inner).into())?;
+                match map {
+                    ValueRef::Map(map) => map.get(rhs, node_id),
+                    _ => None,
+                }
+            }
+            Path::Index(_) => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::TestState;
+
+    #[test]
+    fn create_map() {
+        let state = TestState::new();
+        let path = Path::from("generic_map");
+        let path = path.compose("second");
+        let x = state.get(&path, None);
+        panic!("{x:#?}");
     }
 }

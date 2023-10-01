@@ -1,5 +1,5 @@
 use std::fmt::{self, Display};
-use std::ops::{Add, Deref, Div, Mul, Rem, Sub};
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Num {
@@ -22,7 +22,7 @@ impl Num {
         }
     }
 
-    fn to_i128(self) -> i128 {
+    pub(crate) fn to_i128(self) -> i128 {
         match self {
             Self::Signed(num) => num as i128,
             Self::Unsigned(num) => num as i128,

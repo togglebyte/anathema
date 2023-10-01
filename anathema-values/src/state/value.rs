@@ -1,9 +1,8 @@
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::{NodeId, Value, ValueRef, DIRTY_NODES, Owned};
+use crate::{NodeId, ValueRef, DIRTY_NODES, Owned};
 
 #[derive(Debug, PartialEq)]
 pub enum Change {

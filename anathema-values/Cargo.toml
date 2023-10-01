@@ -3,10 +3,6 @@ name = "anathema-values"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-debug = true
-debuginfo-level = 1
-
 [dependencies]
 anathema-render = { path = "../anathema-render" }
 parking_lot = { workspace = true }

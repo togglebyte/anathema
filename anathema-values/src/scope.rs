@@ -1,10 +1,4 @@
-use std::borrow::Cow;
-use std::fmt::{self, Display, Write};
-use std::ops::{Add, Deref, Div, Mul, Rem, Sub};
 use std::rc::Rc;
-use std::str::FromStr;
-
-use anathema_render::{Color, Size, Style};
 
 use crate::hashmap::HashMap;
 use crate::{Attributes, NodeId, Path, State, Value, ValueExpr, ValueRef};
@@ -44,7 +38,7 @@ impl Collection {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone)]
 pub enum ScopeValue<'a> {
     Static(ValueRef<'a>),
     Dyn(&'a Path),
@@ -184,16 +178,26 @@ mod test {
     #[test]
     fn scope_value() {
         let mut scope = Scope::new(None);
-        scope.scope("value".into(), ScopeValue::Static(ValueRef::Str("hello world")));
+        scope.scope(
+            "value".into(),
+            ScopeValue::Static(ValueRef::Str("hello world")),
+        );
 
         let mut inner = scope.reparent();
 
-        inner.scope("value".into(), ScopeValue::Static(ValueRef::Str("inner hello")));
-        let ValueRef::Str(lhs) = inner.lookup(&"value".into()).unwrap() else { panic!() };
+        inner.scope(
+            "value".into(),
+            ScopeValue::Static(ValueRef::Str("inner hello")),
+        );
+        let ValueRef::Str(lhs) = inner.lookup(&"value".into()).unwrap() else {
+            panic!()
+        };
 
         assert_eq!(lhs, "inner hello");
 
-        let ValueRef::Str(lhs) = scope.lookup(&"value".into()).unwrap() else { panic!() };
+        let ValueRef::Str(lhs) = scope.lookup(&"value".into()).unwrap() else {
+            panic!()
+        };
         assert_eq!(lhs, "hello world");
     }
 
