@@ -16,12 +16,12 @@ mod controlflow;
 mod loops;
 
 #[derive(Debug)]
-pub struct Node {
+pub struct Node<'e> {
     pub node_id: NodeId,
-    pub(crate) kind: NodeKind,
+    pub(crate) kind: NodeKind<'e>,
 }
 
-impl Node {
+impl<'e> Node<'e> {
     fn reset_cache(&mut self) {
         match &mut self.kind {
             NodeKind::Single(_, nodes) => nodes.reset_cache(),
@@ -54,28 +54,28 @@ impl Node {
 }
 
 #[derive(Debug)]
-pub(crate) enum NodeKind {
-    Single(WidgetContainer, Nodes),
-    Loop(LoopNode),
+pub(crate) enum NodeKind<'e> {
+    Single(WidgetContainer, Nodes<'e>),
+    Loop(LoopNode<'e>),
     ControlFlow {
         if_node: If,
         elses: Vec<Else>,
-        body: Nodes,
+        body: Nodes<'e>,
     },
 }
 
 #[derive(Debug)]
 // TODO: possibly optimise this by making nodes optional on the node
-pub struct Nodes {
-    expressions: Rc<[Expression]>,
-    inner: Vec<Node>,
+pub struct Nodes<'e> {
+    expressions: &'e [Expression],
+    inner: Vec<Node<'e>>,
     active_loop: Option<usize>,
     expr_index: usize,
     next_id: NodeId,
     cache_index: usize,
 }
 
-impl Nodes {
+impl<'e> Nodes<'e> {
     fn next_expr(&mut self) {
         if self.expr_index == self.expressions.len() {
             self.expr_index = 0;
@@ -103,7 +103,7 @@ impl Nodes {
         }
     }
 
-    pub(crate) fn new(expressions: Rc<[Expression]>, next_id: NodeId) -> Self {
+    pub(crate) fn new(expressions: &'e [Expression], next_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
@@ -159,83 +159,85 @@ impl Nodes {
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, Context<'_, '_>) -> Result<Size>,
     {
-        panic!()
-        // // Evaluate the active loop if there is one
-        // if let Some(node) = self.active_loop.map(|index| &mut self.inner[index]) {
-        //     match &mut node.kind {
-        //         NodeKind::Loop(loop_node) => match loop_node.body.next(state, scope, layout, f) {
-        //             res @ Some(_) => return res,
-        //             None if loop_node.scope(scope) => return self.next(state, scope, layout, f),
-        //             None => {
-        //                 self.active_loop.take();
-        //                 panic!("pop the scope?");
-        //                 // scope.pop();
-        //                 return self.next(state, scope, layout, f);
-        //             }
-        //         },
-        //         _ => unreachable!("only loop nodes are stored as active loops"),
-        //     }
-        // }
+        // // // Evaluate the active loop if there is one
+        // // if let Some(node) = self.active_loop.map(|index| &mut self.inner[index]) {
+        // //     match &mut node.kind {
+        // //         NodeKind::Loop(loop_node) => match loop_node.body.next(state, scope, layout, f) {
+        // //             res @ Some(_) => return res,
+        // //             None if loop_node.scope(scope) => return self.next(state, scope, layout, f),
+        // //             None => {
+        // //                 self.active_loop.take();
+        // //                 panic!("pop the scope?");
+        // //                 // scope.pop();
+        // //                 return self.next(state, scope, layout, f);
+        // //             }
+        // //         },
+        // //         _ => unreachable!("only loop nodes are stored as active loops"),
+        // //     }
+        // // }
 
-        // let mut node = match self.inner.get_mut(self.cache_index) {
-        //     Some(node) => {
-        //         self.cache_index += 1;
-        //         node
-        //     }
-        //     None => {
-        //         let expr = self.expressions.get(self.expr_index)?;
-        //         match expr.eval(state, scope, self.next_id.next()) {
-        //             Ok(node) => {
-        //                 self.expr_index += 1;
-        //                 let index = self.inner.len();
-        //                 self.inner.push(node);
-        //                 self.cache_index = self.inner.len();
-        //                 &mut self.inner[index]
-        //             }
-        //             Err(e) => return Some(Err(e)),
-        //         }
-        //     }
-        // };
+        let mut node = match self.inner.get_mut(self.cache_index) {
+            Some(node) => {
+                self.cache_index += 1;
+                node
+            }
+            None => {
+                let expr = self.expressions.get(self.expr_index)?;
+                match expr.eval(state, scope, self.next_id.next()) {
+                    Ok(node) => {
+                        self.expr_index += 1;
+                        let index = self.inner.len();
+                        self.inner.push(node);
+                        self.cache_index = self.inner.len();
+                        &mut self.inner[index]
+                    }
+                    Err(e) => return Some(Err(e)),
+                }
+            }
+        };
 
-        // match &mut node.kind {
-        //     NodeKind::Single(widget, nodes) => {
-        //         let data = Context::new(state, scope);
-        //         let res = f(widget, nodes, data);
-        //         Some(res)
-        //     }
-        //     NodeKind::Loop(loop_node) => {
-        //         // TODO: this shouldn't be here and in the `scope` call, it's a hack
-        //         if loop_node.value_index < loop_node.collection.len() {
-        //             // scope.push();
-        //             if loop_node.scope(scope) {
-        //                 self.active_loop = Some(self.cache_index - 1);
-        //             }
-        //         }
+        // TODO: next up: review this whole block.
+        //       This is all wonky
+        match &mut node.kind {
+            NodeKind::Single(widget, nodes) => {
+                let data = Context::new(state, scope);
+                let res = f(widget, nodes, data);
+                Some(res)
+            }
+            NodeKind::Loop(loop_node) => {
+                // TODO: this shouldn't be here and in the `scope` call, it's a hack
+                if loop_node.value_index < loop_node.collection.len() {
+                    // scope.push();
+                    if loop_node.scope(scope) {
+                        self.active_loop = Some(self.cache_index - 1);
+                    }
+                }
 
-        //         self.next(state, scope, layout, f)
-        //     }
-        //     NodeKind::ControlFlow { .. } => panic!(),
-        // }
+                self.next(state, scope, layout, f)
+            }
+            NodeKind::ControlFlow { .. } => panic!(),
+        }
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes)> + '_ {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)> + '_ {
         self.inner
             .iter_mut()
             .map(
-                |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer, &mut Nodes)>> {
+                |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)>> {
                     match &mut node.kind {
                         NodeKind::Single(widget, nodes) => {
                             Box::new(std::iter::once((widget, nodes)))
                         }
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow { body, .. } => Box::new(body.iter_mut()),
+                        _ => panic!()
                     }
                 },
             )
             .flatten()
     }
 
-    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer, &mut Nodes)> {
+    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer, &mut Nodes<'e>)> {
         self.iter_mut().next()
     }
 }

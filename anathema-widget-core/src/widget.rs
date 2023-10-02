@@ -44,7 +44,7 @@ pub trait Widget {
     /// of the children.
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
-    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         for (widget, children) in children.iter_mut() {
             let ctx = ctx.sub_context(None);
             widget.paint(children, ctx);

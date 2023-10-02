@@ -49,7 +49,7 @@ impl<'vm> Scope<'vm> {
                     let template = Expression::Loop(Loop {
                         binding: binding.into(),
                         collection,
-                        body: body.into(),
+                        body,
                     });
 
                     nodes.push(template);
@@ -127,7 +127,7 @@ impl<'vm> Scope<'vm> {
             ident: ident.to_string(),
             text,
             attributes,
-            children: children.into(),
+            children,
         });
 
         Ok(node)

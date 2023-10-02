@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Change, Collection, Context, NodeId, Path, Scope, ScopeValue, State};
+use anathema_values::{Change, Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr};
 
 use super::Nodes;
 use crate::{WidgetContainer, contexts::LayoutCtx};
@@ -8,15 +8,15 @@ use crate::{WidgetContainer, contexts::LayoutCtx};
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub(crate) struct LoopNode {
-    pub(super) body: Nodes,
+pub(crate) struct LoopNode<'e> {
+    pub(super) body: Nodes<'e>,
     binding: Path,
-    pub(super) collection: (),
+    pub(super) collection: ValueExpr,
     pub(super) value_index: usize,
 }
 
-impl LoopNode {
-    pub(crate) fn new(body: Nodes, binding: Path, collection: ()) -> Self {
+impl<'e> LoopNode<'e> {
+    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: ValueExpr) -> Self {
         Self {
             body,
             binding,
@@ -63,7 +63,7 @@ impl LoopNode {
 
     pub(super) fn iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes)> + '_ {
+    ) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)> + '_ {
         self.body.iter_mut()
     }
 

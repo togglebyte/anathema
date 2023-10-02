@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 use anathema_render::Size;
-use anathema_values::{Attributes, Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr};
+use anathema_values::{
+    Attributes, Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr, ValueRef,
+};
 
 pub use self::controlflow::{Else, If};
 use super::nodes::LoopNode;
@@ -19,17 +21,24 @@ pub struct SingleNode {
     pub ident: String,
     pub text: Option<ValueExpr>,
     pub attributes: Attributes,
-    pub children: Rc<[Expression]>,
+    pub children: Vec<Expression>,
 }
 
 impl SingleNode {
-    fn eval<'a: 'val, 'val>(&self, state: &'a dyn State, scope: &'a mut Scope<'val>, node_id: NodeId) -> Result<Node> {
+    fn eval<'a: 'val, 'val>(
+        &self,
+        state: &'a dyn State,
+        scope: &'a Scope<'val>,
+        node_id: NodeId,
+    ) -> Result<Node> {
         let context = Context::new(state, scope);
 
         let widget = WidgetContainer {
-            background: context.attribute("background", Some(&node_id), &self.attributes).map(|val| *val),
-            display: panic!(), // context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show),
-            padding: panic!(), // context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO),
+            background: context
+                .attribute("background", Some(&node_id), &self.attributes)
+                .map(|val| *val),
+            display: panic!(), /* context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show), */
+            padding: panic!(), /* context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO), */
             pos: Pos::ZERO,
             size: Size::ZERO,
             inner: Factory::exec(context, &self, &node_id)?,
@@ -37,7 +46,7 @@ impl SingleNode {
         };
 
         let node = Node {
-            kind: NodeKind::Single(widget, Nodes::new(self.children.clone(), node_id.child(0))),
+            kind: NodeKind::Single(widget, Nodes::new(&self.children, node_id.child(0))),
             node_id,
         };
 
@@ -50,33 +59,21 @@ impl SingleNode {
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub struct Loop {
-    pub body: Rc<[Expression]>,
+    pub body: Vec<Expression>,
     pub binding: Path,
     pub collection: ValueExpr,
 }
 
 impl Loop {
-    fn eval<'a: 'val, 'val>(&self, state: &'a dyn State, scope: &'a mut Scope<'val>, node_id: NodeId) -> Result<Node> {
-        let ctx = Context::new(state, scope);
-        let collection = self.collection.eval_collection(&ctx, Some(&node_id));
-            // match &self.collection {
-            //     ScopeValue::List(values) => Collection::Rc(values.clone()),
-            //     ScopeValue::Dyn(path) => scope
-            //         .lookup_list(path)
-            //         .map(Collection::Rc)
-            //         .unwrap_or_else(|| {
-            //             state
-            //                 .get_collection(path, Some(&node_id))
-            //                 .unwrap_or(Collection::Empty)
-            //         }),
-            //     ScopeValue::Static(_) | ScopeValue::Invalid => Collection::Empty,
-            // };
-
+    fn eval<'a: 'val, 'val>(
+        &self,
+        node_id: NodeId,
+    ) -> Result<Node<'_>> {
         let node = Node {
             kind: NodeKind::Loop(LoopNode::new(
-                Nodes::new(self.body.clone(), node_id.child(0)),
+                Nodes::new(&self.body, node_id.child(0)),
                 self.binding.clone(),
-                collection,
+                self.collection.clone(),
             )),
             node_id,
         };
@@ -95,9 +92,8 @@ pub struct ControlFlow {
 }
 
 impl ControlFlow {
-    fn eval(&self, state: &dyn State, scope: &mut Scope<'_>, node_id: NodeId) -> Result<Node> {
+    fn eval(&self, state: &dyn State, scope: &Scope<'_>, node_id: NodeId) -> Result<Node> {
         if self.if_expr.is_true(scope, state, Some(&node_id)) {}
-
         panic!()
     }
 }
@@ -116,12 +112,12 @@ impl Expression {
     pub(crate) fn eval<'a: 'val, 'val>(
         &self,
         state: &'a dyn State,
-        scope: &'a mut Scope<'a>,
+        scope: &'a Scope<'a>,
         node_id: NodeId,
     ) -> Result<Node> {
         match self {
             Self::Node(node) => node.eval(state, scope, node_id),
-            Self::Loop(loop_expr) => loop_expr.eval(state, scope, node_id),
+            Self::Loop(loop_expr) => loop_expr.eval(node_id),
             Self::ControlFlow(controlflow) => controlflow.eval(state, scope, node_id),
         }
     }
