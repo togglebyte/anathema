@@ -1,15 +1,7 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::{
-    Collection, Context, NodeId, Num, Owned, Path, Value, ValueRef,
-};
-
-pub enum OrPath<T> {
-    Val(T),
-    Path(Path),
-    None,
-}
+use crate::{Collection, Context, NodeId, Num, Owned, Path, Value, ValueRef};
 
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +19,7 @@ pub enum ValueExpr {
     Index(Box<ValueExpr>, Box<ValueExpr>),
 
     List(Rc<[ValueExpr]>),
+
     Add(Box<ValueExpr>, Box<ValueExpr>),
     Sub(Box<ValueExpr>, Box<ValueExpr>),
     Div(Box<ValueExpr>, Box<ValueExpr>),
@@ -78,10 +71,6 @@ where
 }
 
 impl ValueExpr {
-    // Value from state = borrow
-    // Value from expression = borrow
-    // Value from scope = own
-
     fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
         match self.eval_value(context, node_id) {
             Some(ValueRef::Owned(Owned::Bool(true))) => true,
@@ -95,7 +84,6 @@ impl ValueExpr {
             _ => None,
         }
     }
-
 
     fn eval_path(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
         match self {
@@ -124,9 +112,8 @@ impl ValueExpr {
             Self::Equality(lhs, rhs) => {
                 let lhs = lhs.eval_value(context, node_id)?;
                 let rhs = rhs.eval_value(context, node_id)?;
-                panic!()
-                // Some(ValueRef::Owned((lhs == rhs).into()))
-            },
+                Some(ValueRef::Owned((lhs == rhs).into()))
+            }
 
             // -----------------------------------------------------------------------------
             //   - Maths -
@@ -181,35 +168,13 @@ impl ValueExpr {
                 // let path = lhs.compose(index);
                 // context.lookup(&path)
             }
-            // _ => Invalid
+
+            // -----------------------------------------------------------------------------
+            //   - Collection -
+            // -----------------------------------------------------------------------------
+            Self::List(list) => Some(ValueRef::Expressions(list)),
             _ => panic!(),
         }
-    }
-
-    // The context is required here:
-    // for x in list
-    //     text x + 1
-    //
-    // This has to resolve `x` as a scoped value,
-    // and then evalute the expression x + 1
-    pub fn value(&self, context: &Context<'_, '_>) -> OrPath<&Value> {
-        match self {
-            Self::Value(val) => OrPath::Val(val),
-            Self::Ident(key) => OrPath::Path(Path::from(&**key)),
-            // Self::Add(lhs, rhs) => eval_add(lhs, rhs, context),
-            // Self::Sub(lhs, rhs) => eval_add(lhs, rhs, context),
-
-            // a.b(1, 2, false)[1][2]
-
-            // Self::Index(lhs, index) => OrPath::Path(Path::Index(&**key)),
-            _ => {
-                panic!()
-            }
-        }
-    }
-
-    pub fn list(&self) -> OrPath<Rc<[ValueExpr]>> {
-        panic!()
     }
 
     pub fn eval<'val, T: 'val + ?Sized>(
@@ -229,26 +194,6 @@ impl ValueExpr {
             }
             _ => panic!(),
         }
-    }
-
-    pub fn eval_collection(
-        &self,
-        context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
-    ) -> () {
-        panic!()
-        // match self {
-        //     Self::List(list) => Collection::Rc(list.clone()),
-        //     _ => {
-
-        //         let Some(path) = eval_path(self, context, node_id) else {
-        //             return Collection::Empty;
-        //         };
-
-        //         context.resolve(path);
-        //         panic!()
-        //     }
-        // }
     }
 }
 
@@ -280,7 +225,9 @@ mod test {
     use std::ops::Deref;
 
     use super::*;
-    use crate::testing::{add, boolean, div, ident, inum, modulo, mul, neg, sub, unum, TestState, not, eq, dot};
+    use crate::testing::{
+        add, boolean, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum, TestState,
+    };
     use crate::{List, Scope, State, StateValue};
 
     #[test]
@@ -331,7 +278,8 @@ mod test {
         expr.test([("one", 1.into())]).expect_owned(true);
 
         let expr = not(eq(ident("one"), ident("two")));
-        expr.test([("one", 1.into()), ("two", 2.into())]).expect_owned(true);
+        expr.test([("one", 1.into()), ("two", 2.into())])
+            .expect_owned(true);
     }
 
     #[test]

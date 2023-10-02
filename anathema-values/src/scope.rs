@@ -38,7 +38,7 @@ impl Collection {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum ScopeValue<'a> {
     Static(ValueRef<'a>),
     Dyn(&'a Path),

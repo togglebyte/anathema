@@ -7,7 +7,7 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, StateValue, List};
+use crate::{Collection, StateValue, List, ValueExpr};
 
 mod num;
 mod owned;
@@ -20,7 +20,20 @@ pub enum ValueRef<'a> {
     Str(&'a str),
     Map(&'a dyn Collection),
     List(&'a dyn Collection),
+    Expressions(&'a [ValueExpr]),
     Owned(Owned),
+}
+
+impl<'a> PartialEq for ValueRef<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Str(lhs), Self::Str(rhs)) => lhs == rhs,
+            (Self::Owned(lhs), Self::Owned(rhs)) => lhs == rhs,
+            // (Self::Map(lhs), Self::Map(rhs)) => lhs.eq(rhs),
+            // (Self::List(lhs), Self::List(rhs)) => lhs.eq(rhs),
+            _ => panic!("need equality for Collection trait"),
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
