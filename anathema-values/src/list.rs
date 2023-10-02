@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::ops::Deref;
 
 use super::*;
@@ -14,9 +15,9 @@ impl<T> List<T> {
         Self::new(vec![])
     }
 
-    pub fn new(inner: Vec<StateValue<T>>) -> Self {
+    pub fn new(inner: impl IntoIterator<Item = T>) -> Self {
         Self {
-            inner,
+            inner: inner.into_iter().map(StateValue::new).collect(),
             subscribers: RefCell::new(vec![]),
         }
     }
@@ -29,16 +30,14 @@ impl<T> List<T> {
         self.inner.len()
     }
 
-    pub fn lookup(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>>
+    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&StateValue<T>>
     where
-        for<'a> &'a StateValue<T>: Into<ValueRef<'a>>,
+        for<'a> ValueRef<'a>: From<&'a T>,
     {
-        let Path::Index(index) = key else { return None };
-        let value = self.inner.get(*index)?;
-        if let Some(node_id) = node_id.cloned() {
-            value.subscribe(node_id);
-        }
-        Some(value.into())
+        let Path::Index(index) = path else {
+            return None;
+        };
+        self.inner.get(*index)
     }
 
     pub fn pop(&mut self) -> Option<StateValue<T>> {
@@ -76,38 +75,30 @@ impl<T> List<T> {
     }
 }
 
-impl<T> From<Vec<T>> for List<T> {
-    fn from(value: Vec<T>) -> Self {
-        let inner = value.into_iter().map(StateValue::new).collect();
-        Self::new(inner)
-    }
-}
-
-impl<T: Debug> Collection for Map<T>
+impl<T: Debug> Collection for List<T>
 where
     for<'a> ValueRef<'a>: From<&'a T>,
 {
-    fn gets(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
-            _ => panic!("this is the next thing to do")
-            // Path::Index(_) => {
-            //     let value = self.lookup(key, node_id)?;
-            //     if let Some(node_id) = node_id.cloned() {
-            //         value.subscribe(node_id);
-            //     }
-            //     Some((&value.inner).into())
-            // }
-            // Path::Composite(lhs, rhs) => {
-            //     let map = self
-            //         .lookup(&**lhs, node_id)
-            //         .map(|value| (&value.inner).into())?;
+            Path::Index(_) => {
+                let value = self.lookup(key, node_id)?;
+                if let Some(node_id) = node_id.cloned() {
+                    value.subscribe(node_id);
+                }
+                Some((&value.inner).into())
+            }
+            Path::Composite(lhs, rhs) => {
+                let map = self
+                    .lookup(&**lhs, node_id)
+                    .map(|value| (&value.inner).into())?;
 
-            //     match map {
-            //         ValueRef::Map(map) => map.gets(rhs, node_id),
-            //         _ => None,
-            //     }
-            // }
-            // Path::Index(_) => None,
+                match map {
+                    ValueRef::List(map) => map.get(rhs, node_id),
+                    _ => None,
+                }
+            }
+            Path::Key(_) => None,
         }
     }
 }
@@ -115,9 +106,20 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::testing::TestState;
+
+    #[test]
+    fn access_list() {
+        let state = TestState::new();
+        let path = Path::from(0).compose(0).compose(1);
+        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None).unwrap() else {
+            panic!()
+        };
+        assert_eq!(x.to_i128(), 2);
+    }
 
     #[test]
     fn create_list() {
-        let list = List::from(vec![1, 2, 3]);
+        let list = List::new(vec![1, 2, 3]);
     }
 }

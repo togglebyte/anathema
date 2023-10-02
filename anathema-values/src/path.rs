@@ -116,19 +116,6 @@ impl fmt::Display for Path {
 }
 
 impl Path {
-    // pub fn lookup_value<'parent>(&self, values: &Values<'parent>) -> Option<&'parent Value> {
-    //     match self {
-    //         Self::Key(key) => values.get_borrowed_value(key.as_str()),
-    //         Self::Composite(left, right) => {
-    //             let left = left.lookup_value(values)?;
-    //             composite_value_lookup(right, left)
-    //         }
-    //         _ => None,
-    //     }
-    // }
-}
-
-impl Path {
     pub fn compose(&self, child: impl Into<Path>) -> Self {
         match self {
             Self::Key(_) | Self::Index(_) => {
@@ -144,12 +131,6 @@ impl Path {
 impl From<usize> for Path {
     fn from(index: usize) -> Self {
         Self::Index(index)
-    }
-}
-
-impl From<u64> for Path {
-    fn from(index: u64) -> Self {
-        Self::Index(index as usize)
     }
 }
 

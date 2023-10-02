@@ -29,10 +29,8 @@ impl<T> Map<T> {
     where
         for<'a> ValueRef<'a>: From<&'a T>,
     {
-        match path {
-            Path::Key(key) => self.inner.get(key),
-            _ => None,
-        }
+        let Path::Key(key) = path else { return None };
+        self.inner.get(key)
     }
 }
 
@@ -40,7 +38,7 @@ impl<T: Debug> Collection for HashMap<String, StateValue<T>>
 where
     for<'a> ValueRef<'a>: From<&'a T>,
 {
-    fn gets(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match path {
             Path::Key(key) => {
                 let value = self.get(key)?;
@@ -58,7 +56,7 @@ impl<T: Debug> Collection for Map<T>
 where
     for<'a> ValueRef<'a>: From<&'a T>,
 {
-    fn gets(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
             Path::Key(_) => {
                 let value = self.lookup(key, node_id)?;
@@ -73,7 +71,7 @@ where
                     .map(|value| (&value.inner).into())?;
 
                 match map {
-                    ValueRef::Map(map) => map.gets(rhs, node_id),
+                    ValueRef::Map(map) => map.get(rhs, node_id),
                     _ => None,
                 }
             }

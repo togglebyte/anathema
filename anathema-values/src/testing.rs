@@ -43,6 +43,7 @@ pub struct TestState {
     counter: StateValue<usize>,
     inner: Inner,
     generic_map: StateValue<Map<Map<usize>>>,
+    generic_list: StateValue<List<List<usize>>>,
 }
 
 impl TestState {
@@ -55,6 +56,9 @@ impl TestState {
                 "inner",
                 Map::new([("first", 1), ("second", 2)]),
             )])),
+            generic_list: StateValue::new(List::new(vec![
+                List::new(vec![1, 2, 3]),
+            ])),
         }
     }
 }
@@ -82,11 +86,19 @@ impl State for TestState {
                     let map = ValueRef::Map(&self.generic_map.inner);
                     Some(map)
                 }
+                "generic_list" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.generic_list.subscribe(node_id);
+                    }
+                    let list = ValueRef::List(&self.generic_list.inner);
+                    Some(list)
+                }
                 _ => None,
             },
             Path::Composite(lhs, rhs) => match &**lhs {
                 Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
-                Path::Key(key) if key == "generic_map" => self.generic_map.gets(rhs, node_id),
+                Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
+                Path::Key(key) if key == "generic_list" => self.generic_list.get(rhs, node_id),
                 _ => None,
             },
             _ => None,

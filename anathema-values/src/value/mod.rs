@@ -7,7 +7,7 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, StateValue};
+use crate::{Collection, StateValue, List};
 
 mod num;
 mod owned;
@@ -19,6 +19,7 @@ mod owned;
 pub enum ValueRef<'a> {
     Str(&'a str),
     Map(&'a dyn Collection),
+    List(&'a dyn Collection),
     Owned(Owned),
 }
 
@@ -34,12 +35,12 @@ where
     }
 }
 
-impl<'a, T: Debug> From<&'a HashMap<String, StateValue<T>>> for ValueRef<'a>
+impl<'a, T: Debug> From<&'a List<T>> for ValueRef<'a>
 where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
-    fn from(value: &'a HashMap<String, StateValue<T>>) -> Self {
-        Self::Map(value)
+    fn from(value: &'a List<T>) -> Self {
+        Self::List(value)
     }
 }
 
