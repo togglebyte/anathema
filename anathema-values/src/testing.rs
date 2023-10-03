@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct Inner {
+pub struct Inner {
     name: StateValue<String>,
     names: List<String>,
 }
@@ -39,11 +39,11 @@ impl State for Inner {
 
 #[derive(Debug)]
 pub struct TestState {
-    name: StateValue<String>,
-    counter: StateValue<usize>,
-    inner: Inner,
-    generic_map: StateValue<Map<Map<usize>>>,
-    generic_list: StateValue<List<List<usize>>>,
+    pub name: StateValue<String>,
+    pub counter: StateValue<usize>,
+    pub inner: Inner,
+    pub generic_map: StateValue<Map<Map<usize>>>,
+    pub generic_list: StateValue<List<List<usize>>>,
 }
 
 impl TestState {
@@ -107,14 +107,8 @@ impl State for TestState {
 }
 
 // -----------------------------------------------------------------------------
-//   - Extend scope -
+//   - Extend scope functionality for testing -
 // -----------------------------------------------------------------------------
-// impl From<()> for Scope<'_> {
-//     fn from(empty: ()) -> Self {
-//         Self::new(None)
-//     }
-// }
-
 impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
     fn from(values: [(&'static str, Owned); N]) -> Self {
         let mut scope = Self::new(None);

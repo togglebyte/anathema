@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = []
-testing = []
+testing = ["anathema-values/testing"]
 
 [dependencies]
 anathema-render = { path = "../anathema-render" }
@@ -14,4 +14,3 @@ bitflags = { workspace = true }
 unicode-width = { workspace = true }
 thiserror = { workspace = true }
 parking_lot = { workspace = true }
-

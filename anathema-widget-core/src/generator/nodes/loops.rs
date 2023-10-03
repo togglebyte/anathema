@@ -11,12 +11,12 @@ use crate::{WidgetContainer, contexts::LayoutCtx};
 pub(crate) struct LoopNode<'e> {
     pub(super) body: Nodes<'e>,
     binding: Path,
-    pub(super) collection: ValueExpr,
+    pub(super) collection: &'e ValueExpr,
     pub(super) value_index: usize,
 }
 
 impl<'e> LoopNode<'e> {
-    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: ValueExpr) -> Self {
+    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: &'e ValueExpr) -> Self {
         Self {
             body,
             binding,

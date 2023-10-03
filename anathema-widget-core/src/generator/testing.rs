@@ -1,10 +1,13 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
-use anathema_values::{Context, Path, ScopeValue, State, ValueExpr};
+use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
 
+use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
-use crate::{Attributes, WidgetContainer, Widget, WidgetFactory, Factory};
+use crate::{Attributes, Factory, Widget, WidgetContainer, WidgetFactory};
+
+use super::nodes::Node;
 
 // // -----------------------------------------------------------------------------
 // //   - Helper impls -
@@ -140,10 +143,22 @@ impl WidgetFactory for TestWidgetFactory {
         data: Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
-        noden_id: &anathema_values::NodeId
+        noden_id: &anathema_values::NodeId,
     ) -> crate::error::Result<Box<dyn crate::AnyWidget>> {
         let widget = TestWidget;
         Ok(Box::new(widget))
+    }
+}
+
+pub struct TestExpression<'a, S> {
+    pub state: S,
+    pub scope: Scope<'a>,
+    pub expr: Box<Expression>,
+}
+
+impl<'a, S: State> TestExpression<'a, S> {
+    pub fn eval(&'a self) -> Result<Node<'a>> {
+        self.expr.eval(&self.state, &self.scope, 0.into())
     }
 }
 
@@ -166,19 +181,18 @@ pub(crate) fn expression(
     })
 }
 
-pub(crate) fn for_expression<const N: usize>(
+pub(crate) fn for_expression(
     binding: impl Into<Path>,
-    collection: [impl Into<ScopeValue>; N],
+    collection: Box<ValueExpr>,
     body: impl Into<Vec<Expression>>,
 ) -> Expression {
-    panic!()
     // let collection = collection.map(Into::into);
     // let binding = binding.into();
-    // Expression::Loop(Loop {
-    //     body: body.into().into(),
-    //     binding,
-    //     collection: collection.map(Into::into).into(),
-    // })
+    Expression::Loop(Loop {
+        body: body.into().into(),
+        binding: binding.into(),
+        collection: *collection,
+    })
 }
 
 // pub(crate) fn controlflow<E>(

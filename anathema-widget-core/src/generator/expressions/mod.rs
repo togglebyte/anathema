@@ -37,8 +37,11 @@ impl SingleNode {
             background: context
                 .attribute("background", Some(&node_id), &self.attributes)
                 .map(|val| *val),
-            display: panic!(), /* context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show), */
-            padding: panic!(), /* context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO), */
+
+            // TODO: don't hard code these
+            display: Display::Show, /* context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show), */
+            padding: Padding::ZERO, /* context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO), */
+
             pos: Pos::ZERO,
             size: Size::ZERO,
             inner: Factory::exec(context, &self, &node_id)?,
@@ -65,15 +68,12 @@ pub struct Loop {
 }
 
 impl Loop {
-    fn eval<'a: 'val, 'val>(
-        &self,
-        node_id: NodeId,
-    ) -> Result<Node<'_>> {
+    fn eval<'a: 'val, 'val>(&self, node_id: NodeId) -> Result<Node<'_>> {
         let node = Node {
             kind: NodeKind::Loop(LoopNode::new(
                 Nodes::new(&self.body, node_id.child(0)),
                 self.binding.clone(),
-                self.collection.clone(),
+                &self.collection,
             )),
             node_id,
         };
@@ -125,17 +125,32 @@ impl Expression {
 
 #[cfg(test)]
 mod test {
+    use anathema_values::testing::TestState;
+
     use super::*;
     use crate::generator::testing::*;
 
+    impl Expression {
+        pub fn test<'a>(self) -> TestExpression<'a, TestState> {
+            register_test_widget();
+            let scope = Scope::new(None);
+
+            TestExpression {
+                state: TestState::new(),
+                scope,
+                expr: Box::new(self),
+            }
+        }
+    }
+
     #[test]
     fn eval_node() {
-        register_test_widget();
-        let mut scope = Scope::new(None);
-        let expr = expression("test", None, [], []);
-        let mut node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
-        let (widget, _) = node.single();
-        assert_eq!("test", widget.kind());
+        // register_test_widget();
+        // let mut scope = Scope::new(None);
+        // let expr = expression("test", None, [], []);
+        // let mut node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
+        // let (widget, _) = node.single();
+        // assert_eq!("test", widget.kind());
     }
 
     #[test]

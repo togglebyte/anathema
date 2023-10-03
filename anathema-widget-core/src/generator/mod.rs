@@ -4,8 +4,8 @@ mod expressions;
 mod nodes;
 mod values;
 
-// #[cfg(test)]
-// mod testing;
+#[cfg(any(attribute = "testing", test))]
+mod testing;
 
 use std::rc::Rc;
 

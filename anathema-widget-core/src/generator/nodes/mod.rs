@@ -41,11 +41,19 @@ impl<'e> Node<'e> {
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
+
+    fn nodes(&mut self) -> &mut Nodes<'e> {
+        match &mut self.kind {
+            NodeKind::Single(_, nodes) => nodes,
+            NodeKind::Loop(loop_state) => &mut loop_state.body,
+            NodeKind::ControlFlow { .. } => panic!(),
+        }
+    }
 }
 
 #[cfg(test)]
-impl Node {
-    pub(crate) fn single(&mut self) -> (&mut WidgetContainer, &mut Nodes) {
+impl<'e> Node<'e> {
+    pub(crate) fn single(&mut self) -> (&mut WidgetContainer, &mut Nodes<'e>) {
         match &mut self.kind {
             NodeKind::Single(inner, nodes) => (inner, nodes),
             _ => panic!(),
@@ -85,22 +93,7 @@ impl<'e> Nodes<'e> {
     }
 
     pub fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
-        for node in &mut self.inner {
-            if node.node_id.contains(node_id) {
-                if node.node_id.eq(node_id) {
-                    node.update(change, state);
-                    return;
-                }
-
-                match &mut node.kind {
-                    NodeKind::Single(widget, children) => {
-                        return children.update(&node_id, change, state)
-                    }
-                    NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),
-                    _ => panic!("better sort this out"),
-                }
-            }
-        }
+        update(&mut self.inner, node_id, change, state);
     }
 
     pub(crate) fn new(expressions: &'e [Expression], next_id: NodeId) -> Self {
@@ -115,14 +108,7 @@ impl<'e> Nodes<'e> {
     }
 
     pub fn count(&self) -> usize {
-        self.inner
-            .iter()
-            .map(|node| match &node.kind {
-                NodeKind::Single(_, nodes) => 1 + nodes.count(),
-                NodeKind::Loop(loop_state) => loop_state.count(),
-                NodeKind::ControlFlow { .. } => panic!(),
-            })
-            .sum()
+        count(self.inner.iter())
     }
 
     pub fn reset_cache(&mut self) {
@@ -205,21 +191,24 @@ impl<'e> Nodes<'e> {
                 Some(res)
             }
             NodeKind::Loop(loop_node) => {
-                // TODO: this shouldn't be here and in the `scope` call, it's a hack
-                if loop_node.value_index < loop_node.collection.len() {
-                    // scope.push();
-                    if loop_node.scope(scope) {
-                        self.active_loop = Some(self.cache_index - 1);
-                    }
-                }
+                // // TODO: this shouldn't be here and in the `scope` call, it's a hack
+                // if loop_node.value_index < loop_node.collection.len() {
+                //     // scope.push();
+                //     if loop_node.scope(scope) {
+                //         self.active_loop = Some(self.cache_index - 1);
+                //     }
+                // }
 
-                self.next(state, scope, layout, f)
+                // self.next(state, scope, layout, f)
+                None
             }
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)> + '_ {
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)> + '_ {
         self.inner
             .iter_mut()
             .map(
@@ -230,7 +219,7 @@ impl<'e> Nodes<'e> {
                         }
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow { body, .. } => Box::new(body.iter_mut()),
-                        _ => panic!()
+                        _ => panic!(),
                     }
                 },
             )
@@ -242,8 +231,40 @@ impl<'e> Nodes<'e> {
     }
 }
 
+fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
+    nodes
+        .map(|node| match &node.kind {
+            NodeKind::Single(_, nodes) => 1 + nodes.count(),
+            NodeKind::Loop(loop_state) => loop_state.count(),
+            NodeKind::ControlFlow { .. } => panic!(),
+        })
+        .sum()
+}
+
+// Apply change / update to relevant nodes
+fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut impl State) {
+    for node in nodes {
+        if node.node_id.contains(node_id) {
+            if node.node_id.eq(node_id) {
+                node.update(change, state);
+                return;
+            }
+
+            match &mut node.kind {
+                NodeKind::Single(widget, children) => {
+                    return children.update(&node_id, change, state)
+                }
+                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),
+                _ => panic!("better sort this out"),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use anathema_values::testing::list;
+
     use super::*;
     use crate::generator::testing::*;
     use crate::layout::Constraints;
@@ -251,39 +272,39 @@ mod test {
 
     #[test]
     fn generate_a_single_widget() {
-        register_test_widget();
-        let mut state = ();
-        let mut scope = Scope::new(None);
-
-        let expr = expression("test", None, [], []);
-        let mut node = expr.eval(&mut state, &mut scope, 0.into()).unwrap();
+        let test = expression("test", None, [], []).test();
+        let mut node = test.eval().unwrap();
         let (widget, nodes) = node.single();
-
         assert_eq!(widget.kind(), "test");
     }
 
-    // #[test]
-    // fn for_loop() {
-    //     register_test_widget();
-    //     let mut state = ();
-    //     let mut scope = Scope::new(None);
-    //     let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
+    #[test]
+    fn for_loop() {
+        // register_test_widget();
+        // let mut state = ();
+        // let mut scope = Scope::new(None);
+        // let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
 
-    //     let body = expression("test", None, [], []);
-    //     let for_loop = for_expression("item", [1, 2, 3], [body]);
-    //     let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
+        let body = expression("test", None, [], []);
+        let for_loop = for_expression("item", list([1, 2, 3]), [body]).test();
+        let mut loop_node = for_loop.eval().unwrap();
+        let nodes = loop_node.nodes();
 
-    //     nodes.for_each(&mut state, &mut scope, &mut layout, |_, _, _| { Ok(Size::ZERO) });
-    //     panic!("this isn't done!");
+        panic!("{loop_node:#?}");
 
-    //     // let node_1 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-    //     // let node_2 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-    //     // let node_3 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-    //     // let node_none = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // // let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
 
-    //     // assert!(node_1.is_some());
-    //     // assert!(node_2.is_some());
-    //     // assert!(node_3.is_some());
-    //     // assert!(node_none.is_none());
-    // }
+        // // nodes.for_each(&mut state, &mut scope, &mut layout, |_, _, _| { Ok(Size::ZERO) });
+        // // panic!("this isn't done!");
+
+        // // let node_1 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // // let node_2 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // // let node_3 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+        // // let node_none = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
+
+        // // assert!(node_1.is_some());
+        // // assert!(node_2.is_some());
+        // // assert!(node_3.is_some());
+        // // assert!(node_none.is_none());
+    }
 }
