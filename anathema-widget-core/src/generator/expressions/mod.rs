@@ -1,9 +1,5 @@
-use std::rc::Rc;
-
 use anathema_render::Size;
-use anathema_values::{
-    Attributes, Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr, ValueRef,
-};
+use anathema_values::{Attributes, Context, NodeId, Path, Scope, State, ValueExpr};
 
 pub use self::controlflow::{Else, If};
 use super::nodes::LoopNode;
@@ -128,29 +124,32 @@ mod test {
     use anathema_values::testing::TestState;
 
     use super::*;
+    use crate::contexts::LayoutCtx;
     use crate::generator::testing::*;
+    use crate::layout::Constraints;
 
     impl Expression {
         pub fn test<'a>(self) -> TestExpression<'a, TestState> {
             register_test_widget();
             let scope = Scope::new(None);
 
+            let constraint = Constraints::new(80, 20);
+
             TestExpression {
                 state: TestState::new(),
                 scope,
                 expr: Box::new(self),
+                ctx: LayoutCtx::new(constraint, Padding::ZERO),
             }
         }
     }
 
     #[test]
     fn eval_node() {
-        // register_test_widget();
-        // let mut scope = Scope::new(None);
-        // let expr = expression("test", None, [], []);
-        // let mut node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
-        // let (widget, _) = node.single();
-        // assert_eq!("test", widget.kind());
+        let test = expression("test", None, [], []).test();
+        let mut node = test.eval().unwrap();
+        let (widget, _) = node.single();
+        assert_eq!("test", widget.kind());
     }
 
     #[test]

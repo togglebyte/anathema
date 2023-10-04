@@ -3,11 +3,11 @@ use std::str::FromStr;
 
 use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
 
+use super::nodes::Node;
+use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::{Attributes, Factory, Widget, WidgetContainer, WidgetFactory};
-
-use super::nodes::Node;
 
 // // -----------------------------------------------------------------------------
 // //   - Helper impls -
@@ -154,6 +154,7 @@ pub struct TestExpression<'a, S> {
     pub state: S,
     pub scope: Scope<'a>,
     pub expr: Box<Expression>,
+    pub ctx: LayoutCtx,
 }
 
 impl<'a, S: State> TestExpression<'a, S> {

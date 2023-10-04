@@ -1,4 +1,4 @@
-use anathema_render::{ScreenPos, Style};
+use anathema_render::Style;
 use anathema_values::{Attributes, Context, NodeId};
 
 pub mod contexts;
@@ -19,7 +19,7 @@ pub use crate::layout::{Align, Axis, Direction, LocalPos, Padding, Pos, Region};
 pub use crate::values::{Color, Display};
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer};
 
-pub fn style<T>(context: &Context<'_, '_>, attributes: &Attributes, node_id: &NodeId) -> Style {
+pub fn style<T>(_context: &Context<'_, '_>, _attributes: &Attributes, _node_id: &NodeId) -> Style {
     panic!()
     // let mut style = Style::new();
 

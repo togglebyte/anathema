@@ -2,18 +2,22 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
-use anathema_values::{Context, Scope, State};
+use anathema_values::Context;
 
 pub use self::constraints::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Nodes;
-use crate::widget::WidgetContainer;
 
 mod constraints;
 
 pub trait Layout {
-    fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size>;
+    fn layout(
+        &mut self,
+        layout: &mut LayoutCtx,
+        children: &mut Nodes,
+        data: Context<'_, '_>,
+    ) -> Result<Size>;
 }
 
 // -----------------------------------------------------------------------------
@@ -117,7 +121,7 @@ impl Padding {
 impl TryFrom<&str> for Padding {
     type Error = ();
 
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+    fn try_from(_value: &str) -> std::result::Result<Self, Self::Error> {
         panic!()
         // let text_align = match value {
         //     "centre" | "center" => Self::Centre,
@@ -235,7 +239,7 @@ impl TryFrom<&str> for Axis {
         match value {
             "horz" | "horizontal" => Ok(Self::Horizontal),
             "vert" | "vertical" => Ok(Self::Vertical),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -263,7 +267,7 @@ impl TryFrom<&str> for Direction {
         match value {
             "forward" => Ok(Self::Forward),
             "backward" => Ok(Self::Backward),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

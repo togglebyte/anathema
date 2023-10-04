@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::ops::Deref;
 
 use anathema_render::{Screen, ScreenPos, Size, Style};
@@ -37,7 +36,7 @@ impl LayoutCtx {
         if !constraints.is_width_unbounded() {
             constraints.max_width = constraints
                 .max_width
-               .saturating_sub(padding.left + padding.right);
+                .saturating_sub(padding.left + padding.right);
             constraints.min_width = constraints.min_width.min(constraints.max_width);
         }
 

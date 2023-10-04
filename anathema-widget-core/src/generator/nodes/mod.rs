@@ -1,9 +1,5 @@
-use std::borrow::Cow;
-use std::ops::DerefMut;
-use std::rc::Rc;
-
 use anathema_render::Size;
-use anathema_values::{Change, Collection, Context, NodeId, Path, Scope, ScopeValue, State};
+use anathema_values::{Change, Collection, Context, NodeId, Scope, State};
 
 use self::controlflow::{Else, If};
 pub(crate) use self::loops::LoopNode;
@@ -139,7 +135,7 @@ impl<'e> Nodes<'e> {
         &mut self,
         state: &dyn State,
         scope: &Scope<'_>,
-        layout: &mut LayoutCtx,
+        _layout: &mut LayoutCtx,
         f: &mut F,
     ) -> Option<Result<Size>>
     where
@@ -162,7 +158,7 @@ impl<'e> Nodes<'e> {
         // //     }
         // // }
 
-        let mut node = match self.inner.get_mut(self.cache_index) {
+        let node = match self.inner.get_mut(self.cache_index) {
             Some(node) => {
                 self.cache_index += 1;
                 node
@@ -190,7 +186,7 @@ impl<'e> Nodes<'e> {
                 let res = f(widget, nodes, data);
                 Some(res)
             }
-            NodeKind::Loop(loop_node) => {
+            NodeKind::Loop(_loop_node) => {
                 // // TODO: this shouldn't be here and in the `scope` call, it's a hack
                 // if loop_node.value_index < loop_node.collection.len() {
                 //     // scope.push();
@@ -251,7 +247,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut
             }
 
             match &mut node.kind {
-                NodeKind::Single(widget, children) => {
+                NodeKind::Single(_widget, children) => {
                     return children.update(&node_id, change, state)
                 }
                 NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),
@@ -286,11 +282,11 @@ mod test {
         // let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
 
         let body = expression("test", None, [], []);
-        let for_loop = for_expression("item", list([1, 2, 3]), [body]).test();
-        let mut loop_node = for_loop.eval().unwrap();
+        let mut test = for_expression("item", list([1, 2, 3]), [body]).test();
+        let mut loop_node = test.eval().unwrap();
         let nodes = loop_node.nodes();
+        // nodes.next(&test.state, &test.scope, &mut test.ctx, &mut |_, _, _| {});
 
-        panic!("{loop_node:#?}");
 
         // // let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
 

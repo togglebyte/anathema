@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_values::{Attributes, Context, State, NodeId, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, State, ValueExpr};
 use parking_lot::RwLock;
 
 use crate::error::{Error, Result};
 use crate::generator::SingleNode;
 use crate::widget::AnyWidget;
-use crate::WidgetContainer;
 
 const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with"];
 
@@ -17,7 +16,7 @@ pub trait WidgetFactory: Send + Sync {
         data: Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
-        noden_id: &NodeId
+        noden_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>>;
 }
 
@@ -26,7 +25,11 @@ static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = On
 pub struct Factory;
 
 impl Factory {
-    pub fn exec(ctx: Context<'_, '_>, node: &SingleNode, node_id: &NodeId) -> Result<Box<dyn AnyWidget>> {
+    pub fn exec(
+        ctx: Context<'_, '_>,
+        node: &SingleNode,
+        node_id: &NodeId,
+    ) -> Result<Box<dyn AnyWidget>> {
         let factories = FACTORIES.get_or_init(Default::default).read();
         let factory = factories
             .get(&node.ident)

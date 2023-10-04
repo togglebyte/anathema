@@ -1,16 +1,6 @@
 // #![deny(missing_docs)]
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
 
 pub use anathema_render::Color;
-use anathema_render::Style;
-use anathema_values::{List, ScopeValue};
-
-use crate::layout::{Align, Axis, Direction, Padding};
-use crate::WidgetContainer;
 
 // #[derive(Debug)]
 // pub enum Cached<T> {

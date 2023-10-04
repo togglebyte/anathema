@@ -1,17 +1,15 @@
 use std::any::Any;
 use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
-use std::sync::Arc;
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{Attributes, Context, ScopeValue, State, remove_node, NodeId};
+use anathema_values::{remove_node, Context, NodeId, State};
 
 use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::{Nodes, SingleNode};
+use crate::generator::Nodes;
 use crate::{Display, LocalPos, Padding, Pos, Region};
 
 // Layout:
@@ -52,7 +50,7 @@ pub trait Widget {
     }
 
     /// Called when a value the widget subscribes to has changed.
-    fn update(&mut self, state: &mut dyn State) {}
+    fn update(&mut self, _state: &mut dyn State) {}
 }
 
 pub trait AnyWidget {
@@ -203,7 +201,7 @@ impl WidgetContainer {
     }
 
     pub fn try_to_ref<T: 'static>(&self) -> Option<&T> {
-        let kind = self.inner.kind();
+        let _kind = self.inner.kind();
 
         let any = self
             .inner
@@ -339,7 +337,7 @@ impl WidgetContainer {
 }
 
 impl Debug for WidgetContainer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
 }

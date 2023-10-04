@@ -1,8 +1,7 @@
-use anathema_render::Size;
-use anathema_values::{Change, Collection, Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr};
+use anathema_values::{Change, Path, Scope, State, ValueExpr};
 
 use super::Nodes;
-use crate::{WidgetContainer, contexts::LayoutCtx};
+use crate::WidgetContainer;
 
 // -----------------------------------------------------------------------------
 //   - Loop -
@@ -34,7 +33,7 @@ impl<'e> LoopNode<'e> {
     }
 
     /// Scoping a value should only ever happen after an iteration
-    pub(super) fn scope(&mut self, scope: &mut Scope) -> bool {
+    pub(super) fn scope(&mut self, _scope: &mut Scope) -> bool {
         panic!()
         // if self.value_index >= self.collection.len() {
         //     return false;
@@ -45,7 +44,7 @@ impl<'e> LoopNode<'e> {
         // true
     }
 
-    pub(super) fn remove(&mut self, index: usize) {
+    pub(super) fn remove(&mut self, _index: usize) {
         panic!()
         // self.collection.remove();
         // if index >= self.body.inner.len() {

@@ -1,9 +1,6 @@
 use std::rc::Rc;
 
-use anathema_values::ScopeValue;
-
 use crate::generator::expressions::Expression;
-use crate::generator::Nodes;
 
 #[derive(Debug)]
 pub struct If {

@@ -1,4 +1,4 @@
-use anathema_values::{ScopeValue, Scope, State, ValueExpr, NodeId};
+use anathema_values::{NodeId, Scope, State, ValueExpr};
 
 use super::Expression;
 
@@ -16,7 +16,12 @@ pub struct If {
 //         text "it was true"
 
 impl If {
-    pub(super) fn is_true(&self, scope: &Scope<'_>, state: &dyn State, node_id: Option<&NodeId>) -> bool {
+    pub(super) fn is_true(
+        &self,
+        _scope: &Scope<'_>,
+        _state: &dyn State,
+        _node_id: Option<&NodeId>,
+    ) -> bool {
         panic!()
     }
 }
