@@ -23,12 +23,9 @@ pub struct SingleNode {
 impl SingleNode {
     fn eval<'a: 'val, 'val>(
         &self,
-        state: &'a dyn State,
-        scope: &'a Scope<'val>,
+        context: &Context<'a, 'val>,
         node_id: NodeId,
     ) -> Result<Node> {
-        let context = Context::new(state, scope);
-
         let widget = WidgetContainer {
             background: context
                 .attribute("background", Some(&node_id), &self.attributes)
@@ -107,14 +104,13 @@ pub enum Expression {
 impl Expression {
     pub(crate) fn eval<'a: 'val, 'val>(
         &self,
-        state: &'a dyn State,
-        scope: &'a Scope<'a>,
+        context: &Context<'a, 'val>,
         node_id: NodeId,
     ) -> Result<Node> {
         match self {
-            Self::Node(node) => node.eval(state, scope, node_id),
+            Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(node_id),
-            Self::ControlFlow(controlflow) => controlflow.eval(state, scope, node_id),
+            Self::ControlFlow(controlflow) => panic!(),//controlflow.eval(state, scope, node_id),
         }
     }
 }
@@ -139,7 +135,7 @@ mod test {
                 state: TestState::new(),
                 scope,
                 expr: Box::new(self),
-                ctx: LayoutCtx::new(constraint, Padding::ZERO),
+                layout: LayoutCtx::new(constraint, Padding::ZERO),
             }
         }
     }

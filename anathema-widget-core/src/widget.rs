@@ -34,7 +34,7 @@ pub trait Widget {
         &mut self,
         children: &mut Nodes,
         ctx: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size>;
 
     /// By the time this function is called the widget container
@@ -62,7 +62,7 @@ pub trait AnyWidget {
         &mut self,
         children: &mut Nodes,
         layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
@@ -83,7 +83,7 @@ impl Widget for Box<dyn AnyWidget> {
         &mut self,
         children: &mut Nodes,
         layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.deref_mut().layout_any(children, layout, data)
     }
@@ -114,7 +114,7 @@ impl<T: Widget + 'static> AnyWidget for T {
         &mut self,
         children: &mut Nodes,
         layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.layout(children, layout, data)
     }
@@ -145,7 +145,7 @@ impl Widget for Box<dyn Widget> {
         &mut self,
         children: &mut Nodes,
         layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.as_mut().layout(children, layout, data)
     }
@@ -264,7 +264,7 @@ impl WidgetContainer {
         &mut self,
         children: &mut Nodes,
         constraints: Constraints,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,

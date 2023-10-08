@@ -1,4 +1,4 @@
-use anathema_values::{Change, Path, Scope, State, ValueExpr};
+use anathema_values::{Change, Context, Path, Scope, ScopeValue, State, ValueExpr, ValueRef};
 
 use super::Nodes;
 use crate::WidgetContainer;
@@ -7,9 +7,9 @@ use crate::WidgetContainer;
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub(crate) struct LoopNode<'e> {
+pub struct LoopNode<'e> {
     pub(super) body: Nodes<'e>,
-    binding: Path,
+    pub(super) binding: Path,
     pub(super) collection: &'e ValueExpr,
     pub(super) value_index: usize,
 }
@@ -30,6 +30,27 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn count(&self) -> usize {
         self.body.count()
+    }
+
+    pub(super) fn value<'val>(&mut self, context: &Context<'_, 'val>) -> Option<ScopeValue<'val>>
+    where
+        'e: 'val,
+    {
+        // First evaluate the collection, then the value inside the collection.
+        // This could be more efficient by hanging on to the collection
+        // via a ref (Rc?).
+        let val = match self.collection.eval_value(context, None)? {
+            ValueRef::Expressions(list) => list[self.value_index].eval_value(context, None)?,
+            ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
+            _ => return None,
+        };
+
+        Some(ScopeValue::Static(val))
+    }
+
+    pub(super) fn next_value(&mut self) -> bool {
+        self.value_index += 1;
+        panic!()
     }
 
     /// Scoping a value should only ever happen after an iteration

@@ -42,7 +42,7 @@ impl Widget for Alignment {
         &mut self,
         children: &mut Nodes,
         layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(Single, layout);
         let size = layout.layout(children, data)?;
@@ -118,7 +118,7 @@ pub(crate) struct AlignmentFactory;
 impl WidgetFactory for AlignmentFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
         node_id: &NodeId,

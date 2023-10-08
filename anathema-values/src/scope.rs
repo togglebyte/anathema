@@ -88,6 +88,7 @@ impl<'a> Scope<'a> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Context<'a: 'val, 'val> {
     pub state: &'a dyn State,
     pub scope: &'a Scope<'val>,

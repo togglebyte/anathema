@@ -16,7 +16,7 @@ pub trait Layout {
         &mut self,
         layout: &mut LayoutCtx,
         children: &mut Nodes,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> Result<Size>;
 }
 
@@ -38,7 +38,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout(&mut self, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
+    pub fn layout(&mut self, children: &mut Nodes, data: &Context<'_, '_>) -> Result<Size> {
         self.layout.layout(self.ctx, children, data)
         // while let Some(res) = children.next(data.state, data.scope, self.ctx) {
         //     res?;

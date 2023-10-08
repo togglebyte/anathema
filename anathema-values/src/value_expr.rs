@@ -189,34 +189,12 @@ impl ValueExpr {
         match self {
             Self::Value(value) => value.try_into().ok(),
             expr @ (Self::Dot(..) | Self::Ident(_)) => {
-                let path = eval_path(expr, context, node_id)?;
+                let path = expr.eval_path(context, node_id)?;
                 context.get::<T>(&path, node_id)
             }
             _ => panic!(),
         }
     }
-}
-
-fn eval_path(
-    expr: &ValueExpr,
-    context: &Context<'_, '_>,
-    node_id: Option<&NodeId>,
-) -> Option<Path> {
-    let path = match expr {
-        ValueExpr::Ident(key) => Path::Key(key.to_string()),
-        ValueExpr::Dot(lhs, rhs) => Path::Composite(
-            eval_path(lhs, context, node_id)?.into(),
-            eval_path(rhs, context, node_id)?.into(),
-        ),
-        ValueExpr::Index(lhs, index) => {
-            let index = *index.eval::<u64>(context, node_id)?;
-            let collection = eval_path(lhs, context, node_id)?;
-            collection.compose(Path::Index(index as usize))
-        }
-        _ => return None,
-    };
-
-    Some(path)
 }
 
 #[cfg(test)]

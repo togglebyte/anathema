@@ -13,7 +13,7 @@ const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with"];
 pub trait WidgetFactory: Send + Sync {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
         noden_id: &NodeId,
@@ -26,7 +26,7 @@ pub struct Factory;
 
 impl Factory {
     pub fn exec(
-        ctx: Context<'_, '_>,
+        ctx: &Context<'_, '_>,
         node: &SingleNode,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {

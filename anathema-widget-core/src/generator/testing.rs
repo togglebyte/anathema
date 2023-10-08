@@ -1,118 +1,16 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
+use anathema_values::testing::TestState;
 use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
 
 use super::nodes::Node;
+use super::nodes::visitor::NodeBuilder;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
-use crate::{Attributes, Factory, Widget, WidgetContainer, WidgetFactory};
-
-// // -----------------------------------------------------------------------------
-// //   - Helper impls -
-// // -----------------------------------------------------------------------------
-// impl<T: Clone> Into<ExpressionValues<T>> for Vec<(String, T)> {
-//     fn into(self) -> ExpressionValues<T> {
-//         let mut values = ExpressionValues::empty();
-//         for (k, v) in self {
-//             values.set(k, ExpressionValue::Static(v.into()));
-//         }
-//         values
-//     }
-// }
-
-// impl<T: Clone, const N: usize> Into<ExpressionValues<T>> for [(String, T); N] {
-//     fn into(self) -> ExpressionValues<T> {
-//         let mut values = ExpressionValues::empty();
-//         for (k, v) in self {
-//             values.set(k, ExpressionValue::Static(v.into()));
-//         }
-//         values
-//     }
-// }
-
-// impl<T: Clone> Into<ExpressionValues<T>> for () {
-//     fn into(self) -> ExpressionValues<T> {
-//         ExpressionValues::empty()
-//     }
-// }
-
-// impl<T> From<T> for ExpressionValue<T> {
-//     fn from(value: T) -> Self {
-//         ExpressionValue::Static(value.into())
-//     }
-// }
-
-// impl<T, const N: usize> From<[T; N]> for ExpressionValue<T> {
-//     fn from(values: [T; N]) -> Self {
-//         ExpressionValue::List(values.map(Into::into).into())
-//     }
-// }
-
-// pub(crate) struct Expressions<T: FromContext>(Vec<Expression<T>>);
-
-// impl<T: FromContext> Into<Expressions<T>> for Expression<T> {
-//     fn into(self) -> Expressions<T> {
-//         Expressions(vec![self])
-//     }
-// }
-
-// impl<T: FromContext, E> Into<Expressions<T>> for Vec<E>
-// where
-//     E: Into<Expression<T>>,
-// {
-//     fn into(self) -> Expressions<T> {
-//         let mut output = vec![];
-//         for expr in self {
-//             output.push(expr.into())
-//         }
-//         Expressions(output)
-//     }
-// }
-
-// impl<T: FromContext, const N: usize, E> Into<Expressions<T>> for [E; N]
-// where
-//     E: Into<Expression<T>>,
-// {
-//     fn into(self) -> Expressions<T> {
-//         let mut output = vec![];
-//         for expr in self {
-//             output.push(expr.into())
-//         }
-//         Expressions(output)
-//     }
-// }
-
-// impl<T: FromContext> Into<Expressions<T>> for () {
-//     fn into(self) -> Expressions<T> {
-//         Expressions(vec![])
-//     }
-// }
-
-// impl<T: Truthy> From<T> for ControlFlowExpr<T> {
-//     fn from(value: T) -> Self {
-//         ControlFlowExpr::If(ExpressionValue::Static(value.into()))
-//     }
-// }
-
-// impl<T> Into<ControlFlowExpr<T>> for Option<T> {
-//     fn into(self) -> ControlFlowExpr<T> {
-//         ControlFlowExpr::Else(self.map(|val| ExpressionValue::Static(val.into())))
-//     }
-// }
-
-// // -----------------------------------------------------------------------------
-// //   - Listener -
-// // -----------------------------------------------------------------------------
-// pub(crate) struct Listener;
-
-// impl Listen for Listener {
-//     type Key = NodeId;
-//     type Value = u32;
-
-//     fn subscribe(value: ValueRef<Container<Self::Value>>, key: Self::Key) {}
-// }
+use crate::layout::Constraints;
+use crate::{Attributes, Factory, Nodes, Widget, WidgetContainer, WidgetFactory, Padding};
 
 struct TestWidget;
 
@@ -125,7 +23,7 @@ impl Widget for TestWidget {
         &mut self,
         children: &mut crate::Nodes,
         ctx: &mut crate::contexts::LayoutCtx,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
     ) -> crate::error::Result<anathema_render::Size> {
         todo!()
     }
@@ -140,7 +38,7 @@ struct TestWidgetFactory;
 impl WidgetFactory for TestWidgetFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
         noden_id: &anathema_values::NodeId,
@@ -154,12 +52,44 @@ pub struct TestExpression<'a, S> {
     pub state: S,
     pub scope: Scope<'a>,
     pub expr: Box<Expression>,
-    pub ctx: LayoutCtx,
+    pub layout: LayoutCtx,
 }
 
 impl<'a, S: State> TestExpression<'a, S> {
+    pub fn ctx(&self) -> Context<'_, '_> {
+        let ctx = Context::new(&self.state, &self.scope);
+        ctx
+    }
+
     pub fn eval(&'a self) -> Result<Node<'a>> {
-        self.expr.eval(&self.state, &self.scope, 0.into())
+        self.expr.eval(&self.ctx(), 0.into())
+    }
+}
+
+pub struct TestNodes<'e> {
+    pub nodes: Nodes<'e>,
+    scope: Scope<'e>,
+    state: TestState,
+}
+
+impl<'e> TestNodes<'e> {
+    pub fn new(exprs: &'e [Expression]) -> Self {
+        register_test_widget();
+        let nodes = Nodes::new(exprs, 0.into());
+        Self {
+            nodes,
+            scope: Scope::new(None),
+            state: TestState::new(),
+        }
+    }
+
+    pub fn next(&mut self) {
+        let context = Context::new(&self.state, &self.scope);
+        let mut visitor = NodeBuilder {
+            layout: LayoutCtx::new(Constraints::new(120, 40), Padding::ZERO),
+            context
+        };
+        self.nodes.next(&mut visitor, &context);
     }
 }
 
@@ -187,8 +117,6 @@ pub(crate) fn for_expression(
     collection: Box<ValueExpr>,
     body: impl Into<Vec<Expression>>,
 ) -> Expression {
-    // let collection = collection.map(Into::into);
-    // let binding = binding.into();
     Expression::Loop(Loop {
         body: body.into().into(),
         binding: binding.into(),

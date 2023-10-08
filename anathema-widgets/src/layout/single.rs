@@ -9,12 +9,14 @@ use anathema_widget_core::WidgetContainer;
 pub struct Single;
 
 impl Layout for Single {
-    fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: Context<'_, '_>) -> Result<Size> {
+    fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: &Context<'_, '_>) -> Result<Size> {
          let constraints = layout.padded_constraints();
 
-         let size = children.next(data.state, data.scope, layout, &mut |widget, children, data| {
-             widget.layout(children, constraints, data)
-         });
+         // TODO: a size visitor?
+         let size = panic!();
+         // children.next_old(data, layout, &mut |widget, children, data| {
+         //     widget.layout(children, constraints, data)
+         // });
 
          match size {
              Some(Err(Error::InsufficientSpaceAvailble)) => return Ok(Size::ZERO),
