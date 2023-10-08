@@ -1,17 +1,24 @@
+use anathema_render::Size;
 use anathema_values::{Context, NodeId, Scope, State};
 
 use super::{LoopNode, Node, NodeKind};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Expression;
+use crate::layout::Constraints;
 use crate::{Nodes, WidgetContainer};
 
-pub struct NodeBuilder<'a, 'val> {
-    pub layout: LayoutCtx,
-    pub context: Context<'a, 'val>,
+pub struct NodeBuilder {
+    constraints: Constraints,
 }
 
-impl<'a, 'val> NodeBuilder<'a, 'val> {
+impl NodeBuilder {
+    pub fn new(constraints: Constraints) -> Self {
+        Self {
+            constraints,
+        }
+    }
+
     pub fn build<'e>(
         &mut self,
         expr: &'e Expression,
@@ -24,8 +31,10 @@ impl<'a, 'val> NodeBuilder<'a, 'val> {
         };
 
         match &mut node.kind {
-            NodeKind::Single(container, nodes) => self.build_single(container, nodes, context),
-            NodeKind::Loop(loop_state) => self.build_loop(loop_state, context),
+            NodeKind::Single(container, nodes) => {
+                drop(self.build_single(container, nodes, context))
+            }
+            NodeKind::Loop(loop_state) => drop(self.build_loop(loop_state, context)),
             NodeKind::ControlFlow { .. } => self.visit_control_flow(),
         }
 
@@ -37,16 +46,19 @@ impl<'a, 'val> NodeBuilder<'a, 'val> {
         widget_container: &mut WidgetContainer,
         nodes: &mut Nodes<'_>,
         context: &Context<'_, '_>,
-    ) -> () {
-        // Perform layout
-        // todo!()
+    ) -> Result<Size> {
+        widget_container.layout(nodes, self.constraints, context)
     }
 
-    fn build_loop(&mut self, loop_node: &mut LoopNode<'_>, context: &Context<'_, '_>) -> () {
+    fn build_loop(
+        &mut self,
+        loop_node: &mut LoopNode<'_>,
+        context: &Context<'_, '_>,
+    ) -> Option<()> {
         // Scope value.
         // If there are no more values to scope then return;
 
-        let value = loop_node.value(&self.context).unwrap();
+        let value = loop_node.value(context)?;
         let binding = loop_node.binding.clone();
         let mut scope = context.scope.reparent();
         scope.scope(binding, value);
@@ -60,11 +72,13 @@ impl<'a, 'val> NodeBuilder<'a, 'val> {
                 Some(Ok(())) => body.advance(),
                 None => {
                     body.reset();
-                    self.build_loop(loop_node, &context);
+                    self.build_loop(loop_node, &context)?;
                 }
-                Some(Err(err)) => panic!("{err}"),
+                Some(Err(err)) => panic!("ERR: {err}"),
             }
         }
+
+        Some(())
     }
 
     fn visit_control_flow(&mut self) {
