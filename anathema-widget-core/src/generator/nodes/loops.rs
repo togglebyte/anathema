@@ -40,17 +40,13 @@ impl<'e> LoopNode<'e> {
         // This could be more efficient by hanging on to the collection
         // via a ref (Rc?).
         let val = match self.collection.eval_value(context, None)? {
-            ValueRef::Expressions(list) => list[self.value_index].eval_value(context, None)?,
+            ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
             ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
             _ => return None,
         };
+        self.value_index += 1;
 
         Some(ScopeValue::Static(val))
-    }
-
-    pub(super) fn next_value(&mut self) -> bool {
-        self.value_index += 1;
-        panic!()
     }
 
     /// Scoping a value should only ever happen after an iteration

@@ -5,7 +5,7 @@ use anathema_values::testing::TestState;
 use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
 
 use super::nodes::Node;
-use super::nodes::visitor::NodeBuilder;
+use super::nodes::builder::NodeBuilder;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
@@ -83,13 +83,19 @@ impl<'e> TestNodes<'e> {
         }
     }
 
-    pub fn next(&mut self) {
+    pub fn next(&mut self) -> Option<Result<()>> {
         let context = Context::new(&self.state, &self.scope);
         let mut visitor = NodeBuilder {
             layout: LayoutCtx::new(Constraints::new(120, 40), Padding::ZERO),
             context
         };
-        self.nodes.next(&mut visitor, &context);
+        match self.nodes.next(&mut visitor, &context)? {
+            Ok(()) => {
+                self.nodes.advance();
+                Some(Ok(()))
+            }
+            Err(e) => panic!("{e}"),
+        }
     }
 }
 
