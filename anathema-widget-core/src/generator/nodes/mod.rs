@@ -312,7 +312,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut
 
 #[cfg(test)]
 mod test {
-    use anathema_values::testing::list;
+    use anathema_values::testing::{list, TestState};
 
     use super::*;
     use crate::generator::testing::*;
@@ -329,41 +329,28 @@ mod test {
 
     #[test]
     fn for_loop() {
-        // register_test_widget();
-        // let mut state = ();
-        // let mut scope = Scope::new(None);
-        // let mut layout = LayoutCtx::new(Constraints::unbounded(), Padding::ZERO);
-
         let body = expression("test", None, [], []);
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
         let mut nodes = TestNodes::new(&exprs);
         nodes.next();
-        // assert_eq!(nodes.nodes.count(), 1);
-        // nodes.next();
-        // assert_eq!(nodes.nodes.count(), 2);
-        // nodes.next();
-        // assert_eq!(nodes.nodes.count(), 3);
-        // nodes.next();
-        // assert_eq!(nodes.nodes.count(), 3);
+        assert_eq!(nodes.nodes.count(), 3);
+    }
 
-        // let mut test = for_expression("item", list([1, 2, 3]), [body]).test();
-        // let mut loop_node = test.eval().unwrap();
-        // let nodes = loop_node.nodes();
-        // nodes.next(&test.ctx(), &mut test.layout, &mut |_, _, _| {});
+    #[test]
+    fn lark() {
+        // register_test_widget();
+        // let body = expression("test", None, [], []);
+        // let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
+        // let mut nodes = Nodes::new(&exprs, 0.into());
+        // let mut builder = NodeBuilder;
+        // let state = TestState::new();
+        // let scope = Scope::new(None);
+        // let context = Context::new(&state, &scope);
 
-        // // let mut nodes = Nodes::new(vec![for_loop].into(), NodeId::new(0));
+        // while let Some(Ok(())) = nodes.next(&mut builder, &context) {
+        //     nodes.advance();
+        // }
 
-        // // nodes.for_each(&mut state, &mut scope, &mut layout, |_, _, _| { Ok(Size::ZERO) });
-        // // panic!("this isn't done!");
-
-        // // let node_1 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-        // // let node_2 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-        // // let node_3 = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-        // // let node_none = nodes.next(&mut state, &mut scope, &mut layout, &mut |_, _, _| { Ok(Size::ZERO) });
-
-        // // assert!(node_1.is_some());
-        // // assert!(node_2.is_some());
-        // // assert!(node_3.is_some());
-        // // assert!(node_none.is_none());
+        // // eprintln!("{nodes:?}");
     }
 }

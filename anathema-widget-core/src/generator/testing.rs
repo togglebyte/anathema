@@ -33,6 +33,19 @@ impl Layout for TestLayout {
 
 struct TestWidget;
 
+struct TestLayout;
+
+impl Layout for TestLayout {
+    fn layout(
+        &mut self,
+        layout: &mut LayoutCtx,
+        children: &mut Nodes,
+        data: &Context<'_, '_>,
+    ) -> Result<anathema_render::Size> {
+        Ok(Size::new(5, 5))
+    }
+}
+
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {
         "test"
@@ -40,7 +53,7 @@ impl Widget for TestWidget {
 
     fn layout(
         &mut self,
-        children: &mut crate::Nodes,
+        children: &mut crate::Nodes<'_>,
         ctx: &mut crate::contexts::LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {

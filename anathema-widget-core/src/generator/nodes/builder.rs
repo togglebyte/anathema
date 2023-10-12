@@ -10,14 +10,12 @@ use crate::{Nodes, WidgetContainer};
 
 pub struct NodeBuilder {
     pub constraints: Constraints,
-    pub size: Size,
 }
 
 impl NodeBuilder {
     pub fn new(constraints: Constraints) -> Self {
         Self {
             constraints,
-            size: Size::ZERO,
         }
     }
 
@@ -43,7 +41,11 @@ impl NodeBuilder {
         widget_container.layout(nodes, self.constraints, context);
     }
 
-    fn build_loop(&mut self, loop_node: &mut LoopNode<'_>, context: &Context<'_, '_>) -> () {
+    fn build_loop(
+        &mut self,
+        loop_node: &mut LoopNode<'_>,
+        context: &Context<'_, '_>,
+    ) -> Option<()> {
         // Scope value.
         // If there are no more values to scope then return;
 
@@ -61,11 +63,13 @@ impl NodeBuilder {
                 Some(Ok(())) => body.advance(),
                 None => {
                     body.reset();
-                    self.build_loop(loop_node, &context);
+                    self.build_loop(loop_node, &context)?;
                 }
-                Some(Err(err)) => panic!("{err}"),
+                Some(Err(err)) => panic!("ERR: {err}"),
             }
         }
+
+        Some(())
     }
 
     fn visit_control_flow(&mut self) {
