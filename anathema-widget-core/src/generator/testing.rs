@@ -1,16 +1,35 @@
 use std::rc::Rc;
 use std::str::FromStr;
 
+use anathema_render::Size;
 use anathema_values::testing::TestState;
 use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
 
-use super::nodes::Node;
 use super::nodes::builder::NodeBuilder;
+use super::nodes::Node;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
-use crate::layout::Constraints;
-use crate::{Attributes, Factory, Nodes, Widget, WidgetContainer, WidgetFactory, Padding};
+use crate::layout::{Constraints, Layouts, Layout};
+use crate::{Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory};
+
+struct TestLayout {
+}
+
+impl Layout for TestLayout {
+    fn layout(
+        &mut self,
+        layout: &mut LayoutCtx,
+        children: &mut Nodes,
+        data: &Context<'_, '_>,
+        size: &mut Size,
+    ) -> Result<Size> {
+        let mut builder = NodeBuilder::new(constraints, size);
+        loop {
+            children.next(&mut builder, data)
+        }
+    }
+}
 
 struct TestWidget;
 
@@ -24,8 +43,14 @@ impl Widget for TestWidget {
         children: &mut crate::Nodes,
         ctx: &mut crate::contexts::LayoutCtx,
         data: &Context<'_, '_>,
-    ) -> crate::error::Result<anathema_render::Size> {
-        todo!()
+    ) -> Result<Size> {
+        let mut layout = Layouts::new(TestLayout, layout);
+        let size = layout.layout(children, data)?;
+        if size == Size::ZERO {
+            Ok(Size::ZERO)
+        } else {
+            Ok(layout.expand_horz().expand_vert().size())
+        }
     }
 
     fn position<'tpl>(&mut self, children: &mut crate::Nodes, ctx: crate::contexts::PositionCtx) {
@@ -87,7 +112,7 @@ impl<'e> TestNodes<'e> {
         let context = Context::new(&self.state, &self.scope);
         let mut visitor = NodeBuilder {
             layout: LayoutCtx::new(Constraints::new(120, 40), Padding::ZERO),
-            context
+            context,
         };
         match self.nodes.next(&mut visitor, &context)? {
             Ok(()) => {

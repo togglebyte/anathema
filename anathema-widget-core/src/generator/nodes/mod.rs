@@ -1,19 +1,19 @@
 use anathema_render::Size;
 use anathema_values::{Change, Collection, Context, NodeId, Scope, State};
 
+use self::builder::NodeBuilder;
 use self::controlflow::{Else, If};
 pub(crate) use self::loops::LoopNode;
 use self::visitor::NodeVisitor;
-use self::builder::NodeBuilder;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Expression;
 use crate::WidgetContainer;
 
+pub mod builder;
 mod controlflow;
 mod loops;
 pub mod visitor;
-pub mod builder;
 
 #[derive(Debug)]
 pub struct Node<'e> {
@@ -97,13 +97,21 @@ impl<'e> Nodes<'e> {
         builder: &mut NodeBuilder,
         context: &Context<'_, '_>,
     ) -> Option<Result<()>> {
-        let expr = self.expressions.get(self.expr_index)?;
-        match builder.build(expr, context, self.next_id.next())? {
-            Ok(mut node) => {
-                self.inner.push(node);
-                Some(Ok(()))
+        // Get a node out of the cache, if one doesn't exist: make one
+        match self.inner.get_mut(self.cache_index) {
+            Some(n) => builder.layout(n, context),
+            None => {
+                let expr = self.expressions.get(self.expr_index)?;
+                match expr.eval(&context, self.next_id.next()) {
+                    Ok(mut node) => {
+                        let res = builder.layout(&mut node, context);
+                        self.inner.push(node);
+                        self.cache_index = self.inner.len();
+                        res
+                    }
+                    Err(e) => Some(Err(e)),
+                }
             }
-            Err(e) => Some(Err(e)),
         }
     }
 
