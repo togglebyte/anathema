@@ -28,6 +28,7 @@ impl Layout for TestLayout {
         loop {
             children.next(&mut builder, data)
         }
+        Ok(builder.size)
     }
 }
 

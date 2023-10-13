@@ -9,6 +9,7 @@ use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::Expression;
 use crate::WidgetContainer;
+use crate::layout::Layout;
 
 pub mod builder;
 mod controlflow;
@@ -92,9 +93,9 @@ impl<'e> Nodes<'e> {
         self.expr_index += 1;
     }
 
-    pub fn next(
+    pub fn next<L: Layout>(
         &mut self,
-        builder: &mut NodeBuilder,
+        builder: &mut NodeBuilder<L>,
         context: &Context<'_, '_>,
     ) -> Option<Result<()>> {
         // Get a node out of the cache, if one doesn't exist: make one

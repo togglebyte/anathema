@@ -5,18 +5,17 @@ use super::{LoopNode, Node, NodeKind};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Expression;
-use crate::layout::Constraints;
+use crate::layout::{Constraints, Layout};
 use crate::{Nodes, WidgetContainer};
 
-pub struct NodeBuilder {
+pub struct NodeBuilder<L> {
     pub constraints: Constraints,
+    layout: L,
 }
 
-impl NodeBuilder {
-    pub fn new(constraints: Constraints) -> Self {
-        Self {
-            constraints,
-        }
+impl<L: Layout> NodeBuilder<L> {
+    pub fn new(constraints: Constraints, layout: L) -> Self {
+        Self { constraints, layout }
     }
 
     pub fn layout<'e>(
@@ -25,8 +24,8 @@ impl NodeBuilder {
         context: &Context<'_, '_>,
     ) -> Option<Result<()>> {
         match &mut node.kind {
-            NodeKind::Single(container, nodes) => self.build_single(container, nodes, context),
-            NodeKind::Loop(loop_state) => self.build_loop(loop_state, context),
+            NodeKind::Single(container, nodes) => self.build_single(container, nodes, context).ok()?,
+            NodeKind::Loop(loop_state) => self.build_loop(loop_state, context)?,
             NodeKind::ControlFlow { .. } => self.visit_control_flow(),
         }
         Some(Ok(()))
@@ -37,8 +36,10 @@ impl NodeBuilder {
         widget_container: &mut WidgetContainer,
         nodes: &mut Nodes<'_>,
         context: &Context<'_, '_>,
-    ) {
-        widget_container.layout(nodes, self.constraints, context);
+    ) -> Result<()> {
+        let size = widget_container.layout(nodes, self.constraints, context)?;
+        self.layout.layout(size);
+        Ok(())
     }
 
     fn build_loop(
@@ -49,7 +50,7 @@ impl NodeBuilder {
         // Scope value.
         // If there are no more values to scope then return;
 
-        let value = loop_node.value(context).unwrap();
+        let value = loop_node.value(context)?;
         let binding = loop_node.binding.clone();
         let mut scope = context.scope.reparent();
         scope.scope(binding, value);
