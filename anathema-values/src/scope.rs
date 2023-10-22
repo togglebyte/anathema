@@ -1,61 +1,13 @@
 use std::rc::Rc;
 
 use crate::hashmap::HashMap;
-use crate::{Attributes, NodeId, Path, State, Value, ValueExpr, ValueRef};
-
-#[derive(Debug)]
-pub enum Collection {
-    Rc(Rc<[ValueExpr]>),
-    State { path: Path, len: usize },
-    Empty,
-}
-
-impl Collection {
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Empty => 0,
-            Self::Rc(col) => col.len(),
-            Self::State { len, .. } => *len,
-        }
-    }
-
-    /// Increase the length of a state collection.
-    /// This is a manual step for state bound lists
-    /// as we don't access the entire list, only
-    /// one value at a time when needed.
-    pub fn add(&mut self) {
-        if let Collection::State { len, .. } = self {
-            *len += 1;
-        }
-    }
-
-    /// Decrease the length of a state collection.
-    /// This is a manual step (see `Self::add`)
-    pub fn remove(&mut self) {
-        if let Collection::State { len, .. } = self {
-            *len -= 1;
-        }
-    }
-}
+use crate::{Attributes, NodeId, Path, State, Value, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum ScopeValue<'a> {
     Static(ValueRef<'a>),
     Dyn(&'a Path),
 }
-
-// TODO: do we even need this? - 2023-09-26
-// impl<const N: usize> From<[ScopeValue; N]> for ScopeValue {
-//     fn from(arr: [ScopeValue; N]) -> Self {
-//         if N == 1 {
-//             arr.into_iter()
-//                 .next()
-//                 .expect("this is always going to be an array with a size of one")
-//         } else {
-//             ScopeValue::List(Rc::new(arr))
-//         }
-//     }
-// }
 
 #[derive(Debug)]
 pub struct Scope<'a> {

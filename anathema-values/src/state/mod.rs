@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 pub use self::value::{Change, StateValue};
-use crate::{Collection, NodeId, Path, ValueRef};
+use crate::{NodeId, Path, ValueRef};
 
 mod value;
 

@@ -7,7 +7,7 @@ use crate::Path;
 #[derive(Debug)]
 pub struct Map<T> {
     inner: HashMap<String, StateValue<T>>,
-    subscribers: RefCell<Vec<NodeId>>,
+    // subscribers: RefCell<Vec<NodeId>>,
 }
 
 impl<T> Map<T> {
@@ -21,7 +21,7 @@ impl<T> Map<T> {
             .map(|(k, v)| (k.into(), StateValue::new(v)));
         Self {
             inner: HashMap::from_iter(inner),
-            subscribers: RefCell::new(vec![]),
+            // subscribers: RefCell::new(vec![]),
         }
     }
 

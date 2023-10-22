@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::{Collection, Context, NodeId, Num, Owned, Path, Value, ValueRef};
+use crate::{Context, NodeId, Num, Owned, Path, Value, ValueRef};
 
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
