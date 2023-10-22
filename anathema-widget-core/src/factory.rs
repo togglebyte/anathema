@@ -16,7 +16,7 @@ pub trait WidgetFactory: Send + Sync {
         data: &Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
-        noden_id: &NodeId,
+        node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>>;
 }
 

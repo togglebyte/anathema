@@ -3,15 +3,20 @@ use std::str::FromStr;
 
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
+use anathema_values::{Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr, ValueRef};
 
 use super::nodes::Node;
-use crate::contexts::LayoutCtx;
+use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
-use crate::{Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory};
+use crate::{
+    AnyWidget, Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory,
+};
 
+// -----------------------------------------------------------------------------
+//   - Layouts -
+// -----------------------------------------------------------------------------
 pub struct TestLayoutMany;
 
 impl Layout for TestLayoutMany {
@@ -27,33 +32,37 @@ impl Layout for TestLayoutMany {
             let s = widget.layout(children, layout.constraints, ctx)?;
             size.height += s.height;
             size.width = size.width.max(s.width);
-            Ok(s)
+            Ok(())
         });
 
-        Ok(Size::ZERO)
+        Ok(size)
     }
 }
 
-struct TestWidget;
+// -----------------------------------------------------------------------------
+//   - Widgets -
+// -----------------------------------------------------------------------------
+
+struct TestWidget(String);
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {
-        "test"
+        "text"
     }
 
     fn layout(
         &mut self,
-        children: &mut crate::Nodes<'_>,
+        children: &mut Nodes<'_>,
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        let mut layout = Layouts::new(TestLayoutMany, layout);
-        layout.layout(children, data)
+        match self.0.len() {
+            0 => Ok(Size::ZERO),
+            width => Ok(Size::new(width, 1)),
+        }
     }
 
-    fn position<'tpl>(&mut self, children: &mut crate::Nodes, ctx: crate::contexts::PositionCtx) {
-        todo!()
-    }
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {}
 }
 
 struct TestWidgetFactory;
@@ -64,12 +73,59 @@ impl WidgetFactory for TestWidgetFactory {
         data: &Context<'_, '_>,
         attributes: &Attributes,
         text: Option<&ValueExpr>,
-        noden_id: &anathema_values::NodeId,
-    ) -> crate::error::Result<Box<dyn crate::AnyWidget>> {
-        let widget = TestWidget;
+        node_id: &NodeId,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let text = text.unwrap();
+        let text = match text.eval_value(data, Some(node_id)).unwrap() {
+            ValueRef::Str(s) => s.to_string(),
+            ValueRef::Owned(owned) => owned.to_string(),
+            _ => panic!("not sure what to do here yet"),
+        };
+        let widget = TestWidget(text);
         Ok(Box::new(widget))
     }
 }
+
+struct TestListWidget;
+
+impl Widget for TestListWidget {
+    fn kind(&self) -> &'static str {
+        "list"
+    }
+
+    fn layout(
+        &mut self,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
+    ) -> Result<Size> {
+        let mut layout = Layouts::new(TestLayoutMany, layout);
+        layout.layout(children, data)
+    }
+
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        todo!()
+    }
+}
+
+struct TestListWidgetFactory;
+
+impl WidgetFactory for TestListWidgetFactory {
+    fn make(
+        &self,
+        data: &Context<'_, '_>,
+        attributes: &Attributes,
+        text: Option<&ValueExpr>,
+        node_id: &NodeId,
+    ) -> Result<Box<dyn AnyWidget>> {
+        let widget = TestListWidget;
+        Ok(Box::new(widget))
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Expressions -
+// -----------------------------------------------------------------------------
 
 pub struct TestExpression<'a, S> {
     pub state: S,
@@ -89,6 +145,9 @@ impl<'a, S: State> TestExpression<'a, S> {
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Test node -
+// -----------------------------------------------------------------------------
 pub struct TestNodes<'e> {
     pub nodes: Nodes<'e>,
     scope: Scope<'e>,
@@ -111,16 +170,13 @@ impl<'e> TestNodes<'e> {
         let constraints = Constraints::new(120, 40);
         let layout = LayoutCtx::new(constraints, Padding::ZERO);
 
-        TestLayoutMany.layout(
-            &mut self.nodes,
-            &layout,
-            &context,
-        )
+        TestLayoutMany.layout(&mut self.nodes, &layout, &context)
     }
 }
 
 pub(crate) fn register_test_widget() {
     Factory::register("test", TestWidgetFactory);
+    Factory::register("list", TestListWidgetFactory);
 }
 
 pub(crate) fn expression(
@@ -147,6 +203,16 @@ pub(crate) fn for_expression(
         body: body.into().into(),
         binding: binding.into(),
         collection: *collection,
+    })
+}
+
+pub(crate) fn if_expression(
+    binding: impl Into<Path>,
+    collection: Box<ValueExpr>,
+    body: impl Into<Vec<Expression>>,
+) -> Expression {
+    Expression::ControlFlow(ControlFlow {
+        if_expr: If
     })
 }
 

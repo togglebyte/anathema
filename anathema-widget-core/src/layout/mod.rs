@@ -24,37 +24,31 @@ pub trait Layout {
 //   - Layouts -
 // -----------------------------------------------------------------------------
 pub struct Layouts<'ctx, T> {
-    pub ctx: &'ctx LayoutCtx,
+    pub layout_ctx: &'ctx LayoutCtx,
     pub size: Size,
     pub layout: T,
 }
 
 impl<'ctx, T: Layout> Layouts<'ctx, T> {
-    pub fn new(layout: T, ctx: &'ctx LayoutCtx) -> Self {
+    pub fn new(layout: T, layout_ctx: &'ctx LayoutCtx) -> Self {
         Self {
-            ctx,
+            layout_ctx,
             layout,
             size: Size::ZERO,
         }
     }
 
     pub fn layout(&mut self, children: &mut Nodes, data: &Context<'_, '_>) -> Result<Size> {
-        panic!()
-        // self.layout.layout(self.ctx, children, data)
-        // while let Some(res) = children.next(data.state, data.scope, self.ctx) {
-        //     res?;
-        // }
-        // let size = self.layout.finalize(children);
-        // Ok(size)
+        self.layout.layout(children, self.layout_ctx, data)
     }
 
     pub fn expand_horz(&mut self) -> &mut Self {
-        self.size.width = self.ctx.constraints.max_width;
+        self.size.width = self.layout_ctx.constraints.max_width;
         self
     }
 
     pub fn expand_vert(&mut self) -> &mut Self {
-        self.size.height = self.ctx.constraints.max_height;
+        self.size.height = self.layout_ctx.constraints.max_height;
         self
     }
 

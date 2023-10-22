@@ -105,6 +105,7 @@ impl ValueExpr {
     ) -> Option<ValueRef<'_>> {
         match self {
             Self::Value(Value::Owned(value)) => Some(ValueRef::Owned(*value)),
+            Self::Value(Value::Str(value)) => Some(ValueRef::Str(&*value)),
             Self::Not(expr) => {
                 let b = expr.eval_bool(context, node_id);
                 Some(ValueRef::Owned((!b).into()))

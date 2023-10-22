@@ -31,6 +31,7 @@ impl<'a> PartialEq for ValueRef<'a> {
             (Self::Owned(lhs), Self::Owned(rhs)) => lhs == rhs,
             // (Self::Map(lhs), Self::Map(rhs)) => lhs.eq(rhs),
             // (Self::List(lhs), Self::List(rhs)) => lhs.eq(rhs),
+            // TODO: see panic message
             _ => panic!("need equality for Collection trait"),
         }
     }

@@ -32,7 +32,7 @@ impl<'e> LoopNode<'e> {
         self.body.count()
     }
 
-    pub(super) fn value<'val>(&mut self, context: &Context<'_, 'val>) -> Option<ScopeValue<'val>>
+    pub(super) fn next_value<'val>(&mut self, context: &Context<'_, 'val>) -> Option<ScopeValue<'val>>
     where
         'e: 'val,
     {
@@ -47,18 +47,6 @@ impl<'e> LoopNode<'e> {
         self.value_index += 1;
 
         Some(ScopeValue::Static(val))
-    }
-
-    /// Scoping a value should only ever happen after an iteration
-    pub(super) fn scope(&mut self, _scope: &mut Scope) -> bool {
-        panic!()
-        // if self.value_index >= self.collection.len() {
-        //     return false;
-        // }
-        // scope.scope_collection(self.binding.clone(), &self.collection, self.value_index);
-        // self.body.expr_index = 0;
-        // self.value_index += 1;
-        // true
     }
 
     pub(super) fn remove(&mut self, _index: usize) {

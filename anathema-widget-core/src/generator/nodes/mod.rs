@@ -27,30 +27,32 @@ impl<'e> Node<'e> {
         &mut self,
         context: &Context<'_, '_>,
         layout: &LayoutCtx,
-        mut f: F,
-    ) -> Result<ControlFlow<Size, Size>>
+        f: &mut F,
+    ) -> Result<ControlFlow<(), ()>>
     where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
+        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<()>,
     {
         match &mut self.kind {
             NodeKind::Single(widget, children) => {
-                let size = f(widget, children, context)?;
-                Ok(ControlFlow::Break(size))
+                f(widget, children, context)?;
+                Ok(ControlFlow::Break(()))
             }
-            NodeKind::Loop(loop_state) => {
+            NodeKind::Loop(loop_state) => loop {
                 let mut scope = context.scope.reparent();
-                // scope value
-                loop {
-                    match loop_state.body.next(context, layout, &mut f) {
-                        Some(Ok(val)) => {
-                            panic!("{val:?}");
-                        }
-                        Some(Err(Error::InsufficientSpaceAvailble)) | None => panic!(),
-                        Some(Err(e)) => break Err(e),
+                let Some(value) = loop_state.next_value(context) else {
+                    return Ok(ControlFlow::Break(()));
+                };
+                scope.scope(loop_state.binding.clone(), value);
+                loop_state.body.reset();
+
+                while let Some(res) = loop_state.body.next(context, layout, f) {
+                    match res? {
+                        ControlFlow::Continue(()) => continue,
+                        ControlFlow::Break(()) => break,
                     }
                 }
-            }
-            _ => panic!()
+            },
+            _ => panic!(),
         }
     }
 
@@ -123,7 +125,9 @@ impl<'e> Nodes<'e> {
     fn new_node(&mut self, context: &Context<'_, '_>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        let Ok(node) = expr.eval(&context, self.next_id.next()) else { return None };
+        let Ok(node) = expr.eval(&context, self.next_id.next()) else {
+            return None;
+        };
         self.inner.push(node);
         Some(Ok(()))
     }
@@ -132,13 +136,16 @@ impl<'e> Nodes<'e> {
         &mut self,
         context: &Context<'_, '_>,
         layout: &LayoutCtx,
-        f: F,
-    ) -> Option<Result<ControlFlow<Size, Size>>>
+        f: &mut F,
+    ) -> Option<Result<ControlFlow<(), ()>>>
     where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
+        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<()>,
     {
         match self.inner.get_mut(self.cache_index) {
-            Some(n) => Some(n.next(context, layout, f)),
+            Some(n) => {
+                self.cache_index += 1;
+                Some(n.next(context, layout, f))
+            }
             None => {
                 if let Err(e) = self.new_node(context)? {
                     return Some(Err(e));
@@ -155,15 +162,27 @@ impl<'e> Nodes<'e> {
         mut f: F,
     ) -> Result<()>
     where
-        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
+        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<()>,
     {
         loop {
-            match self.next(context, layout, &mut f) {
-                Some(Ok(_)) => continue,
-                Some(Err(Error::InsufficientSpaceAvailble)) | None => break Ok(()),
-                Some(Err(e)) => break Err(e),
+            let x = self.next(context, layout, &mut f);
+            if let Some(res) = x {
+                match res? {
+                    ControlFlow::Continue(()) => continue,
+                    ControlFlow::Break(()) => break,
+                }
             }
+            break;
         }
+        Ok(())
+
+        // loop {
+        //     match self.next(context, layout, &mut f) {
+        //         Some(Ok(_)) => continue,
+        //         Some(Err(Error::InsufficientSpaceAvailble)) | None => break Ok(()),
+        //         Some(Err(e)) => break Err(e),
+        //     }
+        // }
     }
 
     // TODO: move this into a visitor?
@@ -335,6 +354,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut
 #[cfg(test)]
 mod test {
     use anathema_values::testing::{list, TestState};
+    use anathema_values::{Value, ValueExpr};
 
     use super::*;
     use crate::generator::testing::*;
@@ -351,28 +371,26 @@ mod test {
 
     #[test]
     fn for_loop() {
-        let body = expression("test", None, [], []);
+        let string = ValueExpr::Value(Value::Str("hello".into()));
+        let body = expression("test", Some(string), [], []);
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
         let mut nodes = TestNodes::new(&exprs);
-        nodes.layout();
-        // assert_eq!(nodes.nodes.count(), 3);
+        let size = nodes.layout().unwrap();
+        assert_eq!(size, Size::new(5, 3));
+        assert_eq!(nodes.nodes.count(), 3);
     }
 
-    //     #[test]
-    //     fn lark() {
-    //         register_test_widget();
-    //         let body = expression("test", None, [], []);
-    //         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
-    //         let mut nodes = Nodes::new(&exprs, 0.into());
-    //         let mut builder = NodeBuilder::new(Constraints::new(80, 20));
-    //         let state = TestState::new();
-    //         let scope = Scope::new(None);
-    //         let context = Context::new(&state, &scope);
+    #[test]
+    fn if_else() {
+        let true_text = ValueExpr::Value(Value::Str("true".into()));
+        let false_text = ValueExpr::Value(Value::Str("false".into()));
+        let body = expression("test", Some(true_text), [], []);
 
-    //         while let Some(Ok(size)) = nodes.next(&mut builder, &context) {
-    //             nodes.advance();
-    //         }
 
-    //         // eprintln!("{nodes:?}");
-    //     }
+        let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
+        let mut nodes = TestNodes::new(&exprs);
+        let size = nodes.layout().unwrap();
+        assert_eq!(size, Size::new(5, 3));
+        assert_eq!(nodes.nodes.count(), 3);
+    }
 }
