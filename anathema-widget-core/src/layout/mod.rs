@@ -14,7 +14,7 @@ mod constraints;
 pub trait Layout {
     fn layout(
         &mut self,
-        children: &mut Nodes,
+        children: &mut Nodes<'_>,
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size>;

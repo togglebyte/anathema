@@ -1,8 +1,9 @@
 use anathema_render::Size;
+use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Direction, Layout};
-use anathema_widget_core::WidgetContainer;
+use anathema_widget_core::{Nodes, WidgetContainer};
 
 use super::many::Many;
 
@@ -18,10 +19,10 @@ impl Horizontal {
 impl Layout for Horizontal {
     fn layout(
         &mut self,
-        layout: &mut LayoutCtx,
-        children: &mut anathema_widget_core::Nodes,
-        data: anathema_values::Context<'_, '_>,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
-        self.0.layout(layout, children, data)
+        self.0.layout(children, layout, data)
     }
 }

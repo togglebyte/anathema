@@ -84,40 +84,21 @@ impl<'a, 'val> Context<'a, 'val> {
             .and_then(|expr| expr.eval(self, node_id))
     }
 
-    pub fn list_to_string(
+    pub fn owned<T>(
         &self,
-        _list: &Rc<[ScopeValue]>,
-        _buffer: &mut String,
-        _node_id: Option<&NodeId>,
-    ) {
-        panic!()
-        // for val in list.iter() {
-        //     match val {
-        //         ScopeValue::List(list) => self.list_to_string(list, buffer, node_id),
-        //         ScopeValue::Dyn(path) => buffer.push_str(&self.get_string(path, node_id)),
-        //         ScopeValue::Static(s) => drop(write!(buffer, "{s}")),
-        //     }
-        // }
-    }
-
-    pub fn get_string(&self, _path: &Path, _node_id: Option<&NodeId>) -> String {
-        panic!()
-        // match self.scope.lookup(path) {
-        //     Some(val) => match val {
-        //         ScopeValue::Dyn(path) => self.get_string(path, node_id),
-        //         ScopeValue::Static(s) => s.to_string(),
-        //         ScopeValue::List(list) => {
-        //             let mut buffer = String::new();
-        //             self.list_to_string(list, &mut buffer, node_id);
-        //             buffer
-        //         }
-        //     },
-        //     None => self
-        //         .state
-        //         .get(&path, node_id)
-        //         .map(|val| val.to_string())
-        //         .unwrap_or_else(String::new),
-        // }
+        key: impl AsRef<str>,
+        node_id: Option<&NodeId>,
+        attributes: &'val Attributes,
+    ) -> Option<T>
+    where
+        T: Copy,
+        for<'b> &'b T: TryFrom<&'b Value>,
+        for<'b> &'b T: TryFrom<ValueRef<'b>>,
+    {
+        attributes
+            .get(key.as_ref())
+            .and_then(|expr| expr.eval(self, node_id))
+            .map(|val| *val)
     }
 }
 

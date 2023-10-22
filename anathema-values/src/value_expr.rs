@@ -61,6 +61,13 @@ impl Display for ValueExpr {
     }
 }
 
+impl From<Box<ValueExpr>> for ValueExpr {
+    fn from(val: Box<ValueExpr>) -> Self {
+        *val
+    }
+}
+
+
 impl<T> From<T> for ValueExpr
 where
     T: Into<Value>,
@@ -95,6 +102,25 @@ impl ValueExpr {
                 Some(lhs.compose(index))
             }
             _ => None,
+        }
+    }
+
+    pub fn eval_string(
+        &self,
+        context: &Context<'_, '_>,
+        node_id: Option<&NodeId>,
+    ) -> Option<String> {
+        match self.eval_value(context, node_id)? {
+            ValueRef::Str(s) => Some(s.into()),
+            ValueRef::Owned(s) => Some(s.to_string()),
+            ValueRef::Expressions(list) => {
+                let mut s = String::new();
+                for expr in list {
+                    s.push_str(&expr.eval_string(context, node_id)?);
+                }
+                Some(s)
+            }
+            _ => panic!(),
         }
     }
 
@@ -200,7 +226,8 @@ impl ValueExpr {
 
 #[cfg(test)]
 mod test {
-    use crate::{testing::{add, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum}, ValueRef};
+    use crate::testing::{add, strlit, list, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum};
+    use crate::ValueRef;
 
     #[test]
     fn add_dyn() {
@@ -256,9 +283,15 @@ mod test {
 
     #[test]
     fn path() {
-        let expr = dot(ident("inner"), ident("name"));
-        let test = expr.test([]);
-        let e = test.eval().unwrap();
-        assert!(matches!(e, ValueRef::Str("Fiddle McStick")));
+        let test = dot(ident("inner"), ident("name")).test([]);
+        let name = test.eval().unwrap();
+        assert!(matches!(name, ValueRef::Str("Fiddle McStick")));
+    }
+
+    #[test]
+    fn string() {
+        let expr = list(vec![strlit("Mr. "), dot(ident("inner"), ident("name"))]);
+        let string = expr.test([]).eval_string().unwrap();
+        assert_eq!(string, "Mr. Fiddle McStick");
     }
 }

@@ -1,8 +1,7 @@
 use anathema_render::{Size, Style};
-use anathema_values::{Context, NodeId, ScopeValue};
+use anathema_values::{Attributes, Context, NodeId, ScopeValue, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::{Axis, Layouts};
 use anathema_widget_core::{AnyWidget, LocalPos, Widget, WidgetContainer, WidgetFactory, Nodes};
 
@@ -97,9 +96,9 @@ impl Widget for Expand {
 
     fn layout(
         &mut self,
-        children: &mut anathema_widget_core::Nodes,
-        mut layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         let mut size = Layouts::new(Single, layout).layout(children, data)?;
 
@@ -147,9 +146,9 @@ pub(crate) struct ExpandFactory;
 impl WidgetFactory for ExpandFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
-        text_src: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         let axis = data.attribute("axis", node_id.into(), attributes);

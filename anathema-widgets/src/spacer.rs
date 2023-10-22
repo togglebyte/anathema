@@ -1,8 +1,7 @@
 use anathema_render::Size;
-use anathema_values::{Context, NodeId, ScopeValue};
+use anathema_values::{Attributes, Context, NodeId, ScopeValue, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::Layouts;
 use anathema_widget_core::{AnyWidget, Widget, WidgetContainer, WidgetFactory, Nodes};
 
@@ -34,9 +33,9 @@ impl Widget for Spacer {
 
     fn layout(
         &mut self,
-        children: &mut anathema_widget_core::Nodes,
-        mut layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         // debug_assert!(
         //     layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),
@@ -56,9 +55,9 @@ pub(crate) struct SpacerFactory;
 impl WidgetFactory for SpacerFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
-        text_src: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         Ok(Box::new(Spacer))

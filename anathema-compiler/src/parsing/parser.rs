@@ -719,17 +719,4 @@ mod test {
         assert_eq!(expressions.remove(0), Expression::Node(0.into()));
         assert_eq!(expressions.remove(0), Expression::LoadText(0.into()));
     }
-
-    #[test]
-    fn parse_invalid_path() {
-        let src = "node [path:  a.-b.c ]";
-        let expected = Error {
-            kind: ErrorKind::InvalidPath,
-            line: 1,
-            col: 18,
-            src: src.to_string(),
-        };
-        let actual = parse_err(src).remove(0);
-        assert_eq!(expected, actual);
-    }
 }

@@ -1,8 +1,7 @@
 use anathema_render::Size;
-use anathema_values::{Context, NodeId, ScopeValue};
+use anathema_values::{Attributes, Context, NodeId, ScopeValue, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::layout::{Direction, Layouts};
 use anathema_widget_core::{AnyWidget, Nodes, Widget, WidgetContainer, WidgetFactory};
 
@@ -67,9 +66,9 @@ impl Widget for VStack {
 
     fn layout(
         &mut self,
-        children: &mut Nodes,
-        layout: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         if let Some(width) = self.width {
             layout.constraints.max_width = layout.constraints.max_width.min(width);
@@ -101,9 +100,9 @@ pub(crate) struct VStackFactory;
 impl WidgetFactory for VStackFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
-        text: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         let width = data.primitive("width", node_id.into(), attributes);

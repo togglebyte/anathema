@@ -131,7 +131,7 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
-            ValueRef::Owned(_owned) => panic!(), //owned.try_into(),
+            ValueRef::Owned(owned) => panic!(), //owned.try_into(),
             _ => Err(()),
         }
     }

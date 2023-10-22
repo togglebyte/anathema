@@ -19,12 +19,11 @@ pub use crate::layout::{Align, Axis, Direction, LocalPos, Padding, Pos, Region};
 pub use crate::values::{Color, Display};
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer};
 
-pub fn style<T>(_context: &Context<'_, '_>, _attributes: &Attributes, _node_id: &NodeId) -> Style {
-    panic!()
-    // let mut style = Style::new();
+pub fn style(context: &Context<'_, '_>, attributes: &Attributes, node_id: &NodeId) -> Style {
+    let mut style = Style::new();
 
-    // style.fg = context.attribute("foreground", node_id.into(), attributes);
-    // style.set_bold(context.primitive("bold", node_id.into(), attributes).unwrap_or(false));
+    style.fg = context.attribute("foreground", node_id.into(), attributes).map(|col| *col);
+    // style.set_bold(context.attribute("bold", node_id.into(), attributes).map(|b| *b).unwrap_or(false));
     // style.set_italic(context.primitive("italic", node_id.into(), attributes).unwrap_or(false));
     // style.set_dim(context.primitive("dim", node_id.into(), attributes).unwrap_or(false));
     // style.set_underlined(context.primitive("underline", node_id.into(), attributes).unwrap_or(false));
@@ -32,5 +31,5 @@ pub fn style<T>(_context: &Context<'_, '_>, _attributes: &Attributes, _node_id: 
     // style.set_crossed_out(context.primitive("crossed-out", node_id.into(), attributes).unwrap_or(false));
     // style.set_inverse(context.primitive("inverse", node_id.into(), attributes).unwrap_or(false));
 
-    // style
+    style
 }

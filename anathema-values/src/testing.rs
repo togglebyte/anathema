@@ -140,6 +140,12 @@ impl<'a, S: State> TestExpression<'a, S> {
         self.expr.eval_value(&context, Some(&node_id))
     }
 
+    pub fn eval_string(&'a self) -> Option<String> {
+        let context = Context::new(&self.state, &self.scope);
+        let node_id = 0.into();
+        self.expr.eval_string(&context, Some(&node_id))
+    }
+
     pub fn expect_owned(self, expected: impl Into<Owned>) {
         let ValueRef::Owned(owned) = self.eval().unwrap() else {
             panic!("not an owned value")
@@ -211,6 +217,10 @@ pub fn inum(int: i64) -> Box<ValueExpr> {
 
 pub fn boolean(b: bool) -> Box<ValueExpr> {
     ValueExpr::Value(Value::Owned(Owned::from(b))).into()
+}
+
+pub fn strlit(lit: &str) -> Box<ValueExpr> {
+    ValueExpr::Value(Value::Str(lit.into())).into()
 }
 
 // -----------------------------------------------------------------------------

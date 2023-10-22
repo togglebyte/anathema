@@ -121,9 +121,9 @@ impl Many {
 impl Layout for Many {
     fn layout(
         &mut self,
-        layout: &mut LayoutCtx,
-        children: &mut Nodes,
-        data: Context<'_, '_>,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         let max_constraints = layout.padded_constraints();
 
@@ -139,12 +139,11 @@ impl Layout for Many {
 
         let mut size = Size::ZERO;
         children.for_each(
-            data.state,
-            data.scope,
+            data,
             layout,
             |widget, children, context| {
                 if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
-                    return Ok(Size::ZERO);
+                    return Ok(());
                 }
 
                 let widget_constraints = {
@@ -161,7 +160,7 @@ impl Layout for Many {
                 let mut widget_size = widget.layout(children, widget_constraints, context)?;
 
                 if self.offset.skip(&mut widget_size) {
-                    return Ok(Size::ZERO);
+                    return Ok(());
                 }
 
                 used_size.apply(widget_size);
@@ -170,7 +169,7 @@ impl Layout for Many {
                     return Err(Error::InsufficientSpaceAvailble);
                 }
 
-                Ok(widget_size)
+                Ok(())
             },
         );
 

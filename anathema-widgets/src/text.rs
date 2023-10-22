@@ -287,24 +287,14 @@ impl WidgetFactory for TextFactory {
         // .unwrap_or(Wrap::Normal);
 
         let text_alignment = TextAlignment::Left;
-        // data
-        // .attribute("text-align", node_id.into(), attributes)
-        // .unwrap_or(TextAlignment::Left);
 
-        let text_src = match text_src
-            .expect("a text widget always has a text value")
-            .eval_value(data, node_id) {
-            };
+        // data.attribute("text-align", node_id.into(), attributes)
+        //     .map(|b| *b)
+        //     .unwrap_or(TextAlignment::Left);
 
-        let text = match &text_src {
-            ScopeValue::Static(s) => s.to_string(),
-            ScopeValue::Dyn(path) => data.get_string(path, node_id.into()),
-            ScopeValue::List(list) => {
-                let mut buf = String::new();
-                data.list_to_string(list, &mut buf, node_id.into());
-                buf
-            }
-        };
+        let text = text_src
+            .and_then(|value| value.eval_string(data, Some(node_id)))
+            .unwrap_or_else(String::new);
 
         let mut widget = Text {
             word_wrap,
@@ -312,7 +302,6 @@ impl WidgetFactory for TextFactory {
             style: style(&data, attributes, node_id),
             layout: TextLayout::ZERO,
             text,
-            text_src,
         };
 
         Ok(Box::new(widget))
@@ -329,21 +318,13 @@ impl WidgetFactory for SpanFactory {
         text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let text_src = data.resolve(text.expect("a text widget always has a text value"));
+        let text = text
+            .and_then(|value| value.eval_string(data, Some(node_id)))
+            .unwrap_or_else(String::new);
 
-        let text = match &text_src {
-            ScopeValue::Static(s) => s.to_string(),
-            ScopeValue::Dyn(path) => data.get_string(path, node_id.into()),
-            ScopeValue::List(list) => {
-                let mut buf = String::new();
-                data.list_to_string(list, &mut buf, node_id.into());
-                buf
-            }
-        };
 
         let widget = TextSpan {
             text,
-            text_src,
             style: style(&data, attributes, node_id),
         };
 

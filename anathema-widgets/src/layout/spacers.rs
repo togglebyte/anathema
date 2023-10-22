@@ -12,11 +12,11 @@ pub struct SpacerLayout;
 impl Layout for SpacerLayout {
     fn layout(
         &mut self,
-        ctx: &mut LayoutCtx,
-        children: &mut Nodes,
-        data: Context<'_, '_>,
+        children: &mut Nodes<'_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
-        let size = Size::new(ctx.constraints.min_width, ctx.constraints.min_height);
+        let size = Size::new(layout.constraints.min_width, layout.constraints.min_height);
         Ok(size)
     }
 }
