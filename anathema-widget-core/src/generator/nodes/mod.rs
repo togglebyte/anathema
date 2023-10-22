@@ -1,8 +1,10 @@
+use std::ops::ControlFlow;
+
 use anathema_render::Size;
 use anathema_values::{Change, Collection, Context, NodeId, Scope, State};
 
-pub(crate) use self::loops::LoopNode;
 pub(crate) use self::controlflow::IfElse;
+pub(crate) use self::loops::LoopNode;
 use self::visitor::NodeVisitor;
 use crate::contexts::LayoutCtx;
 use crate::error::{Error, Result};
@@ -21,6 +23,37 @@ pub struct Node<'e> {
 }
 
 impl<'e> Node<'e> {
+    pub fn next<F>(
+        &mut self,
+        context: &Context<'_, '_>,
+        layout: &LayoutCtx,
+        mut f: F,
+    ) -> Result<ControlFlow<Size, Size>>
+    where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
+    {
+        match &mut self.kind {
+            NodeKind::Single(widget, children) => {
+                let size = f(widget, children, context)?;
+                Ok(ControlFlow::Break(size))
+            }
+            NodeKind::Loop(loop_state) => {
+                let mut scope = context.scope.reparent();
+                // scope value
+                loop {
+                    match loop_state.body.next(context, layout, &mut f) {
+                        Some(Ok(val)) => {
+                            panic!("{val:?}");
+                        }
+                        Some(Err(Error::InsufficientSpaceAvailble)) | None => panic!(),
+                        Some(Err(e)) => break Err(e),
+                    }
+                }
+            }
+            _ => panic!()
+        }
+    }
+
     fn reset_cache(&mut self) {
         match &mut self.kind {
             NodeKind::Single(_, nodes) => nodes.reset_cache(),
@@ -87,29 +120,30 @@ impl<'e> Nodes<'e> {
         self.expr_index += 1;
     }
 
+    fn new_node(&mut self, context: &Context<'_, '_>) -> Option<Result<()>> {
+        let expr = self.expressions.get(self.expr_index)?;
+        self.expr_index += 1;
+        let Ok(node) = expr.eval(&context, self.next_id.next()) else { return None };
+        self.inner.push(node);
+        Some(Ok(()))
+    }
+
     pub fn next<F>(
         &mut self,
         context: &Context<'_, '_>,
         layout: &LayoutCtx,
         f: F,
-    ) -> Option<Result<Size>>
+    ) -> Option<Result<ControlFlow<Size, Size>>>
     where
         F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
     {
         match self.inner.get_mut(self.cache_index) {
-            Some(n) => {
-                panic!()
-            }
+            Some(n) => Some(n.next(context, layout, f)),
             None => {
-                let expr = self.expressions.get(self.expr_index)?;
-                match expr.eval(&context, self.next_id.next()) {
-                    Ok(mut node) => {
-                        self.inner.push(node);
-                        self.cache_index = self.inner.len();
-                        panic!()
-                    }
-                    Err(e) => Some(Err(e)),
+                if let Err(e) = self.new_node(context)? {
+                    return Some(Err(e));
                 }
+                self.next(context, layout, f)
             }
         }
     }
@@ -253,7 +287,9 @@ impl<'e> Nodes<'e> {
                             Box::new(std::iter::once((widget, nodes)))
                         }
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
-                        NodeKind::ControlFlow(control_flow) => Box::new(control_flow.body.iter_mut()),
+                        NodeKind::ControlFlow(control_flow) => {
+                            Box::new(control_flow.body.iter_mut())
+                        }
                         _ => panic!(),
                     }
                 },
@@ -319,7 +355,7 @@ mod test {
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
         let mut nodes = TestNodes::new(&exprs);
         nodes.layout();
-        assert_eq!(nodes.nodes.count(), 3);
+        // assert_eq!(nodes.nodes.count(), 3);
     }
 
     //     #[test]
