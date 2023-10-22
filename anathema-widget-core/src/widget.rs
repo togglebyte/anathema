@@ -33,7 +33,7 @@ pub trait Widget {
     fn layout(
         &mut self,
         children: &mut Nodes,
-        ctx: &mut LayoutCtx,
+        ctx: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size>;
 
@@ -61,7 +61,7 @@ pub trait AnyWidget {
     fn layout_any(
         &mut self,
         children: &mut Nodes,
-        layout: &mut LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size>;
 
@@ -82,7 +82,7 @@ impl Widget for Box<dyn AnyWidget> {
     fn layout(
         &mut self,
         children: &mut Nodes,
-        layout: &mut LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.deref_mut().layout_any(children, layout, data)
@@ -113,7 +113,7 @@ impl<T: Widget + 'static> AnyWidget for T {
     fn layout_any(
         &mut self,
         children: &mut Nodes,
-        layout: &mut LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.layout(children, layout, data)
@@ -144,7 +144,7 @@ impl Widget for Box<dyn Widget> {
     fn layout(
         &mut self,
         children: &mut Nodes,
-        layout: &mut LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.as_mut().layout(children, layout, data)
@@ -269,9 +269,9 @@ impl WidgetContainer {
         match self.display {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let mut layout = LayoutCtx::new(constraints, self.padding);
+                let layout = LayoutCtx::new(constraints, self.padding);
                 let mut size = Size::ZERO;
-                self.inner.layout(children, &mut layout, data)?;
+                self.inner.layout(children, &layout, data)?;
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards

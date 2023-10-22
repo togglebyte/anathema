@@ -1,17 +1,15 @@
 use anathema_render::Size;
 use anathema_values::{Change, Collection, Context, NodeId, Scope, State};
 
-use self::builder::NodeBuilder;
-use self::controlflow::{Else, If};
 pub(crate) use self::loops::LoopNode;
+pub(crate) use self::controlflow::IfElse;
 use self::visitor::NodeVisitor;
 use crate::contexts::LayoutCtx;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::generator::expressions::Expression;
-use crate::WidgetContainer;
 use crate::layout::Layout;
+use crate::WidgetContainer;
 
-pub mod builder;
 mod controlflow;
 mod loops;
 pub mod visitor;
@@ -66,11 +64,7 @@ impl<'e> Node<'e> {
 pub(crate) enum NodeKind<'e> {
     Single(WidgetContainer, Nodes<'e>),
     Loop(LoopNode<'e>),
-    ControlFlow {
-        if_node: If,
-        elses: Vec<Else>,
-        body: Nodes<'e>,
-    },
+    ControlFlow(IfElse<'e>),
 }
 
 #[derive(Debug)]
@@ -93,22 +87,26 @@ impl<'e> Nodes<'e> {
         self.expr_index += 1;
     }
 
-    pub fn next<L: Layout>(
+    pub fn next<F>(
         &mut self,
-        builder: &mut NodeBuilder<L>,
         context: &Context<'_, '_>,
-    ) -> Option<Result<()>> {
-        // Get a node out of the cache, if one doesn't exist: make one
+        layout: &LayoutCtx,
+        f: F,
+    ) -> Option<Result<Size>>
+    where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
+    {
         match self.inner.get_mut(self.cache_index) {
-            Some(n) => builder.layout(n, context),
+            Some(n) => {
+                panic!()
+            }
             None => {
                 let expr = self.expressions.get(self.expr_index)?;
                 match expr.eval(&context, self.next_id.next()) {
                     Ok(mut node) => {
-                        let res = builder.layout(&mut node, context);
                         self.inner.push(node);
                         self.cache_index = self.inner.len();
-                        res
+                        panic!()
                     }
                     Err(e) => Some(Err(e)),
                 }
@@ -116,11 +114,25 @@ impl<'e> Nodes<'e> {
         }
     }
 
-    // -----------------------------------------------------------------------------
-    //   - Review the code below -
-    // -----------------------------------------------------------------------------
+    pub fn for_each<F>(
+        &mut self,
+        context: &Context<'_, '_>,
+        layout: &LayoutCtx,
+        mut f: F,
+    ) -> Result<()>
+    where
+        F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
+    {
+        loop {
+            match self.next(context, layout, &mut f) {
+                Some(Ok(_)) => continue,
+                Some(Err(Error::InsufficientSpaceAvailble)) | None => break Ok(()),
+                Some(Err(e)) => break Err(e),
+            }
+        }
+    }
 
-    // TODO: move this into a visitor
+    // TODO: move this into a visitor?
     pub fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
         update(&mut self.inner, node_id, change, state);
     }
@@ -136,45 +148,18 @@ impl<'e> Nodes<'e> {
         }
     }
 
-    // TODO: move this into a visitor
+    // TODO: move this into a visitor?
     pub fn count(&self) -> usize {
         count(self.inner.iter())
     }
 
-    // TODO: move this into a visitor
+    // TODO: move this into a visitor?
     pub fn reset_cache(&mut self) {
         self.cache_index = 0;
         for node in &mut self.inner {
             node.reset_cache();
         }
     }
-
-    // pub fn for_each_old<F>(
-    //     &mut self,
-    //     context: &Context<'_, '_>,
-    //     // state: &dyn State,
-    //     // scope: &mut Scope<'_>,
-    //     layout: &mut LayoutCtx,
-    //     mut f: F,
-    // ) where
-    //     F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<Size>,
-    // {
-    //     loop {
-    //         match self.next_old(context, layout, &mut f) {
-    //             Some(Ok(_)) => continue,
-    //             _ => break,
-    //         }
-    //     }
-    // }
-
-    // pub fn for_each<F>(&mut self, context: &Context<'_, '_>, visitor: &mut impl NodeVisitor) {
-    //     loop {
-    //         match self.next(context, visitor) {
-    //             Some(Ok(_)) => continue,
-    //             _ => break,
-    //         }
-    //     }
-    // }
 
     // pub fn next_old<F>(
     //     &mut self,
@@ -268,7 +253,7 @@ impl<'e> Nodes<'e> {
                             Box::new(std::iter::once((widget, nodes)))
                         }
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
-                        NodeKind::ControlFlow { body, .. } => Box::new(body.iter_mut()),
+                        NodeKind::ControlFlow(control_flow) => Box::new(control_flow.body.iter_mut()),
                         _ => panic!(),
                     }
                 },
@@ -333,25 +318,25 @@ mod test {
         let body = expression("test", None, [], []);
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
         let mut nodes = TestNodes::new(&exprs);
-        nodes.next();
+        nodes.layout();
         assert_eq!(nodes.nodes.count(), 3);
     }
 
-    #[test]
-    fn lark() {
-        // register_test_widget();
-        // let body = expression("test", None, [], []);
-        // let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
-        // let mut nodes = Nodes::new(&exprs, 0.into());
-        // let mut builder = NodeBuilder;
-        // let state = TestState::new();
-        // let scope = Scope::new(None);
-        // let context = Context::new(&state, &scope);
+    //     #[test]
+    //     fn lark() {
+    //         register_test_widget();
+    //         let body = expression("test", None, [], []);
+    //         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
+    //         let mut nodes = Nodes::new(&exprs, 0.into());
+    //         let mut builder = NodeBuilder::new(Constraints::new(80, 20));
+    //         let state = TestState::new();
+    //         let scope = Scope::new(None);
+    //         let context = Context::new(&state, &scope);
 
-        // while let Some(Ok(())) = nodes.next(&mut builder, &context) {
-        //     nodes.advance();
-        // }
+    //         while let Some(Ok(size)) = nodes.next(&mut builder, &context) {
+    //             nodes.advance();
+    //         }
 
-        // // eprintln!("{nodes:?}");
-    }
+    //         // eprintln!("{nodes:?}");
+    //     }
 }

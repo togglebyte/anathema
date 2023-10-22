@@ -14,8 +14,8 @@ mod constraints;
 pub trait Layout {
     fn layout(
         &mut self,
-        layout: &mut LayoutCtx,
         children: &mut Nodes,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size>;
 }
@@ -24,13 +24,13 @@ pub trait Layout {
 //   - Layouts -
 // -----------------------------------------------------------------------------
 pub struct Layouts<'ctx, T> {
-    pub ctx: &'ctx mut LayoutCtx,
+    pub ctx: &'ctx LayoutCtx,
     pub size: Size,
     pub layout: T,
 }
 
 impl<'ctx, T: Layout> Layouts<'ctx, T> {
-    pub fn new(layout: T, ctx: &'ctx mut LayoutCtx) -> Self {
+    pub fn new(layout: T, ctx: &'ctx LayoutCtx) -> Self {
         Self {
             ctx,
             layout,
@@ -39,7 +39,8 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     }
 
     pub fn layout(&mut self, children: &mut Nodes, data: &Context<'_, '_>) -> Result<Size> {
-        self.layout.layout(self.ctx, children, data)
+        panic!()
+        // self.layout.layout(self.ctx, children, data)
         // while let Some(res) = children.next(data.state, data.scope, self.ctx) {
         //     res?;
         // }

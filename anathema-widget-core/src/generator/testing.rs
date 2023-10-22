@@ -5,47 +5,36 @@ use anathema_render::Size;
 use anathema_values::testing::TestState;
 use anathema_values::{Context, Path, Scope, ScopeValue, State, ValueExpr};
 
-use super::nodes::builder::NodeBuilder;
 use super::nodes::Node;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
-use crate::layout::{Constraints, Layouts, Layout};
+use crate::layout::{Constraints, Layout, Layouts};
 use crate::{Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory};
 
-struct TestLayout {
-}
+pub struct TestLayoutMany;
 
-impl Layout for TestLayout {
+impl Layout for TestLayoutMany {
     fn layout(
         &mut self,
-        layout: &mut LayoutCtx,
         children: &mut Nodes,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
-        size: &mut Size,
     ) -> Result<Size> {
-        let mut builder = NodeBuilder::new(constraints, size);
-        loop {
-            children.next(&mut builder, data)
-        }
-        Ok(builder.size)
+        let mut size = Size::ZERO;
+
+        children.for_each(data, layout, |widget, children, ctx| {
+            let s = widget.layout(children, layout.constraints, ctx)?;
+            size.height += s.height;
+            size.width = size.width.max(s.width);
+            Ok(s)
+        });
+
+        Ok(Size::ZERO)
     }
 }
 
 struct TestWidget;
-
-struct TestLayout;
-
-impl Layout for TestLayout {
-    fn layout(
-        &mut self,
-        layout: &mut LayoutCtx,
-        children: &mut Nodes,
-        data: &Context<'_, '_>,
-    ) -> Result<anathema_render::Size> {
-        Ok(Size::new(5, 5))
-    }
-}
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {
@@ -55,16 +44,11 @@ impl Widget for TestWidget {
     fn layout(
         &mut self,
         children: &mut crate::Nodes<'_>,
-        ctx: &mut crate::contexts::LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        let mut layout = Layouts::new(TestLayout, layout);
-        let size = layout.layout(children, data)?;
-        if size == Size::ZERO {
-            Ok(Size::ZERO)
-        } else {
-            Ok(layout.expand_horz().expand_vert().size())
-        }
+        let mut layout = Layouts::new(TestLayoutMany, layout);
+        layout.layout(children, data)
     }
 
     fn position<'tpl>(&mut self, children: &mut crate::Nodes, ctx: crate::contexts::PositionCtx) {
@@ -122,19 +106,16 @@ impl<'e> TestNodes<'e> {
         }
     }
 
-    pub fn next(&mut self) -> Option<Result<()>> {
+    pub fn layout(&mut self) -> Result<Size> {
         let context = Context::new(&self.state, &self.scope);
-        let mut visitor = NodeBuilder {
-            layout: LayoutCtx::new(Constraints::new(120, 40), Padding::ZERO),
-            context,
-        };
-        match self.nodes.next(&mut visitor, &context)? {
-            Ok(()) => {
-                self.nodes.advance();
-                Some(Ok(()))
-            }
-            Err(e) => panic!("{e}"),
-        }
+        let constraints = Constraints::new(120, 40);
+        let layout = LayoutCtx::new(constraints, Padding::ZERO);
+
+        TestLayoutMany.layout(
+            &mut self.nodes,
+            &layout,
+            &context,
+        )
     }
 }
 

@@ -2,7 +2,7 @@ use anathema_render::Size;
 use anathema_values::{Attributes, Context, NodeId, Path, Scope, State, ValueExpr};
 
 pub use self::controlflow::{Else, If};
-use super::nodes::LoopNode;
+use super::nodes::{IfElse, LoopNode};
 use crate::error::Result;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
@@ -21,11 +21,7 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval<'a: 'val, 'val>(
-        &self,
-        context: &Context<'a, 'val>,
-        node_id: NodeId,
-    ) -> Result<Node> {
+    fn eval<'a: 'val, 'val>(&self, context: &Context<'a, 'val>, node_id: NodeId) -> Result<Node> {
         let widget = WidgetContainer {
             background: context
                 .attribute("background", Some(&node_id), &self.attributes)
@@ -61,7 +57,7 @@ pub struct Loop {
 }
 
 impl Loop {
-    fn eval<'a: 'val, 'val>(&self, node_id: NodeId) -> Result<Node<'_>> {
+    fn eval(&self, node_id: NodeId) -> Result<Node<'_>> {
         let node = Node {
             kind: NodeKind::Loop(LoopNode::new(
                 Nodes::new(&self.body, node_id.child(0)),
@@ -85,9 +81,16 @@ pub struct ControlFlow {
 }
 
 impl ControlFlow {
-    fn eval(&self, state: &dyn State, scope: &Scope<'_>, node_id: NodeId) -> Result<Node> {
-        if self.if_expr.is_true(scope, state, Some(&node_id)) {}
-        panic!()
+    fn eval(&self, node_id: NodeId) -> Result<Node<'_>> {
+        let node = Node {
+            kind: NodeKind::ControlFlow(IfElse::new(
+                Nodes::new(&[], node_id.child(0)),
+                &self.if_expr,
+                &self.elses,
+            )),
+            node_id,
+        };
+        Ok(node)
     }
 }
 
@@ -110,14 +113,14 @@ impl Expression {
         match self {
             Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(node_id),
-            Self::ControlFlow(controlflow) => panic!(),//controlflow.eval(state, scope, node_id),
+            Self::ControlFlow(controlflow) => controlflow.eval(node_id),
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use anathema_values::testing::TestState;
+    use anathema_values::testing::{list, TestState};
 
     use super::*;
     use crate::contexts::LayoutCtx;
@@ -150,16 +153,16 @@ mod test {
 
     #[test]
     fn eval_for() {
-        panic!()
-        // let mut scope = Scope::new(None);
-        // let expr = for_expression("item", [1, 2, 3], [expression("test", None, [], [])]);
-        // let node = expr.eval(&mut (), &mut scope, 0.into()).unwrap();
-        // assert!(matches!(
-        //     node,
-        //     Node {
-        //         kind: NodeKind::Loop { .. },
-        //         ..
-        //     }
-        // ));
+        let mut scope = Scope::new(None);
+        let expr =
+            for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
+        let node = expr.eval().unwrap();
+        assert!(matches!(
+            node,
+            Node {
+                kind: NodeKind::Loop { .. },
+                ..
+            }
+        ));
     }
 }
