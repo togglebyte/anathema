@@ -26,7 +26,7 @@ impl Num {
         match self {
             Self::Signed(num) => num as i128,
             Self::Unsigned(num) => num as i128,
-            Self::Float(num) => panic!("nah, not this one"),
+            Self::Float(_num) => panic!("nah, not this one"),
         }
     }
 }

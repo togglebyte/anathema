@@ -5,9 +5,9 @@ use anathema_render::Color;
 
 pub use self::num::Num;
 pub use self::owned::Owned;
-use crate::hashmap::HashMap;
+
 use crate::map::Map;
-use crate::{Collection, StateValue, List, ValueExpr};
+use crate::{Collection, List, ValueExpr};
 
 mod num;
 mod owned;
@@ -124,7 +124,7 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
-            ValueRef::Owned(owned) => panic!(), //owned.try_into(),
+            ValueRef::Owned(_owned) => panic!(), //owned.try_into(),
             _ => Err(()),
         }
     }

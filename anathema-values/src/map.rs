@@ -25,7 +25,7 @@ impl<T> Map<T> {
         }
     }
 
-    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&StateValue<T>>
+    pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
     where
         for<'a> ValueRef<'a>: From<&'a T>,
     {

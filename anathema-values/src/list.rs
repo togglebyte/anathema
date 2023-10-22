@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::ops::Deref;
+
 
 use super::*;
 use crate::Path;
@@ -30,7 +30,7 @@ impl<T> List<T> {
         self.inner.len()
     }
 
-    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&StateValue<T>>
+    pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
     where
         for<'a> ValueRef<'a>: From<&'a T>,
     {
@@ -57,7 +57,7 @@ impl<T> List<T> {
         ret
     }
 
-    pub fn swap(&mut self, a: usize, b: usize) {
+    pub fn swap(&mut self, _a: usize, _b: usize) {
         // self.inner.swap(a, b)
         panic!()
     }
@@ -69,7 +69,7 @@ impl<T> List<T> {
         }
     }
 
-    pub fn insert(&mut self, index: usize, value: StateValue<T>) {
+    pub fn insert(&mut self, _index: usize, _value: StateValue<T>) {
         // self.inner.insert(index, value)
         panic!()
     }
@@ -120,6 +120,6 @@ mod test {
 
     #[test]
     fn create_list() {
-        let list = List::new(vec![1, 2, 3]);
+        let _list = List::new(vec![1, 2, 3]);
     }
 }

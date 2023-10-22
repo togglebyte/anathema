@@ -134,9 +134,9 @@ impl<'a, 'val> Context<'a, 'val> {
 
     pub fn list_to_string(
         &self,
-        list: &Rc<[ScopeValue]>,
-        buffer: &mut String,
-        node_id: Option<&NodeId>,
+        _list: &Rc<[ScopeValue]>,
+        _buffer: &mut String,
+        _node_id: Option<&NodeId>,
     ) {
         panic!()
         // for val in list.iter() {
@@ -148,7 +148,7 @@ impl<'a, 'val> Context<'a, 'val> {
         // }
     }
 
-    pub fn get_string(&self, path: &Path, node_id: Option<&NodeId>) -> String {
+    pub fn get_string(&self, _path: &Path, _node_id: Option<&NodeId>) -> String {
         panic!()
         // match self.scope.lookup(path) {
         //     Some(val) => match val {
@@ -206,7 +206,7 @@ mod test {
     fn dynamic_attribute() {
         let mut state = TestState::new();
         let mut root = Scope::new(None);
-        let mut ctx = Context::new(&mut state, &mut root);
+        let ctx = Context::new(&mut state, &mut root);
         let mut attributes = Attributes::new();
         attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
 
@@ -218,7 +218,7 @@ mod test {
     #[test]
     fn context_lookup() {
         let state = TestState::new();
-        let mut scope = Scope::new(None);
+        let scope = Scope::new(None);
         let context = Context::new(&state, &scope);
 
         let path = Path::from("inner").compose("name");

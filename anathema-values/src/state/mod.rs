@@ -18,7 +18,7 @@ impl State for Box<dyn State> {
 /// Implementation of `State` for a unit.
 /// This will always return `None` and should only be used for testing purposes
 impl State for () {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, _key: &Path, _node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         None
     }
 }

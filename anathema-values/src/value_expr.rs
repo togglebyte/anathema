@@ -161,7 +161,7 @@ impl ValueExpr {
                 let path = lhs.compose(rhs);
                 context.lookup(&path, node_id)
             }
-            Self::Index(lhs, index) => {
+            Self::Index(_lhs, _index) => {
                 panic!("not quite there...");
                 // let lhs = lhs.eval_path(context);
                 // let index = index.eval_num(context);
@@ -199,14 +199,14 @@ impl ValueExpr {
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Cow;
-    use std::ops::Deref;
+    
+    
 
-    use super::*;
+    
     use crate::testing::{
-        add, boolean, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum, TestState,
+        add, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum,
     };
-    use crate::{List, Scope, State, StateValue};
+    
 
     #[test]
     fn add_dyn() {
@@ -262,7 +262,7 @@ mod test {
 
     #[test]
     fn path() {
-        let mut expr = dot(ident("a"), ident("b")).test([]);
+        let _expr = dot(ident("a"), ident("b")).test([]);
         // expr.scope.scope();
         // let x = expr.eval();
         // panic!("{x:?}");
