@@ -71,7 +71,7 @@ where
 }
 
 impl ValueExpr {
-    fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
+    pub fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
         match self.eval_value(context, node_id) {
             Some(ValueRef::Owned(Owned::Bool(true))) => true,
             _ => false,

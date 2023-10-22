@@ -41,10 +41,10 @@ impl Widget for Alignment {
     fn layout(
         &mut self,
         children: &mut Nodes,
-        layout: &mut LayoutCtx,
+        layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        let mut layout = Layouts::new(Single, layout);
+        let mut layout = Layouts::new(Single(Size::ZERO), layout);
         let size = layout.layout(children, data)?;
         if size == Size::ZERO {
             Ok(Size::ZERO)

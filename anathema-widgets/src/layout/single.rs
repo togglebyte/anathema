@@ -3,33 +3,39 @@ use anathema_values::Context;
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::generator::Nodes;
-use anathema_widget_core::layout::Layout;
+use anathema_widget_core::layout::{Constraints, Layout};
 use anathema_widget_core::WidgetContainer;
 
-pub struct Single;
+pub struct Single(pub Size);
 
 impl Layout for Single {
-    fn layout(&mut self, layout: &mut LayoutCtx, children: &mut Nodes, data: &Context<'_, '_>) -> Result<Size> {
-         let constraints = layout.padded_constraints();
+    fn layout(
+        &mut self,
+        children: &mut Nodes,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
+    ) -> Result<Size> {
+        panic!()
+        // let constraints = layout.padded_constraints();
 
-         // TODO: a size visitor?
-         let size = panic!();
-         // children.next_old(data, layout, &mut |widget, children, data| {
-         //     widget.layout(children, constraints, data)
-         // });
+        // // TODO: a size visitor?
+        // let size = panic!();
+        // // children.next_old(data, layout, &mut |widget, children, data| {
+        // //     widget.layout(children, constraints, data)
+        // // });
 
-         match size {
-             Some(Err(Error::InsufficientSpaceAvailble)) => return Ok(Size::ZERO),
-             Some(size) => size,
-             None => Ok(Size::ZERO),
-         }
+        // match size {
+        //     Some(Err(Error::InsufficientSpaceAvailble)) => return Ok(Size::ZERO),
+        //     Some(size) => size,
+        //     None => Ok(Size::ZERO),
+        // }
 
-         // TODO do we need to deal with insufficient space here?
-         //     *size = match widget.layout(children, constraints, store) {
-         //         Ok(s) => s,
-         //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
-         //         err @ Err(_) => err?,
-         //     };
+        // // TODO do we need to deal with insufficient space here?
+        // //     *size = match widget.layout(children, constraints, store) {
+        // //         Ok(s) => s,
+        // //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
+        // //         err @ Err(_) => err?,
+        // //     };
     }
 
     // fn layout<'widget, 'parent>(
