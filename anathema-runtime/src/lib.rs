@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::{Context, Scope, State, drain_dirty_nodes};
+use anathema_values::{drain_dirty_nodes, Context, Scope, State};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
@@ -13,18 +13,18 @@ use anathema_widget_core::{Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
-use view::View;
+// use view::View;
 
 use self::frame::Frame;
-pub use self::meta::Meta;
+// pub use self::meta::Meta;
 use crate::events::{EventProvider, Events};
 
 pub mod events;
 mod frame;
-mod meta;
-mod view;
+// mod meta;
+// mod view;
 
-pub struct Runtime<E, ER, S> {
+pub struct Runtime<'e, E, ER, S> {
     pub enable_meta: bool,
     pub enable_mouse: bool,
     // views: V,
@@ -32,26 +32,26 @@ pub struct Runtime<E, ER, S> {
     screen: Screen,
     output: Stdout,
     constraints: Constraints,
-    nodes: Nodes,
+    nodes: Nodes<'e>,
     events: E,
     event_receiver: ER,
-    meta: Meta,
+    // meta: Meta,
 }
 
-impl<E, ER, S> Drop for Runtime<E, ER, S> {
+impl<'e, E, ER, S> Drop for Runtime<'e, E, ER, S> {
     fn drop(&mut self) {
         let _ = Screen::show_cursor(&mut self.output);
         let _ = disable_raw_mode();
     }
 }
 
-impl<E, ER, S: State> Runtime<E, ER, S>
+impl<'e, E, ER, S: State> Runtime<'e, E, ER, S>
 where
     E: Events<S>,
     ER: EventProvider,
 {
     pub fn new(
-        expressions: Vec<Expression>,
+        expressions: &'e [Expression],
         state: S,
         events: E,
         event_receiver: ER,
@@ -77,7 +77,7 @@ where
             event_receiver,
             enable_meta: false,
             enable_mouse: false,
-            meta: Meta::new(size),
+            // meta: Meta::new(size),
         };
 
         Ok(inst)
@@ -86,12 +86,18 @@ where
     // TODO: move this into views
     fn layout(&mut self) -> Result<()> {
         let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
-        let mut scope = Scope::new(None);
+        let scope = Scope::new(None);
         self.nodes.reset_cache();
         let constraints = layout_ctx.constraints;
-        self.nodes.for_each(&mut self.state, &mut scope, &mut layout_ctx, |widget, children, context| {
-            widget.layout(children, constraints, context)
-        });
+        let context = Context::new(&self.state, &scope);
+        self.nodes.for_each(
+            &context,
+            &mut layout_ctx,
+            |widget, children, context| {
+                widget.layout(children, constraints, context)?;
+                Ok(())
+            }
+        );
         Ok(())
     }
 
@@ -109,9 +115,10 @@ where
 
     fn changes(&mut self) {
         let dirty_nodes = drain_dirty_nodes();
-        
+
         for (node_id, change) in dirty_nodes {
-            self.nodes.update(node_id.as_slice(), change, &mut self.state);
+            self.nodes
+                .update(node_id.as_slice(), change, &mut self.state);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that
@@ -135,7 +142,7 @@ where
             while let Some(event) = self.event_receiver.next() {
                 let event = self
                     .events
-                    .event(event, &mut self.nodes, &mut self.state, &self.meta);
+                    .event(event, &mut self.nodes, &mut self.state);
 
                 match event {
                     Event::Resize(width, height) => {
@@ -150,8 +157,8 @@ where
 
                         // self.meta.size = size;
                     }
-                    Event::Blur => (),//self.meta.focus = false,
-                    Event::Focus => (),//self.meta.focus = true,
+                    Event::Blur => (),  //self.meta.focus = false,
+                    Event::Focus => (), //self.meta.focus = true,
                     Event::Quit => break 'run Ok(()),
                     _ => {}
                 }
@@ -159,27 +166,26 @@ where
 
             self.changes();
 
-            *self.meta.count = self.nodes.count();
+            // *self.meta.count = self.nodes.count();
             let total = Instant::now();
             self.layout()?;
-            *self.meta.timings.layout = total.elapsed();
+            // *self.meta.timings.layout = total.elapsed();
 
             let now = Instant::now();
             self.position();
-            *self.meta.timings.position = now.elapsed();
+            // *self.meta.timings.position = now.elapsed();
 
             let now = Instant::now();
             self.paint();
-            *self.meta.timings.paint = now.elapsed();
+            // *self.meta.timings.paint = now.elapsed();
 
             let now = Instant::now();
             self.screen.render(&mut self.output)?;
-            *self.meta.timings.render = now.elapsed();
-            *self.meta.timings.total = total.elapsed();
+            // *self.meta.timings.render = now.elapsed();
+            // *self.meta.timings.total = total.elapsed();
             self.screen.erase();
 
-            if self.enable_meta {
-            }
+            if self.enable_meta {}
         }
     }
 }

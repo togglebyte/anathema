@@ -57,14 +57,6 @@ impl State for Meta {
             _ => None,
         }
     }
-
-    fn get_collection(
-        &self,
-        key: &Path,
-        node_id: Option<&NodeId>,
-    ) -> Option<anathema_values::Collection> {
-        None
-    }
 }
 
 #[derive(Debug, Default)]
@@ -109,9 +101,5 @@ impl State for Timings {
             },
             _ => None,
         }
-    }
-
-    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<Collection> {
-        None
     }
 }
