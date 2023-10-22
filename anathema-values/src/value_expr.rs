@@ -200,14 +200,7 @@ impl ValueExpr {
 
 #[cfg(test)]
 mod test {
-    
-    
-
-    
-    use crate::testing::{
-        add, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum,
-    };
-    
+    use crate::{testing::{add, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum}, ValueRef};
 
     #[test]
     fn add_dyn() {
@@ -263,9 +256,9 @@ mod test {
 
     #[test]
     fn path() {
-        let _expr = dot(ident("a"), ident("b")).test([]);
-        // expr.scope.scope();
-        // let x = expr.eval();
-        // panic!("{x:?}");
+        let expr = dot(ident("inner"), ident("name"));
+        let test = expr.test([]);
+        let e = test.eval().unwrap();
+        assert!(matches!(e, ValueRef::Str("Fiddle McStick")));
     }
 }

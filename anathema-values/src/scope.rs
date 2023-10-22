@@ -124,7 +124,7 @@ impl<'a, 'val> Context<'a, 'val> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::*;
+    use crate::{testing::*, ValueExpr};
 
     type Sub = usize;
 
@@ -175,6 +175,6 @@ mod test {
 
         let path = Path::from("inner").compose("name");
         let value = context.lookup(&path, None).unwrap();
-        panic!("{value:#?}");
+        assert!(matches!(value, ValueRef::Str("Fiddle McStick")));
     }
 }

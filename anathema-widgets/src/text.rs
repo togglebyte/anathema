@@ -1,10 +1,9 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Context, NodeId, ScopeValue, State};
+use anathema_values::{Attributes, Context, NodeId, ScopeValue, State, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::generator::Attributes;
 use anathema_widget_core::{
     style, AnyWidget, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
 };
@@ -42,7 +41,6 @@ pub struct Text {
     /// Text style
     pub style: Style,
 
-    text_src: ScopeValue,
     layout: TextLayout,
 }
 
@@ -120,57 +118,57 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn update(&mut self, state: &mut dyn State) {
-        match &self.text_src {
-            ScopeValue::Static(s) => {}
-            ScopeValue::Dyn(path) => {
-                self.text.clear();
-                if let Some(s) = state.get(path, None) {
-                    self.text.push_str(&*s);
-                }
-            }
-            ScopeValue::List(list) => {
-                self.text.clear();
-                for val in list.iter() {
-                    match val {
-                        ScopeValue::Static(s) => self.text.push_str(s),
-                        ScopeValue::Dyn(path) => {
-                            if let Some(s) = state.get(path, None) {
-                                self.text.push_str(&*s);
-                            }
-                        }
-                        ScopeValue::List(_) => panic!("this shouldn't be here"),
-                    }
-                }
-            }
-        }
-    }
+    // fn update(&mut self, state: &mut dyn State) {
+    //     match &self.text_src {
+    //         ScopeValue::Static(s) => {}
+    //         ScopeValue::Dyn(path) => {
+    //             self.text.clear();
+    //             if let Some(s) = state.get(path, None) {
+    //                 self.text.push_str(&*s);
+    //             }
+    //         }
+    //         ScopeValue::List(list) => {
+    //             self.text.clear();
+    //             for val in list.iter() {
+    //                 match val {
+    //                     ScopeValue::Static(s) => self.text.push_str(s),
+    //                     ScopeValue::Dyn(path) => {
+    //                         if let Some(s) = state.get(path, None) {
+    //                             self.text.push_str(&*s);
+    //                         }
+    //                     }
+    //                     ScopeValue::List(_) => panic!("this shouldn't be here"),
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     fn layout<'widget, 'parent>(
         &mut self,
         children: &mut Nodes,
-        ctx: &mut LayoutCtx,
-        data: Context<'_, '_>,
+        layout: &LayoutCtx,
+        data: &Context<'_, '_>,
     ) -> Result<Size> {
         self.layout = TextLayout::ZERO;
-        let max_size = Size::new(ctx.constraints.max_width, ctx.constraints.max_height);
+        let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
         self.layout.process(self.text.as_str());
 
         let babies = children.count();
 
-        children.for_each(data.state, data.scope, ctx, |span, inner_children, data| {
+        children.for_each(data, layout, |span, inner_children, data| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
-                return Ok(Size::ZERO);
+                return Ok(());
             }
 
             let inner_span = span.to_mut::<TextSpan>();
-            inner_span.update_text(data);
+            // inner_span.update_text(data);
 
             self.layout.process(inner_span.text.as_str());
-            Ok(self.layout.size())
+            Ok(())
         });
 
         Ok(self.layout.size())
@@ -207,26 +205,24 @@ pub struct TextSpan {
     pub text: String,
     /// Style for the text
     pub style: Style,
-
-    text_src: ScopeValue,
 }
 
 impl TextSpan {
     const KIND: &'static str = "TextSpan";
 
-    fn update_text(&mut self, data: Context<'_, '_>) {
-        match &self.text_src {
-            ScopeValue::Static(s) => {}
-            ScopeValue::Dyn(path) => {
-                self.text.clear();
-                self.text.push_str(&data.get_string(path, None));
-            }
-            ScopeValue::List(list) => {
-                self.text.clear();
-                data.list_to_string(list, &mut self.text, None);
-            }
-        }
-    }
+    // fn update_text(&mut self, data: Context<'_, '_>) {
+    //     match &self.text_src {
+    //         ScopeValue::Static(s) => {}
+    //         ScopeValue::Dyn(path) => {
+    //             self.text.clear();
+    //             self.text.push_str(&data.get_string(path, None));
+    //         }
+    //         ScopeValue::List(list) => {
+    //             self.text.clear();
+    //             data.list_to_string(list, &mut self.text, None);
+    //         }
+    //     }
+    // }
 }
 
 impl Widget for TextSpan {
@@ -234,33 +230,33 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn update(&mut self, state: &mut dyn State) {
-        match &self.text_src {
-            ScopeValue::Static(s) => {}
-            ScopeValue::Dyn(path) => {
-                self.text.clear();
-                if let Some(s) = state.get(path, None) {
-                    self.text.push_str(&*s);
-                }
-            }
-            ScopeValue::List(list) => {
-                self.text.clear();
-                for val in list.iter() {
-                    match val {
-                        ScopeValue::Static(s) => self.text.push_str(s),
-                        ScopeValue::Dyn(path) => {
-                            if let Some(s) = state.get(path, None) {
-                                self.text.push_str(&*s);
-                            }
-                        }
-                        ScopeValue::List(_) => panic!("this shouldn't be here"),
-                    }
-                }
-            }
-        }
-    }
+    // fn update(&mut self, state: &mut dyn State) {
+    //     match &self.text_src {
+    //         ScopeValue::Static(s) => {}
+    //         ScopeValue::Dyn(path) => {
+    //             self.text.clear();
+    //             if let Some(s) = state.get(path, None) {
+    //                 self.text.push_str(&*s);
+    //             }
+    //         }
+    //         ScopeValue::List(list) => {
+    //             self.text.clear();
+    //             for val in list.iter() {
+    //                 match val {
+    //                     ScopeValue::Static(s) => self.text.push_str(s),
+    //                     ScopeValue::Dyn(path) => {
+    //                         if let Some(s) = state.get(path, None) {
+    //                             self.text.push_str(&*s);
+    //                         }
+    //                     }
+    //                     ScopeValue::List(_) => panic!("this shouldn't be here"),
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-    fn layout(&mut self, _: &mut Nodes, _: &mut LayoutCtx, _: Context<'_, '_>) -> Result<Size> {
+    fn layout(&mut self, _: &mut Nodes, _: &LayoutCtx, _: &Context<'_, '_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
@@ -279,19 +275,26 @@ pub(crate) struct TextFactory;
 impl WidgetFactory for TextFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
-        text_src: Option<&ScopeValue>,
+        text_src: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap = data
-            .attribute("wrap", node_id.into(), attributes)
-            .unwrap_or(Wrap::Normal);
-        let text_alignment = data
-            .attribute("text-align", node_id.into(), attributes)
-            .unwrap_or(TextAlignment::Left);
+        let word_wrap = Wrap::Normal;
 
-        let text_src = data.resolve(text_src.expect("a text widget always has a text value"));
+        // data
+        // .attribute("wrap", node_id.into(), attributes)
+        // .unwrap_or(Wrap::Normal);
+
+        let text_alignment = TextAlignment::Left;
+        // data
+        // .attribute("text-align", node_id.into(), attributes)
+        // .unwrap_or(TextAlignment::Left);
+
+        let text_src = match text_src
+            .expect("a text widget always has a text value")
+            .eval_value(data, node_id) {
+            };
 
         let text = match &text_src {
             ScopeValue::Static(s) => s.to_string(),
@@ -321,9 +324,9 @@ pub(crate) struct SpanFactory;
 impl WidgetFactory for SpanFactory {
     fn make(
         &self,
-        data: Context<'_, '_>,
+        data: &Context<'_, '_>,
         attributes: &Attributes,
-        text: Option<&ScopeValue>,
+        text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
         let text_src = data.resolve(text.expect("a text widget always has a text value"));

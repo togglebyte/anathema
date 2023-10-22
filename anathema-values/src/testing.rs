@@ -126,6 +126,7 @@ impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
 // -----------------------------------------------------------------------------
 //   - Extend value expression -
 // -----------------------------------------------------------------------------
+#[derive(Debug)]
 pub struct TestExpression<'a, S> {
     pub state: S,
     pub scope: Scope<'a>,
