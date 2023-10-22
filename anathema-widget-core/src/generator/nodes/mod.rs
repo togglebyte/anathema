@@ -52,7 +52,27 @@ impl<'e> Node<'e> {
                     }
                 }
             },
-            _ => panic!(),
+            NodeKind::ControlFlow(if_else) => {
+                let body = match &mut if_else.body {
+                    Some(body) => body,
+                    None => {
+                        if_else.load_body(context, self.node_id.child(0));
+                        match &mut if_else.body {
+                            Some(body) => body,
+                            None => panic!(),
+                        }
+                    }
+                };
+
+                while let Some(res) = body.next(context, layout, f) {
+                    match res? {
+                        ControlFlow::Continue(()) => continue,
+                        ControlFlow::Break(()) => break,
+                    }
+                }
+
+                Ok(ControlFlow::Break(()))
+            }
         }
     }
 
@@ -307,9 +327,9 @@ impl<'e> Nodes<'e> {
                         }
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow(control_flow) => {
-                            Box::new(control_flow.body.iter_mut())
+                            // control_flow.body.iter_mut().map(|n| n.iter_mut()).flatten(),
+                            panic!()
                         }
-                        _ => panic!(),
                     }
                 },
             )
@@ -382,15 +402,19 @@ mod test {
 
     #[test]
     fn if_else() {
-        let true_text = ValueExpr::Value(Value::Str("true".into()));
-        let false_text = ValueExpr::Value(Value::Str("false".into()));
-        let body = expression("test", Some(true_text), [], []);
+        let is_true = false.into();
+        let is_else = Some(false.into());
 
+        let else_if_expr = vec![expression("test", Some("else branch".into()), [], [])];
+        let if_expr = vec![expression("test", Some("true".into()), [], [])];
+        let else_expr = vec![expression("test", Some("else branch without condition".into()), [], [])];
 
-        let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
+        let exprs = vec![if_expression((is_true, if_expr), vec![
+            (is_else, else_if_expr),
+            (None, else_expr)
+        ])];
         let mut nodes = TestNodes::new(&exprs);
         let size = nodes.layout().unwrap();
-        assert_eq!(size, Size::new(5, 3));
-        assert_eq!(nodes.nodes.count(), 3);
+        panic!("{size:?}");
     }
 }

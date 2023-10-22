@@ -100,6 +100,12 @@ impl From<String> for Value {
     }
 }
 
+impl From<&str> for Value {
+    fn from(s: &str) -> Value {
+        Value::Str(s.into())
+    }
+}
+
 impl From<usize> for Value {
     fn from(n: usize) -> Self {
         Value::Owned(Owned::from(n))

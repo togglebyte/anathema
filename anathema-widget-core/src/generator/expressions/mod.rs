@@ -84,7 +84,6 @@ impl ControlFlow {
     fn eval(&self, node_id: NodeId) -> Result<Node<'_>> {
         let node = Node {
             kind: NodeKind::ControlFlow(IfElse::new(
-                Nodes::new(&[], node_id.child(0)),
                 &self.if_expr,
                 &self.elses,
             )),
