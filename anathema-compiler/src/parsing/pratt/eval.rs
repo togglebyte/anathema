@@ -90,31 +90,9 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 _ => panic!("operator: {op:#?}"),
             }
         }
-        _ => panic!(),
+        Expr::List(list) => ValueExpr::List(list.into_iter().map(|expr| eval(expr, consts)).collect()),
+        Expr::Call { .. } => unimplemented!(),
     }
-
-    // let y = [1, 2, 3]
-    // let a = 5
-    // let x = 10
-    //
-    //
-    // text "hello {{ name }}, how are your {{ 10 + counter - 8 }} babies doing today"
-    //
-    // vstack
-    //     text "{{ x }}" // prints 10
-    //     for x in y.a.b
-    //         text "hello {{ x + a }}"
-    //         text "{{ x }}" // prints 1, 2 or 3
-
-    // {{ x + a }} should be stored as a singular expression
-    //
-    // for x in make_range(1, 10)
-    //     text "{{ x }}"
-
-    // 1 + a -> Expression:Add(
-    //     ScopeValue::Static(1), ScopeValue::Dyn(a)
-    // )
-    // a.b.c -> Path::Composite(a, Path::Composite(b, c));
 }
 
 #[cfg(test)]

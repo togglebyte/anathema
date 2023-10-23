@@ -35,17 +35,18 @@ impl<'e> Node<'e> {
         match &mut self.kind {
             NodeKind::Single(widget, children) => {
                 f(widget, children, context)?;
-                Ok(ControlFlow::Break(()))
+                Ok(ControlFlow::Continue(()))
             }
             NodeKind::Loop(loop_state) => loop {
                 let mut scope = context.scope.reparent();
                 let Some(value) = loop_state.next_value(context) else {
-                    return Ok(ControlFlow::Break(()));
+                    return Ok(ControlFlow::Continue(()));
                 };
                 scope.scope(loop_state.binding.clone(), value);
                 loop_state.body.reset();
+                let context = Context::new(context.state, &scope);
 
-                while let Some(res) = loop_state.body.next(context, layout, f) {
+                while let Some(res) = loop_state.body.next(&context, layout, f) {
                     match res? {
                         ControlFlow::Continue(()) => continue,
                         ControlFlow::Break(()) => break,
@@ -68,7 +69,7 @@ impl<'e> Node<'e> {
                     }
                 }
 
-                Ok(ControlFlow::Break(()))
+                Ok(ControlFlow::Continue(()))
             }
         }
     }
@@ -161,7 +162,8 @@ impl<'e> Nodes<'e> {
         match self.inner.get_mut(self.cache_index) {
             Some(n) => {
                 self.cache_index += 1;
-                Some(n.next(context, layout, f))
+                let val = n.next(context, layout, f);
+                Some(val)
             }
             None => {
                 if let Err(e) = self.new_node(context)? {
@@ -182,8 +184,7 @@ impl<'e> Nodes<'e> {
         F: FnMut(&mut WidgetContainer, &mut Nodes, &Context<'_, '_>) -> Result<()>,
     {
         loop {
-            let x = self.next(context, layout, &mut f);
-            if let Some(res) = x {
+            if let Some(res) = self.next(context, layout, &mut f) {
                 match res? {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
@@ -192,14 +193,6 @@ impl<'e> Nodes<'e> {
             break;
         }
         Ok(())
-
-        // loop {
-        //     match self.next(context, layout, &mut f) {
-        //         Some(Ok(_)) => continue,
-        //         Some(Err(Error::InsufficientSpaceAvailble)) | None => break Ok(()),
-        //         Some(Err(e)) => break Err(e),
-        //     }
-        // }
     }
 
     // TODO: move this into a visitor?
@@ -342,7 +335,7 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
         .map(|node| match &node.kind {
             NodeKind::Single(_, nodes) => 1 + nodes.count(),
             NodeKind::Loop(loop_state) => loop_state.count(),
-            NodeKind::ControlFlow { .. } => panic!(),
+            NodeKind::ControlFlow(if_else) => if_else.count(),
         })
         .sum()
 }

@@ -29,6 +29,8 @@ impl<'a> ValueRef<'a> {
         match self {
             Self::Str(s) => s.is_empty(),
             Self::Owned(Owned::Bool(b)) => *b,
+            Self::Owned(Owned::Num(Num::Unsigned(n))) => *n > 0,
+            Self::Owned(Owned::Num(Num::Signed(n))) => *n > 0,
             _ => false,
         }
     }
@@ -39,10 +41,7 @@ impl<'a> PartialEq for ValueRef<'a> {
         match (self, other) {
             (Self::Str(lhs), Self::Str(rhs)) => lhs == rhs,
             (Self::Owned(lhs), Self::Owned(rhs)) => lhs == rhs,
-            // (Self::Map(lhs), Self::Map(rhs)) => lhs.eq(rhs),
-            // (Self::List(lhs), Self::List(rhs)) => lhs.eq(rhs),
-            // TODO: see panic message
-            _ => panic!("need equality for Collection trait"),
+            _ => false,
         }
     }
 }
@@ -89,6 +88,17 @@ impl<'a> TryFrom<ValueRef<'a>> for u64 {
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num),
+            _ => Err(()),
+        }
+    }
+}
+
+impl<'a> TryFrom<ValueRef<'a>> for usize {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+        match value {
+            ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num as usize),
             _ => Err(()),
         }
     }

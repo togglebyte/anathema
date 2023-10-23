@@ -370,6 +370,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         match self.tokens.peek() {
             Kind::Newline
             | Kind::Value(Value::String(_))
+            | Kind::Value(Value::Ident(_))
             | Kind::Op(Operator::LBracket)
             | Kind::Eof => {}
             _ => {

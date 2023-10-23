@@ -25,7 +25,7 @@ pub mod prec {
 fn get_precedence(op: Operator) -> u8 {
     match op {
         Operator::Equal => prec::ASSIGNMENT,
-        Operator::Or | Operator::And => prec::CONDITIONAL,
+        Operator::Or | Operator::And | Operator::EqualEqual=> prec::CONDITIONAL,
         Operator::Plus | Operator::Minus => prec::SUM,
         Operator::Mul | Operator::Div | Operator::Mod => prec::PRODUCT,
         Operator::LParen => prec::CALL,
@@ -294,5 +294,11 @@ mod test {
     fn nested_list() {
         let input = "[1, [2, 3, [4, 5]]]";
         assert_eq!(parse(input), "[1, [2, 3, [4, 5]]]");
+    }
+
+    #[test]
+    fn equality() {
+        let input = "1 == 2";
+        assert_eq!(parse(input), "(== 1 2)");
     }
 }

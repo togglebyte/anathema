@@ -80,11 +80,7 @@ impl Layout for BorderLayout {
                 return Err(Error::InsufficientSpaceAvailble);
             }
 
-            let inner_size = match widget.layout(children, constraints, data) {
-                Ok(s) => s,
-                Err(Error::InsufficientSpaceAvailble) => return Ok(()),
-                err @ Err(_) => err?,
-            };
+            let inner_size = widget.layout(children, constraints, data)?;
 
             size = inner_size + border_size + padding_size;
 

@@ -173,6 +173,8 @@ impl Layout for Many {
             },
         );
 
+        let count = children.count();
+
         // Apply spacer and expand if the layout is constrained
         if !self.unconstrained {
             {

@@ -106,14 +106,13 @@ impl WidgetFactory for VStackFactory {
         text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        // let width = data.attribute("width", node_id.into(), attributes);
-        // let height = data.attribute("height", node_id.into(), attributes);
-        // let mut widget = VStack::new(width, height);
-        // widget.min_width = data.primitive("min-width", node_id.into(), attributes);
-        // widget.min_height = data.primitive("min-height", node_id.into(), attributes);
+        let width = data.attribute("width", node_id.into(), attributes);
+        let height = data.attribute("height", node_id.into(), attributes);
+        let mut widget = VStack::new(width, height);
+        widget.min_width = data.attribute("min-width", node_id.into(), attributes);
+        widget.min_height = data.attribute("min-height", node_id.into(), attributes);
 
-        // Ok(Box::new(widget))
-        panic!()
+        Ok(Box::new(widget))
     }
 }
 

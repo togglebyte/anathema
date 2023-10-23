@@ -135,6 +135,9 @@ where
         self.screen.clear_all(&mut self.output)?;
 
         self.layout()?;
+
+        // return Ok(());
+
         self.position();
         self.paint();
 

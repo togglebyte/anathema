@@ -88,7 +88,7 @@ impl From<String> for ValueExpr {
 impl ValueExpr {
     pub fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
         match self.eval_value(context, node_id) {
-            Some(ValueRef::Owned(Owned::Bool(true))) => true,
+            Some(value) => value.is_true(),
             _ => false,
         }
     }
@@ -124,7 +124,8 @@ impl ValueExpr {
             ValueRef::Expressions(list) => {
                 let mut s = String::new();
                 for expr in list {
-                    s.push_str(&expr.eval_string(context, node_id)?);
+                    let res = expr.eval_string(context, node_id);
+                    s.push_str(&res?);
                 }
                 Some(s)
             }
