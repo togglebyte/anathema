@@ -23,9 +23,7 @@ pub struct SingleNode {
 impl SingleNode {
     fn eval<'a: 'val, 'val>(&self, context: &Context<'a, 'val>, node_id: NodeId) -> Result<Node> {
         let widget = WidgetContainer {
-            background: context
-                .attribute("background", Some(&node_id), &self.attributes)
-                .map(|val| *val),
+            background: context.attribute("background", Some(&node_id), &self.attributes),
 
             // TODO: don't hard code these
             display: Display::Show, /* context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show), */

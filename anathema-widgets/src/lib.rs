@@ -42,7 +42,7 @@ mod factories {
     // pub(super) use crate::spacer::SpacerFactory;
     pub(super) use crate::text::{SpanFactory, TextFactory};
     // // pub(super) use crate::viewport::ViewportFactory;
-    // pub(super) use crate::vstack::VStackFactory;
+    pub(super) use crate::vstack::VStackFactory;
     // pub(super) use crate::zstack::ZStackFactory;
 }
 
@@ -57,7 +57,7 @@ pub fn register_default_widgets() -> Result<()> {
         // Factory::register("spacer".to_string(), factories::SpacerFactory),
         Factory::register("span".to_string(), factories::SpanFactory),
         Factory::register("text".to_string(), factories::TextFactory),
-        // Factory::register("vstack".to_string(), factories::VStackFactory),
+        Factory::register("vstack".to_string(), factories::VStackFactory),
         // Factory::register("zstack".to_string(), factories::ZStackFactory),
         // // Factory::register("viewport".to_string(), factories::ViewportFactory),
     ];

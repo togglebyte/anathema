@@ -73,13 +73,14 @@ impl<'a, 'val> Context<'a, 'val> {
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
         attributes: &'val Attributes,
-    ) -> Option<&'val T>
+    ) -> Option<T>
     where
-        for<'b> &'b T: TryFrom<ValueRef<'b>>,
+        T: Clone,
+        for<'b> T: TryFrom<ValueRef<'b>>,
     {
-        attributes
-            .get(key.as_ref())
-            .and_then(|expr| expr.eval(self, node_id))
+        let value = attributes.get(key.as_ref())?;
+        let value_ref = value.eval_value(self, node_id)?;
+        T::try_from(value_ref).ok()
     }
 }
 
@@ -126,7 +127,7 @@ mod test {
         attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
 
         let id = Some(123.into());
-        let name: &str = ctx.attribute("name", id.as_ref(), &attributes).unwrap();
+        let name: String = ctx.attribute("name", id.as_ref(), &attributes).unwrap();
         assert_eq!("Dirk Gently", name);
     }
 

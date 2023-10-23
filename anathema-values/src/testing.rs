@@ -155,6 +155,7 @@ impl<'a, S: State> TestExpression<'a, S> {
 }
 
 impl ValueExpr {
+    #[cfg(feature = "testing")]
     pub fn test<'a>(self, scope: impl Into<Scope<'a>>) -> TestExpression<'a, TestState> {
         let scope = scope.into();
 
@@ -244,4 +245,12 @@ pub fn not(expr: Box<ValueExpr>) -> Box<ValueExpr> {
 
 pub fn eq(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
     ValueExpr::Equality(lhs, rhs).into()
+}
+
+pub fn and(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::And(lhs, rhs).into()
+}
+
+pub fn or(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Or(lhs, rhs).into()
 }

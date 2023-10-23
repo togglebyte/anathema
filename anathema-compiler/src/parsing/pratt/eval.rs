@@ -62,7 +62,16 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
             Operator::EqualEqual => {
                 ValueExpr::Equality(eval(*lhs, consts).into(), eval(*rhs, consts).into())
             }
-            _ => panic!(),
+            Operator::Or | Operator::And => {
+                let lhs = eval(*lhs, consts);
+                let rhs = eval(*rhs, consts);
+                match op {
+                    Operator::Or => return ValueExpr::Or(lhs.into(), rhs.into()),
+                    Operator::And => return ValueExpr::And(lhs.into(), rhs.into()),
+                    _ => unreachable!()
+                }
+            }
+            e@_ => panic!("here is a panic: {e:#?}"),
         },
         Expr::Unary { op, expr } => {
             let expr = eval(*expr, consts);

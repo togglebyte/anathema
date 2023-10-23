@@ -6,7 +6,6 @@ use crate::{Context, NodeId, Num, Owned, Path, ValueRef};
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
-    // Value(Value),
     Owned(Owned),
     String(Rc<str>),
 
@@ -34,7 +33,6 @@ pub enum ValueExpr {
 impl Display for ValueExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            // Self::Value(val) => write!(f, "{val}"),
             Self::Owned(val) => write!(f, "{val}"),
             Self::String(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
@@ -142,15 +140,6 @@ impl ValueExpr {
         match self {
             Self::Owned(value) => Some(ValueRef::Owned(*value)),
             Self::String(value) => Some(ValueRef::Str(&*value)),
-            Self::Not(expr) => {
-                let b = expr.eval_bool(context, node_id);
-                Some(ValueRef::Owned((!b).into()))
-            }
-            Self::Equality(lhs, rhs) => {
-                let lhs = lhs.eval_value(context, node_id)?;
-                let rhs = rhs.eval_value(context, node_id)?;
-                Some(ValueRef::Owned((lhs == rhs).into()))
-            }
 
             // -----------------------------------------------------------------------------
             //   - Maths -
@@ -186,6 +175,29 @@ impl ValueExpr {
             Self::Negative(expr) => {
                 let num = expr.eval_number(context, node_id)?;
                 Some(ValueRef::Owned(Owned::Num(num.to_negative())))
+            }
+
+            // -----------------------------------------------------------------------------
+            //   - Conditions -
+            // -----------------------------------------------------------------------------
+            Self::Not(expr) => {
+                let b = expr.eval_bool(context, node_id);
+                Some(ValueRef::Owned((!b).into()))
+            }
+            Self::Equality(lhs, rhs) => {
+                let lhs = lhs.eval_value(context, node_id)?;
+                let rhs = rhs.eval_value(context, node_id)?;
+                Some(ValueRef::Owned((lhs == rhs).into()))
+            }
+            Self::Or(lhs, rhs) => {
+                let lhs = lhs.eval_value(context, node_id)?;
+                let rhs = rhs.eval_value(context, node_id)?;
+                Some(ValueRef::Owned((lhs.is_true() || rhs.is_true()).into()))
+            }
+            Self::And(lhs, rhs) => {
+                let lhs = lhs.eval_value(context, node_id)?;
+                let rhs = rhs.eval_value(context, node_id)?;
+                Some(ValueRef::Owned((lhs.is_true() && rhs.is_true()).into()))
             }
 
             // -----------------------------------------------------------------------------
@@ -236,7 +248,7 @@ impl ValueExpr {
 
 #[cfg(test)]
 mod test {
-    use crate::testing::{add, strlit, list, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum};
+    use crate::testing::{and, or, add, strlit, list, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum};
     use crate::ValueRef;
 
     #[test]
@@ -277,18 +289,48 @@ mod test {
 
     #[test]
     fn bools() {
+        // false
         let expr = ident("is_false");
         expr.test([("is_false", false.into())]).expect_owned(false);
 
+        // not is false
         let expr = not(ident("is_false"));
         expr.test([("is_false", false.into())]).expect_owned(true);
 
+        // equality
         let expr = eq(ident("one"), ident("one"));
         expr.test([("one", 1.into())]).expect_owned(true);
 
+        // not equality
         let expr = not(eq(ident("one"), ident("two")));
         expr.test([("one", 1.into()), ("two", 2.into())])
             .expect_owned(true);
+
+        // or
+        let expr = or(ident("one"), ident("two"));
+        expr.test([("one", false.into()), ("two", true.into())])
+            .expect_owned(true);
+
+        let expr = or(ident("one"), ident("two"));
+        expr.test([("one", true.into()), ("two", false.into())])
+            .expect_owned(true);
+
+        let expr = or(ident("one"), ident("two"));
+        expr.test([("one", false.into()), ("two", false.into())])
+            .expect_owned(false);
+
+        // and
+        let expr = and(ident("one"), ident("two"));
+        expr.test([("one", true.into()), ("two", true.into())])
+            .expect_owned(true);
+
+        let expr = and(ident("one"), ident("two"));
+        expr.test([("one", false.into()), ("two", true.into())])
+            .expect_owned(false);
+
+        let expr = and(ident("one"), ident("two"));
+        expr.test([("one", true.into()), ("two", false.into())])
+            .expect_owned(false);
     }
 
     #[test]

@@ -24,6 +24,16 @@ pub enum ValueRef<'a> {
     Owned(Owned),
 }
 
+impl<'a> ValueRef<'a> {
+    pub fn is_true(&self) -> bool {
+        match self {
+            Self::Str(s) => s.is_empty(),
+            Self::Owned(Owned::Bool(b)) => *b,
+            _ => false,
+        }
+    }
+}
+
 impl<'a> PartialEq for ValueRef<'a> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -73,12 +83,23 @@ impl<'a, T: Into<Owned> + Copy> From<&'a T> for ValueRef<'a> {
 // -----------------------------------------------------------------------------
 //   - TryFrom -
 // -----------------------------------------------------------------------------
-impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
+impl<'a> TryFrom<ValueRef<'a>> for u64 {
     type Error = ();
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
-            ValueRef::Owned(owned) => panic!(), //owned.try_into(),
+            ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<ValueRef<'_>> for String {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
+        match value {
+            ValueRef::Str(s) => Ok(s.to_string()),
             _ => Err(()),
         }
     }
@@ -95,7 +116,7 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a str {
     }
 }
 
-impl<'a> TryFrom<ValueRef<'a>> for &'a Color {
+impl<'a> TryFrom<ValueRef<'a>> for Color {
     type Error = ();
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {

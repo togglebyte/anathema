@@ -22,7 +22,7 @@ pub use crate::widget::{AnyWidget, Widget, WidgetContainer};
 pub fn style(context: &Context<'_, '_>, attributes: &Attributes, node_id: &NodeId) -> Style {
     let mut style = Style::new();
 
-    style.fg = context.attribute("foreground", node_id.into(), attributes).map(|col| *col);
+    style.fg = context.attribute("foreground", node_id.into(), attributes);
     // style.set_bold(context.attribute("bold", node_id.into(), attributes).map(|b| *b).unwrap_or(false));
     // style.set_italic(context.primitive("italic", node_id.into(), attributes).unwrap_or(false));
     // style.set_dim(context.primitive("dim", node_id.into(), attributes).unwrap_or(false));
