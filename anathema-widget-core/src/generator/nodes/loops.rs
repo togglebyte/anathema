@@ -36,9 +36,6 @@ impl<'e> LoopNode<'e> {
     where
         'e: 'val,
     {
-        // First evaluate the collection, then the value inside the collection.
-        // This could be more efficient by hanging on to the collection
-        // via a ref (Rc?).
         let val = match self.collection.eval_value(context, None)? {
             ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
             ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,

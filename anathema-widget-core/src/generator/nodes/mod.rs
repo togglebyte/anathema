@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_render::Size;
-use anathema_values::{Change, Collection, Context, NodeId, Scope, State};
+use anathema_values::{Change, Context, NodeId, Scope, State};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;

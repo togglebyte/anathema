@@ -1,11 +1,11 @@
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Debug, Display};
 use std::rc::Rc;
 
 use anathema_render::Color;
 
 pub use self::num::Num;
 pub use self::owned::Owned;
-
+use crate::hashmap::HashMap;
 use crate::map::Map;
 use crate::{Collection, List, ValueExpr};
 
@@ -21,6 +21,7 @@ pub enum ValueRef<'a> {
     Map(&'a dyn Collection),
     List(&'a dyn Collection),
     Expressions(&'a [ValueExpr]),
+    ExpressionMap(&'a HashMap<String, ValueExpr>),
     Owned(Owned),
 }
 

@@ -22,6 +22,10 @@ pub struct SingleNode {
 
 impl SingleNode {
     fn eval<'a: 'val, 'val>(&self, context: &Context<'a, 'val>, node_id: NodeId) -> Result<Node> {
+        TODO: Come up with an api that doesn't entirely suck.
+              It should be possible to do something like context.attribute("padding").list_or_number()
+              Also add > < >= <=
+
         let widget = WidgetContainer {
             background: context.attribute("background", Some(&node_id), &self.attributes),
             display: Display::Show,//context.attribute("display", Some(&node_id), &self.attributes).unwrap_or(Display::Show),

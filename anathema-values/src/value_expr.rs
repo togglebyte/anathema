@@ -166,6 +166,7 @@ impl ValueExpr {
         match self {
             Self::Owned(value) => Some(ValueRef::Owned(*value)),
             Self::String(value) => Some(ValueRef::Str(&*value)),
+            Self::Invalid => None,
 
             // -----------------------------------------------------------------------------
             //   - Maths -
@@ -248,7 +249,8 @@ impl ValueExpr {
             //   - Collection -
             // -----------------------------------------------------------------------------
             Self::List(list) => Some(ValueRef::Expressions(list)),
-            _ => panic!(),
+            Self::Map(map) => Some(ValueRef::ExpressionMap(map)),
+            // _ => panic!(),
         }
     }
 }
