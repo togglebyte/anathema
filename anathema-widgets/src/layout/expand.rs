@@ -45,10 +45,10 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 pub fn layout(
-    ctx: &mut LayoutCtx,
+    ctx: &LayoutCtx,
     children: &mut Nodes,
     axis: Axis,
-    data: Context<'_, '_>,
+    data: &Context<'_, '_>,
 ) -> Result<Size> {
     let expansions = children
         .iter_mut()

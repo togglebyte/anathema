@@ -83,23 +83,6 @@ impl<'a, 'val> Context<'a, 'val> {
             .get(key.as_ref())
             .and_then(|expr| expr.eval(self, node_id))
     }
-
-    pub fn owned<T>(
-        &self,
-        key: impl AsRef<str>,
-        node_id: Option<&NodeId>,
-        attributes: &'val Attributes,
-    ) -> Option<T>
-    where
-        T: Copy,
-        for<'b> &'b T: TryFrom<&'b Value>,
-        for<'b> &'b T: TryFrom<ValueRef<'b>>,
-    {
-        attributes
-            .get(key.as_ref())
-            .and_then(|expr| expr.eval(self, node_id))
-            .map(|val| *val)
-    }
 }
 
 #[cfg(test)]

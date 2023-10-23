@@ -151,10 +151,11 @@ impl WidgetFactory for ExpandFactory {
         text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let axis = data.attribute("axis", node_id.into(), attributes);
-        let factor = data.primitive("factor", node_id.into(), attributes);
-        let fill = data.attribute("fill", node_id.into(), attributes);
-        Ok(Box::new(Expand::new(factor, axis, fill)))
+        panic!()
+        // let axis = data.attribute("axis", node_id.into(), attributes);
+        // let factor = data.primitive("factor", node_id.into(), attributes);
+        // let fill = data.attribute("fill", node_id.into(), attributes);
+        // Ok(Box::new(Expand::new(factor, axis, fill)))
     }
 }
 

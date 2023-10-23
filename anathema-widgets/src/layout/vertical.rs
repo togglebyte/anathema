@@ -24,6 +24,6 @@ impl Layout for Vertical {
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        self.0.layout(layout, children, data)
+        self.0.layout(children, layout, data)
     }
 }

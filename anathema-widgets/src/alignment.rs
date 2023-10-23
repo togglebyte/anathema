@@ -44,7 +44,7 @@ impl Widget for Alignment {
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        let mut layout = Layouts::new(Single(Size::ZERO), layout);
+        let mut layout = Layouts::new(Single, layout);
         let size = layout.layout(children, data)?;
         if size == Size::ZERO {
             Ok(Size::ZERO)

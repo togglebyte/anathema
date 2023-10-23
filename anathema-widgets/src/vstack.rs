@@ -70,6 +70,7 @@ impl Widget for VStack {
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
+        let mut layout = *layout;
         if let Some(width) = self.width {
             layout.constraints.max_width = layout.constraints.max_width.min(width);
         }
@@ -83,7 +84,7 @@ impl Widget for VStack {
             layout.constraints.min_height = layout.constraints.min_height.max(min_height);
         }
 
-        Layouts::new(Vertical::new(Direction::Forward), layout).layout(children, data)
+        Layouts::new(Vertical::new(Direction::Forward), &layout).layout(children, data)
     }
 
     fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
@@ -105,13 +106,14 @@ impl WidgetFactory for VStackFactory {
         text: Option<&ValueExpr>,
         node_id: &NodeId,
     ) -> Result<Box<dyn AnyWidget>> {
-        let width = data.primitive("width", node_id.into(), attributes);
-        let height = data.primitive("height", node_id.into(), attributes);
-        let mut widget = VStack::new(width, height);
-        widget.min_width = data.primitive("min-width", node_id.into(), attributes);
-        widget.min_height = data.primitive("min-height", node_id.into(), attributes);
+        // let width = data.attribute("width", node_id.into(), attributes);
+        // let height = data.attribute("height", node_id.into(), attributes);
+        // let mut widget = VStack::new(width, height);
+        // widget.min_width = data.primitive("min-width", node_id.into(), attributes);
+        // widget.min_height = data.primitive("min-height", node_id.into(), attributes);
 
-        Ok(Box::new(widget))
+        // Ok(Box::new(widget))
+        panic!()
     }
 }
 

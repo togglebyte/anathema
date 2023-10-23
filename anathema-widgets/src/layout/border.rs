@@ -22,6 +22,7 @@ impl Layout for BorderLayout {
     ) -> Result<Size> {
         // If there is a min width / height, make sure the minimum constraints
         // are matching these
+        let mut layout = *layout;
         if let Some(min_width) = self.min_width {
             layout.constraints.min_width = layout.constraints.min_width.max(min_width);
         }
@@ -54,7 +55,7 @@ impl Layout for BorderLayout {
         let is_width_tight = layout.constraints.is_width_tight();
 
         let mut size = Size::ZERO;
-        children.for_each(data, layout, |widget: &mut WidgetContainer, children: &mut Nodes<'_>, data: &Context<'_, '_>| {
+        children.for_each(data, &layout, |widget: &mut WidgetContainer, children: &mut Nodes<'_>, data: &Context<'_, '_>| {
 
             // Shrink the constraint for the child to fit inside the border
             constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {

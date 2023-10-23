@@ -19,16 +19,16 @@ impl Layout for Stacked {
 
         let constraints = layout.padded_constraints();
 
-        children.for_each(data.state, data.scope, layout, |widget, children, data| {
-            let size = match widget.layout(children, constraints, data) {
+        children.for_each(data, layout, |widget, children, data| {
+            let widget_size = match widget.layout(children, constraints, data) {
                 Ok(s) => s,
                 err @ Err(_) => err?,
             };
 
-            width = width.max(size.width);
-            height = height.max(size.height);
+            width = width.max(widget_size.width);
+            height = height.max(widget_size.height);
 
-            Ok(size)
+            Ok(())
         });
 
         Ok(Size { width, height })

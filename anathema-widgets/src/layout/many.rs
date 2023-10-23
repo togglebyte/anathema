@@ -178,15 +178,13 @@ impl Layout for Many {
             {
                 let mut exp_ctx = *layout;
                 exp_ctx.constraints = used_size.to_constraints();
-                let data = Context::new(data.state, data.scope);
-                let expanded_size = expand::layout(&mut exp_ctx, children, self.axis, data)?;
+                let expanded_size = expand::layout(&exp_ctx, children, self.axis, &data)?;
                 used_size.apply(expanded_size);
             }
 
             let mut space_ctx = *layout;
             space_ctx.constraints = used_size.to_constraints();
-            let data = Context::new(data.state, data.scope);
-            let spacer_size = spacers::layout(&mut space_ctx, children, self.axis, data)?;
+            let spacer_size = spacers::layout(&space_ctx, children, self.axis, data)?;
             used_size.apply(spacer_size);
         }
 

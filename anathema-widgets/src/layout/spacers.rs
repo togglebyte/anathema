@@ -23,13 +23,14 @@ impl Layout for SpacerLayout {
 
 /// Layout spacers.
 /// This is different to [`SpacerLayout`] which
-/// does the layout of the children of a single [`Spacer`],
-/// whereas this does the layout of multiple [`Spacer`]s.
+/// does the layout of the child of a single [`Spacer`],
+/// whereas this does the layout of multiple [`Spacer`]s 
+/// inside already evaluated children.
 pub fn layout(
-    ctx: &mut LayoutCtx,
+    ctx: &LayoutCtx,
     children: &mut Nodes,
     axis: Axis,
-    data: Context<'_, '_>,
+    data: &Context<'_, '_>,
 ) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let count = children.iter_mut().filter(|(c, _)| c.kind() == Spacer::KIND).count();
@@ -51,7 +52,7 @@ pub fn layout(
     };
 
     for (spacer, nodes) in children.iter_mut().filter(|(c, _)| c.kind() == Spacer::KIND) {
-        let size = spacer.layout(nodes, constraints, Context::new(data.state, data.scope))?;
+        let size = spacer.layout(nodes, constraints, data)?;
 
         match axis {
             Axis::Horizontal => {
