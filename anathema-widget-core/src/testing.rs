@@ -1,9 +1,8 @@
 use anathema_render::{Screen, ScreenPos, Size};
 
 use super::WidgetContainer;
-use crate::contexts::{DataCtx, PaintCtx};
+use crate::contexts::PaintCtx;
 use crate::layout::Constraints;
-use crate::template::Template;
 use crate::Widget;
 
 // -----------------------------------------------------------------------------

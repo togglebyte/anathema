@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::hashmap::HashMap;
-use crate::{Attributes, NodeId, Path, State, Value, ValueRef};
+use crate::{Attributes, NodeId, Path, State, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum ScopeValue<'a> {
@@ -62,7 +62,6 @@ impl<'a, 'val> Context<'a, 'val> {
     /// This will recursively lookup dynamic values
     pub fn get<T: ?Sized>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&'val T>
     where
-        for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
         self.lookup(path, node_id)
@@ -76,7 +75,6 @@ impl<'a, 'val> Context<'a, 'val> {
         attributes: &'val Attributes,
     ) -> Option<&'val T>
     where
-        for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
         attributes
@@ -88,7 +86,8 @@ impl<'a, 'val> Context<'a, 'val> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{testing::*, ValueExpr};
+    use crate::testing::*;
+    use crate::ValueExpr;
 
     type Sub = usize;
 

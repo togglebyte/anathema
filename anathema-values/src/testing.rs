@@ -1,7 +1,7 @@
 
 use crate::map::Map;
 use crate::{
-    Context, List, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, Value,
+    Context, List, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, 
     ValueExpr, ValueRef, Collection
 };
 
@@ -208,19 +208,19 @@ pub fn add(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
 //   - Values -
 // -----------------------------------------------------------------------------
 pub fn unum(int: u64) -> Box<ValueExpr> {
-    ValueExpr::Value(Value::Owned(Owned::from(int))).into()
+    ValueExpr::Owned(Owned::from(int)).into()
 }
 
 pub fn inum(int: i64) -> Box<ValueExpr> {
-    ValueExpr::Value(Value::Owned(Owned::from(int))).into()
+    ValueExpr::Owned(Owned::from(int)).into()
 }
 
 pub fn boolean(b: bool) -> Box<ValueExpr> {
-    ValueExpr::Value(Value::Owned(Owned::from(b))).into()
+    ValueExpr::Owned(Owned::from(b)).into()
 }
 
 pub fn strlit(lit: &str) -> Box<ValueExpr> {
-    ValueExpr::Value(Value::Str(lit.into())).into()
+    ValueExpr::String(lit.into()).into()
 }
 
 // -----------------------------------------------------------------------------

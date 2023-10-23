@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use anathema_values::{Num, Owned, Path, Value, ValueExpr};
+use anathema_values::{Num, Owned, Path, ValueExpr};
 
 use super::Expr;
 use crate::token::Operator;
@@ -15,9 +15,9 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
         }
         Expr::Str(string_id) => {
             let string = consts.lookup_string(string_id);
-            ValueExpr::Value(Value::Str(Rc::from(string)))
+            ValueExpr::String(Rc::from(string))
         }
-        Expr::Num(num) => ValueExpr::Value(Value::Owned(Owned::Num(num.into()))),
+        Expr::Num(num) => ValueExpr::Owned(Owned::Num(num.into())),
         Expr::Array { lhs, index } => {
             let lhs = eval(*lhs, consts);
             let index = eval(*index, consts);
@@ -27,34 +27,26 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
             Operator::Dot => ValueExpr::Dot(eval(*lhs, consts).into(), eval(*rhs, consts).into()),
             Operator::Mul | Operator::Plus | Operator::Minus | Operator::Div | Operator::Mod => {
                 let (lhs, rhs) = match (eval(*lhs, consts), eval(*rhs, consts)) {
-                    (ValueExpr::Value(lhs), ValueExpr::Value(rhs)) => match (lhs, rhs) {
-                        (Value::Owned(Owned::Num(lhs)), Value::Owned(Owned::Num(rhs))) => {
-                            match op {
-                                Operator::Mul => {
-                                    return ValueExpr::Value(Value::Owned(Owned::Num(lhs * rhs)))
-                                        .into()
-                                }
-                                Operator::Plus => {
-                                    return ValueExpr::Value(Value::Owned(Owned::Num(lhs + rhs)))
-                                        .into()
-                                }
-                                Operator::Minus => {
-                                    return ValueExpr::Value(Value::Owned(Owned::Num(lhs - rhs)))
-                                        .into()
-                                }
-                                Operator::Div => {
-                                    return ValueExpr::Value(Value::Owned(Owned::Num(lhs / rhs)))
-                                        .into()
-                                }
-                                Operator::Mod => {
-                                    return ValueExpr::Value(Value::Owned(Owned::Num(lhs % rhs)))
-                                        .into()
-                                }
-                                _ => unreachable!(),
+                    (ValueExpr::Owned(Owned::Num(lhs)), ValueExpr::Owned(Owned::Num(rhs))) => {
+                        match op {
+                            Operator::Mul => {
+                                return ValueExpr::Owned(Owned::Num(lhs * rhs)).into()
                             }
+                            Operator::Plus => {
+                                return ValueExpr::Owned(Owned::Num(lhs + rhs)).into()
+                            }
+                            Operator::Minus => {
+                                return ValueExpr::Owned(Owned::Num(lhs - rhs)).into()
+                            }
+                            Operator::Div => {
+                                return ValueExpr::Owned(Owned::Num(lhs / rhs)).into()
+                            }
+                            Operator::Mod => {
+                                return ValueExpr::Owned(Owned::Num(lhs % rhs)).into()
+                            }
+                            _ => unreachable!(),
                         }
-                        _ => return ValueExpr::Invalid,
-                    },
+                    }
                     (lhs, rhs) => (lhs.into(), rhs.into()),
                 };
 
@@ -67,7 +59,9 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                     _ => unreachable!(),
                 }
             }
-            Operator::EqualEqual => ValueExpr::Equality(eval(*lhs, consts).into(), eval(*rhs, consts).into()),
+            Operator::EqualEqual => {
+                ValueExpr::Equality(eval(*lhs, consts).into(), eval(*rhs, consts).into())
+            }
             _ => panic!(),
         },
         Expr::Unary { op, expr } => {
@@ -75,12 +69,12 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
 
             match op {
                 Operator::Not => match expr {
-                    ValueExpr::Value(Value::Owned(Owned::Bool(b))) => ValueExpr::Value((!b).into()),
+                    ValueExpr::Owned(Owned::Bool(b)) => ValueExpr::Owned((!b).into()),
                     _ => ValueExpr::Not(expr.into()),
                 },
                 Operator::Minus => match expr {
-                    ValueExpr::Value(Value::Owned(Owned::Num(Num::Unsigned(n)))) => {
-                        ValueExpr::Value(Value::Owned(Owned::Num(Num::Signed(-(n as i64)))))
+                    ValueExpr::Owned(Owned::Num(Num::Unsigned(n))) => {
+                        ValueExpr::Owned(Owned::Num(Num::Signed(-(n as i64))))
                     }
                     _ => ValueExpr::Negative(expr.into()),
                 },

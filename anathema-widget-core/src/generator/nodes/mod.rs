@@ -391,7 +391,7 @@ mod test {
 
     #[test]
     fn for_loop() {
-        let string = ValueExpr::Value(Value::Str("hello".into()));
+        let string = "hello".into();
         let body = expression("test", Some(string), [], []);
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
         let mut nodes = TestNodes::new(&exprs);

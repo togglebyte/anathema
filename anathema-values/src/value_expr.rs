@@ -1,12 +1,14 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::{Context, NodeId, Num, Owned, Path, Value, ValueRef};
+use crate::{Context, NodeId, Num, Owned, Path, ValueRef};
 
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
-    Value(Value),
+    // Value(Value),
+    Owned(Owned),
+    String(Rc<str>),
 
     Not(Box<ValueExpr>),
     Negative(Box<ValueExpr>),
@@ -32,7 +34,9 @@ pub enum ValueExpr {
 impl Display for ValueExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Value(val) => write!(f, "{val}"),
+            // Self::Value(val) => write!(f, "{val}"),
+            Self::Owned(val) => write!(f, "{val}"),
+            Self::String(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
             Self::Index(lhs, idx) => write!(f, "{lhs}[{idx}]"),
             Self::Dot(lhs, rhs) => write!(f, "{lhs}.{rhs}"),
@@ -70,10 +74,16 @@ impl From<Box<ValueExpr>> for ValueExpr {
 
 impl<T> From<T> for ValueExpr
 where
-    T: Into<Value>,
+    T: Into<Owned>,
 {
     fn from(val: T) -> Self {
-        Self::Value(val.into())
+        Self::Owned(val.into())
+    }
+}
+
+impl From<String> for ValueExpr {
+    fn from(val: String) -> Self {
+        Self::String(val.into())
     }
 }
 
@@ -130,8 +140,8 @@ impl ValueExpr {
         node_id: Option<&NodeId>,
     ) -> Option<ValueRef<'_>> {
         match self {
-            Self::Value(Value::Owned(value)) => Some(ValueRef::Owned(*value)),
-            Self::Value(Value::Str(value)) => Some(ValueRef::Str(&*value)),
+            Self::Owned(value) => Some(ValueRef::Owned(*value)),
+            Self::String(value) => Some(ValueRef::Str(&*value)),
             Self::Not(expr) => {
                 let b = expr.eval_bool(context, node_id);
                 Some(ValueRef::Owned((!b).into()))
@@ -210,17 +220,17 @@ impl ValueExpr {
         node_id: Option<&NodeId>,
     ) -> Option<&'val T>
     where
-        for<'b> &'b T: TryFrom<&'b Value>,
         for<'b> &'b T: TryFrom<ValueRef<'b>>,
     {
-        match self {
-            Self::Value(value) => value.try_into().ok(),
-            expr @ (Self::Dot(..) | Self::Ident(_)) => {
-                let path = expr.eval_path(context, node_id)?;
-                context.get::<T>(&path, node_id)
-            }
-            _ => panic!(),
-        }
+        panic!()
+        // match self {
+        //     Self::Value(value) => value.try_into().ok(),
+        //     expr @ (Self::Dot(..) | Self::Ident(_)) => {
+        //         let path = expr.eval_path(context, node_id)?;
+        //         context.get::<T>(&path, node_id)
+        //     }
+        //     _ => panic!(),
+        // }
     }
 }
 

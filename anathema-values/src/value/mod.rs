@@ -71,61 +71,8 @@ impl<'a, T: Into<Owned> + Copy> From<&'a T> for ValueRef<'a> {
 }
 
 // -----------------------------------------------------------------------------
-//   - Value -
-// -----------------------------------------------------------------------------
-#[derive(Debug, Clone, PartialEq)]
-pub enum Value {
-    Str(Rc<str>),
-    Owned(Owned),
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Str(s) => write!(f, "{s}"),
-            Self::Owned(owned) => write!(f, "{owned}"),
-        }
-    }
-}
-
-impl From<bool> for Value {
-    fn from(b: bool) -> Value {
-        Value::Owned(Owned::Bool(b))
-    }
-}
-
-impl From<String> for Value {
-    fn from(s: String) -> Value {
-        Value::Str(s.into())
-    }
-}
-
-impl From<&str> for Value {
-    fn from(s: &str) -> Value {
-        Value::Str(s.into())
-    }
-}
-
-impl From<usize> for Value {
-    fn from(n: usize) -> Self {
-        Value::Owned(Owned::from(n))
-    }
-}
-
-// -----------------------------------------------------------------------------
 //   - TryFrom -
 // -----------------------------------------------------------------------------
-impl<'a> TryFrom<&'a Value> for &'a u64 {
-    type Error = ();
-
-    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Owned(owned) => owned.try_into(),
-            _ => Err(()),
-        }
-    }
-}
-
 impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
     type Error = ();
 
@@ -137,34 +84,12 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a u64 {
     }
 }
 
-impl<'a> TryFrom<&'a Value> for &'a str {
-    type Error = ();
-
-    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Str(s) => Ok(s),
-            _ => Err(()),
-        }
-    }
-}
-
 impl<'a> TryFrom<ValueRef<'a>> for &'a str {
     type Error = ();
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Str(s) => Ok(s),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<'a> TryFrom<&'a Value> for &'a Color {
-    type Error = ();
-
-    fn try_from(value: &'a Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Owned(Owned::Color(col)) => Ok(col),
             _ => Err(()),
         }
     }

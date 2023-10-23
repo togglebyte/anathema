@@ -5,6 +5,7 @@ use anathema_render::Color;
 use crate::Num;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+// TODO: rename to Primitive
 pub enum Owned {
     Num(Num),
     Bool(bool),

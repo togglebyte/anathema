@@ -7,7 +7,7 @@ pub use self::scope::{Context, Scope, ScopeValue};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
 pub use self::value_expr::ValueExpr;
-pub use self::value::{Value, ValueRef, Num, Owned};
+pub use self::value::{ValueRef, Num, Owned};
 pub use self::collection::Collection;
 
 pub mod hashmap;
