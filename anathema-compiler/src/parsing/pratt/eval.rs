@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use anathema_values::hashmap::HashMap;
 use anathema_values::{Num, Owned, Path, ValueExpr};
 
 use super::Expr;
@@ -29,21 +30,15 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 let (lhs, rhs) = match (eval(*lhs, consts), eval(*rhs, consts)) {
                     (ValueExpr::Owned(Owned::Num(lhs)), ValueExpr::Owned(Owned::Num(rhs))) => {
                         match op {
-                            Operator::Mul => {
-                                return ValueExpr::Owned(Owned::Num(lhs * rhs)).into()
-                            }
+                            Operator::Mul => return ValueExpr::Owned(Owned::Num(lhs * rhs)).into(),
                             Operator::Plus => {
                                 return ValueExpr::Owned(Owned::Num(lhs + rhs)).into()
                             }
                             Operator::Minus => {
                                 return ValueExpr::Owned(Owned::Num(lhs - rhs)).into()
                             }
-                            Operator::Div => {
-                                return ValueExpr::Owned(Owned::Num(lhs / rhs)).into()
-                            }
-                            Operator::Mod => {
-                                return ValueExpr::Owned(Owned::Num(lhs % rhs)).into()
-                            }
+                            Operator::Div => return ValueExpr::Owned(Owned::Num(lhs / rhs)).into(),
+                            Operator::Mod => return ValueExpr::Owned(Owned::Num(lhs % rhs)).into(),
                             _ => unreachable!(),
                         }
                     }
@@ -68,10 +63,10 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 match op {
                     Operator::Or => return ValueExpr::Or(lhs.into(), rhs.into()),
                     Operator::And => return ValueExpr::And(lhs.into(), rhs.into()),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 }
             }
-            e@_ => panic!("here is a panic: {e:#?}"),
+            e @ _ => panic!("here is a panic: {e:#?}"),
         },
         Expr::Unary { op, expr } => {
             let expr = eval(*expr, consts);
@@ -90,7 +85,15 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 _ => panic!("operator: {op:#?}"),
             }
         }
-        Expr::List(list) => ValueExpr::List(list.into_iter().map(|expr| eval(expr, consts)).collect()),
+        Expr::List(list) => {
+            ValueExpr::List(list.into_iter().map(|expr| eval(expr, consts)).collect())
+        }
+        Expr::Map(map) => ValueExpr::Map(
+            map.into_iter()
+                .map(|(key, value)| (eval(key, consts).to_string(), eval(value, consts)))
+                .collect::<HashMap<_, _>>()
+                .into(),
+        ),
         Expr::Call { .. } => unimplemented!(),
     }
 }

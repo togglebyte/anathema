@@ -57,17 +57,6 @@ impl<'a, 'val> Context<'a, 'val> {
             .or_else(|| self.state.get(path, node_id))
     }
 
-    /// Try to find the value in the current scope,
-    /// if there is no value fallback to look for the value in the state.
-    /// This will recursively lookup dynamic values
-    pub fn get<T: ?Sized>(&self, path: &Path, node_id: Option<&NodeId>) -> Option<&'val T>
-    where
-        for<'b> &'b T: TryFrom<ValueRef<'b>>,
-    {
-        self.lookup(path, node_id)
-            .and_then(|value_ref| <&T>::try_from(value_ref).ok())
-    }
-
     pub fn attribute<T: ?Sized>(
         &self,
         key: impl AsRef<str>,
@@ -81,6 +70,16 @@ impl<'a, 'val> Context<'a, 'val> {
         let value = attributes.get(key.as_ref())?;
         let value_ref = value.eval_value(self, node_id)?;
         T::try_from(value_ref).ok()
+    }
+
+    pub fn raw_attribute(
+        &self,
+        key: impl AsRef<str>,
+        node_id: Option<&NodeId>,
+        attributes: &'val Attributes,
+    ) -> Option<ValueRef<'_>> {
+        let value = attributes.get(key.as_ref())?;
+        value.eval_value(self, node_id)
     }
 }
 

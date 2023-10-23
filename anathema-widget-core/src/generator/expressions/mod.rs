@@ -24,10 +24,12 @@ impl SingleNode {
     fn eval<'a: 'val, 'val>(&self, context: &Context<'a, 'val>, node_id: NodeId) -> Result<Node> {
         let widget = WidgetContainer {
             background: context.attribute("background", Some(&node_id), &self.attributes),
-
+            display: Display::Show,//context.attribute("display", Some(&node_id), &self.attributes).unwrap_or(Display::Show),
             // TODO: don't hard code these
-            display: Display::Show, /* context .attribute("display", Some(&node_id), &self.attributes) .unwrap_or(Display::Show), */
-            padding: Padding::ZERO, /* context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO), */
+            padding: context.attribute("padding", Some(&node_id), &self.attributes).unwrap_or(Padding::ZERO),
+
+
+                // Padding::ZERO, /* context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO), */
 
             pos: Pos::ZERO,
             size: Size::ZERO,
@@ -81,10 +83,7 @@ pub struct ControlFlow {
 impl ControlFlow {
     fn eval(&self, node_id: NodeId) -> Result<Node<'_>> {
         let node = Node {
-            kind: NodeKind::ControlFlow(IfElse::new(
-                &self.if_expr,
-                &self.elses,
-            )),
+            kind: NodeKind::ControlFlow(IfElse::new(&self.if_expr, &self.elses)),
             node_id,
         };
         Ok(node)

@@ -2,7 +2,7 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
-use anathema_values::Context;
+use anathema_values::{Context, ValueRef, Num, Owned};
 
 pub use self::constraints::Constraints;
 use crate::contexts::LayoutCtx;
@@ -113,17 +113,15 @@ impl Padding {
     }
 }
 
-impl TryFrom<&str> for Padding {
+impl TryFrom<ValueRef<'_>> for Padding {
     type Error = ();
 
-    fn try_from(_value: &str) -> std::result::Result<Self, Self::Error> {
-        panic!()
-        // let text_align = match value {
-        //     "centre" | "center" => Self::Centre,
-        //     "right" => Self::Right,
-        //     _ => Self::Left,
-        // };
-        // Ok(text_align)
+    fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
+        match value {
+            ValueRef::Owned(Owned::Num(Num::Unsigned(padding))) => Ok(Padding::new(padding as usize)),
+            ValueRef::Owned(Owned::Num(Num::Signed(padding))) => Ok(Padding::new(padding as usize)),
+            _ => Err(())
+        }
     }
 }
 

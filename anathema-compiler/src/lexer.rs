@@ -130,6 +130,8 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             (')', _) => Ok(Kind::Op(Operator::RParen).to_token(index)),
             ('[', _) => Ok(Kind::Op(Operator::LBracket).to_token(index)),
             (']', _) => Ok(Kind::Op(Operator::RBracket).to_token(index)),
+            ('{', _) => Ok(Kind::Op(Operator::LCurly).to_token(index)),
+            ('}', _) => Ok(Kind::Op(Operator::RCurly).to_token(index)),
             (':', _) => Ok(Kind::Op(Operator::Colon).to_token(index)),
             (',', _) => Ok(Kind::Op(Operator::Comma).to_token(index)),
             ('.', _) => Ok(Kind::Op(Operator::Dot).to_token(index)),

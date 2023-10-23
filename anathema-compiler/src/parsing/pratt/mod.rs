@@ -25,7 +25,7 @@ pub mod prec {
 fn get_precedence(op: Operator) -> u8 {
     match op {
         Operator::Equal => prec::ASSIGNMENT,
-        Operator::Or | Operator::And | Operator::EqualEqual=> prec::CONDITIONAL,
+        Operator::Or | Operator::And | Operator::EqualEqual => prec::CONDITIONAL,
         Operator::Plus | Operator::Minus => prec::SUM,
         Operator::Mul | Operator::Div | Operator::Mod => prec::PRODUCT,
         Operator::LParen => prec::CALL,
@@ -58,7 +58,8 @@ pub enum Expr {
         lhs: Box<Expr>,
         index: Box<Expr>,
     },
-    List(Vec<Expr>)
+    List(Vec<Expr>),
+    Map(Vec<(Expr, Expr)>),
 }
 
 impl Display for Expr {
@@ -72,8 +73,20 @@ impl Display for Expr {
             Expr::Str(sid) => write!(f, "\"{sid}\""),
             Expr::Array { lhs, index } => write!(f, "{lhs}[{index}]"),
             Expr::List(list) => {
-                let s = list.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(", ");
+                let s = list
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 write!(f, "[{s}]")
+            }
+            Expr::Map(map) => {
+                let s = map
+                    .iter()
+                    .map(|(k, v)| format!("{k}: {v}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "{{{s}}}")
             }
             Expr::Call { fun, args } => {
                 let s = args
@@ -94,6 +107,7 @@ pub(crate) fn expr(tokens: &mut Tokens) -> Expr {
 fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
     let mut left = match tokens.next_no_indent() {
         Kind::Op(Operator::LBracket) => parse_collection(tokens),
+        Kind::Op(Operator::LCurly) => parse_map(tokens),
         Kind::Op(Operator::LParen) => {
             let left = expr_bp(tokens, prec::INITIAL);
             // Need to consume the closing bracket
@@ -110,9 +124,8 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         Kind::Value(value) => match value {
             Value::Number(n) => Expr::Num(n),
             Value::Ident(ident) => Expr::Ident(ident),
-            Value::String(string_id) => Expr::Str(string_id),
-            Value::Bool(b) => Expr::Bool(b),
             Value::String(sid) => Expr::Str(sid),
+            Value::Bool(b) => Expr::Bool(b),
             // TODO: see panic
             _ => panic!("need to cover the rest of the values"),
         },
@@ -216,6 +229,36 @@ fn parse_collection(tokens: &mut Tokens) -> Expr {
     Expr::List(elements)
 }
 
+fn parse_map(tokens: &mut Tokens) -> Expr {
+    let mut elements = vec![];
+
+    loop {
+        match tokens.peek_skip_indent() {
+            Kind::Op(Operator::Comma) => {
+                tokens.consume();
+                continue;
+            }
+            Kind::Op(Operator::RCurly) => {
+                tokens.consume();
+                break;
+            }
+            _ => (),
+        }
+
+        let key = expr_bp(tokens, prec::INITIAL);
+        
+        match tokens.peek_skip_indent() {
+            Kind::Op(Operator::Colon) => tokens.consume(),
+            _ => break,
+        }
+
+        let value = expr_bp(tokens, prec::INITIAL);
+        elements.push((key, value));
+    }
+
+    Expr::Map(elements)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -300,5 +343,11 @@ mod test {
     fn equality() {
         let input = "1 == 2";
         assert_eq!(parse(input), "(== 1 2)");
+    }
+
+    #[test]
+    fn map() {
+        let input = "{a: 1, b: c}";
+        assert_eq!(parse(input), "{<sid 0>: 1, <sid 1>: <sid 2>}");
     }
 }

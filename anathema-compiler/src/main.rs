@@ -1,7 +1,7 @@
 use anathema_compiler::*;
 
 fn main() {
-    let src = "node [path:  a.-b.c ]";
+    let src = "node [padding:  [1 2 3 4]]";
     let (output, consts) = compile(src).unwrap();
     eprintln!("{output:#?}");
 

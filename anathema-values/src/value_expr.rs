@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::{Context, NodeId, Num, Owned, Path, ValueRef};
+use crate::{Context, NodeId, Num, Owned, Path, ValueRef, hashmap::HashMap};
 
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +20,7 @@ pub enum ValueExpr {
     Index(Box<ValueExpr>, Box<ValueExpr>),
 
     List(Rc<[ValueExpr]>),
+    Map(Rc<HashMap<String, ValueExpr>>),
 
     Add(Box<ValueExpr>, Box<ValueExpr>),
     Sub(Box<ValueExpr>, Box<ValueExpr>),
@@ -55,6 +56,16 @@ impl Display for ValueExpr {
                         .join(", ")
                 )
             }
+            Self::Map(map) => {
+                write!(
+                    f,
+                    "{{{}}}",
+                    map.iter()
+                        .map(|(key, val)| format!("{key}: {val}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
             Self::And(lhs, rhs) => write!(f, "{lhs} && {rhs}"),
             Self::Or(lhs, rhs) => write!(f, "{lhs} || {rhs}"),
             Self::Equality(lhs, rhs) => write!(f, "{lhs} == {rhs}"),
@@ -68,7 +79,6 @@ impl From<Box<ValueExpr>> for ValueExpr {
         *val
     }
 }
-
 
 impl<T> From<T> for ValueExpr
 where
@@ -130,6 +140,21 @@ impl ValueExpr {
                 Some(s)
             }
             _ => panic!(),
+        }
+    }
+
+    pub fn list_usize<P>(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Vec<usize> {
+        match self.eval_value(context, node_id) {
+            Some(ValueRef::Expressions(list)) => list
+                .iter()
+                .filter_map(|value_expr| value_expr.eval_number(context, node_id))
+                .filter_map(|num| match num {
+                    Num::Signed(val) => Some(val as usize),
+                    Num::Unsigned(val) => Some(val as usize),
+                    Num::Float(_) => None,
+                })
+                .collect(),
+            _ => vec![],
         }
     }
 
@@ -226,30 +251,13 @@ impl ValueExpr {
             _ => panic!(),
         }
     }
-
-    pub fn eval<'val, T: 'val + ?Sized>(
-        &'val self,
-        context: &Context<'_, 'val>,
-        node_id: Option<&NodeId>,
-    ) -> Option<&'val T>
-    where
-        for<'b> &'b T: TryFrom<ValueRef<'b>>,
-    {
-        panic!()
-        // match self {
-        //     Self::Value(value) => value.try_into().ok(),
-        //     expr @ (Self::Dot(..) | Self::Ident(_)) => {
-        //         let path = expr.eval_path(context, node_id)?;
-        //         context.get::<T>(&path, node_id)
-        //     }
-        //     _ => panic!(),
-        // }
-    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::testing::{and, or, add, strlit, list, div, dot, eq, ident, inum, modulo, mul, neg, not, sub, unum};
+    use crate::testing::{
+        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum,
+    };
     use crate::ValueRef;
 
     #[test]

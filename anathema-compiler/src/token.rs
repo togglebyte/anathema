@@ -8,6 +8,8 @@ pub enum Operator {
     RParen,
     LBracket,
     RBracket,
+    LCurly,
+    RCurly,
     LDoubleCurly,
     RDoubleCurly,
     Plus,
@@ -63,8 +65,10 @@ impl Display for Operator {
             Self::Dot => write!(f, "."),
             Self::Comma => write!(f, ","),
             Self::Colon => write!(f, ":"),
-            Self::LDoubleCurly => write!(f, "{{"),
-            Self::RDoubleCurly => write!(f, "}}"),
+            Self::LCurly => write!(f, "{{"),
+            Self::RCurly => write!(f, "}}"),
+            Self::LDoubleCurly => write!(f, "{{{{"),
+            Self::RDoubleCurly => write!(f, "}}}}"),
         }
     }
 }
