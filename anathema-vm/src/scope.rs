@@ -70,6 +70,7 @@ impl<'vm> Scope<'vm> {
                         else {
                             break;
                         };
+                        self.instructions.remove(0);
                         let cond = cond.map(|cond| self.consts.lookup_value(cond));
 
                         let body = self.instructions.drain(..size).collect();

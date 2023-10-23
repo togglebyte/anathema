@@ -22,14 +22,15 @@ impl<'e> IfElse<'e> {
         }
     }
 
-    pub(super) fn load_body<'val>(&mut self, context: &Context<'_, 'val>, node_id: NodeId)
+    pub(super) fn load_body<'val>(
+        &mut self,
+        context: &Context<'_, 'val>,
+        node_id: NodeId,
+    )
     where
         'e: 'val,
     {
-        // First evaluate the collection, then the value inside the collection.
-        // This could be more efficient by hanging on to the collection
-        // via a ref (Rc?).
-        let val = match self.if_expr.cond.eval_bool(context, None) {
+        match self.if_expr.cond.eval_bool(context, None) {
             true => {
                 let body = Nodes::new(&self.if_expr.body, node_id);
                 self.body = Some(body);
@@ -47,7 +48,7 @@ impl<'e> IfElse<'e> {
                     break;
                 }
             }
-        };
+        }
     }
 
     pub(super) fn reset_cache(&mut self) {

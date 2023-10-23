@@ -53,15 +53,12 @@ impl<'e> Node<'e> {
                 }
             },
             NodeKind::ControlFlow(if_else) => {
-                let body = match &mut if_else.body {
-                    Some(body) => body,
-                    None => {
-                        if_else.load_body(context, self.node_id.child(0));
-                        match &mut if_else.body {
-                            Some(body) => body,
-                            None => panic!(),
-                        }
-                    }
+                if if_else.body.is_none() {
+                    if_else.load_body(context, self.node_id.child(0));
+                }
+
+                let Some(body) = if_else.body.as_mut() else {
+                    return Ok(ControlFlow::Break(()));
                 };
 
                 while let Some(res) = body.next(context, layout, f) {
@@ -80,7 +77,7 @@ impl<'e> Node<'e> {
         match &mut self.kind {
             NodeKind::Single(_, nodes) => nodes.reset_cache(),
             NodeKind::Loop(loop_state) => loop_state.reset_cache(),
-            NodeKind::ControlFlow { .. } => panic!(),
+            NodeKind::ControlFlow(if_else) => if_else.reset_cache(),
         }
     }
 
@@ -327,8 +324,7 @@ impl<'e> Nodes<'e> {
                         }
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow(control_flow) => {
-                            // control_flow.body.iter_mut().map(|n| n.iter_mut()).flatten(),
-                            panic!()
+                            Box::new(control_flow.body.iter_mut().map(|n| n.iter_mut()).flatten())
                         }
                     }
                 },
@@ -407,12 +403,17 @@ mod test {
 
         let else_if_expr = vec![expression("test", Some("else branch".into()), [], [])];
         let if_expr = vec![expression("test", Some("true".into()), [], [])];
-        let else_expr = vec![expression("test", Some("else branch without condition".into()), [], [])];
+        let else_expr = vec![expression(
+            "test",
+            Some("else branch without condition".into()),
+            [],
+            [],
+        )];
 
-        let exprs = vec![if_expression((is_true, if_expr), vec![
-            (is_else, else_if_expr),
-            (None, else_expr)
-        ])];
+        let exprs = vec![if_expression(
+            (is_true, if_expr),
+            vec![(is_else, else_if_expr), (None, else_expr)],
+        )];
         let mut nodes = TestNodes::new(&exprs);
         let size = nodes.layout().unwrap();
         panic!("{size:?}");
