@@ -4,20 +4,17 @@ use std::sync::OnceLock;
 use anathema_values::{Attributes, Context, NodeId, State, ValueExpr};
 use parking_lot::RwLock;
 
+pub use self::context::FactoryContext;
 use crate::error::{Error, Result};
 use crate::generator::SingleNode;
 use crate::widget::AnyWidget;
 
+mod context;
+
 const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with"];
 
 pub trait WidgetFactory: Send + Sync {
-    fn make(
-        &self,
-        data: &Context<'_, '_>,
-        attributes: &Attributes,
-        text: Option<&ValueExpr>,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>>;
+    fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>>;
 }
 
 static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = OnceLock::new();
@@ -25,16 +22,12 @@ static FACTORIES: OnceLock<RwLock<HashMap<String, Box<dyn WidgetFactory>>>> = On
 pub struct Factory;
 
 impl Factory {
-    pub fn exec(
-        ctx: &Context<'_, '_>,
-        node: &SingleNode,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>> {
+    pub fn exec(ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let factories = FACTORIES.get_or_init(Default::default).read();
         let factory = factories
-            .get(&node.ident)
-            .ok_or_else(|| Error::UnregisteredWidget(node.ident.clone()))?;
-        let widget = factory.make(ctx, &node.attributes, node.text.as_ref(), node_id)?;
+            .get(ctx.ident)
+            .ok_or_else(|| Error::UnregisteredWidget(ctx.ident.to_string()))?;
+        let widget = factory.make(ctx)?;
         Ok(Box::new(widget))
     }
 

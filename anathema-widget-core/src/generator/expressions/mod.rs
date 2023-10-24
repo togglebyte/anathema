@@ -4,6 +4,7 @@ use anathema_values::{Attributes, Context, NodeId, Path, Scope, State, ValueExpr
 pub use self::controlflow::{Else, If};
 use super::nodes::{IfElse, LoopNode};
 use crate::error::Result;
+use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
 use crate::{Display, Factory, Padding, Pos, WidgetContainer};
 
@@ -21,25 +22,26 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval<'a: 'val, 'val>(&self, context: &Context<'a, 'val>, node_id: NodeId) -> Result<Node> {
+    fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node> {
         // TODO: Come up with an api that doesn't entirely suck.
         //       It should be possible to do something like context.attribute("padding").list_or_number()
         //       Also add > < >= <=
 
-        context.raw_attribute("padding");
+        let context = FactoryContext::new(
+            context,
+            node_id.clone(),
+            &self.ident,
+            &self.attributes,
+            self.text.as_ref(),
+        );
 
         let widget = WidgetContainer {
-            background: context.attribute("background", Some(&node_id), &self.attributes),
-            display: Display::Show,//context.attribute("display", Some(&node_id), &self.attributes).unwrap_or(Display::Show),
-            // TODO: don't hard code these
-            padding: context.attribute("padding", Some(&node_id), &self.attributes).unwrap_or(Padding::ZERO),
-
-
-                // Padding::ZERO, /* context .attribute("padding", Some(&node_id), &self.attributes) .unwrap_or(Padding::ZERO), */
-
+            inner: Factory::exec(context)?,
+            background: None,       //context.background(),
+            display: Display::Show, //context.display(),
+            padding: Padding::ZERO, // context.padding(),
             pos: Pos::ZERO,
             size: Size::ZERO,
-            inner: Factory::exec(context, &self, &node_id)?,
             node_id: node_id.clone(),
         };
 

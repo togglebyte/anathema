@@ -5,7 +5,7 @@ use anathema_values::{Attributes, Context, NodeId, ScopeValue, State, ValueExpr}
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    style, AnyWidget, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
+    style, AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -273,13 +273,7 @@ impl Widget for TextSpan {
 pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
-    fn make(
-        &self,
-        data: &Context<'_, '_>,
-        attributes: &Attributes,
-        text_src: Option<&ValueExpr>,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let word_wrap = Wrap::Normal;
 
         // data
@@ -292,14 +286,12 @@ impl WidgetFactory for TextFactory {
         //     .map(|b| *b)
         //     .unwrap_or(TextAlignment::Left);
 
-        let text = text_src
-            .and_then(|value| value.eval_string(data, Some(node_id)))
-            .unwrap_or_else(String::new);
+        let text = ctx.text();
 
         let mut widget = Text {
             word_wrap,
             text_alignment,
-            style: style(&data, attributes, node_id),
+            style: ctx.style(),
             layout: TextLayout::ZERO,
             text,
         };
@@ -311,21 +303,12 @@ impl WidgetFactory for TextFactory {
 pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
-    fn make(
-        &self,
-        data: &Context<'_, '_>,
-        attributes: &Attributes,
-        text: Option<&ValueExpr>,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let text = text
-            .and_then(|value| value.eval_string(data, Some(node_id)))
-            .unwrap_or_else(String::new);
-
+    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let text = ctx.text();
 
         let widget = TextSpan {
             text,
-            style: style(&data, attributes, node_id),
+            style: ctx.style(),
         };
 
         Ok(Box::new(widget))

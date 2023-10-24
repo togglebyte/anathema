@@ -94,6 +94,17 @@ impl<'a> TryFrom<ValueRef<'a>> for u64 {
     }
 }
 
+impl<'a> TryFrom<ValueRef<'a>> for bool {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+        match value {
+            ValueRef::Owned(Owned::Bool(b)) => Ok(b),
+            _ => Err(()),
+        }
+    }
+}
+
 impl<'a> TryFrom<ValueRef<'a>> for usize {
     type Error = ();
 

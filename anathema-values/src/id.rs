@@ -1,6 +1,10 @@
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[repr(transparent)]
+// TODO: This could possibly be Rc<[usize]> instead,
+//       or even Arc<[usize]>, given that both the `WidgetContainer`
+//       and the wrapping `Node` has the same id, and these ids are 
+//       shared with the ids tracking the changes.
 pub struct NodeId(Vec<usize>);
 
 impl NodeId {
