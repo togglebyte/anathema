@@ -33,8 +33,12 @@ impl<'a> Scope<'a> {
 
     pub fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
         match self.inner.get(path) {
-            Some(ScopeValue::Static(value)) => Some(*value),
-            Some(ScopeValue::Dyn(path)) => self.lookup(path),
+            Some(ScopeValue::Static(value)) => {
+                Some(*value)
+            }
+            Some(ScopeValue::Dyn(path)) => {
+                self.lookup(path)
+            }
             None => self.parent?.lookup(path),
         }
     }

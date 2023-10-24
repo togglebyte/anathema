@@ -36,9 +36,24 @@ impl<'a> FactoryContext<'a> {
             .unwrap_or_else(String::new)
     }
 
-    pub fn text_path(&self) -> Option<Path> {
-        self.text
-            .and_then(|value| value.eval_path(self.ctx, self.node_id()))
+    pub fn magic(&self) {
+        let x = self.text.unwrap();
+        let y = x;
+        // let ValueExpr::List(list) = self.text.unwrap() else { panic!() };
+
+        // let list = list.to_vec();
+
+        // for x in list {
+        //     if let Some(y) = x.eval_path(self.ctx, self.node_id()) {
+        //         let lala = y;
+        //         let scope_val = self.ctx.scope.lookup(&lala);
+
+        //         let end = scope_val;
+        //     }
+
+        // }
+
+        // //     // .and_then(|value| value.eval_string(self.ctx, self.node_id()))
     }
 
     pub fn style(&self) -> Style {

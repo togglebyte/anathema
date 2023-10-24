@@ -289,6 +289,8 @@ impl WidgetFactory for TextFactory {
 
         let text = ctx.text();
 
+        ctx.magic();
+
         let mut widget = Text {
             word_wrap,
             text_alignment,

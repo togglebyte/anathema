@@ -1,4 +1,5 @@
 use std::fmt::{self, Debug, Display};
+use std::ops::Deref;
 use std::rc::Rc;
 
 use anathema_render::Color;
@@ -7,10 +8,26 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, ValueExpr};
+use crate::{Collection, List, ValueExpr, Path};
 
 mod num;
 mod owned;
+
+pub enum Value<'a> {
+    Static(ValueRef<'a>),
+    Dynamic(ValueRef<'a>, Path),
+}
+
+impl<'a> Deref for Value<'a> {
+    type Target = ValueRef<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Static(val) => val,
+            Self::Dynamic(val, _) => val,
+        }
+    }
+}
 
 // -----------------------------------------------------------------------------
 //   - Value ref -
