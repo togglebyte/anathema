@@ -13,8 +13,8 @@ use anathema_widget_core::{Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
-// use view::View;
 
+// use view::View;
 use self::frame::Frame;
 // pub use self::meta::Meta;
 use crate::events::{EventProvider, Events};
@@ -90,14 +90,11 @@ where
         self.nodes.reset_cache();
         let constraints = layout_ctx.constraints;
         let context = Context::new(&self.state, &scope);
-        self.nodes.for_each(
-            &context,
-            &mut layout_ctx,
-            |widget, children, context| {
+        self.nodes
+            .for_each(&context, &mut layout_ctx, |widget, children, context| {
                 widget.layout(children, constraints, context)?;
                 Ok(())
-            }
-        );
+            });
         Ok(())
     }
 
@@ -143,9 +140,7 @@ where
 
         'run: loop {
             while let Some(event) = self.event_receiver.next() {
-                let event = self
-                    .events
-                    .event(event, &mut self.nodes, &mut self.state);
+                let event = self.events.event(event, &mut self.nodes, &mut self.state);
 
                 match event {
                     Event::Resize(width, height) => {

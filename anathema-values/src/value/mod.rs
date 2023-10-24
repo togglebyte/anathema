@@ -143,9 +143,8 @@ impl<'a> TryFrom<ValueRef<'a>> for Color {
 
     fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
         match value {
-            // ValueRef::Str(s) => Ok(s),
-            // _ => Err(())
-            _ => panic!(),
+            ValueRef::Owned(Owned::Color(color)) => Ok(color),
+            _ => Err(())
         }
     }
 }

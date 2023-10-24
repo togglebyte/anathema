@@ -90,6 +90,7 @@ impl<'e> Node<'e> {
                 Change::Add => loop_node.add(),
                 _ => (),
             },
+            // TODO: need to update control flow 
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }

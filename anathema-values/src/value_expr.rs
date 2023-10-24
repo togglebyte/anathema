@@ -110,7 +110,7 @@ impl ValueExpr {
         }
     }
 
-    fn eval_path(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
+    pub fn eval_path(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
         match self {
             Self::Ident(path) => Some(Path::from(&**path)),
             Self::Index(lhs, index) => {
@@ -135,7 +135,9 @@ impl ValueExpr {
                 let mut s = String::new();
                 for expr in list {
                     let res = expr.eval_string(context, node_id);
-                    s.push_str(&res?);
+                    if let Some(res) = res {
+                        s.push_str(&res);
+                    }
                 }
                 Some(s)
             }
@@ -238,6 +240,7 @@ impl ValueExpr {
                 context.lookup(&path, node_id)
             }
             Self::Index(_lhs, _index) => {
+                // TODO: index lookup
                 panic!("not quite there...");
                 // let lhs = lhs.eval_path(context);
                 // let index = index.eval_num(context);

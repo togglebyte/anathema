@@ -10,6 +10,7 @@ use crate::Constants;
 pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
     match expr {
         Expr::Bool(b) => ValueExpr::from(b),
+        Expr::Color(color) => ValueExpr::from(color),
         Expr::Ident(string_id) => {
             let string = consts.lookup_string(string_id);
             ValueExpr::Ident(string.into())

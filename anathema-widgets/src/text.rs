@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, ScopeValue, State, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, ScopeValue, State, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
@@ -118,31 +118,31 @@ impl Widget for Text {
         Self::KIND
     }
 
-    // fn update(&mut self, state: &mut dyn State) {
-    //     match &self.text_src {
-    //         ScopeValue::Static(s) => {}
-    //         ScopeValue::Dyn(path) => {
-    //             self.text.clear();
-    //             if let Some(s) = state.get(path, None) {
-    //                 self.text.push_str(&*s);
-    //             }
-    //         }
-    //         ScopeValue::List(list) => {
-    //             self.text.clear();
-    //             for val in list.iter() {
-    //                 match val {
-    //                     ScopeValue::Static(s) => self.text.push_str(s),
-    //                     ScopeValue::Dyn(path) => {
-    //                         if let Some(s) = state.get(path, None) {
-    //                             self.text.push_str(&*s);
-    //                         }
-    //                     }
-    //                     ScopeValue::List(_) => panic!("this shouldn't be here"),
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    fn update(&mut self, state: &mut dyn State) {
+        // match &self.text_src {
+        //     ScopeValue::Static(s) => {}
+        //     ScopeValue::Dyn(path) => {
+        //         self.text.clear();
+        //         if let Some(s) = state.get(path, None) {
+        //             self.text.push_str(&*s);
+        //         }
+        //     }
+        //     ScopeValue::List(list) => {
+        //         self.text.clear();
+        //         for val in list.iter() {
+        //             match val {
+        //                 ScopeValue::Static(s) => self.text.push_str(s),
+        //                 ScopeValue::Dyn(path) => {
+        //                     if let Some(s) = state.get(path, None) {
+        //                         self.text.push_str(&*s);
+        //                     }
+        //                 }
+        //                 ScopeValue::List(_) => panic!("this shouldn't be here"),
+        //             }
+        //         }
+        //     }
+        // }
+    }
 
     fn layout<'widget, 'parent>(
         &mut self,
@@ -276,6 +276,7 @@ impl WidgetFactory for TextFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let word_wrap = Wrap::Normal;
 
+        // TODO: get some attributes
         // data
         // .attribute("wrap", node_id.into(), attributes)
         // .unwrap_or(Wrap::Normal);
@@ -293,7 +294,7 @@ impl WidgetFactory for TextFactory {
             text_alignment,
             style: ctx.style(),
             layout: TextLayout::ZERO,
-            text,
+            text: ctx.text(),
         };
 
         Ok(Box::new(widget))

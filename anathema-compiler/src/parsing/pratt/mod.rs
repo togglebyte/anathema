@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 
+use anathema_render::Color;
 use anathema_values::{NodeId, Scope, ScopeValue, State, ValueExpr};
 
 pub use self::eval::eval;
@@ -48,6 +49,7 @@ pub enum Expr {
     },
     Bool(bool),
     Num(u64),
+    Color(Color),
     Ident(StringId),
     Str(StringId),
     Call {
@@ -69,6 +71,7 @@ impl Display for Expr {
             Expr::Binary { op, lhs, rhs } => write!(f, "({op} {lhs} {rhs})"),
             Expr::Bool(b) => write!(f, "{b}"),
             Expr::Num(b) => write!(f, "{b}"),
+            Expr::Color(color) => write!(f, "{color:?}"),
             Expr::Ident(sid) => write!(f, "{sid}"),
             Expr::Str(sid) => write!(f, "\"{sid}\""),
             Expr::Array { lhs, index } => write!(f, "{lhs}[{index}]"),
@@ -126,6 +129,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
             Value::Ident(ident) => Expr::Ident(ident),
             Value::String(sid) => Expr::Str(sid),
             Value::Bool(b) => Expr::Bool(b),
+            Value::Color(color) => Expr::Color(color),
             // TODO: see panic
             _ => panic!("need to cover the rest of the values"),
         },
@@ -246,7 +250,7 @@ fn parse_map(tokens: &mut Tokens) -> Expr {
         }
 
         let key = expr_bp(tokens, prec::INITIAL);
-        
+
         match tokens.peek_skip_indent() {
             Kind::Op(Operator::Colon) => tokens.consume(),
             _ => break,

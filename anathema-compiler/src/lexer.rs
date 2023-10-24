@@ -2,6 +2,8 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
+use anathema_render::Color;
+
 use crate::error::{Error, Result};
 use crate::token::{Kind, Operator, Token, Value};
 use crate::{Constants, StringId};
@@ -145,6 +147,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
 
             // -----------------------------------------------------------------------------
             //     - Ident -
+            //     Or possible a colour
             // -----------------------------------------------------------------------------
             ('a'..='z' | 'A'..='Z' | '_', _) => {
                 Ok(self.take_ident_or_keyword(index).to_token(index))
@@ -256,10 +259,13 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             "view" => Kind::View,
             "true" => Kind::Value(Value::Bool(true)),
             "false" => Kind::Value(Value::Bool(false)),
-            s => {
-                let string_id = self.consts.store_string(s);
-                Kind::Value(Value::Ident(string_id))
-            }
+            s => match Color::try_from(s) {
+                Ok(color) => Kind::Value(Value::Color(color)),
+                Err(()) => {
+                    let string_id = self.consts.store_string(s);
+                    Kind::Value(Value::Ident(string_id))
+                }
+            },
         }
     }
 
@@ -304,13 +310,13 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
                 let g = g << 4 | g;
                 let b = u8::from_str_radix(&hex[2..3], 16).expect("already parsed");
                 let b = b << 4 | b;
-                Kind::Value(Value::Hex(r, g, b))
+                Kind::Value(Value::Color(Color::from((r, g, b))))
             }
             LONG => {
                 let r = u8::from_str_radix(&hex[0..2], 16).expect("already parsed");
                 let g = u8::from_str_radix(&hex[2..4], 16).expect("already parsed");
                 let b = u8::from_str_radix(&hex[4..6], 16).expect("already parsed");
-                Kind::Value(Value::Hex(r, g, b))
+                Kind::Value(Value::Color(Color::from((r, g, b))))
             }
             _ => unreachable!(),
         };
@@ -407,22 +413,6 @@ mod test {
         }
     }
 
-    // #[test]
-    // fn floats() {
-    //     let inputs = [
-    //         ("0.1", 0.1f64),
-    //         (".1", 0.1),
-    //         ("1.", 1.0),
-    //         ("100.5", 100.5),
-    //     ];
-
-    //     for (input, number) in inputs {
-    //         let actual = token_kind(input);
-    //         let expected = Kind::Value(Value::Float(number));
-    //         assert_eq!(expected, actual);
-    //     }
-    // }
-
     #[test]
     fn strings() {
         let inputs = [
@@ -460,12 +450,12 @@ mod test {
     }
 
     #[test]
-    fn hex() {
+    fn color() {
         let inputs = [
-            ("#000", Kind::Value(Value::Hex(0, 0, 0))),
-            ("#000000", Kind::Value(Value::Hex(0, 0, 0))),
-            ("#FFF", Kind::Value(Value::Hex(255, 255, 255))),
-            ("#FFFFFF", Kind::Value(Value::Hex(255, 255, 255))),
+            ("#000", Kind::Value(Value::Color((0, 0, 0).into()))),
+            ("#000000", Kind::Value(Value::Color((0, 0, 0).into()))),
+            ("#FFF", Kind::Value(Value::Color((255, 255, 255).into()))),
+            ("#FFFFFF", Kind::Value(Value::Color((255, 255, 255)).into())),
         ];
 
         for (input, expected) in inputs {

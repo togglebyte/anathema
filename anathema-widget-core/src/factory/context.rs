@@ -1,5 +1,5 @@
-use anathema_render::{Style, Color};
-use anathema_values::{Attributes, Context, NodeId, ValueExpr};
+use anathema_render::{Color, Style};
+use anathema_values::{Attributes, Context, NodeId, ValueExpr, Path};
 
 pub struct FactoryContext<'a> {
     pub ident: &'a str,
@@ -36,6 +36,11 @@ impl<'a> FactoryContext<'a> {
             .unwrap_or_else(String::new)
     }
 
+    pub fn text_path(&self) -> Option<Path> {
+        self.text
+            .and_then(|value| value.eval_path(self.ctx, self.node_id()))
+    }
+
     pub fn style(&self) -> Style {
         let mut style = Style::new();
 
@@ -52,7 +57,9 @@ impl<'a> FactoryContext<'a> {
     }
 
     pub fn is_true(&self, name: &str) -> bool {
-        self.ctx.attribute(name, self.node_id(), self.attributes).unwrap_or(false)
+        self.ctx
+            .attribute(name, self.node_id(), self.attributes)
+            .unwrap_or(false)
     }
 
     pub fn get_bool(&self, name: &str) -> Option<bool> {

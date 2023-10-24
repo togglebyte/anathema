@@ -1,5 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
+use anathema_render::Color;
+
 use crate::StringId;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -75,19 +77,19 @@ impl Display for Operator {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum Value {
-    Hex(u8, u8, u8),
     Index(usize),
     Number(u64),
     Float(f64),
     String(StringId),
     Ident(StringId),
     Bool(bool),
+    Color(Color),
 }
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Hex(r, g, b) => write!(f, "r:{r} g:{g} b:{b}"),
+            Self::Color(color) => write!(f, "{color:?}"),
             Self::Index(idx) => write!(f, "<idx {idx}>"),
             Self::Number(num) => write!(f, "{num}"),
             Self::Float(num) => write!(f, "{num}"),
@@ -148,7 +150,11 @@ pub(crate) struct Tokens {
 
 impl Tokens {
     pub fn new(inner: Vec<Token>, eof: usize) -> Self {
-        Self { inner, index: 0, eof }
+        Self {
+            inner,
+            index: 0,
+            eof,
+        }
     }
 
     pub fn slice(&self) -> &[Token] {
@@ -174,10 +180,10 @@ impl Tokens {
             let token = self.next();
 
             if let Kind::Indent(_) = token {
-                continue
+                continue;
             }
 
-            break token
+            break token;
         }
     }
 
@@ -187,7 +193,7 @@ impl Tokens {
                 self.index += 1;
                 continue;
             }
-            break
+            break;
         }
     }
 
@@ -197,7 +203,7 @@ impl Tokens {
                 self.index += 1;
                 continue;
             }
-            break
+            break;
         }
     }
 
@@ -213,17 +219,24 @@ impl Tokens {
                 continue;
             }
 
-            break
+            break;
         }
     }
 
     pub fn peek(&self) -> Kind {
-        self.inner.get(self.index).copied().unwrap_or(Token(Kind::Eof, self.eof)).0
+        self.inner
+            .get(self.index)
+            .copied()
+            .unwrap_or(Token(Kind::Eof, self.eof))
+            .0
     }
 
     pub fn previous(&self) -> Token {
         assert!(self.index != 0);
-        self.inner.get(self.index - 1).copied().unwrap_or(Token(Kind::Eof, self.eof))
+        self.inner
+            .get(self.index - 1)
+            .copied()
+            .unwrap_or(Token(Kind::Eof, self.eof))
     }
 
     pub fn peek_skip_indent(&mut self) -> Kind {
@@ -235,7 +248,7 @@ impl Tokens {
                 continue;
             }
 
-            break token
+            break token;
         }
     }
 
@@ -245,7 +258,7 @@ impl Tokens {
                 self.consume();
                 Some(indent)
             }
-            _ => None
+            _ => None,
         }
     }
 }
