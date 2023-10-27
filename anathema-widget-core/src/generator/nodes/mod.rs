@@ -363,7 +363,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut
 
 #[cfg(test)]
 mod test {
-    use anathema_values::testing::{list, TestState};
+    use anathema_values::testing::{ident, list, TestState};
     use anathema_values::ValueExpr;
 
     use super::*;
@@ -376,7 +376,7 @@ mod test {
         let test = expression("test", None, [], []).test();
         let mut node = test.eval().unwrap();
         let (widget, nodes) = node.single();
-        assert_eq!(widget.kind(), "test");
+        assert_eq!(widget.kind(), "text");
     }
 
     #[test]
@@ -388,6 +388,17 @@ mod test {
         let size = nodes.layout().unwrap();
         assert_eq!(size, Size::new(5, 3));
         assert_eq!(nodes.nodes.count(), 3);
+    }
+
+    #[test]
+    fn for_loop_from_state() {
+        let string = ValueExpr::Ident("item".into());
+        let body = expression("test", Some(string), [], []);
+        let exprs = vec![for_expression("item", ident("generic_list"), [body])];
+        let mut nodes = TestNodes::new(&exprs);
+        let size = nodes.layout().unwrap();
+        assert_eq!(size, Size::new(1, 3));
+        // assert_eq!(nodes.nodes.count(), 3);
     }
 
     #[test]

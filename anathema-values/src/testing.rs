@@ -1,8 +1,6 @@
-
 use crate::map::Map;
 use crate::{
-    Context, List, NodeId, Owned, Path, Scope, State, StateValue, 
-    ValueExpr, ValueRef, Collection
+    Collection, Context, List, NodeId, Owned, Path, Scope, State, StateValue, ValueExpr, ValueRef,
 };
 
 #[derive(Debug)]
@@ -47,7 +45,7 @@ pub struct TestState {
     pub counter: StateValue<usize>,
     pub inner: Inner,
     pub generic_map: StateValue<Map<Map<usize>>>,
-    pub generic_list: StateValue<List<List<usize>>>,
+    pub generic_list: StateValue<List<usize>>,
 }
 
 impl TestState {
@@ -60,9 +58,7 @@ impl TestState {
                 "inner",
                 Map::new([("first", 1), ("second", 2)]),
             )])),
-            generic_list: StateValue::new(List::new(vec![
-                List::new(vec![1, 2, 3]),
-            ])),
+            generic_list: StateValue::new(List::new(vec![1, 2, 3])),
         }
     }
 }
@@ -111,9 +107,9 @@ impl State for TestState {
                     }
                     Some(self.generic_list.len())
                 }
-                _ => None
-            }
-            _ => None
+                _ => None,
+            },
+            _ => None,
         }
     }
 }
@@ -125,10 +121,7 @@ impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
     fn from(values: [(&'static str, Owned); N]) -> Self {
         let mut scope = Self::new(None);
         for (key, value) in values {
-            scope.scope(
-                key.into(),
-                ValueRef::Owned(value.into()),
-            );
+            scope.scope(key.into(), ValueRef::Owned(value.into()));
         }
 
         scope

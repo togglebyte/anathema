@@ -40,6 +40,7 @@ impl<'e> LoopNode<'e> {
         let val = match &self.collection {
             Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value(context, None)?,
             Collection::Path(path) => context.scope.lookup(path)?,
+            Collection::State { len, path } if *len == self.value_index => return None,
             Collection::State { len, path } => ValueRef::Deferred(path.compose(self.value_index)),
             // TODO: remove comments. 2023-10-27
             // ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,

@@ -147,6 +147,14 @@ impl ValueExpr {
                 }
                 Some(s)
             }
+            ValueRef::Deferred(ref path) => {
+                match context.state.get(path, node_id)? {
+                    ValueRef::Str(s) => Some(s.into()),
+                    ValueRef::Owned(s) => Some(s.to_string()),
+                    _ => None
+                }
+            }
+            // TODO: probably shouldn't panic here
             _ => panic!(),
         }
     }
