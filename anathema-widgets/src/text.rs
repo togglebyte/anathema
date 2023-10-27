@@ -5,7 +5,7 @@ use anathema_values::{Attributes, Context, NodeId, Path, ScopeValue, State, Valu
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    style, AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthStr;
 

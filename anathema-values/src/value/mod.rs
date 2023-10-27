@@ -1,6 +1,6 @@
-use std::fmt::{self, Debug, Display};
-use std::ops::Deref;
-use std::rc::Rc;
+use std::fmt::{Debug};
+
+
 
 use anathema_render::Color;
 
@@ -8,41 +8,27 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, ValueExpr, Path};
+use crate::{Collection, List, ValueExpr};
 
 mod num;
 mod owned;
 
-pub enum Value<'a> {
-    Static(ValueRef<'a>),
-    Dynamic(ValueRef<'a>, Path),
-}
-
-impl<'a> Deref for Value<'a> {
-    type Target = ValueRef<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Static(val) => val,
-            Self::Dynamic(val, _) => val,
-        }
-    }
-}
-
 // -----------------------------------------------------------------------------
 //   - Value ref -
 // -----------------------------------------------------------------------------
+/// A value reference is either owned or referencing something
+/// inside an expression.
 #[derive(Debug, Copy, Clone)]
-pub enum ValueRef<'a> {
-    Str(&'a str),
-    Map(&'a dyn Collection),
-    List(&'a dyn Collection),
-    Expressions(&'a [ValueExpr]),
-    ExpressionMap(&'a HashMap<String, ValueExpr>),
+pub enum ValueRef<'expr> {
+    Str(&'expr str),
+    Map(&'expr dyn Collection),
+    List(&'expr dyn Collection),
+    Expressions(&'expr [ValueExpr]),
+    ExpressionMap(&'expr HashMap<String, ValueExpr>),
     Owned(Owned),
 }
 
-impl<'a> ValueRef<'a> {
+impl<'expr> ValueRef<'expr> {
     pub fn is_true(&self) -> bool {
         match self {
             Self::Str(s) => s.is_empty(),
@@ -54,7 +40,7 @@ impl<'a> ValueRef<'a> {
     }
 }
 
-impl<'a> PartialEq for ValueRef<'a> {
+impl<'expr> PartialEq for ValueRef<'expr> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Str(lhs), Self::Str(rhs)) => lhs == rhs,
@@ -67,32 +53,32 @@ impl<'a> PartialEq for ValueRef<'a> {
 // -----------------------------------------------------------------------------
 //   - From for value ref -
 // -----------------------------------------------------------------------------
-impl<'a, T: Debug> From<&'a Map<T>> for ValueRef<'a>
+impl<'expr, T: Debug> From<&'expr Map<T>> for ValueRef<'expr>
 where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
-    fn from(value: &'a Map<T>) -> Self {
+    fn from(value: &'expr Map<T>) -> Self {
         Self::Map(value)
     }
 }
 
-impl<'a, T: Debug> From<&'a List<T>> for ValueRef<'a>
+impl<'expr, T: Debug> From<&'expr List<T>> for ValueRef<'expr>
 where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
-    fn from(value: &'a List<T>) -> Self {
+    fn from(value: &'expr List<T>) -> Self {
         Self::List(value)
     }
 }
 
-impl<'a> From<&'a str> for ValueRef<'a> {
-    fn from(value: &'a str) -> Self {
+impl<'expr> From<&'expr str> for ValueRef<'expr> {
+    fn from(value: &'expr str) -> Self {
         ValueRef::Str(value)
     }
 }
 
-impl<'a, T: Into<Owned> + Copy> From<&'a T> for ValueRef<'a> {
-    fn from(value: &'a T) -> Self {
+impl<T: Into<Owned> + Copy> From<&T> for ValueRef<'_> {
+    fn from(value: &T) -> Self {
         ValueRef::Owned((*value).into())
     }
 }
@@ -100,10 +86,10 @@ impl<'a, T: Into<Owned> + Copy> From<&'a T> for ValueRef<'a> {
 // -----------------------------------------------------------------------------
 //   - TryFrom -
 // -----------------------------------------------------------------------------
-impl<'a> TryFrom<ValueRef<'a>> for u64 {
+impl TryFrom<ValueRef<'_>> for u64 {
     type Error = ();
 
-    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num),
             _ => Err(()),
@@ -111,10 +97,10 @@ impl<'a> TryFrom<ValueRef<'a>> for u64 {
     }
 }
 
-impl<'a> TryFrom<ValueRef<'a>> for bool {
+impl TryFrom<ValueRef<'_>> for bool {
     type Error = ();
 
-    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(Owned::Bool(b)) => Ok(b),
             _ => Err(()),
@@ -122,10 +108,10 @@ impl<'a> TryFrom<ValueRef<'a>> for bool {
     }
 }
 
-impl<'a> TryFrom<ValueRef<'a>> for usize {
+impl TryFrom<ValueRef<'_>> for usize {
     type Error = ();
 
-    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num as usize),
             _ => Err(()),
@@ -144,10 +130,10 @@ impl TryFrom<ValueRef<'_>> for String {
     }
 }
 
-impl<'a> TryFrom<ValueRef<'a>> for &'a str {
+impl<'epr> TryFrom<ValueRef<'epr>> for &'epr str {
     type Error = ();
 
-    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'epr>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Str(s) => Ok(s),
             _ => Err(()),
@@ -155,10 +141,10 @@ impl<'a> TryFrom<ValueRef<'a>> for &'a str {
     }
 }
 
-impl<'a> TryFrom<ValueRef<'a>> for Color {
+impl TryFrom<ValueRef<'_>> for Color {
     type Error = ();
 
-    fn try_from(value: ValueRef<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(Owned::Color(color)) => Ok(color),
             _ => Err(())
