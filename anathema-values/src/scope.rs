@@ -1,7 +1,22 @@
-
-
 use crate::hashmap::HashMap;
 use crate::{Attributes, NodeId, Path, State, ValueRef};
+
+#[derive(Debug)]
+pub enum Value<T> {
+    Static(T),
+    Cached { val: Option<T>, path: Path },
+    Empty,
+}
+
+impl<T> Value<T> {
+    pub fn value(&self) -> Option<&T> {
+        match self {
+            Self::Static(val) => Some(val),
+            Self::Cached { val, .. } => val.as_ref(),
+            Self::Empty => None,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Scope<'a> {
@@ -55,24 +70,15 @@ impl<'a, 'val> Context<'a, 'val> {
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
         attributes: &'val Attributes,
-    ) -> Option<T>
+    ) -> Value<T>
     where
         T: Clone,
         for<'b> T: TryFrom<ValueRef<'b>>,
     {
-        let value = attributes.get(key.as_ref())?;
-        let value_ref = value.eval_value(self, node_id)?;
-        T::try_from(value_ref).ok()
-    }
-
-    pub fn raw_attribute(
-        &self,
-        key: impl AsRef<str>,
-        node_id: Option<&NodeId>,
-        attributes: &'val Attributes,
-    ) -> Option<ValueRef<'_>> {
-        let value = attributes.get(key.as_ref())?;
-        value.eval_value(self, node_id)
+        let Some(value) = attributes.get(key.as_ref()) else { return Value::Empty };
+        panic!()
+        // let value_ref = value.eval_value(self, node_id)?;
+        // T::try_from(value_ref).ok()
     }
 }
 
@@ -89,14 +95,14 @@ mod test {
         let mut scope = Scope::new(None);
         scope.scope(
             "value".into(),
-            ScopeValue::Static(ValueRef::Str("hello world")),
+            ValueRef::Str("hello world"),
         );
 
         let mut inner = scope.reparent();
 
         inner.scope(
             "value".into(),
-            ScopeValue::Static(ValueRef::Str("inner hello")),
+            ValueRef::Str("inner hello"),
         );
         let ValueRef::Str(lhs) = inner.lookup(&"value".into()).unwrap() else {
             panic!()
@@ -132,5 +138,20 @@ mod test {
         let path = Path::from("inner").compose("name");
         let value = context.lookup(&path, None).unwrap();
         assert!(matches!(value, ValueRef::Str("Fiddle McStick")));
+    }
+
+    #[test]
+    fn singular_state_value() {
+        let state = TestState::new();
+        let scope = Scope::new(None);
+        let context = Context::new(&state, &scope);
+        let path = Path::from("inner").compose("name");
+    }
+
+    #[test]
+    fn collection_with_one_state_value() {
+        let state = TestState::new();
+        let scope = Scope::new(None);
+        let context = Context::new(&state, &scope);
     }
 }

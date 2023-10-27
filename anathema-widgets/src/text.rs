@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, State, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, State, Value, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
@@ -37,7 +37,7 @@ pub struct Text {
     /// [`Alignment`](crate::Alignment).
     pub text_alignment: TextAlignment,
     /// Text
-    pub text: String,
+    pub text: Value<String>,
     /// Text style
     pub style: Style,
 
@@ -61,10 +61,10 @@ impl Text {
         };
 
         let (text, style) = if *widget_index == 0 {
-            (self.text.as_str(), self.style)
+            (self.text.value().unwrap(), self.style)
         } else {
             let span = &children[widget_index - 1].to_ref::<TextSpan>();
-            (span.text.as_str(), span.style)
+            (span.text.value().unwrap(), span.style)
         };
 
         if let Entry::Range(Range { start, end, .. }) = entry {
@@ -154,7 +154,7 @@ impl Widget for Text {
         let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
-        self.layout.process(self.text.as_str());
+        self.layout.process(self.text.value().unwrap());
 
         let babies = children.count();
 
@@ -167,7 +167,7 @@ impl Widget for Text {
             let inner_span = span.to_mut::<TextSpan>();
             // inner_span.update_text(data);
 
-            self.layout.process(inner_span.text.as_str());
+            self.layout.process(inner_span.text.value().unwrap());
             Ok(())
         });
 
@@ -199,10 +199,10 @@ impl Widget for Text {
 }
 
 /// Represents a chunk of text with its own style
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TextSpan {
     /// The text
-    pub text: String,
+    pub text: Value<String>,
     /// Style for the text
     pub style: Style,
 }

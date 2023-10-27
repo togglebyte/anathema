@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, ValueExpr, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Direction, Layouts};
@@ -35,28 +35,28 @@ use crate::layout::vertical::Vertical;
 /// 2
 /// 3
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct VStack {
     /// If a width is provided then the layout constraints will be tight for width
-    pub width: Option<usize>,
+    pub width: Value<usize>,
     /// If a height is provided then the layout constraints will be tight for height
-    pub height: Option<usize>,
+    pub height: Value<usize>,
     /// The minimum width. This will force the minimum constrained width to expand to
     /// this value.
-    pub min_width: Option<usize>,
+    pub min_width: Value<usize>,
     /// The minimum height. This will force the minimum constrained height to expand to
     /// this value.
-    pub min_height: Option<usize>,
+    pub min_height: Value<usize>,
 }
 
 impl VStack {
     /// Creates a new instance of a `VStack`
-    pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
+    pub fn new(width: impl Into<Value<usize>>, height: impl Into<Value<usize>>) -> Self {
         Self {
             width: width.into(),
             height: height.into(),
-            min_width: None,
-            min_height: None,
+            min_width: Value::Empty,
+            min_height: Value::Empty,
         }
     }
 }
@@ -73,17 +73,17 @@ impl Widget for VStack {
         data: &Context<'_, '_>,
     ) -> Result<Size> {
         let mut layout = *layout;
-        if let Some(width) = self.width {
-            layout.constraints.max_width = layout.constraints.max_width.min(width);
+        if let Some(width) = self.width.value() {
+            layout.constraints.max_width = layout.constraints.max_width.min(*width);
         }
-        if let Some(height) = self.height {
-            layout.constraints.max_height = layout.constraints.max_height.min(height);
+        if let Some(height) = self.height.value() {
+            layout.constraints.max_height = layout.constraints.max_height.min(*height);
         }
-        if let Some(min_width) = self.min_width {
-            layout.constraints.min_width = layout.constraints.min_width.max(min_width);
+        if let Some(min_width) = self.min_width.value() {
+            layout.constraints.min_width = layout.constraints.min_width.max(*min_width);
         }
-        if let Some(min_height) = self.min_height {
-            layout.constraints.min_height = layout.constraints.min_height.max(min_height);
+        if let Some(min_height) = self.min_height.value() {
+            layout.constraints.min_height = layout.constraints.min_height.max(*min_height);
         }
 
         Layouts::new(Vertical::new(Direction::Forward), &layout).layout(children, data)

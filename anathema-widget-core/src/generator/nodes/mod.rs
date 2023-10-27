@@ -398,7 +398,7 @@ mod test {
         let mut nodes = TestNodes::new(&exprs);
         let size = nodes.layout().unwrap();
         assert_eq!(size, Size::new(1, 3));
-        // assert_eq!(nodes.nodes.count(), 3);
+        assert_eq!(nodes.nodes.count(), 3);
     }
 
     #[test]

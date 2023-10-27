@@ -1,5 +1,5 @@
 use anathema_render::{Color, Style};
-use anathema_values::{Attributes, Context, NodeId, ValueExpr, Path};
+use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr};
 
 pub struct FactoryContext<'a> {
     pub ident: &'a str,
@@ -30,10 +30,12 @@ impl<'a> FactoryContext<'a> {
         Some(&self.node_id)
     }
 
-    pub fn text(&self) -> String {
-        self.text
+    pub fn text(&self) -> Value<String> {
+        let string = self
+            .text
             .and_then(|value| value.eval_string(self.ctx, self.node_id()))
-            .unwrap_or_else(String::new)
+            .unwrap_or_else(String::new);
+        Value::Static(string)
     }
 
     pub fn magic(&self) {
@@ -57,35 +59,37 @@ impl<'a> FactoryContext<'a> {
     }
 
     pub fn style(&self) -> Style {
-        let mut style = Style::new();
+        panic!()
+        // let mut style = Style::new();
 
-        style.fg = self.get_color("foreground");
-        style.set_bold(self.is_true("bold"));
-        style.set_italic(self.is_true("italic"));
-        style.set_dim(self.is_true("dim"));
-        style.set_underlined(self.is_true("underline"));
-        style.set_overlined(self.is_true("overline"));
-        style.set_crossed_out(self.is_true("crossed-out"));
-        style.set_inverse(self.is_true("inverse"));
+        // style.fg = self.get_color("foreground");
+        // style.set_bold(self.is_true("bold"));
+        // style.set_italic(self.is_true("italic"));
+        // style.set_dim(self.is_true("dim"));
+        // style.set_underlined(self.is_true("underline"));
+        // style.set_overlined(self.is_true("overline"));
+        // style.set_crossed_out(self.is_true("crossed-out"));
+        // style.set_inverse(self.is_true("inverse"));
 
-        style
+        // style
     }
 
     pub fn is_true(&self, name: &str) -> bool {
-        self.ctx
-            .attribute(name, self.node_id(), self.attributes)
-            .unwrap_or(false)
+        panic!()
+        // self.ctx
+        //     .attribute(name, self.node_id(), self.attributes)
+        //     .unwrap_or(false)
     }
 
-    pub fn get_bool(&self, name: &str) -> Option<bool> {
+    pub fn get_bool(&self, name: &str) -> Value<bool> {
         self.ctx.attribute(name, self.node_id(), self.attributes)
     }
 
-    pub fn get_color(&self, name: &str) -> Option<Color> {
+    pub fn get_color(&self, name: &str) -> Value<Color> {
         self.ctx.attribute(name, self.node_id(), self.attributes)
     }
 
-    pub fn get_usize(&self, name: &str) -> Option<usize> {
+    pub fn get_usize(&self, name: &str) -> Value<usize> {
         self.ctx.attribute(name, self.node_id(), self.attributes)
     }
 }

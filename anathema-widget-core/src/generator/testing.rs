@@ -44,7 +44,7 @@ impl Layout for TestLayoutMany {
 //   - Widgets -
 // -----------------------------------------------------------------------------
 
-struct TestWidget(String);
+struct TestWidget(Value<String>);
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {

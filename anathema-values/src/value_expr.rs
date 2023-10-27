@@ -267,7 +267,6 @@ impl ValueExpr {
             // -----------------------------------------------------------------------------
             Self::List(list) => Some(ValueRef::Expressions(list)),
             Self::Map(map) => Some(ValueRef::ExpressionMap(map)),
-            // _ => panic!(),
         }
     }
 }

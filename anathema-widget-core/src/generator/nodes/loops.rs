@@ -37,11 +37,11 @@ impl<'e> LoopNode<'e> {
     where
         'e: 'val,
     {
-        let val = match &self.collection {
+        let val = match self.collection {
             Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value(context, None)?,
-            Collection::Path(path) => context.scope.lookup(path)?,
-            Collection::State { len, path } if *len == self.value_index => return None,
-            Collection::State { len, path } => ValueRef::Deferred(path.compose(self.value_index)),
+            Collection::Path(ref path) => context.scope.lookup(path)?,
+            Collection::State { len, .. } if len == self.value_index => return None,
+            Collection::State { len, ref path } => ValueRef::Deferred(path.compose(self.value_index)),
             // TODO: remove comments. 2023-10-27
             // ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
             // ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
