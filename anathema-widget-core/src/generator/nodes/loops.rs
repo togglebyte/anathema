@@ -1,6 +1,7 @@
 use anathema_values::{Change, Context, Path, Scope, State, ValueExpr, ValueRef};
 
 use super::Nodes;
+use crate::generator::expressions::Lol;
 use crate::WidgetContainer;
 
 // -----------------------------------------------------------------------------
@@ -10,12 +11,12 @@ use crate::WidgetContainer;
 pub struct LoopNode<'e> {
     pub(super) body: Nodes<'e>,
     pub(super) binding: Path,
-    pub(super) collection: &'e ValueExpr,
+    pub(super) collection: Lol<'e>,
     pub(super) value_index: usize,
 }
 
 impl<'e> LoopNode<'e> {
-    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: &'e ValueExpr) -> Self {
+    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: Lol<'e>) -> Self {
         Self {
             body,
             binding,
@@ -36,9 +37,10 @@ impl<'e> LoopNode<'e> {
     where
         'e: 'val,
     {
-        let val = match self.collection.eval_value(context, None)? {
-            ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
-            ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
+        let val = match self.collection {
+            Lol::Things(expressions) => expressions.get(self.value_index)?.eval_value(context, None)?,
+            // ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
+            // ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
             _ => return None,
         };
         self.value_index += 1;

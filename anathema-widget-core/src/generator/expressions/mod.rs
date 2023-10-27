@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, Path, Scope, State, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, Scope, State, ValueExpr, ValueRef};
 
 pub use self::controlflow::{Else, If};
 use super::nodes::{IfElse, LoopNode};
@@ -64,13 +64,39 @@ pub struct Loop {
     pub collection: ValueExpr,
 }
 
+#[derive(Debug)]
+pub enum Lol<'e> {
+    Things(&'e [ValueExpr]),
+    Path(Path),
+    Nothing,
+}
+
 impl Loop {
-    fn eval(&self, node_id: NodeId) -> Result<Node<'_>> {
+    fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node<'_>> {
+
+        let collection = match &self.collection {
+            ValueExpr::List(expr) => Lol::Things(expr),
+            ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
+                match self.collection.eval_path(context, Some(&node_id)) {
+                    Some(path) => {
+                        match context.scope.lookup(&path) {
+                            // Some(ValueRef::Expressions(value)) => {
+                            //     Lol::Things(value)
+                            // }
+                            _ => Lol::Path(path)
+                        }
+                    }
+                    None => Lol::Nothing,
+                }
+            }
+            _ => Lol::Nothing,
+        };
+
         let node = Node {
             kind: NodeKind::Loop(LoopNode::new(
                 Nodes::new(&self.body, node_id.child(0)),
                 self.binding.clone(),
-                &self.collection,
+                collection,
             )),
             node_id,
         };
@@ -113,10 +139,10 @@ impl Expression {
         &self,
         context: &Context<'a, 'val>,
         node_id: NodeId,
-    ) -> Result<Node> {
+    ) -> Result<Node<'_>> {
         match self {
             Self::Node(node) => node.eval(context, node_id),
-            Self::Loop(loop_expr) => loop_expr.eval(node_id),
+            Self::Loop(loop_expr) => loop_expr.eval(context, node_id),
             Self::ControlFlow(controlflow) => controlflow.eval(node_id),
         }
     }
