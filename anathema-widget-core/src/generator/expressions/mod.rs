@@ -23,9 +23,9 @@ pub struct SingleNode {
 
 impl SingleNode {
     fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node> {
-        // TODO: Come up with an api that doesn't entirely suck.
-        //       It should be possible to do something like context.attribute("padding").list_or_number()
-        //       Also add > < >= <=
+        // TODO: add > < >= <=, this message is not really about single nodes, but about evaluating
+        // values, however this message was attached to another message so here we are... (the
+        // other message was an issue that is now resolved under the name of FactoryContext)
 
         let context = FactoryContext::new(
             context,
