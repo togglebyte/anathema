@@ -27,7 +27,7 @@ impl<'a> Scope<'a> {
 
     pub fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
         match self.inner.get(path) {
-            Some(value) => Some(*value),
+            Some(value) => Some(value.clone()),
             None => self.parent?.lookup(path),
         }
     }

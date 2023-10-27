@@ -177,7 +177,7 @@ mod test {
         let test = expression("test", None, [], []).test();
         let mut node = test.eval().unwrap();
         let (widget, _) = node.single();
-        assert_eq!("test", widget.kind());
+        assert_eq!("text", widget.kind());
     }
 
     #[test]

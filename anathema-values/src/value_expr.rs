@@ -95,6 +95,12 @@ impl From<String> for ValueExpr {
     }
 }
 
+impl From<&str> for ValueExpr {
+    fn from(val: &str) -> Self {
+        Self::String(val.into())
+    }
+}
+
 impl ValueExpr {
     pub fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
         match self.eval_value(context, node_id) {

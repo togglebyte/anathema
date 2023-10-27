@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, NodeId, Path, Scope, ScopeValue, State, ValueExpr, ValueRef};
+use anathema_values::{Context, NodeId, Path, Scope, State, ValueExpr, ValueRef};
 
 use super::nodes::Node;
 use super::{ControlFlow, If, Else};
@@ -12,7 +12,7 @@ use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
 use crate::{
-    AnyWidget, Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory, FactoryContext,
 };
 
 // -----------------------------------------------------------------------------
@@ -69,19 +69,8 @@ impl Widget for TestWidget {
 struct TestWidgetFactory;
 
 impl WidgetFactory for TestWidgetFactory {
-    fn make(
-        &self,
-        data: &Context<'_, '_>,
-        attributes: &Attributes,
-        text: Option<&ValueExpr>,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let text = text.unwrap();
-        let text = match text.eval_value(data, Some(node_id)).unwrap() {
-            ValueRef::Str(s) => s.to_string(),
-            ValueRef::Owned(owned) => owned.to_string(),
-            _ => panic!("not sure what to do here yet"),
-        };
+    fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let text = context.text();
         let widget = TestWidget(text);
         Ok(Box::new(widget))
     }
@@ -112,13 +101,7 @@ impl Widget for TestListWidget {
 struct TestListWidgetFactory;
 
 impl WidgetFactory for TestListWidgetFactory {
-    fn make(
-        &self,
-        data: &Context<'_, '_>,
-        attributes: &Attributes,
-        text: Option<&ValueExpr>,
-        node_id: &NodeId,
-    ) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let widget = TestListWidget;
         Ok(Box::new(widget))
     }

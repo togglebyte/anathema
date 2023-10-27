@@ -90,7 +90,7 @@ impl<'e> Node<'e> {
                 Change::Add => loop_node.add(),
                 _ => (),
             },
-            // TODO: need to update control flow 
+            // TODO: need to update control flow
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
@@ -364,7 +364,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut
 #[cfg(test)]
 mod test {
     use anathema_values::testing::{list, TestState};
-    use anathema_values::{Value, ValueExpr};
+    use anathema_values::ValueExpr;
 
     use super::*;
     use crate::generator::testing::*;

@@ -35,6 +35,10 @@ impl State for Inner {
             _ => None,
         }
     }
+
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<usize> {
+        todo!()
+    }
 }
 
 #[derive(Debug)]
@@ -86,13 +90,6 @@ impl State for TestState {
                     let map = ValueRef::Map(&self.generic_map.inner);
                     Some(map)
                 }
-                "generic_list" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.generic_list.subscribe(node_id);
-                    }
-                    let list = ValueRef::List(&self.generic_list.inner);
-                    Some(list)
-                }
                 _ => None,
             },
             Path::Composite(lhs, rhs) => match &**lhs {
@@ -102,6 +99,21 @@ impl State for TestState {
                 _ => None,
             },
             _ => None,
+        }
+    }
+
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<usize> {
+        match key {
+            Path::Key(s) => match s.as_str() {
+                "generic_list" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.generic_list.subscribe(node_id);
+                    }
+                    Some(self.generic_list.len())
+                }
+                _ => None
+            }
+            _ => None
         }
     }
 }

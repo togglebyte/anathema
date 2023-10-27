@@ -1,6 +1,4 @@
-use std::fmt::{Debug};
-
-
+use std::fmt::Debug;
 
 use anathema_render::Color;
 
@@ -8,7 +6,7 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, ValueExpr};
+use crate::{Collection, List, Path, ValueExpr};
 
 mod num;
 mod owned;
@@ -18,7 +16,7 @@ mod owned;
 // -----------------------------------------------------------------------------
 /// A value reference is either owned or referencing something
 /// inside an expression.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum ValueRef<'expr> {
     Str(&'expr str),
     Map(&'expr dyn Collection),
@@ -26,6 +24,7 @@ pub enum ValueRef<'expr> {
     Expressions(&'expr [ValueExpr]),
     ExpressionMap(&'expr HashMap<String, ValueExpr>),
     Owned(Owned),
+    Deferred(Path),
 }
 
 impl<'expr> ValueRef<'expr> {
@@ -147,7 +146,7 @@ impl TryFrom<ValueRef<'_>> for Color {
     fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Owned(Owned::Color(color)) => Ok(color),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
