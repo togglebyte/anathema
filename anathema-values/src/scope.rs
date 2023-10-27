@@ -3,16 +3,10 @@
 use crate::hashmap::HashMap;
 use crate::{Attributes, NodeId, Path, State, ValueRef};
 
-#[derive(Debug, Clone)]
-pub enum ScopeValue<'a> {
-    Static(ValueRef<'a>),
-    Dyn(&'a Path),
-}
-
 #[derive(Debug)]
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    inner: HashMap<Path, ScopeValue<'a>>,
+    inner: HashMap<Path, ValueRef<'a>>,
 }
 
 impl<'a> Scope<'a> {
@@ -27,18 +21,13 @@ impl<'a> Scope<'a> {
         Scope::new(Some(self))
     }
 
-    pub fn scope(&mut self, path: Path, value: ScopeValue<'a>) {
+    pub fn scope(&mut self, path: Path, value: ValueRef<'a>) {
         self.inner.insert(path, value);
     }
 
     pub fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
         match self.inner.get(path) {
-            Some(ScopeValue::Static(value)) => {
-                Some(*value)
-            }
-            Some(ScopeValue::Dyn(path)) => {
-                self.lookup(path)
-            }
+            Some(value) => Some(*value),
             None => self.parent?.lookup(path),
         }
     }

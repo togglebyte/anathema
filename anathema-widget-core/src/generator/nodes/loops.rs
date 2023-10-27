@@ -1,4 +1,4 @@
-use anathema_values::{Change, Context, Path, Scope, ScopeValue, State, ValueExpr, ValueRef};
+use anathema_values::{Change, Context, Path, Scope, State, ValueExpr, ValueRef};
 
 use super::Nodes;
 use crate::WidgetContainer;
@@ -32,7 +32,7 @@ impl<'e> LoopNode<'e> {
         self.body.count()
     }
 
-    pub(super) fn next_value<'val>(&mut self, context: &Context<'_, 'val>) -> Option<ScopeValue<'val>>
+    pub(super) fn next_value<'val>(&mut self, context: &Context<'_, 'val>) -> Option<ValueRef<'val>>
     where
         'e: 'val,
     {
@@ -42,8 +42,7 @@ impl<'e> LoopNode<'e> {
             _ => return None,
         };
         self.value_index += 1;
-
-        Some(ScopeValue::Static(val))
+        Some(val)
     }
 
     pub(super) fn remove(&mut self, _index: usize) {

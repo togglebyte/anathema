@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, ScopeValue, State, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, State, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{

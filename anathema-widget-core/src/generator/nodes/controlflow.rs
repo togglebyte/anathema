@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use anathema_values::{Change, Context, NodeId, ScopeValue, State, ValueExpr};
+use anathema_values::{Change, Context, NodeId, State, ValueExpr};
 
 use crate::generator::expressions::Expression;
 use crate::generator::{Else, If};

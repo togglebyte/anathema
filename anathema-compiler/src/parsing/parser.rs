@@ -1,4 +1,4 @@
-use anathema_values::{Path, ScopeValue, ValueExpr};
+use anathema_values::{Path, ValueExpr};
 
 use super::pratt::{eval, expr};
 use crate::error::{src_line_no, Error, ErrorKind, Result};

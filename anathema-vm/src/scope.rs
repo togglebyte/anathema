@@ -1,5 +1,5 @@
 use anathema_compiler::{Constants, Instruction, StringId};
-use anathema_values::{Attributes, ScopeValue, ValueExpr};
+use anathema_values::{Attributes, ValueExpr};
 use anathema_widget_core::generator::{ControlFlow, Else, Expression, If, Loop, SingleNode};
 
 use crate::error::Result;

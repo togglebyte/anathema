@@ -1,7 +1,7 @@
 
 use crate::map::Map;
 use crate::{
-    Context, List, NodeId, Owned, Path, Scope, ScopeValue, State, StateValue, 
+    Context, List, NodeId, Owned, Path, Scope, State, StateValue, 
     ValueExpr, ValueRef, Collection
 };
 
@@ -115,7 +115,7 @@ impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
         for (key, value) in values {
             scope.scope(
                 key.into(),
-                ScopeValue::Static(ValueRef::Owned(value.into())),
+                ValueRef::Owned(value.into()),
             );
         }
 

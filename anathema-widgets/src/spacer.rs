@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, ScopeValue, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Layouts;
