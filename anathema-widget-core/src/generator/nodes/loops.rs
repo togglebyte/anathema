@@ -1,7 +1,7 @@
 use anathema_values::{Change, Context, Path, Scope, State, ValueExpr, ValueRef};
 
 use super::Nodes;
-use crate::generator::expressions::Lol;
+use crate::generator::expressions::Collection;
 use crate::WidgetContainer;
 
 // -----------------------------------------------------------------------------
@@ -11,12 +11,12 @@ use crate::WidgetContainer;
 pub struct LoopNode<'e> {
     pub(super) body: Nodes<'e>,
     pub(super) binding: Path,
-    pub(super) collection: Lol<'e>,
+    pub(super) collection: Collection<'e>,
     pub(super) value_index: usize,
 }
 
 impl<'e> LoopNode<'e> {
-    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: Lol<'e>) -> Self {
+    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: Collection<'e>) -> Self {
         Self {
             body,
             binding,
@@ -37,11 +37,14 @@ impl<'e> LoopNode<'e> {
     where
         'e: 'val,
     {
-        let val = match self.collection {
-            Lol::Things(expressions) => expressions.get(self.value_index)?.eval_value(context, None)?,
+        let val = match &self.collection {
+            Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value(context, None)?,
+            Collection::Path(path) => context.scope.lookup(path)?,
+            Collection::State { len, path } => ValueRef::Deferred(path.compose(self.value_index)),
+            // TODO: remove comments. 2023-10-27
             // ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
             // ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
-            _ => return None,
+            Collection::Empty => return None,
         };
         self.value_index += 1;
         Some(val)

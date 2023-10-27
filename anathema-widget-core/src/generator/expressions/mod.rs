@@ -65,31 +65,30 @@ pub struct Loop {
 }
 
 #[derive(Debug)]
-pub enum Lol<'e> {
-    Things(&'e [ValueExpr]),
+pub enum Collection<'e> {
+    ValueExpressions(&'e [ValueExpr]),
+    State { len: usize, path: Path },
     Path(Path),
-    Nothing,
+    Empty,
 }
 
 impl Loop {
     fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node<'_>> {
 
         let collection = match &self.collection {
-            ValueExpr::List(expr) => Lol::Things(expr),
+            ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
                 match self.collection.eval_path(context, Some(&node_id)) {
                     Some(path) => {
-                        match context.scope.lookup(&path) {
-                            // Some(ValueRef::Expressions(value)) => {
-                            //     Lol::Things(value)
-                            // }
-                            _ => Lol::Path(path)
+                        match context.state.get_collection(&path, Some(&node_id)) {
+                            Some(len) => Collection::State { len, path },
+                            None => Collection::Path(path),
                         }
                     }
-                    None => Lol::Nothing,
+                    None => Collection::Empty,
                 }
             }
-            _ => Lol::Nothing,
+            _ => Collection::Empty,
         };
 
         let node = Node {
@@ -184,8 +183,7 @@ mod test {
     #[test]
     fn eval_for() {
         let mut scope = Scope::new(None);
-        let expr =
-            for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
+        let expr = for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
         let node = expr.eval().unwrap();
         assert!(matches!(
             node,
