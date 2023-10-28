@@ -27,6 +27,19 @@ impl<T> Value<T> {
 }
 
 #[derive(Debug)]
+pub struct LocalScope<'expr> {
+    inner: HashMap<Path, ValueRef<'expr>>,
+}
+
+impl<'expr> LocalScope<'expr> {
+    pub fn empty() -> Self {
+        Self {
+            inner: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Scope<'a, 'expr> {
     parent: Option<&'a Scope<'a, 'expr>>,
     inner: HashMap<Path, ValueRef<'expr>>,

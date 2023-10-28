@@ -2,7 +2,7 @@ use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_render::Size;
-use anathema_values::{Change, Context, NodeId, Scope, State};
+use anathema_values::{Change, Context, LocalScope, NodeId, Scope, State};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -34,7 +34,9 @@ impl<'e> Node<'e> {
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         match &mut self.kind {
-            NodeKind::Single(widget, children) => {
+            NodeKind::Single(Single {
+                widget, children, ..
+            }) => {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
@@ -77,7 +79,7 @@ impl<'e> Node<'e> {
 
     fn reset_cache(&mut self) {
         match &mut self.kind {
-            NodeKind::Single(_, nodes) => nodes.reset_cache(),
+            NodeKind::Single(Single { children, .. }) => children.reset_cache(),
             NodeKind::Loop(loop_state) => loop_state.reset_cache(),
             NodeKind::ControlFlow(if_else) => if_else.reset_cache(),
         }
@@ -85,7 +87,7 @@ impl<'e> Node<'e> {
 
     fn update(&mut self, change: Change, state: &mut impl State) {
         match &mut self.kind {
-            NodeKind::Single(widget, _) => widget.update(state),
+            NodeKind::Single(Single { widget, .. }) => widget.update(state),
             NodeKind::Loop(loop_node) => match change {
                 Change::Remove(index) => loop_node.remove(index),
                 Change::Add => loop_node.add(),
@@ -98,7 +100,7 @@ impl<'e> Node<'e> {
 
     fn nodes(&mut self) -> &mut Nodes<'e> {
         match &mut self.kind {
-            NodeKind::Single(_, nodes) => nodes,
+            NodeKind::Single(Single { children, .. }) => children,
             NodeKind::Loop(loop_state) => &mut loop_state.body,
             NodeKind::ControlFlow { .. } => panic!(),
         }
@@ -109,15 +111,22 @@ impl<'e> Node<'e> {
 impl<'e> Node<'e> {
     pub(crate) fn single(&mut self) -> (&mut WidgetContainer, &mut Nodes<'e>) {
         match &mut self.kind {
-            NodeKind::Single(inner, nodes) => (inner, nodes),
+            NodeKind::Single(Single(inner, nodes)) => (inner, nodes),
             _ => panic!(),
         }
     }
 }
 
 #[derive(Debug)]
+pub(crate) struct Single<'e> {
+    pub(crate) widget: WidgetContainer<'e>,
+    pub(crate) children: Nodes<'e>,
+    pub(crate) scope: LocalScope<'e>,
+}
+
+#[derive(Debug)]
 pub(crate) enum NodeKind<'e> {
-    Single(WidgetContainer<'e>, Nodes<'e>),
+    Single(Single<'e>),
     Loop(LoopNode<'e>),
     ControlFlow(IfElse<'e>),
 }
@@ -234,7 +243,9 @@ impl<'e> Nodes<'e> {
             .map(
                 |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)>> {
                     match &mut node.kind {
-                        NodeKind::Single(widget, nodes) => Box::new(once((widget, nodes))),
+                        NodeKind::Single(Single {
+                            widget, children, ..
+                        }) => Box::new(once((widget, children))),
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow(control_flow) => {
                             Box::new(control_flow.body.iter_mut().map(|n| n.iter_mut()).flatten())
@@ -253,7 +264,7 @@ impl<'e> Nodes<'e> {
 fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
     nodes
         .map(|node| match &node.kind {
-            NodeKind::Single(_, nodes) => 1 + nodes.count(),
+            NodeKind::Single(Single { children, .. }) => 1 + children.count(),
             NodeKind::Loop(loop_state) => loop_state.count(),
             NodeKind::ControlFlow(if_else) => if_else.count(),
         })
@@ -270,7 +281,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut
             }
 
             match &mut node.kind {
-                NodeKind::Single(_widget, children) => {
+                NodeKind::Single(Single { children, .. }) => {
                     return children.update(&node_id, change, state)
                 }
                 NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),

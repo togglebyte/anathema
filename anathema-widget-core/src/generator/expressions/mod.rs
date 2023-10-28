@@ -1,10 +1,10 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, NodeId, Path, Scope, State, Value, ValueExpr, ValueRef,
+    Attributes, Context, LocalScope, NodeId, Path, Scope, State, Value, ValueExpr, ValueRef,
 };
 
 pub use self::controlflow::{Else, If};
-use super::nodes::{IfElse, LoopNode};
+use super::nodes::{IfElse, LoopNode, Single};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
@@ -29,6 +29,8 @@ impl SingleNode {
         // values, however this message was attached to another message so here we are... (the
         // other message was an issue that is now resolved under the name of FactoryContext)
 
+        let mut scope = LocalScope::empty();
+
         let text = match self.text.as_ref() {
             Some(value_expr) => value_expr.resolve(context, Some(&node_id)),
             None => Value::Empty,
@@ -50,11 +52,15 @@ impl SingleNode {
             pos: Pos::ZERO,
             size: Size::ZERO,
             node_id: node_id.clone(),
-            expr: None
+            expr: None,
         };
 
         let node = Node {
-            kind: NodeKind::Single(widget, Nodes::new(&self.children, node_id.child(0))),
+            kind: NodeKind::Single(Single {
+                widget,
+                children: Nodes::new(&self.children, node_id.child(0)),
+                scope,
+            }),
             node_id,
         };
 
