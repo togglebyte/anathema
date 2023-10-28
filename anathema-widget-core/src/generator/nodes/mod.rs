@@ -2,7 +2,7 @@ use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_render::Size;
-use anathema_values::{Change, Context, LocalScope, NodeId, Scope, State};
+use anathema_values::{Change, Context, LocalScope, NodeId, State};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;

@@ -52,36 +52,6 @@ impl<'expr> LocalScope<'expr> {
     }
 }
 
-#[derive(Debug)]
-pub struct Scope<'a, 'expr> {
-    parent: Option<&'a Scope<'a, 'expr>>,
-    inner: HashMap<Path, ValueRef<'expr>>,
-}
-
-impl<'a, 'expr> Scope<'a, 'expr> {
-    pub fn new(parent: Option<&'a Scope<'_, 'expr>>) -> Self {
-        Self {
-            parent,
-            inner: HashMap::new(),
-        }
-    }
-
-    pub fn reparent(&self) -> Scope<'_, 'expr> {
-        Scope::new(Some(self))
-    }
-
-    pub fn scope(&mut self, path: Path, value: ValueRef<'expr>) {
-        self.inner.insert(path, value);
-    }
-
-    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
-        match self.inner.get(path) {
-            Some(value) => Some(value.clone()),
-            None => self.parent?.lookup(path),
-        }
-    }
-}
-
 pub struct Scopes<'a, 'expr> {
     scope: LocalScope<'expr>,
     parent: Option<&'a Scopes<'a, 'expr>>,

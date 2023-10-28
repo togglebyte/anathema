@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 
 use anathema_render::Color;
-use anathema_values::{NodeId, Scope, State, ValueExpr};
+use anathema_values::{NodeId, State, ValueExpr};
 
 pub use self::eval::eval;
 use crate::error::{Error, ErrorKind, Result};

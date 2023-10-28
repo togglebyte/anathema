@@ -3,7 +3,7 @@ use std::cell::RefCell;
 pub use self::id::NodeId;
 pub use self::list::List;
 pub use self::path::Path;
-pub use self::scope::{Context, Scope, LocalScope, Value};
+pub use self::scope::{Context, LocalScope, Value};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
 pub use self::value_expr::ValueExpr;

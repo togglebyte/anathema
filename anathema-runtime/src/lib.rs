@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anathema_render::{size, Attributes, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context, Scope, State};
+use anathema_values::{drain_dirty_nodes, Context, State};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
@@ -86,7 +86,6 @@ where
     // TODO: move this into views
     fn layout(&mut self) -> Result<()> {
         let mut layout_ctx = LayoutCtx::new(self.constraints, Padding::ZERO);
-        let scope = Scope::new(None);
         self.nodes.reset_cache();
         let constraints = layout_ctx.constraints;
         let context = Context::root(&self.state);

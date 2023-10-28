@@ -1,4 +1,4 @@
-use anathema_values::{Change, Context, Path, Scope, State, ValueExpr, ValueRef};
+use anathema_values::{Change, Context, Path, State, ValueExpr, ValueRef};
 
 use super::Nodes;
 use crate::generator::expressions::Collection;

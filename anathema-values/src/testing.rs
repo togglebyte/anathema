@@ -1,6 +1,6 @@
 use crate::map::Map;
 use crate::{
-    Collection, Context, List, NodeId, Owned, Path, Scope, State, StateValue, ValueExpr, ValueRef, LocalScope,
+    Collection, Context, List, NodeId, Owned, Path, State, StateValue, ValueExpr, ValueRef, LocalScope,
 };
 
 #[derive(Debug)]
@@ -111,20 +111,6 @@ impl State for TestState {
             },
             _ => None,
         }
-    }
-}
-
-// -----------------------------------------------------------------------------
-//   - Extend scope functionality for testing -
-// -----------------------------------------------------------------------------
-impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_, '_> {
-    fn from(values: [(&'static str, Owned); N]) -> Self {
-        let mut scope = Self::new(None);
-        for (key, value) in values {
-            scope.scope(key.into(), ValueRef::Owned(value.into()));
-        }
-
-        scope
     }
 }
 

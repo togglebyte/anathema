@@ -1,4 +1,4 @@
-use anathema_values::{Context, NodeId, Scope, State};
+use anathema_values::{Context, NodeId, State};
 
 use super::{LoopNode, Node, NodeKind};
 use crate::contexts::LayoutCtx;
