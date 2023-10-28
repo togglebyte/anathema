@@ -109,26 +109,6 @@ impl ValueExpr {
     {
         match self.eval_value_ref(context) {
             Some(ValueRef::Deferred(path)) => {
-                I don't think Value<T> is quite right.
-                Or maybe it is, but we need to store a value expression
-                under the hood to resolve the string.
-
-                E.g a string might be [1, path_to_state, 2],
-                so this can be resolved at runtime.
-
-                This could be a list of expressions:
-                [Num, Deferred, Num]
-
-                And what about value expressions?
-                border [padding: 1 + a]
-
-                This has to have a value expression that resolves
-                to the actual value when updated
-
-
-
-
-
                 let val = context.state.get(&path, node_id);
                 let val = val.and_then(|val_ref| T::try_from(val_ref).ok());
                 Value::Cached {

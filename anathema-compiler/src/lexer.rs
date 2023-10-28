@@ -455,7 +455,7 @@ mod test {
             ("#000", Kind::Value(Value::Color((0, 0, 0).into()))),
             ("#000000", Kind::Value(Value::Color((0, 0, 0).into()))),
             ("#FFF", Kind::Value(Value::Color((255, 255, 255).into()))),
-            ("#FFFFFF", Kind::Value(Value::Color((255, 255, 255)).into())),
+            ("#FFFFFF", Kind::Value(Value::Color((255, 255, 255).into()))),
         ];
 
         for (input, expected) in inputs {

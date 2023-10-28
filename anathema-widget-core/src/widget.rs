@@ -9,7 +9,7 @@ use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
 use super::layout::Constraints;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::Nodes;
+use crate::generator::{Nodes, Expression};
 use crate::{Display, LocalPos, Padding, Pos, Region};
 
 // Layout:
@@ -167,7 +167,7 @@ impl Widget for Box<dyn Widget> {
 /// * [`layout`](Self::layout)
 /// * [`position`](Self::position)
 /// * [`paint`](Self::paint)
-pub struct WidgetContainer {
+pub struct WidgetContainer<'e> {
     pub(crate) background: Option<Color>,
     pub(crate) display: Display,
     pub(crate) padding: Padding,
@@ -175,9 +175,10 @@ pub struct WidgetContainer {
     pub(crate) pos: Pos,
     pub(crate) size: Size,
     pub(crate) node_id: NodeId,
+    pub expr: Option<&'e Expression>,
 }
 
-impl WidgetContainer {
+impl WidgetContainer<'_> {
     pub fn kind(&self) -> &'static str {
         self.inner.kind()
     }
@@ -337,13 +338,13 @@ impl WidgetContainer {
     }
 }
 
-impl Debug for WidgetContainer {
+impl Debug for WidgetContainer <'_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
     }
 }
 
-impl Drop for WidgetContainer {
+impl Drop for WidgetContainer <'_> {
     fn drop(&mut self) {
         let mut removed_node = NodeId::disposable();
         std::mem::swap(&mut self.node_id, &mut removed_node);

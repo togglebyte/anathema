@@ -17,19 +17,19 @@ mod owned;
 /// A value reference is either owned or referencing something
 /// inside an expression.
 #[derive(Debug, Clone)]
-pub enum ValueRef<'expr> {
-    Str(&'expr str),
-    Map(&'expr dyn Collection),
-    List(&'expr dyn Collection),
-    Expressions(&'expr [ValueExpr]),
-    ExpressionMap(&'expr HashMap<String, ValueExpr>),
+pub enum ValueRef<'a> {
+    Str(&'a str),
+    Map(&'a dyn Collection),
+    List(&'a dyn Collection),
+    Expressions(&'a [ValueExpr]),
+    ExpressionMap(&'a HashMap<String, ValueExpr>),
     Owned(Owned),
     /// A deferred lookup. This should only ever
     /// be a path into a state
     Deferred(Path),
 }
 
-impl<'expr> ValueRef<'expr> {
+impl<'a> ValueRef<'a> {
     pub fn is_true(&self) -> bool {
         match self {
             Self::Str(s) => s.is_empty(),
@@ -41,7 +41,7 @@ impl<'expr> ValueRef<'expr> {
     }
 }
 
-impl<'expr> PartialEq for ValueRef<'expr> {
+impl<'a> PartialEq for ValueRef<'a> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Str(lhs), Self::Str(rhs)) => lhs == rhs,
@@ -54,26 +54,26 @@ impl<'expr> PartialEq for ValueRef<'expr> {
 // -----------------------------------------------------------------------------
 //   - From for value ref -
 // -----------------------------------------------------------------------------
-impl<'expr, T: Debug> From<&'expr Map<T>> for ValueRef<'expr>
+impl<'a, T: Debug> From<&'a Map<T>> for ValueRef<'a>
 where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
-    fn from(value: &'expr Map<T>) -> Self {
+    fn from(value: &'a Map<T>) -> Self {
         Self::Map(value)
     }
 }
 
-impl<'expr, T: Debug> From<&'expr List<T>> for ValueRef<'expr>
+impl<'a, T: Debug> From<&'a List<T>> for ValueRef<'a>
 where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
-    fn from(value: &'expr List<T>) -> Self {
+    fn from(value: &'a List<T>) -> Self {
         Self::List(value)
     }
 }
 
-impl<'expr> From<&'expr str> for ValueRef<'expr> {
-    fn from(value: &'expr str) -> Self {
+impl<'a> From<&'a str> for ValueRef<'a> {
+    fn from(value: &'a str) -> Self {
         ValueRef::Str(value)
     }
 }

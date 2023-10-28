@@ -69,7 +69,7 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)> + '_ {
+    ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
         self.body.iter_mut()
     }
 

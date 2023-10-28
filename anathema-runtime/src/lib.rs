@@ -15,12 +15,12 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use events::Event;
 
 // use view::View;
-use self::frame::Frame;
+// use self::frame::Frame;
 // pub use self::meta::Meta;
 use crate::events::{EventProvider, Events};
 
 pub mod events;
-mod frame;
+// mod frame;
 // mod meta;
 // mod view;
 

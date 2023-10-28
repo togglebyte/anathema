@@ -116,7 +116,7 @@ impl<'e> Node<'e> {
 
 #[derive(Debug)]
 pub(crate) enum NodeKind<'e> {
-    Single(WidgetContainer, Nodes<'e>),
+    Single(WidgetContainer<'e>, Nodes<'e>),
     Loop(LoopNode<'e>),
     ControlFlow(IfElse<'e>),
 }
@@ -307,11 +307,11 @@ impl<'e> Nodes<'e> {
 
     pub fn iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)> + '_ {
+    ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
         self.inner
             .iter_mut()
             .map(
-                |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer, &mut Nodes<'e>)>> {
+                |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)>> {
                     match &mut node.kind {
                         NodeKind::Single(widget, nodes) => {
                             Box::new(std::iter::once((widget, nodes)))
@@ -326,7 +326,7 @@ impl<'e> Nodes<'e> {
             .flatten()
     }
 
-    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer, &mut Nodes<'e>)> {
+    pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer<'e>, &mut Nodes<'e>)> {
         self.iter_mut().next()
     }
 }
