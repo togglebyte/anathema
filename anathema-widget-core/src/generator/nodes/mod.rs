@@ -87,9 +87,9 @@ impl<'e> Node<'e> {
         }
     }
 
-    fn update(&mut self, change: Change, state: &mut impl State) {
+    fn update(&mut self, change: Change, context: &Context<'_, '_>) {
         match &mut self.kind {
-            NodeKind::Single(Single { widget, .. }) => widget.update(state),
+            NodeKind::Single(Single { widget, .. }) => widget.update(context, &self.node_id),
             NodeKind::Loop(loop_node) => match change {
                 Change::Remove(index) => loop_node.remove(index),
                 Change::Add => loop_node.add(),
@@ -208,8 +208,8 @@ impl<'e> Nodes<'e> {
     }
 
     // TODO: move this into a visitor?
-    pub fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
-        update(&mut self.inner, node_id, change, state);
+    pub fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+        update(&mut self.inner, node_id, change, context);
     }
 
     pub(crate) fn new(expressions: &'e [Expression], next_id: NodeId) -> Self {
@@ -273,19 +273,20 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 }
 
 // Apply change / update to relevant nodes
-fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, state: &mut impl State) {
+fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &Context<'_, '_>) {
     for node in nodes {
         if node.node_id.contains(node_id) {
+            let scope = &node.scope;
             if node.node_id.eq(node_id) {
-                node.update(change, state);
+                node.update(change, context);
                 return;
             }
 
             match &mut node.kind {
                 NodeKind::Single(Single { children, .. }) => {
-                    return children.update(&node_id, change, state)
+                    return children.update(&node_id, change, context)
                 }
-                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, state),
+                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, context),
                 _ => panic!("better sort this out"),
             }
         }

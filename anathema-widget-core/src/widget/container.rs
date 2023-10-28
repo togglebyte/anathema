@@ -182,8 +182,8 @@ impl WidgetContainer<'_> {
         Some(())
     }
 
-    pub fn update(&mut self, state: &mut impl State) {
-        self.inner.update(state);
+    pub fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.inner.update(context, node_id);
     }
 }
 

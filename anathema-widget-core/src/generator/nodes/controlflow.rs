@@ -66,7 +66,7 @@ impl<'e> IfElse<'e> {
         self.body.iter_mut().map(|n| n.iter_mut()).flatten()
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
-        self.body.as_mut().map(|b| b.update(node_id, change, state));
+    pub(super) fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+        self.body.as_mut().map(|b| b.update(node_id, change, context));
     }
 }

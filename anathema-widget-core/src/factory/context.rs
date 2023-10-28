@@ -1,12 +1,12 @@
 use anathema_render::{Color, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr, TextVal};
 
 pub struct FactoryContext<'a> {
     pub ident: &'a str,
     pub attributes: &'a Attributes,
     pub ctx: &'a Context<'a, 'a>,
     pub node_id: NodeId,
-    pub text: Value<String>,
+    pub text: Option<TextVal>
 }
 
 impl<'a> FactoryContext<'a> {
@@ -15,7 +15,7 @@ impl<'a> FactoryContext<'a> {
         node_id: NodeId,
         ident: &'a str,
         attributes: &'a Attributes,
-        text: Value<String>
+        text: Option<TextVal>,
     ) -> Self {
         Self {
             ctx,
@@ -26,7 +26,7 @@ impl<'a> FactoryContext<'a> {
         }
     }
 
-    fn node_id(&self) -> Option<&NodeId> {
+    pub fn node_id(&self) -> Option<&NodeId> {
         Some(&self.node_id)
     }
 

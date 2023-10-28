@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, State, Value, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, State, Value, ValueExpr, TextVal};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
@@ -37,7 +37,7 @@ pub struct Text {
     /// [`Alignment`](crate::Alignment).
     pub text_alignment: TextAlignment,
     /// Text
-    pub text: Value<String>,
+    pub text: TextVal,
     /// Text style
     pub style: Style,
 
@@ -61,10 +61,10 @@ impl Text {
         };
 
         let (text, style) = if *widget_index == 0 {
-            (self.text.value().unwrap(), self.style)
+            (self.text.string(), self.style)
         } else {
             let span = &children[widget_index - 1].to_ref::<TextSpan>();
-            (span.text.value().unwrap(), span.style)
+            (span.text.string(), span.style)
         };
 
         if let Entry::Range(Range { start, end, .. }) = entry {
@@ -118,7 +118,7 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn update(&mut self, state: &mut dyn State) {
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         // match &self.text_src {
         //     ScopeValue::Static(s) => {}
         //     ScopeValue::Dyn(path) => {
@@ -154,7 +154,7 @@ impl Widget for Text {
         let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.layout.set_wrap(self.word_wrap);
-        self.layout.process(self.text.value().unwrap());
+        self.layout.process(self.text.string());
 
         let babies = children.count();
 
@@ -167,7 +167,7 @@ impl Widget for Text {
             let inner_span = span.to_mut::<TextSpan>();
             // inner_span.update_text(data);
 
-            self.layout.process(inner_span.text.value().unwrap());
+            self.layout.process(inner_span.text.string());
             Ok(())
         });
 
@@ -202,7 +202,7 @@ impl Widget for Text {
 #[derive(Debug)]
 pub struct TextSpan {
     /// The text
-    pub text: Value<String>,
+    pub text: TextVal,
     /// Style for the text
     pub style: Style,
 }
@@ -287,12 +287,17 @@ impl WidgetFactory for TextFactory {
         //     .map(|b| *b)
         //     .unwrap_or(TextAlignment::Left);
 
+        let style = ctx.style();
+        let mut text = ctx.text.unwrap();
+        text.resolve(ctx.ctx, Some(&ctx.node_id));
+
         let mut widget = Text {
             word_wrap,
             text_alignment,
-            style: ctx.style(),
+            style,
             layout: TextLayout::ZERO,
-            text: ctx.text,
+            // TODO: unwrap! ewwww
+            text,
         };
 
         Ok(Box::new(widget))
@@ -305,7 +310,8 @@ impl WidgetFactory for SpanFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let style = ctx.style();
         let widget = TextSpan {
-            text: ctx.text,
+            // TODO: unwrap! ewwww
+            text: ctx.text.unwrap(),
             style,
         };
 

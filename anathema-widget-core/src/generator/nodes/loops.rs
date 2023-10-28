@@ -70,7 +70,7 @@ impl<'e> LoopNode<'e> {
         self.body.iter_mut()
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: Change, state: &mut impl State) {
-        self.body.update(node_id, change, state)
+    pub(super) fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+        self.body.update(node_id, change, context)
     }
 }

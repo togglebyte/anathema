@@ -40,3 +40,28 @@ pub fn remove_node(node: NodeId) {
 
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
+
+// TODO: this is a hack while trying to figure out what kind of value types to have
+#[derive(Debug)]
+pub struct TextVal {
+    inner: Option<String>,
+    expr: ValueExpr
+}
+
+impl TextVal {
+    pub fn new(expr: ValueExpr) -> Self {
+        Self {
+            inner: None,
+            expr,
+        }
+    }
+
+    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        self.inner = self.expr.eval_string(context, node_id);
+    }
+
+    pub fn string(&self) -> &String {
+        static EMPTY: String = String::new();
+        self.inner.as_ref().unwrap_or(&EMPTY)
+    }
+}

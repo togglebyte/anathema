@@ -79,6 +79,33 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
     }
 }
 
+pub struct UpdateScope<'a, 'expr> {
+    scope: Option<&'a LocalScope<'expr>>,
+    parent: Option<&'a UpdateScope<'a, 'expr>>
+}
+
+impl<'a, 'expr> UpdateScope<'a, 'expr> {
+    pub fn root() -> Self {
+        Self {
+            scope: None,
+            parent: None,
+        }
+    }
+
+    pub fn reparent(&'a self, scope: &'a LocalScope<'expr>) -> UpdateScope<'_, 'expr> {
+        Self {
+            scope: Some(scope),
+            parent: Some(self)
+        }
+    }
+
+    fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
+        self.scope
+            .and_then(|scope| scope.lookup(path))
+            .or_else(|| self.parent.and_then(|p| p.lookup(path)))
+    }
+}
+
 pub struct Context<'a, 'expr> {
     pub state: &'a dyn State,
     pub scopes: Scopes<'a, 'expr>,
@@ -103,7 +130,9 @@ impl<'a, 'expr> Context<'a, 'expr> {
         }
     }
 
-    pub fn scope(&self) -> LocalScope<'expr> {
+    // pub fn reparent(&self, scope: LocalScope<'expr>) -> Context<'_, 'expr> {
+
+    pub fn new_scope(&self) -> LocalScope<'expr> {
         self.scopes.scope.clone()
     }
 

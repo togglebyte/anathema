@@ -111,10 +111,15 @@ where
 
     fn changes(&mut self) {
         let dirty_nodes = drain_dirty_nodes();
+        if dirty_nodes.is_empty() {
+            return
+        }
+
+        let context = Context::root(&self.state);
 
         for (node_id, change) in dirty_nodes {
             self.nodes
-                .update(node_id.as_slice(), change, &mut self.state);
+                .update(node_id.as_slice(), change, &context);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that

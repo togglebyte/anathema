@@ -53,7 +53,7 @@ pub trait Widget {
     }
 
     /// Called when a value the widget subscribes to has changed.
-    fn update(&mut self, _state: &mut dyn State) {}
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {}
 }
 
 pub trait AnyWidget {
@@ -74,7 +74,7 @@ pub trait AnyWidget {
 
     fn paint_any<'gen: 'ctx, 'ctx>(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, WithSize>);
 
-    fn update_any(&mut self, state: &mut dyn State);
+    fn update_any(&mut self, context: &Context<'_, '_>, node_id: &NodeId);
 }
 
 impl Widget for Box<dyn AnyWidget> {
@@ -99,8 +99,8 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref_mut().paint_any(children, ctx)
     }
 
-    fn update(&mut self, state: &mut dyn State) {
-        self.deref_mut().update_any(state)
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.deref_mut().update_any(context, node_id)
     }
 }
 
@@ -134,8 +134,8 @@ impl<T: Widget + 'static> AnyWidget for T {
         self.paint(children, ctx)
     }
 
-    fn update_any(&mut self, state: &mut dyn State) {
-        self.update(state)
+    fn update_any(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.update(context, node_id)
     }
 }
 
@@ -161,7 +161,7 @@ impl Widget for Box<dyn Widget> {
         self.as_mut().paint(children, ctx)
     }
 
-    fn update(&mut self, state: &mut dyn State) {
-        self.as_mut().update(state)
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.as_mut().update(context, node_id)
     }
 }

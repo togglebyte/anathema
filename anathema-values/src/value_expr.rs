@@ -153,28 +153,38 @@ impl ValueExpr {
         }
     }
 
-    //     pub fn eval_string(
-    //         &self,
-    //         context: &Context<'_, '_>,
-    //         node_id: Option<&NodeId>,
-    //     ) -> Option<String> {
-    //         match self.eval_value_ref(context)? {
-    //             ValueRef::Str(s) => Some(s.into()),
-    //             ValueRef::Owned(s) => Some(s.to_string()),
-    //             ValueRef::Expressions(list) => {
-    //                 let mut s = String::new();
-    //                 for expr in list {
-    //                     let res = expr.eval_string(context, node_id);
-    //                     if let Some(res) = res {
-    //                         s.push_str(&res);
-    //                     }
-    //                 }
-    //                 Some(s)
-    //             }
-    //             // TODO: probably shouldn't panic here, but we'll do it while working on this
-    //             _ => panic!(),
-    //         }
-    //     }
+        pub fn eval_string(
+            &self,
+            context: &Context<'_, '_>,
+            node_id: Option<&NodeId>,
+        ) -> Option<String> {
+            match self.eval_value_ref(context)? {
+                ValueRef::Str(s) => Some(s.into()),
+                ValueRef::Owned(s) => Some(s.to_string()),
+                ValueRef::Expressions(list) => {
+                    let mut s = String::new();
+                    for expr in list {
+                        let res = expr.eval_string(context, node_id);
+                        if let Some(res) = res {
+                            s.push_str(&res);
+                        }
+                    }
+                    Some(s)
+                }
+                ValueRef::Deferred(path) => {
+                    match context.state.get(&path, node_id)? {
+                        ValueRef::Str(val) => Some(val.into()),
+                        ValueRef::Owned(val) => Some(val.to_string()),
+                        val => {
+                            panic!("don't panic here either, {val:?}")
+                        }
+                    }
+                }
+
+                // TODO: probably shouldn't panic here, but we'll do it while working on this
+                _ => panic!(),
+            }
+        }
 
     pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
         match self.eval_value_ref(context) {

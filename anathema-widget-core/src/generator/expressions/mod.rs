@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef,
+    Attributes, Context, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef, TextVal,
 };
 
 pub use self::controlflow::{Else, If};
@@ -29,12 +29,9 @@ impl SingleNode {
         // values, however this message was attached to another message so here we are... (the
         // other message was an issue that is now resolved under the name of FactoryContext)
 
-        let scope = context.scope();
+        let scope = context.new_scope();
 
-        let text = match self.text.as_ref() {
-            Some(value_expr) => value_expr.resolve(context, Some(&node_id)),
-            None => Value::Empty,
-        };
+        let text = self.text.clone().map(TextVal::new);
 
         let context = FactoryContext::new(
             context,
@@ -109,7 +106,7 @@ impl Loop {
                 collection,
             )),
             node_id,
-            scope: context.scope(),
+            scope: context.new_scope(),
         };
 
         Ok(node)
@@ -130,7 +127,7 @@ impl ControlFlow {
         let node = Node {
             kind: NodeKind::ControlFlow(IfElse::new(&self.if_expr, &self.elses)),
             node_id,
-            scope: context.scope(),
+            scope: context.new_scope(),
         };
         Ok(node)
     }
