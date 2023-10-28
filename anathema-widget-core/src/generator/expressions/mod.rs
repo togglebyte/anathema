@@ -24,7 +24,7 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node> {
+    fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node<'_>> {
         // TODO: add > < >= <=, this message is not really about single nodes, but about evaluating
         // values, however this message was attached to another message so here we are... (the
         // other message was an issue that is now resolved under the name of FactoryContext)
@@ -50,6 +50,7 @@ impl SingleNode {
             pos: Pos::ZERO,
             size: Size::ZERO,
             node_id: node_id.clone(),
+            expr: None
         };
 
         let node = Node {

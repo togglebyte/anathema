@@ -1,3 +1,4 @@
+use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_render::Size;
@@ -313,9 +314,7 @@ impl<'e> Nodes<'e> {
             .map(
                 |node| -> Box<dyn Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)>> {
                     match &mut node.kind {
-                        NodeKind::Single(widget, nodes) => {
-                            Box::new(std::iter::once((widget, nodes)))
-                        }
+                        NodeKind::Single(widget, nodes) => Box::new(once((widget, nodes))),
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
                         NodeKind::ControlFlow(control_flow) => {
                             Box::new(control_flow.body.iter_mut().map(|n| n.iter_mut()).flatten())
