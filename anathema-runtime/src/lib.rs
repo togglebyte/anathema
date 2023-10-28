@@ -89,7 +89,7 @@ where
         let scope = Scope::new(None);
         self.nodes.reset_cache();
         let constraints = layout_ctx.constraints;
-        let context = Context::new(&self.state, &scope);
+        let context = Context::root(&self.state);
         self.nodes
             .for_each(&context, &mut layout_ctx, |widget, children, context| {
                 widget.layout(children, constraints, context)?;

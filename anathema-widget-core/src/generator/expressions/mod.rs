@@ -24,12 +24,12 @@ pub struct SingleNode {
 }
 
 impl SingleNode {
-    fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node<'_>> {
+    fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         // TODO: add > < >= <=, this message is not really about single nodes, but about evaluating
         // values, however this message was attached to another message so here we are... (the
         // other message was an issue that is now resolved under the name of FactoryContext)
 
-        let mut scope = LocalScope::empty();
+        let scope = context.scope();
 
         let text = match self.text.as_ref() {
             Some(value_expr) => value_expr.resolve(context, Some(&node_id)),
@@ -59,9 +59,9 @@ impl SingleNode {
             kind: NodeKind::Single(Single {
                 widget,
                 children: Nodes::new(&self.children, node_id.child(0)),
-                scope,
             }),
             node_id,
+            scope,
         };
 
         Ok(node)
@@ -87,7 +87,7 @@ pub enum Collection<'e> {
 }
 
 impl Loop {
-    fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node<'_>> {
+    fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         let collection = match &self.collection {
             ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
@@ -109,6 +109,7 @@ impl Loop {
                 collection,
             )),
             node_id,
+            scope: context.scope(),
         };
 
         Ok(node)
@@ -125,10 +126,11 @@ pub struct ControlFlow {
 }
 
 impl ControlFlow {
-    fn eval(&self, node_id: NodeId) -> Result<Node<'_>> {
+    fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         let node = Node {
             kind: NodeKind::ControlFlow(IfElse::new(&self.if_expr, &self.elses)),
             node_id,
+            scope: context.scope(),
         };
         Ok(node)
     }
@@ -145,15 +147,15 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub(crate) fn eval<'a: 'val, 'val>(
-        &self,
-        context: &Context<'a, 'val>,
+    pub(crate) fn eval<'a, 'expr>(
+        &'expr self,
+        context: &Context<'a, 'expr>,
         node_id: NodeId,
-    ) -> Result<Node<'_>> {
+    ) -> Result<Node<'expr>> {
         match self {
             Self::Node(node) => node.eval(context, node_id),
             Self::Loop(loop_expr) => loop_expr.eval(context, node_id),
-            Self::ControlFlow(controlflow) => controlflow.eval(node_id),
+            Self::ControlFlow(controlflow) => controlflow.eval(context, node_id),
         }
     }
 }

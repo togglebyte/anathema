@@ -107,21 +107,22 @@ impl ValueExpr {
     where
         for<'b> T: TryFrom<ValueRef<'b>>,
     {
-        match self.eval_value_ref(context) {
-            Some(ValueRef::Deferred(path)) => {
-                let val = context.state.get(&path, node_id);
-                let val = val.and_then(|val_ref| T::try_from(val_ref).ok());
-                Value::Cached {
-                    val,
-                    path: path.clone(),
-                }
-            }
-            Some(val) => match T::try_from(val) {
-                Ok(val) => Value::Static(val),
-                Err(_) => Value::Empty,
-            },
-            None => Value::Empty,
-        }
+        panic!()
+        // match self.eval_value_ref(context) {
+        //     Some(ValueRef::Deferred(path)) => {
+        //         let val = context.state.get(&path, node_id);
+        //         let val = val.and_then(|val_ref| T::try_from(val_ref).ok());
+        //         Value::Cached {
+        //             val,
+        //             path: path.clone(),
+        //         }
+        //     }
+        //     Some(val) => match T::try_from(val) {
+        //         Ok(val) => Value::Static(val),
+        //         Err(_) => Value::Empty,
+        //     },
+        //     None => Value::Empty,
+        // }
     }
 
     pub fn eval_bool(&self, context: &Context<'_, '_>) -> bool {

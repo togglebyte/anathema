@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::hashmap::HashMap;
 use crate::{Attributes, NodeId, Path, State, ValueRef};
 
@@ -26,15 +28,26 @@ impl<T> Value<T> {
     }
 }
 
-#[derive(Debug)]
-pub struct LocalScope<'expr> {
-    inner: HashMap<Path, ValueRef<'expr>>,
+#[derive(Debug, Clone)]
+pub enum LocalScope<'expr> {
+    Empty,
+    Value(Rc<(Path, ValueRef<'expr>)>),
 }
 
 impl<'expr> LocalScope<'expr> {
+    pub fn new(path: Path, value: ValueRef<'expr>) -> Self {
+        Self::Value(Rc::new((path, value)))
+    }
+
     pub fn empty() -> Self {
-        Self {
-            inner: HashMap::new(),
+        Self::Empty
+    }
+
+    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
+        match self {
+            Self::Empty => None,
+            Self::Value(val) if val.0.eq(path) => Some(val.1.clone()),
+            Self::Value(_) => None,
         }
     }
 }
@@ -69,43 +82,88 @@ impl<'a, 'expr> Scope<'a, 'expr> {
     }
 }
 
-#[derive(Copy, Clone)]
+pub struct Scopes<'a, 'expr> {
+    scope: LocalScope<'expr>,
+    parent: Option<&'a Scopes<'a, 'expr>>,
+}
+
+impl<'a, 'expr> Scopes<'a, 'expr> {
+    fn new(scope: LocalScope<'expr>) -> Self {
+        Self {
+            scope,
+            parent: None
+        }
+    }
+
+    pub fn reparent(&self, scope: LocalScope<'expr>) -> Scopes<'_, 'expr> {
+        Scopes {
+            scope,
+            parent: Some(self)
+        }
+    }
+
+    fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
+        self.scope
+            .lookup(path)
+            .or_else(|| self.parent.and_then(|p| p.lookup(path)))
+    }
+}
+
 pub struct Context<'a, 'expr> {
     pub state: &'a dyn State,
-    pub scope: &'a Scope<'a, 'expr>,
+    pub scopes: Scopes<'a, 'expr>,
 }
 
 impl<'a, 'expr> Context<'a, 'expr> {
-    pub fn new(state: &'a dyn State, scope: &'a Scope<'a, 'expr>) -> Self {
-        Self { state, scope }
+    pub fn root(state: &'a dyn State) -> Self {
+        Self::new(state, LocalScope::Empty)
+    }
+
+    pub fn new(state: &'a dyn State, scope: LocalScope<'expr>) -> Self {
+        Self {
+            state,
+            scopes: Scopes::new(scope),
+        }
+    }
+
+    pub fn reparent(&'a self, scope: LocalScope<'expr>) -> Context<'a, 'expr> {
+        Self {
+            state: self.state,
+            scopes: self.scopes.reparent(scope),
+        }
+    }
+
+    pub fn scope(&self) -> LocalScope<'expr> {
+        self.scopes.scope.clone()
     }
 
     pub fn lookup_value<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Value<T>
     where
         for<'b> T: TryFrom<ValueRef<'b>>,
     {
-        // TODO: come back and unwack this one.
-        //       the top two arms just differ because of the path, but the `Deferred` owns the path
-        match self.scope.lookup(path) {
-            Some(ValueRef::Deferred(path)) => Value::Cached {
-                val: self
-                    .state
-                    .get(&path, node_id)
-                    .and_then(|val_ref| T::try_from(val_ref).ok()),
-                path: path.clone(),
-            },
-            None => Value::Cached {
-                val: self
-                    .state
-                    .get(&path, node_id)
-                    .and_then(|val_ref| T::try_from(val_ref).ok()),
-                path: path.clone(),
-            },
-            Some(value_ref) => match T::try_from(value_ref) {
-                Ok(val) => Value::Static(val),
-                Err(_) => Value::Empty,
-            },
-        }
+        panic!()
+        // // TODO: come back and unwack this one.
+        // //       the top two arms just differ because of the path, but the `Deferred` owns the path
+        // match self.scope.lookup(path) {
+        //     Some(ValueRef::Deferred(path)) => Value::Cached {
+        //         val: self
+        //             .state
+        //             .get(&path, node_id)
+        //             .and_then(|val_ref| T::try_from(val_ref).ok()),
+        //         path: path.clone(),
+        //     },
+        //     None => Value::Cached {
+        //         val: self
+        //             .state
+        //             .get(&path, node_id)
+        //             .and_then(|val_ref| T::try_from(val_ref).ok()),
+        //         path: path.clone(),
+        //     },
+        //     Some(value_ref) => match T::try_from(value_ref) {
+        //         Ok(val) => Value::Static(val),
+        //         Err(_) => Value::Empty,
+        //     },
+        // }
     }
 
     // pub(super) fn lookup_old(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'expr>> {
@@ -114,10 +172,10 @@ impl<'a, 'expr> Context<'a, 'expr> {
     //         .or_else(|| self.state.get(path, node_id))
     // }
 
-    /// Lookup a value, if the value belongs to the state it returns a deferred value 
+    /// Lookup a value, if the value belongs to the state it returns a deferred value
     /// instead, to be resolved at a later stage.
-    pub(super) fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
-        self.scope
+    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
+        self.scopes
             .lookup(path)
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
     }

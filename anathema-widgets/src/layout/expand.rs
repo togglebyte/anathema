@@ -90,8 +90,7 @@ pub fn layout<'e>(
             }
         };
 
-        let context = Context::new(data.state, data.scope);
-        let widget_size = expanded_widget.layout(nodes, constraints, &context)?;
+        let widget_size = expanded_widget.layout(nodes, constraints, &data)?;
 
         match axis {
             Axis::Horizontal => {

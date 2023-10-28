@@ -1,6 +1,6 @@
 use crate::map::Map;
 use crate::{
-    Collection, Context, List, NodeId, Owned, Path, Scope, State, StateValue, ValueExpr, ValueRef,
+    Collection, Context, List, NodeId, Owned, Path, Scope, State, StateValue, ValueExpr, ValueRef, LocalScope,
 };
 
 #[derive(Debug)]
@@ -132,22 +132,22 @@ impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_, '_> {
 //   - Extend value expression -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub struct TestExpression<'a, S> {
+pub struct TestExpression<S> {
     pub state: S,
-    pub scope: Scope<'a, 'a>, // TODO: come back and fix this life time
     expr: Box<ValueExpr>,
 }
 
-impl<'a, S: State> TestExpression<'a, S> {
-    pub fn eval(&'a self) -> Option<ValueRef<'a>> {
-        let context = Context::new(&self.state, &self.scope);
+impl<S: State> TestExpression<S> {
+    pub fn eval(&self) -> Option<ValueRef<'_>> {
+        let scope = LocalScope::empty();
+        let context = Context::new(&self.state, scope);
         self.expr.eval_value_ref(&context)
     }
 
-    pub fn eval_string(&'a self) -> Option<String> {
-        let context = Context::new(&self.state, &self.scope);
-        // let node_id = 0.into();
-        // self.expr.eval_string(&context, Some(&node_id))
+    pub fn eval_string(&self) -> Option<String> {
+        // let context = Context::new(&self.state, &self.scope);
+        // // let node_id = 0.into();
+        // // self.expr.eval_string(&context, Some(&node_id))
         panic!("this should probably resolve value instead")
     }
 
@@ -161,11 +161,8 @@ impl<'a, S: State> TestExpression<'a, S> {
 
 impl ValueExpr {
     #[cfg(feature = "testing")]
-    pub fn test<'a>(self, scope: impl Into<Scope<'a, 'a>>) -> TestExpression<'a, TestState> {
-        let scope = scope.into();
-
+    pub fn test<'a>(self) -> TestExpression<TestState> {
         TestExpression {
-            scope,
             state: TestState::new(),
             expr: self.into(),
         }

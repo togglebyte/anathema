@@ -36,7 +36,7 @@ impl<'e> LoopNode<'e> {
     pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value_ref(context)?,
-            Collection::Path(ref path) => context.scope.lookup(path)?,
+            Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { len, ref path } => ValueRef::Deferred(path.compose(self.value_index)),
             // TODO: remove comments. 2023-10-27

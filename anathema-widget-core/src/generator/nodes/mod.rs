@@ -21,6 +21,7 @@ pub mod visitor;
 pub struct Node<'e> {
     pub node_id: NodeId,
     pub(crate) kind: NodeKind<'e>,
+    pub(super) scope: LocalScope<'e>,
 }
 
 impl<'e> Node<'e> {
@@ -41,13 +42,14 @@ impl<'e> Node<'e> {
                 Ok(ControlFlow::Continue(()))
             }
             NodeKind::Loop(loop_state) => loop {
-                let mut scope = context.scope.reparent();
                 let Some(value) = loop_state.next_value(context) else {
                     return Ok(ControlFlow::Continue(()));
                 };
-                scope.scope(loop_state.binding.clone(), value);
+
+                let scope = LocalScope::new(loop_state.binding.clone(), value);
+
                 loop_state.body.reset();
-                let context = Context::new(context.state, &scope);
+                let context = context.reparent(scope);
 
                 while let Some(res) = loop_state.body.next(&context, layout, f) {
                     match res? {
@@ -121,7 +123,6 @@ impl<'e> Node<'e> {
 pub(crate) struct Single<'e> {
     pub(crate) widget: WidgetContainer<'e>,
     pub(crate) children: Nodes<'e>,
-    pub(crate) scope: LocalScope<'e>,
 }
 
 #[derive(Debug)]
