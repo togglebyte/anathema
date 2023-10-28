@@ -126,7 +126,7 @@ pub struct TestExpression<S> {
 impl<S: State> TestExpression<S> {
     pub fn eval(&self) -> Option<ValueRef<'_>> {
         let scope = LocalScope::empty();
-        let context = Context::new(&self.state, scope);
+        let context = Context::new(&self.state, &scope);
         self.expr.eval_value_ref(&context)
     }
 

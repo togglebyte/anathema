@@ -119,29 +119,7 @@ impl Widget for Text {
     }
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        // match &self.text_src {
-        //     ScopeValue::Static(s) => {}
-        //     ScopeValue::Dyn(path) => {
-        //         self.text.clear();
-        //         if let Some(s) = state.get(path, None) {
-        //             self.text.push_str(&*s);
-        //         }
-        //     }
-        //     ScopeValue::List(list) => {
-        //         self.text.clear();
-        //         for val in list.iter() {
-        //             match val {
-        //                 ScopeValue::Static(s) => self.text.push_str(s),
-        //                 ScopeValue::Dyn(path) => {
-        //                     if let Some(s) = state.get(path, None) {
-        //                         self.text.push_str(&*s);
-        //                     }
-        //                 }
-        //                 ScopeValue::List(_) => panic!("this shouldn't be here"),
-        //             }
-        //         }
-        //     }
-        // }
+        self.text.resolve(context, Some(node_id));
     }
 
     fn layout<'e>(
@@ -230,31 +208,9 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    // fn update(&mut self, state: &mut dyn State) {
-    //     match &self.text_src {
-    //         ScopeValue::Static(s) => {}
-    //         ScopeValue::Dyn(path) => {
-    //             self.text.clear();
-    //             if let Some(s) = state.get(path, None) {
-    //                 self.text.push_str(&*s);
-    //             }
-    //         }
-    //         ScopeValue::List(list) => {
-    //             self.text.clear();
-    //             for val in list.iter() {
-    //                 match val {
-    //                     ScopeValue::Static(s) => self.text.push_str(s),
-    //                     ScopeValue::Dyn(path) => {
-    //                         if let Some(s) = state.get(path, None) {
-    //                             self.text.push_str(&*s);
-    //                         }
-    //                     }
-    //                     ScopeValue::List(_) => panic!("this shouldn't be here"),
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.text.resolve(context, Some(node_id));
+    }
 
     fn layout(&mut self, _: &mut Nodes, _: &LayoutCtx, _: &Context<'_, '_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");

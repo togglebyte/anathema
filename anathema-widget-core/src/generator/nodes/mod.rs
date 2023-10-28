@@ -49,7 +49,7 @@ impl<'e> Node<'e> {
                 let scope = LocalScope::new(loop_state.binding.clone(), value);
 
                 loop_state.body.reset();
-                let context = context.reparent(scope);
+                let context = context.reparent(&scope);
 
                 while let Some(res) = loop_state.body.next(&context, layout, f) {
                     match res? {
@@ -88,8 +88,11 @@ impl<'e> Node<'e> {
     }
 
     fn update(&mut self, change: Change, context: &Context<'_, '_>) {
+
+        let scope = &self.scope;
+        let context = context.reparent(scope);
         match &mut self.kind {
-            NodeKind::Single(Single { widget, .. }) => widget.update(context, &self.node_id),
+            NodeKind::Single(Single { widget, .. }) => widget.update(&context, &self.node_id),
             NodeKind::Loop(loop_node) => match change {
                 Change::Remove(index) => loop_node.remove(index),
                 Change::Add => loop_node.add(),
@@ -276,17 +279,19 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &Context<'_, '_>) {
     for node in nodes {
         if node.node_id.contains(node_id) {
-            let scope = &node.scope;
             if node.node_id.eq(node_id) {
                 node.update(change, context);
                 return;
             }
 
+            let scope = &node.scope;
+            let context = context.reparent(scope);
+
             match &mut node.kind {
                 NodeKind::Single(Single { children, .. }) => {
-                    return children.update(&node_id, change, context)
+                    return children.update(&node_id, change, &context)
                 }
-                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, context),
+                NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
                 _ => panic!("better sort this out"),
             }
         }

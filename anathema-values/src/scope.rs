@@ -53,19 +53,19 @@ impl<'expr> LocalScope<'expr> {
 }
 
 pub struct Scopes<'a, 'expr> {
-    scope: LocalScope<'expr>,
+    scope: &'a LocalScope<'expr>,
     parent: Option<&'a Scopes<'a, 'expr>>,
 }
 
 impl<'a, 'expr> Scopes<'a, 'expr> {
-    fn new(scope: LocalScope<'expr>) -> Self {
+    fn new(scope: &'a LocalScope<'expr>) -> Self {
         Self {
             scope,
             parent: None
         }
     }
 
-    pub fn reparent(&self, scope: LocalScope<'expr>) -> Scopes<'_, 'expr> {
+    pub fn reparent(&self, scope: &'a LocalScope<'expr>) -> Scopes<'_, 'expr> {
         Scopes {
             scope,
             parent: Some(self)
@@ -79,32 +79,32 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
     }
 }
 
-pub struct UpdateScope<'a, 'expr> {
-    scope: Option<&'a LocalScope<'expr>>,
-    parent: Option<&'a UpdateScope<'a, 'expr>>
-}
+// pub struct UpdateScope<'a, 'expr> {
+//     scope: Option<&'a LocalScope<'expr>>,
+//     parent: Option<&'a UpdateScope<'a, 'expr>>
+// }
 
-impl<'a, 'expr> UpdateScope<'a, 'expr> {
-    pub fn root() -> Self {
-        Self {
-            scope: None,
-            parent: None,
-        }
-    }
+// impl<'a, 'expr> UpdateScope<'a, 'expr> {
+//     pub fn root() -> Self {
+//         Self {
+//             scope: None,
+//             parent: None,
+//         }
+//     }
 
-    pub fn reparent(&'a self, scope: &'a LocalScope<'expr>) -> UpdateScope<'_, 'expr> {
-        Self {
-            scope: Some(scope),
-            parent: Some(self)
-        }
-    }
+//     pub fn reparent(&'a self, scope: &'a LocalScope<'expr>) -> UpdateScope<'_, 'expr> {
+//         Self {
+//             scope: Some(scope),
+//             parent: Some(self)
+//         }
+//     }
 
-    fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
-        self.scope
-            .and_then(|scope| scope.lookup(path))
-            .or_else(|| self.parent.and_then(|p| p.lookup(path)))
-    }
-}
+//     fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
+//         self.scope
+//             .and_then(|scope| scope.lookup(path))
+//             .or_else(|| self.parent.and_then(|p| p.lookup(path)))
+//     }
+// }
 
 pub struct Context<'a, 'expr> {
     pub state: &'a dyn State,
@@ -113,17 +113,17 @@ pub struct Context<'a, 'expr> {
 
 impl<'a, 'expr> Context<'a, 'expr> {
     pub fn root(state: &'a dyn State) -> Self {
-        Self::new(state, LocalScope::Empty)
+        Self::new(state, &LocalScope::Empty)
     }
 
-    pub fn new(state: &'a dyn State, scope: LocalScope<'expr>) -> Self {
+    pub fn new(state: &'a dyn State, scope: &'a LocalScope<'expr>) -> Self {
         Self {
             state,
             scopes: Scopes::new(scope),
         }
     }
 
-    pub fn reparent(&'a self, scope: LocalScope<'expr>) -> Context<'a, 'expr> {
+    pub fn reparent(&'a self, scope: &'a LocalScope<'expr>) -> Context<'a, 'expr> {
         Self {
             state: self.state,
             scopes: self.scopes.reparent(scope),
