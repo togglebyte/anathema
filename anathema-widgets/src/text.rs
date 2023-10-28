@@ -144,11 +144,11 @@ impl Widget for Text {
         // }
     }
 
-    fn layout<'widget, 'parent>(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         self.layout = TextLayout::ZERO;
         let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);

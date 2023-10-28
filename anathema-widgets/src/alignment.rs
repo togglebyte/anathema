@@ -38,11 +38,11 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(Single, layout);
         let size = layout.layout(children, data)?;

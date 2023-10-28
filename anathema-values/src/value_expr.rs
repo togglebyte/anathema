@@ -190,7 +190,7 @@ impl ValueExpr {
         }
     }
 
-    pub fn eval_value_ref<'a, 'val>(&'a self, context: &Context<'a, 'val>) -> Option<ValueRef<'_>> {
+    pub fn eval_value_ref<'expr>(&'expr self, context: &Context<'_, 'expr>) -> Option<ValueRef<'expr>> {
         match self {
             Self::Owned(value) => Some(ValueRef::Owned(*value)),
             Self::String(value) => Some(ValueRef::Str(&*value)),

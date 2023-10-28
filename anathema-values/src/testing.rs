@@ -117,7 +117,7 @@ impl State for TestState {
 // -----------------------------------------------------------------------------
 //   - Extend scope functionality for testing -
 // -----------------------------------------------------------------------------
-impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
+impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_, '_> {
     fn from(values: [(&'static str, Owned); N]) -> Self {
         let mut scope = Self::new(None);
         for (key, value) in values {
@@ -134,7 +134,7 @@ impl<const N: usize> From<[(&'static str, Owned); N]> for Scope<'_> {
 #[derive(Debug)]
 pub struct TestExpression<'a, S> {
     pub state: S,
-    pub scope: Scope<'a>,
+    pub scope: Scope<'a, 'a>, // TODO: come back and fix this life time
     expr: Box<ValueExpr>,
 }
 
@@ -161,7 +161,7 @@ impl<'a, S: State> TestExpression<'a, S> {
 
 impl ValueExpr {
     #[cfg(feature = "testing")]
-    pub fn test<'a>(self, scope: impl Into<Scope<'a>>) -> TestExpression<'a, TestState> {
+    pub fn test<'a>(self, scope: impl Into<Scope<'a, 'a>>) -> TestExpression<'a, TestState> {
         let scope = scope.into();
 
         TestExpression {

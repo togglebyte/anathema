@@ -12,11 +12,11 @@ use crate::generator::Nodes;
 mod constraints;
 
 pub trait Layout {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size>;
 }
 
@@ -38,7 +38,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout(&mut self, children: &mut Nodes, data: &Context<'_, '_>) -> Result<Size> {
+    pub fn layout<'e>(&mut self, children: &mut Nodes<'e>, data: &Context<'_, 'e>) -> Result<Size> {
         self.layout.layout(children, self.layout_ctx, data)
     }
 

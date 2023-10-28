@@ -14,11 +14,11 @@ pub struct BorderLayout {
 }
 
 impl Layout for BorderLayout {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         // If there is a min width / height, make sure the minimum constraints
         // are matching these
@@ -55,7 +55,7 @@ impl Layout for BorderLayout {
         let is_width_tight = layout.constraints.is_width_tight();
 
         let mut size = Size::ZERO;
-        children.for_each(data, &layout, |widget: &mut WidgetContainer, children: &mut Nodes<'_>, data: &Context<'_, '_>| {
+        children.for_each(data, &layout, |widget: &mut WidgetContainer<'e>, children: &mut Nodes<'e>, data: &Context<'_, 'e>| {
 
             // Shrink the constraint for the child to fit inside the border
             constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {

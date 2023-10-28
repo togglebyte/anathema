@@ -26,11 +26,11 @@ impl Layout for SpacerLayout {
 /// does the layout of the child of a single [`Spacer`],
 /// whereas this does the layout of multiple [`Spacer`]s 
 /// inside already evaluated children.
-pub fn layout(
+pub fn layout<'e>(
     ctx: &LayoutCtx,
-    children: &mut Nodes,
+    children: &mut Nodes<'e>,
     axis: Axis,
-    data: &Context<'_, '_>,
+    data: &Context<'_, 'e>,
 ) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let count = children.iter_mut().filter(|(c, _)| c.kind() == Spacer::KIND).count();

@@ -33,10 +33,7 @@ impl<'e> LoopNode<'e> {
         self.body.count()
     }
 
-    pub(super) fn next_value<'val>(&mut self, context: &Context<'_, 'val>) -> Option<ValueRef<'val>>
-    where
-        'e: 'val,
-    {
+    pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value_ref(context)?,
             Collection::Path(ref path) => context.scope.lookup(path)?,

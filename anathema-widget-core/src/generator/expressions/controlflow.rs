@@ -18,7 +18,7 @@ pub struct If {
 impl If {
     pub(super) fn is_true(
         &self,
-        _scope: &Scope<'_>,
+        _scope: &Scope<'_, '_>,
         _state: &dyn State,
         _node_id: Option<&NodeId>,
     ) -> bool {

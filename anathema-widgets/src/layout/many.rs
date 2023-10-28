@@ -119,11 +119,11 @@ impl Many {
 }
 
 impl Layout for Many {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let max_constraints = layout.padded_constraints();
 

@@ -31,11 +31,11 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         // debug_assert!(
         //     layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),

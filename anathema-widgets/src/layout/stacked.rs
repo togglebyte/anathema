@@ -8,11 +8,11 @@ use anathema_widget_core::{Nodes, WidgetContainer};
 pub struct Stacked;
 
 impl Layout for Stacked {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let mut width = 0;
         let mut height = 0;

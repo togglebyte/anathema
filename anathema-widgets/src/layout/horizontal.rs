@@ -17,11 +17,11 @@ impl Horizontal {
 }
 
 impl Layout for Horizontal {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         self.0.layout(children, layout, data)
     }

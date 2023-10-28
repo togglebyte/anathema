@@ -66,11 +66,11 @@ impl Widget for VStack {
         "VStack"
     }
 
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let mut layout = *layout;
         if let Some(width) = self.width.value() {

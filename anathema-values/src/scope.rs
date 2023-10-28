@@ -27,28 +27,28 @@ impl<T> Value<T> {
 }
 
 #[derive(Debug)]
-pub struct Scope<'a> {
-    parent: Option<&'a Scope<'a>>,
-    inner: HashMap<Path, ValueRef<'a>>,
+pub struct Scope<'a, 'expr> {
+    parent: Option<&'a Scope<'a, 'expr>>,
+    inner: HashMap<Path, ValueRef<'expr>>,
 }
 
-impl<'a> Scope<'a> {
-    pub fn new(parent: Option<&'a Scope<'_>>) -> Self {
+impl<'a, 'expr> Scope<'a, 'expr> {
+    pub fn new(parent: Option<&'a Scope<'_, 'expr>>) -> Self {
         Self {
             parent,
             inner: HashMap::new(),
         }
     }
 
-    pub fn reparent(&self) -> Scope<'_> {
+    pub fn reparent(&self) -> Scope<'_, 'expr> {
         Scope::new(Some(self))
     }
 
-    pub fn scope(&mut self, path: Path, value: ValueRef<'a>) {
+    pub fn scope(&mut self, path: Path, value: ValueRef<'expr>) {
         self.inner.insert(path, value);
     }
 
-    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
+    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
         match self.inner.get(path) {
             Some(value) => Some(value.clone()),
             None => self.parent?.lookup(path),
@@ -57,13 +57,13 @@ impl<'a> Scope<'a> {
 }
 
 #[derive(Copy, Clone)]
-pub struct Context<'a: 'val, 'val> {
+pub struct Context<'a, 'expr> {
     pub state: &'a dyn State,
-    pub scope: &'a Scope<'val>,
+    pub scope: &'a Scope<'a, 'expr>,
 }
 
-impl<'a, 'val> Context<'a, 'val> {
-    pub fn new(state: &'a dyn State, scope: &'a Scope<'val>) -> Self {
+impl<'a, 'expr> Context<'a, 'expr> {
+    pub fn new(state: &'a dyn State, scope: &'a Scope<'a, 'expr>) -> Self {
         Self { state, scope }
     }
 
@@ -95,15 +95,15 @@ impl<'a, 'val> Context<'a, 'val> {
         }
     }
 
-    pub(super) fn lookup_old(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'a>> {
-        self.scope
-            .lookup(path)
-            .or_else(|| self.state.get(path, node_id))
-    }
+    // pub(super) fn lookup_old(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'expr>> {
+    //     self.scope
+    //         .lookup(path)
+    //         .or_else(|| self.state.get(path, node_id))
+    // }
 
     /// Lookup a value, if the value belongs to the state it returns a deferred value 
     /// instead, to be resolved at a later stage.
-    pub(super) fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
+    pub(super) fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
         self.scope
             .lookup(path)
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
@@ -113,7 +113,7 @@ impl<'a, 'val> Context<'a, 'val> {
         &self,
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
-        attributes: &'val Attributes,
+        attributes: &'expr Attributes,
     ) -> Value<T>
     where
         T: Clone,
