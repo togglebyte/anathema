@@ -6,13 +6,14 @@ use anathema_values::testing::TestState;
 use anathema_values::{Context, NodeId, Path, Scope, State, ValueExpr, ValueRef};
 
 use super::nodes::Node;
-use super::{ControlFlow, If, Else};
+use super::{ControlFlow, Else, If};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
 use crate::{
-    AnyWidget, Attributes, Factory, Nodes, Padding, Widget, WidgetContainer, WidgetFactory, FactoryContext,
+    AnyWidget, Attributes, Factory, FactoryContext, Nodes, Padding, Widget, WidgetContainer,
+    WidgetFactory,
 };
 
 // -----------------------------------------------------------------------------
@@ -113,7 +114,7 @@ impl WidgetFactory for TestListWidgetFactory {
 
 pub struct TestExpression<'a, S> {
     pub state: S,
-    pub scope: Scope<'a>,
+    pub scope: Scope<'a, 'a>,
     pub expr: Box<Expression>,
     pub layout: LayoutCtx,
 }
@@ -134,7 +135,7 @@ impl<'a, S: State> TestExpression<'a, S> {
 // -----------------------------------------------------------------------------
 pub struct TestNodes<'e> {
     pub nodes: Nodes<'e>,
-    scope: Scope<'e>,
+    scope: Scope<'e, 'e>,
     state: TestState,
 }
 
