@@ -1,5 +1,7 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, Path, Scope, State, ValueExpr, ValueRef};
+use anathema_values::{
+    Attributes, Context, NodeId, Path, Scope, State, Value, ValueExpr, ValueRef,
+};
 
 pub use self::controlflow::{Else, If};
 use super::nodes::{IfElse, LoopNode};
@@ -27,12 +29,17 @@ impl SingleNode {
         // values, however this message was attached to another message so here we are... (the
         // other message was an issue that is now resolved under the name of FactoryContext)
 
+        let text = match self.text.as_ref() {
+            Some(value_expr) => value_expr.resolve(context, Some(&node_id)),
+            None => Value::Empty,
+        };
+
         let context = FactoryContext::new(
             context,
             node_id.clone(),
             &self.ident,
             &self.attributes,
-            self.text.as_ref(),
+            text,
         );
 
         let widget = WidgetContainer {
@@ -74,17 +81,14 @@ pub enum Collection<'e> {
 
 impl Loop {
     fn eval(&self, context: &Context<'_, '_>, node_id: NodeId) -> Result<Node<'_>> {
-
         let collection = match &self.collection {
             ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
-                match self.collection.eval_path(context, Some(&node_id)) {
-                    Some(path) => {
-                        match context.state.get_collection(&path, Some(&node_id)) {
-                            Some(len) => Collection::State { len, path },
-                            None => Collection::Path(path),
-                        }
-                    }
+                match self.collection.eval_path(context) {
+                    Some(path) => match context.state.get_collection(&path, Some(&node_id)) {
+                        Some(len) => Collection::State { len, path },
+                        None => Collection::Path(path),
+                    },
                     None => Collection::Empty,
                 }
             }
@@ -183,7 +187,8 @@ mod test {
     #[test]
     fn eval_for() {
         let mut scope = Scope::new(None);
-        let expr = for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
+        let expr =
+            for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
         let node = expr.eval().unwrap();
         assert!(matches!(
             node,

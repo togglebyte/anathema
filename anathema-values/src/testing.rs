@@ -141,14 +141,14 @@ pub struct TestExpression<'a, S> {
 impl<'a, S: State> TestExpression<'a, S> {
     pub fn eval(&'a self) -> Option<ValueRef<'a>> {
         let context = Context::new(&self.state, &self.scope);
-        let node_id = 0.into();
-        self.expr.eval_value(&context, Some(&node_id))
+        self.expr.eval_value_ref(&context)
     }
 
     pub fn eval_string(&'a self) -> Option<String> {
         let context = Context::new(&self.state, &self.scope);
-        let node_id = 0.into();
-        self.expr.eval_string(&context, Some(&node_id))
+        // let node_id = 0.into();
+        // self.expr.eval_string(&context, Some(&node_id))
+        panic!("this should probably resolve value instead")
     }
 
     pub fn expect_owned(self, expected: impl Into<Owned>) {

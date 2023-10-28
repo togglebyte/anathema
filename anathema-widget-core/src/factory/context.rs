@@ -6,7 +6,7 @@ pub struct FactoryContext<'a> {
     pub attributes: &'a Attributes,
     pub ctx: &'a Context<'a, 'a>,
     pub node_id: NodeId,
-    pub text: Option<&'a ValueExpr>,
+    pub text: Value<String>,
 }
 
 impl<'a> FactoryContext<'a> {
@@ -15,7 +15,7 @@ impl<'a> FactoryContext<'a> {
         node_id: NodeId,
         ident: &'a str,
         attributes: &'a Attributes,
-        text: Option<&'a ValueExpr>,
+        text: Value<String>
     ) -> Self {
         Self {
             ctx,
@@ -30,37 +30,8 @@ impl<'a> FactoryContext<'a> {
         Some(&self.node_id)
     }
 
-    pub fn text(&self) -> Value<String> {
-        let string = self
-            .text
-            .and_then(|value| value.eval_string(self.ctx, self.node_id()))
-            .unwrap_or_else(String::new);
-        Value::Static(string)
-    }
-
-    pub fn magic(&self) {
-        let x = self.text.unwrap();
-        let y = x;
-        // let ValueExpr::List(list) = self.text.unwrap() else { panic!() };
-
-        // let list = list.to_vec();
-
-        // for x in list {
-        //     if let Some(y) = x.eval_path(self.ctx, self.node_id()) {
-        //         let lala = y;
-        //         let scope_val = self.ctx.scope.lookup(&lala);
-
-        //         let end = scope_val;
-        //     }
-
-        // }
-
-        // //     // .and_then(|value| value.eval_string(self.ctx, self.node_id()))
-    }
-
     pub fn style(&self) -> Style {
-        panic!()
-        // let mut style = Style::new();
+        let mut style = Style::new();
 
         // style.fg = self.get_color("foreground");
         // style.set_bold(self.is_true("bold"));
@@ -71,7 +42,8 @@ impl<'a> FactoryContext<'a> {
         // style.set_crossed_out(self.is_true("crossed-out"));
         // style.set_inverse(self.is_true("inverse"));
 
-        // style
+        // panic!("not done yet");
+        style
     }
 
     pub fn is_true(&self, name: &str) -> bool {

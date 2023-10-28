@@ -86,7 +86,7 @@ impl<'vm> Scope<'vm> {
                     unreachable!("the `Else` instructions are consumed inside the `If` instruction")
                 }
                 Instruction::LoadAttribute { .. } | Instruction::LoadText(_) => {
-                    unreachable!("these instructions are only loaded in the `node` function")
+                    unreachable!("these instructions are only executed in the `node` function")
                 }
             }
 

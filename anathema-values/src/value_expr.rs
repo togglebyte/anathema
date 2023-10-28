@@ -1,7 +1,8 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::{Context, NodeId, Num, Owned, Path, ValueRef, hashmap::HashMap};
+use crate::hashmap::HashMap;
+use crate::{Context, NodeId, Num, Owned, Path, Value, ValueRef};
 
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
@@ -102,68 +103,103 @@ impl From<&str> for ValueExpr {
 }
 
 impl ValueExpr {
-    pub fn eval_bool(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> bool {
-        match self.eval_value(context, node_id) {
-            Some(value) => value.is_true(),
-            _ => false,
+    pub fn resolve<T>(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Value<T>
+    where
+        for<'b> T: TryFrom<ValueRef<'b>>,
+    {
+        match self.eval_value_ref(context) {
+            Some(ValueRef::Deferred(path)) => {
+                I don't think Value<T> is quite right.
+                Or maybe it is, but we need to store a value expression
+                under the hood to resolve the string.
+
+                E.g a string might be [1, path_to_state, 2],
+                so this can be resolved at runtime.
+
+                This could be a list of expressions:
+                [Num, Deferred, Num]
+
+                And what about value expressions?
+                border [padding: 1 + a]
+
+                This has to have a value expression that resolves
+                to the actual value when updated
+
+
+
+
+
+                let val = context.state.get(&path, node_id);
+                let val = val.and_then(|val_ref| T::try_from(val_ref).ok());
+                Value::Cached {
+                    val,
+                    path: path.clone(),
+                }
+            }
+            Some(val) => match T::try_from(val) {
+                Ok(val) => Value::Static(val),
+                Err(_) => Value::Empty,
+            },
+            None => Value::Empty,
         }
     }
 
-    fn eval_number(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Num> {
-        match self.eval_value(context, node_id)? {
+    pub fn eval_bool(&self, context: &Context<'_, '_>) -> bool {
+        panic!("come back to this, we need to deal with deferred values for control flow");
+        // match self.eval_value_ref(context, node_id) {
+        //     Some(value) => value.is_true(),
+        //     _ => false,
+        // }
+    }
+
+    fn eval_number(&self, context: &Context<'_, '_>) -> Option<Num> {
+        match self.eval_value_ref(context)? {
             ValueRef::Owned(Owned::Num(num)) => Some(num),
             _ => None,
         }
     }
 
-    pub fn eval_path(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Option<Path> {
+    pub fn eval_path(&self, context: &Context<'_, '_>) -> Option<Path> {
         match self {
             Self::Ident(path) => Some(Path::from(&**path)),
             Self::Index(lhs, index) => {
                 // lhs can only be either an ident or an index
-                let lhs = lhs.eval_path(context, node_id)?;
-                let index = index.eval_path(context, node_id)?;
+                let lhs = lhs.eval_path(context)?;
+                let index = index.eval_path(context)?;
                 Some(lhs.compose(index))
             }
             _ => None,
         }
     }
 
-    pub fn eval_string(
-        &self,
-        context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
-    ) -> Option<String> {
-        match self.eval_value(context, node_id)? {
-            ValueRef::Str(s) => Some(s.into()),
-            ValueRef::Owned(s) => Some(s.to_string()),
-            ValueRef::Expressions(list) => {
-                let mut s = String::new();
-                for expr in list {
-                    let res = expr.eval_string(context, node_id);
-                    if let Some(res) = res {
-                        s.push_str(&res);
-                    }
-                }
-                Some(s)
-            }
-            ValueRef::Deferred(ref path) => {
-                match context.state.get(path, node_id)? {
-                    ValueRef::Str(s) => Some(s.into()),
-                    ValueRef::Owned(s) => Some(s.to_string()),
-                    _ => None
-                }
-            }
-            // TODO: probably shouldn't panic here
-            _ => panic!(),
-        }
-    }
+    //     pub fn eval_string(
+    //         &self,
+    //         context: &Context<'_, '_>,
+    //         node_id: Option<&NodeId>,
+    //     ) -> Option<String> {
+    //         match self.eval_value_ref(context)? {
+    //             ValueRef::Str(s) => Some(s.into()),
+    //             ValueRef::Owned(s) => Some(s.to_string()),
+    //             ValueRef::Expressions(list) => {
+    //                 let mut s = String::new();
+    //                 for expr in list {
+    //                     let res = expr.eval_string(context, node_id);
+    //                     if let Some(res) = res {
+    //                         s.push_str(&res);
+    //                     }
+    //                 }
+    //                 Some(s)
+    //             }
+    //             // TODO: probably shouldn't panic here, but we'll do it while working on this
+    //             _ => panic!(),
+    //         }
+    //     }
 
-    pub fn list_usize<P>(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Vec<usize> {
-        match self.eval_value(context, node_id) {
+    pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
+        match self.eval_value_ref(context) {
             Some(ValueRef::Expressions(list)) => list
                 .iter()
-                .filter_map(|value_expr| value_expr.eval_number(context, node_id))
+                .filter_map(|value_expr| value_expr.eval_number(context))
                 .filter_map(|num| match num {
                     Num::Signed(val) => Some(val as usize),
                     Num::Unsigned(val) => Some(val as usize),
@@ -174,11 +210,7 @@ impl ValueExpr {
         }
     }
 
-    pub fn eval_value<'a, 'val>(
-        &'a self,
-        context: &Context<'a, 'val>,
-        node_id: Option<&NodeId>,
-    ) -> Option<ValueRef<'_>> {
+    pub fn eval_value_ref<'a, 'val>(&'a self, context: &Context<'a, 'val>) -> Option<ValueRef<'_>> {
         match self {
             Self::Owned(value) => Some(ValueRef::Owned(*value)),
             Self::String(value) => Some(ValueRef::Str(&*value)),
@@ -188,35 +220,35 @@ impl ValueExpr {
             //   - Maths -
             // -----------------------------------------------------------------------------
             Self::Add(lhs, rhs) => {
-                let lhs = lhs.eval_number(context, node_id)?;
-                let rhs = rhs.eval_number(context, node_id)?;
+                let lhs = lhs.eval_number(context)?;
+                let rhs = rhs.eval_number(context)?;
                 Some(ValueRef::Owned(Owned::Num(lhs + rhs)))
             }
             Self::Sub(lhs, rhs) => {
-                let lhs = lhs.eval_number(context, node_id)?;
-                let rhs = rhs.eval_number(context, node_id)?;
+                let lhs = lhs.eval_number(context)?;
+                let rhs = rhs.eval_number(context)?;
                 Some(ValueRef::Owned(Owned::Num(lhs - rhs)))
             }
             Self::Mul(lhs, rhs) => {
-                let lhs = lhs.eval_number(context, node_id)?;
-                let rhs = rhs.eval_number(context, node_id)?;
+                let lhs = lhs.eval_number(context)?;
+                let rhs = rhs.eval_number(context)?;
                 Some(ValueRef::Owned(Owned::Num(lhs * rhs)))
             }
             Self::Mod(lhs, rhs) => {
-                let lhs = lhs.eval_number(context, node_id)?;
-                let rhs = rhs.eval_number(context, node_id)?;
+                let lhs = lhs.eval_number(context)?;
+                let rhs = rhs.eval_number(context)?;
                 Some(ValueRef::Owned(Owned::Num(lhs % rhs)))
             }
             Self::Div(lhs, rhs) => {
-                let lhs = lhs.eval_number(context, node_id)?;
-                let rhs = rhs.eval_number(context, node_id)?;
+                let lhs = lhs.eval_number(context)?;
+                let rhs = rhs.eval_number(context)?;
                 if rhs.is_zero() {
                     return None;
                 }
                 Some(ValueRef::Owned(Owned::Num(lhs / rhs)))
             }
             Self::Negative(expr) => {
-                let num = expr.eval_number(context, node_id)?;
+                let num = expr.eval_number(context)?;
                 Some(ValueRef::Owned(Owned::Num(num.to_negative())))
             }
 
@@ -224,34 +256,34 @@ impl ValueExpr {
             //   - Conditions -
             // -----------------------------------------------------------------------------
             Self::Not(expr) => {
-                let b = expr.eval_bool(context, node_id);
+                let b = expr.eval_bool(context);
                 Some(ValueRef::Owned((!b).into()))
             }
             Self::Equality(lhs, rhs) => {
-                let lhs = lhs.eval_value(context, node_id)?;
-                let rhs = rhs.eval_value(context, node_id)?;
+                let lhs = lhs.eval_value_ref(context)?;
+                let rhs = rhs.eval_value_ref(context)?;
                 Some(ValueRef::Owned((lhs == rhs).into()))
             }
             Self::Or(lhs, rhs) => {
-                let lhs = lhs.eval_value(context, node_id)?;
-                let rhs = rhs.eval_value(context, node_id)?;
+                let lhs = lhs.eval_value_ref(context)?;
+                let rhs = rhs.eval_value_ref(context)?;
                 Some(ValueRef::Owned((lhs.is_true() || rhs.is_true()).into()))
             }
             Self::And(lhs, rhs) => {
-                let lhs = lhs.eval_value(context, node_id)?;
-                let rhs = rhs.eval_value(context, node_id)?;
+                let lhs = lhs.eval_value_ref(context)?;
+                let rhs = rhs.eval_value_ref(context)?;
                 Some(ValueRef::Owned((lhs.is_true() && rhs.is_true()).into()))
             }
 
             // -----------------------------------------------------------------------------
             //   - Paths -
             // -----------------------------------------------------------------------------
-            Self::Ident(path) => context.lookup(&Path::from(&**path), node_id),
+            Self::Ident(path) => context.lookup(&Path::from(&**path)),
             Self::Dot(lhs, rhs) => {
-                let lhs = lhs.eval_path(context, node_id)?;
-                let rhs = rhs.eval_path(context, node_id)?;
+                let lhs = lhs.eval_path(context)?;
+                let rhs = rhs.eval_path(context)?;
                 let path = lhs.compose(rhs);
-                context.lookup(&path, node_id)
+                context.lookup(&path)
             }
             Self::Index(_lhs, _index) => {
                 // TODO: index lookup

@@ -4,7 +4,11 @@ use crate::{Attributes, NodeId, Path, State, ValueRef};
 #[derive(Debug)]
 pub enum Value<T> {
     Static(T),
-    Cached { val: Option<T>, path: Path },
+    /// Any value associated with the state is subject to change
+    Cached {
+        val: Option<T>,
+        path: Path,
+    },
     Empty,
 }
 
@@ -15,6 +19,10 @@ impl<T> Value<T> {
             Self::Cached { val, .. } => val.as_ref(),
             Self::Empty => None,
         }
+    }
+
+    pub fn reload(&mut self, state: &mut impl State) {
+        panic!()
     }
 }
 
@@ -59,10 +67,46 @@ impl<'a, 'val> Context<'a, 'val> {
         Self { state, scope }
     }
 
-    pub fn lookup(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'a>> {
+    pub fn lookup_value<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Value<T>
+    where
+        for<'b> T: TryFrom<ValueRef<'b>>,
+    {
+        // TODO: come back and unwack this one.
+        //       the top two arms just differ because of the path, but the `Deferred` owns the path
+        match self.scope.lookup(path) {
+            Some(ValueRef::Deferred(path)) => Value::Cached {
+                val: self
+                    .state
+                    .get(&path, node_id)
+                    .and_then(|val_ref| T::try_from(val_ref).ok()),
+                path: path.clone(),
+            },
+            None => Value::Cached {
+                val: self
+                    .state
+                    .get(&path, node_id)
+                    .and_then(|val_ref| T::try_from(val_ref).ok()),
+                path: path.clone(),
+            },
+            Some(value_ref) => match T::try_from(value_ref) {
+                Ok(val) => Value::Static(val),
+                Err(_) => Value::Empty,
+            },
+        }
+    }
+
+    pub(super) fn lookup_old(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'a>> {
         self.scope
             .lookup(path)
             .or_else(|| self.state.get(path, node_id))
+    }
+
+    /// Lookup a value, if the value belongs to the state it returns a deferred value 
+    /// instead, to be resolved at a later stage.
+    pub(super) fn lookup(&self, path: &Path) -> Option<ValueRef<'a>> {
+        self.scope
+            .lookup(path)
+            .or_else(|| Some(ValueRef::Deferred(path.clone())))
     }
 
     pub fn attribute<T: ?Sized>(
@@ -75,10 +119,10 @@ impl<'a, 'val> Context<'a, 'val> {
         T: Clone,
         for<'b> T: TryFrom<ValueRef<'b>>,
     {
-        let Some(value) = attributes.get(key.as_ref()) else { return Value::Empty };
-        panic!()
-        // let value_ref = value.eval_value(self, node_id)?;
-        // T::try_from(value_ref).ok()
+        let Some(value) = attributes.get(key.as_ref()) else {
+            return Value::Empty;
+        };
+        value.resolve(self, node_id)
     }
 }
 
@@ -93,17 +137,11 @@ mod test {
     #[test]
     fn scope_value() {
         let mut scope = Scope::new(None);
-        scope.scope(
-            "value".into(),
-            ValueRef::Str("hello world"),
-        );
+        scope.scope("value".into(), ValueRef::Str("hello world"));
 
         let mut inner = scope.reparent();
 
-        inner.scope(
-            "value".into(),
-            ValueRef::Str("inner hello"),
-        );
+        inner.scope("value".into(), ValueRef::Str("inner hello"));
         let ValueRef::Str(lhs) = inner.lookup(&"value".into()).unwrap() else {
             panic!()
         };
@@ -125,8 +163,8 @@ mod test {
         attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
 
         let id = Some(123.into());
-        let name: String = ctx.attribute("name", id.as_ref(), &attributes).unwrap();
-        assert_eq!("Dirk Gently", name);
+        let name = ctx.attribute::<String>("name", id.as_ref(), &attributes);
+        assert_eq!("Dirk Gently", name.value().unwrap());
     }
 
     #[test]
@@ -136,8 +174,9 @@ mod test {
         let context = Context::new(&state, &scope);
 
         let path = Path::from("inner").compose("name");
-        let value = context.lookup(&path, None).unwrap();
-        assert!(matches!(value, ValueRef::Str("Fiddle McStick")));
+        let value = context.lookup_value::<String>(&path, None);
+        let value: &str = value.value().unwrap();
+        assert!(matches!(value, "Fiddle McStick"));
     }
 
     #[test]

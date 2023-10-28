@@ -38,7 +38,7 @@ impl<'e> LoopNode<'e> {
         'e: 'val,
     {
         let val = match self.collection {
-            Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value(context, None)?,
+            Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value_ref(context)?,
             Collection::Path(ref path) => context.scope.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { len, ref path } => ValueRef::Deferred(path.compose(self.value_index)),

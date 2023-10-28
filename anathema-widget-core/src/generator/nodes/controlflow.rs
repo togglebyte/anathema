@@ -30,25 +30,26 @@ impl<'e> IfElse<'e> {
     where
         'e: 'val,
     {
-        match self.if_expr.cond.eval_bool(context, None) {
-            true => {
-                let body = Nodes::new(&self.if_expr.body, node_id);
-                self.body = Some(body);
-            }
-            false => {
-                for els in self.elses {
-                    match &els.cond {
-                        Some(cond) if cond.eval_bool(context, None) => {}
-                        None => {}
-                        _ => continue,
-                    }
+        panic!("deferred values")
+        // match self.if_expr.cond.eval_bool(context) {
+        //     true => {
+        //         let body = Nodes::new(&self.if_expr.body, node_id);
+        //         self.body = Some(body);
+        //     }
+        //     false => {
+        //         for els in self.elses {
+        //             match &els.cond {
+        //                 Some(cond) if cond.eval_bool(context, None) => {}
+        //                 None => {}
+        //                 _ => continue,
+        //             }
 
-                    let body = Nodes::new(&els.body, node_id);
-                    self.body = Some(body);
-                    break;
-                }
-            }
-        }
+        //             let body = Nodes::new(&els.body, node_id);
+        //             self.body = Some(body);
+        //             break;
+        //         }
+        //     }
+        // }
     }
 
     pub(super) fn reset_cache(&mut self) {

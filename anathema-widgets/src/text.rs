@@ -287,16 +287,12 @@ impl WidgetFactory for TextFactory {
         //     .map(|b| *b)
         //     .unwrap_or(TextAlignment::Left);
 
-        let text = ctx.text();
-
-        ctx.magic();
-
         let mut widget = Text {
             word_wrap,
             text_alignment,
             style: ctx.style(),
             layout: TextLayout::ZERO,
-            text: ctx.text(),
+            text: ctx.text,
         };
 
         Ok(Box::new(widget))
@@ -307,11 +303,10 @@ pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let text = ctx.text();
-
+        let style = ctx.style();
         let widget = TextSpan {
-            text,
-            style: ctx.style(),
+            text: ctx.text,
+            style,
         };
 
         Ok(Box::new(widget))
