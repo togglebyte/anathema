@@ -83,6 +83,20 @@ pub enum Collection<'e> {
     Empty,
 }
 
+impl<'e> Collection<'e> {
+    pub(super) fn add(&mut self) {
+        if let Collection::State { len, .. } = self {
+            *len += 1;
+        }
+    }
+
+    pub(super) fn remove(&mut self) {
+        if let Collection::State { len, .. } = self {
+            *len -= 1;
+        }
+    }
+}
+
 impl Loop {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         let collection = match &self.collection {

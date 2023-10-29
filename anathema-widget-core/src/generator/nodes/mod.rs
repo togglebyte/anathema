@@ -88,7 +88,6 @@ impl<'e> Node<'e> {
     }
 
     fn update(&mut self, change: Change, context: &Context<'_, '_>) {
-
         let scope = &self.scope;
         let context = context.reparent(scope);
         match &mut self.kind {
