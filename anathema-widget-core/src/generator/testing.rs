@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, NodeId, Path, Scope, State, ValueExpr, ValueRef};
+use anathema_values::{Context, NodeId, Path, State, TextVal, ValueExpr, ValueRef};
 
 use super::nodes::Node;
 use super::{ControlFlow, Else, If};
@@ -22,11 +22,11 @@ use crate::{
 pub struct TestLayoutMany;
 
 impl Layout for TestLayoutMany {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let mut size = Size::ZERO;
 
@@ -45,7 +45,7 @@ impl Layout for TestLayoutMany {
 //   - Widgets -
 // -----------------------------------------------------------------------------
 
-struct TestWidget(Value<String>);
+struct TestWidget(Option<TextVal>);
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {
@@ -58,7 +58,8 @@ impl Widget for TestWidget {
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        match self.0.len() {
+        let Some(text) = self.0.as_ref() else { return Ok(Size::ZERO) };
+        match text.string().len() {
             0 => Ok(Size::ZERO),
             width => Ok(Size::new(width, 1)),
         }
@@ -71,8 +72,7 @@ struct TestWidgetFactory;
 
 impl WidgetFactory for TestWidgetFactory {
     fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let text = context.text();
-        let widget = TestWidget(text);
+        let widget = TestWidget(context.text);
         Ok(Box::new(widget))
     }
 }
@@ -84,11 +84,11 @@ impl Widget for TestListWidget {
         "list"
     }
 
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes<'_>,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let mut layout = Layouts::new(TestLayoutMany, layout);
         layout.layout(children, data)
@@ -112,20 +112,19 @@ impl WidgetFactory for TestListWidgetFactory {
 //   - Expressions -
 // -----------------------------------------------------------------------------
 
-pub struct TestExpression<'a, S> {
+pub struct TestExpression<S> {
     pub state: S,
-    pub scope: Scope<'a, 'a>,
     pub expr: Box<Expression>,
     pub layout: LayoutCtx,
 }
 
-impl<'a, S: State> TestExpression<'a, S> {
+impl<S: State> TestExpression<S> {
     pub fn ctx(&self) -> Context<'_, '_> {
-        let ctx = Context::new(&self.state, &self.scope);
+        let ctx = Context::root(&self.state);
         ctx
     }
 
-    pub fn eval(&'a self) -> Result<Node<'a>> {
+    pub fn eval(&self) -> Result<Node<'_>> {
         self.expr.eval(&self.ctx(), 0.into())
     }
 }
@@ -135,7 +134,6 @@ impl<'a, S: State> TestExpression<'a, S> {
 // -----------------------------------------------------------------------------
 pub struct TestNodes<'e> {
     pub nodes: Nodes<'e>,
-    scope: Scope<'e, 'e>,
     state: TestState,
 }
 
@@ -145,13 +143,12 @@ impl<'e> TestNodes<'e> {
         let nodes = Nodes::new(exprs, 0.into());
         Self {
             nodes,
-            scope: Scope::new(None),
             state: TestState::new(),
         }
     }
 
     pub fn layout(&mut self) -> Result<Size> {
-        let context = Context::new(&self.state, &self.scope);
+        let context = Context::root(&self.state);
         let constraints = Constraints::new(120, 40);
         let layout = LayoutCtx::new(constraints, Padding::ZERO);
 

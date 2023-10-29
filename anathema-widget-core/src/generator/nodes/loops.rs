@@ -1,47 +1,130 @@
-use anathema_values::{Change, Context, Path, State, ValueExpr, ValueRef};
+use std::ops::ControlFlow;
+
+use anathema_values::{Change, Context, LocalScope, Path, State, ValueExpr, ValueRef};
 
 use super::Nodes;
+use crate::contexts::LayoutCtx;
+use crate::error::Result;
 use crate::generator::expressions::Collection;
+use crate::generator::Expression;
 use crate::WidgetContainer;
+
+#[derive(Debug)]
+struct Iteration<'e> {
+    body: Nodes<'e>,
+}
 
 // -----------------------------------------------------------------------------
 //   - Loop -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub struct LoopNode<'e> {
-    pub(super) body: Nodes<'e>,
+    expressions: &'e [Expression],
+    iterations: Vec<Iteration<'e>>,
+    current_iteration: usize,
     pub(super) binding: Path,
     pub(super) collection: Collection<'e>,
     pub(super) value_index: usize,
 }
 
 impl<'e> LoopNode<'e> {
-    pub(crate) fn new(body: Nodes<'e>, binding: Path, collection: Collection<'e>) -> Self {
+    pub(crate) fn new(
+        expressions: &'e [Expression],
+        binding: Path,
+        collection: Collection<'e>,
+    ) -> Self {
         Self {
-            body,
+            expressions,
+            iterations: vec![],
             binding,
             collection,
             value_index: 0,
+            current_iteration: 0,
+        }
+    }
+
+    // Reset the iterations.
+    // Since every call to `Node::next` runs until it can't anymore,
+    // this function is called first.
+    //
+    // If there are no widgets nothing will happen,
+    // if there are widgets the position is reset and all the nodes
+    // are iterated over again.
+    pub(super) fn reset(&mut self) {
+        self.current_iteration = 0;
+        self.iterations.iter_mut().for_each(|i| i.body.reset());
+    }
+
+    pub(super) fn next<F>(
+        &mut self,
+        context: &Context<'_, 'e>,
+        layout: &LayoutCtx,
+        f: &mut F,
+    ) -> Result<ControlFlow<(), ()>>
+    where
+        F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
+    {
+        loop {
+            let Some(value) = self.next_value(context) else {
+                return Ok(ControlFlow::Continue(()));
+            };
+
+            let scope = LocalScope::new(self.binding.clone(), value);
+            let context = context.reparent(&scope);
+
+            // while let Some(res) = self.next(&context, layout, f) {
+            //     match res? {
+            //         ControlFlow::Continue(()) => continue,
+            //         ControlFlow::Break(()) => break,
+            //     }
+            // }
+
+
+            Continue from here.
+            Need to work on the iterations
+
+            loop {
+                let iter = match self.iterations.get_mut(self.current_iteration) {
+                    Some(iter) => iter,
+                    None => {
+                        self.iterations.push(panic!());
+                        &mut self.iterations[self.current_iteration]
+                    }
+                };
+
+                while let Some(res) = iter.body.next(&context, layout, f) {
+                    match res? {
+                        ControlFlow::Continue(()) => continue,
+                        ControlFlow::Break(()) => break,
+                    }
+                }
+                self.current_iteration += 1;
+            }
         }
     }
 
     pub(super) fn reset_cache(&mut self) {
-        self.body.reset_cache();
+        self.iterations
+            .iter_mut()
+            .for_each(|i| i.body.reset_cache());
+        // self.body.reset_cache();
     }
 
     pub(super) fn count(&self) -> usize {
-        self.body.count()
+        self.iterations.iter().map(|i| i.body.count()).sum()
+        // self.body.count()
     }
 
     pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
         let val = match self.collection {
-            Collection::ValueExpressions(expressions) => expressions.get(self.value_index)?.eval_value_ref(context)?,
+            Collection::ValueExpressions(expressions) => {
+                expressions.get(self.value_index)?.eval_value_ref(context)?
+            }
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
-            Collection::State { len, ref path } => ValueRef::Deferred(path.compose(self.value_index)),
-            // TODO: remove comments. 2023-10-27
-            // ValueRef::Expressions(list) => list.get(self.value_index)?.eval_value(context, None)?,
-            // ValueRef::List(list) => list.get(&Path::Index(self.value_index), None)?,
+            Collection::State { len, ref path } => {
+                ValueRef::Deferred(path.compose(self.value_index))
+            }
             Collection::Empty => return None,
         };
         self.value_index += 1;
@@ -50,11 +133,12 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn remove(&mut self, index: usize) {
         self.collection.remove();
-        if index >= self.body.inner.len() {
+        if index >= self.iterations.iter().map(|i| i.body.inner.len()).sum() {
             return;
         }
         self.value_index -= 1;
-        self.body.inner.remove(index);
+        self.iterations.remove(index);
+        // self.body.inner.remove(index);
     }
 
     pub(super) fn add(&mut self) {
@@ -65,10 +149,14 @@ impl<'e> LoopNode<'e> {
     pub(super) fn iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
-        self.body.iter_mut()
+        self.iterations.iter_mut().flat_map(|i| i.body.iter_mut())
+        // self.body.iter_mut()
     }
 
     pub(super) fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
-        self.body.update(node_id, change, context)
+        self.iterations
+            .iter_mut()
+            .for_each(|i| i.body.update(node_id, change, context))
+        // self.body.update(node_id, change, context)
     }
 }

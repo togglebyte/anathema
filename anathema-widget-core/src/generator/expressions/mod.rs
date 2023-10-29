@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef, TextVal,
+    Attributes, Context, LocalScope, NodeId, Path, State, TextVal, Value, ValueExpr, ValueRef,
 };
 
 pub use self::controlflow::{Else, If};
@@ -113,12 +113,15 @@ impl Loop {
             _ => Collection::Empty,
         };
 
+        let loop_node = LoopNode::new(
+            &self.body, 
+            // node_id.child(0),
+            self.binding.clone(),
+            collection,
+        );
+
         let node = Node {
-            kind: NodeKind::Loop(LoopNode::new(
-                Nodes::new(&self.body, node_id.child(0)),
-                self.binding.clone(),
-                collection,
-            )),
+            kind: NodeKind::Loop(loop_node),
             node_id,
             scope: context.new_scope(),
         };
@@ -181,15 +184,13 @@ mod test {
     use crate::layout::Constraints;
 
     impl Expression {
-        pub fn test<'a>(self) -> TestExpression<'a, TestState> {
+        pub fn test<'a>(self) -> TestExpression<TestState> {
             register_test_widget();
-            let scope = Scope::new(None);
 
             let constraint = Constraints::new(80, 20);
 
             TestExpression {
                 state: TestState::new(),
-                scope,
                 expr: Box::new(self),
                 layout: LayoutCtx::new(constraint, Padding::ZERO),
             }
@@ -206,7 +207,6 @@ mod test {
 
     #[test]
     fn eval_for() {
-        let mut scope = Scope::new(None);
         let expr =
             for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
         let node = expr.eval().unwrap();

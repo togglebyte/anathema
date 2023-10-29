@@ -41,23 +41,7 @@ impl<'e> Node<'e> {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::Loop(loop_state) => loop {
-                let Some(value) = loop_state.next_value(context) else {
-                    return Ok(ControlFlow::Continue(()));
-                };
-
-                let scope = LocalScope::new(loop_state.binding.clone(), value);
-
-                loop_state.body.reset();
-                let context = context.reparent(&scope);
-
-                while let Some(res) = loop_state.body.next(&context, layout, f) {
-                    match res? {
-                        ControlFlow::Continue(()) => continue,
-                        ControlFlow::Break(()) => break,
-                    }
-                }
-            },
+            NodeKind::Loop(loop_state) => loop_state.next(context, layout, f),
             NodeKind::ControlFlow(if_else) => {
                 if if_else.body.is_none() {
                     if_else.load_body(context, self.node_id.child(0));
@@ -101,21 +85,13 @@ impl<'e> Node<'e> {
             NodeKind::ControlFlow { .. } => panic!(),
         }
     }
-
-    fn nodes(&mut self) -> &mut Nodes<'e> {
-        match &mut self.kind {
-            NodeKind::Single(Single { children, .. }) => children,
-            NodeKind::Loop(loop_state) => &mut loop_state.body,
-            NodeKind::ControlFlow { .. } => panic!(),
-        }
-    }
 }
 
 #[cfg(test)]
 impl<'e> Node<'e> {
-    pub(crate) fn single(&mut self) -> (&mut WidgetContainer, &mut Nodes<'e>) {
+    pub(crate) fn single(&mut self) -> (&mut WidgetContainer<'e>, &mut Nodes<'e>) {
         match &mut self.kind {
-            NodeKind::Single(Single(inner, nodes)) => (inner, nodes),
+            NodeKind::Single(Single { widget, children }) => (widget, children),
             _ => panic!(),
         }
     }

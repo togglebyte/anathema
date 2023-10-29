@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{NodeId, ValueRef, DIRTY_NODES, Owned};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
     Update,
     Add,
