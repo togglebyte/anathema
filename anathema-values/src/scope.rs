@@ -192,7 +192,8 @@ impl<'a, 'expr> Context<'a, 'expr> {
         let Some(value) = attributes.get(key.as_ref()) else {
             return Value::Empty;
         };
-        value.resolve(self, node_id)
+        panic!()
+        // value.resolve(self, node_id)
     }
 }
 

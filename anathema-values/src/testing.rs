@@ -127,7 +127,8 @@ impl<S: State> TestExpression<S> {
     pub fn eval(&self) -> Option<ValueRef<'_>> {
         let scope = LocalScope::empty();
         let context = Context::new(&self.state, &scope);
-        self.expr.eval_value_ref(&context)
+        // self.expr.eval_value_ref(&context)
+        panic!()
     }
 
     pub fn eval_string(&self) -> Option<String> {

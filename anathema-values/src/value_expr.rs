@@ -103,28 +103,6 @@ impl From<&str> for ValueExpr {
 }
 
 impl ValueExpr {
-    pub fn resolve<T>(&self, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Value<T>
-    where
-        for<'b> T: TryFrom<ValueRef<'b>>,
-    {
-        panic!()
-        // match self.eval_value_ref(context) {
-        //     Some(ValueRef::Deferred(path)) => {
-        //         let val = context.state.get(&path, node_id);
-        //         let val = val.and_then(|val_ref| T::try_from(val_ref).ok());
-        //         Value::Cached {
-        //             val,
-        //             path: path.clone(),
-        //         }
-        //     }
-        //     Some(val) => match T::try_from(val) {
-        //         Ok(val) => Value::Static(val),
-        //         Err(_) => Value::Empty,
-        //     },
-        //     None => Value::Empty,
-        // }
-    }
-
     pub fn eval_bool(&self, context: &Context<'_, '_>) -> bool {
         panic!("come back to this, we need to deal with deferred values for control flow");
         // match self.eval_value_ref(context, node_id) {
@@ -175,7 +153,8 @@ impl ValueExpr {
                 ValueRef::Str(val) => Some(val.into()),
                 ValueRef::Owned(val) => Some(val.to_string()),
                 val => {
-                    panic!("don't panic here either, {val:?}")
+                    // TODO: panic...
+                    panic!("don't panic here: {val:?}")
                 }
             },
 
@@ -184,20 +163,30 @@ impl ValueExpr {
         }
     }
 
-    pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
-        match self.eval_value_ref(context) {
-            Some(ValueRef::Expressions(list)) => list
-                .iter()
-                .filter_map(|value_expr| value_expr.eval_number(context))
-                .filter_map(|num| match num {
-                    Num::Signed(val) => Some(val as usize),
-                    Num::Unsigned(val) => Some(val as usize),
-                    Num::Float(_) => None,
-                })
-                .collect(),
-            _ => vec![],
-        }
-    }
+    // pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
+    //     match self.eval_value_ref(context) {
+    //         Some(ValueRef::Expressions(list)) => list
+    //             .iter()
+    //             .filter_map(|value_expr| value_expr.eval_number(context))
+    //             .filter_map(|num| match num {
+    //                 Num::Signed(val) => Some(val as usize),
+    //                 Num::Unsigned(val) => Some(val as usize),
+    //                 Num::Float(_) => None,
+    //             })
+    //             .collect(),
+    //         _ => vec![],
+    //     }
+    // }
+
+
+    Figure out the next step.
+    There is one stage where these values
+    stops at deferred values, and
+    then there is a stage where these values
+    are evaluted all the way through.
+
+    There has to be a distinction between these two stages
+    without a bunch of copy'n'paste
 
     pub fn eval_value_ref<'expr>(
         &'expr self,

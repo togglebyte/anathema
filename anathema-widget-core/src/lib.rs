@@ -64,6 +64,7 @@ macro_rules! value_resolver_for_basetype {
             type Value = $t;
 
             fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+                let x = self.expr.to_string();
                 let value_ref = match self.expr.eval_value_ref(context) {
                     Some(ValueRef::Deferred(path)) => context.state.get(&path, node_id),
                     val => val,
