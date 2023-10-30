@@ -1,6 +1,6 @@
 use anathema_compiler::{Constants, Instruction, StringId};
 use anathema_values::{Attributes, ValueExpr};
-use anathema_widget_core::generator::{ControlFlow, Else, Expression, If, Loop, SingleNode};
+use anathema_widget_core::generator::{ControlFlow, ElseExpr, Expression, IfExpr, Loop, SingleNode};
 
 use crate::error::Result;
 
@@ -61,7 +61,7 @@ impl<'vm> Scope<'vm> {
                     let body = Scope::new(body, &self.consts).exec()?;
 
                     let mut control_flow = ControlFlow {
-                        if_expr: If { cond, body },
+                        if_expr: IfExpr { cond, expressions: body },
                         elses: vec![],
                     };
 
@@ -76,7 +76,7 @@ impl<'vm> Scope<'vm> {
                         let body = self.instructions.drain(..size).collect();
                         let body = Scope::new(body, &self.consts).exec()?;
 
-                        control_flow.elses.push(Else { cond, body });
+                        control_flow.elses.push(ElseExpr { cond, expressions: body });
                     }
 
                     let template = Expression::ControlFlow(control_flow.into());

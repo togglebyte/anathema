@@ -87,38 +87,55 @@ impl<T: Into<Owned> + Copy> From<&T> for ValueRef<'_> {
 // -----------------------------------------------------------------------------
 //   - TryFrom -
 // -----------------------------------------------------------------------------
-impl TryFrom<ValueRef<'_>> for u64 {
-    type Error = ();
 
-    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
-        match value {
-            ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num),
-            _ => Err(()),
+macro_rules! num_try_from {
+    ($t:ty, $idn:ident) => {
+        impl TryFrom<ValueRef<'_>> for $t {
+            type Error = ();
+
+            fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
+                match value {
+                    ValueRef::Owned(Owned::Num(Num::$idn(num))) => Ok(num as $t),
+                    _ => Err(()),
+                }
+            }
         }
-    }
+    };
 }
 
-impl TryFrom<ValueRef<'_>> for bool {
-    type Error = ();
+macro_rules! val_try_from {
+    ($t:ty, $idn:ident) => {
+        impl TryFrom<ValueRef<'_>> for $t {
+            type Error = ();
 
-    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
-        match value {
-            ValueRef::Owned(Owned::Bool(b)) => Ok(b),
-            _ => Err(()),
+            fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
+                match value {
+                    ValueRef::Owned(Owned::$idn(val)) => Ok(val),
+                    _ => Err(()),
+                }
+            }
         }
-    }
+    };
 }
 
-impl TryFrom<ValueRef<'_>> for usize {
-    type Error = ();
+val_try_from!(bool, Bool);
+val_try_from!(Color, Color);
 
-    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
-        match value {
-            ValueRef::Owned(Owned::Num(Num::Unsigned(num))) => Ok(num as usize),
-            _ => Err(()),
-        }
-    }
-}
+num_try_from!(usize, Unsigned);
+num_try_from!(u64, Unsigned);
+num_try_from!(u32, Unsigned);
+num_try_from!(u16, Unsigned);
+num_try_from!(u8, Unsigned);
+
+num_try_from!(isize, Signed);
+num_try_from!(i64, Signed);
+num_try_from!(i32, Signed);
+num_try_from!(i16, Signed);
+num_try_from!(i8, Signed);
+
+num_try_from!(f64, Float);
+num_try_from!(f32, Float);
+
 
 impl TryFrom<ValueRef<'_>> for String {
     type Error = ();
@@ -137,17 +154,6 @@ impl<'epr> TryFrom<ValueRef<'epr>> for &'epr str {
     fn try_from(value: ValueRef<'epr>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Str(s) => Ok(s),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<ValueRef<'_>> for Color {
-    type Error = ();
-
-    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
-        match value {
-            ValueRef::Owned(Owned::Color(color)) => Ok(color),
             _ => Err(()),
         }
     }

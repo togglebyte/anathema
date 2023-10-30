@@ -43,11 +43,7 @@ impl<'e> Node<'e> {
             }
             NodeKind::Loop(loop_state) => loop_state.next(context, layout, f),
             NodeKind::ControlFlow(if_else) => {
-                if if_else.body.is_none() {
-                    if_else.load_body(context, self.node_id.child(0));
-                }
-
-                let Some(body) = if_else.body.as_mut() else {
+                let Some(body) = if_else.body_mut() else {
                     return Ok(ControlFlow::Break(()));
                 };
 
@@ -71,9 +67,13 @@ impl<'e> Node<'e> {
         }
     }
 
+    // Update this node.
+    // This means that the update was specifically for this node, 
+    // and none of its children
     fn update(&mut self, change: Change, context: &Context<'_, '_>) {
         let scope = &self.scope;
         let context = context.reparent(scope);
+
         match &mut self.kind {
             NodeKind::Single(Single { widget, .. }) => widget.update(&context, &self.node_id),
             NodeKind::Loop(loop_node) => match change {
@@ -81,8 +81,10 @@ impl<'e> Node<'e> {
                 Change::Add => loop_node.add(),
                 _ => (),
             },
-            // TODO: need to update control flow
-            NodeKind::ControlFlow { .. } => panic!(),
+            // NOTE: the control flow it self has no immediate information
+            // that needs updating, so an update should never end with the 
+            // control flow node
+            NodeKind::ControlFlow(_) => {}
         }
     }
 }
@@ -226,9 +228,7 @@ impl<'e> Nodes<'e> {
                             widget, children, ..
                         }) => Box::new(once((widget, children))),
                         NodeKind::Loop(loop_state) => Box::new(loop_state.iter_mut()),
-                        NodeKind::ControlFlow(control_flow) => {
-                            Box::new(control_flow.body.iter_mut().map(|n| n.iter_mut()).flatten())
-                        }
+                        NodeKind::ControlFlow(control_flow) => Box::new(control_flow.iter_mut()),
                     }
                 },
             )
@@ -254,6 +254,8 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &Context<'_, '_>) {
     for node in nodes {
         if node.node_id.contains(node_id) {
+
+            // Found the node to update
             if node.node_id.eq(node_id) {
                 node.update(change, context);
                 return;
@@ -267,7 +269,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &C
                     return children.update(&node_id, change, &context)
                 }
                 NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
-                _ => panic!("better sort this out"),
+                NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
             }
         }
     }

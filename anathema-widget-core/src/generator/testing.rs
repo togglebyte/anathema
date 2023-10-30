@@ -6,7 +6,7 @@ use anathema_values::testing::TestState;
 use anathema_values::{Context, NodeId, Path, State, TextVal, ValueExpr, ValueRef};
 
 use super::nodes::Node;
-use super::{ControlFlow, Else, If};
+use super::{ControlFlow, ElseExpr, IfExpr};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
@@ -196,13 +196,13 @@ pub(crate) fn if_expression(
     //     body: impl Into<Vec<Expression>>,
 ) -> Expression {
     Expression::ControlFlow(ControlFlow {
-        if_expr: If {
+        if_expr: IfExpr {
             cond: if_true.0,
-            body: if_true.1,
+            expressions: if_true.1,
         },
         elses: elses
             .into_iter()
-            .map(|(cond, body)| Else { cond, body })
+            .map(|(cond, body)| ElseExpr { cond, expressions: body })
             .collect(),
     })
 }

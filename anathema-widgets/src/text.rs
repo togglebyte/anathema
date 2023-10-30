@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, State, Value, ValueExpr, TextVal};
+use anathema_values::{Attributes, Context, NodeId, Path, State, Value, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, LocalPos, Nodes, RenameThis, Widget, WidgetContainer, WidgetFactory, ValueResolver,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -37,7 +37,7 @@ pub struct Text {
     /// [`Alignment`](crate::Alignment).
     pub text_alignment: TextAlignment,
     /// Text
-    pub text: TextVal,
+    pub text: RenameThis<String>,
     /// Text style
     pub style: Style,
 
@@ -119,7 +119,7 @@ impl Widget for Text {
     }
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        self.text.resolve(context, Some(node_id));
+        self.text.resolve(context, None);
     }
 
     fn layout<'e>(
@@ -180,7 +180,7 @@ impl Widget for Text {
 #[derive(Debug)]
 pub struct TextSpan {
     /// The text
-    pub text: TextVal,
+    pub text: RenameThis<String>,
     /// Style for the text
     pub style: Style,
 }
@@ -209,7 +209,7 @@ impl Widget for TextSpan {
     }
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        self.text.resolve(context, Some(node_id));
+        self.text.resolve(context, None);
     }
 
     fn layout(&mut self, _: &mut Nodes, _: &LayoutCtx, _: &Context<'_, '_>) -> Result<Size> {

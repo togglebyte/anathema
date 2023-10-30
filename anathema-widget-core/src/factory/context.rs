@@ -1,12 +1,14 @@
 use anathema_render::{Color, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr, TextVal};
+use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr};
+
+use crate::RenameThis;
 
 pub struct FactoryContext<'a> {
     pub ident: &'a str,
     pub attributes: &'a Attributes,
     pub ctx: &'a Context<'a, 'a>,
     pub node_id: NodeId,
-    pub text: Option<TextVal>
+    pub text: Option<RenameThis<String>>
 }
 
 impl<'a> FactoryContext<'a> {
@@ -15,7 +17,7 @@ impl<'a> FactoryContext<'a> {
         node_id: NodeId,
         ident: &'a str,
         attributes: &'a Attributes,
-        text: Option<TextVal>,
+        text: Option<RenameThis<String>>,
     ) -> Self {
         Self {
             ctx,

@@ -1,14 +1,14 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, LocalScope, NodeId, Path, State, TextVal, Value, ValueExpr, ValueRef,
+    Attributes, Context, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef,
 };
 
-pub use self::controlflow::{Else, If};
+pub use self::controlflow::{ElseExpr, IfExpr};
 use super::nodes::{IfElse, LoopNode, Single};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
-use crate::{Display, Factory, Padding, Pos, WidgetContainer};
+use crate::{Display, Factory, Padding, Pos, WidgetContainer, RenameThis};
 
 mod controlflow;
 
@@ -31,7 +31,7 @@ impl SingleNode {
 
         let scope = context.new_scope();
 
-        let text = self.text.clone().map(TextVal::new);
+        let text = self.text.clone().map(RenameThis::new);
 
         let context = FactoryContext::new(
             context,
@@ -115,9 +115,9 @@ impl Loop {
 
         let loop_node = LoopNode::new(
             &self.body, 
-            // node_id.child(0),
             self.binding.clone(),
             collection,
+            node_id.child(0),
         );
 
         let node = Node {
@@ -135,14 +135,14 @@ impl Loop {
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub struct ControlFlow {
-    pub if_expr: If,
-    pub elses: Vec<Else>,
+    pub if_expr: IfExpr,
+    pub elses: Vec<ElseExpr>,
 }
 
 impl ControlFlow {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         let node = Node {
-            kind: NodeKind::ControlFlow(IfElse::new(&self.if_expr, &self.elses)),
+            kind: NodeKind::ControlFlow(IfElse::new(&self.if_expr, &self.elses, context, node_id.child(0))),
             node_id,
             scope: context.new_scope(),
         };
