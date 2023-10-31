@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, NodeId, Path, State, TextVal, ValueExpr, ValueRef};
+use anathema_values::{Context, NodeId, Path, State, ValueExpr, ValueRef};
 
 use super::nodes::Node;
 use super::{ControlFlow, ElseExpr, IfExpr};
@@ -13,7 +13,7 @@ use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
 use crate::{
     AnyWidget, Attributes, Factory, FactoryContext, Nodes, Padding, Widget, WidgetContainer,
-    WidgetFactory,
+    WidgetFactory, Value,
 };
 
 // -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ impl Layout for TestLayoutMany {
 //   - Widgets -
 // -----------------------------------------------------------------------------
 
-struct TestWidget(Option<TextVal>);
+struct TestWidget(Option<Value<String>>);
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {

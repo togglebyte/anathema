@@ -120,7 +120,7 @@ impl<'e> LoopNode<'e> {
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => {
                 let value = expressions.get(self.value_index)?;
-                value.eval(&Deferred::new(context))?
+                value.eval(&mut Deferred::new(context))?
             }
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,

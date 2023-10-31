@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef, ValueResolver,
+    Attributes, Context, Deferred, LocalScope, NodeId, Path, State, ValueExpr, ValueRef, ValueResolver,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -8,7 +8,7 @@ use super::nodes::{IfElse, LoopNode, Single};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
-use crate::{Display, Factory, Padding, Pos, RenameThis, WidgetContainer};
+use crate::{Display, Factory, Padding, Pos, Value, WidgetContainer};
 
 mod controlflow;
 
@@ -31,7 +31,7 @@ impl SingleNode {
 
         let scope = context.new_scope();
 
-        let text = self.text.clone().map(RenameThis::new);
+        let text = self.text.clone().map(Into::into);
 
         let context = FactoryContext::new(
             context,

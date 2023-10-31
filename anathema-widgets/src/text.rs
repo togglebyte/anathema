@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, State, Value, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, State, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, RenameThis, Widget, WidgetContainer, WidgetFactory, ValueResolver,
+    AnyWidget, FactoryContext, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, ValueResolver,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -37,7 +37,7 @@ pub struct Text {
     /// [`Alignment`](crate::Alignment).
     pub text_alignment: TextAlignment,
     /// Text
-    pub text: RenameThis<String>,
+    pub text: Value<String>,
     /// Text style
     pub style: Style,
 
@@ -120,6 +120,7 @@ impl Widget for Text {
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         self.text.resolve(context, None);
+        // self.style.resolve(context, None);
     }
 
     fn layout<'e>(
@@ -180,7 +181,7 @@ impl Widget for Text {
 #[derive(Debug)]
 pub struct TextSpan {
     /// The text
-    pub text: RenameThis<String>,
+    pub text: Value<String>,
     /// Style for the text
     pub style: Style,
 }

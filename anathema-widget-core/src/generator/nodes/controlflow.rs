@@ -3,7 +3,7 @@ use std::rc::Rc;
 use anathema_values::{Change, Context, NodeId, State, ValueExpr};
 
 use crate::generator::expressions::{ElseExpr, Expression, IfExpr};
-use crate::{Nodes, WidgetContainer, RenameThis, ValueResolver};
+use crate::{Nodes, WidgetContainer, Value, ValueResolver};
 
 #[derive(Debug)]
 pub struct IfElse<'e> {
@@ -19,7 +19,7 @@ impl<'e> IfElse<'e> {
         mut node_id: NodeId,
     ) -> Self {
         let mut if_node = If {
-            cond: RenameThis::new(if_expr.cond.clone()),
+            cond: if_expr.cond.clone().into(),
             body: Nodes::new(&if_expr.expressions, node_id.child(0)),
             node_id,
         };
@@ -29,7 +29,7 @@ impl<'e> IfElse<'e> {
             .map(|e| {
                 let node_id = if_node.node_id.next();
                 Else {
-                    cond: e.cond.as_ref().map(|c| RenameThis::new(c.clone())),
+                    cond: e.cond.clone().map(Into::into),
                     body: Nodes::new(&e.expressions, node_id.child(0)),
                     node_id,
                 }
@@ -120,7 +120,7 @@ impl<'e> IfElse<'e> {
 
 #[derive(Debug)]
 pub struct If<'e> {
-    pub cond: RenameThis<bool>,
+    pub cond: Value<bool>,
     pub body: Nodes<'e>,
     node_id: NodeId,
 }
@@ -137,7 +137,7 @@ impl If<'_> {
 
 #[derive(Debug)]
 pub struct Else<'e> {
-    pub cond: Option<RenameThis<bool>>,
+    pub cond: Option<Value<bool>>,
     pub body: Nodes<'e>,
     node_id: NodeId,
 }

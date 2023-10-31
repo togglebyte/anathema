@@ -1,14 +1,14 @@
 use anathema_render::{Color, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Path, ValueExpr};
 
-use crate::RenameThis;
+use crate::Value;
 
 pub struct FactoryContext<'a> {
     pub ident: &'a str,
     pub attributes: &'a Attributes,
     pub ctx: &'a Context<'a, 'a>,
     pub node_id: NodeId,
-    pub text: Option<RenameThis<String>>
+    pub text: Option<Value<String>>
 }
 
 impl<'a> FactoryContext<'a> {
@@ -17,7 +17,7 @@ impl<'a> FactoryContext<'a> {
         node_id: NodeId,
         ident: &'a str,
         attributes: &'a Attributes,
-        text: Option<RenameThis<String>>,
+        text: Option<Value<String>>,
     ) -> Self {
         Self {
             ctx,
@@ -48,22 +48,28 @@ impl<'a> FactoryContext<'a> {
         style
     }
 
-    pub fn is_true(&self, name: &str) -> bool {
+//     pub fn is_true(&self, name: &str) -> bool {
+//         panic!()
+//         // self.ctx
+//         //     .attribute(name, self.node_id(), self.attributes)
+//         //     .unwrap_or(false)
+//     }
+
+//     pub fn get_bool(&self, name: &str) -> Value<bool> {
+//         self.ctx.attribute(name, self.node_id(), self.attributes)
+//     }
+
+//     pub fn get_color(&self, name: &str) -> RenameThis<Color> {
+//         panic!()
+//         // self.ctx.attribute(name, self.node_id(), self.attributes)
+//     }
+
+    // pub fn get_usize(&self, name: &str) -> Value<usize> {
+    //     self.ctx.attribute(name, self.node_id(), self.attributes)
+    // }
+
+    pub fn get<T>(&self, name: &str) -> Value<T> {
+        let Some(value_ref) = self.ctx.attribute(name, self.node_id(), self.attributes) else { return Value::Empty };
         panic!()
-        // self.ctx
-        //     .attribute(name, self.node_id(), self.attributes)
-        //     .unwrap_or(false)
-    }
-
-    pub fn get_bool(&self, name: &str) -> Value<bool> {
-        self.ctx.attribute(name, self.node_id(), self.attributes)
-    }
-
-    pub fn get_color(&self, name: &str) -> Value<Color> {
-        self.ctx.attribute(name, self.node_id(), self.attributes)
-    }
-
-    pub fn get_usize(&self, name: &str) -> Value<usize> {
-        self.ctx.attribute(name, self.node_id(), self.attributes)
     }
 }

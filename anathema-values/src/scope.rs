@@ -3,31 +3,6 @@ use std::rc::Rc;
 use crate::hashmap::HashMap;
 use crate::{Attributes, NodeId, Path, State, ValueRef};
 
-#[derive(Debug)]
-pub enum Value<T> {
-    Static(T),
-    /// Any value associated with the state is subject to change
-    Cached {
-        val: Option<T>,
-        path: Path,
-    },
-    Empty,
-}
-
-impl<T> Value<T> {
-    pub fn value(&self) -> Option<&T> {
-        match self {
-            Self::Static(val) => Some(val),
-            Self::Cached { val, .. } => val.as_ref(),
-            Self::Empty => None,
-        }
-    }
-
-    pub fn reload(&mut self, state: &mut impl State) {
-        panic!()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum LocalScope<'expr> {
     Empty,
@@ -61,14 +36,14 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
     fn new(scope: &'a LocalScope<'expr>) -> Self {
         Self {
             scope,
-            parent: None
+            parent: None,
         }
     }
 
     pub fn reparent(&self, scope: &'a LocalScope<'expr>) -> Scopes<'_, 'expr> {
         Scopes {
             scope,
-            parent: Some(self)
+            parent: Some(self),
         }
     }
 
@@ -78,33 +53,6 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
             .or_else(|| self.parent.and_then(|p| p.lookup(path)))
     }
 }
-
-// pub struct UpdateScope<'a, 'expr> {
-//     scope: Option<&'a LocalScope<'expr>>,
-//     parent: Option<&'a UpdateScope<'a, 'expr>>
-// }
-
-// impl<'a, 'expr> UpdateScope<'a, 'expr> {
-//     pub fn root() -> Self {
-//         Self {
-//             scope: None,
-//             parent: None,
-//         }
-//     }
-
-//     pub fn reparent(&'a self, scope: &'a LocalScope<'expr>) -> UpdateScope<'_, 'expr> {
-//         Self {
-//             scope: Some(scope),
-//             parent: Some(self)
-//         }
-//     }
-
-//     fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
-//         self.scope
-//             .and_then(|scope| scope.lookup(path))
-//             .or_else(|| self.parent.and_then(|p| p.lookup(path)))
-//     }
-// }
 
 pub struct Context<'a, 'expr> {
     pub state: &'a dyn State,
@@ -130,46 +78,9 @@ impl<'a, 'expr> Context<'a, 'expr> {
         }
     }
 
-    // pub fn reparent(&self, scope: LocalScope<'expr>) -> Context<'_, 'expr> {
-
     pub fn new_scope(&self) -> LocalScope<'expr> {
         self.scopes.scope.clone()
     }
-
-    pub fn lookup_value<T>(&self, path: &Path, node_id: Option<&NodeId>) -> Value<T>
-    where
-        for<'b> T: TryFrom<ValueRef<'b>>,
-    {
-        panic!()
-        // // TODO: come back and unwack this one.
-        // //       the top two arms just differ because of the path, but the `Deferred` owns the path
-        // match self.scope.lookup(path) {
-        //     Some(ValueRef::Deferred(path)) => Value::Cached {
-        //         val: self
-        //             .state
-        //             .get(&path, node_id)
-        //             .and_then(|val_ref| T::try_from(val_ref).ok()),
-        //         path: path.clone(),
-        //     },
-        //     None => Value::Cached {
-        //         val: self
-        //             .state
-        //             .get(&path, node_id)
-        //             .and_then(|val_ref| T::try_from(val_ref).ok()),
-        //         path: path.clone(),
-        //     },
-        //     Some(value_ref) => match T::try_from(value_ref) {
-        //         Ok(val) => Value::Static(val),
-        //         Err(_) => Value::Empty,
-        //     },
-        // }
-    }
-
-    // pub(super) fn lookup_old(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'expr>> {
-    //     self.scope
-    //         .lookup(path)
-    //         .or_else(|| self.state.get(path, node_id))
-    // }
 
     /// Lookup a value, if the value belongs to the state it returns a deferred value
     /// instead, to be resolved at a later stage.
@@ -179,19 +90,13 @@ impl<'a, 'expr> Context<'a, 'expr> {
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
     }
 
-    pub fn attribute<T: ?Sized>(
+    pub fn attribute(
         &self,
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
         attributes: &'expr Attributes,
-    ) -> Value<T>
-    where
-        T: Clone,
-        for<'b> T: TryFrom<ValueRef<'b>>,
-    {
-        let Some(value) = attributes.get(key.as_ref()) else {
-            return Value::Empty;
-        };
+    ) -> Option<ValueRef<'expr>> {
+        let value = attributes.get(key.as_ref())?;
         panic!()
         // value.resolve(self, node_id)
     }
