@@ -1,5 +1,5 @@
 use anathema_render::Style;
-use anathema_values::{Attributes, Context, NodeId, ValueExpr, ValueRef};
+use anathema_values::{Attributes, Context, NodeId, Resolver, ValueExpr, ValueRef};
 
 pub mod contexts;
 pub mod error;
@@ -48,7 +48,7 @@ impl ValueResolver for RenameThis<String> {
     type Value = String;
 
     fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        self.inner = self.expr.eval_string(context, node_id);
+        self.inner = Resolver::new(context, node_id).resolve_string(&self.expr);
     }
 }
 
@@ -64,15 +64,13 @@ macro_rules! value_resolver_for_basetype {
             type Value = $t;
 
             fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-                let x = self.expr.to_string();
-                let value_ref = match self.expr.eval_value_ref(context) {
-                    Some(ValueRef::Deferred(path)) => context.state.get(&path, node_id),
-                    val => val,
-                };
-                self.inner = value_ref.and_then(|v| Self::Value::try_from(v).ok());
+                self.inner = self
+                    .expr
+                    .eval(&Resolver::new(context, node_id))
+                    .and_then(|v| Self::Value::try_from(v).ok());
             }
         }
-    }
+    };
 }
 
 value_resolver_for_basetype!(bool);

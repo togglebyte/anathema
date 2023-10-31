@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef,
+    Attributes, Context, Deferred, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef, ValueResolver,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -8,7 +8,7 @@ use super::nodes::{IfElse, LoopNode, Single};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::generator::nodes::{Node, NodeKind, Nodes};
-use crate::{Display, Factory, Padding, Pos, WidgetContainer, RenameThis};
+use crate::{Display, Factory, Padding, Pos, RenameThis, WidgetContainer};
 
 mod controlflow;
 
@@ -102,7 +102,7 @@ impl Loop {
         let collection = match &self.collection {
             ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
-                match self.collection.eval_path(context) {
+                match Deferred::new(context).resolve_path(&self.collection) {
                     Some(path) => match context.state.get_collection(&path, Some(&node_id)) {
                         Some(len) => Collection::State { len, path },
                         None => Collection::Path(path),
@@ -114,7 +114,7 @@ impl Loop {
         };
 
         let loop_node = LoopNode::new(
-            &self.body, 
+            &self.body,
             self.binding.clone(),
             collection,
             node_id.child(0),
@@ -142,7 +142,12 @@ pub struct ControlFlow {
 impl ControlFlow {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         let node = Node {
-            kind: NodeKind::ControlFlow(IfElse::new(&self.if_expr, &self.elses, context, node_id.child(0))),
+            kind: NodeKind::ControlFlow(IfElse::new(
+                &self.if_expr,
+                &self.elses,
+                context,
+                node_id.child(0),
+            )),
             node_id,
             scope: context.new_scope(),
         };

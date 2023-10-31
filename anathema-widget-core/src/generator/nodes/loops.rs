@@ -1,6 +1,8 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, Path, State, ValueExpr, ValueRef};
+use anathema_values::{
+    Change, Context, Deferred, LocalScope, NodeId, Path, State, ValueExpr, ValueRef, ValueResolver,
+};
 
 use super::Nodes;
 use crate::contexts::LayoutCtx;
@@ -35,7 +37,7 @@ pub struct LoopNode<'e> {
     pub(super) binding: Path,
     pub(super) collection: Collection<'e>,
     pub(super) value_index: usize,
-    node_id: NodeId
+    node_id: NodeId,
 }
 
 impl<'e> LoopNode<'e> {
@@ -52,7 +54,7 @@ impl<'e> LoopNode<'e> {
             collection,
             value_index: 0,
             current_iteration: 0,
-            node_id
+            node_id,
         }
     }
 
@@ -88,7 +90,8 @@ impl<'e> LoopNode<'e> {
             let iter = match self.iterations.get_mut(self.current_iteration) {
                 Some(iter) => iter,
                 None => {
-                    self.iterations.push(Iteration::new(self.expressions, self.node_id.next()));
+                    self.iterations
+                        .push(Iteration::new(self.expressions, self.node_id.next()));
                     &mut self.iterations[self.current_iteration]
                 }
             };
@@ -116,7 +119,8 @@ impl<'e> LoopNode<'e> {
     pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => {
-                expressions.get(self.value_index)?.eval_value_ref(context)?
+                let value = expressions.get(self.value_index)?;
+                value.eval(&Deferred::new(context))?
             }
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
@@ -153,7 +157,7 @@ impl<'e> LoopNode<'e> {
         for iter in &mut self.iterations {
             if iter.node_id.contains(node_id) {
                 iter.body.update(node_id, change, context);
-                break
+                break;
             }
         }
     }

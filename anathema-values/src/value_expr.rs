@@ -4,6 +4,142 @@ use std::rc::Rc;
 use crate::hashmap::HashMap;
 use crate::{Context, NodeId, Num, Owned, Path, Value, ValueRef};
 
+pub trait ValueResolver<'expr> {
+    fn resolve_number(&self, value: &'expr ValueExpr) -> Option<Num>;
+
+    fn resolve_bool(&self, value: &'expr ValueExpr) -> bool;
+
+    fn resolve_path(&self, value: &'expr ValueExpr) -> Option<Path>;
+
+    fn lookup_path(&self, path: &Path) -> Option<ValueRef<'expr>>;
+}
+
+/// Only resolve up until a deferred path.
+/// This means `ValueExpr::Deferred` will not be resolved, and instead returned.
+pub struct Deferred<'a, 'expr> {
+    context: &'a Context<'a, 'expr>,
+}
+
+impl<'a, 'expr> Deferred<'a, 'expr> {
+    pub fn new(context: &'a Context<'a, 'expr>) -> Self {
+        Self { context }
+    }
+}
+
+impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
+    fn resolve_number(&self, value: &'expr ValueExpr) -> Option<Num> {
+        match value.eval(self)? {
+            ValueRef::Owned(Owned::Num(num)) => Some(num),
+            _ => None,
+        }
+    }
+
+    fn resolve_bool(&self, value: &'expr ValueExpr) -> bool {
+        match value.eval(self) {
+            Some(val) => val.is_true(),
+            _ => false,
+        }
+    }
+
+    fn resolve_path(&self, value: &'expr ValueExpr) -> Option<Path> {
+        match value {
+            ValueExpr::Ident(path) => Some(Path::from(&**path)),
+            ValueExpr::Index(lhs, index) => {
+                // lhs can only be either an ident or an index
+                let lhs = self.resolve_path(lhs)?;
+                let index = self.resolve_path(index)?;
+                Some(lhs.compose(index))
+            }
+            _ => None,
+        }
+    }
+
+    fn lookup_path(&self, path: &Path) -> Option<ValueRef<'expr>> {
+        self.context.lookup(path)
+    }
+}
+
+/// Resolve the expression, following deferred paths as well.
+pub struct Resolver<'a, 'expr> {
+    context: &'a Context<'a, 'expr>,
+    node_id: Option<&'a NodeId>,
+}
+
+impl<'a, 'expr> Resolver<'a, 'expr> {
+    pub fn new(context: &'a Context<'a, 'expr>, node_id: Option<&'a NodeId>) -> Self {
+        Self { context, node_id }
+    }
+
+    pub fn resolve_string(&self, value: &ValueExpr) -> Option<String> {
+        match value.eval(self)? {
+            ValueRef::Str(s) => Some(s.into()),
+            ValueRef::Owned(s) => Some(s.to_string()),
+            ValueRef::Expressions(list) => {
+                let mut s = String::new();
+                for expr in list {
+                    let res = self.resolve_string(expr);
+                    if let Some(res) = res {
+                        s.push_str(&res);
+                    }
+                }
+                Some(s)
+            }
+            ValueRef::Deferred(path) => match self.context.state.get(&path, self.node_id)? {
+                ValueRef::Str(val) => Some(val.into()),
+                ValueRef::Owned(val) => Some(val.to_string()),
+                val => {
+                    // TODO: panic...
+                    panic!("don't panic here: {val:?}")
+                }
+            },
+
+            // TODO: probably shouldn't panic here, but we'll do it while working on this
+            _ => panic!(),
+        }
+    }
+}
+
+impl<'a, 'expr> ValueResolver<'expr> for Resolver<'a, 'expr> {
+    fn resolve_number(&self, value: &'expr ValueExpr) -> Option<Num> {
+        match value.eval(self)? {
+            ValueRef::Owned(Owned::Num(num)) => Some(num),
+            ValueRef::Deferred(path) => match self.context.state.get(&path, self.node_id)? {
+                ValueRef::Owned(Owned::Num(num)) => Some(num),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn resolve_bool(&self, value: &'expr ValueExpr) -> bool {
+        match value.eval(self) {
+            Some(ValueRef::Deferred(path)) => match self.context.state.get(&path, self.node_id) {
+                Some(val) => val.is_true(),
+                _ => false,
+            },
+            Some(val) => val.is_true(),
+            _ => false,
+        }
+    }
+
+    fn resolve_path(&self, value: &'expr ValueExpr) -> Option<Path> {
+        match value {
+            ValueExpr::Ident(path) => Some(Path::from(&**path)),
+            ValueExpr::Index(lhs, index) => {
+                // lhs can only be either an ident or an index
+                let lhs = self.resolve_path(lhs)?;
+                let index = self.resolve_path(index)?;
+                Some(lhs.compose(index))
+            }
+            _ => None,
+        }
+    }
+
+    fn lookup_path(&self, path: &Path) -> Option<ValueRef<'expr>> {
+        self.context.lookup(path)
+    }
+}
+
 // TODO: rename this to `Expression` and rename `compiler::Expression` to something else
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueExpr {
@@ -103,95 +239,7 @@ impl From<&str> for ValueExpr {
 }
 
 impl ValueExpr {
-    pub fn eval_bool(&self, context: &Context<'_, '_>) -> bool {
-        panic!("come back to this, we need to deal with deferred values for control flow");
-        // match self.eval_value_ref(context, node_id) {
-        //     Some(value) => value.is_true(),
-        //     _ => false,
-        // }
-    }
-
-    fn eval_number(&self, context: &Context<'_, '_>) -> Option<Num> {
-        match self.eval_value_ref(context)? {
-            ValueRef::Owned(Owned::Num(num)) => Some(num),
-            _ => None,
-        }
-    }
-
-    pub fn eval_path(&self, context: &Context<'_, '_>) -> Option<Path> {
-        match self {
-            Self::Ident(path) => Some(Path::from(&**path)),
-            Self::Index(lhs, index) => {
-                // lhs can only be either an ident or an index
-                let lhs = lhs.eval_path(context)?;
-                let index = index.eval_path(context)?;
-                Some(lhs.compose(index))
-            }
-            _ => None,
-        }
-    }
-
-    pub fn eval_string(
-        &self,
-        context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
-    ) -> Option<String> {
-        match self.eval_value_ref(context)? {
-            ValueRef::Str(s) => Some(s.into()),
-            ValueRef::Owned(s) => Some(s.to_string()),
-            ValueRef::Expressions(list) => {
-                let mut s = String::new();
-                for expr in list {
-                    let res = expr.eval_string(context, node_id);
-                    if let Some(res) = res {
-                        s.push_str(&res);
-                    }
-                }
-                Some(s)
-            }
-            ValueRef::Deferred(path) => match context.state.get(&path, node_id)? {
-                ValueRef::Str(val) => Some(val.into()),
-                ValueRef::Owned(val) => Some(val.to_string()),
-                val => {
-                    // TODO: panic...
-                    panic!("don't panic here: {val:?}")
-                }
-            },
-
-            // TODO: probably shouldn't panic here, but we'll do it while working on this
-            _ => panic!(),
-        }
-    }
-
-    // pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
-    //     match self.eval_value_ref(context) {
-    //         Some(ValueRef::Expressions(list)) => list
-    //             .iter()
-    //             .filter_map(|value_expr| value_expr.eval_number(context))
-    //             .filter_map(|num| match num {
-    //                 Num::Signed(val) => Some(val as usize),
-    //                 Num::Unsigned(val) => Some(val as usize),
-    //                 Num::Float(_) => None,
-    //             })
-    //             .collect(),
-    //         _ => vec![],
-    //     }
-    // }
-
-
-    Figure out the next step.
-    There is one stage where these values
-    stops at deferred values, and
-    then there is a stage where these values
-    are evaluted all the way through.
-
-    There has to be a distinction between these two stages
-    without a bunch of copy'n'paste
-
-    pub fn eval_value_ref<'expr>(
-        &'expr self,
-        context: &Context<'_, 'expr>,
-    ) -> Option<ValueRef<'expr>> {
+    pub fn eval<'e>(&'e self, resolver: &impl ValueResolver<'e>) -> Option<ValueRef<'e>> {
         match self {
             Self::Owned(value) => Some(ValueRef::Owned(*value)),
             Self::String(value) => Some(ValueRef::Str(&*value)),
@@ -201,35 +249,35 @@ impl ValueExpr {
             //   - Maths -
             // -----------------------------------------------------------------------------
             Self::Add(lhs, rhs) => {
-                let lhs = lhs.eval_number(context)?;
-                let rhs = rhs.eval_number(context)?;
+                let lhs = resolver.resolve_number(lhs)?;
+                let rhs = resolver.resolve_number(rhs)?;
                 Some(ValueRef::Owned(Owned::Num(lhs + rhs)))
             }
             Self::Sub(lhs, rhs) => {
-                let lhs = lhs.eval_number(context)?;
-                let rhs = rhs.eval_number(context)?;
+                let lhs = resolver.resolve_number(lhs)?;
+                let rhs = resolver.resolve_number(rhs)?;
                 Some(ValueRef::Owned(Owned::Num(lhs - rhs)))
             }
             Self::Mul(lhs, rhs) => {
-                let lhs = lhs.eval_number(context)?;
-                let rhs = rhs.eval_number(context)?;
+                let lhs = resolver.resolve_number(lhs)?;
+                let rhs = resolver.resolve_number(rhs)?;
                 Some(ValueRef::Owned(Owned::Num(lhs * rhs)))
             }
             Self::Mod(lhs, rhs) => {
-                let lhs = lhs.eval_number(context)?;
-                let rhs = rhs.eval_number(context)?;
+                let lhs = resolver.resolve_number(lhs)?;
+                let rhs = resolver.resolve_number(rhs)?;
                 Some(ValueRef::Owned(Owned::Num(lhs % rhs)))
             }
             Self::Div(lhs, rhs) => {
-                let lhs = lhs.eval_number(context)?;
-                let rhs = rhs.eval_number(context)?;
+                let lhs = resolver.resolve_number(lhs)?;
+                let rhs = resolver.resolve_number(rhs)?;
                 if rhs.is_zero() {
                     return None;
                 }
                 Some(ValueRef::Owned(Owned::Num(lhs / rhs)))
             }
             Self::Negative(expr) => {
-                let num = expr.eval_number(context)?;
+                let num = resolver.resolve_number(expr)?;
                 Some(ValueRef::Owned(Owned::Num(num.to_negative())))
             }
 
@@ -237,34 +285,34 @@ impl ValueExpr {
             //   - Conditions -
             // -----------------------------------------------------------------------------
             Self::Not(expr) => {
-                let b = expr.eval_bool(context);
+                let b = resolver.resolve_bool(expr);
                 Some(ValueRef::Owned((!b).into()))
             }
             Self::Equality(lhs, rhs) => {
-                let lhs = lhs.eval_value_ref(context)?;
-                let rhs = rhs.eval_value_ref(context)?;
+                let lhs = lhs.eval(resolver)?;
+                let rhs = rhs.eval(resolver)?;
                 Some(ValueRef::Owned((lhs == rhs).into()))
             }
             Self::Or(lhs, rhs) => {
-                let lhs = lhs.eval_value_ref(context)?;
-                let rhs = rhs.eval_value_ref(context)?;
+                let lhs = lhs.eval(resolver)?;
+                let rhs = rhs.eval(resolver)?;
                 Some(ValueRef::Owned((lhs.is_true() || rhs.is_true()).into()))
             }
             Self::And(lhs, rhs) => {
-                let lhs = lhs.eval_value_ref(context)?;
-                let rhs = rhs.eval_value_ref(context)?;
+                let lhs = lhs.eval(resolver)?;
+                let rhs = rhs.eval(resolver)?;
                 Some(ValueRef::Owned((lhs.is_true() && rhs.is_true()).into()))
             }
 
             // -----------------------------------------------------------------------------
             //   - Paths -
             // -----------------------------------------------------------------------------
-            Self::Ident(path) => context.lookup(&Path::from(&**path)),
+            Self::Ident(path) => resolver.lookup_path(&Path::from(&**path)),
             Self::Dot(lhs, rhs) => {
-                let lhs = lhs.eval_path(context)?;
-                let rhs = rhs.eval_path(context)?;
+                let lhs = resolver.resolve_path(lhs)?;
+                let rhs = resolver.resolve_path(rhs)?;
                 let path = lhs.compose(rhs);
-                context.lookup(&path)
+                resolver.lookup_path(&path)
             }
             Self::Index(_lhs, _index) => {
                 // TODO: index lookup
@@ -282,6 +330,21 @@ impl ValueExpr {
             Self::Map(map) => Some(ValueRef::ExpressionMap(map)),
         }
     }
+
+    // pub fn list_usize<P>(&self, context: &Context<'_, '_>) -> Vec<usize> {
+    //     match self.eval_value_ref(context) {
+    //         Some(ValueRef::Expressions(list)) => list
+    //             .iter()
+    //             .filter_map(|value_expr| value_expr.eval_number(context))
+    //             .filter_map(|num| match num {
+    //                 Num::Signed(val) => Some(val as usize),
+    //                 Num::Unsigned(val) => Some(val as usize),
+    //                 Num::Float(_) => None,
+    //             })
+    //             .collect(),
+    //         _ => vec![],
+    //     }
+    // }
 }
 
 #[cfg(test)]
