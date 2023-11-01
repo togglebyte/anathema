@@ -37,7 +37,7 @@ mod style;
 // -----------------------------------------------------------------------------
 //     - Re-exports -
 // -----------------------------------------------------------------------------
-pub use crossterm::style::Color;
+pub use crossterm::style::{Color, Attributes as CrossAttrib};
 pub use crossterm::terminal::size;
 pub use screen::Screen;
 

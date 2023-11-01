@@ -1,8 +1,7 @@
 use std::io::{Result, Write};
 
-use crossterm::style::{
-    Attribute as CrossAttrib, Color, SetAttribute, SetBackgroundColor, SetForegroundColor,
-};
+pub use crossterm::style::Attribute as CrossAttrib;
+use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
 
 /// The style for a cell in a [`crate::Buffer`]

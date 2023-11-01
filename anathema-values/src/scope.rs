@@ -92,22 +92,6 @@ impl<'a, 'expr> Context<'a, 'expr> {
             .lookup(path)
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
     }
-
-    pub fn attribute<T>(
-        &self,
-        key: impl AsRef<str>,
-        node_id: Option<&NodeId>,
-        attributes: &'expr Attributes,
-    ) -> Value<T>
-    where
-        T: for<'b> TryFrom<ValueRef<'b>>,
-    {
-        let Some(value) = attributes.get(key.as_ref()) else {
-            return Value::Empty;
-        };
-        panic!()
-        // Value::new(value.clone(), self, node_id)
-    }
 }
 
 #[cfg(test)]

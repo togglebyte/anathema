@@ -162,7 +162,7 @@ macro_rules! value_resolver_for_basetype {
 }
 
 value_resolver_for_basetype!(bool);
-// value_resolver_for_basetype!(Color);
+value_resolver_for_basetype!(anathema_render::Color);
 
 value_resolver_for_basetype!(usize);
 value_resolver_for_basetype!(u64);

@@ -5,7 +5,7 @@ use anathema_values::{Attributes, Context, DynValue, NodeId, Path, State, Value,
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, WidgetStyle,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -39,7 +39,7 @@ pub struct Text {
     /// Text
     pub text: Value<String>,
     /// Text style
-    pub style: Style,
+    pub style: WidgetStyle,
 
     layout: TextLayout,
 }
@@ -61,10 +61,10 @@ impl Text {
         };
 
         let (text, style) = if *widget_index == 0 {
-            (self.text.string(), self.style)
+            (self.text.string(), self.style.style())
         } else {
             let span = &children[widget_index - 1].to_ref::<TextSpan>();
-            (span.text.string(), span.style)
+            (span.text.string(), span.style.style())
         };
 
         if let Entry::Range(Range { start, end, .. }) = entry {
@@ -183,7 +183,7 @@ pub struct TextSpan {
     /// The text
     pub text: Value<String>,
     /// Style for the text
-    pub style: Style,
+    pub style: WidgetStyle,
 }
 
 impl TextSpan {
