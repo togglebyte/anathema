@@ -19,7 +19,7 @@ impl<'e> IfElse<'e> {
         mut node_id: NodeId,
     ) -> Self {
         let mut if_node = If {
-            cond: Value::new(if_expr.cond.clone(), context, Some(&node_id)),
+            cond: bool::init_value(context, Some(&node_id), &if_expr.cond),
             body: Nodes::new(&if_expr.expressions, node_id.child(0)),
             node_id,
         };
@@ -31,8 +31,8 @@ impl<'e> IfElse<'e> {
                 Else {
                     cond: e
                         .cond
-                        .clone()
-                        .map(|expr| Value::new(expr, context, Some(&node_id))),
+                        .as_ref()
+                        .map(|expr| bool::init_value(context, Some(&node_id), expr)),
                     body: Nodes::new(&e.expressions, node_id.child(0)),
                     node_id,
                 }

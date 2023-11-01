@@ -55,34 +55,7 @@ impl<T> Value<T> where T: DynValue {
     }
 }
 
-impl<T> Value<T>
-where
-    T: for<'b> TryFrom<ValueRef<'b>>,
-{
-    pub fn new(expr: ValueExpr, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Self {
-        // Remove this function 
-        panic!()
-        // let mut resolver = Resolver::new(context, node_id);
-
-        // let inner = expr.eval(&mut resolver);
-
-        // // Here the inner value might not be a simple deferred value.
-        // // We need to establish that the value is deferred before we get here.
-        // // Maybe we can check this when we insert the value into wherever we insert it?
-
-        // match resolver.is_deferred() {
-        //     true => Self::Dyn { inner: None, expr },
-        //     false => match inner {
-        //         Some(ValueRef::Deferred(_)) => Self::Dyn { inner: None, expr },
-        //         Some(val) => match T::try_from(val) {
-        //             Ok(val) => Self::Static(val),
-        //             Err(_) => Self::Empty,
-        //         },
-        //         None => Self::Empty,
-        //     },
-        // }
-    }
-
+impl<T> Value<T> {
     pub fn value(&self) -> Option<&T> {
         match self {
             Self::Static(val) => Some(val),

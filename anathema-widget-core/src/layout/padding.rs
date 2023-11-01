@@ -138,9 +138,59 @@ impl DynValue for Padding {
 
 #[cfg(test)]
 mod test {
+    use anathema_values::testing::{unum, TestState};
+
     use super::*;
 
     #[test]
+    fn padding_from_iter() {
+        let actual = Padding::from_iter(vec![1].into_iter());
+        let expected = Padding {
+            top: 1,
+            right: 1,
+            bottom: 1,
+            left: 1,
+        };
+        assert_eq!(expected, actual);
+
+        let actual = Padding::from_iter(vec![1, 2].into_iter());
+        let expected = Padding {
+            top: 1,
+            right: 2,
+            bottom: 1,
+            left: 2,
+        };
+        assert_eq!(expected, actual);
+
+        let actual = Padding::from_iter(vec![1, 2, 3].into_iter());
+        let expected = Padding {
+            top: 1,
+            right: 2,
+            bottom: 3,
+            left: 2,
+        };
+        assert_eq!(expected, actual);
+
+        let actual = Padding::from_iter(vec![1, 2, 3, 4].into_iter());
+        let expected = Padding {
+            top: 1,
+            right: 2,
+            bottom: 3,
+            left: 4,
+        };
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
     fn resolve_padding() {
+        let state = TestState::new();
+        let ctx = Context::root(&state);
+        let mut resolver = Resolver::new(&ctx, None);
+
+        let e = unum(2);
+        let actual = Padding::init_value(&ctx, None, &e);
+
+        let expected = Padding::new(2);
+        assert_eq!(&expected, actual.value().unwrap());
     }
 }
