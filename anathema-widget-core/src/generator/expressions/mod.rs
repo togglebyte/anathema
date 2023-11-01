@@ -1,7 +1,7 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, LocalScope, NodeId, Path, State, Value, ValueExpr, ValueRef,
-    ValueResolver, DynValue,
+    Attributes, Context, Deferred, DynValue, LocalScope, NodeId, Path, State, Value, ValueExpr,
+    ValueRef, ValueResolver,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -32,12 +32,11 @@ impl SingleNode {
 
         let scope = context.new_scope();
 
-        // let text = self
-        //     .text
-        //     .clone()
-        //     .map(|expr| Value::new(expr, context, Some(&node_id)));
-
-        let text = Value::init(context, Some(&node_id), self.text.as_ref().unwrap());
+        let text = self
+            .text
+            .as_ref()
+            .map(|text| String::init_value(context, Some(&node_id), text))
+            .unwrap_or_default();
 
         let context = FactoryContext::new(
             context,

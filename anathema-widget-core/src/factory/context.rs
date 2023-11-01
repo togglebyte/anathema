@@ -6,8 +6,7 @@ pub struct FactoryContext<'a> {
     pub attributes: &'a Attributes,
     pub ctx: &'a Context<'a, 'a>,
     pub node_id: NodeId,
-    // TODO: value expr?
-    pub text: Option<Value<String>>,
+    pub text: Value<String>,
 }
 
 impl<'a> FactoryContext<'a> {
@@ -16,7 +15,7 @@ impl<'a> FactoryContext<'a> {
         node_id: NodeId,
         ident: &'a str,
         attributes: &'a Attributes,
-        text: Option<Value<String>>,
+        text: Value<String>,
     ) -> Self {
         Self {
             ctx,

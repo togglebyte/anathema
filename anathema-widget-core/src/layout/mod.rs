@@ -2,7 +2,7 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
-use anathema_values::{Context, ValueRef, Num, Owned};
+use anathema_values::{Context, ValueRef, Num, Owned, DynValue, Value};
 
 pub use self::constraints::Constraints;
 use crate::contexts::LayoutCtx;
@@ -124,6 +124,18 @@ impl TryFrom<ValueRef<'_>> for Padding {
         }
     }
 }
+
+// impl DynValue for Value<Padding> {
+//     type Value = Padding;
+
+//     fn init(context: &Context<'_, '_>, node_id: Option<&anathema_values::NodeId>, expr: &anathema_values::ValueExpr) -> Option<Self> where Self: Sized {
+//         todo!()
+//     }
+
+//     fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&anathema_values::NodeId>) {
+//         todo!()
+//     }
+// }
 
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is
 /// [`Align::TopLeft`])

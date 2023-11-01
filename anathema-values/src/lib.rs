@@ -1,14 +1,14 @@
 use std::cell::RefCell;
 
+pub use self::collection::Collection;
 pub use self::id::NodeId;
 pub use self::list::List;
 pub use self::path::Path;
 pub use self::scope::{Context, LocalScope};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
-pub use self::value_expr::{ValueResolver, Resolver, Deferred, ValueExpr};
-pub use self::value::{ValueRef, Num, Owned};
-pub use self::collection::Collection;
+pub use self::value::{Num, Owned, ValueRef};
+pub use self::value_expr::{Deferred, Resolver, ValueExpr, ValueResolver};
 
 pub mod hashmap;
 mod path;
@@ -41,11 +41,18 @@ pub fn remove_node(node: NodeId) {
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum Value<T> {
     Dyn { inner: Option<T>, expr: ValueExpr },
     Static(T),
+    #[default]
     Empty,
+}
+
+impl<T> Value<T> where T: DynValue {
+    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        T::resolve(self, context, node_id);
+    }
 }
 
 impl<T> Value<T>
@@ -68,7 +75,7 @@ where
                 Some(val) => match T::try_from(val) {
                     Ok(val) => Self::Static(val),
                     Err(_) => Self::Empty,
-                }
+                },
                 None => Self::Empty,
             },
         }
@@ -105,25 +112,26 @@ impl Value<String> {
     }
 }
 
-impl DynValue for Value<String> {
-    type Value = String;
-
-    fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self> {
+impl DynValue for String {
+    fn init_value(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
         let inner = resolver.resolve_string(expr);
 
         match resolver.is_deferred() {
-            true => Some(Self::Dyn { inner, expr: expr.clone() }),
+            true => Value::Dyn {
+                inner,
+                expr: expr.clone(),
+            },
             false => match inner {
-                Some(val) => Some(Self::Static(val)),
-                None => None,
-            }
+                Some(val) => Value::Static(val),
+                None => Value::Empty,
+            },
         }
     }
 
-    fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        match self {
-            Self::Dyn { inner, expr } => {
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        match value {
+            Value::Dyn { inner, expr } => {
                 *inner = Resolver::new(context, node_id).resolve_string(expr)
             }
             _ => {}
@@ -131,38 +139,55 @@ impl DynValue for Value<String> {
     }
 }
 
-pub trait DynValue {
-    type Value: for<'b> TryFrom<ValueRef<'b>>;
+pub trait DynValue: for<'b> TryFrom<ValueRef<'b>> {
+    fn init_value(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Value<Self>
+    where
+        Self: Sized;
 
-    fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self> where Self: Sized;
-
-    fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>);
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>);
 }
+
+// pub trait DynValue {
+//     type Value: for<'b> TryFrom<ValueRef<'b>>;
+
+//     fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self>
+//     where
+//         Self: Sized;
+
+//     fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>);
+// }
 
 macro_rules! value_resolver_for_basetype {
     ($t:ty) => {
-        impl DynValue for Value<$t> {
-            type Value = $t;
-
-            fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self> {
+        impl DynValue for $t {
+            fn init_value(
+                context: &Context<'_, '_>,
+                node_id: Option<&NodeId>,
+                expr: &ValueExpr,
+            ) -> Value<Self> {
                 let mut resolver = Resolver::new(context, node_id);
-                let inner = expr.eval(&mut resolver).and_then(|v| Self::Value::try_from(v).ok());
+                let inner = expr
+                    .eval(&mut resolver)
+                    .and_then(|v| Self::try_from(v).ok());
 
                 match resolver.is_deferred() {
-                    true => Some(Self::Dyn { inner, expr: expr.clone() }),
+                    true => Value::Dyn {
+                        inner,
+                        expr: expr.clone(),
+                    },
                     false => match inner {
-                        Some(val) => Some(Self::Static(val)),
-                        None => None,
-                    }
+                        Some(val) => Value::Static(val),
+                        None => Value::Empty,
+                    },
                 }
             }
 
-            fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-                match self {
-                    Self::Dyn { inner, expr } => {
+            fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+                match value {
+                    Value::Dyn { inner, expr } => {
                         *inner = expr
                             .eval(&mut Resolver::new(context, node_id))
-                            .and_then(|v| Self::Value::try_from(v).ok())
+                            .and_then(|v| Self::try_from(v).ok())
                     }
                     _ => {}
                 }

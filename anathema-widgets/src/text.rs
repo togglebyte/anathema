@@ -245,7 +245,7 @@ impl WidgetFactory for TextFactory {
         //     .unwrap_or(TextAlignment::Left);
 
         let style = ctx.style();
-        let mut text = ctx.text.unwrap();
+        let mut text = ctx.text;
         text.resolve(ctx.ctx, Some(&ctx.node_id));
 
         let mut widget = Text {
@@ -253,7 +253,6 @@ impl WidgetFactory for TextFactory {
             text_alignment,
             style,
             layout: TextLayout::ZERO,
-            // TODO: unwrap! ewwww
             text,
         };
 
@@ -268,7 +267,7 @@ impl WidgetFactory for SpanFactory {
         let style = ctx.style();
         let widget = TextSpan {
             // TODO: unwrap! ewwww
-            text: ctx.text.unwrap(),
+            text: ctx.text,
             style,
         };
 
