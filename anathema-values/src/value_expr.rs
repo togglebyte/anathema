@@ -311,7 +311,14 @@ impl ValueExpr {
             // -----------------------------------------------------------------------------
             //   - Paths -
             // -----------------------------------------------------------------------------
-            Self::Ident(path) => resolver.lookup_path(&Path::from(&**path)),
+            Self::Ident(path) => {
+                let value_ref = resolver.lookup_path(&Path::from(&**path))?;
+                if let ValueRef::Deferred(_) = value_ref {
+                    // resolver.deferred = true;
+                }
+
+                Some(value_ref)
+            }
             Self::Dot(lhs, rhs) => {
                 let lhs = resolver.resolve_path(lhs)?;
                 let rhs = resolver.resolve_path(rhs)?;

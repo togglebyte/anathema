@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, NodeId, Path, State, ValueExpr};
+use anathema_values::{Attributes, Context, DynValue, NodeId, Path, State, Value, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Value, Widget, WidgetContainer, WidgetFactory, ValueResolver,
+    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
 };
 use unicode_width::UnicodeWidthStr;
 

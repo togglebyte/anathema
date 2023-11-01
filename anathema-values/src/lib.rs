@@ -41,68 +41,150 @@ pub fn remove_node(node: NodeId) {
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
 
+#[derive(Debug)]
+pub enum Value<T> {
+    Dyn { inner: Option<T>, expr: ValueExpr },
+    Static(T),
+    Empty,
+}
 
-// #[derive(Debug)]
-// pub struct RenameThis<T> {
-//     inner: Option<T>,
-//     expr: ValueExpr
-// }
+impl<T> Value<T>
+where
+    T: for<'b> TryFrom<ValueRef<'b>>,
+{
+    pub fn new(expr: ValueExpr, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Self {
+        let mut resolver = Resolver::new(context, node_id);
 
-// impl<T> RenameThis<T> {
-//     pub fn new(expr: ValueExpr) -> Self {
-//         Self {
-//             inner: None,
-//             expr,
-//         }
-//     }
+        let inner = expr.eval(&mut resolver);
 
-//     pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) 
-//     where
-//         for<'b> T: TryFrom<ValueRef<'b>>,
-//     {
-//         let value_ref = match self.expr.eval_value_ref(context) {
-//             Some(ValueRef::Deferred(path)) => context.state.get(&path, node_id),
-//             val => val,
-//         };
-//         self.inner = value_ref.and_then(|v| T::try_from(v).ok());
-//     }
-// }
+        // Here the inner value might not be a simple deferred value.
+        // We need to establish that the value is deferred before we get here.
+        // Maybe we can check this when we insert the value into wherever we insert it?
 
-// impl RenameThis<bool> {
-//     pub fn is_true(&self) -> bool {
-//         self.inner.unwrap_or(false)
-//     }
-// }
+        match resolver.is_deferred() {
+            true => Self::Dyn { inner: None, expr },
+            false => match inner {
+                Some(ValueRef::Deferred(_)) => Self::Dyn { inner: None, expr },
+                Some(val) => match T::try_from(val) {
+                    Ok(val) => Self::Static(val),
+                    Err(_) => Self::Empty,
+                }
+                None => Self::Empty,
+            },
+        }
+    }
 
-// impl RenameThis<String> {
-//     pub fn string(&self) -> &String {
-//         static EMPTY: String = String::new();
-//         self.inner.as_ref().unwrap_or(&EMPTY)
-//     }
-// }
+    pub fn value(&self) -> Option<&T> {
+        match self {
+            Self::Static(val) => Some(val),
+            Self::Dyn { inner, .. } => inner.as_ref(),
+            _ => None,
+        }
+    }
+}
 
+impl Value<bool> {
+    pub fn is_true(&self) -> bool {
+        match self {
+            Self::Dyn { inner, .. } => inner.unwrap_or(false),
+            Self::Static(b) => *b,
+            Self::Empty => false,
+        }
+    }
+}
 
-// // TODO: this is a hack while trying to figure out what kind of value types to have
-// #[derive(Debug)]
-// pub struct TextVal {
-//     inner: Option<String>,
-//     expr: ValueExpr
-// }
+impl Value<String> {
+    pub fn string(&self) -> &str {
+        static EMPTY: &str = "";
+        match self {
+            Self::Static(s) => s,
+            Self::Dyn { inner: Some(s), .. } => s,
+            Self::Dyn { inner: None, .. } => EMPTY,
+            Self::Empty => EMPTY,
+        }
+    }
+}
 
-// impl TextVal {
-//     pub fn new(expr: ValueExpr) -> Self {
-//         Self {
-//             inner: None,
-//             expr,
-//         }
-//     }
+impl DynValue for Value<String> {
+    type Value = String;
 
-//     pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-//         self.inner = self.expr.eval_string(context, node_id);
-//     }
+    fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self> {
+        let mut resolver = Resolver::new(context, node_id);
+        let inner = resolver.resolve_string(expr);
 
-//     pub fn string(&self) -> &String {
-//         static EMPTY: String = String::new();
-//         self.inner.as_ref().unwrap_or(&EMPTY)
-//     }
-// }
+        match resolver.is_deferred() {
+            true => Some(Self::Dyn { inner, expr: expr.clone() }),
+            false => match inner {
+                Some(val) => Some(Self::Static(val)),
+                None => None,
+            }
+        }
+    }
+
+    fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        match self {
+            Self::Dyn { inner, expr } => {
+                *inner = Resolver::new(context, node_id).resolve_string(expr)
+            }
+            _ => {}
+        }
+    }
+}
+
+pub trait DynValue {
+    type Value: for<'b> TryFrom<ValueRef<'b>>;
+
+    fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self> where Self: Sized;
+
+    fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>);
+}
+
+macro_rules! value_resolver_for_basetype {
+    ($t:ty) => {
+        impl DynValue for Value<$t> {
+            type Value = $t;
+
+            fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self> {
+                let mut resolver = Resolver::new(context, node_id);
+                let inner = expr.eval(&mut resolver).and_then(|v| Self::Value::try_from(v).ok());
+
+                match resolver.is_deferred() {
+                    true => Some(Self::Dyn { inner, expr: expr.clone() }),
+                    false => match inner {
+                        Some(val) => Some(Self::Static(val)),
+                        None => None,
+                    }
+                }
+            }
+
+            fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+                match self {
+                    Self::Dyn { inner, expr } => {
+                        *inner = expr
+                            .eval(&mut Resolver::new(context, node_id))
+                            .and_then(|v| Self::Value::try_from(v).ok())
+                    }
+                    _ => {}
+                }
+            }
+        }
+    };
+}
+
+value_resolver_for_basetype!(bool);
+// value_resolver_for_basetype!(Color);
+
+value_resolver_for_basetype!(usize);
+value_resolver_for_basetype!(u64);
+value_resolver_for_basetype!(u32);
+value_resolver_for_basetype!(u16);
+value_resolver_for_basetype!(u8);
+
+value_resolver_for_basetype!(isize);
+value_resolver_for_basetype!(i64);
+value_resolver_for_basetype!(i32);
+value_resolver_for_basetype!(i16);
+value_resolver_for_basetype!(i8);
+
+value_resolver_for_basetype!(f64);
+value_resolver_for_basetype!(f32);

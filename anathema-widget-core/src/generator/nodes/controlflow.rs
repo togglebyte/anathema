@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use anathema_values::{Change, Context, NodeId, State, ValueExpr};
+use anathema_values::{Change, Context, DynValue, NodeId, State, Value, ValueExpr};
 
 use crate::generator::expressions::{ElseExpr, Expression, IfExpr};
-use crate::{Nodes, WidgetContainer, Value, ValueResolver};
+use crate::{Nodes, WidgetContainer};
 
 #[derive(Debug)]
 pub struct IfElse<'e> {
@@ -19,7 +19,7 @@ impl<'e> IfElse<'e> {
         mut node_id: NodeId,
     ) -> Self {
         let mut if_node = If {
-            cond: if_expr.cond.clone().into(),
+            cond: Value::new(if_expr.cond.clone(), context, Some(&node_id)),
             body: Nodes::new(&if_expr.expressions, node_id.child(0)),
             node_id,
         };
@@ -29,7 +29,10 @@ impl<'e> IfElse<'e> {
             .map(|e| {
                 let node_id = if_node.node_id.next();
                 Else {
-                    cond: e.cond.clone().map(Into::into),
+                    cond: e
+                        .cond
+                        .clone()
+                        .map(|expr| Value::new(expr, context, Some(&node_id))),
                     body: Nodes::new(&e.expressions, node_id.child(0)),
                     node_id,
                 }
@@ -42,7 +45,7 @@ impl<'e> IfElse<'e> {
             for el in &mut elses {
                 el.resolve(context);
                 if el.is_true() {
-                    break
+                    break;
                 }
             }
         }
@@ -81,7 +84,9 @@ impl<'e> IfElse<'e> {
     pub(super) fn iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
-        self.body_mut().into_iter().flat_map(|nodes| nodes.iter_mut())
+        self.body_mut()
+            .into_iter()
+            .flat_map(|nodes| nodes.iter_mut())
     }
 
     pub(super) fn reset_cache(&mut self) {
@@ -112,7 +117,7 @@ impl<'e> IfElse<'e> {
                     e.body.update(node_id, change, context);
                 }
 
-                break
+                break;
             }
         }
     }
@@ -151,6 +156,8 @@ impl Else<'_> {
     }
 
     fn resolve(&mut self, context: &Context<'_, '_>) {
-        self.cond.as_mut().map(|c| c.resolve(context, Some(&self.node_id)));
+        self.cond
+            .as_mut()
+            .map(|c| c.resolve(context, Some(&self.node_id)));
     }
 }

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::hashmap::HashMap;
-use crate::{Attributes, NodeId, Path, State, ValueRef};
+use crate::{Attributes, NodeId, Path, State, Value, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum LocalScope<'expr> {
@@ -78,6 +78,9 @@ impl<'a, 'expr> Context<'a, 'expr> {
         }
     }
 
+    // TODO: rename this.
+    // It's not really creating a new scope but rather cloning the 
+    // existing scope to the used when evaluating a new node
     pub fn new_scope(&self) -> LocalScope<'expr> {
         self.scopes.scope.clone()
     }
@@ -90,15 +93,19 @@ impl<'a, 'expr> Context<'a, 'expr> {
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
     }
 
-    pub fn attribute(
+    pub fn attribute<T>(
         &self,
         key: impl AsRef<str>,
         node_id: Option<&NodeId>,
         attributes: &'expr Attributes,
-    ) -> Option<ValueRef<'expr>> {
-        let value = attributes.get(key.as_ref())?;
-        panic!()
-        // value.resolve(self, node_id)
+    ) -> Value<T>
+    where
+        T: for<'b> TryFrom<ValueRef<'b>>,
+    {
+        let Some(value) = attributes.get(key.as_ref()) else {
+            return Value::Empty;
+        };
+        Value::new(value.clone(), self, node_id)
     }
 }
 

@@ -1,10 +1,10 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, ValueExpr};
+use anathema_values::{Attributes, Context, NodeId, Value, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Direction, Layouts};
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, Value,
+    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory,
 };
 
 use crate::layout::vertical::Vertical;
@@ -51,7 +51,7 @@ pub struct VStack {
 
 impl VStack {
     /// Creates a new instance of a `VStack`
-    pub fn new(width: impl Into<Value<usize>>, height: impl Into<Value<usize>>) -> Self {
+    pub fn new(width: Value<usize>, height: Value<usize>) -> Self {
         Self {
             width: width.into(),
             height: height.into(),
@@ -102,13 +102,12 @@ pub(crate) struct VStackFactory;
 
 impl WidgetFactory for VStackFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        panic!()
-        // let width = ctx.get_usize("width");
-        // let height = ctx.get_usize("height");
-        // let mut widget = VStack::new(width, height);
-        // widget.min_width = ctx.get_usize("min-width");
-        // widget.min_height = ctx.get_usize("min-height");
-        // Ok(Box::new(widget))
+        let width = ctx.get("width");
+        let height = ctx.get("height");
+        let mut widget = VStack::new(width, height);
+        widget.min_width = ctx.get("min-width");
+        widget.min_height = ctx.get("min-height");
+        Ok(Box::new(widget))
     }
 }
 
