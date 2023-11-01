@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, NodeId, Path, State, ValueExpr, ValueRef};
+use anathema_values::{Context, NodeId, Path, State, Value, ValueExpr, ValueRef};
 
 use super::nodes::Node;
 use super::{ControlFlow, ElseExpr, IfExpr};
@@ -13,7 +13,7 @@ use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
 use crate::{
     AnyWidget, Attributes, Factory, FactoryContext, Nodes, Padding, Widget, WidgetContainer,
-    WidgetFactory, Value,
+    WidgetFactory,
 };
 
 // -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ impl Layout for TestLayoutMany {
 //   - Widgets -
 // -----------------------------------------------------------------------------
 
-struct TestWidget(Option<Value<String>>);
+struct TestWidget(Value<String>);
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {
@@ -58,10 +58,9 @@ impl Widget for TestWidget {
         layout: &LayoutCtx,
         data: &Context<'_, '_>,
     ) -> Result<Size> {
-        let Some(text) = self.0.as_ref() else { return Ok(Size::ZERO) };
-        match text.string().len() {
-            0 => Ok(Size::ZERO),
-            width => Ok(Size::new(width, 1)),
+        match self.0.value() {
+            Some(s) => Ok(Size::new(s.len(), 1)),
+            None => Ok(Size::ZERO),
         }
     }
 
@@ -202,7 +201,10 @@ pub(crate) fn if_expression(
         },
         elses: elses
             .into_iter()
-            .map(|(cond, body)| ElseExpr { cond, expressions: body })
+            .map(|(cond, body)| ElseExpr {
+                cond,
+                expressions: body,
+            })
             .collect(),
     })
 }

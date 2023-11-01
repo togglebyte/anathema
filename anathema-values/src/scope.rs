@@ -105,7 +105,8 @@ impl<'a, 'expr> Context<'a, 'expr> {
         let Some(value) = attributes.get(key.as_ref()) else {
             return Value::Empty;
         };
-        Value::new(value.clone(), self, node_id)
+        panic!()
+        // Value::new(value.clone(), self, node_id)
     }
 }
 

@@ -60,25 +60,27 @@ where
     T: for<'b> TryFrom<ValueRef<'b>>,
 {
     pub fn new(expr: ValueExpr, context: &Context<'_, '_>, node_id: Option<&NodeId>) -> Self {
-        let mut resolver = Resolver::new(context, node_id);
+        // Remove this function 
+        panic!()
+        // let mut resolver = Resolver::new(context, node_id);
 
-        let inner = expr.eval(&mut resolver);
+        // let inner = expr.eval(&mut resolver);
 
-        // Here the inner value might not be a simple deferred value.
-        // We need to establish that the value is deferred before we get here.
-        // Maybe we can check this when we insert the value into wherever we insert it?
+        // // Here the inner value might not be a simple deferred value.
+        // // We need to establish that the value is deferred before we get here.
+        // // Maybe we can check this when we insert the value into wherever we insert it?
 
-        match resolver.is_deferred() {
-            true => Self::Dyn { inner: None, expr },
-            false => match inner {
-                Some(ValueRef::Deferred(_)) => Self::Dyn { inner: None, expr },
-                Some(val) => match T::try_from(val) {
-                    Ok(val) => Self::Static(val),
-                    Err(_) => Self::Empty,
-                },
-                None => Self::Empty,
-            },
-        }
+        // match resolver.is_deferred() {
+        //     true => Self::Dyn { inner: None, expr },
+        //     false => match inner {
+        //         Some(ValueRef::Deferred(_)) => Self::Dyn { inner: None, expr },
+        //         Some(val) => match T::try_from(val) {
+        //             Ok(val) => Self::Static(val),
+        //             Err(_) => Self::Empty,
+        //         },
+        //         None => Self::Empty,
+        //     },
+        // }
     }
 
     pub fn value(&self) -> Option<&T> {
@@ -139,23 +141,13 @@ impl DynValue for String {
     }
 }
 
-pub trait DynValue: for<'b> TryFrom<ValueRef<'b>> {
+pub trait DynValue {
     fn init_value(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Value<Self>
     where
         Self: Sized;
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>);
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) where Self: Sized;
 }
-
-// pub trait DynValue {
-//     type Value: for<'b> TryFrom<ValueRef<'b>>;
-
-//     fn init(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Option<Self>
-//     where
-//         Self: Sized;
-
-//     fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>);
-// }
 
 macro_rules! value_resolver_for_basetype {
     ($t:ty) => {

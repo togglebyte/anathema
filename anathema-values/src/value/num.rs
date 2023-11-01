@@ -28,6 +28,14 @@ impl Num {
             Self::Float(_num) => panic!("nah, not this one"),
         }
     }
+
+    pub fn to_usize(self) -> usize {
+        match self {
+            Self::Signed(num) => num as usize,
+            Self::Unsigned(num) => num as usize,
+            Self::Float(_num) => panic!("nah, not this one"),
+        }
+    }
 }
 
 impl Display for Num {

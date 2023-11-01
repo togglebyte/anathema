@@ -2,14 +2,16 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
-use anathema_values::{Context, ValueRef, Num, Owned, DynValue, Value};
+use anathema_values::{Context, DynValue, Num, Owned, Resolver, Value, ValueRef};
 
 pub use self::constraints::Constraints;
+pub use self::padding::Padding;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::generator::Nodes;
 
 mod constraints;
+mod padding;
 
 pub trait Layout {
     fn layout<'e>(
@@ -57,85 +59,6 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
     }
 }
 
-/// Represents the padding of a widget.
-/// Padding is not applicable to `text:` widgets.
-/// ```ignore
-/// # use anathema_widgets::{Text, Border, BorderStyle, Sides, NodeId, Widget, Padding};
-/// let mut border = Border::new(&BorderStyle::Thin, Sides::ALL, 8, 5)
-///     .into_container(NodeId::anon());
-///
-/// // Set the padding to 2 on all sides
-/// border.padding = Padding::new(2);
-///
-/// let text = Text::with_text("hi")
-///     .into_container(NodeId::anon());
-/// border.add_child(text);
-/// ```
-/// would output
-/// ```text
-/// ┌──────┐
-/// │      │
-/// │  hi  │
-/// │      │
-/// └──────┘
-/// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Padding {
-    /// Top padding
-    pub top: usize,
-    /// Right padding
-    pub right: usize,
-    /// Bottom padding
-    pub bottom: usize,
-    /// Left padding
-    pub left: usize,
-}
-
-impl Padding {
-    /// Zero padding
-    pub const ZERO: Padding = Self::new(0);
-
-    /// Create a new instance padding
-    pub const fn new(padding: usize) -> Self {
-        Self {
-            top: padding,
-            right: padding,
-            bottom: padding,
-            left: padding,
-        }
-    }
-
-    /// Return the current padding and set the padding to zero
-    pub fn take(&mut self) -> Self {
-        let mut padding = Padding::ZERO;
-        std::mem::swap(&mut padding, self);
-        padding
-    }
-}
-
-impl TryFrom<ValueRef<'_>> for Padding {
-    type Error = ();
-
-    fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
-        match value {
-            ValueRef::Owned(Owned::Num(Num::Unsigned(padding))) => Ok(Padding::new(padding as usize)),
-            ValueRef::Owned(Owned::Num(Num::Signed(padding))) => Ok(Padding::new(padding as usize)),
-            _ => Err(())
-        }
-    }
-}
-
-// impl DynValue for Value<Padding> {
-//     type Value = Padding;
-
-//     fn init(context: &Context<'_, '_>, node_id: Option<&anathema_values::NodeId>, expr: &anathema_values::ValueExpr) -> Option<Self> where Self: Sized {
-//         todo!()
-//     }
-
-//     fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&anathema_values::NodeId>) {
-//         todo!()
-//     }
-// }
 
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is
 /// [`Align::TopLeft`])
