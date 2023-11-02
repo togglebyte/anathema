@@ -20,9 +20,6 @@ use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 /// * background
 /// * foreground
 /// * text-align
-/// * trimstart
-/// * trimend
-/// * collapse_spaces <- rename this to something less stupid
 /// * wordwrap
 /// ```
 ///
@@ -119,8 +116,10 @@ impl Widget for Text {
     }
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.word_wrap.resolve(context, None);
+        self.text_alignment.resolve(context, None);
         self.text.resolve(context, None);
-        // self.style.resolve(context, None);
+        self.style.resolve(context, None);
     }
 
     fn layout<'e>(
@@ -190,20 +189,6 @@ pub struct TextSpan {
 
 impl TextSpan {
     const KIND: &'static str = "TextSpan";
-
-    // fn update_text(&mut self, data: Context<'_, '_>) {
-    //     match &self.text_src {
-    //         ScopeValue::Static(s) => {}
-    //         ScopeValue::Dyn(path) => {
-    //             self.text.clear();
-    //             self.text.push_str(&data.get_string(path, None));
-    //         }
-    //         ScopeValue::List(list) => {
-    //             self.text.clear();
-    //             data.list_to_string(list, &mut self.text, None);
-    //         }
-    //     }
-    // }
 }
 
 impl Widget for TextSpan {
@@ -213,6 +198,7 @@ impl Widget for TextSpan {
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         self.text.resolve(context, None);
+        self.style.resolve(context, None);
     }
 
     fn layout(&mut self, _: &mut Nodes, _: &LayoutCtx, _: &Context<'_, '_>) -> Result<Size> {
@@ -232,32 +218,15 @@ impl Widget for TextSpan {
 pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
-    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let word_wrap = Wrap::Normal;
-
-        // TODO: get some attributes
-        // data
-        // .attribute("wrap", node_id.into(), attributes)
-        // .unwrap_or(Wrap::Normal);
-
-        let text_alignment = ctx.get("text-align");
-
-        // data.attribute("text-align", node_id.into(), attributes)
-        //     .map(|b| *b)
-        //     .unwrap_or(TextAlignment::Left);
-
-        let word_wrap = ctx.get("wrap");
-        let style = ctx.style();
-        let mut text = ctx.text;
-        text.resolve(ctx.ctx, Some(&ctx.node_id));
-
+    fn make(&self, mut ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let mut widget = Text {
-            word_wrap,
-            text_alignment,
-            style,
+            word_wrap: ctx.get("wrap"),
+            text_alignment: ctx.get("text-align"),
+            style: ctx.style(),
             layout: TextLayout::ZERO,
-            text,
+            text: ctx.text.take(),
         };
+        widget.text.resolve(ctx.ctx, Some(&ctx.node_id));
 
         Ok(Box::new(widget))
     }
@@ -266,13 +235,12 @@ impl WidgetFactory for TextFactory {
 pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
-    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let style = ctx.style();
-        let widget = TextSpan {
-            // TODO: unwrap! ewwww
-            text: ctx.text,
-            style,
+    fn make(&self, mut ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let mut widget = TextSpan {
+            text: ctx.text.take(),
+            style: ctx.style(),
         };
+        widget.text.resolve(ctx.ctx, Some(&ctx.node_id));
 
         Ok(Box::new(widget))
     }
@@ -364,20 +332,13 @@ mod test {
 
     #[test]
     fn char_wrap_layout_multiple_spans() {
-        
         let body = [
             expression("span", Some("two"), [], []),
             expression("span", Some(" averylongword"), [], []),
             expression("span", Some(" bunny "), [], []),
         ];
 
-
-        let text = expression(
-            "text",
-            Some("one"),
-            [],
-            body
-        );
+        let text = expression("text", Some("one"), [], body);
 
         test_widget(
             text,
@@ -396,7 +357,12 @@ mod test {
     #[test]
     fn right_alignment() {
         test_widget(
-            expression("text", Some("a one xxxxxxxxxxxxxxxxxx"), [("text-align".into(), ValueExpr::from("right"))], []),
+            expression(
+                "text",
+                Some("a one xxxxxxxxxxxxxxxxxx"),
+                [("text-align".into(), ValueExpr::from("right"))],
+                [],
+            ),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
@@ -412,7 +378,12 @@ mod test {
     #[test]
     fn centre_alignment() {
         test_widget(
-            expression("text", Some("a one xxxxxxxxxxxxxxxxxx"), [("text-align".into(), ValueExpr::from("center"))], []),
+            expression(
+                "text",
+                Some("a one xxxxxxxxxxxxxxxxxx"),
+                [("text-align".into(), ValueExpr::from("center"))],
+                [],
+            ),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗

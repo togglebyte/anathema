@@ -9,32 +9,22 @@ use anathema_widget_core::WidgetContainer;
 pub struct Single;
 
 impl Layout for Single {
-    fn layout(
+    fn layout<'e>(
         &mut self,
-        children: &mut Nodes,
+        children: &mut Nodes<'e>,
         layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let constraints = layout.padded_constraints();
+        let mut size = Size::ZERO;
 
-        // TODO: a size visitor?
-        let size = panic!();
-        // children.next_old(data, layout, &mut |widget, children, data| {
-        //     widget.layout(children, constraints, data)
-        // });
+        children.next(data, layout, &mut |widget, children, context| {
+            let widget_size = widget.layout(children, constraints, context)?;
+            size = widget_size;
+            Ok(())
+        });
 
-        match size {
-            Some(Err(Error::InsufficientSpaceAvailble)) => return Ok(Size::ZERO),
-            Some(size) => size,
-            None => Ok(Size::ZERO),
-        }
-
-        // TODO do we need to deal with insufficient space here?
-        //     *size = match widget.layout(children, constraints, store) {
-        //         Ok(s) => s,
-        //         Err(Error::InsufficientSpaceAvailble) => return Ok(()),
-        //         err @ Err(_) => err?,
-        //     };
+        Ok(size)
     }
 
     // fn layout<'widget, 'parent>(

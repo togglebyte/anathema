@@ -2,7 +2,9 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
-use anathema_values::Context;
+use anathema_values::{
+    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
+};
 
 pub use self::constraints::Constraints;
 pub use self::padding::Padding;
@@ -19,7 +21,7 @@ pub trait Layout {
         children: &mut Nodes<'e>,
         layout: &LayoutCtx,
         data: &Context<'_, 'e>,
-    ) -> Result<Size>;
+    ) -> crate::error::Result<Size>;
 }
 
 // -----------------------------------------------------------------------------
@@ -44,19 +46,24 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         self.layout.layout(children, self.layout_ctx, data)
     }
 
-    pub fn expand_horz(&mut self) -> &mut Self {
-        self.size.width = self.layout_ctx.constraints.max_width;
-        self
+    pub fn expand_horz(&mut self, mut size: Size) -> Size {
+        size.width = self.layout_ctx.constraints.max_width;
+        size
     }
 
-    pub fn expand_vert(&mut self) -> &mut Self {
-        self.size.height = self.layout_ctx.constraints.max_height;
-        self
+    pub fn expand_vert(&mut self, mut size: Size) -> Size {
+        size.height = self.layout_ctx.constraints.max_height;
+        size
     }
 
-    pub fn size(&self) -> Size {
-        self.size
+    pub fn expand_all(&mut self, mut size: Size) -> Size {
+        size = self.expand_horz(size);
+        self.expand_vert(size)
     }
+
+    // pub fn size(&self) -> Size {
+    //     self.size
+    // }
 }
 
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is
@@ -78,7 +85,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
 /// │hi│
 /// └──┘
 /// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub enum Align {
     /// Top
     Top,
@@ -95,6 +102,7 @@ pub enum Align {
     /// Left (centre on the vertical axis)
     Left,
     /// Top left
+    #[default]
     TopLeft,
     /// Centre
     Centre,
@@ -114,7 +122,7 @@ impl TryFrom<&str> for Align {
             "left" => Self::Left,
             "top-left" => Self::Left,
             "centre" | "center" => Self::Centre,
-            _ => Self::Top,
+            _ => Self::TopLeft,
         };
         Ok(wrap)
     }
@@ -133,6 +141,28 @@ impl Display for Align {
             Self::TopLeft => write!(f, "top-left"),
             Self::Centre => write!(f, "centre"),
         }
+    }
+}
+
+impl_dyn_value!(Align);
+
+impl TryFrom<ValueRef<'_>> for Align {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
+        let wrap = match value {
+            ValueRef::Str("top") => Self::Top,
+            ValueRef::Str("top-right") => Self::TopRight,
+            ValueRef::Str("right") => Self::Right,
+            ValueRef::Str("bottom-right") => Self::BottomRight,
+            ValueRef::Str("bottom") => Self::Bottom,
+            ValueRef::Str("bottom-left") => Self::BottomLeft,
+            ValueRef::Str("left") => Self::Left,
+            ValueRef::Str("top-left") => Self::TopLeft,
+            ValueRef::Str("centre" | "center") => Self::Centre,
+            _ => Self::Top,
+        };
+        Ok(wrap)
     }
 }
 

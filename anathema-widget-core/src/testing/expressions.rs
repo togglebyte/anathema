@@ -2,20 +2,16 @@ use anathema_values::{Attributes, Path, ValueExpr};
 
 use crate::generator::{ControlFlow, ElseExpr, Expression, IfExpr, Loop, SingleNode};
 
-pub fn expression<Txt>(
+pub fn expression(
     ident: impl Into<String>,
-    text: Option<Txt>,
+    text: impl Into<Option<&'static str>>,
     attributes: impl Into<Attributes>,
     children: impl Into<Vec<Expression>>,
-) -> Expression
-where
-    ValueExpr: From<Txt>,
-{
+) -> Expression {
     let children = children.into();
-    let text: Option<ValueExpr> = text.map(|t| ValueExpr::from(t));
     Expression::Node(SingleNode {
         ident: ident.into(),
-        text,
+        text: text.into().map(|s| ValueExpr::String(s.into())),
         attributes: attributes.into(),
         children: children.into(),
     })

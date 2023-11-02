@@ -69,6 +69,10 @@ impl<T> Value<T> {
             _ => None,
         }
     }
+
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
 }
 
 impl<T: Default + Copy> Value<T> {

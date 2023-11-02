@@ -1,5 +1,5 @@
 use anathema_render::{Attributes, Color, Style as RenderStyle};
-use anathema_values::Value;
+use anathema_values::{Context, NodeId, Value};
 
 #[derive(Debug)]
 pub struct WidgetStyle {
@@ -51,5 +51,17 @@ impl WidgetStyle {
             bg: self.bg.value().cloned(),
             attributes,
         }
+    }
+
+    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+        self.fg.resolve(context, None);
+        self.bg.resolve(context, None);
+        self.bold.resolve(context, None);
+        self.dim.resolve(context, None);
+        self.italic.resolve(context, None);
+        self.underlined.resolve(context, None);
+        self.crossed_out.resolve(context, None);
+        self.overlined.resolve(context, None);
+        self.inverse.resolve(context, None);
     }
 }
