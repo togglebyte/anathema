@@ -97,7 +97,9 @@ impl<'e> Collection<'e> {
 
     pub(super) fn remove(&mut self) {
         if let Collection::State { len, .. } = self {
-            *len -= 1;
+            if *len > 0 {
+                *len -= 1;
+            }
         }
     }
 }

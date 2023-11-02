@@ -58,18 +58,6 @@ impl<'e> LoopNode<'e> {
         }
     }
 
-    // Reset the iterations.
-    // Since every call to `Node::next` runs until it can't anymore,
-    // this function is called first.
-    //
-    // If there are no widgets nothing will happen,
-    // if there are widgets the position is reset and all the nodes
-    // are iterated over again.
-    pub(super) fn reset(&mut self) {
-        self.current_iteration = 0;
-        self.iterations.iter_mut().for_each(|i| i.body.reset());
-    }
-
     pub(super) fn next<F>(
         &mut self,
         context: &Context<'_, 'e>,
@@ -107,6 +95,8 @@ impl<'e> LoopNode<'e> {
     }
 
     pub(super) fn reset_cache(&mut self) {
+        self.current_iteration = 0;
+        self.value_index = 0;
         self.iterations
             .iter_mut()
             .for_each(|i| i.body.reset_cache());
@@ -135,12 +125,12 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn remove(&mut self, index: usize) {
         self.collection.remove();
-        if index >= self.iterations.iter().map(|i| i.body.inner.len()).sum() {
+        if index >= self.iterations.len() {
             return;
         }
         self.value_index -= 1;
-        self.current_iteration -= 1;
-        self.iterations.remove(self.current_iteration);
+        self.current_iteration = self.iterations.len() - 1;
+        self.iterations.remove(index);
     }
 
     pub(super) fn add(&mut self) {

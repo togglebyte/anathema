@@ -54,6 +54,10 @@ impl SizeMod {
             ),
         }
     }
+
+    fn to_size(self) -> Size {
+        self.inner
+    }
 }
 
 #[derive(Debug)]

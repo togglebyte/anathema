@@ -124,13 +124,9 @@ pub struct Nodes<'e> {
 }
 
 impl<'e> Nodes<'e> {
-    pub fn reset(&mut self) {
-        self.expr_index = 0;
-    }
-
-    pub fn advance(&mut self) {
-        self.expr_index += 1;
-    }
+    // pub fn reset(&mut self) {
+    //     self.expr_index = 0;
+    // }
 
     fn new_node(&mut self, context: &Context<'_, 'e>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
