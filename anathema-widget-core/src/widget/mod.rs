@@ -1,17 +1,14 @@
 use std::any::Any;
-use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 
-use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{remove_node, Context, NodeId, State};
+use anathema_render::Size;
+use anathema_values::{Context, NodeId};
 
 pub use self::container::WidgetContainer;
-use super::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
-use super::layout::Constraints;
+use super::contexts::{PaintCtx, PositionCtx, WithSize};
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
-use crate::generator::{Expression, Nodes};
-use crate::{Display, LocalPos, Padding, Pos, Region};
+use crate::generator::Nodes;
 
 mod container;
 
@@ -53,7 +50,7 @@ pub trait Widget {
     }
 
     /// Called when a value the widget subscribes to has changed.
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {}
+    fn update(&mut self, _context: &Context<'_, '_>, _node_id: &NodeId) {}
 }
 
 pub trait AnyWidget {

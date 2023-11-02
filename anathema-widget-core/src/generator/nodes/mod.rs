@@ -1,16 +1,13 @@
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_render::Size;
 use anathema_values::{Change, Context, LocalScope, NodeId, State};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
-use self::visitor::NodeVisitor;
 use crate::contexts::LayoutCtx;
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::generator::expressions::Expression;
-use crate::layout::Layout;
 use crate::WidgetContainer;
 
 mod controlflow;
@@ -68,7 +65,7 @@ impl<'e> Node<'e> {
     }
 
     // Update this node.
-    // This means that the update was specifically for this node, 
+    // This means that the update was specifically for this node,
     // and none of its children
     fn update(&mut self, change: Change, context: &Context<'_, '_>) {
         let scope = &self.scope;
@@ -82,7 +79,7 @@ impl<'e> Node<'e> {
                 _ => (),
             },
             // NOTE: the control flow it self has no immediate information
-            // that needs updating, so an update should never end with the 
+            // that needs updating, so an update should never end with the
             // control flow node
             NodeKind::ControlFlow(_) => {}
         }
@@ -250,7 +247,6 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &Context<'_, '_>) {
     for node in nodes {
         if node.node_id.contains(node_id) {
-
             // Found the node to update
             if node.node_id.eq(node_id) {
                 node.update(change, context);

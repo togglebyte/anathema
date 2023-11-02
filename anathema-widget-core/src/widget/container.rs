@@ -120,7 +120,7 @@ impl WidgetContainer<'_> {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
                 let layout = LayoutCtx::new(constraints, self.padding);
-                let mut size = Size::ZERO;
+                let _size = Size::ZERO;
                 let size = self.inner.layout(children, &layout, data)?;
 
                 // TODO: we should compare the new size with the old size

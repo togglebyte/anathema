@@ -1,4 +1,4 @@
-use anathema_render::{Color, Attributes, Style as RenderStyle};
+use anathema_render::{Attributes, Color, Style as RenderStyle};
 use anathema_values::Value;
 
 #[derive(Debug)]

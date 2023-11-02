@@ -1,5 +1,4 @@
-use anathema_render::Color;
-use anathema_values::{Attributes, Context, NodeId, Path, Value, ValueExpr, ValueRef, Resolver, DynValue};
+use anathema_values::{Attributes, Context, DynValue, NodeId, Value};
 
 use crate::WidgetStyle;
 
@@ -47,7 +46,9 @@ impl<'a> FactoryContext<'a> {
     }
 
     pub fn get<T: DynValue>(&self, name: &str) -> Value<T> {
-        let Some(val) = self.attributes.get(name) else { return Value::Empty };
+        let Some(val) = self.attributes.get(name) else {
+            return Value::Empty;
+        };
         T::init_value(self.ctx, Some(&self.node_id), val)
     }
 }

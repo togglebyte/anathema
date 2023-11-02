@@ -1,8 +1,6 @@
-use std::rc::Rc;
+use anathema_values::{Change, Context, DynValue, NodeId, Value};
 
-use anathema_values::{Change, Context, DynValue, NodeId, State, Value, ValueExpr};
-
-use crate::generator::expressions::{ElseExpr, Expression, IfExpr};
+use crate::generator::expressions::{ElseExpr, IfExpr};
 use crate::{Nodes, WidgetContainer};
 
 #[derive(Debug)]
@@ -16,7 +14,7 @@ impl<'e> IfElse<'e> {
         if_expr: &'e IfExpr,
         elses: &'e [ElseExpr],
         context: &Context<'_, '_>,
-        mut node_id: NodeId,
+        node_id: NodeId,
     ) -> Self {
         let mut if_node = If {
             cond: bool::init_value(context, Some(&node_id), &if_expr.cond),

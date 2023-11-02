@@ -2,7 +2,7 @@ use std::fmt::{self, Display};
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
-use anathema_values::{Context, DynValue, Num, Owned, Resolver, Value, ValueRef};
+use anathema_values::Context;
 
 pub use self::constraints::Constraints;
 pub use self::padding::Padding;
@@ -58,7 +58,6 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         self.size
     }
 }
-
 
 /// Aligning a widget "inflates" the parent to its maximum constraints (even if the alignment is
 /// [`Align::TopLeft`])

@@ -1,4 +1,4 @@
-use anathema_values::{Context, DynValue, Num, Owned, Resolver, Value, ValueRef};
+use anathema_values::{Context, DynValue, Owned, Resolver, Value, ValueRef};
 
 /// Represents the padding of a widget.
 /// Padding is not applicable to `text:` widgets.
@@ -128,9 +128,9 @@ impl DynValue for Padding {
     }
 
     fn resolve(
-        value: &mut Value<Self>,
-        context: &Context<'_, '_>,
-        node_id: Option<&anathema_values::NodeId>,
+        _value: &mut Value<Self>,
+        _context: &Context<'_, '_>,
+        _node_id: Option<&anathema_values::NodeId>,
     ) {
         todo!()
     }

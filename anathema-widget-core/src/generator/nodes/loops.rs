@@ -1,8 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{
-    Change, Context, Deferred, LocalScope, NodeId, Path, State, ValueExpr, ValueRef, ValueResolver,
-};
+use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, State, ValueRef};
 
 use super::Nodes;
 use crate::contexts::LayoutCtx;
@@ -114,7 +112,7 @@ impl<'e> LoopNode<'e> {
             }
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
-            Collection::State { len, ref path } => {
+            Collection::State { len: _, ref path } => {
                 ValueRef::Deferred(path.compose(self.value_index))
             }
             Collection::Empty => return None,

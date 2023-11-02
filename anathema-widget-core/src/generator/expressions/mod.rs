@@ -1,7 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, LocalScope, NodeId, Path, State, Value, ValueExpr,
-    ValueRef, ValueResolver,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueResolver,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
