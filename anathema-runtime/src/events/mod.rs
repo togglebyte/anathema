@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anathema_values::State;
-use anathema_widget_core::WidgetContainer;
+
 use anathema_widget_core::generator::Nodes;
 use crossterm::event::{read, Event as CTEvent};
 pub use crossterm::event::{

@@ -1,4 +1,4 @@
-use std::fmt::{self, Display, Formatter};
+
 use std::iter::Peekable;
 use std::str::CharIndices;
 
@@ -6,7 +6,7 @@ use anathema_render::Color;
 
 use crate::error::{Error, Result};
 use crate::token::{Kind, Operator, Token, Value};
-use crate::{Constants, StringId};
+use crate::{Constants};
 
 impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
     type Item = Result<Token>;
@@ -215,7 +215,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
         let mut end = index;
         let mut parse_float = &self.src[index..=index] == ".";
 
-        let signed = &self.src[index..=index] == "-"
+        let _signed = &self.src[index..=index] == "-"
             || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
 
         while let Some((e, c @ ('0'..='9' | '.'))) = self.chars.peek() {
@@ -329,7 +329,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
 mod test {
     use super::*;
     use crate::error::ErrorKind;
-    use crate::token::Tokens;
+    
 
     fn token_kind(input: &str) -> Kind {
         let mut consts = Constants::new();

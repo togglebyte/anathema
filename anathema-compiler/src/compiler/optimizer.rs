@@ -220,7 +220,7 @@ mod test {
 
     fn parse(src: &str) -> Vec<Expression> {
         let mut consts = Constants::new();
-        let mut lexer = Lexer::new(src, &mut consts);
+        let lexer = Lexer::new(src, &mut consts);
         let tokens = Tokens::new(lexer.collect::<Result<_, _>>().unwrap(), src.len());
         let parser = Parser::new(tokens, &mut consts, src);
         let expr = parser.map(|e| e.unwrap()).collect();

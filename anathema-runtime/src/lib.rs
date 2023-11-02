@@ -1,9 +1,9 @@
 use std::io::{stdout, Stdout};
-use std::ops::DerefMut;
-use std::sync::Arc;
+
+
 use std::time::Instant;
 
-use anathema_render::{size, Attributes, Screen, Size};
+use anathema_render::{size, Screen, Size};
 use anathema_values::{drain_dirty_nodes, Context, State};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
@@ -169,19 +169,19 @@ where
             self.changes();
 
             // *self.meta.count = self.nodes.count();
-            let total = Instant::now();
+            let _total = Instant::now();
             self.layout()?;
             // *self.meta.timings.layout = total.elapsed();
 
-            let now = Instant::now();
+            let _now = Instant::now();
             self.position();
             // *self.meta.timings.position = now.elapsed();
 
-            let now = Instant::now();
+            let _now = Instant::now();
             self.paint();
             // *self.meta.timings.paint = now.elapsed();
 
-            let now = Instant::now();
+            let _now = Instant::now();
             self.screen.render(&mut self.output)?;
             // *self.meta.timings.render = now.elapsed();
             // *self.meta.timings.total = total.elapsed();

@@ -1,9 +1,9 @@
-use anathema_values::{Path, ValueExpr};
+use anathema_values::{ValueExpr};
 
 use super::pratt::{eval, expr};
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::lexer::Lexer;
-use crate::token::{Kind, Operator, Token, Tokens, Value};
+use crate::token::{Kind, Operator, Tokens, Value};
 use crate::{Constants, StringId, ValueId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
