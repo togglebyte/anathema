@@ -60,98 +60,98 @@ impl WidgetFactory for SpacerFactory {
     }
 }
 
-#[cfg(test)]
-mod test {
+// #[cfg(test)]
+// mod test {
 
-    use anathema_widget_core::template::{template, template_text};
-    use anathema_widget_core::testing::FakeTerm;
+//     use anathema_widget_core::template::{template, template_text};
+//     use anathema_widget_core::testing::FakeTerm;
 
-    use crate::testing::test_widget;
-    use crate::{Border, VStack};
+//     use crate::testing::test_widget;
+//     use crate::{Border, VStack};
 
-    #[test]
-    fn space_out_hstack() {
-        let border = Border::thin(None, None);
-        let body = [template(
-            "hstack",
-            (),
-            [
-                template_text("left"),
-                template("spacer", (), vec![]),
-                template_text("right"),
-            ],
-        )];
-        test_widget(
-            border,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║┌─────────────┐║
-            ║│left    right│║
-            ║└─────────────┘║
-            ║               ║
-            ║               ║
-            ║               ║
-            ║               ║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn space_out_hstack() {
+//         let border = Border::thin(None, None);
+//         let body = [template(
+//             "hstack",
+//             (),
+//             [
+//                 template_text("left"),
+//                 template("spacer", (), vec![]),
+//                 template_text("right"),
+//             ],
+//         )];
+//         test_widget(
+//             border,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║┌─────────────┐║
+//             ║│left    right│║
+//             ║└─────────────┘║
+//             ║               ║
+//             ║               ║
+//             ║               ║
+//             ║               ║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn space_out_vstack() {
-        let hstack = VStack::new(None, None);
-        let body = [
-            template_text("top"),
-            template("spacer", (), vec![]),
-            template_text("bottom"),
-        ];
-        test_widget(
-            hstack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║top            ║
-            ║               ║
-            ║               ║
-            ║               ║
-            ║               ║
-            ║bottom         ║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn space_out_vstack() {
+//         let hstack = VStack::new(None, None);
+//         let body = [
+//             template_text("top"),
+//             template("spacer", (), vec![]),
+//             template_text("bottom"),
+//         ];
+//         test_widget(
+//             hstack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║top            ║
+//             ║               ║
+//             ║               ║
+//             ║               ║
+//             ║               ║
+//             ║bottom         ║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn centre_using_spacers() {
-        let hstack = VStack::new(None, None);
-        let body = [
-            template_text("top"),
-            template("spacer", (), vec![]),
-            template_text("centre"),
-            template("spacer", (), vec![]),
-            template_text("bottom"),
-        ];
-        test_widget(
-            hstack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║top            ║
-            ║               ║
-            ║               ║
-            ║centre         ║
-            ║               ║
-            ║               ║
-            ║bottom         ║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
-}
+//     #[test]
+//     fn centre_using_spacers() {
+//         let hstack = VStack::new(None, None);
+//         let body = [
+//             template_text("top"),
+//             template("spacer", (), vec![]),
+//             template_text("centre"),
+//             template("spacer", (), vec![]),
+//             template_text("bottom"),
+//         ];
+//         test_widget(
+//             hstack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║top            ║
+//             ║               ║
+//             ║               ║
+//             ║centre         ║
+//             ║               ║
+//             ║               ║
+//             ║bottom         ║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
+// }

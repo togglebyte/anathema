@@ -185,7 +185,7 @@ mod test {
     fn resolve_padding() {
         let state = TestState::new();
         let ctx = Context::root(&state);
-        let mut resolver = Resolver::new(&ctx, None);
+        let _resolver = Resolver::new(&ctx, None);
 
         let e = unum(2);
         let actual = Padding::init_value(&ctx, None, &e);

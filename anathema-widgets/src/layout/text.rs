@@ -1,4 +1,5 @@
 use anathema_render::Size;
+use anathema_values::{impl_dyn_value, Resolver, Context, DynValue, NodeId, Value, ValueExpr, ValueRef};
 use unicode_width::UnicodeWidthChar;
 
 fn is_word_boundary(c: char) -> bool {
@@ -20,9 +21,10 @@ fn is_word_boundary(c: char) -> bool {
 /// ```
 ///
 /// The text will only align it self within the parent widget.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Default)]
 pub enum TextAlignment {
     /// Align the to the left inside the parent
+    #[default]
     Left,
     /// Align the text in the centre of the parent
     Centre,
@@ -30,16 +32,18 @@ pub enum TextAlignment {
     Right,
 }
 
-impl TryFrom<&str> for TextAlignment {
+impl_dyn_value!(TextAlignment);
+
+impl TryFrom<ValueRef<'_>> for TextAlignment {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let text_align = match value {
-            "centre" | "center" => Self::Centre,
-            "right" => Self::Right,
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
+        let wrap = match value {
+            ValueRef::Str("center" | "centre") => Self::Centre,
+            ValueRef::Str("right") => Self::Right,
             _ => Self::Left,
         };
-        Ok(text_align)
+        Ok(wrap)
     }
 }
 
@@ -56,13 +60,15 @@ pub enum Wrap {
     Overflow,
 }
 
-impl TryFrom<&str> for Wrap {
+impl_dyn_value!(Wrap);
+
+impl TryFrom<ValueRef<'_>> for Wrap {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'_>) -> Result<Self, Self::Error> {
         let wrap = match value {
-            "overflow" => Self::Overflow,
-            "break" => Self::WordBreak,
+            ValueRef::Str("overflow") => Self::Overflow,
+            ValueRef::Str("break") => Self::WordBreak,
             _ => Self::Normal,
         };
         Ok(wrap)

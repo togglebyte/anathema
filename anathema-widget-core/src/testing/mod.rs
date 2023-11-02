@@ -1,9 +1,17 @@
 use anathema_render::{Screen, ScreenPos, Size};
+use anathema_values::Context;
+use anathema_values::testing::TestState;
 
 use super::WidgetContainer;
 use crate::contexts::PaintCtx;
+use crate::generator::Expression;
 use crate::layout::Constraints;
-use crate::Widget;
+use crate::{Nodes, Pos, Widget};
+
+pub use self::expressions::expression;
+pub(crate) use self::expressions::{for_expression, if_expression};
+
+mod expressions;
 
 // -----------------------------------------------------------------------------
 //   - Here be (hacky) dragons -
@@ -60,29 +68,31 @@ impl FakeTerm {
     }
 }
 
-pub fn test_widget(
-    widget: impl Widget + 'static + PartialEq,
-    children: impl Into<Vec<Template>>,
-    expected: FakeTerm,
-) {
-    let children = children.into();
-    let widget = WidgetContainer::new(Box::new(widget), children.into());
-    test_widget_container(widget, expected)
+pub fn test_widget(expr: Expression, expected: FakeTerm) {
+    let state = TestState::new();
+    let context = Context::root(&state);
+    let mut node = expr.eval(&context, 0.into()).unwrap();
+    let (widget, nodes) = node.single();
+
+    test_widget_container(widget, nodes, &context, expected)
 }
 
-pub fn test_widget_container(mut widget: WidgetContainer, mut expected: FakeTerm) {
+pub fn test_widget_container<'e>(
+    widget: &mut WidgetContainer<'e>,
+    children: &mut Nodes<'e>,
+    context: &Context<'_, 'e>,
+    mut expected: FakeTerm,
+) {
     // Layout
     let constraints = Constraints::new(Some(expected.size.width), Some(expected.size.height));
-    let data = DataCtx::default();
-    let store = Values::new(&data);
-    widget.layout(constraints, &store).unwrap();
+    widget.layout(children, constraints, &context).unwrap();
 
     // Position
-    widget.position(Pos::ZERO);
+    widget.position(children, Pos::ZERO);
 
     // Paint
     let ctx = PaintCtx::new(&mut expected.screen, None);
-    widget.paint(ctx);
+    widget.paint(children, ctx);
 
     let expected_rows = expected.rows.iter();
     for (y, row) in expected_rows.enumerate() {
@@ -99,3 +109,4 @@ pub fn test_widget_container(mut widget: WidgetContainer, mut expected: FakeTerm
         }
     }
 }
+

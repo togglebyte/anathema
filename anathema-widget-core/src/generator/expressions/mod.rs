@@ -193,6 +193,7 @@ mod test {
     use crate::contexts::LayoutCtx;
     use crate::generator::testing::*;
     use crate::layout::Constraints;
+    use crate::testing::{for_expression, expression};
 
     impl Expression {
         pub fn test<'a>(self) -> TestExpression<TestState> {

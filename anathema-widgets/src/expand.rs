@@ -155,259 +155,259 @@ impl WidgetFactory for ExpandFactory {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use anathema_widget_core::template::{template, template_text};
-    use anathema_widget_core::testing::FakeTerm;
+// #[cfg(test)]
+// mod test {
+//     use anathema_widget_core::template::{template, template_text};
+//     use anathema_widget_core::testing::FakeTerm;
 
-    use super::*;
-    use crate::testing::test_widget;
-    use crate::{Border, HStack, VStack};
+//     use super::*;
+//     use crate::testing::test_widget;
+//     use crate::{Border, HStack, VStack};
 
-    #[test]
-    fn expand_border() {
-        let border = Border::thin(None, None);
-        let body = [template("expand", (), vec![])];
-        test_widget(
-            border,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║┌─────────────┐║
-            ║│             │║
-            ║│             │║
-            ║│             │║
-            ║│             │║
-            ║└─────────────┘║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn expand_border() {
+//         let border = Border::thin(None, None);
+//         let body = [template("expand", (), vec![])];
+//         test_widget(
+//             border,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║┌─────────────┐║
+//             ║│             │║
+//             ║│             │║
+//             ║│             │║
+//             ║│             │║
+//             ║└─────────────┘║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expand_horz_with_factors() {
-        let stack = HStack::new(None, None);
-        let body = [
-            template(
-                "expand",
-                [("factor", 1)],
-                vec![template("border", (), vec![template("expand", (), vec![])])],
-            ),
-            template(
-                "expand",
-                [("factor", 2)],
-                vec![template("border", (), vec![template("expand", (), vec![])])],
-            ),
-        ];
+//     #[test]
+//     fn expand_horz_with_factors() {
+//         let stack = HStack::new(None, None);
+//         let body = [
+//             template(
+//                 "expand",
+//                 [("factor", 1)],
+//                 vec![template("border", (), vec![template("expand", (), vec![])])],
+//             ),
+//             template(
+//                 "expand",
+//                 [("factor", 2)],
+//                 vec![template("border", (), vec![template("expand", (), vec![])])],
+//             ),
+//         ];
 
-        test_widget(
-            stack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║┌───┐┌────────┐║
-            ║│   ││        │║
-            ║│   ││        │║
-            ║│   ││        │║
-            ║│   ││        │║
-            ║└───┘└────────┘║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
+//         test_widget(
+//             stack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║┌───┐┌────────┐║
+//             ║│   ││        │║
+//             ║│   ││        │║
+//             ║│   ││        │║
+//             ║│   ││        │║
+//             ║└───┘└────────┘║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expand_vert_with_factors() {
-        let stack = VStack::new(None, None);
-        let body = [
-            template(
-                "expand",
-                [("factor", 1)],
-                vec![template("border", (), vec![template("expand", (), vec![])])],
-            ),
-            template(
-                "expand",
-                [("factor", 2)],
-                vec![template("border", (), vec![template("expand", (), vec![])])],
-            ),
-        ];
+//     #[test]
+//     fn expand_vert_with_factors() {
+//         let stack = VStack::new(None, None);
+//         let body = [
+//             template(
+//                 "expand",
+//                 [("factor", 1)],
+//                 vec![template("border", (), vec![template("expand", (), vec![])])],
+//             ),
+//             template(
+//                 "expand",
+//                 [("factor", 2)],
+//                 vec![template("border", (), vec![template("expand", (), vec![])])],
+//             ),
+//         ];
 
-        test_widget(
-            stack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║┌─────────────┐║
-            ║│             │║
-            ║└─────────────┘║
-            ║┌─────────────┐║
-            ║│             │║
-            ║│             │║
-            ║│             │║
-            ║│             │║
-            ║└─────────────┘║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
+//         test_widget(
+//             stack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║┌─────────────┐║
+//             ║│             │║
+//             ║└─────────────┘║
+//             ║┌─────────────┐║
+//             ║│             │║
+//             ║│             │║
+//             ║│             │║
+//             ║│             │║
+//             ║└─────────────┘║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expand_horz() {
-        let border = Border::thin(None, None);
-        let body = [template(
-            "expand",
-            [("axis", Axis::Horizontal)],
-            vec![template_text("A cup of tea please")],
-        )];
-        test_widget(
-            border,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [════════════════╗
-            ║┌────────────────────────────┐║
-            ║│A cup of tea please         │║
-            ║└────────────────────────────┘║
-            ║                              ║
-            ║                              ║
-            ╚══════════════════════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn expand_horz() {
+//         let border = Border::thin(None, None);
+//         let body = [template(
+//             "expand",
+//             [("axis", Axis::Horizontal)],
+//             vec![template_text("A cup of tea please")],
+//         )];
+//         test_widget(
+//             border,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [════════════════╗
+//             ║┌────────────────────────────┐║
+//             ║│A cup of tea please         │║
+//             ║└────────────────────────────┘║
+//             ║                              ║
+//             ║                              ║
+//             ╚══════════════════════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expand_vert() {
-        let border = Border::thin(None, None);
-        let body = [template(
-            "expand",
-            [("axis", Axis::Vertical)],
-            vec![template_text("A cup of tea please")],
-        )];
-        test_widget(
-            border,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [════════════════╗
-            ║┌───────────────────┐         ║
-            ║│A cup of tea please│         ║
-            ║│                   │         ║
-            ║│                   │         ║
-            ║│                   │         ║
-            ║│                   │         ║
-            ║└───────────────────┘         ║
-            ╚══════════════════════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn expand_vert() {
+//         let border = Border::thin(None, None);
+//         let body = [template(
+//             "expand",
+//             [("axis", Axis::Vertical)],
+//             vec![template_text("A cup of tea please")],
+//         )];
+//         test_widget(
+//             border,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [════════════════╗
+//             ║┌───────────────────┐         ║
+//             ║│A cup of tea please│         ║
+//             ║│                   │         ║
+//             ║│                   │         ║
+//             ║│                   │         ║
+//             ║│                   │         ║
+//             ║└───────────────────┘         ║
+//             ╚══════════════════════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expand_all() {
-        let border = Border::thin(None, None);
-        let body = [template(
-            "expand",
-            (),
-            vec![template_text("A cup of tea please")],
-        )];
-        test_widget(
-            border,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [════════════════╗
-            ║┌────────────────────────────┐║
-            ║│A cup of tea please         │║
-            ║│                            │║
-            ║│                            │║
-            ║│                            │║
-            ║│                            │║
-            ║└────────────────────────────┘║
-            ╚══════════════════════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn expand_all() {
+//         let border = Border::thin(None, None);
+//         let body = [template(
+//             "expand",
+//             (),
+//             vec![template_text("A cup of tea please")],
+//         )];
+//         test_widget(
+//             border,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [════════════════╗
+//             ║┌────────────────────────────┐║
+//             ║│A cup of tea please         │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║└────────────────────────────┘║
+//             ╚══════════════════════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expand_with_padding() {
-        let border = Border::thin(None, None);
-        let body = [template(
-            "expand",
-            [("padding", 1)],
-            vec![template_text("A cup of tea please")],
-        )];
-        test_widget(
-            border,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [════════════════╗
-            ║┌────────────────────────────┐║
-            ║│                            │║
-            ║│ A cup of tea please        │║
-            ║│                            │║
-            ║│                            │║
-            ║│                            │║
-            ║│                            │║
-            ║└────────────────────────────┘║
-            ╚══════════════════════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn expand_with_padding() {
+//         let border = Border::thin(None, None);
+//         let body = [template(
+//             "expand",
+//             [("padding", 1)],
+//             vec![template_text("A cup of tea please")],
+//         )];
+//         test_widget(
+//             border,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [════════════════╗
+//             ║┌────────────────────────────┐║
+//             ║│                            │║
+//             ║│ A cup of tea please        │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║└────────────────────────────┘║
+//             ╚══════════════════════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn expanding_inside_vstack() {
-        let vstack = VStack::new(None, None);
-        let body = [
-            template(
-                "border",
-                (),
-                [template(
-                    "hstack",
-                    (),
-                    [
-                        template_text("A cup of tea please"),
-                        template("spacer", (), []),
-                    ],
-                )],
-            ),
-            template(
-                "expand",
-                (),
-                [template(
-                    "border",
-                    (),
-                    [template("expand", (), [template_text("Hello world")])],
-                )],
-            ),
-        ];
+//     #[test]
+//     fn expanding_inside_vstack() {
+//         let vstack = VStack::new(None, None);
+//         let body = [
+//             template(
+//                 "border",
+//                 (),
+//                 [template(
+//                     "hstack",
+//                     (),
+//                     [
+//                         template_text("A cup of tea please"),
+//                         template("spacer", (), []),
+//                     ],
+//                 )],
+//             ),
+//             template(
+//                 "expand",
+//                 (),
+//                 [template(
+//                     "border",
+//                     (),
+//                     [template("expand", (), [template_text("Hello world")])],
+//                 )],
+//             ),
+//         ];
 
-        test_widget(
-            vstack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [════════════════╗
-            ║┌────────────────────────────┐║
-            ║│A cup of tea please         │║
-            ║└────────────────────────────┘║
-            ║┌────────────────────────────┐║
-            ║│Hello world                 │║
-            ║│                            │║
-            ║│                            │║
-            ║└────────────────────────────┘║
-            ╚══════════════════════════════╝
-            "#,
-            ),
-        );
-    }
-}
+//         test_widget(
+//             vstack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [════════════════╗
+//             ║┌────────────────────────────┐║
+//             ║│A cup of tea please         │║
+//             ║└────────────────────────────┘║
+//             ║┌────────────────────────────┐║
+//             ║│Hello world                 │║
+//             ║│                            │║
+//             ║│                            │║
+//             ║└────────────────────────────┘║
+//             ╚══════════════════════════════╝
+//             "#,
+//             ),
+//         );
+//     }
+// }

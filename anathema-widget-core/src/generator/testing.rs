@@ -1,9 +1,6 @@
-use std::rc::Rc;
-use std::str::FromStr;
-
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, NodeId, Path, State, Value, ValueExpr, ValueRef};
+use anathema_values::{Attributes, Context, Path, State, Value, ValueExpr};
 
 use super::nodes::Node;
 use super::{ControlFlow, ElseExpr, IfExpr};
@@ -11,10 +8,7 @@ use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
 use crate::generator::expressions::{Expression, Loop, SingleNode};
 use crate::layout::{Constraints, Layout, Layouts};
-use crate::{
-    AnyWidget, Attributes, Factory, FactoryContext, Nodes, Padding, Widget, WidgetContainer,
-    WidgetFactory,
-};
+use crate::{AnyWidget, Factory, FactoryContext, Nodes, Padding, Widget, WidgetFactory};
 
 // -----------------------------------------------------------------------------
 //   - Layouts -
@@ -54,9 +48,9 @@ impl Widget for TestWidget {
 
     fn layout(
         &mut self,
-        children: &mut Nodes<'_>,
-        layout: &LayoutCtx,
-        data: &Context<'_, '_>,
+        _children: &mut Nodes<'_>,
+        _layout: &LayoutCtx,
+        _data: &Context<'_, '_>,
     ) -> Result<Size> {
         match self.0.value() {
             Some(s) => Ok(Size::new(s.len(), 1)),
@@ -64,7 +58,7 @@ impl Widget for TestWidget {
         }
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {}
+    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {}
 }
 
 struct TestWidgetFactory;
@@ -93,7 +87,7 @@ impl Widget for TestListWidget {
         layout.layout(children, data)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {
         todo!()
     }
 }
@@ -101,7 +95,7 @@ impl Widget for TestListWidget {
 struct TestListWidgetFactory;
 
 impl WidgetFactory for TestListWidgetFactory {
-    fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, _context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let widget = TestListWidget;
         Ok(Box::new(widget))
     }
@@ -159,67 +153,3 @@ pub(crate) fn register_test_widget() {
     Factory::register("test", TestWidgetFactory);
     Factory::register("list", TestListWidgetFactory);
 }
-
-pub(crate) fn expression(
-    ident: impl Into<String>,
-    text: impl Into<Option<ValueExpr>>,
-    attributes: impl Into<Attributes>,
-    children: impl Into<Vec<Expression>>,
-) -> Expression {
-    let children = children.into();
-    Expression::Node(SingleNode {
-        ident: ident.into(),
-        text: text.into(),
-        attributes: attributes.into(),
-        children: children.into(),
-    })
-}
-
-pub(crate) fn for_expression(
-    binding: impl Into<Path>,
-    collection: Box<ValueExpr>,
-    body: impl Into<Vec<Expression>>,
-) -> Expression {
-    Expression::Loop(Loop {
-        body: body.into().into(),
-        binding: binding.into(),
-        collection: *collection,
-    })
-}
-
-pub(crate) fn if_expression(
-    if_true: (ValueExpr, Vec<Expression>),
-    elses: Vec<(Option<ValueExpr>, Vec<Expression>)>,
-    //     binding: impl Into<Path>,
-    //     collection: Box<ValueExpr>,
-    //     body: impl Into<Vec<Expression>>,
-) -> Expression {
-    Expression::ControlFlow(ControlFlow {
-        if_expr: IfExpr {
-            cond: if_true.0,
-            expressions: if_true.1,
-        },
-        elses: elses
-            .into_iter()
-            .map(|(cond, body)| ElseExpr {
-                cond,
-                expressions: body,
-            })
-            .collect(),
-    })
-}
-
-// pub(crate) fn controlflow<E>(
-//     flows: impl Into<Vec<(ControlFlowExpr<<Widget as FromContext>::Value>, E)>>,
-// ) -> Expression<Widget>
-// where
-//     E: Into<Expressions<Widget>>,
-// {
-//     let flows = flows
-//         .into()
-//         .into_iter()
-//         .map(|(val, exprs)| (val, exprs.into().0.into()))
-//         .collect();
-
-//     Expression::ControlFlow(flows)
-// }

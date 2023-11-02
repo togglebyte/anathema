@@ -71,6 +71,17 @@ impl<T> Value<T> {
     }
 }
 
+impl<T: Default + Copy> Value<T> {
+    pub fn value_or_default(&self) -> T {
+        match self {
+            Self::Static(val) => Some(*val),
+            &Self::Dyn { inner, .. } => inner,
+            _ => None,
+        }.unwrap_or_else(T::default)
+    }
+}
+
+
 impl Value<bool> {
     pub fn is_true(&self) -> bool {
         match self {
@@ -138,7 +149,8 @@ pub trait DynValue {
         Self: Sized;
 }
 
-macro_rules! value_resolver_for_basetype {
+#[macro_export]
+macro_rules! impl_dyn_value {
     ($t:ty) => {
         impl DynValue for $t {
             fn init_value(
@@ -181,20 +193,20 @@ macro_rules! value_resolver_for_basetype {
     };
 }
 
-value_resolver_for_basetype!(bool);
-value_resolver_for_basetype!(anathema_render::Color);
+impl_dyn_value!(bool);
+impl_dyn_value!(anathema_render::Color);
 
-value_resolver_for_basetype!(usize);
-value_resolver_for_basetype!(u64);
-value_resolver_for_basetype!(u32);
-value_resolver_for_basetype!(u16);
-value_resolver_for_basetype!(u8);
+impl_dyn_value!(usize);
+impl_dyn_value!(u64);
+impl_dyn_value!(u32);
+impl_dyn_value!(u16);
+impl_dyn_value!(u8);
 
-value_resolver_for_basetype!(isize);
-value_resolver_for_basetype!(i64);
-value_resolver_for_basetype!(i32);
-value_resolver_for_basetype!(i16);
-value_resolver_for_basetype!(i8);
+impl_dyn_value!(isize);
+impl_dyn_value!(i64);
+impl_dyn_value!(i32);
+impl_dyn_value!(i16);
+impl_dyn_value!(i8);
 
-value_resolver_for_basetype!(f64);
-value_resolver_for_basetype!(f32);
+impl_dyn_value!(f64);
+impl_dyn_value!(f32);

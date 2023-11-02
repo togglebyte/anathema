@@ -31,11 +31,11 @@ use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
 /// A `Text` widget will be as wide as its text.
 pub struct Text {
     /// Word wrapping
-    pub word_wrap: Wrap,
+    pub word_wrap: Value<Wrap>,
     /// Text alignment. Note that text alignment only aligns the text inside the parent widget,
     /// this will not force the text to the right side of the output, for that use
     /// [`Alignment`](crate::Alignment).
-    pub text_alignment: TextAlignment,
+    pub text_alignment: Value<TextAlignment>,
     /// Text
     pub text: Value<String>,
     /// Text style
@@ -92,7 +92,7 @@ impl Text {
         }
 
         let max_width = self.layout.size().width;
-        match self.text_alignment {
+        match self.text_alignment.value_or_default() {
             TextAlignment::Left => {}
             TextAlignment::Centre => pos.x = max_width / 2 - line_width / 2,
             TextAlignment::Right => pos.x = max_width - line_width,
@@ -132,7 +132,9 @@ impl Widget for Text {
         self.layout = TextLayout::ZERO;
         let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
         self.layout.set_max_size(max_size);
-        self.layout.set_wrap(self.word_wrap);
+        self.word_wrap
+            .value()
+            .map(|wrap| self.layout.set_wrap(*wrap));
         self.layout.process(self.text.string());
 
         let babies = children.count();
@@ -238,12 +240,13 @@ impl WidgetFactory for TextFactory {
         // .attribute("wrap", node_id.into(), attributes)
         // .unwrap_or(Wrap::Normal);
 
-        let text_alignment = TextAlignment::Left;
+        let text_alignment = ctx.get("text-align");
 
         // data.attribute("text-align", node_id.into(), attributes)
         //     .map(|b| *b)
         //     .unwrap_or(TextAlignment::Left);
 
+        let word_wrap = ctx.get("wrap");
         let style = ctx.style();
         let mut text = ctx.text;
         text.resolve(ctx.ctx, Some(&ctx.node_id));
@@ -277,8 +280,7 @@ impl WidgetFactory for SpanFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::template::template_span;
-    use anathema_widget_core::testing::FakeTerm;
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
     use super::*;
     use crate::testing::test_widget;
@@ -286,8 +288,7 @@ mod test {
     #[test]
     fn word_wrap_excessive_space() {
         test_widget(
-            Text::new("hello      how are     you"),
-            [],
+            expression("text", Some("hello      how are     you"), [], []),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -306,8 +307,7 @@ mod test {
     #[test]
     fn word_wrap() {
         test_widget(
-            Text::new("hello how are you"),
-            [],
+            expression("text", Some("hello how are you"), [], []),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -322,11 +322,13 @@ mod test {
 
     #[test]
     fn no_word_wrap() {
-        let mut text = Text::new("hello how are you");
-        text.word_wrap = Wrap::Overflow;
         test_widget(
-            text,
-            [],
+            expression(
+                "text",
+                Some("hello how are you"),
+                [("wrap".into(), ValueExpr::from("overflow"))],
+                [],
+            ),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -341,11 +343,13 @@ mod test {
 
     #[test]
     fn break_word_wrap() {
-        let mut text = Text::new("hellohowareyoudoing");
-        text.word_wrap = Wrap::WordBreak;
         test_widget(
-            text,
-            [],
+            expression(
+                "text",
+                Some("hellohowareyoudoing"),
+                [("wrap".into(), ValueExpr::from("break"))],
+                [],
+            ),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -360,14 +364,23 @@ mod test {
 
     #[test]
     fn char_wrap_layout_multiple_spans() {
+        
         let body = [
-            template_span("two"),
-            template_span(" averylongword"),
-            template_span(" bunny "),
+            expression("span", Some("two"), [], []),
+            expression("span", Some(" averylongword"), [], []),
+            expression("span", Some(" bunny "), [], []),
         ];
+
+
+        let text = expression(
+            "text",
+            Some("one"),
+            [],
+            body
+        );
+
         test_widget(
-            Text::new("one"),
-            body,
+            text,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═════╗
@@ -382,11 +395,8 @@ mod test {
 
     #[test]
     fn right_alignment() {
-        let mut text = Text::new("a one xxxxxxxxxxxxxxxxxx");
-        text.text_alignment = TextAlignment::Right;
         test_widget(
-            text,
-            [],
+            expression("text", Some("a one xxxxxxxxxxxxxxxxxx"), [("text-align".into(), ValueExpr::from("right"))], []),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
@@ -401,11 +411,8 @@ mod test {
 
     #[test]
     fn centre_alignment() {
-        let mut text = Text::new("a one xxxxxxxxxxxxxxxxxx");
-        text.text_alignment = TextAlignment::Centre;
         test_widget(
-            text,
-            [],
+            expression("text", Some("a one xxxxxxxxxxxxxxxxxx"), [("text-align".into(), ValueExpr::from("center"))], []),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗

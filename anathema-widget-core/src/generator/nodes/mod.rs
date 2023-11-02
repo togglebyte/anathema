@@ -86,7 +86,7 @@ impl<'e> Node<'e> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 impl<'e> Node<'e> {
     pub(crate) fn single(&mut self) -> (&mut WidgetContainer<'e>, &mut Nodes<'e>) {
         match &mut self.kind {
@@ -269,19 +269,21 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &C
 
 #[cfg(test)]
 mod test {
-    use anathema_values::testing::{ident, list, TestState};
+    use anathema_render::Size;
+    use anathema_values::testing::{ident, list};
     use anathema_values::ValueExpr;
 
-    use super::*;
+    
     use crate::generator::testing::*;
-    use crate::layout::Constraints;
-    use crate::Padding;
+    use crate::testing::{if_expression, expression, for_expression};
+    
+    
 
     #[test]
     fn generate_a_single_widget() {
         let test = expression("test", None, [], []).test();
         let mut node = test.eval().unwrap();
-        let (widget, nodes) = node.single();
+        let (widget, _nodes) = node.single();
         assert_eq!(widget.kind(), "text");
     }
 

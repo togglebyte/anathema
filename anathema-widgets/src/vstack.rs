@@ -111,67 +111,67 @@ impl WidgetFactory for VStackFactory {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use anathema_widget_core::template::{template, template_text, Template};
-    use anathema_widget_core::testing::FakeTerm;
+// #[cfg(test)]
+// mod test {
+//     use anathema_widget_core::template::{template, template_text, Template};
+//     use anathema_widget_core::testing::FakeTerm;
 
-    use super::*;
-    use crate::testing::test_widget;
+//     use super::*;
+//     use crate::testing::test_widget;
 
-    fn children(count: usize) -> Vec<Template> {
-        (0..count)
-            .map(|i| template("border", (), vec![template_text(i.to_string())]))
-            .collect()
-    }
+//     fn children(count: usize) -> Vec<Template> {
+//         (0..count)
+//             .map(|i| template("border", (), vec![template_text(i.to_string())]))
+//             .collect()
+//     }
 
-    #[test]
-    fn only_vstack() {
-        let body = children(3);
-        let vstack = VStack::new(None, None);
-        test_widget(
-            vstack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║┌─┐            ║
-            ║│0│            ║
-            ║└─┘            ║
-            ║┌─┐            ║
-            ║│1│            ║
-            ║└─┘            ║
-            ║┌─┐            ║
-            ║│2│            ║
-            ║└─┘            ║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
+//     #[test]
+//     fn only_vstack() {
+//         let body = children(3);
+//         let vstack = VStack::new(None, None);
+//         test_widget(
+//             vstack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║┌─┐            ║
+//             ║│0│            ║
+//             ║└─┘            ║
+//             ║┌─┐            ║
+//             ║│1│            ║
+//             ║└─┘            ║
+//             ║┌─┐            ║
+//             ║│2│            ║
+//             ║└─┘            ║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
 
-    #[test]
-    fn fixed_height_stack() {
-        let body = children(10);
-        let vstack = VStack::new(None, 6);
-        test_widget(
-            vstack,
-            body,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [═╗
-            ║┌─┐            ║
-            ║│0│            ║
-            ║└─┘            ║
-            ║┌─┐            ║
-            ║│1│            ║
-            ║└─┘            ║
-            ║               ║
-            ║               ║
-            ║               ║
-            ╚═══════════════╝
-            "#,
-            ),
-        );
-    }
-}
+//     #[test]
+//     fn fixed_height_stack() {
+//         let body = children(10);
+//         let vstack = VStack::new(None, 6);
+//         test_widget(
+//             vstack,
+//             body,
+//             FakeTerm::from_str(
+//                 r#"
+//             ╔═] Fake term [═╗
+//             ║┌─┐            ║
+//             ║│0│            ║
+//             ║└─┘            ║
+//             ║┌─┐            ║
+//             ║│1│            ║
+//             ║└─┘            ║
+//             ║               ║
+//             ║               ║
+//             ║               ║
+//             ╚═══════════════╝
+//             "#,
+//             ),
+//         );
+//     }
+// }

@@ -8,7 +8,7 @@ mod values;
 mod widget;
 
 // #[cfg(feature = "testing")]
-// pub mod testing;
+pub mod testing;
 
 pub use generator::Nodes;
 
