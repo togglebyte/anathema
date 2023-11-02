@@ -1,7 +1,6 @@
 use anathema_compiler::{Constants, Instruction};
 use anathema_widget_core::generator::Expression;
 
-
 use crate::error::Result;
 use crate::scope::Scope;
 

@@ -215,8 +215,8 @@ mod test {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parsing::parser::Parser;
-    use crate::Constants;
     use crate::token::Tokens;
+    use crate::Constants;
 
     fn parse(src: &str) -> Vec<Expression> {
         let mut consts = Constants::new();

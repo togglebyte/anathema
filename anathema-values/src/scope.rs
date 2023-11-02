@@ -79,7 +79,7 @@ impl<'a, 'expr> Context<'a, 'expr> {
     }
 
     // TODO: rename this.
-    // It's not really creating a new scope but rather cloning the 
+    // It's not really creating a new scope but rather cloning the
     // existing scope to the used when evaluating a new node
     pub fn new_scope(&self) -> LocalScope<'expr> {
         self.scopes.scope.clone()

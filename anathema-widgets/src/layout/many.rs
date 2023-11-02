@@ -142,40 +142,36 @@ impl Layout for Many {
         }
 
         let mut size = Size::ZERO;
-        children.for_each(
-            data,
-            layout,
-            |widget, children, context| {
-                if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
-                    return Ok(());
-                }
+        children.for_each(data, layout, |widget, children, context| {
+            if [Spacer::KIND, Expand::KIND].contains(&widget.kind()) {
+                return Ok(());
+            }
 
-                let widget_constraints = {
-                    let mut constraints = used_size.to_constraints();
-                    if self.unconstrained {
-                        match self.axis {
-                            Axis::Vertical => constraints.unbound_height(),
-                            Axis::Horizontal => constraints.unbound_width(),
-                        }
+            let widget_constraints = {
+                let mut constraints = used_size.to_constraints();
+                if self.unconstrained {
+                    match self.axis {
+                        Axis::Vertical => constraints.unbound_height(),
+                        Axis::Horizontal => constraints.unbound_width(),
                     }
-                    constraints
-                };
-
-                let mut widget_size = widget.layout(children, widget_constraints, context)?;
-
-                if self.offset.skip(&mut widget_size) {
-                    return Ok(());
                 }
+                constraints
+            };
 
-                used_size.apply(widget_size);
+            let mut widget_size = widget.layout(children, widget_constraints, context)?;
 
-                if used_size.no_space_left() {
-                    return Err(Error::InsufficientSpaceAvailble);
-                }
+            if self.offset.skip(&mut widget_size) {
+                return Ok(());
+            }
 
-                Ok(())
-            },
-        );
+            used_size.apply(widget_size);
+
+            if used_size.no_space_left() {
+                return Err(Error::InsufficientSpaceAvailble);
+            }
+
+            Ok(())
+        });
 
         let count = children.count();
 

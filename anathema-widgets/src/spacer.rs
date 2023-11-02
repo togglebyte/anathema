@@ -3,7 +3,9 @@ use anathema_values::{Attributes, Context, NodeId, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Layouts;
-use anathema_widget_core::{AnyWidget, Widget, WidgetContainer, WidgetFactory, Nodes, FactoryContext};
+use anathema_widget_core::{
+    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory,
+};
 
 use crate::layout::spacers::SpacerLayout;
 
@@ -53,10 +55,7 @@ impl Widget for Spacer {
 pub(crate) struct SpacerFactory;
 
 impl WidgetFactory for SpacerFactory {
-    fn make(
-        &self,
-        _ctx: FactoryContext<'_>,
-    ) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, _ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         Ok(Box::new(Spacer))
     }
 }

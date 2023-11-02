@@ -89,7 +89,9 @@ mod test {
     fn access_map() {
         let state = TestState::new();
         let path = Path::from("generic_map").compose("inner").compose("second");
-        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None).unwrap() else { panic!() };
+        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None).unwrap() else {
+            panic!()
+        };
         assert_eq!(x.to_i128(), 2);
     }
 }

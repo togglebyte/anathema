@@ -3,7 +3,9 @@ use anathema_values::{Attributes, Context, NodeId, ValueExpr};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Layouts};
-use anathema_widget_core::{AnyWidget, LocalPos, Widget, WidgetContainer, WidgetFactory, Nodes, FactoryContext};
+use anathema_widget_core::{
+    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory,
+};
 
 use crate::layout::single::Single;
 
@@ -144,10 +146,7 @@ impl Widget for Expand {
 pub(crate) struct ExpandFactory;
 
 impl WidgetFactory for ExpandFactory {
-    fn make(
-        &self,
-        ctx: FactoryContext<'_>,
-    ) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         panic!()
         // let axis = data.attribute("axis", node_id.into(), attributes);
         // let factor = data.primitive("factor", node_id.into(), attributes);

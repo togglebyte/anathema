@@ -4,7 +4,9 @@ use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::Nodes;
 use anathema_widget_core::layout::{Align, Layouts};
-use anathema_widget_core::{AnyWidget, Pos, Widget, WidgetContainer, WidgetFactory, FactoryContext};
+use anathema_widget_core::{
+    AnyWidget, FactoryContext, Pos, Widget, WidgetContainer, WidgetFactory,
+};
 
 use crate::layout::single::Single;
 
@@ -116,10 +118,7 @@ impl Widget for Alignment {
 pub(crate) struct AlignmentFactory;
 
 impl WidgetFactory for AlignmentFactory {
-    fn make(
-        &self,
-        ctx: FactoryContext<'_>,
-    ) -> Result<Box<dyn AnyWidget>> {
+    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         panic!()
         // let alignment = data
         //     .attribute("align", node_id.into(), attributes)

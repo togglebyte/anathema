@@ -1,10 +1,9 @@
-use std::fmt::{Display};
+use std::fmt::Display;
 
 use anathema_render::Color;
 
-
 pub use self::eval::eval;
-use crate::error::{Result};
+use crate::error::Result;
 use crate::lexer::Lexer;
 use crate::token::{Kind, Operator, Tokens, Value};
 use crate::{Constants, StringId};

@@ -1,4 +1,3 @@
-
 use std::iter::Peekable;
 use std::str::CharIndices;
 
@@ -6,7 +5,7 @@ use anathema_render::Color;
 
 use crate::error::{Error, Result};
 use crate::token::{Kind, Operator, Token, Value};
-use crate::{Constants};
+use crate::Constants;
 
 impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
     type Item = Result<Token>;
@@ -329,7 +328,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
 mod test {
     use super::*;
     use crate::error::ErrorKind;
-    
 
     fn token_kind(input: &str) -> Kind {
         let mut consts = Constants::new();

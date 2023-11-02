@@ -136,7 +136,6 @@ num_try_from!(i8, Signed);
 num_try_from!(f64, Float);
 num_try_from!(f32, Float);
 
-
 impl TryFrom<ValueRef<'_>> for String {
     type Error = ();
 

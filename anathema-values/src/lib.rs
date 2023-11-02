@@ -43,13 +43,19 @@ pub mod testing;
 
 #[derive(Debug, Default)]
 pub enum Value<T> {
-    Dyn { inner: Option<T>, expr: ValueExpr },
+    Dyn {
+        inner: Option<T>,
+        expr: ValueExpr,
+    },
     Static(T),
     #[default]
     Empty,
 }
 
-impl<T> Value<T> where T: DynValue {
+impl<T> Value<T>
+where
+    T: DynValue,
+{
     pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
         T::resolve(self, context, node_id);
     }
@@ -88,7 +94,11 @@ impl Value<String> {
 }
 
 impl DynValue for String {
-    fn init_value(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Value<Self> {
+    fn init_value(
+        context: &Context<'_, '_>,
+        node_id: Option<&NodeId>,
+        expr: &ValueExpr,
+    ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
         let inner = resolver.resolve_string(expr);
 
@@ -115,11 +125,17 @@ impl DynValue for String {
 }
 
 pub trait DynValue {
-    fn init_value(context: &Context<'_, '_>, node_id: Option<&NodeId>, expr: &ValueExpr) -> Value<Self>
+    fn init_value(
+        context: &Context<'_, '_>,
+        node_id: Option<&NodeId>,
+        expr: &ValueExpr,
+    ) -> Value<Self>
     where
         Self: Sized;
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) where Self: Sized;
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>)
+    where
+        Self: Sized;
 }
 
 macro_rules! value_resolver_for_basetype {
@@ -147,7 +163,11 @@ macro_rules! value_resolver_for_basetype {
                 }
             }
 
-            fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+            fn resolve(
+                value: &mut Value<Self>,
+                context: &Context<'_, '_>,
+                node_id: Option<&NodeId>,
+            ) {
                 match value {
                     Value::Dyn { inner, expr } => {
                         *inner = expr

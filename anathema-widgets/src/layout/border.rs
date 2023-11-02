@@ -55,59 +55,63 @@ impl Layout for BorderLayout {
         let is_width_tight = layout.constraints.is_width_tight();
 
         let mut size = Size::ZERO;
-        children.for_each(data, &layout, |widget: &mut WidgetContainer<'e>, children: &mut Nodes<'e>, data: &Context<'_, 'e>| {
+        children.for_each(
+            data,
+            &layout,
+            |widget: &mut WidgetContainer<'e>, children: &mut Nodes<'e>, data: &Context<'_, 'e>| {
+                // Shrink the constraint for the child to fit inside the border
+                constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
+                    Some(w) => w,
+                    None => return Err(Error::InsufficientSpaceAvailble),
+                };
 
-            // Shrink the constraint for the child to fit inside the border
-            constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
-                Some(w) => w,
-                None => return Err(Error::InsufficientSpaceAvailble),
-            };
+                constraints.max_height =
+                    match constraints.max_height.checked_sub(border_size.height) {
+                        Some(h) => h,
+                        None => return Err(Error::InsufficientSpaceAvailble),
+                    };
 
-            constraints.max_height = match constraints.max_height.checked_sub(border_size.height) {
-                Some(h) => h,
-                None => return Err(Error::InsufficientSpaceAvailble),
-            };
+                if constraints.min_width > constraints.max_width {
+                    constraints.min_width = constraints.max_width;
+                }
 
-            if constraints.min_width > constraints.max_width {
-                constraints.min_width = constraints.max_width;
-            }
+                if constraints.min_height > constraints.max_height {
+                    constraints.min_height = constraints.max_height;
+                }
 
-            if constraints.min_height > constraints.max_height {
-                constraints.min_height = constraints.max_height;
-            }
+                if constraints.max_width == 0 || constraints.max_height == 0 {
+                    return Err(Error::InsufficientSpaceAvailble);
+                }
 
-            if constraints.max_width == 0 || constraints.max_height == 0 {
-                return Err(Error::InsufficientSpaceAvailble);
-            }
+                let inner_size = widget.layout(children, constraints, data)?;
 
-            let inner_size = widget.layout(children, constraints, data)?;
+                size = inner_size + border_size + padding_size;
 
-            size = inner_size + border_size + padding_size;
+                if let Some(min_width) = self.min_width {
+                    size.width = size.width.max(min_width);
+                }
 
-            if let Some(min_width) = self.min_width {
-                size.width = size.width.max(min_width);
-            }
+                if let Some(min_height) = self.min_height {
+                    size.height = size.height.max(min_height);
+                }
 
-            if let Some(min_height) = self.min_height {
-                size.height = size.height.max(min_height);
-            }
+                if is_width_tight {
+                    size.width = constraints.max_width;
+                }
 
-            if is_width_tight {
-                size.width = constraints.max_width;
-            }
+                if is_height_tight {
+                    size.height = constraints.max_height;
+                }
 
-            if is_height_tight {
-                size.height = constraints.max_height;
-            }
+                // TODO: is this really needed? This is the cause for a bug
+                // let size = Size {
+                //     width: size.width.min(constraints.max_width),
+                //     height: size.height.min(constraints.max_height),
+                // };
 
-            // TODO: is this really needed? This is the cause for a bug
-            // let size = Size {
-            //     width: size.width.min(constraints.max_width),
-            //     height: size.height.min(constraints.max_height),
-            // };
-
-            Ok(())
-        });
+                Ok(())
+            },
+        );
 
         match size {
             Size::ZERO => {

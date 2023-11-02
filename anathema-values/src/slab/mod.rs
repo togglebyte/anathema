@@ -5,4 +5,3 @@ pub(crate) type Idx = usize;
 
 // pub(crate) use generational::GenerationSlab;
 pub use simple::Slab;
-

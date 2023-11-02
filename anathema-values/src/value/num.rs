@@ -17,7 +17,7 @@ impl Num {
         match self {
             Self::Signed(0) | Self::Unsigned(0) => true,
             Self::Float(f) => *f == 0.0,
-            _  => false
+            _ => false,
         }
     }
 

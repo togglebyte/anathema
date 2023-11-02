@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::{NodeId, ValueRef, DIRTY_NODES, Owned};
+use crate::{NodeId, Owned, ValueRef, DIRTY_NODES};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {

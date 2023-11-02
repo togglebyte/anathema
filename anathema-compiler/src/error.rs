@@ -107,9 +107,7 @@ impl Display for Error {
             ErrorKind::InvalidHexValue => "invalid hex value".into(),
             ErrorKind::UnexpectedEof => "unexpected end of file".into(),
             ErrorKind::TrailingPipe => "trailing pipe character".into(),
-            ErrorKind::InvalidDedent => {
-                "dedent does not match previous indentation levels".into()
-            }
+            ErrorKind::InvalidDedent => "dedent does not match previous indentation levels".into(),
             ErrorKind::InvalidOperator(_op) => "invalid operator: {op}".into(),
             ErrorKind::UnexpectedToken(_msg) => "unexpected token: {msg}".into(),
         };

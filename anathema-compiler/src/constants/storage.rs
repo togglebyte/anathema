@@ -8,8 +8,9 @@ impl<T> Storage<T> {
         Self(Slab::empty())
     }
 
-    pub(crate) fn push(&mut self, value: T) -> usize 
-        where T: PartialEq
+    pub(crate) fn push(&mut self, value: T) -> usize
+    where
+        T: PartialEq,
     {
         self.0.find(&value).unwrap_or_else(|| self.0.push(value))
     }

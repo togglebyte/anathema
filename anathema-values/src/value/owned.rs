@@ -58,7 +58,7 @@ impl<'a> TryFrom<&'a Owned> for &'a u64 {
     fn try_from(value: &'a Owned) -> Result<Self, Self::Error> {
         match value {
             Owned::Num(Num::Unsigned(num)) => Ok(num),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

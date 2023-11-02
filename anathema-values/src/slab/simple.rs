@@ -31,7 +31,6 @@ impl<T> Default for Slab<T> {
     }
 }
 
-
 impl<T> Slab<T> {
     pub fn empty() -> Self {
         Self {
@@ -107,23 +106,28 @@ impl<T> Slab<T> {
             })
             .count()
     }
-    
+
     /// Don't use this function.
     /// It's slow and should only be used in special situations.
     /// Most likely your situation is not that
-    pub fn find(&self, value: &T) -> Option<Idx> 
-        where T: PartialEq
+    pub fn find(&self, value: &T) -> Option<Idx>
+    where
+        T: PartialEq,
     {
-        self.inner.iter().enumerate().filter_map(|(index, entry)| match entry {
-            Entry::Occupied(val) if value == val => Some(index),
-            _ => None
-        }).next()
+        self.inner
+            .iter()
+            .enumerate()
+            .filter_map(|(index, entry)| match entry {
+                Entry::Occupied(val) if value == val => Some(index),
+                _ => None,
+            })
+            .next()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
         self.inner.iter().filter_map(|entry| match entry {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None
+            Entry::Vacant(_) => None,
         })
     }
 }
@@ -134,7 +138,7 @@ impl<T> Index<Idx> for Slab<T> {
     fn index(&self, index: Idx) -> &Self::Output {
         match &self.inner[index] {
             Entry::Occupied(e) => e,
-            Entry::Vacant(_) => panic!("trying to reference value of a vacant entry")
+            Entry::Vacant(_) => panic!("trying to reference value of a vacant entry"),
         }
     }
 }

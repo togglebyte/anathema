@@ -1,4 +1,4 @@
-use anathema_values::{ValueExpr};
+use anathema_values::ValueExpr;
 pub(crate) use storage::Storage;
 
 pub use self::strings::StringId;
