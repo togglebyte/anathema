@@ -5,14 +5,14 @@ use crate::generator::{ControlFlow, ElseExpr, Expression, IfExpr, Loop, SingleNo
 pub fn expression(
     ident: impl Into<String>,
     text: impl Into<Option<&'static str>>,
-    attributes: impl Into<Attributes>,
+    attributes: impl IntoIterator<Item = (String, ValueExpr)>,
     children: impl Into<Vec<Expression>>,
 ) -> Expression {
     let children = children.into();
     Expression::Node(SingleNode {
         ident: ident.into(),
         text: text.into().map(|s| ValueExpr::String(s.into())),
-        attributes: attributes.into(),
+        attributes: Attributes::from_iter(attributes),
         children: children.into(),
     })
 }

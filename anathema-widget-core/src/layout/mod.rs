@@ -87,6 +87,9 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub enum Align {
+    /// Top left
+    #[default]
+    TopLeft,
     /// Top
     Top,
     /// Top right
@@ -101,9 +104,6 @@ pub enum Align {
     BottomLeft,
     /// Left (centre on the vertical axis)
     Left,
-    /// Top left
-    #[default]
-    TopLeft,
     /// Centre
     Centre,
 }
