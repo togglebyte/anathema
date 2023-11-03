@@ -154,8 +154,7 @@ impl WidgetFactory for ExpandFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::template::{template, template_text};
-    use anathema_widget_core::testing::{FakeTerm, expression};
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
     use super::*;
     use crate::testing::test_widget;
@@ -169,7 +168,6 @@ mod test {
         // let border = expression("border", None, [], [
         //     expression("expand", None, [], [])
         // ]);
-
 
         // test_widget(
         //     border,
@@ -198,7 +196,6 @@ mod test {
     //             expression("expand", None, [("factor".into(), Some(2.into())),], [])
     //         ]),
     //     ]);
-
 
     //     test_widget(
     //         hstack,
