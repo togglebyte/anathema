@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::Context;
+use anathema_values::{Context, Value};
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Constraints};
@@ -15,6 +15,7 @@ use crate::Expand;
 /// Allocates a minimum of one to each weight.
 fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     assert!(total > weights.len());
+
     let mut indexed = weights
         .iter()
         .copied()
@@ -57,7 +58,7 @@ pub fn layout<'e>(
 
     let factors = expansions
         .iter()
-        .map(|(w, _)| w.to_ref::<Expand>().factor)
+        .map(|(w, _)| w.to_ref::<Expand>().factor.value_or_default())
         .collect::<Vec<_>>();
 
     let mut size = Size::ZERO;

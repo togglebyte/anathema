@@ -132,7 +132,7 @@ impl Widget for Text {
         let max_size = Size::new(layout.constraints.max_width, layout.constraints.max_height);
         self.layout.set_max_size(max_size);
         self.word_wrap
-            .value()
+            .value_ref()
             .map(|wrap| self.layout.set_wrap(*wrap));
         self.layout.process(self.text.string());
 

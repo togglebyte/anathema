@@ -62,7 +62,7 @@ where
 }
 
 impl<T> Value<T> {
-    pub fn value(&self) -> Option<&T> {
+    pub fn value_ref(&self) -> Option<&T> {
         match self {
             Self::Static(val) => Some(val),
             Self::Dyn { inner, .. } => inner.as_ref(),
@@ -76,15 +76,44 @@ impl<T> Value<T> {
 }
 
 impl<T: Default + Copy> Value<T> {
+    pub fn value(&self) -> Option<T> {
+        match self {
+            Self::Static(val) => Some(*val),
+            &Self::Dyn { inner, .. } => inner,
+            _ => None,
+        }
+    }
+
     pub fn value_or_default(&self) -> T {
         match self {
             Self::Static(val) => Some(*val),
             &Self::Dyn { inner, .. } => inner,
             _ => None,
-        }.unwrap_or_else(T::default)
+        }
+        .unwrap_or_else(T::default)
+    }
+
+    pub fn value_or(&self, default: T) -> T {
+        match self {
+            Self::Static(val) => Some(*val),
+            &Self::Dyn { inner, .. } => inner,
+            _ => None,
+        }
+        .unwrap_or(default)
+    }
+
+    pub fn value_or_else<F>(&self, default: F) -> T
+    where
+        F: Fn() -> T,
+    {
+        match self {
+            Self::Static(val) => Some(*val),
+            &Self::Dyn { inner, .. } => inner,
+            _ => None,
+        }
+        .unwrap_or_else(default)
     }
 }
-
 
 impl Value<bool> {
     pub fn is_true(&self) -> bool {

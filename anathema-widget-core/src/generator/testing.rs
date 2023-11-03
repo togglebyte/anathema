@@ -52,7 +52,7 @@ impl Widget for TestWidget {
         _layout: &LayoutCtx,
         _data: &Context<'_, '_>,
     ) -> Result<Size> {
-        match self.0.value() {
+        match self.0.value_ref() {
             Some(s) => Ok(Size::new(s.len(), 1)),
             None => Ok(Size::ZERO),
         }

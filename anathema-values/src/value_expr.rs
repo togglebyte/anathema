@@ -1,6 +1,8 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
+use smallvec::SmallVec;
+
 use crate::hashmap::HashMap;
 use crate::{Context, NodeId, Num, Owned, Path, ValueRef};
 
@@ -117,6 +119,53 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
 
             //     // TODO: probably shouldn't panic here, but we'll do it while working on this
             _ => panic!(),
+        }
+    }
+
+    pub fn resolve_list<T>(&mut self, value: &'expr ValueExpr) -> SmallVec<[T; 4]>
+    where
+        T: for<'b> TryFrom<ValueRef<'b>>,
+    {
+        let mut output = SmallVec::<[T; 4]>::new();
+        let Some(value) = value.eval(self) else {
+            return output;
+        };
+
+        let value = match value {
+            ValueRef::Deferred(path) => {
+                self.is_deferred = true;
+                match self.context.state.get(&path, self.node_id) {
+                    Some(val) => val,
+                    None => return output,
+                }
+            }
+            val => val,
+        };
+
+        let mut resolver = Self::new(self.context, self.node_id);
+        match value {
+            ValueRef::Expressions(list) => {
+                for expr in list {
+                    let Some(val) = expr
+                        .eval(&mut resolver)
+                        .and_then(|val| T::try_from(val).ok())
+                    else {
+                        continue;
+                    };
+                    output.push(val);
+                }
+                if resolver.is_deferred {
+                    self.is_deferred = true;
+                }
+                output
+            },
+            val => {
+                let Ok(val) = T::try_from(val) else {
+                    return output;
+                };
+                output.push(val);
+                output
+            }
         }
     }
 }

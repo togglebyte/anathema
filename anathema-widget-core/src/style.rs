@@ -18,37 +18,37 @@ impl WidgetStyle {
     pub fn style(&self) -> RenderStyle {
         let mut attributes: Attributes = Attributes::empty();
 
-        if let Some(true) = self.bold.value() {
+        if let Some(true) = self.bold.value_ref() {
             attributes |= Attributes::BOLD;
         }
 
-        if let Some(true) = self.dim.value() {
+        if let Some(true) = self.dim.value_ref() {
             attributes |= Attributes::DIM;
         }
 
-        if let Some(true) = self.italic.value() {
+        if let Some(true) = self.italic.value_ref() {
             attributes |= Attributes::ITALIC;
         }
 
-        if let Some(true) = self.underlined.value() {
+        if let Some(true) = self.underlined.value_ref() {
             attributes |= Attributes::UNDERLINED;
         }
 
-        if let Some(true) = self.crossed_out.value() {
+        if let Some(true) = self.crossed_out.value_ref() {
             attributes |= Attributes::CROSSED_OUT;
         }
 
-        if let Some(true) = self.overlined.value() {
+        if let Some(true) = self.overlined.value_ref() {
             attributes |= Attributes::OVERLINED;
         }
 
-        if let Some(true) = self.inverse.value() {
+        if let Some(true) = self.inverse.value_ref() {
             attributes |= Attributes::INVERSE;
         }
 
         RenderStyle {
-            fg: self.fg.value().cloned(),
-            bg: self.bg.value().cloned(),
+            fg: self.fg.value_ref().cloned(),
+            bg: self.bg.value_ref().cloned(),
             attributes,
         }
     }

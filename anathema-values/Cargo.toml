@@ -12,3 +12,4 @@ anathema-render = { path = "../anathema-render" }
 parking_lot = { workspace = true }
 flume = { workspace = true }
 integer-hasher = "0.1.1"
+smallvec = { workspace = true }

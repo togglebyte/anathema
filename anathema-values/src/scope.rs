@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
-use crate::hashmap::HashMap;
-use crate::{Attributes, NodeId, Path, State, Value, ValueRef};
+use crate::{Path, State, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum LocalScope<'expr> {

@@ -191,6 +191,6 @@ mod test {
         let actual = Padding::init_value(&ctx, None, &e);
 
         let expected = Padding::new(2);
-        assert_eq!(&expected, actual.value().unwrap());
+        assert_eq!(&expected, actual.value_ref().unwrap());
     }
 }

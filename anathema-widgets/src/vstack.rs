@@ -73,16 +73,16 @@ impl Widget for VStack {
         data: &Context<'_, 'e>,
     ) -> Result<Size> {
         let mut layout = *layout;
-        if let Some(width) = self.width.value() {
+        if let Some(width) = self.width.value_ref() {
             layout.constraints.max_width = layout.constraints.max_width.min(*width);
         }
-        if let Some(height) = self.height.value() {
+        if let Some(height) = self.height.value_ref() {
             layout.constraints.max_height = layout.constraints.max_height.min(*height);
         }
-        if let Some(min_width) = self.min_width.value() {
+        if let Some(min_width) = self.min_width.value_ref() {
             layout.constraints.min_width = layout.constraints.min_width.max(*min_width);
         }
-        if let Some(min_height) = self.min_height.value() {
+        if let Some(min_height) = self.min_height.value_ref() {
             layout.constraints.min_height = layout.constraints.min_height.max(*min_height);
         }
 

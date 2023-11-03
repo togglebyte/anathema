@@ -189,13 +189,15 @@ pub enum Axis {
     Vertical,
 }
 
-impl TryFrom<&str> for Axis {
+impl_dyn_value!(Axis);
+
+impl TryFrom<ValueRef<'_>> for Axis {
     type Error = ();
 
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
         match value {
-            "horz" | "horizontal" => Ok(Self::Horizontal),
-            "vert" | "vertical" => Ok(Self::Vertical),
+            ValueRef::Str("horz" | "horizontal") => Ok(Self::Horizontal),
+            ValueRef::Str("vert" | "vertical") => Ok(Self::Vertical),
             _ => Err(()),
         }
     }
