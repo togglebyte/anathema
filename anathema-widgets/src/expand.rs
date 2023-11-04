@@ -161,89 +161,88 @@ mod test {
 
     #[test]
     fn expand_border() {
-        panic!("come back here and fix all these tests!");
         // let border = Border::thin(None, None);
         // let body = [template("expand", (), vec![])];
 
-        // let border = expression("border", None, [], [
-        //     expression("expand", None, [], [])
-        // ]);
+        let border = expression("border", None, [], [
+            expression("expand", None, [], [])
+        ]);
 
-        // test_widget(
-        //     border,
-        //     FakeTerm::from_str(
-        //         r#"
-        //     ╔═] Fake term [═╗
-        //     ║┌─────────────┐║
-        //     ║│             │║
-        //     ║│             │║
-        //     ║│             │║
-        //     ║│             │║
-        //     ║└─────────────┘║
-        //     ╚═══════════════╝
-        //     "#,
-        //     ),
-        // );
+        test_widget(
+            border,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║┌─────────────┐║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║└─────────────┘║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
     }
 
-    // #[test]
-    // fn expand_horz_with_factors() {
-    //     let hstack = expression("hstack", None, [], [
-    //         expression("border", None, [], [
-    //             expression("expand", None, [("factor".into(), Some(1.into())),], [])
-    //         ]),
-    //         expression("border", None, [], [
-    //             expression("expand", None, [("factor".into(), Some(2.into())),], [])
-    //         ]),
-    //     ]);
+    #[test]
+    fn expand_horz_with_factors() {
+        let hstack = expression("hstack", None, [], [
+            expression("border", None, [], [
+                expression("expand", None, [("factor".into(), 1.into()),], [])
+            ]),
+            expression("border", None, [], [
+                expression("expand", None, [("factor".into(), 2.into()),], [])
+            ]),
+        ]);
 
-    //     test_widget(
-    //         hstack,
-    //         FakeTerm::from_str(
-    //             r#"
-    //         ╔═] Fake term [═╗
-    //         ║┌───┐┌────────┐║
-    //         ║│   ││        │║
-    //         ║│   ││        │║
-    //         ║│   ││        │║
-    //         ║│   ││        │║
-    //         ║└───┘└────────┘║
-    //         ╚═══════════════╝
-    //         "#,
-    //         ),
-    //     );
-    // }
+        test_widget(
+            hstack,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║┌───┐┌────────┐║
+            ║│   ││        │║
+            ║│   ││        │║
+            ║│   ││        │║
+            ║│   ││        │║
+            ║└───┘└────────┘║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
-    // #[test]
-    // fn expand_vert_with_factors() {
-    //     let vstack = expression("vstack", None, [], [
-    //         expression("border", None, [], [
-    //             expression("expand", None, [("factor".into(), Some(1.into())),], [])
-    //         ]),
-    //         expression("border", None, [], [
-    //             expression("expand", None, [("factor".into(), Some(2.into())),], [])
-    //         ]),
-    //     ]);
+    #[test]
+    fn expand_vert_with_factors() {
+        let vstack = expression("vstack", None, [], [
+            expression("border", None, [], [
+                expression("expand", None, [("factor".into(), 1.into()),], [])
+            ]),
+            expression("border", None, [], [
+                expression("expand", None, [("factor".into(), 2.into()),], [])
+            ]),
+        ]);
 
-    //     test_widget(
-    //         vstack,
-    //         FakeTerm::from_str(
-    //             r#"
-    //         ╔═] Fake term [═╗
-    //         ║┌─────────────┐║
-    //         ║│             │║
-    //         ║└─────────────┘║
-    //         ║┌─────────────┐║
-    //         ║│             │║
-    //         ║│             │║
-    //         ║│             │║
-    //         ║│             │║
-    //         ║└─────────────┘║
-    //         ╚═══════════════╝
-    //         "#,
-    //         ),
-    //     );
-    // }
+        test_widget(
+            vstack,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║┌─────────────┐║
+            ║│             │║
+            ║└─────────────┘║
+            ║┌─────────────┐║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║│             │║
+            ║└─────────────┘║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
     // #[test]
     // fn expand_horz() {

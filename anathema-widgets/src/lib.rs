@@ -36,7 +36,7 @@ pub use crate::vstack::VStack;
 mod factories {
     pub(super) use crate::alignment::AlignmentFactory;
     pub(super) use crate::border::BorderFactory;
-    // pub(super) use crate::expand::ExpandFactory;
+    pub(super) use crate::expand::ExpandFactory;
     // pub(super) use crate::hstack::HStackFactory;
     // pub(super) use crate::position::PositionFactory;
     // pub(super) use crate::spacer::SpacerFactory;
@@ -51,7 +51,7 @@ pub fn register_default_widgets() -> Result<()> {
     let results = [
         Factory::register("alignment".to_string(), factories::AlignmentFactory),
         Factory::register("border".to_string(), factories::BorderFactory),
-        // Factory::register("expand".to_string(), factories::ExpandFactory),
+        Factory::register("expand".to_string(), factories::ExpandFactory),
         // Factory::register("hstack".to_string(), factories::HStackFactory),
         // Factory::register("position".to_string(), factories::PositionFactory),
         // Factory::register("spacer".to_string(), factories::SpacerFactory),
