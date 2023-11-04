@@ -132,11 +132,6 @@ impl Into<ValueExpr> for Sides {
             }
         }
 
-        // let values = sides
-        //     .into_iter()
-        //     .map(|side| ValueExpr::from(side))
-        //     .collect::<Vec<_>>();
-
         ValueExpr::List(sides.into())
     }
 }

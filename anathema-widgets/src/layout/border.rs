@@ -95,20 +95,6 @@ impl Layout for BorderLayout {
                     size.height = size.height.max(min_height);
                 }
 
-                if is_width_tight {
-                    size.width = constraints.max_width;
-                }
-
-                if is_height_tight {
-                    size.height = constraints.max_height;
-                }
-
-                // TODO: is this really needed? This is the cause for a bug
-                // let size = Size {
-                //     width: size.width.min(constraints.max_width),
-                //     height: size.height.min(constraints.max_height),
-                // };
-
                 Ok(())
             },
         );
