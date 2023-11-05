@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::ops::Deref;
 
 use super::*;
 use crate::Path;
@@ -78,27 +79,36 @@ impl<T: Debug> Collection for List<T>
 where
     for<'a> ValueRef<'a>: From<&'a T>,
 {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<T> State for List<T>
+where
+    for<'a> ValueRef<'a>: From<&'a T>,
+{
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
-            Path::Index(_) => {
-                let value = self.lookup(key, node_id)?;
+            Path::Index(index) => {
+                let value = self.inner.get(*index)?;
                 if let Some(node_id) = node_id.cloned() {
                     value.subscribe(node_id);
                 }
-                Some((&value.inner).into())
+                Some(value.deref().into())
             }
             Path::Composite(lhs, rhs) => {
-                let map = self
-                    .lookup(&**lhs, node_id)
-                    .map(|value| (&value.inner).into())?;
-
-                match map {
-                    ValueRef::List(map) => map.get(rhs, node_id),
-                    _ => None,
+                match self.get(lhs, node_id)? {
+                    ValueRef::List(collection) => collection.get(rhs, node_id),
+                    _ => None
                 }
             }
             Path::Key(_) => None,
         }
+    }
+
+    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<usize> {
+        todo!()
     }
 }
 

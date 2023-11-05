@@ -59,7 +59,8 @@ where
     for<'b> ValueRef<'b>: From<&'b T>,
 {
     fn from(value: &'a Map<T>) -> Self {
-        Self::Map(value)
+        panic!()
+        // Self::Map(value)
     }
 }
 

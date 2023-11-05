@@ -84,14 +84,15 @@ impl State for TestState {
                     if let Some(node_id) = node_id.cloned() {
                         self.generic_map.subscribe(node_id);
                     }
-                    let map = ValueRef::Map(&self.generic_map.inner);
-                    Some(map)
+                    // let map = ValueRef::Map(&self.generic_map.inner);
+                    // Some(map)
+                    panic!()
                 }
                 _ => None,
             },
             Path::Composite(lhs, rhs) => match &**lhs {
                 Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
-                Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
+                // Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
                 Path::Key(key) if key == "generic_list" => self.generic_list.get(rhs, node_id),
                 _ => None,
             },

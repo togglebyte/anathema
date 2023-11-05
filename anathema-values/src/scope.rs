@@ -92,6 +92,7 @@ impl<'a, 'expr> Context<'a, 'expr> {
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
     }
 
+    // TODO maybe get rid of this if we can make the state return a collection 
     pub fn resolve_collection_len(&self, path: &Path, node_id: Option<&NodeId>) -> Option<usize> {
         match self.scopes.lookup(path) {
             Some(ValueRef::Deferred(ref deferred)) => {
