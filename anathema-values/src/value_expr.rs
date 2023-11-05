@@ -104,6 +104,9 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
                 }
                 Some(s)
             }
+            ValueRef::ExpressionMap(map) => {
+                panic!("how should this become a string");
+            }
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
 

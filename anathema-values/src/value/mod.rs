@@ -24,8 +24,8 @@ pub enum ValueRef<'a> {
     Expressions(&'a [ValueExpr]),
     ExpressionMap(&'a HashMap<String, ValueExpr>),
     Owned(Owned),
-    /// A deferred lookup. This should only ever
-    /// be a path into a state
+    /// A deferred lookup. 
+    /// This should only ever be a path into a state
     Deferred(Path),
 }
 

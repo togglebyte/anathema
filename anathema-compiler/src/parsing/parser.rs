@@ -372,6 +372,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             | Kind::Value(Value::String(_))
             | Kind::Value(Value::Ident(_))
             | Kind::Op(Operator::LBracket)
+            | Kind::Op(Operator::LCurly)
             | Kind::Eof => {}
             _ => {
                 return Err(self.error(ErrorKind::InvalidToken {
