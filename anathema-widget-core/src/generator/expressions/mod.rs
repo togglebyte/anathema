@@ -109,10 +109,12 @@ impl Loop {
             ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
                 match Deferred::new(context).resolve_path(&self.collection) {
-                    Some(path) => match context.state.get_collection(&path, Some(&node_id)) {
-                        Some(len) => Collection::State { len, path },
-                        None => Collection::Path(path),
-                    },
+                    Some(path) => {
+                        match context.resolve_collection_len(&path, Some(&node_id)) {
+                            Some(len) => Collection::State { len, path },
+                            None => Collection::Empty,
+                        }
+                    }
                     None => Collection::Empty,
                 }
             }
@@ -193,7 +195,7 @@ mod test {
     use crate::contexts::LayoutCtx;
     use crate::generator::testing::*;
     use crate::layout::Constraints;
-    use crate::testing::{for_expression, expression};
+    use crate::testing::{expression, for_expression};
 
     impl Expression {
         pub fn test<'a>(self) -> TestExpression<TestState> {

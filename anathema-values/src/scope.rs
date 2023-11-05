@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{Path, State, ValueRef};
+use crate::{NodeId, Path, State, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum LocalScope<'expr> {
@@ -90,6 +90,18 @@ impl<'a, 'expr> Context<'a, 'expr> {
         self.scopes
             .lookup(path)
             .or_else(|| Some(ValueRef::Deferred(path.clone())))
+    }
+
+    pub fn resolve_collection_len(&self, path: &Path, node_id: Option<&NodeId>) -> Option<usize> {
+        match self.scopes.lookup(path) {
+            Some(ValueRef::Deferred(ref deferred)) => {
+                let x = deferred.to_string();
+
+                self.resolve_collection_len(deferred, node_id)
+            }
+            None => self.state.get_collection(path, node_id),
+            _ => None,
+        }
     }
 }
 
