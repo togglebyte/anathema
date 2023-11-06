@@ -30,15 +30,15 @@ impl<T> List<T> {
         self.inner.len()
     }
 
-    pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
-    where
-        for<'a> ValueRef<'a>: From<&'a T>,
-    {
-        let Path::Index(index) = path else {
-            return None;
-        };
-        self.inner.get(*index)
-    }
+    // pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
+    // where
+    //     for<'a> ValueRef<'a>: From<&'a T>,
+    // {
+    //     let Path::Index(index) = path else {
+    //         return None;
+    //     };
+    //     self.inner.get(*index)
+    // }
 
     pub fn pop(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop()?;
@@ -97,18 +97,14 @@ where
                 }
                 Some(value.deref().into())
             }
-            Path::Composite(lhs, rhs) => {
-                match self.get(lhs, node_id)? {
-                    ValueRef::List(collection) => collection.get(rhs, node_id),
-                    _ => None
+            Path::Composite(lhs, rhs) => match self.get(lhs, node_id)? {
+                ValueRef::Map(collection) | ValueRef::List(collection) => {
+                    collection.get(rhs, node_id)
                 }
-            }
+                _ => None,
+            },
             Path::Key(_) => None,
         }
-    }
-
-    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<usize> {
-        todo!()
     }
 }
 

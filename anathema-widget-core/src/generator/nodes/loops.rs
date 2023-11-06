@@ -113,7 +113,8 @@ impl<'e> LoopNode<'e> {
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { len: _, ref path } => {
-                ValueRef::Deferred(path.compose(self.value_index))
+                let path = path.compose(self.value_index);
+                ValueRef::Deferred(path)
             }
             Collection::Empty => return None,
         };
@@ -148,5 +149,33 @@ impl<'e> LoopNode<'e> {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use anathema_values::testing::TestState;
+    use anathema_values::ValueExpr;
+
+    use super::*;
+    use crate::testing::{expression, for_expression};
+
+    #[test]
+    fn nested_next_value() {
+        let state = TestState::new();
+        let context = Context::root(&state);
+        let outer = for_expression(
+            "outer",
+            ValueExpr::Ident("nested_list".into()).into(),
+            vec![for_expression(
+                "inner",
+                ValueExpr::Ident("outer".into()).into(),
+                vec![expression("test", ValueExpr::Ident("inner".into()), [], [])],
+            )],
+        );
+
+        let xx = outer.eval(&context, 0.into()).unwrap();
+
+        let y = xx;
     }
 }

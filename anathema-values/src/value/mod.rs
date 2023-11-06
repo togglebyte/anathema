@@ -79,11 +79,17 @@ impl<'a> From<&'a str> for ValueRef<'a> {
     }
 }
 
-impl<T: Into<Owned> + Copy> From<&T> for ValueRef<'_> {
-    fn from(value: &T) -> Self {
+impl<'a> From<&'a usize> for ValueRef<'a> {
+    fn from(value: &'a usize) -> Self {
         ValueRef::Owned((*value).into())
     }
 }
+
+// impl<T: Into<Owned> + Copy> From<&T> for ValueRef<'_> {
+//     fn from(value: &T) -> Self {
+//         ValueRef::Owned((*value).into())
+//     }
+// }
 
 // -----------------------------------------------------------------------------
 //   - TryFrom -

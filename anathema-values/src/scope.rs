@@ -93,15 +93,10 @@ impl<'a, 'expr> Context<'a, 'expr> {
     }
 
     // TODO maybe get rid of this if we can make the state return a collection 
-    pub fn resolve_collection_len(&self, path: &Path, node_id: Option<&NodeId>) -> Option<usize> {
+    pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match self.scopes.lookup(path) {
-            Some(ValueRef::Deferred(ref deferred)) => {
-                let x = deferred.to_string();
-
-                self.resolve_collection_len(deferred, node_id)
-            }
-            None => self.state.get_collection(path, node_id),
-            _ => None,
+            val @ Some(_) => val,
+            None => self.state.get(path, node_id),
         }
     }
 }

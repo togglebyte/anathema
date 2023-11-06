@@ -34,10 +34,6 @@ impl State for Inner {
             _ => None,
         }
     }
-
-    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<usize> {
-        todo!()
-    }
 }
 
 #[derive(Debug)]
@@ -46,7 +42,8 @@ pub struct TestState {
     pub counter: StateValue<usize>,
     pub inner: Inner,
     pub generic_map: StateValue<Map<Map<usize>>>,
-    pub generic_list: StateValue<List<usize>>,
+    pub generic_list: List<usize>,
+    pub nested_list: List<List<usize>>,
 }
 
 impl TestState {
@@ -59,7 +56,10 @@ impl TestState {
                 "inner",
                 Map::new([("first", 1), ("second", 2)]),
             )])),
-            generic_list: StateValue::new(List::new(vec![1, 2, 3])),
+            generic_list: List::new(vec![1, 2, 3]),
+            nested_list: List::new(vec![
+                List::new(vec![ 1, 2, 3]),
+            ]),
         }
     }
 }
@@ -88,27 +88,19 @@ impl State for TestState {
                     // Some(map)
                     panic!()
                 }
+                "generic_list" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.generic_list.subscribe(node_id);
+                    }
+                    Some((&self.generic_list).into())
+                }
                 _ => None,
             },
             Path::Composite(lhs, rhs) => match &**lhs {
                 Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
                 // Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
                 Path::Key(key) if key == "generic_list" => self.generic_list.get(rhs, node_id),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
-    fn get_collection(&self, key: &Path, node_id: Option<&NodeId>) -> Option<usize> {
-        match key {
-            Path::Key(s) => match s.as_str() {
-                "generic_list" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.generic_list.subscribe(node_id);
-                    }
-                    Some(self.generic_list.len())
-                }
+                Path::Key(key) if key == "nested_list" => self.generic_list.get(rhs, node_id),
                 _ => None,
             },
             _ => None,

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::{NodeId, Owned, ValueRef, DIRTY_NODES};
+use crate::{Collection, List, NodeId, Owned, State, ValueRef, DIRTY_NODES};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
@@ -57,6 +57,15 @@ impl<'a> From<&'a StateValue<String>> for ValueRef<'a> {
 impl<'a, T: Into<Owned> + Copy> From<&'a StateValue<T>> for ValueRef<'a> {
     fn from(value: &'a StateValue<T>) -> Self {
         ValueRef::Owned(value.inner.into())
+    }
+}
+
+impl<'a, T: std::fmt::Debug> From<&'a StateValue<List<T>>> for ValueRef<'a>
+where
+    for<'b> ValueRef<'b>: From<&'b T>,
+{
+    fn from(value: &'a StateValue<List<T>>) -> Self {
+        Self::List(&value.inner)
     }
 }
 

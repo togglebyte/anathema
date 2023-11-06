@@ -110,6 +110,7 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
 
+                let pla = path.to_string();
                 match self.context.state.get(&path, self.node_id)? {
                     ValueRef::Str(val) => Some(val.into()),
                     ValueRef::Owned(val) => Some(val.to_string()),
@@ -365,10 +366,6 @@ impl ValueExpr {
             // -----------------------------------------------------------------------------
             Self::Ident(path) => {
                 let value_ref = resolver.lookup_path(&Path::from(&**path))?;
-                if let ValueRef::Deferred(_) = value_ref {
-                    // resolver.deferred = true;
-                }
-
                 Some(value_ref)
             }
             Self::Dot(lhs, rhs) => {

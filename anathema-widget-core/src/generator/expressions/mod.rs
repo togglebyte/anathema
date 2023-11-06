@@ -1,6 +1,7 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueResolver,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef,
+    ValueResolver,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -109,12 +110,29 @@ impl Loop {
             ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
                 match Deferred::new(context).resolve_path(&self.collection) {
-                    Some(path) => {
-                        match context.resolve_collection_len(&path, Some(&node_id)) {
-                            Some(len) => Collection::State { len, path },
-                            None => Collection::Empty,
+                    Some(path) => match context.resolve_collection(&path, Some(&node_id)) {
+                        Some(ValueRef::List(col)) => Collection::State {
+                            len: col.len(),
+                            path,
+                        },
+                        Some(ValueRef::Deferred(inner_path)) => {
+                            // Okay here we go:
+                            // We need this to be in a loop.
+                            // This resolves correctly but we need it to work recursively
+
+
+                            let x = inner_path.to_string();
+
+                            match context.resolve_collection(&inner_path, Some(&node_id)) {
+                                Some(ValueRef::List(col)) => Collection::State {
+                                    len: col.len(),
+                                    path: inner_path,
+                                },
+                                _ => Collection::Empty,
+                            }
                         }
-                    }
+                        _ => Collection::Empty,
+                    },
                     None => Collection::Empty,
                 }
             }
