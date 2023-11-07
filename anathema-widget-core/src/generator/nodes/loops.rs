@@ -108,17 +108,29 @@ impl<'e> LoopNode<'e> {
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => {
                 let value = expressions.get(self.value_index)?;
+                self.value_index += 1;
                 value.eval(&mut Deferred::new(context))?
             }
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
-            Collection::State { len: _, ref path } => {
-                let path = path.compose(self.value_index);
+            Collection::State {
+                ref path,
+                ref mut next,
+                ..
+            } => {
+                let path = match next.pop() {
+                    Some(value_index) => path.compose(value_index),
+                    None => {
+                        let path = path.compose(self.value_index);
+                        self.value_index += 1;
+                        path
+                    }
+                };
+                let s = path.to_string();
                 ValueRef::Deferred(path)
             }
             Collection::Empty => return None,
         };
-        self.value_index += 1;
         Some(val)
     }
 
@@ -132,8 +144,14 @@ impl<'e> LoopNode<'e> {
         self.iterations.remove(index);
     }
 
-    pub(super) fn add(&mut self) {
-        self.collection.add();
+    pub(super) fn push(&mut self) {
+        self.value_index = self.iterations.len();
+        self.collection.push();
+    }
+
+    pub(super) fn insert(&mut self, index: usize) {
+        self.collection.insert(index);
+        self.iterations.insert(index, Iteration::new(self.expressions, self.node_id.next()));
     }
 
     pub(super) fn iter_mut(

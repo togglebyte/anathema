@@ -7,7 +7,7 @@ use crate::Path;
 #[derive(Debug)]
 pub struct Map<T> {
     inner: HashMap<String, StateValue<T>>,
-    // subscribers: RefCell<Vec<NodeId>>,
+    subscribers: RefCell<Vec<NodeId>>,
 }
 
 impl<T> Map<T> {
@@ -21,17 +21,17 @@ impl<T> Map<T> {
             .map(|(k, v)| (k.into(), StateValue::new(v)));
         Self {
             inner: HashMap::from_iter(inner),
-            // subscribers: RefCell::new(vec![]),
+            subscribers: RefCell::new(vec![]),
         }
     }
 
-    pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
-    where
-        for<'a> ValueRef<'a>: From<&'a T>,
-    {
-        let Path::Key(key) = path else { return None };
-        self.inner.get(key)
-    }
+    // pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
+    // where
+    //     for<'a> ValueRef<'a>: From<&'a T>,
+    // {
+    //     let Path::Key(key) = path else { return None };
+    //     self.inner.get(key)
+    // }
 }
 
 // // TODO: is this required?

@@ -132,12 +132,12 @@ where
 
         self.screen.clear_all(&mut self.output)?;
 
-        self.layout()?;
+        // self.layout()?;
 
-        // return Ok(());
+        // // return Ok(());
 
-        self.position();
-        self.paint();
+        // self.position();
+        // self.paint();
 
         'run: loop {
             while let Some(event) = self.event_receiver.next() {

@@ -7,7 +7,8 @@ use crate::{Collection, List, NodeId, Owned, State, ValueRef, DIRTY_NODES};
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
     Update,
-    Add,
+    Push,
+    Insert(usize),
     Remove(usize),
 }
 

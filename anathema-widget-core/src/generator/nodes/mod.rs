@@ -38,7 +38,9 @@ impl<'e> Node<'e> {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::Loop(loop_state) => loop_state.next(context, layout, f),
+            NodeKind::Loop(loop_state) => {
+                loop_state.next(context, layout, f)
+            }
             NodeKind::ControlFlow(if_else) => {
                 let Some(body) = if_else.body_mut() else {
                     return Ok(ControlFlow::Break(()));
@@ -74,8 +76,9 @@ impl<'e> Node<'e> {
         match &mut self.kind {
             NodeKind::Single(Single { widget, .. }) => widget.update(&context, &self.node_id),
             NodeKind::Loop(loop_node) => match change {
+                Change::Insert(index) => loop_node.insert(index),
                 Change::Remove(index) => loop_node.remove(index),
-                Change::Add => loop_node.add(),
+                Change::Push => loop_node.push(),
                 _ => (),
             },
             // NOTE: the control flow it self has no immediate information

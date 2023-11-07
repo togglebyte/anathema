@@ -83,15 +83,24 @@ pub struct Loop {
 #[derive(Debug)]
 pub enum Collection<'e> {
     ValueExpressions(&'e [ValueExpr]),
-    State { len: usize, path: Path },
+    State { len: usize, path: Path, next: Vec<usize> },
     Path(Path),
     Empty,
 }
 
 impl<'e> Collection<'e> {
-    pub(super) fn add(&mut self) {
+    pub(super) fn push(&mut self) {
         if let Collection::State { len, .. } = self {
             *len += 1;
+        }
+    }
+
+    pub(super) fn insert(&mut self, index: usize) {
+        if let Collection::State { next, len, .. } = self {
+            if index <= *len {
+                next.push(index);
+                *len += 1;
+            }
         }
     }
 
@@ -114,19 +123,14 @@ impl Loop {
                         Some(ValueRef::List(col)) => Collection::State {
                             len: col.len(),
                             path,
+                            next: vec![]
                         },
                         Some(ValueRef::Deferred(inner_path)) => {
-                            // Okay here we go:
-                            // We need this to be in a loop.
-                            // This resolves correctly but we need it to work recursively
-
-
-                            let x = inner_path.to_string();
-
                             match context.resolve_collection(&inner_path, Some(&node_id)) {
                                 Some(ValueRef::List(col)) => Collection::State {
                                     len: col.len(),
                                     path: inner_path,
+                                    next: vec![]
                                 },
                                 _ => Collection::Empty,
                             }

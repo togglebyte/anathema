@@ -109,8 +109,7 @@ impl<'a, 'expr> Resolver<'a, 'expr> {
             }
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
-
-                let pla = path.to_string();
+                let p = path.to_string();
                 match self.context.state.get(&path, self.node_id)? {
                     ValueRef::Str(val) => Some(val.into()),
                     ValueRef::Owned(val) => Some(val.to_string()),

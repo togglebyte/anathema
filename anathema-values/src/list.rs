@@ -57,21 +57,18 @@ impl<T> List<T> {
         ret
     }
 
-    pub fn swap(&mut self, _a: usize, _b: usize) {
-        // self.inner.swap(a, b)
-        panic!()
-    }
-
     pub fn push(&mut self, value: T) {
         self.inner.push(StateValue::new(value));
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Add)));
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Push)));
         }
     }
 
-    pub fn insert(&mut self, _index: usize, _value: StateValue<T>) {
-        // self.inner.insert(index, value)
-        panic!()
+    pub fn insert(&mut self, index: usize, value: T) {
+        self.inner.insert(index, StateValue::new(value));
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Insert(index))));
+        }
     }
 }
 
