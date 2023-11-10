@@ -63,6 +63,7 @@ pub struct TestState {
     pub generic_map: StateValue<Map<Map<usize>>>,
     pub generic_list: List<usize>,
     pub nested_list: List<List<usize>>,
+    pub debug: StateValue<bool>,
 }
 
 impl TestState {
@@ -77,6 +78,7 @@ impl TestState {
             )])),
             generic_list: List::new(vec![1, 2, 3]),
             nested_list: List::new(vec![List::new(vec![1, 2, 3])]),
+            debug: StateValue::new(false),
         }
     }
 }
@@ -85,6 +87,12 @@ impl State for TestState {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
             Path::Key(s) => match s.as_str() {
+                "debug" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.debug.subscribe(node_id);
+                    }
+                    Some((&self.debug).into())
+                }
                 "name" => {
                     if let Some(node_id) = node_id.cloned() {
                         self.name.subscribe(node_id);

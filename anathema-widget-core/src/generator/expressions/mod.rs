@@ -83,7 +83,7 @@ pub struct Loop {
 #[derive(Debug)]
 pub enum Collection<'e> {
     ValueExpressions(&'e [ValueExpr]),
-    State { len: usize, path: Path, next: Vec<usize> },
+    State { len: usize, path: Path },
     Path(Path),
     Empty,
 }
@@ -96,9 +96,8 @@ impl<'e> Collection<'e> {
     }
 
     pub(super) fn insert(&mut self, index: usize) {
-        if let Collection::State { next, len, .. } = self {
+        if let Collection::State { len, .. } = self {
             if index <= *len {
-                next.push(index);
                 *len += 1;
             }
         }
@@ -123,14 +122,12 @@ impl Loop {
                         Some(ValueRef::List(col)) => Collection::State {
                             len: col.len(),
                             path,
-                            next: vec![]
                         },
                         Some(ValueRef::Deferred(inner_path)) => {
                             match context.resolve_collection(&inner_path, Some(&node_id)) {
                                 Some(ValueRef::List(col)) => Collection::State {
                                     len: col.len(),
                                     path: inner_path,
-                                    next: vec![]
                                 },
                                 _ => Collection::Empty,
                             }

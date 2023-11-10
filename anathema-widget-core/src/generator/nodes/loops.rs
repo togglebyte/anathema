@@ -1,6 +1,8 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, State, ValueRef};
+use anathema_values::{
+    Change, Context, Deferred, LocalScope, NodeId, Owned, Path, State, ValueRef,
+};
 
 use super::Nodes;
 use crate::contexts::LayoutCtx;
@@ -105,6 +107,11 @@ impl<'e> LoopNode<'e> {
     }
 
     pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
+        if let Some(ValueRef::Owned(Owned::Bool(true))) = context.state.get(&"debug".into(), None) {
+            let x = 1;
+            eprintln!("{x}");
+        }
+
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => {
                 let value = expressions.get(self.value_index)?;
@@ -113,19 +120,9 @@ impl<'e> LoopNode<'e> {
             }
             Collection::Path(ref path) => context.lookup(path)?,
             Collection::State { len, .. } if len == self.value_index => return None,
-            Collection::State {
-                ref path,
-                ref mut next,
-                ..
-            } => {
-                let path = match next.pop() {
-                    Some(value_index) => path.compose(value_index),
-                    None => {
-                        let path = path.compose(self.value_index);
-                        self.value_index += 1;
-                        path
-                    }
-                };
+            Collection::State { ref path, .. } => {
+                let path = path.compose(self.value_index);
+                self.value_index += 1;
                 let s = path.to_string();
                 ValueRef::Deferred(path)
             }
@@ -151,6 +148,7 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn insert(&mut self, index: usize) {
         self.collection.insert(index);
+        self.current_iteration = index;
         self.iterations
             .insert(index, Iteration::new(self.expressions, self.node_id.next()));
     }
@@ -175,10 +173,10 @@ impl<'e> LoopNode<'e> {
 mod test {
     use anathema_render::Size;
     use anathema_values::testing::{dot, ident, TestState};
-    use anathema_values::ValueExpr;
+    use anathema_values::{drain_dirty_nodes, ValueExpr};
 
     use super::*;
-    use crate::generator::testing::{TestLayoutMany, TestWidget, register_test_widget};
+    use crate::generator::testing::{register_test_widget, TestLayoutMany, TestWidget};
     use crate::layout::{Constraints, Layouts};
     use crate::testing::{expression, for_expression};
     use crate::Padding;
@@ -200,12 +198,20 @@ mod test {
 
     impl<'e> LoopNodeTest<'e> {
         fn new(expressions: &'e [Expression]) -> Self {
-            // register_test_widget();
+            register_test_widget();
             let nodes = Nodes::new(&expressions, 0.into());
             Self {
                 state: TestState::new(),
                 expressions,
                 nodes,
+            }
+        }
+
+        fn notify(&mut self) {
+            let dirt = drain_dirty_nodes();
+            let context = Context::root(&self.state);
+            for (id, change) in dirt {
+                self.nodes.update(id.as_slice(), change, &context);
             }
         }
 
@@ -234,33 +240,67 @@ mod test {
     fn remove_node() {
         let expr = expr();
         let mut test = LoopNodeTest::new(&expr);
-        let s = test.layout().unwrap();
-        // eprintln!("Find this stuff: {s:?}");
-        // test.state.generic_list.remove(1);
-        // let s = test.layout().unwrap();
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "2", "3"]);
+        test.state.generic_list.remove(1);
 
-        // let y = s;
-        // assert_eq!(
-        //     s,
-        //     Size {
-        //         width: 1,
-        //         height: 3
-        //     }
-        // );
-        // let n = test.names();
-        // let c = test.count();
-        // assert_eq!(3, c);
-
-        // panic!("{}", test.count());
-        // let names = test.names();
-        // let new_names = test.names();
+        test.notify();
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "3"]);
     }
 
     #[test]
-    fn push_node() {}
+    fn pop() {
+        let expr = expr();
+        let mut test = LoopNodeTest::new(&expr);
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "2", "3"]);
+
+        test.state.generic_list.pop();
+        test.notify();
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "2"]);
+    }
 
     #[test]
-    fn insert_node() {}
+    fn push_node() {
+        let expr = expr();
+        let mut test = LoopNodeTest::new(&expr);
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "2", "3"]);
+
+        test.state.generic_list.push(100);
+        test.notify();
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "2", "3", "100"]);
+    }
+
+    #[test]
+    fn insert_node() {
+        let expr = expr();
+        let mut test = LoopNodeTest::new(&expr);
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "2", "3"]);
+
+        test.state.generic_list.insert(1, 100);
+        test.notify();
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["1", "100", "2", "3"]);
+
+        test.state.generic_list.insert(0, 99);
+        test.notify();
+        test.layout().unwrap();
+        let n = test.names();
+        assert_eq!(&n, &["99", "1", "100", "2", "3"]);
+    }
 
     #[test]
     fn nested_next_value() {

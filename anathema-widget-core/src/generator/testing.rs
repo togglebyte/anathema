@@ -53,8 +53,6 @@ impl Widget for TestWidget {
         _data: &Context<'_, '_>,
     ) -> Result<Size> {
 
-        panic!("ooop");
-
         match self.0.value_ref() {
             Some(s) => Ok(Size::new(s.len(), 1)),
             None => Ok(Size::ZERO),
@@ -153,6 +151,6 @@ impl<'e> TestNodes<'e> {
 }
 
 pub(crate) fn register_test_widget() {
-    // Factory::register("test", TestWidgetFactory);
-    // Factory::register("list", TestListWidgetFactory);
+    Factory::register("test", TestWidgetFactory);
+    Factory::register("list", TestListWidgetFactory);
 }
