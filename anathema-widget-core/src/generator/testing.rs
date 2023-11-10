@@ -29,7 +29,7 @@ impl Layout for TestLayoutMany {
             size.height += s.height;
             size.width = size.width.max(s.width);
             Ok(())
-        });
+        })?;
 
         Ok(size)
     }
@@ -39,7 +39,7 @@ impl Layout for TestLayoutMany {
 //   - Widgets -
 // -----------------------------------------------------------------------------
 
-struct TestWidget(Value<String>);
+pub struct TestWidget(pub Value<String>);
 
 impl Widget for TestWidget {
     fn kind(&self) -> &'static str {
@@ -52,6 +52,9 @@ impl Widget for TestWidget {
         _layout: &LayoutCtx,
         _data: &Context<'_, '_>,
     ) -> Result<Size> {
+
+        panic!("ooop");
+
         match self.0.value_ref() {
             Some(s) => Ok(Size::new(s.len(), 1)),
             None => Ok(Size::ZERO),
@@ -150,6 +153,6 @@ impl<'e> TestNodes<'e> {
 }
 
 pub(crate) fn register_test_widget() {
-    Factory::register("test", TestWidgetFactory);
-    Factory::register("list", TestListWidgetFactory);
+    // Factory::register("test", TestWidgetFactory);
+    // Factory::register("list", TestListWidgetFactory);
 }

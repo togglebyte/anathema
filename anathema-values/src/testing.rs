@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::map::Map;
 use crate::{
     Collection, Context, List, LocalScope, NodeId, Owned, Path, State, StateValue, ValueExpr,
@@ -14,7 +16,7 @@ impl Inner {
     pub fn new() -> Self {
         Self {
             name: StateValue::new("Fiddle McStick".into()),
-            names: List::empty(),
+            names: List::new(vec!["arthur".to_string(), "bobby".into()]),
         }
     }
 }
@@ -29,8 +31,25 @@ impl State for Inner {
                     }
                     Some((&self.name).into())
                 }
+                "names" => {
+                    if let Some(node_id) = node_id.cloned() {
+                        self.names.subscribe(node_id);
+                    }
+                    Some((&self.names).into())
+                }
                 _ => None,
             },
+            Path::Composite(left, right) => {
+                let Path::Key(key) = left.deref() else {
+                    return None;
+                };
+
+                if key == "names" {
+                    self.names.get(right, node_id).map(Into::into)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -57,9 +76,7 @@ impl TestState {
                 Map::new([("first", 1), ("second", 2)]),
             )])),
             generic_list: List::new(vec![1, 2, 3]),
-            nested_list: List::new(vec![
-                List::new(vec![ 1, 2, 3]),
-            ]),
+            nested_list: List::new(vec![List::new(vec![1, 2, 3])]),
         }
     }
 }

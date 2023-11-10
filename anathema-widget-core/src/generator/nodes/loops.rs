@@ -151,7 +151,8 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn insert(&mut self, index: usize) {
         self.collection.insert(index);
-        self.iterations.insert(index, Iteration::new(self.expressions, self.node_id.next()));
+        self.iterations
+            .insert(index, Iteration::new(self.expressions, self.node_id.next()));
     }
 
     pub(super) fn iter_mut(
@@ -172,11 +173,94 @@ impl<'e> LoopNode<'e> {
 
 #[cfg(test)]
 mod test {
-    use anathema_values::testing::TestState;
+    use anathema_render::Size;
+    use anathema_values::testing::{dot, ident, TestState};
     use anathema_values::ValueExpr;
 
     use super::*;
+    use crate::generator::testing::{TestLayoutMany, TestWidget, register_test_widget};
+    use crate::layout::{Constraints, Layouts};
     use crate::testing::{expression, for_expression};
+    use crate::Padding;
+
+    fn expr() -> Vec<Expression> {
+        let expression = for_expression(
+            "name",
+            ident("generic_list"),
+            vec![expression("test", Some(*ident("name")), [], [])],
+        );
+        vec![expression]
+    }
+
+    struct LoopNodeTest<'e> {
+        expressions: &'e [Expression],
+        state: TestState,
+        nodes: Nodes<'e>,
+    }
+
+    impl<'e> LoopNodeTest<'e> {
+        fn new(expressions: &'e [Expression]) -> Self {
+            // register_test_widget();
+            let nodes = Nodes::new(&expressions, 0.into());
+            Self {
+                state: TestState::new(),
+                expressions,
+                nodes,
+            }
+        }
+
+        fn names(&mut self) -> Vec<String> {
+            self.nodes
+                .iter_mut()
+                .map(|(n, _)| n.to_ref::<TestWidget>())
+                .map(|widget| widget.0.str().to_string())
+                .collect()
+        }
+
+        fn count(&self) -> usize {
+            self.nodes.count()
+        }
+
+        fn layout(&mut self) -> Result<Size> {
+            self.nodes.reset_cache();
+            let context = Context::root(&self.state);
+            let layout = LayoutCtx::new(Constraints::new(100, 100), Padding::ZERO);
+            let mut layout = Layouts::new(TestLayoutMany, &layout);
+            layout.layout(&mut self.nodes, &context)
+        }
+    }
+
+    #[test]
+    fn remove_node() {
+        let expr = expr();
+        let mut test = LoopNodeTest::new(&expr);
+        let s = test.layout().unwrap();
+        // eprintln!("Find this stuff: {s:?}");
+        // test.state.generic_list.remove(1);
+        // let s = test.layout().unwrap();
+
+        // let y = s;
+        // assert_eq!(
+        //     s,
+        //     Size {
+        //         width: 1,
+        //         height: 3
+        //     }
+        // );
+        // let n = test.names();
+        // let c = test.count();
+        // assert_eq!(3, c);
+
+        // panic!("{}", test.count());
+        // let names = test.names();
+        // let new_names = test.names();
+    }
+
+    #[test]
+    fn push_node() {}
+
+    #[test]
+    fn insert_node() {}
 
     #[test]
     fn nested_next_value() {

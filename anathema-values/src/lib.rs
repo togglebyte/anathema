@@ -126,7 +126,7 @@ impl Value<bool> {
 }
 
 impl Value<String> {
-    pub fn string(&self) -> &str {
+    pub fn str(&self) -> &str {
         static EMPTY: &str = "";
         match self {
             Self::Static(s) => s,

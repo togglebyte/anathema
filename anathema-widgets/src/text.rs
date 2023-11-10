@@ -58,10 +58,10 @@ impl Text {
         };
 
         let (text, style) = if *widget_index == 0 {
-            (self.text.string(), self.style.style())
+            (self.text.str(), self.style.style())
         } else {
             let span = &children[widget_index - 1].to_ref::<TextSpan>();
-            (span.text.string(), span.style.style())
+            (span.text.str(), span.style.style())
         };
 
         if let Entry::Range(Range { start, end, .. }) = entry {
@@ -134,7 +134,7 @@ impl Widget for Text {
         self.word_wrap
             .value_ref()
             .map(|wrap| self.layout.set_wrap(*wrap));
-        self.layout.process(self.text.string());
+        self.layout.process(self.text.str());
 
         let babies = children.count();
 
@@ -147,7 +147,7 @@ impl Widget for Text {
             let inner_span = span.to_mut::<TextSpan>();
             // inner_span.update_text(data);
 
-            self.layout.process(inner_span.text.string());
+            self.layout.process(inner_span.text.str());
             Ok(())
         });
 

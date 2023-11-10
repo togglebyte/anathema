@@ -131,10 +131,10 @@ impl<'e> Nodes<'e> {
     fn new_node(&mut self, context: &Context<'_, 'e>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        let Ok(node) = expr.eval(&context, self.next_id.next()) else {
-            return None;
+        match expr.eval(&context, self.next_id.next()) {
+            Ok(node) => self.inner.push(node),
+            Err(e) => return Some(Err(e))
         };
-        self.inner.push(node);
         Some(Ok(()))
     }
 

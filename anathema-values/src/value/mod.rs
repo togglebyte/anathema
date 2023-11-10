@@ -73,6 +73,12 @@ where
     }
 }
 
+impl<'a> From<&'a String> for ValueRef<'a> {
+    fn from(value: &'a String) -> Self {
+        ValueRef::Str(value)
+    }
+}
+
 impl<'a> From<&'a str> for ValueRef<'a> {
     fn from(value: &'a str) -> Self {
         ValueRef::Str(value)
