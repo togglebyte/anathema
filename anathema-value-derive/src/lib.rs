@@ -1,20 +1,17 @@
-use proc_macro::TokenStream;
-use quote::{quote, quote_spanned};
-use syn::spanned::Spanned;
-use syn::{self, parse_macro_input, Fields};
+use manyhow::{ensure, manyhow, Result};
+use quote::quote;
+use syn::{self, Fields};
 
+#[manyhow]
 #[proc_macro_derive(State)]
-pub fn state_derive(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input as syn::ItemStruct);
-    impl_state(&ast)
-}
-
-fn impl_state(strct: &syn::ItemStruct) -> TokenStream {
+pub fn state_derive(strct: syn::ItemStruct) -> Result {
     let name = &strct.ident;
 
-    let Fields::Named(struct_fields) = &strct.fields else {
-        return quote_spanned!(strct.fields.span() => ::core::compile_error! { "only named fields" }).into();
-    };
+    ensure!(
+        let Fields::Named(struct_fields) = &strct.fields,
+        strct.fields,
+        "only named fields"
+    );
 
     let (field_idents, field_names): (Vec<_>, Vec<_>) = struct_fields
         .named
@@ -23,7 +20,7 @@ fn impl_state(strct: &syn::ItemStruct) -> TokenStream {
         .map(|f| (f, f.to_string()))
         .unzip();
 
-    let gen = quote! {
+    Ok(quote! {
         impl ::anathema::values::state::State for #name {
             fn get(&self, key: &::anathema::values::Path, node_id: ::core::option::Option<&::anathema::values::NodeId>) -> ::anathema::values::ValueRef<'_> {
                 use ::anathema::values::{ValueRef, Path};
@@ -54,7 +51,5 @@ fn impl_state(strct: &syn::ItemStruct) -> TokenStream {
                 }
             }
         }
-    };
-
-    gen.into()
+    })
 }
