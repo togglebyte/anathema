@@ -69,15 +69,15 @@ impl<'e> Node<'e> {
     // Update this node.
     // This means that the update was specifically for this node,
     // and none of its children
-    fn update(&mut self, change: Change, context: &Context<'_, '_>) {
+    fn update(&mut self, change: &Change, context: &Context<'_, '_>) {
         let scope = &self.scope;
         let context = context.reparent(scope);
 
         match &mut self.kind {
             NodeKind::Single(Single { widget, .. }) => widget.update(&context, &self.node_id),
             NodeKind::Loop(loop_node) => match change {
-                Change::Insert(index) => loop_node.insert(index),
-                Change::Remove(index) => loop_node.remove(index),
+                Change::InsertIndex(index) => loop_node.insert(*index),
+                Change::RemoveIndex(index) => loop_node.remove(*index),
                 Change::Push => loop_node.push(),
                 _ => (),
             },
@@ -184,7 +184,7 @@ impl<'e> Nodes<'e> {
     }
 
     // TODO: move this into a visitor?
-    pub fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+    pub fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
         update(&mut self.inner, node_id, change, context);
     }
 
@@ -247,7 +247,7 @@ fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 }
 
 // Apply change / update to relevant nodes
-fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
         if node.node_id.contains(node_id) {
             // Found the node to update

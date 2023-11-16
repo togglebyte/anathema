@@ -4,12 +4,17 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{Collection, List, NodeId, Owned, State, ValueRef, DIRTY_NODES};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+// TODO: Can we make this `Copy` as well?
+//       This depends if `RemoveKey` is required here or not.
+//       TB 2023-11-11
+#[derive(Debug, Clone, PartialEq)]
 pub enum Change {
     Update,
     Push,
-    Insert(usize),
-    Remove(usize),
+    InsertIndex(usize),
+    InsertKey(String),
+    RemoveIndex(usize),
+    RemoveKey(String),
 }
 
 #[derive(Debug, Default)]
@@ -55,20 +60,23 @@ impl<'a> From<&'a StateValue<String>> for ValueRef<'a> {
     }
 }
 
-impl<'a, T: Into<Owned> + Copy> From<&'a StateValue<T>> for ValueRef<'a> {
+impl<'a, T> From<&'a StateValue<T>> for ValueRef<'a>
+where
+    Owned: From<&'a T>,
+{
     fn from(value: &'a StateValue<T>) -> Self {
-        ValueRef::Owned(value.inner.into())
+        ValueRef::Owned((&value.inner).into())
     }
 }
 
-impl<'a, T: std::fmt::Debug> From<&'a StateValue<List<T>>> for ValueRef<'a>
-where
-    for<'b> ValueRef<'b>: From<&'b T>,
-{
-    fn from(value: &'a StateValue<List<T>>) -> Self {
-        Self::List(&value.inner)
-    }
-}
+// impl<'a, T: std::fmt::Debug> From<&'a StateValue<List<T>>> for ValueRef<'a>
+// where
+//     for<'b> ValueRef<'b>: From<&'b T>,
+// {
+//     fn from(value: &'a StateValue<List<T>>) -> Self {
+//         Self::List(&value.inner)
+//     }
+// }
 
 #[cfg(test)]
 mod test {

@@ -2,8 +2,8 @@ use std::ops::Deref;
 
 use crate::map::Map;
 use crate::{
-    Collection, Context, List, LocalScope, NodeId, Owned, Path, State, StateValue, ValueExpr,
-    ValueRef,
+    Collection, Context, List, LocalScope, NodeId, Owned, Path, Resolver, State, StateValue,
+    ValueExpr, ValueRef,
 };
 
 #[derive(Debug)]
@@ -91,7 +91,8 @@ impl State for TestState {
                     if let Some(node_id) = node_id.cloned() {
                         self.debug.subscribe(node_id);
                     }
-                    Some((&self.debug).into())
+                    panic!()
+                    // Some((&self.debug).into())
                 }
                 "name" => {
                     if let Some(node_id) = node_id.cloned() {
@@ -103,7 +104,8 @@ impl State for TestState {
                     if let Some(node_id) = node_id.cloned() {
                         self.name.subscribe(node_id);
                     }
-                    Some((&self.counter).into())
+                    panic!()
+                    // Some((&self.counter).into())
                 }
                 "generic_map" => {
                     if let Some(node_id) = node_id.cloned() {
@@ -117,7 +119,8 @@ impl State for TestState {
                     if let Some(node_id) = node_id.cloned() {
                         self.generic_list.subscribe(node_id);
                     }
-                    Some((&self.generic_list).into())
+                    None
+                    // Some((&self.generic_list).into())
                 }
                 _ => None,
             },
@@ -137,17 +140,20 @@ impl State for TestState {
 //   - Extend value expression -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub struct TestExpression<S> {
-    pub state: S,
-    expr: Box<ValueExpr>,
+pub struct TestExpression<T> {
+    pub state: Map<T>,
+    pub expr: Box<ValueExpr>,
 }
 
-impl<S: State> TestExpression<S> {
+impl<T> TestExpression<T>
+where
+    for<'a> &'a T: Into<ValueRef<'a>>,
+{
     pub fn eval(&self) -> Option<ValueRef<'_>> {
         let scope = LocalScope::empty();
         let context = Context::new(&self.state, &scope);
-        // self.expr.eval_value_ref(&context)
-        panic!()
+        let mut resolver = Resolver::new(&context, None);
+        self.expr.eval(&mut resolver)
     }
 
     pub fn eval_string(&self) -> Option<String> {
@@ -166,11 +172,21 @@ impl<S: State> TestExpression<S> {
 }
 
 impl ValueExpr {
-    #[cfg(feature = "testing")]
-    pub fn test<'a>(self) -> TestExpression<TestState> {
+    pub fn with_data<T, K: Into<String>>(
+        self,
+        inner: impl IntoIterator<Item = (K, T)>,
+    ) -> TestExpression<T> {
+        let inner = inner.into_iter().map(|(k, v)| (k, v.into()));
         TestExpression {
-            state: TestState::new(),
-            expr: self.into(),
+            state: Map::new(inner),
+            expr: Box::new(self),
+        }
+    }
+
+    pub fn test(self) -> TestExpression<usize> {
+        TestExpression {
+            state: Map::empty(),
+            expr: Box::new(self),
         }
     }
 }

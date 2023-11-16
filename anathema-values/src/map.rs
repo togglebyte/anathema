@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::fmt::Debug;
 
 use super::*;
@@ -25,69 +26,82 @@ impl<T> Map<T> {
         }
     }
 
-    // pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
-    // where
-    //     for<'a> ValueRef<'a>: From<&'a T>,
-    // {
-    //     let Path::Key(key) = path else { return None };
-    //     self.inner.get(key)
-    // }
+    pub fn subscribe(&self, node_id: NodeId) {
+        self.subscribers.borrow_mut().push(node_id);
+    }
+
+    pub fn remove(&mut self, key: String) -> Option<StateValue<T>> {
+        let ret = self.inner.remove(&key);
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::RemoveKey(key.clone()))));
+        }
+        ret
+    }
+
+    pub fn insert(&mut self, key: String, value: T) {
+        self.inner.insert(key.clone(), StateValue::new(value));
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::InsertKey(key.clone()))));
+        }
+    }
+
 }
 
-// // TODO: is this required?
-// impl<T: Debug> Collection for HashMap<String, StateValue<T>>
-// where
-//     for<'a> ValueRef<'a>: From<&'a T>,
-// {
-//     fn get(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
-//         match path {
-//             Path::Key(key) => {
-//                 let value = self.get(key)?;
-//                 if let Some(node_id) = node_id.cloned() {
-//                     value.subscribe(node_id);
-//                 }
-//                 Some((&value.inner).into())
-//             }
-//             _ => None,
-//         }
-//     }
+impl<T: Debug> Collection for Map<T>
+where
+    for<'a> &'a T: Into<ValueRef<'a>>
+{
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
-//     fn len(&self) -> usize {
-//         self.inner.len()
-//     }
-// }
 
-// impl<T: Debug> Collection for Map<T>
-// where
-//     for<'a> ValueRef<'a>: From<&'a T>,
-// {
-//     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
-//         match key {
-//             Path::Key(_) => {
-//                 let value = self.lookup(key, node_id)?;
-//                 if let Some(node_id) = node_id.cloned() {
-//                     value.subscribe(node_id);
-//                 }
-//                 Some((&value.inner).into())
-//             }
-//             Path::Composite(lhs, rhs) => {
-//                 let map = self
-//                     .lookup(&**lhs, node_id)
-//                     .map(|value| (&value.inner).into())?;
+impl<T> State for Map<T>
+where
+    for<'a> &'a T: Into<ValueRef<'a>>
+{
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+        match key {
+            Path::Key(key) => {
+                let value = self.inner.get(key)?;
+                if let Some(node_id) = node_id.cloned() {
+                    value.subscribe(node_id);
+                }
+                Some(value.deref().into())
+            }
+            Path::Composite(lhs, rhs) => match self.get(lhs, node_id)? {
+                ValueRef::Map(collection) | ValueRef::List(collection) => {
+                    collection.get(rhs, node_id)
+                }
+                _ => None,
+            },
+            Path::Index(_) => None,
+        }
+    }
+}
 
-//                 match map {
-//                     ValueRef::Map(map) => map.get(rhs, node_id),
-//                     _ => None,
-//                 }
-//             }
-//             Path::Index(_) => None,
-//         }
-//     }
+impl<'a> State for Map<ValueRef<'a>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+        match key {
+            Path::Key(key) => {
+                let value = self.inner.get(key)?;
+                if let Some(node_id) = node_id.cloned() {
+                    value.subscribe(node_id);
+                }
+                Some(value.inner.clone())
+            }
+            Path::Composite(lhs, rhs) => match self.get(lhs, node_id)? {
+                ValueRef::Map(collection) | ValueRef::List(collection) => {
+                    collection.get(rhs, node_id)
+                }
+                _ => None,
+            },
+            Path::Index(_) => None,
+        }
+    }
+}
 
-//     fn len(&self) -> usize {
-//         self.inner.len()
-//     }
-// }
 
 #[cfg(test)]
 mod test {

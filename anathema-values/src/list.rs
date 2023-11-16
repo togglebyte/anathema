@@ -1,8 +1,8 @@
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Deref;
 
-use super::*;
-use crate::Path;
+use crate::{Change, Collection, NodeId, Path, State, StateValue, ValueRef, DIRTY_NODES};
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -30,21 +30,15 @@ impl<T> List<T> {
         self.inner.len()
     }
 
-    // pub fn lookup(&self, path: &Path, _node_id: Option<&NodeId>) -> Option<&StateValue<T>>
-    // where
-    //     for<'a> ValueRef<'a>: From<&'a T>,
-    // {
-    //     let Path::Index(index) = path else {
-    //         return None;
-    //     };
-    //     self.inner.get(*index)
-    // }
-
     pub fn pop(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop()?;
         let index = self.inner.len();
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Remove(index))));
+            DIRTY_NODES.with(|nodes| {
+                nodes
+                    .borrow_mut()
+                    .push((s.clone(), Change::RemoveIndex(index)))
+            });
         }
         Some(ret)
     }
@@ -52,7 +46,11 @@ impl<T> List<T> {
     pub fn remove(&mut self, index: usize) -> StateValue<T> {
         let ret = self.inner.remove(index);
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Remove(index))));
+            DIRTY_NODES.with(|nodes| {
+                nodes
+                    .borrow_mut()
+                    .push((s.clone(), Change::RemoveIndex(index)))
+            });
         }
         ret
     }
@@ -67,14 +65,18 @@ impl<T> List<T> {
     pub fn insert(&mut self, index: usize, value: T) {
         self.inner.insert(index, StateValue::new(value));
         for s in self.subscribers.borrow().iter() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Insert(index))));
+            DIRTY_NODES.with(|nodes| {
+                nodes
+                    .borrow_mut()
+                    .push((s.clone(), Change::InsertIndex(index)))
+            });
         }
     }
 }
 
 impl<T: Debug> Collection for List<T>
 where
-    for<'a> ValueRef<'a>: From<&'a T>,
+    for<'a> &'a T: Into<ValueRef<'a>>
 {
     fn len(&self) -> usize {
         self.inner.len()
@@ -83,7 +85,7 @@ where
 
 impl<T> State for List<T>
 where
-    for<'a> ValueRef<'a>: From<&'a T>,
+    for<'a> &'a T: Into<ValueRef<'a>>
 {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
         match key {
@@ -109,6 +111,7 @@ where
 mod test {
     use super::*;
     use crate::testing::TestState;
+    use crate::Owned;
 
     #[test]
     fn access_list() {

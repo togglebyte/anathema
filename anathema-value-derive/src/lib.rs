@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{self, Fields};
 
+
 #[proc_macro_derive(Statey)]
 pub fn state_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();

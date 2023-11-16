@@ -24,8 +24,9 @@ pub enum ValueRef<'a> {
     Expressions(&'a [ValueExpr]),
     ExpressionMap(&'a HashMap<String, ValueExpr>),
     Owned(Owned),
-    /// A deferred lookup. 
-    /// This should only ever be a path into a state
+    /// A deferred lookup.
+    /// This should only ever be a path into a state, and
+    /// a state should never return a deferred value.
     Deferred(Path),
 }
 
@@ -54,48 +55,53 @@ impl<'a> PartialEq for ValueRef<'a> {
 // -----------------------------------------------------------------------------
 //   - From for value ref -
 // -----------------------------------------------------------------------------
-impl<'a, T: Debug> From<&'a Map<T>> for ValueRef<'a>
+
+impl<'a> Into<ValueRef<'a>> for &'a String {
+    fn into(self) -> ValueRef<'a> {
+        ValueRef::Str(self)
+    }
+}
+
+impl<'a> Into<ValueRef<'a>> for &'a str {
+    fn into(self) -> ValueRef<'a> {
+        ValueRef::Str(self)
+    }
+}
+
+impl<'a> Into<ValueRef<'a>> for Owned {
+    fn into(self) -> ValueRef<'a> {
+        ValueRef::Owned(self)
+    }
+}
+
+impl<'a, T> From<&'a T> for ValueRef<'a>
 where
-    for<'b> ValueRef<'b>: From<&'b T>,
+    &'a T: Into<Owned>,
 {
-    fn from(value: &'a Map<T>) -> Self {
-        panic!()
-        // Self::Map(value)
+    fn from(val: &'a T) -> ValueRef<'a> {
+        Self::Owned(val.into())
     }
 }
 
-impl<'a, T: Debug> From<&'a List<T>> for ValueRef<'a>
+impl<'a, T> Into<ValueRef<'a>> for &'a List<T>
 where
-    for<'b> ValueRef<'b>: From<&'b T>,
+    T: Debug,
+    for<'b> &'b T: Into<ValueRef<'b>>,
 {
-    fn from(value: &'a List<T>) -> Self {
-        Self::List(value)
+    fn into(self) -> ValueRef<'a> {
+        ValueRef::List(self)
     }
 }
 
-impl<'a> From<&'a String> for ValueRef<'a> {
-    fn from(value: &'a String) -> Self {
-        ValueRef::Str(value)
+impl<'a, T> Into<ValueRef<'a>> for &'a Map<T>
+where
+    T: Debug,
+    for<'b> &'b T: Into<ValueRef<'b>>,
+{
+    fn into(self) -> ValueRef<'a> {
+        ValueRef::Map(self)
     }
 }
-
-impl<'a> From<&'a str> for ValueRef<'a> {
-    fn from(value: &'a str) -> Self {
-        ValueRef::Str(value)
-    }
-}
-
-impl<'a> From<&'a usize> for ValueRef<'a> {
-    fn from(value: &'a usize) -> Self {
-        ValueRef::Owned((*value).into())
-    }
-}
-
-// impl<T: Into<Owned> + Copy> From<&T> for ValueRef<'_> {
-//     fn from(value: &T) -> Self {
-//         ValueRef::Owned((*value).into())
-//     }
-// }
 
 // -----------------------------------------------------------------------------
 //   - TryFrom -
@@ -160,10 +166,10 @@ impl TryFrom<ValueRef<'_>> for String {
     }
 }
 
-impl<'epr> TryFrom<ValueRef<'epr>> for &'epr str {
+impl<'expr> TryFrom<ValueRef<'expr>> for &'expr str {
     type Error = ();
 
-    fn try_from(value: ValueRef<'epr>) -> Result<Self, Self::Error> {
+    fn try_from(value: ValueRef<'expr>) -> Result<Self, Self::Error> {
         match value {
             ValueRef::Str(s) => Ok(s),
             _ => Err(()),

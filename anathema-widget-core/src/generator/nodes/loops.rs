@@ -159,7 +159,7 @@ impl<'e> LoopNode<'e> {
         self.iterations.iter_mut().flat_map(|i| i.body.iter_mut())
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
         for iter in &mut self.iterations {
             if iter.node_id.contains(node_id) {
                 iter.body.update(node_id, change, context);

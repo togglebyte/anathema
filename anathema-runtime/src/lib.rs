@@ -116,7 +116,7 @@ where
         let context = Context::root(&self.state);
 
         for (node_id, change) in dirty_nodes {
-            self.nodes.update(node_id.as_slice(), change, &context);
+            self.nodes.update(node_id.as_slice(), &change, &context);
         }
 
         // TODO: finish this. Need to figure out a good way to notify that

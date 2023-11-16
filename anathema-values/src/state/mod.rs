@@ -16,6 +16,7 @@ impl State for Box<dyn State> {
     }
 }
 
+// TODO: this can probably be removed
 /// Implementation of `State` for a unit.
 /// This will always return `None` and should only be used for testing purposes
 impl State for () {

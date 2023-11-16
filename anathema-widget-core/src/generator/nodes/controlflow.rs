@@ -96,7 +96,7 @@ impl<'e> IfElse<'e> {
         self.body().map(|nodes| nodes.count()).unwrap_or(0)
     }
 
-    pub(super) fn update(&mut self, node_id: &[usize], change: Change, context: &Context<'_, '_>) {
+    pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
         // If
         if self.if_node.node_id.contains(node_id) {
             if self.if_node.node_id.eq(node_id) {

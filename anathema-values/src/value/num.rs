@@ -197,6 +197,12 @@ macro_rules! into_unsigned_num {
                 Self::Unsigned(n as u64)
             }
         }
+
+        impl From<&$t> for Num {
+            fn from(n: &$t) -> Self {
+                Self::Unsigned(*n as u64)
+            }
+        }
     };
 }
 
@@ -205,6 +211,12 @@ macro_rules! into_signed_num {
         impl From<$t> for Num {
             fn from(n: $t) -> Self {
                 Self::Signed(n as i64)
+            }
+        }
+
+        impl From<&$t> for Num {
+            fn from(n: &$t) -> Self {
+                Self::Signed(*n as i64)
             }
         }
     };
