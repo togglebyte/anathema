@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::{Collection, List, NodeId, Owned, State, ValueRef, DIRTY_NODES};
+use crate::{Collection, List, NodeId, Owned, Path, State, ValueRef, DIRTY_NODES};
 
 // TODO: Can we make this `Copy` as well?
 //       This depends if `RemoveKey` is required here or not.
@@ -33,6 +33,18 @@ impl<T> StateValue<T> {
 
     pub fn subscribe(&self, subscriber: NodeId) {
         self.subscribers.borrow_mut().insert(subscriber);
+    }
+}
+
+impl<T> StateValue<T>
+where
+    for<'b> &'b T: Into<ValueRef<'b>>,
+{
+    pub fn __anathema_get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
+        if let Some(node_id) = node_id.cloned() {
+            self.subscribe(node_id);
+        }
+        (&self.inner).into()
     }
 }
 

@@ -2,7 +2,8 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Deref;
 
-use crate::{Change, Collection, NodeId, Path, State, StateValue, ValueRef, DIRTY_NODES};
+use crate::{Change, Collection, NodeId, Path, StateValue, ValueRef, DIRTY_NODES};
+use crate::state::State;
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -117,7 +118,7 @@ mod test {
     fn access_list() {
         let state = TestState::new();
         let path = Path::from("generic_list").compose(0).compose(1);
-        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None).unwrap() else {
+        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None) else {
             panic!()
         };
         assert_eq!(x.to_i128(), 2);

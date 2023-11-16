@@ -11,7 +11,7 @@ anathema-values = { path = "./anathema-values" }
 anathema-vm = { path = "./anathema-vm" }
 anathema-widget-core = { path = "./anathema-widget-core" }
 anathema-widgets = { path = "./anathema-widgets" }
-# anathema-value-derive = { path = "./anathema-value-derive" }
+anathema-value-derive = { path = "./anathema-value-derive" }
 
 [workspace.dependencies]
 bitflags = "2.4.0"
@@ -31,5 +31,5 @@ members = [
     "anathema-vm",
     "anathema-widget-core",
     "anathema-widgets",
-    # "anathema-value-derive",
+    "anathema-value-derive",
 ]

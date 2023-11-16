@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use crate::{NodeId, Path, State, ValueRef};
+use crate::state::State;
+use crate::{NodeId, Path, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum LocalScope<'expr> {
@@ -48,7 +49,10 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
 
     fn lookup(&self, path: &Path) -> ValueRef<'expr> {
         match self.scope.lookup(path) {
-            ValueRef::Empty => self.parent.map(|p| p.lookup(path)).unwrap_or(ValueRef::Empty),
+            ValueRef::Empty => self
+                .parent
+                .map(|p| p.lookup(path))
+                .unwrap_or(ValueRef::Empty),
             val => val,
         }
     }
@@ -94,7 +98,7 @@ impl<'a, 'expr> Context<'a, 'expr> {
         }
     }
 
-    // TODO maybe get rid of this if we can make the state return a collection 
+    // TODO maybe get rid of this if we can make the state return a collection
     pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match self.scopes.lookup(path) {
             ValueRef::Empty => self.state.get(path, node_id),
@@ -119,12 +123,12 @@ mod test {
         let inner_scope = LocalScope::new("value".into(), ValueRef::Str("inner hello"));
         let inner = scopes.reparent(&inner_scope);
 
-        let ValueRef::Str(lhs) = inner.lookup(&"value".into()).unwrap() else {
+        let ValueRef::Str(lhs) = inner.lookup(&"value".into()) else {
             panic!()
         };
         assert_eq!(lhs, "inner hello");
 
-        let ValueRef::Str(lhs) = scope.lookup(&"value".into()).unwrap() else {
+        let ValueRef::Str(lhs) = scope.lookup(&"value".into()) else {
             panic!()
         };
         assert_eq!(lhs, "hello world");

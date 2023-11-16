@@ -1,12 +1,13 @@
 use std::ops::Deref;
 
 use crate::map::Map;
+use crate::state::State;
 use crate::{
-    Collection, Context, List, LocalScope, NodeId, Owned, Path, Resolver, State, StateValue,
-    ValueExpr, ValueRef,
+    Collection, Context, List, LocalScope, NodeId, Owned, Path, Resolver, StateValue, ValueExpr,
+    ValueRef,
 };
 
-#[derive(Debug)]
+#[derive(Debug, crate::State)]
 pub struct Inner {
     name: StateValue<String>,
     names: List<String>,
@@ -21,41 +22,41 @@ impl Inner {
     }
 }
 
-impl State for Inner {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
-        match key {
-            Path::Key(s) => match s.as_str() {
-                "name" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.name.subscribe(node_id);
-                    }
-                    (&self.name).into()
-                }
-                "names" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.names.subscribe(node_id);
-                    }
-                    (&self.names).into()
-                }
-                _ => ValueRef::Empty,
-            },
-            Path::Composite(left, right) => {
-                let Path::Key(key) = left.deref() else {
-                    return ValueRef::Empty;
-                };
+// impl State for Inner {
+//     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+//         match key {
+//             Path::Key(s) => match s.as_str() {
+//                 "name" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.name.subscribe(node_id);
+//                     }
+//                     (&self.name).into()
+//                 }
+//                 "names" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.names.subscribe(node_id);
+//                     }
+//                     (&self.names).into()
+//                 }
+//                 _ => ValueRef::Empty,
+//             },
+//             Path::Composite(left, right) => {
+//                 let Path::Key(key) = left.deref() else {
+//                     return ValueRef::Empty;
+//                 };
 
-                if key == "names" {
-                    self.names.get(right, node_id).into()
-                } else {
-                    ValueRef::Empty
-                }
-            }
-            _ => ValueRef::Empty,
-        }
-    }
-}
+//                 if key == "names" {
+//                     (&self.names).__anathema_get(right, node_id).into()
+//                 } else {
+//                     ValueRef::Empty
+//                 }
+//             }
+//             _ => ValueRef::Empty,
+//         }
+//     }
+// }
 
-#[derive(Debug)]
+#[derive(Debug, crate::State)]
 pub struct TestState {
     pub name: StateValue<String>,
     pub counter: StateValue<usize>,
@@ -70,7 +71,7 @@ impl TestState {
     pub fn new() -> Self {
         Self {
             name: StateValue::new("Dirk Gently".to_string()),
-            counter: StateValue::new(0),
+            counter: StateValue::new(3),
             inner: Inner::new(),
             generic_map: Map::new([("inner", Map::new([("first", 1), ("second", 2)]))]),
             generic_list: List::new(vec![1, 2, 3]),
@@ -80,54 +81,54 @@ impl TestState {
     }
 }
 
-impl State for TestState {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
-        match key {
-            Path::Key(s) => match s.as_str() {
-                "debug" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.debug.subscribe(node_id);
-                    }
-                    panic!()
-                    // Some((&self.debug).into())
-                }
-                "name" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.name.subscribe(node_id);
-                    }
-                    (&self.name).into()
-                }
-                "counter" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.name.subscribe(node_id);
-                    }
-                    (&self.counter).into()
-                }
-                "generic_map" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.generic_map.subscribe(node_id);
-                    }
-                    (&self.generic_map).into()
-                }
-                "generic_list" => {
-                    if let Some(node_id) = node_id.cloned() {
-                        self.generic_list.subscribe(node_id);
-                    }
-                    (&self.generic_list).into()
-                }
-                _ => ValueRef::Empty,
-            },
-            Path::Composite(lhs, rhs) => match &**lhs {
-                Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
-                Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
-                Path::Key(key) if key == "generic_list" => self.generic_list.get(rhs, node_id),
-                Path::Key(key) if key == "nested_list" => self.generic_list.get(rhs, node_id),
-                _ => ValueRef::Empty,
-            },
-            _ => ValueRef::Empty,
-        }
-    }
-}
+// impl State for TestState {
+//     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+//         match key {
+//             Path::Key(s) => match s.as_str() {
+//                 "debug" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.debug.subscribe(node_id);
+//                     }
+//                     panic!()
+//                     // Some((&self.debug).into())
+//                 }
+//                 "name" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.name.subscribe(node_id);
+//                     }
+//                     (&self.name).into()
+//                 }
+//                 "counter" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.name.subscribe(node_id);
+//                     }
+//                     (&self.counter).into()
+//                 }
+//                 "generic_map" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.generic_map.subscribe(node_id);
+//                     }
+//                     (&self.generic_map).into()
+//                 }
+//                 "generic_list" => {
+//                     if let Some(node_id) = node_id.cloned() {
+//                         self.generic_list.subscribe(node_id);
+//                     }
+//                     (&self.generic_list).into()
+//                 }
+//                 _ => ValueRef::Empty,
+//             },
+//             Path::Composite(lhs, rhs) => match &**lhs {
+//                 Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
+//                 Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
+//                 Path::Key(key) if key == "generic_list" => self.generic_list.get(rhs, node_id),
+//                 Path::Key(key) if key == "nested_list" => self.generic_list.get(rhs, node_id),
+//                 _ => ValueRef::Empty,
+//             },
+//             _ => ValueRef::Empty,
+//         }
+//     }
+// }
 
 // -----------------------------------------------------------------------------
 //   - Extend value expression -

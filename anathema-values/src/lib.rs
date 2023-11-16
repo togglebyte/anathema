@@ -1,8 +1,11 @@
 use std::cell::RefCell;
 
+pub use anathema_value_derive::State;
+
 pub use self::collection::Collection;
 pub use self::id::NodeId;
 pub use self::list::List;
+pub use self::map::Map;
 pub use self::path::Path;
 pub use self::scope::{Context, LocalScope};
 pub use self::slab::Slab;
@@ -19,9 +22,13 @@ mod list;
 mod map;
 mod scope;
 mod slab;
-mod state;
+pub mod state;
 mod value;
 mod value_expr;
+
+// Macro requirements
+extern crate self as anathema;
+use crate as values;
 
 pub type Attributes = hashmap::HashMap<String, ValueExpr>;
 

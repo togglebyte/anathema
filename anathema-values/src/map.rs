@@ -1,9 +1,10 @@
+use std::cell::RefCell;
 use std::ops::Deref;
 use std::fmt::Debug;
 
-use super::*;
+use crate::state::State;
 use crate::hashmap::HashMap;
-use crate::Path;
+use crate::{Owned, Path, StateValue, NodeId, DIRTY_NODES, Change, Collection, ValueRef};
 
 #[derive(Debug)]
 pub struct Map<T> {
@@ -90,7 +91,7 @@ mod test {
     fn access_map() {
         let state = TestState::new();
         let path = Path::from("generic_map").compose("inner").compose("second");
-        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None).unwrap() else {
+        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None) else {
             panic!()
         };
         assert_eq!(x.to_i128(), 2);

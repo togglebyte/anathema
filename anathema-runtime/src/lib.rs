@@ -2,7 +2,8 @@ use std::io::{stdout, Stdout};
 use std::time::Instant;
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context, State};
+use anathema_values::{drain_dirty_nodes, Context};
+use anathema_values::state::State;
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::generator::{make_it_so, Expression, Nodes};
