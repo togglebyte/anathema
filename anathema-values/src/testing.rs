@@ -22,35 +22,35 @@ impl Inner {
 }
 
 impl State for Inner {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match key {
             Path::Key(s) => match s.as_str() {
                 "name" => {
                     if let Some(node_id) = node_id.cloned() {
                         self.name.subscribe(node_id);
                     }
-                    Some((&self.name).into())
+                    (&self.name).into()
                 }
                 "names" => {
                     if let Some(node_id) = node_id.cloned() {
                         self.names.subscribe(node_id);
                     }
-                    Some((&self.names).into())
+                    (&self.names).into()
                 }
-                _ => None,
+                _ => ValueRef::Empty,
             },
             Path::Composite(left, right) => {
                 let Path::Key(key) = left.deref() else {
-                    return None;
+                    return ValueRef::Empty;
                 };
 
                 if key == "names" {
-                    self.names.get(right, node_id).map(Into::into)
+                    self.names.get(right, node_id).into()
                 } else {
-                    None
+                    ValueRef::Empty
                 }
             }
-            _ => None,
+            _ => ValueRef::Empty,
         }
     }
 }
@@ -60,7 +60,7 @@ pub struct TestState {
     pub name: StateValue<String>,
     pub counter: StateValue<usize>,
     pub inner: Inner,
-    pub generic_map: StateValue<Map<Map<usize>>>,
+    pub generic_map: Map<Map<usize>>,
     pub generic_list: List<usize>,
     pub nested_list: List<List<usize>>,
     pub debug: StateValue<bool>,
@@ -72,10 +72,7 @@ impl TestState {
             name: StateValue::new("Dirk Gently".to_string()),
             counter: StateValue::new(0),
             inner: Inner::new(),
-            generic_map: StateValue::new(Map::new([(
-                "inner",
-                Map::new([("first", 1), ("second", 2)]),
-            )])),
+            generic_map: Map::new([("inner", Map::new([("first", 1), ("second", 2)]))]),
             generic_list: List::new(vec![1, 2, 3]),
             nested_list: List::new(vec![List::new(vec![1, 2, 3])]),
             debug: StateValue::new(false),
@@ -84,7 +81,7 @@ impl TestState {
 }
 
 impl State for TestState {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match key {
             Path::Key(s) => match s.as_str() {
                 "debug" => {
@@ -98,40 +95,36 @@ impl State for TestState {
                     if let Some(node_id) = node_id.cloned() {
                         self.name.subscribe(node_id);
                     }
-                    Some((&self.name).into())
+                    (&self.name).into()
                 }
                 "counter" => {
                     if let Some(node_id) = node_id.cloned() {
                         self.name.subscribe(node_id);
                     }
-                    panic!()
-                    // Some((&self.counter).into())
+                    (&self.counter).into()
                 }
                 "generic_map" => {
                     if let Some(node_id) = node_id.cloned() {
                         self.generic_map.subscribe(node_id);
                     }
-                    // let map = ValueRef::Map(&self.generic_map.inner);
-                    // Some(map)
-                    panic!()
+                    (&self.generic_map).into()
                 }
                 "generic_list" => {
                     if let Some(node_id) = node_id.cloned() {
                         self.generic_list.subscribe(node_id);
                     }
-                    None
-                    // Some((&self.generic_list).into())
+                    (&self.generic_list).into()
                 }
-                _ => None,
+                _ => ValueRef::Empty,
             },
             Path::Composite(lhs, rhs) => match &**lhs {
                 Path::Key(key) if key == "inner" => self.inner.get(rhs, node_id),
-                // Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
+                Path::Key(key) if key == "generic_map" => self.generic_map.get(rhs, node_id),
                 Path::Key(key) if key == "generic_list" => self.generic_list.get(rhs, node_id),
                 Path::Key(key) if key == "nested_list" => self.generic_list.get(rhs, node_id),
-                _ => None,
+                _ => ValueRef::Empty,
             },
-            _ => None,
+            _ => ValueRef::Empty,
         }
     }
 }
@@ -149,7 +142,7 @@ impl<T> TestExpression<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    pub fn eval(&self) -> Option<ValueRef<'_>> {
+    pub fn eval(&self) -> ValueRef<'_> {
         let scope = LocalScope::empty();
         let context = Context::new(&self.state, &scope);
         let mut resolver = Resolver::new(&context, None);
@@ -164,7 +157,7 @@ where
     }
 
     pub fn expect_owned(self, expected: impl Into<Owned>) {
-        let ValueRef::Owned(owned) = self.eval().unwrap() else {
+        let ValueRef::Owned(owned) = self.eval() else {
             panic!("not an owned value")
         };
         assert_eq!(owned, expected.into())

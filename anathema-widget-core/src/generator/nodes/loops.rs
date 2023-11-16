@@ -107,18 +107,13 @@ impl<'e> LoopNode<'e> {
     }
 
     pub(super) fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
-        if let Some(ValueRef::Owned(Owned::Bool(true))) = context.state.get(&"debug".into(), None) {
-            let x = 1;
-            eprintln!("{x}");
-        }
-
         let val = match self.collection {
             Collection::ValueExpressions(expressions) => {
                 let value = expressions.get(self.value_index)?;
                 self.value_index += 1;
-                value.eval(&mut Deferred::new(context))?
+                value.eval(&mut Deferred::new(context))
             }
-            Collection::Path(ref path) => context.lookup(path)?,
+            Collection::Path(ref path) => context.lookup(path),
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { ref path, .. } => {
                 let path = path.compose(self.value_index);

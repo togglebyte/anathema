@@ -7,20 +7,11 @@ mod value;
 
 pub trait State {
     /// Get a value reference from the state
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>>;
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_>;
 }
 
 impl State for Box<dyn State> {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         self.deref().get(key, node_id)
-    }
-}
-
-// TODO: this can probably be removed
-/// Implementation of `State` for a unit.
-/// This will always return `None` and should only be used for testing purposes
-impl State for () {
-    fn get(&self, _key: &Path, _node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
-        None
     }
 }

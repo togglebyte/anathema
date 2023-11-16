@@ -95,16 +95,14 @@ impl DynValue for Padding {
         Self: Sized,
     {
         let mut resolver = Resolver::new(context, node_id);
-        let Some(value) = expr.eval(&mut resolver) else {
-            return Value::Empty;
-        };
+        let value = expr.eval(&mut resolver);
 
         let inner = match value {
             ValueRef::Owned(Owned::Num(n)) => Some(Self::new(n.to_usize())),
             ValueRef::Expressions(values) => {
                 values
                     .iter()
-                    .filter_map(|expr| expr.eval(&mut resolver))
+                    .map(|expr| expr.eval(&mut resolver))
                     .map(|val| match val {
                         ValueRef::Owned(Owned::Num(n)) => n.to_usize(),
                         _ => 0,

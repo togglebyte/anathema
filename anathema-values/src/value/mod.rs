@@ -16,7 +16,7 @@ mod owned;
 // -----------------------------------------------------------------------------
 /// A value reference is either owned or referencing something
 /// inside an expression.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum ValueRef<'a> {
     Str(&'a str),
     Map(&'a dyn Collection),
@@ -28,6 +28,8 @@ pub enum ValueRef<'a> {
     /// This should only ever be a path into a state, and
     /// a state should never return a deferred value.
     Deferred(Path),
+    #[default]
+    Empty,
 }
 
 impl<'a> ValueRef<'a> {

@@ -75,6 +75,8 @@ impl<T> Value<T> {
     }
 }
 
+// TODO: move the default into it's own impl block, so it
+//       only applies to T: Default
 impl<T: Default + Copy> Value<T> {
     pub fn value(&self) -> Option<T> {
         match self {
@@ -192,9 +194,7 @@ macro_rules! impl_dyn_value {
                 expr: &ValueExpr,
             ) -> Value<Self> {
                 let mut resolver = Resolver::new(context, node_id);
-                let inner = expr
-                    .eval(&mut resolver)
-                    .and_then(|v| Self::try_from(v).ok());
+                let inner = expr.eval(&mut resolver).try_into().ok();
 
                 match resolver.is_deferred() {
                     true => Value::Dyn {
@@ -202,8 +202,8 @@ macro_rules! impl_dyn_value {
                         expr: expr.clone(),
                     },
                     false => match inner {
-                        Some(val) => Value::Static(val),
                         None => Value::Empty,
+                        Some(val) => Value::Static(val),
                     },
                 }
             }
@@ -217,7 +217,8 @@ macro_rules! impl_dyn_value {
                     Value::Dyn { inner, expr } => {
                         *inner = expr
                             .eval(&mut Resolver::new(context, node_id))
-                            .and_then(|v| Self::try_from(v).ok())
+                            .try_into()
+                            .ok()
                     }
                     _ => {}
                 }

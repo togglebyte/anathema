@@ -61,47 +61,25 @@ impl<T> State for Map<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>
 {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match key {
             Path::Key(key) => {
-                let value = self.inner.get(key)?;
+                let Some(value) = self.inner.get(key) else { return ValueRef::Empty };
                 if let Some(node_id) = node_id.cloned() {
                     value.subscribe(node_id);
                 }
-                Some(value.deref().into())
+                value.deref().into()
             }
-            Path::Composite(lhs, rhs) => match self.get(lhs, node_id)? {
+            Path::Composite(lhs, rhs) => match self.get(lhs, node_id) {
                 ValueRef::Map(collection) | ValueRef::List(collection) => {
                     collection.get(rhs, node_id)
                 }
-                _ => None,
+                _ => ValueRef::Empty,
             },
-            Path::Index(_) => None,
+            Path::Index(_) => ValueRef::Empty,
         }
     }
 }
-
-impl<'a> State for Map<ValueRef<'a>> {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
-        match key {
-            Path::Key(key) => {
-                let value = self.inner.get(key)?;
-                if let Some(node_id) = node_id.cloned() {
-                    value.subscribe(node_id);
-                }
-                Some(value.inner.clone())
-            }
-            Path::Composite(lhs, rhs) => match self.get(lhs, node_id)? {
-                ValueRef::Map(collection) | ValueRef::List(collection) => {
-                    collection.get(rhs, node_id)
-                }
-                _ => None,
-            },
-            Path::Index(_) => None,
-        }
-    }
-}
-
 
 #[cfg(test)]
 mod test {

@@ -17,11 +17,11 @@ impl<'expr> LocalScope<'expr> {
         Self::Empty
     }
 
-    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
+    pub fn lookup(&self, path: &Path) -> ValueRef<'expr> {
         match self {
-            Self::Empty => None,
-            Self::Value(val) if val.0.eq(path) => Some(val.1.clone()),
-            Self::Value(_) => None,
+            Self::Empty => ValueRef::Empty,
+            Self::Value(val) if val.0.eq(path) => val.1.clone(),
+            Self::Value(_) => ValueRef::Empty,
         }
     }
 }
@@ -46,10 +46,11 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
         }
     }
 
-    fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
-        self.scope
-            .lookup(path)
-            .or_else(|| self.parent.and_then(|p| p.lookup(path)))
+    fn lookup(&self, path: &Path) -> ValueRef<'expr> {
+        match self.scope.lookup(path) {
+            ValueRef::Empty => self.parent.map(|p| p.lookup(path)).unwrap_or(ValueRef::Empty),
+            val => val,
+        }
     }
 }
 
@@ -86,17 +87,18 @@ impl<'a, 'expr> Context<'a, 'expr> {
 
     /// Lookup a value, if the value belongs to the state it returns a deferred value
     /// instead, to be resolved at a later stage.
-    pub fn lookup(&self, path: &Path) -> Option<ValueRef<'expr>> {
-        self.scopes
-            .lookup(path)
-            .or_else(|| Some(ValueRef::Deferred(path.clone())))
+    pub fn lookup(&self, path: &Path) -> ValueRef<'expr> {
+        match self.scopes.lookup(path) {
+            ValueRef::Empty => ValueRef::Deferred(path.clone()),
+            val => val,
+        }
     }
 
     // TODO maybe get rid of this if we can make the state return a collection 
-    pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> Option<ValueRef<'_>> {
+    pub fn resolve_collection(&self, path: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
         match self.scopes.lookup(path) {
-            val @ Some(_) => val,
-            None => self.state.get(path, node_id),
+            ValueRef::Empty => self.state.get(path, node_id),
+            val => val,
         }
     }
 }

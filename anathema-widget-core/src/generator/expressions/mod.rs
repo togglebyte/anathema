@@ -117,15 +117,16 @@ impl Loop {
         let collection = match &self.collection {
             ValueExpr::List(expr) => Collection::ValueExpressions(expr),
             ValueExpr::Ident(_) | ValueExpr::Dot(..) | ValueExpr::Index(..) => {
-                match Deferred::new(context).resolve_path(&self.collection) {
+                let mut resolver = Deferred::new(context);
+                match resolver.resolve_path(&self.collection) {
                     Some(path) => match context.resolve_collection(&path, Some(&node_id)) {
-                        Some(ValueRef::List(col)) => Collection::State {
+                        ValueRef::List(col) => Collection::State {
                             len: col.len(),
                             path,
                         },
-                        Some(ValueRef::Deferred(inner_path)) => {
+                        ValueRef::Deferred(inner_path) => {
                             match context.resolve_collection(&inner_path, Some(&node_id)) {
-                                Some(ValueRef::List(col)) => Collection::State {
+                                ValueRef::List(col) => Collection::State {
                                     len: col.len(),
                                     path: inner_path,
                                 },
