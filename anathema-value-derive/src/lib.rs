@@ -1,5 +1,5 @@
 use manyhow::{ensure, manyhow, Result};
-use quote::quote;
+use quote_use::quote_use as quote;
 use syn::{self, Fields};
 
 #[manyhow]
@@ -21,10 +21,10 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
         .unzip();
 
     Ok(quote! {
-        impl ::anathema::values::state::State for #name {
-            fn get(&self, key: &::anathema::values::Path, node_id: ::core::option::Option<&::anathema::values::NodeId>) -> ::anathema::values::ValueRef<'_> {
-                use ::anathema::values::{ValueRef, Path};
-                use ::anathema::values::state::BlanketGet;
+        # use ::anathema::values::{self, ValueRef, Path, state};
+        impl state::State for #name {
+            fn get(&self, key: &values::Path, node_id: Option<&values::NodeId>) -> values::ValueRef<'_> {
+                use state::BlanketGet;
                 match key {
                     Path::Key(s) => match s.as_str() {
                         #(
