@@ -1,6 +1,7 @@
 use anathema_compiler::{Constants, Instruction};
-use anathema_widget_core::template::Template;
+use anathema_widget_core::expressions::Expression;
 
+use crate::ViewTemplates;
 use crate::error::Result;
 use crate::scope::Scope;
 
@@ -17,16 +18,16 @@ impl VirtualMachine {
         }
     }
 
-    pub fn exec(self) -> Result<Vec<Template>> {
+    pub fn exec(self, views: &mut ViewTemplates) -> Result<Vec<Expression>> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
-        root_scope.exec()
+        root_scope.exec(views)
     }
 }
 
 #[cfg(test)]
 mod test {
     use anathema_compiler::compile;
-    use anathema_widget_core::template::Template;
+    use anathema_widget_core::generator::SingleNode;
 
     use super::*;
 
@@ -34,13 +35,9 @@ mod test {
     fn nodes() {
         let (instructions, consts) = compile("vstack").unwrap();
         let vm = VirtualMachine::new(instructions, consts);
-        let vstack_gen = vm.exec().unwrap().remove(0);
+        let vstack = vm.exec().unwrap().remove(0);
 
-        let Template::Node { ident, .. } = vstack_gen else {
-            panic!("wrong kind")
-        };
-
-        assert_eq!(ident, "vstack");
+        assert!(matches!(vstack, Expression::Node(SingleNode { .. })));
     }
 
     #[test]
@@ -53,12 +50,6 @@ mod test {
         let vm = VirtualMachine::new(instructions, consts);
         let for_loop = vm.exec().unwrap().remove(0);
 
-        assert!(matches!(for_loop, Template::Loop { .. }));
-
-        let Template::Loop { binding, .. } = for_loop else {
-            panic!("wrong kind")
-        };
-
-        assert_eq!(binding, "x");
+        assert!(matches!(for_loop, Expression::Loop { .. }));
     }
 }

@@ -1,16 +1,23 @@
 pub mod error;
 
 pub(crate) mod compiler;
+mod constants;
 pub(crate) mod lexer;
 pub(crate) mod parsing;
+pub(crate) mod token;
 
 pub use compiler::Instruction;
-pub use parsing::Constants;
+pub use constants::{StringId, ValueId};
 
+use self::token::Tokens;
+pub use crate::constants::Constants;
+
+/// Compile source into instructions and constants.
 pub fn compile(src: &str) -> error::Result<(Vec<Instruction>, Constants)> {
-    let lexer = lexer::Lexer::new(src);
-    let mut constants = Constants::default();
-    let parser = parsing::parser::Parser::new(lexer, &mut constants)?;
+    let mut constants = Constants::new();
+    let lexer = lexer::Lexer::new(src, &mut constants);
+    let tokens = Tokens::new(lexer.collect::<error::Result<_>>()?, src.len());
+    let parser = parsing::parser::Parser::new(tokens, &mut constants, src);
     let expressions = parser.collect::<error::Result<Vec<_>>>()?;
     let optimizer = compiler::Optimizer::new(expressions);
     let expressions = optimizer.optimize();

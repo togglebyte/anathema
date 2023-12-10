@@ -5,7 +5,8 @@ use anathema_widget_core::WidgetContainer;
 fn len_of_tree(widgets: &[WidgetContainer]) -> usize {
     let mut count = widgets.len();
     for widget in widgets {
-        count += len_of_tree(&widget.children);
+        panic!("I removed the children!");
+        // count += len_of_tree(&widget.children);
     }
     count
 }

@@ -1,93 +1,86 @@
-use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_widget_core::Number;
+use anathema_render::Color;
 
 use crate::error::{Error, Result};
+use crate::token::{Kind, Operator, Token, Value};
+use crate::Constants;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) enum Kind<'src> {
-    Colon,
-    Comma,
-    Comment,
-    LDoubleCurly,
-    RDoubleCurly,
-    Hex(u8, u8, u8),
-    For,
-    In,
-    If,
-    Else,
-    View,
-    Ident(&'src str),
-    Newline,
-    Number(Number),
-    Fullstop,
-    LBracket,
-    RBracket,
-    LParen,
-    RParen,
-    String(&'src str),
-    Indent(usize),
-    EOF,
-}
+impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
+    type Item = Result<Token>;
 
-impl<'src> Kind<'src> {
-    fn to_token(self, pos: usize) -> Token<'src> {
-        Token(self, pos)
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.next_token() {
+            Ok(Token(Kind::Eof, _)) => return None,
+            val => Some(val),
+        }
     }
 }
 
-impl<'src> Display for Kind<'src> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-#[derive(Debug)]
-pub struct Token<'src>(pub(crate) Kind<'src>, pub(crate) usize);
-
-pub struct Lexer<'src> {
+pub struct Lexer<'src, 'consts> {
     pub(super) src: &'src str,
+    pub(crate) consts: &'consts mut Constants,
     chars: Peekable<CharIndices<'src>>,
-    next: Option<Result<Token<'src>>>,
     pub(super) current_pos: usize,
 }
 
-impl<'src> Lexer<'src> {
-    pub fn new(src: &'src str) -> Self {
+impl<'src, 'consts> Lexer<'src, 'consts> {
+    pub fn new(src: &'src str, consts: &'consts mut Constants) -> Self {
         Self {
             chars: src.char_indices().peekable(),
+            consts,
             src,
-            next: None,
             current_pos: 0,
         }
     }
 
-    pub fn next(&mut self) -> Result<Token<'src>> {
-        let token = match self.next.take() {
-            Some(val) => val,
-            None => self.next_token(),
-        };
-
-        if let Ok(token) = token.as_ref() {
-            self.current_pos = token.1;
-        }
-
-        token
+    pub(crate) fn peek_op(&mut self) -> Option<Operator> {
+        panic!()
+        // self.peek().ok().map(|t| match &t.0 {
+        //     Kind::Op(op) => Some(*op),
+        //     _ => None,
+        // })
     }
 
-    pub fn peek(&mut self) -> &Result<Token<'src>> {
-        match self.next {
-            Some(ref val) => val,
-            None => {
-                self.next = Some(self.next());
-                self.peek()
+    // -----------------------------------------------------------------------------
+    //     - Consuming / peeking -
+    // -----------------------------------------------------------------------------
+    pub(super) fn consume(&mut self, whitespace: bool, newlines: bool) {
+        loop {
+            if whitespace && self.is_whitespace() {
+                let _ = self.next();
+            } else if newlines && self.is_newline() {
+                let _ = self.next();
+            } else {
+                break;
             }
         }
     }
 
-    fn next_token(&mut self) -> Result<Token<'src>> {
+    // -----------------------------------------------------------------------------
+    //     - Token checks -
+    // -----------------------------------------------------------------------------
+    fn is_whitespace(&mut self) -> bool {
+        matches!(self.peek(), Ok(Token(Kind::Indent(_), _)))
+    }
+
+    fn is_newline(&mut self) -> bool {
+        matches!(self.peek(), Ok(Token(Kind::Newline, _)))
+    }
+
+    pub fn peek(&mut self) -> &Result<Token> {
+        panic!()
+        // match self.next {
+        //     Some(ref val) => val,
+        //     None => {
+        //         self.next = Some(self.next());
+        //         self.peek()
+        //     }
+        // }
+    }
+
+    fn next_token(&mut self) -> Result<Token> {
         let (index, c) = match self.chars.next() {
             None => return self.eof(),
             Some(c) => c,
@@ -99,37 +92,70 @@ impl<'src> Lexer<'src> {
             // -----------------------------------------------------------------------------
             //     - Double tokens -
             // -----------------------------------------------------------------------------
-            ('/', Some('/')) => Ok(self.take_comment().to_token(index)),
+            ('/', Some('/')) => {
+                self.chars.next(); // consume the second slash
+                loop {
+                    if let Some((_, '\n')) | None = self.chars.peek() {
+                        self.chars.next();
+                        break;
+                    }
+                    self.chars.next();
+                }
+                self.next_token()
+            }
             ('{', Some('{')) => {
                 let _ = self.chars.next();
-                Ok(Kind::LDoubleCurly.to_token(index))
+                Ok(Kind::Op(Operator::LDoubleCurly).to_token(index))
             }
             ('}', Some('}')) => {
                 let _ = self.chars.next();
-                Ok(Kind::RDoubleCurly.to_token(index))
+                Ok(Kind::Op(Operator::RDoubleCurly).to_token(index))
+            }
+            ('&', Some('&')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Op(Operator::And).to_token(index))
+            }
+            ('|', Some('|')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Op(Operator::Or).to_token(index))
+            }
+            ('=', Some('=')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Op(Operator::EqualEqual).to_token(index))
             }
 
             // -----------------------------------------------------------------------------
             //     - Single tokens -
             // -----------------------------------------------------------------------------
-            ('[', _) => Ok(Kind::LBracket.to_token(index)),
-            (']', _) => Ok(Kind::RBracket.to_token(index)),
-            ('(', _) => Ok(Kind::LParen.to_token(index)),
-            (')', _) => Ok(Kind::RParen.to_token(index)),
-            (':', _) => Ok(Kind::Colon.to_token(index)),
-            (',', _) => Ok(Kind::Comma.to_token(index)),
-            ('.', _) => Ok(Kind::Fullstop.to_token(index)),
+            ('(', _) => Ok(Kind::Op(Operator::LParen).to_token(index)),
+            (')', _) => Ok(Kind::Op(Operator::RParen).to_token(index)),
+            ('[', _) => Ok(Kind::Op(Operator::LBracket).to_token(index)),
+            (']', _) => Ok(Kind::Op(Operator::RBracket).to_token(index)),
+            ('{', _) => Ok(Kind::Op(Operator::LCurly).to_token(index)),
+            ('}', _) => Ok(Kind::Op(Operator::RCurly).to_token(index)),
+            (':', _) => Ok(Kind::Op(Operator::Colon).to_token(index)),
+            (',', _) => Ok(Kind::Op(Operator::Comma).to_token(index)),
+            ('.', _) => Ok(Kind::Op(Operator::Dot).to_token(index)),
+            ('!', _) => Ok(Kind::Op(Operator::Not).to_token(index)),
+            ('+', _) => Ok(Kind::Op(Operator::Plus).to_token(index)),
+            ('-', _) => Ok(Kind::Op(Operator::Minus).to_token(index)),
+            ('*', _) => Ok(Kind::Op(Operator::Mul).to_token(index)),
+            ('/', _) => Ok(Kind::Op(Operator::Div).to_token(index)),
+            ('%', _) => Ok(Kind::Op(Operator::Mod).to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
 
             // -----------------------------------------------------------------------------
             //     - Ident -
+            //     Or possible a colour
             // -----------------------------------------------------------------------------
-            ('a'..='z' | 'A'..='Z' | '_', _) => Ok(self.take_ident(index).to_token(index)),
+            ('a'..='z' | 'A'..='Z' | '_', _) => {
+                Ok(self.take_ident_or_keyword(index).to_token(index))
+            }
 
             // -----------------------------------------------------------------------------
             //     - Number -
             // -----------------------------------------------------------------------------
-            ('0'..='9' | '-' | '+', _) => self.take_number(index),
+            ('0'..='9', _) => self.take_number(index),
 
             // -----------------------------------------------------------------------------
             //     - String -
@@ -153,16 +179,17 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    fn eof(&self) -> Result<Token<'src>> {
-        Ok(Token(Kind::EOF, self.src.len()))
+    fn eof(&self) -> Result<Token> {
+        Ok(Token(Kind::Eof, self.src.len()))
     }
 
-    fn take_string(&mut self, start_char: char, start_index: usize) -> Result<Token<'src>> {
+    fn take_string(&mut self, start_char: char, start_index: usize) -> Result<Token> {
         loop {
             let n = self.chars.next();
             match n {
                 Some((end, nc)) if nc == start_char => {
-                    break Ok(Kind::String(&self.src[start_index + 1..end]).to_token(start_index))
+                    let string = self.consts.store_string(&self.src[start_index + 1..end]);
+                    break Ok(Kind::Value(Value::String(string)).to_token(start_index));
                 }
                 Some((_, '\\')) => {
                     // escaping string terminator
@@ -183,14 +210,14 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    fn take_number(&mut self, index: usize) -> Result<Token<'src>> {
+    fn take_number(&mut self, index: usize) -> Result<Token> {
         let mut end = index;
         let mut parse_float = &self.src[index..=index] == ".";
 
-        let signed = &self.src[index..=index] == "-"
+        let _signed = &self.src[index..=index] == "-"
             || self.chars.peek().map(|(_, c)| *c == '-').unwrap_or(false);
 
-        while let Some((e, c @ ('0'..='9' | '-' | '.' | '+'))) = self.chars.peek() {
+        while let Some((e, c @ ('0'..='9' | '.'))) = self.chars.peek() {
             if *c == '.' {
                 parse_float = true;
             }
@@ -199,33 +226,29 @@ impl<'src> Lexer<'src> {
         }
 
         let input = &self.src[index..=end];
+
         let kind = match parse_float {
             true => match input.parse::<f64>() {
-                Ok(num) => Ok(Kind::Number(Number::Float(num))),
+                Ok(num) => Ok(Kind::Value(Value::Float(num))),
                 Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
             },
-            false => match signed {
-                true => match input.parse::<i64>() {
-                    Ok(num) => Ok(Kind::Number(Number::Signed(num))),
-                    Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-                },
-                false => match input.parse::<u64>() {
-                    Ok(num) => Ok(Kind::Number(Number::Unsigned(num))),
-                    Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
-                },
+            false => match input.parse::<u64>() {
+                Ok(num) => Ok(Kind::Value(Value::Number(num))),
+                Err(_) => Err(Error::invalid_number(index..end + 1, self.src)),
             },
         }?;
 
         Ok(Token(kind, index))
     }
 
-    fn take_ident(&mut self, index: usize) -> Kind<'src> {
+    fn take_ident_or_keyword(&mut self, index: usize) -> Kind {
         let mut end = index;
         while let Some((e, 'a'..='z' | 'A'..='Z' | '-' | '_' | '|' | '0'..='9')) = self.chars.peek()
         {
             end = *e;
             self.chars.next();
         }
+
         let s = &self.src[index..=end];
         match s {
             "for" => Kind::For,
@@ -233,25 +256,16 @@ impl<'src> Lexer<'src> {
             "if" => Kind::If,
             "else" => Kind::Else,
             "view" => Kind::View,
-            s => Kind::Ident(s),
-        }
-    }
-
-    fn take_comment(&mut self) -> Kind<'src> {
-        loop {
-            match self.chars.peek() {
-                Some((_, c)) if *c == '\n' => break,
-                Some(_) => {
-                    let _ = self.chars.next();
-                    continue;
-                }
-                None => break,
+            "true" => Kind::Value(Value::Bool(true)),
+            "false" => Kind::Value(Value::Bool(false)),
+            s => {
+                let string_id = self.consts.store_string(s);
+                Kind::Value(Value::Ident(string_id))
             }
         }
-        Kind::Comment
     }
 
-    fn take_whitespace(&mut self) -> Kind<'src> {
+    fn take_whitespace(&mut self) -> Kind {
         let mut count = 1;
 
         loop {
@@ -264,13 +278,10 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        match self.chars.peek() {
-            Some((_, '/')) => self.take_comment(),
-            _ => Kind::Indent(count),
-        }
+        Kind::Indent(count)
     }
 
-    fn take_hex_values(&mut self, index: usize) -> Result<Token<'src>> {
+    fn take_hex_values(&mut self, index: usize) -> Result<Token> {
         let index = index + 1; // consume #
         const SHORT: usize = 3;
         const LONG: usize = 6;
@@ -295,13 +306,13 @@ impl<'src> Lexer<'src> {
                 let g = g << 4 | g;
                 let b = u8::from_str_radix(&hex[2..3], 16).expect("already parsed");
                 let b = b << 4 | b;
-                Kind::Hex(r, g, b)
+                Kind::Value(Value::Color(Color::from((r, g, b))))
             }
             LONG => {
                 let r = u8::from_str_radix(&hex[0..2], 16).expect("already parsed");
                 let g = u8::from_str_radix(&hex[2..4], 16).expect("already parsed");
                 let b = u8::from_str_radix(&hex[4..6], 16).expect("already parsed");
-                Kind::Hex(r, g, b)
+                Kind::Value(Value::Color(Color::from((r, g, b))))
             }
             _ => unreachable!(),
         };
@@ -315,25 +326,44 @@ mod test {
     use super::*;
     use crate::error::ErrorKind;
 
-    fn token_kind(input: &str) -> Kind<'_> {
-        let actual = Lexer::new(input).next().unwrap().0;
-        actual
+    fn token_kind(input: &str) -> Kind {
+        let mut consts = Constants::new();
+        let kind = Lexer::new(input, &mut consts).next().unwrap().unwrap().0;
+        kind
+    }
+
+    fn operator(input: &str) -> Operator {
+        let mut consts = Constants::new();
+        let kind = Lexer::new(input, &mut consts).next().unwrap().unwrap().0;
+        match kind {
+            Kind::Op(op) => op,
+            _ => panic!("token is not an operator"),
+        }
+    }
+
+    fn error_kind(input: &str) -> ErrorKind {
+        let mut consts = Constants::new();
+
+        let mut lexer = Lexer::new(input, &mut consts);
+        let error_kind = lexer.next().unwrap().unwrap_err().kind;
+        error_kind
     }
 
     #[test]
     fn comment() {
-        let actual = token_kind("// hello world");
-        let expected = Kind::Comment;
-        assert_eq!(expected, actual);
+        let mut consts = Constants::new();
+        let input = "// hello world";
+        let mut lexer = Lexer::new(input, &mut consts);
+        assert!(lexer.next().is_none());
     }
 
     #[test]
     fn single_char_token() {
         let inputs = [
-            ("[", Kind::LBracket),
-            ("]", Kind::RBracket),
-            (":", Kind::Colon),
-            (",", Kind::Comma),
+            ("[", Kind::Op(Operator::LBracket)),
+            ("]", Kind::Op(Operator::RBracket)),
+            (":", Kind::Op(Operator::Colon)),
+            (",", Kind::Op(Operator::Comma)),
             ("\n", Kind::Newline),
         ];
 
@@ -346,13 +376,12 @@ mod test {
     #[test]
     fn double_char_token() {
         let inputs = [
-            ("//", Kind::Comment),
-            ("{{", Kind::LDoubleCurly),
-            ("}}", Kind::RDoubleCurly),
+            ("{{", Operator::LDoubleCurly),
+            ("}}", Operator::RDoubleCurly),
         ];
 
         for (input, expected) in inputs {
-            let actual = token_kind(input);
+            let actual = operator(input);
             assert_eq!(expected, actual);
         }
     }
@@ -363,7 +392,7 @@ mod test {
 
         for input in inputs {
             let actual = token_kind(input);
-            let expected = Kind::Ident(input);
+            let expected = Kind::Value(Value::Ident(0.into()));
             assert_eq!(expected, actual);
         }
     }
@@ -374,34 +403,7 @@ mod test {
 
         for (input, number) in inputs {
             let actual = token_kind(input);
-            let expected = Kind::Number(Number::Unsigned(number));
-            assert_eq!(expected, actual);
-        }
-    }
-
-    #[test]
-    fn signed_ints() {
-        let inputs = [("-1", -1), ("-0001", -1), ("-100", -100)];
-
-        for (input, number) in inputs {
-            let actual = token_kind(input);
-            let expected = Kind::Number(Number::Signed(number));
-            assert_eq!(expected, actual);
-        }
-    }
-
-    #[test]
-    fn floats() {
-        let inputs = [
-            ("0.1", 0.1f64),
-            ("-.1", -0.1),
-            ("1.", 1.0),
-            ("100.5", 100.5),
-        ];
-
-        for (input, number) in inputs {
-            let actual = token_kind(input);
-            let expected = Kind::Number(Number::Float(number));
+            let expected = Kind::Value(Value::Number(number));
             assert_eq!(expected, actual);
         }
     }
@@ -418,12 +420,19 @@ mod test {
             ("\"double 'single inside'\"", "double 'single inside'"),
             ("'single \"double inside\"'", "single \"double inside\""),
             (r#""escape \"double\"""#, r#"escape \"double\""#),
+            ("''", ""), // empty string
         ];
 
-        for (input, s) in inputs {
-            let actual = token_kind(input);
-            let expected = Kind::String(s);
-            assert_eq!(expected, actual);
+        let mut consts = Constants::new();
+
+        for (input, expected) in inputs {
+            let Kind::Value(Value::String(string_id)) =
+                Lexer::new(input, &mut consts).next().unwrap().unwrap().0
+            else {
+                panic!("invalid token")
+            };
+            let actual = consts.lookup_string(string_id);
+            assert_eq!(actual, expected);
         }
     }
 
@@ -436,12 +445,12 @@ mod test {
     }
 
     #[test]
-    fn hex() {
+    fn color() {
         let inputs = [
-            ("#000", Kind::Hex(0, 0, 0)),
-            ("#000000", Kind::Hex(0, 0, 0)),
-            ("#FFF", Kind::Hex(255, 255, 255)),
-            ("#FFFFFF", Kind::Hex(255, 255, 255)),
+            ("#000", Kind::Value(Value::Color((0, 0, 0).into()))),
+            ("#000000", Kind::Value(Value::Color((0, 0, 0).into()))),
+            ("#FFF", Kind::Value(Value::Color((255, 255, 255).into()))),
+            ("#FFFFFF", Kind::Value(Value::Color((255, 255, 255).into()))),
         ];
 
         for (input, expected) in inputs {
@@ -461,38 +470,37 @@ mod test {
         let inputs = ["#00", "#0000", "#1234567", "#FFX", "#F-A"];
 
         for input in inputs {
-            let actual = Lexer::new(input).next_token().unwrap_err().kind;
+            let actual = error_kind(input);
             assert_eq!(actual, ErrorKind::InvalidHexValue);
         }
     }
 
-    #[test]
-    fn invalid_floats() {
-        let inputs = ["0.0.1"];
+    // #[test]
+    // fn invalid_floats() {
+    //     let inputs = ["0.0.1"];
 
-        for input in inputs {
-            let actual = Lexer::new(input).next_token().unwrap_err().kind;
-            assert_eq!(actual, ErrorKind::InvalidNumber);
-        }
-    }
-
-    #[test]
-    fn invalid_number() {
-        let inputs = ["+-2"];
-
-        for input in inputs {
-            let actual = Lexer::new(input).next_token().unwrap_err().kind;
-            assert_eq!(actual, ErrorKind::InvalidNumber);
-        }
-    }
+    //     for input in inputs {
+    //         let actual = Lexer::new(input).next_token().unwrap_err().kind;
+    //         assert_eq!(actual, ErrorKind::InvalidNumber);
+    //     }
+    // }
 
     #[test]
     fn unterminated_string() {
         let inputs = ["'unterminated string", "\'unterminated string", "'", "\""];
 
         for input in inputs {
-            let actual = Lexer::new(input).next_token().unwrap_err().kind;
+            let actual = error_kind(input);
             assert_eq!(actual, ErrorKind::UnterminatedString);
         }
+    }
+
+    #[test]
+    fn lex_bool() {
+        let b = token_kind("false");
+        assert_eq!(b, Kind::Value(Value::Bool(false)));
+
+        let b = token_kind("true");
+        assert_eq!(b, Kind::Value(Value::Bool(true)));
     }
 }

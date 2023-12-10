@@ -1,0 +1,16 @@
+[package]
+name = "anathema-values"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+testing = []
+
+[dependencies]
+anathema-render = { path = "../anathema-render" }
+anathema-value-derive = { path = "../anathema-value-derive" }
+parking_lot = { workspace = true }
+flume = { workspace = true }
+integer-hasher = "0.1.1"
+smallvec = { workspace = true }

@@ -1,8 +1,9 @@
 use anathema_render::Size;
+use anathema_values::{Context, Value};
 use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Constraints};
-use anathema_widget_core::WidgetContainer;
+use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
 
 use crate::Expand;
 
@@ -14,6 +15,7 @@ use crate::Expand;
 /// Allocates a minimum of one to each weight.
 fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     assert!(total > weights.len());
+
     let mut indexed = weights
         .iter()
         .copied()
@@ -43,19 +45,22 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     indexed.into_iter().map(|(_, _, r)| r).collect()
 }
 
-pub fn layout(
-    ctx: &mut LayoutCtx<'_, '_>,
-    children: &mut Vec<WidgetContainer>,
+pub fn layout<'nodes, 'state, 'expr>(
+    nodes: &mut LayoutNodes<'nodes, 'state, 'expr>,
+    // ctx: &LayoutCtx,
+    // children: &mut Nodes<'e>,
     axis: Axis,
+    // data: &Context<'_, 'e>,
 ) -> Result<Size> {
-    let expansions = children
-        .iter_mut()
-        .filter(|c| c.kind() == Expand::KIND)
+    let constraints = nodes.constraints;
+
+    let expansions = nodes
+        .filter(|node| node.kind() == Expand::KIND)
         .collect::<Vec<_>>();
 
     let factors = expansions
         .iter()
-        .map(|w| w.to_ref::<Expand>().factor)
+        .map(|w| w.to_ref::<Expand>().factor.value_or_default())
         .collect::<Vec<_>>();
 
     let mut size = Size::ZERO;
@@ -65,22 +70,23 @@ pub fn layout(
     }
 
     // Distribute the available space
+
     let sizes = match axis {
-        Axis::Horizontal => distribute_size(&factors, ctx.constraints.max_width),
-        Axis::Vertical => distribute_size(&factors, ctx.constraints.max_height),
+        Axis::Horizontal => distribute_size(&factors, constraints.max_width),
+        Axis::Vertical => distribute_size(&factors, constraints.max_height),
     };
 
-    for (sub_size, expanded_widget) in std::iter::zip(sizes, expansions) {
+    for (sub_size, mut widget) in std::iter::zip(sizes, expansions) {
         let constraints = match axis {
             Axis::Horizontal => {
-                let mut constraints = Constraints::new(sub_size, ctx.constraints.max_height);
+                let mut constraints = Constraints::new(sub_size, constraints.max_height);
 
                 // Ensure that the rounding doesn't push the constraint outside of the max width
                 constraints.min_width = constraints.max_width;
                 constraints
             }
             Axis::Vertical => {
-                let mut constraints = Constraints::new(ctx.constraints.max_width, sub_size);
+                let mut constraints = Constraints::new(constraints.max_width, sub_size);
 
                 // Ensure that the rounding doesn't push the constraint outside of the max height
                 constraints.min_height = constraints.max_height;
@@ -88,7 +94,7 @@ pub fn layout(
             }
         };
 
-        let widget_size = expanded_widget.layout(constraints, ctx.values)?;
+        let widget_size = widget.layout(constraints)?;
 
         match axis {
             Axis::Horizontal => {

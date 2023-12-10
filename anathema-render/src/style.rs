@@ -1,8 +1,7 @@
 use std::io::{Result, Write};
 
-use crossterm::style::{
-    Attribute as CrossAttrib, Color, SetAttribute, SetBackgroundColor, SetForegroundColor,
-};
+pub use crossterm::style::Attribute as CrossAttrib;
+use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
 
 /// The style for a cell in a [`crate::Buffer`]
@@ -206,6 +205,7 @@ impl Style {
 
 bitflags::bitflags! {
     /// Style attributes
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct Attributes: u8 {
         /// Make the characters bold (in supported output)
         const BOLD =        0b0000_0001;

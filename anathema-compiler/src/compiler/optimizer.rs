@@ -1,33 +1,34 @@
 use crate::parsing::parser::Expression as ParseExpr;
+use crate::{StringId, ValueId};
 
 enum ControlFlow {
-    If(usize),
-    Else(Option<usize>),
+    If(ValueId),
+    Else(Option<ValueId>),
 }
 
-#[derive(Debug, PartialEq, Clone, Eq)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub(crate) enum Expression {
     If {
-        cond: usize,
+        cond: ValueId,
         size: usize,
     },
     Else {
-        cond: Option<usize>,
+        cond: Option<ValueId>,
         size: usize,
     },
     For {
-        data: usize,
-        binding: usize,
+        data: ValueId,
+        binding: StringId,
         size: usize,
     },
-    View(usize),
-    LoadText(usize),
+    View(StringId),
+    LoadText(ValueId),
     LoadAttribute {
-        key: usize,
-        value: usize,
+        key: StringId,
+        value: ValueId,
     },
     Node {
-        ident: usize,
+        ident: StringId,
         scope_size: usize,
     },
 }
@@ -81,8 +82,8 @@ impl Optimizer {
                     self.opt_for(data, binding);
                     continue;
                 }
-                &ParseExpr::View(id) => {
-                    self.output.push(Expression::View(id));
+                &ParseExpr::View(ident) => {
+                    self.output.push(Expression::View(ident));
                     continue;
                 }
                 &ParseExpr::Node(ident_index) => {
@@ -92,7 +93,7 @@ impl Optimizer {
                     let mut text_and_attributes = 0;
                     loop {
                         match self.input.get(self.ep) {
-                            Some(&ParseExpr::LoadText(index)) => {
+                            Some(&ParseExpr::LoadValue(index)) => {
                                 self.output.push(Expression::LoadText(index));
                                 text_and_attributes += 1;
                                 self.ep += 1;
@@ -122,7 +123,7 @@ impl Optimizer {
                     );
                     continue;
                 }
-                &ParseExpr::LoadText(index) => Expression::LoadText(index),
+                &ParseExpr::LoadValue(index) => Expression::LoadText(index),
                 &ParseExpr::LoadAttribute { key, value } => {
                     Expression::LoadAttribute { key, value }
                 }
@@ -180,7 +181,7 @@ impl Optimizer {
         }
     }
 
-    fn opt_for(&mut self, data: usize, binding: usize) {
+    fn opt_for(&mut self, data: ValueId, binding: StringId) {
         let start = self.output.len();
         self.opt_scope();
         let end = self.output.len();
@@ -214,12 +215,14 @@ mod test {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parsing::parser::Parser;
-    use crate::parsing::Constants;
+    use crate::token::Tokens;
+    use crate::Constants;
 
     fn parse(src: &str) -> Vec<Expression> {
-        let mut ctx = Constants::default();
-        let lexer = Lexer::new(src);
-        let parser = Parser::new(lexer, &mut ctx).unwrap();
+        let mut consts = Constants::new();
+        let lexer = Lexer::new(src, &mut consts);
+        let tokens = Tokens::new(lexer.collect::<Result<_, _>>().unwrap(), src.len());
+        let parser = Parser::new(tokens, &mut consts, src);
         let expr = parser.map(|e| e.unwrap()).collect();
         let opt = Optimizer::new(expr);
         opt.optimize()
@@ -235,14 +238,14 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 1
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -251,15 +254,21 @@ mod test {
     #[test]
     fn optimize_if() {
         let src = "
-        if {{ a }}
+        if a
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -268,17 +277,23 @@ mod test {
     #[test]
     fn optimize_else() {
         let src = "
-        if {{ a }}
+        if a 
             a
         else
             a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -292,7 +307,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -302,7 +317,7 @@ mod test {
     fn optimize_for() {
         let src = "
         a
-        for b in {{ b }}
+        for b in b 
             a
             b
             ";
@@ -310,29 +325,29 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::For {
-                data: 0,
-                binding: 1,
+                data: 0.into(),
+                binding: 1.into(),
                 size: 2
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 1,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -341,17 +356,29 @@ mod test {
     #[test]
     fn nested_ifs() {
         let src = "
-        if {{ a }}
-            if {{ a }}
+        if a 
+            if a 
                 a
             ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 2 });
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 2
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -360,43 +387,55 @@ mod test {
     #[test]
     fn remove_empty_elses() {
         let src = "
-        if {{ x }}
+        if x 
             a
             a
         else
-        if {{ x }}
+        if x 
             a
         else
         b
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 2 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 2
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
-                scope_size: 0
-            }
-        );
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
-        assert_eq!(
-            expressions.remove(0),
-            Expression::Node {
-                ident: 0,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
             Expression::Node {
-                ident: 1,
+                ident: 1.into(),
+                scope_size: 0
+            }
+        );
+        assert_eq!(
+            expressions.remove(0),
+            Expression::Node {
+                ident: 2.into(),
                 scope_size: 0
             }
         );
@@ -405,14 +444,14 @@ mod test {
     #[test]
     fn remove_empty_if() {
         let src = "
-        if {{ data }}
+        if data 
         x
         ";
         let mut expressions = parse(src);
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 1.into(),
                 scope_size: 0
             }
         );
@@ -422,24 +461,30 @@ mod test {
     #[test]
     fn remove_empty_else() {
         let src = "
-            if {{ x }}
+            if x 
                 x
             else
             x
         ";
         let mut expressions = parse(src);
-        assert_eq!(expressions.remove(0), Expression::If { cond: 0, size: 1 });
+        assert_eq!(
+            expressions.remove(0),
+            Expression::If {
+                cond: 0.into(),
+                size: 1
+            }
+        );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -449,7 +494,7 @@ mod test {
     #[test]
     fn optimise_empty_if_else() {
         let src = "
-            if {{ x }}
+            if x 
             else
             x
         ";
@@ -457,7 +502,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -467,8 +512,8 @@ mod test {
     #[test]
     fn optimise_empty_if_else_if() {
         let src = "
-            if {{ x }}
-            else if {{ x }}
+            if x 
+            else if x 
             else
             x
         ";
@@ -476,7 +521,7 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 0
             }
         );
@@ -493,23 +538,26 @@ mod test {
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 0,
+                ident: 0.into(),
                 scope_size: 2
             }
         );
         assert_eq!(
             expressions.remove(0),
-            Expression::LoadAttribute { key: 1, value: 0 }
+            Expression::LoadAttribute {
+                key: 1.into(),
+                value: 0.into()
+            }
         );
-        assert_eq!(expressions.remove(0), Expression::LoadText(0));
+        assert_eq!(expressions.remove(0), Expression::LoadText(1.into()));
         assert_eq!(
             expressions.remove(0),
             Expression::Node {
-                ident: 2,
+                ident: 4.into(),
                 scope_size: 0
             }
         );
-        assert_eq!(expressions.remove(0), Expression::LoadText(0));
+        assert_eq!(expressions.remove(0), Expression::LoadText(1.into()));
         assert!(expressions.is_empty());
     }
 }
