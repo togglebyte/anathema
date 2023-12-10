@@ -26,8 +26,11 @@ pub mod state;
 mod value;
 mod value_expr;
 
-// Macro requirements
+// -----------------------------------------------------------------------------
+//   - Macro requirements -
+// -----------------------------------------------------------------------------
 extern crate self as anathema;
+#[allow(unused_imports)]
 use crate as values;
 
 pub type Attributes = hashmap::HashMap<String, ValueExpr>;

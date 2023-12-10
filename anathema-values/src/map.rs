@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use crate::hashmap::HashMap;
 use crate::state::State;
-use crate::{Change, Collection, NodeId, Owned, Path, StateValue, ValueRef, DIRTY_NODES};
+use crate::{Change, Collection, NodeId, Path, StateValue, ValueRef, DIRTY_NODES};
 
 #[derive(Debug)]
 pub struct Map<T> {

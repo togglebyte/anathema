@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::state::State;
-use crate::{NodeId, Path, ValueRef};
+use crate::{Path, ValueRef};
 
 #[derive(Debug, Clone)]
 pub enum LocalScope<'expr> {

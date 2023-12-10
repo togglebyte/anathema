@@ -125,12 +125,8 @@ impl<'state> Resolver<'_, 'state> {
                 }
                 Some(s)
             }
-            ValueRef::ExpressionMap(map) => {
-                panic!("how should this become a string");
-            }
             ValueRef::Deferred(path) => {
                 self.is_deferred = true;
-                let p = path.to_string();
                 match self.context.state.get(&path, self.node_id) {
                     ValueRef::Str(val) => Some(val.into()),
                     ValueRef::Owned(val) => Some(val.to_string()),

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
-use crate::{Collection, List, NodeId, Owned, Path, State, ValueRef, DIRTY_NODES};
+use crate::{NodeId, Owned, Path, State, ValueRef, DIRTY_NODES};
 
 // TODO: Can we make this `Copy` as well?
 //       This depends if `RemoveKey` is required here or not.
