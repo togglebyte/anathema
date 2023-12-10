@@ -3,11 +3,8 @@ use std::ops::Deref;
 use anathema_render::{Screen, ScreenPos, Size, Style};
 use unicode_width::UnicodeWidthChar;
 
-pub use self::data::DataCtx;
-use crate::gen::store::Values;
-use crate::layout::{Align, Constraints, Padding};
-use crate::template::Template;
-use crate::{LocalPos, Pos, Region};
+use crate::layout::Constraints;
+use crate::{Align, LocalPos, Padding, Pos, Region};
 
 mod data;
 
@@ -15,47 +12,42 @@ mod data;
 //   - Layout -
 // -----------------------------------------------------------------------------
 #[derive(Copy, Clone)]
-pub struct LayoutCtx<'widget, 'parent> {
-    pub templates: &'parent [Template],
-    pub values: &'widget Values<'parent>,
+pub struct LayoutCtx {
     pub constraints: Constraints,
     pub padding: Padding,
 }
 
-impl<'widget, 'parent> LayoutCtx<'widget, 'parent> {
-    pub fn new(
-        templates: &'parent [Template],
-        values: &'widget Values<'parent>,
-        constraints: Constraints,
-        padding: Padding,
-    ) -> Self {
+impl LayoutCtx {
+    pub fn new(constraints: Constraints, padding: Padding) -> Self {
         Self {
-            templates,
-            values,
             constraints,
             padding,
         }
     }
 
     pub fn padded_constraints(&self) -> Constraints {
-        if self.padding != Padding::ZERO {
-            let padding = self.padding;
-            let mut constraints = self.constraints;
+        if self.padding == Padding::ZERO {
+            return self.constraints;
+        }
 
+        let padding = self.padding;
+        let mut constraints = self.constraints;
+
+        if !constraints.is_width_unbounded() {
             constraints.max_width = constraints
                 .max_width
                 .saturating_sub(padding.left + padding.right);
             constraints.min_width = constraints.min_width.min(constraints.max_width);
+        }
 
+        if !constraints.is_height_unbounded() {
             constraints.max_height = constraints
                 .max_height
                 .saturating_sub(padding.top + padding.bottom);
             constraints.min_height = constraints.min_height.min(constraints.max_height);
-
-            constraints
-        } else {
-            self.constraints
         }
+
+        constraints
     }
 
     pub fn padding_size(&self) -> Size {
@@ -257,6 +249,7 @@ impl<'screen> PaintCtx<'screen, WithSize> {
     }
 }
 
+// TODO: can we throw this out now? - 2023-08-30
 // // -----------------------------------------------------------------------------
 // //     - Layout context -
 // // -----------------------------------------------------------------------------

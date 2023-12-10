@@ -1,10 +1,9 @@
 use anathema_render::Size;
+use anathema_values::{Context, NodeId, ValueRef, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge};
-use anathema_widget_core::{
-    AnyWidget, Pos, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge, Layout};
+use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory, FactoryContext, LayoutNodes};
 
 use crate::layout::single::Single;
 
@@ -40,7 +39,7 @@ use crate::layout::single::Single;
 /// | └────────┘
 /// ```
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Position {
     /// Horizontal edge
     pub horz_edge: HorzEdge,
@@ -59,32 +58,6 @@ impl Position {
             vert_edge,
         }
     }
-
-    /// Position to the left
-    pub fn left(&mut self, offset: i32) {
-        self.horz_edge = HorzEdge::Left(offset);
-    }
-
-    /// Position to the right
-    pub fn right(&mut self, offset: i32) {
-        self.horz_edge = HorzEdge::Right(offset);
-    }
-
-    /// Position at the top
-    pub fn top(&mut self, offset: i32) {
-        self.vert_edge = VertEdge::Top(offset);
-    }
-
-    /// Position at the bottom
-    pub fn bottom(&mut self, offset: i32) {
-        self.vert_edge = VertEdge::Bottom(offset);
-    }
-}
-
-impl Default for Position {
-    fn default() -> Self {
-        Self::new(HorzEdge::Left(0), VertEdge::Top(0))
-    }
 }
 
 impl Widget for Position {
@@ -92,68 +65,63 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn layout<'widget, 'parent>(
-        &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
-    ) -> Result<Size> {
-        let mut layout = Layouts::new(Single, &mut ctx);
-        layout.layout(children)?;
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        let mut layout = Single;
+        let mut size = layout.layout(nodes)?;
+
         if let HorzEdge::Right(_) = self.horz_edge {
-            layout.expand_horz();
+            size = nodes.constraints.expand_horz(size);
         }
         if let VertEdge::Bottom(_) = self.vert_edge {
-            layout.expand_vert();
+            size = nodes.constraints.expand_vert(size);
         }
-        layout.size()
+
+        Ok(size)
     }
 
-    fn position<'ctx>(&mut self, mut ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        let child = match children.first_mut() {
+    fn position<'tpl>(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {
+        let (child, children) = match children.first_mut() {
             Some(c) => c,
             None => return,
         };
 
-        let x = match self.horz_edge {
-            HorzEdge::Left(x) => x,
-            HorzEdge::Right(x) => ctx.inner_size.width as i32 - x - child.outer_size().width as i32,
+        let x = match &self.horz_edge {
+            HorzEdge::Left(x) => x.value_or(0),
+            HorzEdge::Right(x) => ctx.inner_size.width as i32 - x.value_or(0) - child.outer_size().width as i32,
         };
 
-        let y = match self.vert_edge {
-            VertEdge::Top(y) => y,
+        let y = match &self.vert_edge {
+            VertEdge::Top(y) => y.value_or(0),
             VertEdge::Bottom(y) => {
-                ctx.inner_size.height as i32 - y - child.outer_size().height as i32
+                ctx.inner_size.height as i32 - y.value_or(0) - child.outer_size().height as i32
             }
         };
 
         ctx.pos += Pos::new(x, y);
-        child.position(ctx.pos);
+        child.position(children, ctx.pos);
     }
 }
 
 pub(crate) struct PositionFactory;
 
 impl WidgetFactory for PositionFactory {
-    fn make(
-        &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let horz_edge = match values.left() {
-            Some(left) => HorzEdge::Left(left),
-            None => match values.right() {
-                Some(right) => HorzEdge::Right(right),
-                None => HorzEdge::Left(0),
-            },
+    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let horz_edge = match ctx.get("left") {
+            Value::Empty => match ctx.get("right") {
+                Value::Empty => HorzEdge::Right(Value::Static(0)),
+                val => HorzEdge::Right(val),
+            }
+            val => HorzEdge::Left(val),
         };
 
-        let vert_edge = match values.top() {
-            Some(top) => VertEdge::Top(top),
-            None => match values.bottom() {
-                Some(bottom) => VertEdge::Bottom(bottom),
-                None => VertEdge::Top(0),
-            },
+        let vert_edge = match ctx.get("top") {
+            Value::Empty => match ctx.get("bottom") {
+                Value::Empty => VertEdge::Top(Value::Static(0)),
+                val => VertEdge::Bottom(val),
+            }
+            val => VertEdge::Top(val),
         };
+
         let widget = Position::new(horz_edge, vert_edge);
         Ok(Box::new(widget))
     }

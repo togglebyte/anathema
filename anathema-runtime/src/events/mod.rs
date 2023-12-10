@@ -1,11 +1,13 @@
 use std::time::Duration;
 
-use anathema_widget_core::contexts::DataCtx;
-use anathema_widget_core::WidgetContainer;
+use anathema_values::state::State;
+use anathema_widget_core::nodes::Nodes;
 use crossterm::event::{read, Event as CTEvent};
 pub use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,
 };
+
+// use crate::meta::Meta;
 
 pub mod flume;
 
@@ -25,6 +27,8 @@ pub enum Event {
     MouseScrollDown(u16, u16, KeyModifiers),
     MouseScrollMoved(u16, u16, KeyModifiers),
     MouseScrollUp(u16, u16, KeyModifiers),
+    MouseScrollLeft(u16, u16, KeyModifiers),
+    MouseScrollRight(u16, u16, KeyModifiers),
     MouseUp(u16, u16, MouseButton, KeyModifiers),
     Resize(u16, u16),
 }
@@ -70,26 +74,28 @@ impl From<CTEvent> for Event {
                 MouseEventKind::Moved => Self::MouseMove(m.column, m.row, m.modifiers),
                 MouseEventKind::ScrollDown => Self::MouseScrollDown(m.column, m.row, m.modifiers),
                 MouseEventKind::ScrollUp => Self::MouseScrollUp(m.column, m.row, m.modifiers),
+                MouseEventKind::ScrollLeft => Self::MouseScrollLeft(m.column, m.row, m.modifiers),
+                MouseEventKind::ScrollRight => Self::MouseScrollRight(m.column, m.row, m.modifiers),
             },
             CTEvent::Resize(width, height) => Self::Resize(width, height),
         }
     }
 }
 
-pub trait Events {
-    fn event(&mut self, event: Event, ctx: &mut DataCtx, tree: &mut Vec<WidgetContainer>) -> Event;
+pub trait Events<S: State> {
+    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event;
 }
 
-pub struct DefaultEvents<F>(pub F)
+pub struct DefaultEvents<F, S>(pub F, pub std::marker::PhantomData<S>)
 where
-    F: FnMut(Event, &mut DataCtx, &mut Vec<WidgetContainer>) -> Event;
+    F: FnMut(Event, &mut Nodes, &mut S) -> Event;
 
-impl<F> Events for DefaultEvents<F>
+impl<F, S: State> Events<S> for DefaultEvents<F, S>
 where
-    F: FnMut(Event, &mut DataCtx, &mut Vec<WidgetContainer>) -> Event,
+    F: FnMut(Event, &mut Nodes, &mut S) -> Event,
 {
-    fn event(&mut self, event: Event, ctx: &mut DataCtx, tree: &mut Vec<WidgetContainer>) -> Event {
-        (self.0)(event, ctx, tree)
+    fn event(&mut self, event: Event, tree: &mut Nodes, state: &mut S) -> Event {
+        (self.0)(event, tree, state)
     }
 }
 

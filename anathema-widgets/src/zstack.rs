@@ -1,9 +1,10 @@
 use anathema_render::Size;
+use anathema_values::{Attributes, Context, NodeId, Value};
 use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::Layouts;
+use anathema_widget_core::layout::{Layouts, Layout};
 use anathema_widget_core::{
-    AnyWidget, TextPath, ValuesAttributes, Widget, WidgetContainer, WidgetFactory,
+    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, LayoutNodes,
 };
 
 use crate::layout::stacked::Stacked;
@@ -41,28 +42,28 @@ use crate::layout::stacked::Stacked;
 /// Note that widgets are drawn in the order they are inserted.
 /// To make something like a dialogue box appear on top it would have to be the last child of the
 /// `ZStack`.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct ZStack {
     /// Width
-    pub width: Option<usize>,
+    pub width: Value<usize>,
     /// Height
-    pub height: Option<usize>,
+    pub height: Value<usize>,
     /// The minimum width of the border. This will force the minimum constrained width to expand to
     /// this value.
-    pub min_width: Option<usize>,
+    pub min_width: Value<usize>,
     /// The minimum height of the border. This will force the minimum constrained height to expand to
     /// this value.
-    pub min_height: Option<usize>,
+    pub min_height: Value<usize>,
 }
 
 impl ZStack {
     /// Create a new instance of a `ZStack`
-    pub fn new(width: impl Into<Option<usize>>, height: impl Into<Option<usize>>) -> Self {
+    pub fn new(width: Value<usize>, height: Value<usize>) -> Self {
         Self {
-            width: width.into(),
-            height: height.into(),
-            min_width: None,
-            min_height: None,
+            width,
+            height,
+            min_width: Value::Empty,
+            min_height: Value::Empty,
         }
     }
 }
@@ -72,37 +73,26 @@ impl Widget for ZStack {
         "ZStack"
     }
 
-    fn layout<'widget, 'parent>(
-        &mut self,
-        mut ctx: LayoutCtx<'widget, 'parent>,
-        children: &mut Vec<WidgetContainer>,
-    ) -> Result<Size> {
-        if let Some(min_width) = self.min_width {
-            ctx.constraints.min_width = ctx.constraints.min_width.max(min_width);
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        if let Some(min_width) = self.min_width.value() {
+            nodes.constraints.min_width = nodes.constraints.min_width.max(min_width);
         }
-        if let Some(min_height) = self.min_height {
-            ctx.constraints.min_height = ctx.constraints.min_height.max(min_height);
+        if let Some(min_height) = self.min_height.value() {
+            nodes.constraints.min_height = nodes.constraints.min_height.max(min_height);
         }
-        if let Some(width) = self.width {
-            ctx.constraints.make_width_tight(width);
+        if let Some(width) = self.width.value() {
+            nodes.constraints.make_width_tight(width);
         }
-        if let Some(height) = self.height {
-            ctx.constraints.make_height_tight(height);
+        if let Some(height) = self.height.value() {
+            nodes.constraints.make_height_tight(height);
         }
 
-        Layouts::new(Stacked, &mut ctx).layout(children)?.size()
+        Stacked.layout(nodes)
     }
 
-    fn position<'ctx>(&mut self, ctx: PositionCtx, children: &mut [WidgetContainer]) {
-        for widget in children {
-            widget.position(ctx.pos);
-        }
-    }
-
-    fn paint<'ctx>(&mut self, mut ctx: PaintCtx<'_, WithSize>, children: &mut [WidgetContainer]) {
-        for child in children {
-            let ctx = ctx.sub_context(None);
-            child.paint(ctx);
+    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+        for (widget, children) in children.iter_mut() {
+            widget.position(children, ctx.pos);
         }
     }
 }
@@ -110,16 +100,10 @@ impl Widget for ZStack {
 pub(crate) struct ZStackFactory;
 
 impl WidgetFactory for ZStackFactory {
-    fn make(
-        &self,
-        values: ValuesAttributes<'_, '_>,
-        _: Option<&TextPath>,
-    ) -> Result<Box<dyn AnyWidget>> {
-        let width = values.width();
-        let height = values.height();
-        let mut widget = ZStack::new(width, height);
-        widget.min_width = values.min_width();
-        widget.min_height = values.min_height();
+    fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let mut widget = ZStack::new(context.get("width"), context.get("height"));
+        widget.min_width = context.get("min-width");
+        widget.min_height = context.get("min-height");
         Ok(Box::new(widget))
     }
 }

@@ -1,4 +1,4 @@
-use crate::Path;
+use anathema_values::Path;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -26,4 +26,12 @@ pub enum Error {
     /// IO error
     #[error("{0}")]
     Io(#[from] std::io::Error),
+
+    /// Unregistered view
+    #[error("unregistered view")]
+    ViewNotFound,
+
+    /// Only one instance of this view can exist
+    #[error("this view has already been consumed")]
+    ViewConsumed,
 }
