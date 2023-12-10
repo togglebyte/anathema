@@ -249,58 +249,6 @@ impl<'screen> PaintCtx<'screen, WithSize> {
     }
 }
 
-// TODO: can we throw this out now? - 2023-08-30
-// // -----------------------------------------------------------------------------
-// //     - Layout context -
-// // -----------------------------------------------------------------------------
-// pub struct LayoutCtx {
-//     pub constraints: Constraints,
-//     pub padding: Padding,
-// }
-
-// impl LayoutCtx {
-//     pub fn new(constraints: Constraints, padding: Padding) -> Self {
-//         Self {
-//             constraints,
-//             padding,
-//         }
-//     }
-
-//     pub fn padding(&mut self) -> Padding {
-//         self.padding.take()
-//     }
-
-//     pub fn padded_constraints(&self) -> Constraints {
-//         if !self.padding.no_padding() {
-//             let padding = self.padding;
-//             let mut constraints = self.constraints;
-
-//             constraints.max_width = constraints
-//                 .max_width
-//                 .saturating_sub(padding.left + padding.right);
-//             constraints.min_width = constraints.min_width.min(constraints.max_width);
-
-//             constraints.max_height = constraints
-//                 .max_height
-//                 .saturating_sub(padding.top + padding.bottom);
-//             constraints.min_height = constraints.min_height.min(constraints.max_height);
-
-//             constraints
-//         } else {
-//             self.constraints
-//         }
-//     }
-
-//     pub fn padding_size(&self) -> Size {
-//         if !self.padding.no_padding() {
-//             let padding = self.padding;
-//             Size::new(padding.left + padding.right, padding.top + padding.bottom)
-//         } else {
-//             Size::ZERO
-//         }
-//     }
-// }
-
 // -----------------------------------------------------------------------------
 //     - Position context -
 // -----------------------------------------------------------------------------
@@ -320,22 +268,6 @@ impl PositionCtx {
         }
     }
 }
-
-// pub struct UpdateCtx {
-//     pub attributes: Attributes,
-//     pub pos: Pos,
-//     pub size: Size,
-// }
-
-// impl UpdateCtx {
-//     pub fn new(attributes: Attributes, pos: Pos, size: Size) -> Self {
-//         Self {
-//             attributes,
-//             pos,
-//             size,
-//         }
-//     }
-// }
 
 #[cfg(test)]
 mod test {

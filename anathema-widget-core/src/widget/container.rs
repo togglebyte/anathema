@@ -1,4 +1,4 @@
-use std::fmt::{self, Debug};
+use std::fmt::{Debug};
 use std::ops::{Deref, DerefMut};
 
 use anathema_render::{Color, ScreenPos, Size, Style};
@@ -122,7 +122,7 @@ impl WidgetContainer<'_> {
         match self.display.value_or_default() {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let layout = LayoutCtx::new(constraints, self.padding);
+                let _layout = LayoutCtx::new(constraints, self.padding);
                 let mut nodes = LayoutNodes::new(children, constraints, self.padding, data);
                 let size = self.inner.layout(&mut nodes)?;
 

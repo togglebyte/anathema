@@ -5,11 +5,6 @@ use crate::expressions::{
     ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNodeExpr, ViewExpr,
 };
 
-pub fn view(name: &str, body: impl Into<Vec<Expression>>) -> Expression {
-    panic!()
-    // Expression::View(ViewExpr { ident: *ident(name), state: None })
-}
-
 pub fn expression(
     ident: impl Into<String>,
     text: impl Into<Option<ValueExpr>>,
@@ -40,9 +35,6 @@ pub(crate) fn for_expression(
 pub(crate) fn if_expression(
     if_true: (ValueExpr, Vec<Expression>),
     elses: Vec<(Option<ValueExpr>, Vec<Expression>)>,
-    //     binding: impl Into<Path>,
-    //     collection: Box<ValueExpr>,
-    //     body: impl Into<Vec<Expression>>,
 ) -> Expression {
     Expression::ControlFlow(ControlFlow {
         if_expr: IfExpr {
@@ -56,5 +48,13 @@ pub(crate) fn if_expression(
                 expressions: body,
             })
             .collect(),
+    })
+}
+
+pub(crate) fn view_expression(id: impl Into<String>, state: Option<ValueExpr>, body: Vec<Expression>) -> Expression {
+    Expression::View(ViewExpr {
+        id: id.into(),
+        state,
+        body
     })
 }

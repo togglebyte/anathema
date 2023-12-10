@@ -53,7 +53,7 @@ impl WidgetStyle {
         }
     }
 
-    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+    pub fn resolve(&mut self, context: &Context<'_, '_>, _node_id: Option<&NodeId>) {
         self.fg.resolve(context, None);
         self.bg.resolve(context, None);
         self.bold.resolve(context, None);

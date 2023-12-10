@@ -1,4 +1,4 @@
-use anathema_values::{Change, Context, DynValue, NodeId, Resolver, Value};
+use anathema_values::{Change, Context, DynValue, NodeId, Value};
 
 use crate::expressions::{ElseExpr, IfExpr};
 use crate::views::TabIndex;

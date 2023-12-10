@@ -1,16 +1,14 @@
 use anathema_render::Size;
-use anathema_values::hashmap::HashMap;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, Resolver, State, Value, ValueExpr,
-    ValueRef, ValueResolver,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::nodes::{IfElse, LoopNode, Node, NodeKind, Nodes, Single, View};
-use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
-use crate::{Display, Factory, Padding, Pos, WidgetContainer};
+use crate::views::{RegisteredViews, TabIndex, Views};
+use crate::{Factory, Padding, Pos, WidgetContainer};
 
 mod controlflow;
 
@@ -273,9 +271,9 @@ mod test {
 
     use super::*;
     use crate::contexts::LayoutCtx;
-    use crate::generator::testing::*;
     use crate::layout::Constraints;
-    use crate::testing::{expression, for_expression};
+    use crate::nodes::testing::*;
+    use crate::testing::{expression, for_expression, if_expression, view_expression};
 
     impl Expression {
         pub fn test<'a>(self) -> TestExpression<TestState> {
@@ -291,6 +289,12 @@ mod test {
         }
     }
 
+    #[derive(Debug)]
+    struct AView;
+    impl crate::views::View for AView {
+        type State = ();
+    }
+
     #[test]
     fn eval_node() {
         let test = expression("test", None, [], []).test();
@@ -304,6 +308,7 @@ mod test {
         let expr =
             for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
         let node = expr.eval().unwrap();
+
         assert!(matches!(
             node,
             Node {
@@ -311,5 +316,55 @@ mod test {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn eval_if() {
+        let expr = if_expression(
+            (true.into(), vec![expression("test", None, [], [])]),
+            vec![],
+        ).test();
+
+        let node = expr.eval().unwrap();
+
+        assert!(matches!(
+            node,
+            Node {
+                kind: NodeKind::ControlFlow(..),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    #[should_panic(expected = "ViewNotFound")]
+    fn eval_missing_view() {
+        let expr = view_expression("theview", None, vec![]).test();
+        let node = expr.eval().unwrap();
+    }
+
+    #[test]
+    fn eval_prototype_view() {
+        RegisteredViews::add_prototype("aview", || AView);
+
+        let expr = view_expression("aview", None, vec![]).test();
+        let node = expr.eval().unwrap();
+
+        assert!(matches!(
+            node,
+            Node {
+                kind: NodeKind::View(..),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    #[should_panic(expected = "ViewConsumed")]
+    fn consume_view_twice() {
+        RegisteredViews::add_view("aview", AView);
+        let expr = view_expression("aview", None, vec![]).test();
+        let node = expr.eval().unwrap();
+        let node = expr.eval().unwrap();
     }
 }

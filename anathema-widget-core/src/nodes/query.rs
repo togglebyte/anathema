@@ -146,7 +146,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
 }
 
 pub trait Filter {
-    fn filter(&self, node: &Node) -> bool {
+    fn filter(&self, _node: &Node) -> bool {
         true
     }
 

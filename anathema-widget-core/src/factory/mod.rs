@@ -10,7 +10,7 @@ use crate::widget::AnyWidget;
 
 mod context;
 
-const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with"];
+const RESERVED_NAMES: &[&str] = &["if", "for", "else", "with", "view"];
 
 pub trait WidgetFactory: Send + Sync {
     fn make(&self, context: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>>;

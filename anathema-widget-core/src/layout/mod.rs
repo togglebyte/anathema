@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
 use anathema_values::{
-    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef, ValueResolver,
+    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
 };
 pub use layoutnodes::{LayoutNode, LayoutNodes};
 
@@ -27,6 +27,8 @@ pub trait Layout {
 // -----------------------------------------------------------------------------
 //   - Layouts -
 // -----------------------------------------------------------------------------
+// TODO: this struct can probably be removed
+// -TB: 2023-12-10
 pub struct Layouts<'ctx, T> {
     pub layout_ctx: &'ctx LayoutCtx,
     pub size: Size,
@@ -42,7 +44,7 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout<'e>(&mut self, children: &mut Nodes<'e>, data: &Context<'_, 'e>) -> Result<Size> {
+    pub fn layout<'e>(&mut self, _children: &mut Nodes<'e>, _data: &Context<'_, 'e>) -> Result<Size> {
         panic!()
         // self.layout.layout(children, self.layout_ctx, data)
     }
@@ -108,28 +110,6 @@ pub enum Align {
     /// Centre
     Centre,
 }
-
-// TODO can we remove this?
-// TB: 2023-11-20
-// impl TryFrom<&str> for Align {
-//     type Error = ();
-
-//     fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
-//         let wrap = match value {
-//             "top" => Self::Top,
-//             "top-right" => Self::TopRight,
-//             "right" => Self::Right,
-//             "bottom-right" => Self::BottomRight,
-//             "bottom" => Self::Bottom,
-//             "bottom-left" => Self::BottomLeft,
-//             "left" => Self::Left,
-//             "top-left" => Self::Left,
-//             "centre" | "center" => Self::Centre,
-//             _ => Self::TopLeft,
-//         };
-//         Ok(wrap)
-//     }
-// }
 
 impl RustDisplay for Align {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -449,7 +429,9 @@ impl Region {
         true
     }
 
-    /// Check if a region contains a position
+    /// Check if a region contains a position.
+    /// Regions are inclusive, so a region from 0,0 to 10, 10 contains both Pos::ZERO and
+    /// Pos::New(10, 10)
     pub fn contains(&self, pos: Pos) -> bool {
         pos.x >= self.from.x && pos.x <= self.to.x && pos.y >= self.from.y && pos.y <= self.to.y
     }
@@ -462,3 +444,24 @@ impl Region {
         self.to.y = self.to.y.min(other.to.y);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn region_inersect() {
+        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
+        let b = Region::new(Pos::new(5, 5), Pos::new(8, 8));
+        assert!(a.intersects(&b));
+        assert!(b.intersects(&a));
+    }
+
+    #[test]
+    fn region_contains() {
+        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
+        assert!(a.contains(Pos::ZERO));
+        assert!(a.contains(Pos::new(10, 10)));
+    }
+}
+

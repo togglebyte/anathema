@@ -1,22 +1,20 @@
-use std::any::Any;
-use std::collections::BTreeSet;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, OnceLock};
 use std::fmt::Debug;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::OnceLock;
 
 use anathema_values::hashmap::HashMap;
 use anathema_values::{NodeId, State};
-use parking_lot::Mutex;
 use kempt::Set;
+use parking_lot::Mutex;
 
-use crate::{Event, Nodes};
 use crate::error::{Error, Result};
+use crate::{Event, Nodes};
 
 pub type ViewFn = dyn Fn() -> Box<dyn AnyView> + Send;
 
 enum ViewFactory {
     View(Option<Box<dyn AnyView>>),
-    Prototype(Box<ViewFn>)
+    Prototype(Box<ViewFn>),
 }
 
 static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
@@ -27,11 +25,11 @@ static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, ViewFactory>>> = OnceLoc
 pub struct RegisteredViews;
 
 impl RegisteredViews {
-    pub fn add_view(key: String, view: impl AnyView + 'static) {
+    pub fn add_view(key: impl Into<String>, view: impl AnyView + 'static) {
         Self::add(key, ViewFactory::View(Some(Box::new(view))));
     }
 
-    pub fn add_prototype<T, F>(key: String, f: F)
+    pub fn add_prototype<T, F>(key: impl Into<String>, f: F)
     where
         F: Send + 'static + Fn() -> T,
         T: 'static + View + Debug + Send,
@@ -39,13 +37,12 @@ impl RegisteredViews {
         Self::add(key, ViewFactory::Prototype(Box::new(move || Box::new(f()))));
     }
 
-    fn add(key: String, view: ViewFactory) {
+    fn add(key: impl Into<String>, view: ViewFactory) {
         REGISTERED_VIEWS
             .get_or_init(Default::default)
             .lock()
-            .insert(key, view);
+            .insert(key.into(), view);
     }
-
 
     pub fn get(id: &str) -> Result<Box<dyn AnyView>> {
         let mut views = REGISTERED_VIEWS.get_or_init(Default::default).lock();
@@ -55,12 +52,10 @@ impl RegisteredViews {
             None => Err(Error::ViewNotFound),
             // Some(f) => Ok(f()),
             Some(ViewFactory::Prototype(prototype)) => Ok(prototype()),
-            Some(ViewFactory::View(view)) => {
-                match view.take() {
-                    Some(view) => Ok(view),
-                    None => Err(Error::ViewConsumed),
-                }
-            }
+            Some(ViewFactory::View(view)) => match view.take() {
+                Some(view) => Ok(view),
+                None => Err(Error::ViewConsumed),
+            },
         }
     }
 }
@@ -89,15 +84,11 @@ impl TabIndex {
     }
 
     pub(crate) fn insert(node_id: NodeId) {
-        TAB_VIEWS
-            .lock()
-            .insert(node_id);
+        TAB_VIEWS.lock().insert(node_id);
     }
 
     fn remove(node_id: &NodeId) {
-        TAB_VIEWS
-            .lock()
-            .remove(node_id);
+        TAB_VIEWS.lock().remove(node_id);
     }
 
     pub(crate) fn remove_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
@@ -117,7 +108,7 @@ impl TabIndex {
 
     pub fn current() -> Option<NodeId> {
         let index = TAB_INDEX.load(Ordering::Relaxed);
-        let all = TAB_VIEWS.lock().clone();
+        let _all = TAB_VIEWS.lock().clone();
         TAB_VIEWS.lock().member(index).cloned()
     }
 }
@@ -129,8 +120,9 @@ impl Views {
         VIEWS.lock().iter().cloned().collect()
     }
 
-    pub fn for_each<F>(f: F) 
-        where F: FnMut(&NodeId)
+    pub fn for_each<F>(f: F)
+    where
+        F: FnMut(&NodeId),
     {
         VIEWS.lock().iter().for_each(f);
     }
@@ -147,24 +139,20 @@ impl Views {
 pub trait View {
     type State: 'static;
 
-    fn on_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
-    }
+    fn on_event(&mut self, _event: Event, _nodes: &mut Nodes<'_>) {}
 
     fn get_state(&self) -> &dyn State {
         &()
     }
 
-    fn tick(&mut self) {
-    }
+    fn tick(&mut self) {}
 
-    fn focus(&mut self) {
-    }
+    fn focus(&mut self) {}
 
-    fn blur(&mut self) {
-    }
+    fn blur(&mut self) {}
 }
 
-pub trait AnyView : Debug + Send {
+pub trait AnyView: Debug + Send {
     fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
 
     fn get_any_state(&self) -> &dyn State;
@@ -203,11 +191,12 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::testing::view;
+    // use super::*;
+    // use crate::testing::view;
 
-    #[test]
-    fn events() {
-        let v = view("a-view");
-    }
+    // #[test]
+    // fn events() {
+    //     panic!("we'll get there");
+    //     // let v = view("a-view");
+    // }
 }

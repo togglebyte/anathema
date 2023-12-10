@@ -1,21 +1,19 @@
 #[cfg(any(attribute = "testing", test))]
-mod testing;
+pub(crate) mod testing;
 
-use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, LocalScope, NodeId, Resolver, State, ValueExpr, ValueRef, ValueResolver,
+    Change, Context, LocalScope, NodeId, Resolver, State, ValueRef, ValueResolver,
 };
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
 use self::query::Query;
-use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::expressions::{Expression, ViewState};
-use crate::views::{AnyView, RegisteredViews, TabIndex, Views};
+use crate::views::AnyView;
 use crate::{Event, WidgetContainer};
 
 mod controlflow;
@@ -97,7 +95,7 @@ impl<'e> Node<'e> {
 
     // Update this node.
     // This means that the update was specifically for this node,
-    // and none of its children
+    // and not one of its children
     fn update(&mut self, change: &Change, context: &Context<'_, '_>) {
         let scope = &self.scope;
         let context = context.reparent(scope);
@@ -172,7 +170,6 @@ pub enum NodeKind<'e> {
 }
 
 #[derive(Debug)]
-// TODO: possibly optimise this by making nodes optional on the node
 pub struct Nodes<'expr> {
     expressions: &'expr [Expression],
     inner: Vec<Node<'expr>>,
@@ -221,6 +218,7 @@ impl<'expr> Nodes<'expr> {
         F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         loop {
+            // TODO: Use `?` here
             if let Ok(res) = self.next(context, &mut f) {
                 match res {
                     ControlFlow::Continue(()) => continue,
@@ -232,7 +230,9 @@ impl<'expr> Nodes<'expr> {
         Ok(())
     }
 
-    // TODO: move this into a visitor?
+    /// Update and apply the change to the specific node.
+    /// This is currently done by the runtime
+    #[doc(hidden)]
     pub fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
         update(&mut self.inner, node_id, change, context);
     }
@@ -247,12 +247,14 @@ impl<'expr> Nodes<'expr> {
         }
     }
 
-    // TODO: move this into a visitor?
+    /// Count the number of widgets in the node tree
     pub fn count(&self) -> usize {
-        count(self.inner.iter())
+        count_widgets(self.inner.iter())
     }
 
-    // TODO: move this into a visitor?
+    /// Reset the widget cache.
+    /// This should be done per frame
+    #[doc(hidden)]
     pub fn reset_cache(&mut self) {
         self.cache_index = 0;
         for node in &mut self.inner {
@@ -260,6 +262,8 @@ impl<'expr> Nodes<'expr> {
         }
     }
 
+    /// Query the node tree.
+    /// See [`Query`] for more information
     pub fn query(&mut self) -> Query<'_, 'expr, ()> {
         Query {
             nodes: self,
@@ -270,7 +274,9 @@ impl<'expr> Nodes<'expr> {
     fn node_ids(&self) -> impl Iterator<Item = &NodeId> + '_ {
         self.inner.iter().flat_map(|node| match &node.kind {
             NodeKind::Single(Single {
-                widget, children, ..
+                widget: _,
+                children,
+                ..
             }) => Box::new(std::iter::once(&node.node_id).chain(children.node_ids())),
             NodeKind::Loop(loop_state) => loop_state.node_ids(),
             NodeKind::ControlFlow(control_flow) => control_flow.node_ids(),
@@ -278,6 +284,7 @@ impl<'expr> Nodes<'expr> {
         })
     }
 
+    /// A mutable iterator over [`WidgetContainer`]s and their children
     pub fn iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&mut WidgetContainer<'expr>, &mut Nodes<'expr>)> + '_ {
@@ -295,12 +302,13 @@ impl<'expr> Nodes<'expr> {
         )
     }
 
+    /// First mutable [`WidgetContainer`] and its children
     pub fn first_mut(&mut self) -> Option<(&mut WidgetContainer<'expr>, &mut Nodes<'expr>)> {
         self.iter_mut().next()
     }
 }
 
-fn count<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
+fn count_widgets<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
     nodes
         .map(|node| match &node.kind {
             NodeKind::Single(Single { children, .. }) => 1 + children.count(),
@@ -357,7 +365,7 @@ mod test {
     use anathema_values::testing::{ident, list};
     use anathema_values::ValueExpr;
 
-    use crate::generator::testing::*;
+    use crate::nodes::testing::*;
     use crate::testing::{expression, for_expression, if_expression};
 
     #[test]

@@ -9,7 +9,7 @@ use crate::layout::Constraints;
 use crate::{Nodes, Pos, Widget};
 
 pub use self::expressions::expression;
-pub(crate) use self::expressions::{for_expression, if_expression, view};
+pub(crate) use self::expressions::{for_expression, if_expression, view_expression};
 
 mod expressions;
 

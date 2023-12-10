@@ -1,12 +1,9 @@
 use std::time::Duration;
 
-use anathema_values::state::State;
 use crossterm::event::{read, Event as CTEvent};
 pub use crossterm::event::{
     KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,
 };
-
-use crate::Nodes;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Event {

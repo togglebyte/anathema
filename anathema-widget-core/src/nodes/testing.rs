@@ -2,13 +2,14 @@ use anathema_render::Size;
 use anathema_values::testing::TestState;
 use anathema_values::{Attributes, Context, Path, State, Value, ValueExpr};
 
-use super::nodes::Node;
-use super::{ControlFlow, ElseExpr, IfExpr};
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
-use crate::generator::expressions::{Expression, LoopExpr, SingleNode};
+use crate::expressions::{ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNodeExpr};
 use crate::layout::{Constraints, Layout, Layouts};
-use crate::{AnyWidget, Factory, FactoryContext, Nodes, Padding, Widget, WidgetFactory};
+use crate::nodes::Node;
+use crate::{
+    AnyWidget, Factory, FactoryContext, LayoutNodes, Nodes, Padding, Widget, WidgetFactory,
+};
 
 // -----------------------------------------------------------------------------
 //   - Layouts -
@@ -16,18 +17,18 @@ use crate::{AnyWidget, Factory, FactoryContext, Nodes, Padding, Widget, WidgetFa
 pub struct TestLayoutMany;
 
 impl Layout for TestLayoutMany {
-    fn layout<'e>(
+    fn layout<'nodes, 'expr, 'state>(
         &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
+        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
     ) -> Result<Size> {
         let mut size = Size::ZERO;
 
-        children.for_each(data, layout, |widget, children, ctx| {
-            let s = widget.layout(children, layout.constraints, ctx)?;
+        let mut constraints = nodes.constraints;
+        nodes.for_each(|mut node| {
+            let s = node.layout(constraints)?;
             size.height += s.height;
             size.width = size.width.max(s.width);
+            constraints.max_height -= size.height;
             Ok(())
         })?;
 
@@ -39,6 +40,7 @@ impl Layout for TestLayoutMany {
 //   - Widgets -
 // -----------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct TestWidget(pub Value<String>);
 
 impl Widget for TestWidget {
@@ -46,13 +48,7 @@ impl Widget for TestWidget {
         "text"
     }
 
-    fn layout(
-        &mut self,
-        _children: &mut Nodes<'_>,
-        _layout: &LayoutCtx,
-        _data: &Context<'_, '_>,
-    ) -> Result<Size> {
-
+    fn layout<'e>(&mut self, _nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         match self.0.value_ref() {
             Some(s) => Ok(Size::new(s.len(), 1)),
             None => Ok(Size::ZERO),
@@ -71,6 +67,7 @@ impl WidgetFactory for TestWidgetFactory {
     }
 }
 
+#[derive(Debug)]
 struct TestListWidget;
 
 impl Widget for TestListWidget {
@@ -78,14 +75,8 @@ impl Widget for TestListWidget {
         "list"
     }
 
-    fn layout<'e>(
-        &mut self,
-        children: &mut Nodes<'e>,
-        layout: &LayoutCtx,
-        data: &Context<'_, 'e>,
-    ) -> Result<Size> {
-        let mut layout = Layouts::new(TestLayoutMany, layout);
-        layout.layout(children, data)
+    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+        TestLayoutMany.layout(nodes)
     }
 
     fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {
@@ -143,14 +134,17 @@ impl<'e> TestNodes<'e> {
 
     pub fn layout(&mut self) -> Result<Size> {
         let context = Context::root(&self.state);
-        let constraints = Constraints::new(120, 40);
-        let layout = LayoutCtx::new(constraints, Padding::ZERO);
-
-        TestLayoutMany.layout(&mut self.nodes, &layout, &context)
+        let mut layout_nodes = LayoutNodes::new(
+            &mut self.nodes,
+            Constraints::new(120, 40),
+            Padding::ZERO,
+            &context,
+        );
+        TestLayoutMany.layout(&mut layout_nodes)
     }
 }
 
 pub(crate) fn register_test_widget() {
-    Factory::register("test", TestWidgetFactory);
-    Factory::register("list", TestListWidgetFactory);
+    let _ = Factory::register("test", TestWidgetFactory);
+    let _ = Factory::register("list", TestListWidgetFactory);
 }

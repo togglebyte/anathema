@@ -5,7 +5,6 @@ mod factory;
 pub mod layout;
 pub mod nodes;
 mod style;
-mod values;
 pub mod views;
 mod widget;
 mod event;
