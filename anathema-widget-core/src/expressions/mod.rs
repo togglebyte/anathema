@@ -12,11 +12,6 @@ use crate::{Factory, Padding, Pos, WidgetContainer};
 
 mod controlflow;
 
-struct DoesEverything {
-    views: Views,
-    tab_index: TabIndex,
-}
-
 // -----------------------------------------------------------------------------
 //   - A single Node -
 // -----------------------------------------------------------------------------
@@ -83,11 +78,7 @@ impl SingleNodeExpr {
 #[derive(Debug)]
 pub(crate) enum Collection<'e> {
     Static(&'e [ValueExpr]),
-    State {
-        len: usize,
-        path: Path,
-        expr: ValueExpr,
-    },
+    State { len: usize, path: Path },
     Empty,
 }
 
@@ -138,11 +129,7 @@ impl LoopExpr {
                             _ => 0,
                         };
 
-                        Collection::State {
-                            path,
-                            len,
-                            expr: self.collection.clone(),
-                        }
+                        Collection::State { path, len }
                     }
                     _ => Collection::Empty,
                 }
@@ -194,7 +181,7 @@ impl ControlFlow {
 #[derive(Debug)]
 pub(crate) enum ViewState<'e> {
     Static(&'e dyn State),
-    External { path: Path, expr: ValueExpr },
+    External { path: Path },
     Internal,
 }
 
@@ -216,10 +203,7 @@ impl ViewExpr {
                 let val = resolver.resolve(expr);
                 match val {
                     ValueRef::Map(state) => ViewState::Static(state),
-                    ValueRef::Deferred(path) => ViewState::External {
-                        path,
-                        expr: expr.clone(),
-                    },
+                    ValueRef::Deferred(path) => ViewState::External { path },
                     _ => ViewState::Internal,
                 }
             }
@@ -323,7 +307,8 @@ mod test {
         let expr = if_expression(
             (true.into(), vec![expression("test", None, [], [])]),
             vec![],
-        ).test();
+        )
+        .test();
 
         let node = expr.eval().unwrap();
 

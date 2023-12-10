@@ -5,7 +5,7 @@ use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, LocalScope, NodeId, Resolver, State, ValueRef, ValueResolver,
+    Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver,
 };
 
 pub(crate) use self::controlflow::IfElse;
@@ -130,7 +130,7 @@ impl<'e> Node<'e> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Single<'e> {
+pub struct Single<'e> {
     pub(crate) widget: WidgetContainer<'e>,
     pub(crate) children: Nodes<'e>,
     pub(crate) ident: &'e str,

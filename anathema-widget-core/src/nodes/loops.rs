@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, Deferred, LocalScope, NodeId, Path, State, ValueRef,
+    Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef,
 };
 
 use super::Nodes;
@@ -119,7 +119,6 @@ impl<'e> LoopNode<'e> {
                 ValueRef::Deferred(path)
             }
             Collection::Empty => return None,
-            _ => panic!(),
         };
 
         Some(val)

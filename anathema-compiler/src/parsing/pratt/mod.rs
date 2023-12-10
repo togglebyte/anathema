@@ -3,10 +3,8 @@ use std::fmt::Display;
 use anathema_render::Color;
 
 pub use self::eval::eval;
-use crate::error::Result;
-use crate::lexer::Lexer;
 use crate::token::{Kind, Operator, Tokens, Value};
-use crate::{Constants, StringId};
+use crate::StringId;
 
 mod eval;
 
@@ -265,6 +263,9 @@ fn parse_map(tokens: &mut Tokens) -> Expr {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::error::Result;
+    use crate::lexer::Lexer;
+    use crate::Constants;
 
     fn parse(input: &str) -> String {
         let mut consts = Constants::new();

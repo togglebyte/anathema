@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_values::State;
 use parking_lot::RwLock;
 
 pub use self::context::FactoryContext;

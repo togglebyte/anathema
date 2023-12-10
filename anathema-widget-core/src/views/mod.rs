@@ -87,10 +87,6 @@ impl TabIndex {
         TAB_VIEWS.lock().insert(node_id);
     }
 
-    fn remove(node_id: &NodeId) {
-        TAB_VIEWS.lock().remove(node_id);
-    }
-
     pub(crate) fn remove_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
         let mut views = TAB_VIEWS.lock();
         node_ids.for_each(|id| {
@@ -129,10 +125,6 @@ impl Views {
 
     pub(crate) fn insert(node_id: NodeId) {
         VIEWS.lock().insert(node_id);
-    }
-
-    fn remove(node_id: &NodeId) {
-        VIEWS.lock().remove(node_id);
     }
 }
 

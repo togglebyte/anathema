@@ -22,7 +22,6 @@ pub struct Lexer<'src, 'consts> {
     pub(super) src: &'src str,
     pub(crate) consts: &'consts mut Constants,
     chars: Peekable<CharIndices<'src>>,
-    pub(super) current_pos: usize,
 }
 
 impl<'src, 'consts> Lexer<'src, 'consts> {
@@ -31,53 +30,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             chars: src.char_indices().peekable(),
             consts,
             src,
-            current_pos: 0,
         }
-    }
-
-    pub(crate) fn peek_op(&mut self) -> Option<Operator> {
-        panic!()
-        // self.peek().ok().map(|t| match &t.0 {
-        //     Kind::Op(op) => Some(*op),
-        //     _ => None,
-        // })
-    }
-
-    // -----------------------------------------------------------------------------
-    //     - Consuming / peeking -
-    // -----------------------------------------------------------------------------
-    pub(super) fn consume(&mut self, whitespace: bool, newlines: bool) {
-        loop {
-            if whitespace && self.is_whitespace() {
-                let _ = self.next();
-            } else if newlines && self.is_newline() {
-                let _ = self.next();
-            } else {
-                break;
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------------------
-    //     - Token checks -
-    // -----------------------------------------------------------------------------
-    fn is_whitespace(&mut self) -> bool {
-        matches!(self.peek(), Ok(Token(Kind::Indent(_), _)))
-    }
-
-    fn is_newline(&mut self) -> bool {
-        matches!(self.peek(), Ok(Token(Kind::Newline, _)))
-    }
-
-    pub fn peek(&mut self) -> &Result<Token> {
-        panic!()
-        // match self.next {
-        //     Some(ref val) => val,
-        //     None => {
-        //         self.next = Some(self.next());
-        //         self.peek()
-        //     }
-        // }
     }
 
     fn next_token(&mut self) -> Result<Token> {

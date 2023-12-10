@@ -161,7 +161,7 @@ pub trait Filter {
     }
 }
 
-struct FilterChain<A, B> {
+pub struct FilterChain<A, B> {
     lhs: A,
     rhs: B,
 }

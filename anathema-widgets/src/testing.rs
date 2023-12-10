@@ -1,4 +1,4 @@
-use anathema_widget_core::generator::Expression;
+use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::testing::{test_widget as core_test_widget, FakeTerm};
 use anathema_widget_core::Widget;
 

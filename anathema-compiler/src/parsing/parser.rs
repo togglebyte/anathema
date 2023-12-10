@@ -2,7 +2,6 @@ use anathema_values::ValueExpr;
 
 use super::pratt::{eval, expr};
 use crate::error::{src_line_no, Error, ErrorKind, Result};
-use crate::lexer::Lexer;
 use crate::token::{Kind, Operator, Tokens, Value};
 use crate::{Constants, StringId, ValueId};
 
@@ -465,6 +464,8 @@ impl Iterator for Parser<'_, '_> {
 
 #[cfg(test)]
 mod test {
+    use crate::lexer::Lexer;
+
     use super::*;
 
     fn parse(src: &str) -> Vec<Result<Expression>> {

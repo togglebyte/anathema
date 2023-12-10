@@ -77,7 +77,6 @@ impl Display for Operator {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum Value {
-    Index(usize),
     Number(u64),
     Float(f64),
     String(StringId),
@@ -90,7 +89,6 @@ impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Color(color) => write!(f, "{color:?}"),
-            Self::Index(idx) => write!(f, "<idx {idx}>"),
             Self::Number(num) => write!(f, "{num}"),
             Self::Float(num) => write!(f, "{num}"),
             Self::String(s) => write!(f, "\"{s}\""),
@@ -155,10 +153,6 @@ impl Tokens {
             index: 0,
             eof,
         }
-    }
-
-    pub fn slice(&self) -> &[Token] {
-        &self.inner[self.index..]
     }
 
     pub fn consume(&mut self) {

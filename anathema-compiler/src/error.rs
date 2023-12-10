@@ -33,16 +33,6 @@ pub struct Error {
 impl StdError for Error {}
 
 impl Error {
-    pub(crate) fn unexpected_eof(start: usize, src: &str) -> Self {
-        let (line, col) = src_line_no(start, src);
-        Self {
-            line,
-            col,
-            src: src.to_string(),
-            kind: ErrorKind::UnexpectedEof,
-        }
-    }
-
     pub(crate) fn unterminated_string(range: Range<usize>, src: &str) -> Self {
         let (line, col) = src_line_no(range.start, src);
         Self {
@@ -60,16 +50,6 @@ impl Error {
             col,
             src: src.to_string(),
             kind: ErrorKind::InvalidNumber,
-        }
-    }
-
-    pub(crate) fn invalid_index(range: Range<usize>, src: &str) -> Self {
-        let (line, col) = src_line_no(range.end, src);
-        Self {
-            line,
-            col,
-            src: src.to_string(),
-            kind: ErrorKind::InvalidIndex,
         }
     }
 

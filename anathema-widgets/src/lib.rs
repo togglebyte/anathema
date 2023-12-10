@@ -1,6 +1,6 @@
 pub mod layout;
-// #[cfg(feature = "testing")]
-// pub mod testing;
+#[cfg(feature = "testing")]
+pub mod testing;
 
 mod alignment;
 mod border;

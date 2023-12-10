@@ -2,14 +2,13 @@ use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::state::State;
 use anathema_values::{drain_dirty_nodes, Context};
-use anathema_widget_core::contexts::{LayoutCtx, PaintCtx};
+use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
-use anathema_widget_core::views::{AnyView, RegisteredViews, TabIndex, View, ViewFn, Views};
+use anathema_widget_core::views::{TabIndex, Views};
 use anathema_widget_core::{Event, Events, LayoutNodes, Padding, Pos, KeyCode, KeyModifiers};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -107,7 +106,7 @@ impl<'e> Runtime<'e> {
     }
 
     fn tick_views(&mut self) {
-        let views = Views::for_each(|node_id| {
+        Views::for_each(|node_id| {
             if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(node_id) {
                 view.tick();
             }
