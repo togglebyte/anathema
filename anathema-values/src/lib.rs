@@ -29,6 +29,7 @@ mod value_expr;
 // -----------------------------------------------------------------------------
 //   - Macro requirements -
 // -----------------------------------------------------------------------------
+#[allow(unused_extern_crates)]
 extern crate self as anathema;
 #[allow(unused_imports)]
 use crate as values;

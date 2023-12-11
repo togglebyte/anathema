@@ -23,6 +23,5 @@ jobs:
           components: rustfmt
       - name: Rust fmt
         run: cargo +nightly fmt -- --check
-
-    #  - name: Clippy
-    #    run: cargo clippy -- -A clippy::option_map_unit_fn
+      - name: Clippy
+        run: cargo clippy --all-features --all
