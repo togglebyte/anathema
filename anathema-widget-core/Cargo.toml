@@ -16,3 +16,6 @@ thiserror = { workspace = true }
 crossterm = { workspace = true }
 parking_lot = { workspace = true }
 kempt = "0.2.2"
+
+[lints]
+workspace = true

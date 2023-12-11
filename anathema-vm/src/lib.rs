@@ -14,12 +14,6 @@ pub struct ViewTemplates {
     dep_list: Vec<String>,
 }
 
-impl Default for ViewTemplates {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ViewTemplates {
     pub fn new() -> Self {
         Self {

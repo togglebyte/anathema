@@ -21,12 +21,6 @@ pub struct Constants {
     values: Values,
 }
 
-impl Default for Constants {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Constants {
     pub fn new() -> Self {
         Self {

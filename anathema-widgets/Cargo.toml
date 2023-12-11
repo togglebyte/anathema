@@ -14,3 +14,6 @@ anathema-values = { path = "../anathema-values" }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }
 smallvec = { workspace = true }
+
+[lints]
+workspace = true

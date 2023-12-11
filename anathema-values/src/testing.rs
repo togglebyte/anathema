@@ -9,12 +9,6 @@ pub struct Inner {
     names: List<String>,
 }
 
-impl Default for Inner {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Inner {
     pub fn new() -> Self {
         Self {
@@ -33,12 +27,6 @@ pub struct TestState {
     pub generic_list: List<usize>,
     pub nested_list: List<List<usize>>,
     pub debug: StateValue<bool>,
-}
-
-impl Default for TestState {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl TestState {

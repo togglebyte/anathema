@@ -13,3 +13,6 @@ testing = ["anathema-widget-core/testing"]
 anathema-render = { path = "../anathema-render" }
 anathema-values = { path = "../anathema-values" }
 anathema-widget-core = { path = "../anathema-widget-core" }
+
+[lints]
+workspace = true

@@ -12,3 +12,6 @@ anathema-render = { path = "../anathema-render" }
 anathema-values = { path = "../anathema-values" }
 anathema-widget-core = { path = "../anathema-widget-core" }
 thiserror = { workspace = true }
+
+[lints]
+workspace = true
