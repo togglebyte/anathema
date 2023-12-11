@@ -1,13 +1,12 @@
 use std::any::Any;
-use std::ops::{Deref, DerefMut};
 use std::fmt::Debug;
+use std::ops::{Deref, DerefMut};
 
 use anathema_render::Size;
 use anathema_values::{Context, NodeId};
 
 pub use self::container::WidgetContainer;
 use super::contexts::{PaintCtx, PositionCtx, WithSize};
-
 use crate::error::Result;
 use crate::nodes::Nodes;
 use crate::LayoutNodes;
@@ -32,12 +31,12 @@ pub trait Widget {
     // -----------------------------------------------------------------------------
     //     - Layout -
     // -----------------------------------------------------------------------------
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size>;
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size>;
 
     /// By the time this function is called the widget container
     /// has already set the position. This is useful to correctly set the position
     /// of the children.
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx);
+    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx);
 
     fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         for (widget, children) in children.iter_mut() {
@@ -55,7 +54,7 @@ impl Widget for Box<dyn Widget> {
         self.as_ref().kind()
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.as_mut().layout(nodes)
     }
 
@@ -77,7 +76,7 @@ pub trait AnyWidget: Debug {
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn layout_any<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size>;
+    fn layout_any(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size>;
 
     fn kind_any(&self) -> &'static str;
 
@@ -93,7 +92,7 @@ impl Widget for Box<dyn AnyWidget> {
         self.deref().kind_any()
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.deref_mut().layout_any(nodes)
     }
 
@@ -119,7 +118,7 @@ impl<T: Debug + Widget + 'static> AnyWidget for T {
         self
     }
 
-    fn layout_any<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout_any(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.layout(nodes)
     }
 

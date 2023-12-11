@@ -46,12 +46,12 @@ pub(super) struct Compiler {
 impl Compiler {
     pub(super) fn new(expressions: impl IntoIterator<Item = Expression>) -> Self {
         let expressions = expressions.into_iter().collect::<Vec<_>>();
-        let inst = Self {
+
+        Self {
             ep: 0,
             output: Vec::with_capacity(expressions.len()),
             expressions,
-        };
-        inst
+        }
     }
 
     pub(super) fn compile(mut self) -> Result<Vec<Instruction>> {

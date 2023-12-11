@@ -4,7 +4,7 @@ mod vm;
 
 use anathema_values::hashmap::HashMap;
 use anathema_widget_core::expressions::Expression;
-use anathema_widget_core::views::{RegisteredViews, View, AnyView};
+use anathema_widget_core::views::{AnyView, RegisteredViews, View};
 pub use vm::VirtualMachine;
 
 use self::error::Result;
@@ -12,6 +12,12 @@ use self::error::Result;
 pub struct ViewTemplates {
     inner: HashMap<String, Template>,
     dep_list: Vec<String>,
+}
+
+impl Default for ViewTemplates {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ViewTemplates {
@@ -76,7 +82,12 @@ impl Templates {
         Ok(())
     }
 
-    pub fn add_view(&mut self, ident: impl Into<String>, template: String, view: impl AnyView + 'static) {
+    pub fn add_view(
+        &mut self,
+        ident: impl Into<String>,
+        template: String,
+        view: impl AnyView + 'static,
+    ) {
         let ident = ident.into();
         self.view_templates.insert(ident.clone(), template);
         RegisteredViews::add_view(ident, view)

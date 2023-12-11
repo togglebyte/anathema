@@ -6,10 +6,7 @@ use anathema_widget_core::LayoutNodes;
 pub struct Single;
 
 impl Layout for Single {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut constraints = nodes.constraints;
         constraints.apply_padding(nodes.padding);
         let mut size = Size::ZERO;

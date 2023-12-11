@@ -122,14 +122,14 @@ impl Widget for Text {
         self.style.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.layout = TextLayout::ZERO;
         let max_size = Size::new(nodes.constraints.max_width, nodes.constraints.max_height);
         self.layout.set_max_size(max_size);
 
-        self.word_wrap
-            .value_ref()
-            .map(|wrap| self.layout.set_wrap(*wrap));
+        if let Some(wrap) = self.word_wrap.value_ref() {
+            self.layout.set_wrap(*wrap)
+        }
         self.layout.process(self.text.str());
 
         nodes.for_each(|mut span| {
@@ -194,7 +194,7 @@ impl Widget for TextSpan {
         self.style.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, _nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, _nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 

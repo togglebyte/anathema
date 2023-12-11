@@ -235,9 +235,9 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub(crate) fn eval<'a, 'expr>(
+    pub(crate) fn eval<'expr>(
         &'expr self,
-        context: &Context<'a, 'expr>,
+        context: &Context<'_, 'expr>,
         node_id: NodeId,
     ) -> Result<Node<'expr>> {
         match self {
@@ -256,12 +256,12 @@ mod test {
     use super::*;
     use crate::contexts::LayoutCtx;
     use crate::layout::Constraints;
-    use crate::testing::nodes::*;
     use crate::testing::expressions::{expression, for_expression, if_expression, view_expression};
+    use crate::testing::nodes::*;
     use crate::Padding;
 
     impl Expression {
-        pub fn test<'a>(self) -> TestExpression<TestState> {
+        pub fn test(self) -> TestExpression<TestState> {
             register_test_widget();
 
             let constraint = Constraints::new(80, 20);
@@ -291,7 +291,7 @@ mod test {
     #[test]
     fn eval_for() {
         let expr =
-            for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
+            for_expression("item", *list([1, 2, 3]), [expression("test", None, [], [])]).test();
         let node = expr.eval().unwrap();
 
         assert!(matches!(

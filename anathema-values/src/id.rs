@@ -18,12 +18,15 @@ impl NodeId {
     }
 
     pub fn contains(&self, other: &[usize]) -> bool {
-        self.0 == &other[..self.0.len()]
+        self.0 == other[..self.0.len()]
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> NodeId {
         let ret = NodeId(self.0.clone());
-        self.0.last_mut().map(|v| *v += 1);
+        if let Some(v) = self.0.last_mut() {
+            *v += 1;
+        }
         ret
     }
 

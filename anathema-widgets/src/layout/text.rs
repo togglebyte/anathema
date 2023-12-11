@@ -262,9 +262,9 @@ impl TextLayout {
     }
 
     fn overflow(&mut self, input: &str) {
-        let mut chars = input.char_indices();
+        let chars = input.char_indices();
 
-        while let Some((i, c)) = chars.next() {
+        for (i, c) in chars {
             let char_width = c.width().unwrap_or(0);
             if self.current_width + char_width > self.max_size.width {
                 self.lines.range(0, i);
@@ -466,13 +466,13 @@ mod test {
 
         for line in layout.lines.inner {
             match line {
-                Entry::All { index, .. } => buf.push_str(&inputs[index]),
+                Entry::All { index, .. } => buf.push_str(inputs[index]),
                 Entry::Range(r) => {
                     let input = &inputs[r.slice];
                     let text = &input[r.start..r.end];
                     buf.push_str(text);
                 }
-                Entry::Newline => output.push(buf.drain(..).collect::<String>()),
+                Entry::Newline => output.push(std::mem::take(&mut buf)),
             }
         }
 
@@ -514,7 +514,7 @@ mod test {
     #[test]
     fn break_long_words() {
         let inputs = ["hello suuuuuuperlooooooong hi"];
-        let layout = lines(inputs.clone(), 8, 100, Wrap::Normal);
+        let layout = lines(inputs, 8, 100, Wrap::Normal);
         assert_eq!(&layout[0], "hello");
         assert_eq!(&layout[1], "suuuuuup");
         assert_eq!(&layout[2], "erlooooo");
@@ -536,7 +536,7 @@ mod test {
     #[test]
     fn space_break() {
         let inputs = ["hello world"];
-        let size = size(inputs.clone(), 5, 100);
+        let size = size(inputs, 5, 100);
         let expected = Size::new(5, 2);
         assert_eq!(size, expected);
 
@@ -548,7 +548,7 @@ mod test {
     #[test]
     fn space_eater() {
         let inputs = ["hello    world"];
-        let strings = lines(inputs.clone(), 5, 100, Wrap::Normal);
+        let strings = lines(inputs, 5, 100, Wrap::Normal);
         assert_eq!(&strings[0], "hello");
         assert_eq!(&strings[1], "world");
 
@@ -568,7 +568,7 @@ mod test {
     #[test]
     fn hello_how_are_you() {
         let inputs = ["hello how are you"];
-        let strings = lines(inputs.clone(), 8, 3, Wrap::Normal);
+        let strings = lines(inputs, 8, 3, Wrap::Normal);
         assert_eq!(&strings[0], "hello");
         assert_eq!(&strings[1], "how are");
         assert_eq!(&strings[2], "you");
@@ -580,7 +580,7 @@ mod test {
         let layout = layout_wrapped(inputs, 1, 2, Wrap::Overflow);
         assert_eq!(layout.size(), Size::new(1, 1));
 
-        let strings = lines(inputs.clone(), 1, 2, Wrap::Overflow);
+        let strings = lines(inputs, 1, 2, Wrap::Overflow);
         assert_eq!(&strings[0], "h");
         assert_eq!(strings.len(), 1);
     }
@@ -591,7 +591,7 @@ mod test {
         let layout = layout_wrapped(inputs, 2, 2, Wrap::Overflow);
         assert_eq!(layout.size(), Size::new(2, 1));
 
-        let strings = lines(inputs.clone(), 2, 2, Wrap::Overflow);
+        let strings = lines(inputs, 2, 2, Wrap::Overflow);
         assert_eq!(&strings[0], "hi");
         assert_eq!(strings.len(), 1);
     }
@@ -602,7 +602,7 @@ mod test {
         let layout = layout_wrapped(inputs, 2, 2, Wrap::Overflow);
         assert_eq!(layout.size(), Size::new(2, 1));
 
-        let strings = lines(inputs.clone(), 2, 2, Wrap::Overflow);
+        let strings = lines(inputs, 2, 2, Wrap::Overflow);
         assert_eq!(&strings[0], "hi");
         assert_eq!(strings.len(), 1);
     }

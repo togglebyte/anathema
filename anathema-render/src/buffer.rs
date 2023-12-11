@@ -69,7 +69,7 @@ impl Buffer {
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::empty(); (size.width * size.height) as usize],
+            inner: vec![Cell::empty(); size.width * size.height],
             size,
         }
     }
@@ -134,7 +134,7 @@ impl Buffer {
     }
 
     fn index(&self, pos: ScreenPos) -> usize {
-        pos.y as usize * self.size.width as usize + pos.x as usize
+        pos.y as usize * self.size.width + pos.x as usize
     }
 
     fn put(&mut self, mut cell: Cell, pos: ScreenPos) {
@@ -154,7 +154,7 @@ impl Buffer {
             }
         }
 
-        let current = &mut self.inner[index as usize];
+        let current = &mut self.inner[index];
         cell.style.merge(current.style);
 
         match (&mut current.inner, cell.inner) {
@@ -176,14 +176,14 @@ impl Buffer {
     }
 
     fn cell_lines(&self) -> impl Iterator<Item = &[Cell]> {
-        self.inner.chunks(self.size.width as usize)
+        self.inner.chunks(self.size.width)
     }
 }
 
 #[cfg(test)]
 impl Buffer {
     fn cell_at(&self, x: usize, y: usize) -> Cell {
-        let index = y * self.size.width as usize + x;
+        let index = y * self.size.width + x;
         self.inner[index]
     }
 
@@ -226,7 +226,7 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer) -> Result<Vec<(ScreenPos, Option<
             }
 
             let style = match previous_style {
-                Some(previous) => (previous != new_cell.style).then(|| new_cell.style),
+                Some(previous) => (previous != new_cell.style).then_some(new_cell.style),
                 None => Some(new_cell.style),
             };
 

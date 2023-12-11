@@ -117,10 +117,7 @@ impl Many {
 }
 
 impl Layout for Many {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut max_constraints = nodes.constraints;
         max_constraints.apply_padding(nodes.padding);
 

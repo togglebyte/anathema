@@ -47,11 +47,11 @@ impl Screen {
     /// The `output` is used initially to move the cursor and hide it.
     pub fn new(size: impl Into<Size>) -> Self {
         let size: Size = size.into();
-        let inst = Self {
+
+        Self {
             old_buffer: Buffer::new(size),
             new_buffer: Buffer::new(size),
-        };
-        inst
+        }
     }
 
     /// Access to the current buffer

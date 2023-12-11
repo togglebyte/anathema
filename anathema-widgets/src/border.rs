@@ -82,12 +82,9 @@ impl DynValue for Sides {
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        match value {
-            Value::Dyn { inner, expr } => {
-                let sides = Resolver::new(context, node_id).resolve_list::<String>(expr);
-                *inner = Some(sides.into())
-            }
-            _ => {}
+        if let Value::Dyn { inner, expr } = value {
+            let sides = Resolver::new(context, node_id).resolve_list::<String>(expr);
+            *inner = Some(sides.into())
         }
     }
 }
@@ -110,11 +107,11 @@ impl From<SmallVec<[String; 4]>> for Sides {
     }
 }
 
-impl Into<ValueExpr> for Sides {
-    fn into(self) -> ValueExpr {
+impl From<Sides> for ValueExpr {
+    fn from(val: Sides) -> Self {
         let mut sides = vec![];
 
-        for side in self {
+        for side in val {
             if side.contains(Sides::ALL) {
                 sides.push("all".into());
             }
@@ -325,7 +322,7 @@ impl Widget for Border {
         self.min_height.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut layout = BorderLayout {
             min_height: self.min_height.value(),
             min_width: self.min_width.value(),

@@ -15,19 +15,19 @@ pub fn expression(
         ident: ident.into(),
         text: text.into(),
         attributes: Attributes::from_iter(attributes),
-        children: children.into(),
+        children,
     })
 }
 
 pub fn for_expression(
     binding: impl Into<Path>,
-    collection: Box<ValueExpr>,
+    collection: ValueExpr,
     body: impl Into<Vec<Expression>>,
 ) -> Expression {
     Expression::Loop(LoopExpr {
-        body: body.into().into(),
+        body: body.into(),
         binding: binding.into(),
-        collection: *collection,
+        collection,
     })
 }
 
@@ -50,10 +50,14 @@ pub fn if_expression(
     })
 }
 
-pub fn view_expression(id: impl Into<String>, state: Option<ValueExpr>, body: Vec<Expression>) -> Expression {
+pub fn view_expression(
+    id: impl Into<String>,
+    state: Option<ValueExpr>,
+    body: Vec<Expression>,
+) -> Expression {
     Expression::View(ViewExpr {
         id: id.into(),
         state,
-        body
+        body,
     })
 }

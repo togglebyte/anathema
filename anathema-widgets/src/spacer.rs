@@ -30,7 +30,7 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         SpacerLayout.layout(nodes)
     }
 

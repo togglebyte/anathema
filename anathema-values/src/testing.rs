@@ -1,13 +1,18 @@
 use crate::map::Map;
 use crate::{
-    Context, List, LocalScope, Owned, Resolver, StateValue, ValueExpr,
-    ValueRef, ValueResolver,
+    Context, List, LocalScope, Owned, Resolver, StateValue, ValueExpr, ValueRef, ValueResolver,
 };
 
 #[derive(Debug, crate::State)]
 pub struct Inner {
     name: StateValue<String>,
     names: List<String>,
+}
+
+impl Default for Inner {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Inner {
@@ -28,6 +33,12 @@ pub struct TestState {
     pub generic_list: List<usize>,
     pub nested_list: List<List<usize>>,
     pub debug: StateValue<bool>,
+}
+
+impl Default for TestState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestState {
@@ -58,7 +69,7 @@ impl<T: std::fmt::Debug> TestExpression<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    pub fn eval<'a>(&'a self) -> ValueRef<'a> {
+    pub fn eval(&self) -> ValueRef<'_> {
         let context = Context::new(&self.state, &self.scope);
         let mut resolver = Resolver::new(&context, None);
         resolver.resolve(&self.expr)
@@ -89,11 +100,11 @@ impl ValueExpr {
         self,
         inner: impl IntoIterator<Item = (K, T)>,
     ) -> TestExpression<T> {
-        let inner = inner.into_iter().map(|(k, v)| (k, v.into()));
+        let inner = inner.into_iter().map(|(k, v)| (k, v));
         TestExpression {
             state: Map::new(inner),
             expr: Box::new(self),
-            scope: LocalScope::empty()
+            scope: LocalScope::empty(),
         }
     }
 
@@ -101,7 +112,7 @@ impl ValueExpr {
         TestExpression {
             state: Map::empty(),
             expr: Box::new(self),
-            scope: LocalScope::empty()
+            scope: LocalScope::empty(),
         }
     }
 }

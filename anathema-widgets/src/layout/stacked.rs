@@ -6,10 +6,7 @@ use anathema_widget_core::LayoutNodes;
 pub struct Stacked;
 
 impl Layout for Stacked {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut width = 0;
         let mut height = 0;
 

@@ -132,7 +132,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         },
         Kind::Eof => panic!("unexpected eof"),
         // TODO: see panic
-        kind @ _ => panic!("we'll deal with this later: {kind:#?}"),
+        kind => panic!("we'll deal with this later: {kind:#?}"),
     };
 
     loop {

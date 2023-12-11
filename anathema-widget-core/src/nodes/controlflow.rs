@@ -91,9 +91,7 @@ impl<'e> IfElse<'e> {
             .flat_map(|nodes| nodes.iter_mut())
     }
 
-    pub(super) fn node_ids(
-        &self,
-    ) -> Box<dyn Iterator<Item = &NodeId> + '_> {
+    pub(super) fn node_ids(&self) -> Box<dyn Iterator<Item = &NodeId> + '_> {
         Box::new(self.body().into_iter().flat_map(|nodes| nodes.node_ids()))
     }
 
@@ -184,8 +182,8 @@ impl Else<'_> {
     }
 
     fn resolve(&mut self, context: &Context<'_, '_>) {
-        self.cond
-            .as_mut()
-            .map(|c| c.resolve(context, Some(&self.node_id)));
+        if let Some(c) = self.cond.as_mut() {
+            c.resolve(context, Some(&self.node_id))
+        }
     }
 }

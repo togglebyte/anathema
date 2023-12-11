@@ -8,10 +8,7 @@ use crate::Spacer;
 pub struct SpacerLayout;
 
 impl Layout for SpacerLayout {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let size = Size::new(nodes.constraints.min_width, nodes.constraints.min_height);
         Ok(size)
     }
@@ -22,10 +19,7 @@ impl Layout for SpacerLayout {
 /// does the layout of the child of a single [`Spacer`],
 /// whereas this does the layout of multiple [`Spacer`]s
 /// inside already evaluated children.
-pub fn layout<'nodes, 'expr, 'state>(
-    nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    axis: Axis,
-) -> Result<Size> {
+pub fn layout(nodes: &mut LayoutNodes<'_, '_, '_>, axis: Axis) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let count = nodes.filter(|widget| widget.kind() == Spacer::KIND).count();
 

@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Value, Context, NodeId};
+use anathema_values::{Context, NodeId, Value};
 use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Direction, Layout};
@@ -64,7 +64,7 @@ impl Widget for HStack {
         self.min_height.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         if let Some(width) = self.width.value() {
             nodes.constraints.max_width = nodes.constraints.max_width.min(width);
         }

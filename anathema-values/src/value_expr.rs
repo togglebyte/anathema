@@ -240,7 +240,7 @@ impl<'state> ValueResolver<'state> for Resolver<'_, 'state> {
         match self.context.scopes.lookup(path) {
             ValueRef::Empty => {
                 self.is_deferred = true;
-                self.context.state.get(&path, self.node_id)
+                self.context.state.get(path, self.node_id)
             }
             val => val,
         }
@@ -332,7 +332,7 @@ impl ValueExpr {
     fn eval<'expr>(&'expr self, resolver: &mut impl ValueResolver<'expr>) -> ValueRef<'expr> {
         match self {
             Self::Owned(value) => ValueRef::Owned(*value),
-            Self::String(value) => ValueRef::Str(&*value),
+            Self::String(value) => ValueRef::Str(value),
 
             // -----------------------------------------------------------------------------
             //   - Maths -
@@ -509,33 +509,32 @@ mod test {
 
         // not equality
         let expr = not(eq(ident("one"), ident("two")));
-        expr.with_data([("one", 1), ("two", 2.into())])
-            .eval_bool(true);
+        expr.with_data([("one", 1), ("two", 2)]).eval_bool(true);
 
         // or
         let expr = or(ident("one"), ident("two"));
-        expr.with_data([("one", false), ("two", true.into())])
+        expr.with_data([("one", false), ("two", true)])
             .eval_bool(true);
 
         let expr = or(ident("one"), ident("two"));
-        expr.with_data([("one", true), ("two", false.into())])
+        expr.with_data([("one", true), ("two", false)])
             .eval_bool(true);
 
         let expr = or(ident("one"), ident("two"));
-        expr.with_data([("one", false), ("two", false.into())])
+        expr.with_data([("one", false), ("two", false)])
             .eval_bool(false);
 
         // and
         let expr = and(ident("one"), ident("two"));
-        expr.with_data([("one", true), ("two", true.into())])
+        expr.with_data([("one", true), ("two", true)])
             .eval_bool(true);
 
         let expr = and(ident("one"), ident("two"));
-        expr.with_data([("one", false), ("two", true.into())])
+        expr.with_data([("one", false), ("two", true)])
             .eval_bool(false);
 
         let expr = and(ident("one"), ident("two"));
-        expr.with_data([("one", true), ("two", false.into())])
+        expr.with_data([("one", true), ("two", false)])
             .eval_bool(false);
     }
 

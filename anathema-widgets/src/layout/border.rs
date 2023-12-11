@@ -12,10 +12,7 @@ pub struct BorderLayout {
 }
 
 impl Layout for BorderLayout {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         // If there is a min width / height, make sure the minimum constraints
         // are matching these
         let mut constraints = nodes.constraints;

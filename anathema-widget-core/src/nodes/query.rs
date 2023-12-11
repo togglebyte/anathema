@@ -10,7 +10,11 @@ pub struct Query<'nodes, 'expr, F> {
 }
 
 impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
-    pub fn by_attrib(self, key: &str, value: impl Into<ValueExpr>) -> Query<'nodes, 'expr, impl Filter> {
+    pub fn by_attrib(
+        self,
+        key: &str,
+        value: impl Into<ValueExpr>,
+    ) -> Query<'nodes, 'expr, impl Filter> {
         let filter = ByAttribute(key.into(), value.into());
 
         Query {
@@ -43,7 +47,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         let mut indices = vec![];
 
         for (index, node) in nodes.inner.iter_mut().enumerate() {
-            if filter.filter(&node) {
+            if filter.filter(node) {
                 indices.push(index);
             }
 
@@ -74,7 +78,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         Fun: FnMut(&mut Node),
     {
         for node in &mut nodes.inner {
-            if filter.filter(&node) {
+            if filter.filter(node) {
                 fun(node);
             }
 
@@ -116,7 +120,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
             }
 
             if !node.node_id.contains(&node_id.0) {
-                continue
+                continue;
             }
 
             return match &mut node.kind {
@@ -134,14 +138,14 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
                     }
                     None
                 }
-            }
+            };
         }
 
         None
     }
 
     pub fn get(&mut self, node_id: &NodeId) -> Option<&mut Node<'expr>> {
-        Self::get_node(node_id, &mut self.nodes)
+        Self::get_node(node_id, self.nodes)
     }
 }
 
@@ -185,7 +189,7 @@ impl Filter for () {}
 struct ByAttribute(String, ValueExpr);
 
 // TODO: attributes are not resolved at this point.
-//       Alternatively we can resolve all attributes upon creation, 
+//       Alternatively we can resolve all attributes upon creation,
 //       and thus having a cached value for lookups
 impl Filter for ByAttribute {
     fn filter(&self, node: &Node) -> bool {
@@ -205,9 +209,7 @@ struct ByTag(String);
 impl Filter for ByTag {
     fn filter(&self, node: &Node) -> bool {
         match node.kind {
-            NodeKind::Single(Single { ident, .. }) => {
-                ident == self.0
-            }
+            NodeKind::Single(Single { ident, .. }) => ident == self.0,
             _ => false,
         }
     }

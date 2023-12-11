@@ -28,7 +28,7 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let size = Single.layout(nodes)?;
         if size == Size::ZERO {
             Ok(Size::ZERO)

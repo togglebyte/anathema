@@ -16,10 +16,7 @@ impl Vertical {
 }
 
 impl Layout for Vertical {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.0.layout(nodes)
     }
 }

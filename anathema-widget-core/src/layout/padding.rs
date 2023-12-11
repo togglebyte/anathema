@@ -49,7 +49,25 @@ impl Padding {
         }
     }
 
-    pub fn from_iter(mut iter: impl Iterator<Item = u16>) -> Self {
+    /// Return the current padding and set the padding to zero
+    pub fn take(&mut self) -> Self {
+        let mut padding = Padding::ZERO;
+        std::mem::swap(&mut padding, self);
+        padding
+    }
+
+    pub fn size(&self) -> Size {
+        Size {
+            width: (self.left + self.right) as usize,
+            height: (self.top + self.bottom) as usize,
+        }
+    }
+}
+
+impl FromIterator<u16> for Padding {
+    fn from_iter<T: IntoIterator<Item = u16>>(iter: T) -> Self {
+        let mut iter = iter.into_iter();
+
         let Some(n) = iter.next() else {
             return Self::ZERO;
         };
@@ -77,21 +95,6 @@ impl Padding {
 
         padding
     }
-
-    /// Return the current padding and set the padding to zero
-    pub fn take(&mut self) -> Self {
-        let mut padding = Padding::ZERO;
-        std::mem::swap(&mut padding, self);
-        padding
-    }
-
-    pub fn size(&self) -> Size {
-        Size {
-            width: (self.left + self.right) as usize,
-            height: (self.top + self.bottom) as usize,
-        }
-    }
-
 }
 
 impl DynValue for Padding {
@@ -172,7 +175,7 @@ mod test {
 
     #[test]
     fn padding_from_iter() {
-        let actual = Padding::from_iter(vec![1].into_iter());
+        let actual = Padding::from_iter(vec![1]);
         let expected = Padding {
             top: 1,
             right: 1,
@@ -181,7 +184,7 @@ mod test {
         };
         assert_eq!(expected, actual);
 
-        let actual = Padding::from_iter(vec![1, 2].into_iter());
+        let actual = Padding::from_iter(vec![1, 2]);
         let expected = Padding {
             top: 1,
             right: 2,
@@ -190,7 +193,7 @@ mod test {
         };
         assert_eq!(expected, actual);
 
-        let actual = Padding::from_iter(vec![1, 2, 3].into_iter());
+        let actual = Padding::from_iter(vec![1, 2, 3]);
         let expected = Padding {
             top: 1,
             right: 2,
@@ -199,7 +202,7 @@ mod test {
         };
         assert_eq!(expected, actual);
 
-        let actual = Padding::from_iter(vec![1, 2, 3, 4].into_iter());
+        let actual = Padding::from_iter(vec![1, 2, 3, 4]);
         let expected = Padding {
             top: 1,
             right: 2,

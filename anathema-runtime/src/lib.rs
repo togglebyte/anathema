@@ -9,7 +9,7 @@ use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
 use anathema_widget_core::views::{TabIndex, Views};
-use anathema_widget_core::{Event, Events, LayoutNodes, Padding, Pos, KeyCode, KeyModifiers};
+use anathema_widget_core::{Event, Events, KeyCode, KeyModifiers, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
@@ -107,7 +107,11 @@ impl<'e> Runtime<'e> {
 
     fn tick_views(&mut self) {
         Views::for_each(|node_id| {
-            if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(node_id) {
+            if let Some(Node {
+                kind: NodeKind::View(view),
+                ..
+            }) = self.nodes.query().get(node_id)
+            {
                 view.tick();
             }
         });
@@ -131,7 +135,11 @@ impl<'e> Runtime<'e> {
         // -----------------------------------------------------------------------------
         if let Event::KeyPress(KeyCode::Tab, modifiers, ..) = event {
             if let Some(current) = TabIndex::current() {
-                if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(&current) {
+                if let Some(Node {
+                    kind: NodeKind::View(view),
+                    ..
+                }) = self.nodes.query().get(&current)
+                {
                     view.blur();
                 }
             }
@@ -143,7 +151,11 @@ impl<'e> Runtime<'e> {
             }
 
             if let Some(current) = TabIndex::current() {
-                if let Some(Node { kind: NodeKind::View(view), .. }) = self.nodes.query().get(&current) {
+                if let Some(Node {
+                    kind: NodeKind::View(view),
+                    ..
+                }) = self.nodes.query().get(&current)
+                {
                     view.focus();
                 }
             }
@@ -168,7 +180,7 @@ impl<'e> Runtime<'e> {
 
                 // Make sure event handling isn't holding up the rest of the event loop.
                 if now.elapsed().as_micros() > sleep_micros {
-                    break
+                    break;
                 }
 
                 match event {
@@ -221,8 +233,6 @@ impl<'e> Runtime<'e> {
             // *self.meta.timings.render = now.elapsed();
             // *self.meta.timings.total = total.elapsed();
             self.screen.erase();
-
-            if self.enable_meta {}
 
             self.tick_views();
 

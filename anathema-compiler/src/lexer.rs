@@ -12,7 +12,7 @@ impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.next_token() {
-            Ok(Token(Kind::Eof, _)) => return None,
+            Ok(Token(Kind::Eof, _)) => None,
             val => Some(val),
         }
     }
@@ -298,8 +298,8 @@ mod test {
         let mut consts = Constants::new();
 
         let mut lexer = Lexer::new(input, &mut consts);
-        let error_kind = lexer.next().unwrap().unwrap_err().kind;
-        error_kind
+
+        lexer.next().unwrap().unwrap_err().kind
     }
 
     #[test]

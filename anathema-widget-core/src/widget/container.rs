@@ -1,4 +1,4 @@
-use std::fmt::{Debug};
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 use anathema_render::{Color, ScreenPos, Size, Style};
@@ -138,10 +138,7 @@ impl WidgetContainer<'_> {
     pub fn position(&mut self, children: &mut Nodes, pos: Pos) {
         self.pos = pos;
 
-        let pos = Pos::new(
-            self.pos.x,
-            self.pos.y,
-        );
+        let pos = Pos::new(self.pos.x, self.pos.y);
 
         let ctx = PositionCtx::new(pos, self.inner_size(), self.padding.value_or_default());
         self.inner.position(children, ctx);
@@ -157,10 +154,7 @@ impl WidgetContainer<'_> {
         let mut ctx = ctx.into_sized(self.outer_size(), self.pos);
         self.paint_background(&mut ctx);
 
-        let pos = Pos::new(
-            self.pos.x,
-            self.pos.y
-        );
+        let pos = Pos::new(self.pos.x, self.pos.y);
         ctx.update(self.inner_size(), pos);
         self.inner.paint(children, ctx);
     }
