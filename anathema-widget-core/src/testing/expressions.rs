@@ -19,6 +19,7 @@ pub fn expression(
     })
 }
 
+#[allow(clippy::boxed_local)]
 pub fn for_expression(
     binding: impl Into<Path>,
     collection: Box<ValueExpr>,
@@ -27,7 +28,7 @@ pub fn for_expression(
     Expression::Loop(LoopExpr {
         body: body.into(),
         binding: binding.into(),
-        collection: collection.into(),
+        collection: *collection,
     })
 }
 
