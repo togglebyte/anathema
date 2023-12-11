@@ -360,7 +360,7 @@ mod test {
     fn for_loop() {
         let string = "hello".into();
         let body = expression("test", Some(string), [], []);
-        let exprs = vec![for_expression("item", *list([1, 2, 3]), [body])];
+        let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
         let mut nodes = TestNodes::new(&exprs);
         let size = nodes.layout().unwrap();
         assert_eq!(size, Size::new(5, 3));
@@ -371,7 +371,7 @@ mod test {
     fn for_loop_from_state() {
         let string = ValueExpr::Ident("item".into());
         let body = expression("test", Some(string), [], []);
-        let exprs = vec![for_expression("item", *ident("generic_list"), [body])];
+        let exprs = vec![for_expression("item", ident("generic_list"), [body])];
         let mut nodes = TestNodes::new(&exprs);
         let size = nodes.layout().unwrap();
         assert_eq!(size, Size::new(1, 3));

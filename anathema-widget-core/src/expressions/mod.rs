@@ -291,7 +291,7 @@ mod test {
     #[test]
     fn eval_for() {
         let expr =
-            for_expression("item", *list([1, 2, 3]), [expression("test", None, [], [])]).test();
+            for_expression("item", list([1, 2, 3]), [expression("test", None, [], [])]).test();
         let node = expr.eval().unwrap();
 
         assert!(matches!(

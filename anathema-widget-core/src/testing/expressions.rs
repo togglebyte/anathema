@@ -21,13 +21,13 @@ pub fn expression(
 
 pub fn for_expression(
     binding: impl Into<Path>,
-    collection: ValueExpr,
+    collection: Box<ValueExpr>,
     body: impl Into<Vec<Expression>>,
 ) -> Expression {
     Expression::Loop(LoopExpr {
         body: body.into(),
         binding: binding.into(),
-        collection,
+        collection: collection.into(),
     })
 }
 
