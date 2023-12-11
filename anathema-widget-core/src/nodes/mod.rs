@@ -1,5 +1,5 @@
-use std::iter::once;
 use std::fmt;
+use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver};
