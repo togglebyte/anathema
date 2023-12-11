@@ -1,4 +1,5 @@
 use std::iter::once;
+use std::fmt;
 use std::ops::ControlFlow;
 
 use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver};
@@ -119,11 +120,19 @@ pub struct Single<'e> {
     pub(crate) ident: &'e str,
 }
 
-#[derive(Debug)]
 pub struct View<'e> {
     pub(crate) view: Box<dyn AnyView>,
     pub(crate) nodes: Nodes<'e>,
     pub(crate) state: ViewState<'e>,
+}
+
+impl fmt::Debug for View<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("View")
+            .field("nodes", &self.nodes)
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 impl View<'_> {

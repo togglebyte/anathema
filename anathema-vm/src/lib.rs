@@ -24,7 +24,7 @@ impl ViewTemplates {
 
     pub fn get(&mut self, key: &str) -> Result<Vec<Expression>> {
         if self.dep_list.iter().any(|s| s == key) {
-            panic!("cyclic dependency");
+            panic!("circular dependencies");
         }
 
         self.dep_list.push(key.into());
@@ -106,4 +106,23 @@ fn templates(root: &str, views: &mut ViewTemplates) -> Result<Vec<Expression>> {
     let (instructions, constants) = anathema_compiler::compile(root)?;
     let vm = VirtualMachine::new(instructions, constants);
     vm.exec(views)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    struct AView;
+    impl View for AView {
+        type State = ();
+    }
+
+    #[test]
+    #[should_panic(expected = "circular dependencies")]
+    fn circular_deps() {
+        let mut t = Templates::new("view a".into());
+        t.add_view("a", "view b".to_string(), AView);
+        t.add_view("b", "view a".to_string(), AView);
+        t.compile().unwrap();
+    }
 }

@@ -144,7 +144,7 @@ pub trait View {
     fn blur(&mut self) {}
 }
 
-pub trait AnyView: Debug + Send {
+pub trait AnyView: Send {
     fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
 
     fn get_any_state(&self) -> &dyn State;
@@ -158,7 +158,7 @@ pub trait AnyView: Debug + Send {
 
 impl<T> AnyView for T
 where
-    T: View + Debug + Send,
+    T: View + Send,
 {
     fn on_any_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
         self.on_event(event, nodes);
@@ -179,16 +179,4 @@ where
     fn focus_any(&mut self) {
         self.focus();
     }
-}
-
-#[cfg(test)]
-mod test {
-    // use super::*;
-    // use crate::testing::view;
-
-    // #[test]
-    // fn events() {
-    //     panic!("we'll get there");
-    //     // let v = view("a-view");
-    // }
 }
