@@ -44,7 +44,11 @@ impl<'ctx, T: Layout> Layouts<'ctx, T> {
         }
     }
 
-    pub fn layout<'e>(&mut self, _children: &mut Nodes<'e>, _data: &Context<'_, 'e>) -> Result<Size> {
+    pub fn layout<'e>(
+        &mut self,
+        _children: &mut Nodes<'e>,
+        _data: &Context<'_, 'e>,
+    ) -> Result<Size> {
         panic!()
         // self.layout.layout(children, self.layout_ctx, data)
     }
@@ -464,4 +468,3 @@ mod test {
         assert!(a.contains(Pos::new(10, 10)));
     }
 }
-
