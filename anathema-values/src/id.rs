@@ -21,7 +21,6 @@ impl NodeId {
         self.0 == other[..self.0.len()]
     }
 
-    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> NodeId {
         let ret = NodeId(self.0.clone());
         if let Some(v) = self.0.last_mut() {
