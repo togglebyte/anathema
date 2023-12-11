@@ -38,4 +38,5 @@ members = [
 ]
 
 [workspace.lints.clippy]
+len_without_is_empty = "allow"
 new_without_default = "allow"
