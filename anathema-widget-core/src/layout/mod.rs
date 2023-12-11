@@ -18,10 +18,7 @@ mod layoutnodes;
 mod padding;
 
 pub trait Layout {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size>;
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size>;
 }
 
 // -----------------------------------------------------------------------------

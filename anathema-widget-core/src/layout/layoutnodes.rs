@@ -1,10 +1,9 @@
-use std::ops::{Deref, DerefMut, ControlFlow};
+use std::ops::{ControlFlow, Deref, DerefMut};
 
 use anathema_render::Size;
 use anathema_values::Context;
 
 use super::Constraints;
-
 use crate::error::Result;
 use crate::{Nodes, Padding, WidgetContainer};
 
@@ -45,39 +44,36 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
 
     pub fn next<F>(&mut self, mut f: F) -> Result<()>
     where
-        F: FnMut(LayoutNode<'_, '_, 'expr>) -> Result<()>
+        F: FnMut(LayoutNode<'_, '_, 'expr>) -> Result<()>,
     {
-        self.nodes.next(
-            &self.context,
-            &mut |widget, children, context| {
+        self.nodes
+            .next(self.context, &mut |widget, children, context| {
                 let node = LayoutNode {
                     widget,
                     children,
                     context,
                 };
                 f(node)
-            },
-        )?;
+            })?;
 
         Ok(())
     }
 
-    pub fn for_each<F>(&mut self, mut f: F) -> Result<()> 
+    pub fn for_each<F>(&mut self, mut f: F) -> Result<()>
     where
-        F: FnMut(LayoutNode<'_, '_, 'expr>) -> Result<()>
+        F: FnMut(LayoutNode<'_, '_, 'expr>) -> Result<()>,
     {
         loop {
-            let res = self.nodes.next(
-                &self.context,
-                &mut |widget, children, context| {
+            let res = self
+                .nodes
+                .next(self.context, &mut |widget, children, context| {
                     let node = LayoutNode {
                         widget,
                         children,
                         context,
                     };
                     f(node)
-                },
-            )?;
+                })?;
 
             match res {
                 ControlFlow::Break(()) => break Ok(()),
@@ -86,18 +82,17 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
         }
     }
 
-
     pub fn filter<F>(&mut self, f: F) -> impl Iterator<Item = LayoutNode<'_, 'state, 'expr>> + '_
     where
-        F: Fn(&WidgetContainer<'expr>) -> bool + 'static
+        F: Fn(&WidgetContainer<'expr>) -> bool + 'static,
     {
         self.nodes
             .iter_mut()
-            .filter(move |(widget, _)| f(*widget))
+            .filter(move |(widget, _)| f(widget))
             .map(|(widget, children)| LayoutNode {
                 widget,
                 children,
-                context: &self.context,
+                context: self.context,
             })
     }
 }

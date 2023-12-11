@@ -171,11 +171,8 @@ impl DynValue for String {
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        match value {
-            Value::Dyn { inner, expr } => {
-                *inner = Resolver::new(context, node_id).resolve_string(expr)
-            }
-            _ => {}
+        if let Value::Dyn { inner, expr } = value {
+            *inner = Resolver::new(context, node_id).resolve_string(expr)
         }
     }
 }
@@ -244,7 +241,7 @@ impl DynValue for bool {
         expr: &ValueExpr,
     ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
-        let val = resolver.resolve(&expr);
+        let val = resolver.resolve(expr);
         match resolver.is_deferred() {
             true => Value::Dyn {
                 inner: Some(val.is_true()),
@@ -258,12 +255,9 @@ impl DynValue for bool {
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        match value {
-            Value::Dyn { inner, expr } => {
-                let mut resolver = Resolver::new(context, node_id);
-                *inner = Some(resolver.resolve(&expr).is_true())
-            }
-            _ => {}
+        if let Value::Dyn { inner, expr } = value {
+            let mut resolver = Resolver::new(context, node_id);
+            *inner = Some(resolver.resolve(expr).is_true())
         }
     }
 }
@@ -275,9 +269,9 @@ impl DynValue for anathema_render::Color {
         expr: &ValueExpr,
     ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
-        let inner = match resolver.resolve(&expr) {
+        let inner = match resolver.resolve(expr) {
             ValueRef::Str(col) => anathema_render::Color::try_from(col).ok(),
-            val => val.try_into().ok()
+            val => val.try_into().ok(),
         };
 
         match resolver.is_deferred() {
@@ -293,14 +287,11 @@ impl DynValue for anathema_render::Color {
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        match value {
-            Value::Dyn { inner, expr } => {
-                *inner = Resolver::new(context, node_id)
-                    .resolve(expr)
-                    .try_into()
-                    .ok()
-            }
-            _ => {}
+        if let Value::Dyn { inner, expr } = value {
+            *inner = Resolver::new(context, node_id)
+                .resolve(expr)
+                .try_into()
+                .ok()
         }
     }
 }

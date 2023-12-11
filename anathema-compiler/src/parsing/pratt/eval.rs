@@ -31,15 +31,11 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 let (lhs, rhs) = match (eval(*lhs, consts), eval(*rhs, consts)) {
                     (ValueExpr::Owned(Owned::Num(lhs)), ValueExpr::Owned(Owned::Num(rhs))) => {
                         match op {
-                            Operator::Mul => return ValueExpr::Owned(Owned::Num(lhs * rhs)).into(),
-                            Operator::Plus => {
-                                return ValueExpr::Owned(Owned::Num(lhs + rhs)).into()
-                            }
-                            Operator::Minus => {
-                                return ValueExpr::Owned(Owned::Num(lhs - rhs)).into()
-                            }
-                            Operator::Div => return ValueExpr::Owned(Owned::Num(lhs / rhs)).into(),
-                            Operator::Mod => return ValueExpr::Owned(Owned::Num(lhs % rhs)).into(),
+                            Operator::Mul => return ValueExpr::Owned(Owned::Num(lhs * rhs)),
+                            Operator::Plus => return ValueExpr::Owned(Owned::Num(lhs + rhs)),
+                            Operator::Minus => return ValueExpr::Owned(Owned::Num(lhs - rhs)),
+                            Operator::Div => return ValueExpr::Owned(Owned::Num(lhs / rhs)),
+                            Operator::Mod => return ValueExpr::Owned(Owned::Num(lhs % rhs)),
                             _ => unreachable!(),
                         }
                     }
@@ -62,12 +58,12 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 let lhs = eval(*lhs, consts);
                 let rhs = eval(*rhs, consts);
                 match op {
-                    Operator::Or => return ValueExpr::Or(lhs.into(), rhs.into()),
-                    Operator::And => return ValueExpr::And(lhs.into(), rhs.into()),
+                    Operator::Or => ValueExpr::Or(lhs.into(), rhs.into()),
+                    Operator::And => ValueExpr::And(lhs.into(), rhs.into()),
                     _ => unreachable!(),
                 }
             }
-            e @ _ => panic!("here is a panic: {e:#?}"),
+            e => panic!("here is a panic: {e:#?}"),
         },
         Expr::Unary { op, expr } => {
             let expr = eval(*expr, consts);

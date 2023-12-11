@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Value, Context, NodeId};
+use anathema_values::{Context, NodeId, Value};
 use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Layout};
@@ -76,7 +76,7 @@ impl Widget for Expand {
         self.fill.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut size = Single.layout(nodes)?;
 
         match self.axis.value_ref() {
@@ -91,13 +91,13 @@ impl Widget for Expand {
         Ok(size)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         if let Some((widget, children)) = children.first_mut() {
             widget.position(children, ctx.pos)
         }
     }
 
-    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         if let Some(fill) = self.fill.value_ref() {
             for y in 0..ctx.local_size.height {
                 let mut used_width = 0;

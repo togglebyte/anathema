@@ -4,7 +4,8 @@ use anathema_widget_core::expressions::{
     ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNodeExpr, ViewExpr,
 };
 
-use crate::{error::Result, ViewTemplates};
+use crate::error::Result;
+use crate::ViewTemplates;
 
 pub(crate) struct Scope<'vm> {
     instructions: Vec<Instruction>,
@@ -45,7 +46,7 @@ impl<'vm> Scope<'vm> {
                     let collection = self.consts.lookup_value(data).clone();
 
                     let body = self.instructions.drain(..size).collect();
-                    let body = Scope::new(body, &self.consts).exec(views)?;
+                    let body = Scope::new(body, self.consts).exec(views)?;
                     let template = Expression::Loop(LoopExpr {
                         binding: binding.into(),
                         collection,
@@ -58,7 +59,7 @@ impl<'vm> Scope<'vm> {
                     let cond = self.consts.lookup_value(cond);
 
                     let body = self.instructions.drain(..size).collect::<Vec<_>>();
-                    let body = Scope::new(body, &self.consts).exec(views)?;
+                    let body = Scope::new(body, self.consts).exec(views)?;
 
                     let mut control_flow = ControlFlow {
                         if_expr: IfExpr {
@@ -77,7 +78,7 @@ impl<'vm> Scope<'vm> {
                         let cond = cond.map(|cond| self.consts.lookup_value(cond));
 
                         let body = self.instructions.drain(..size).collect();
-                        let body = Scope::new(body, &self.consts).exec(views)?;
+                        let body = Scope::new(body, self.consts).exec(views)?;
 
                         control_flow.elses.push(ElseExpr {
                             cond,
@@ -85,7 +86,7 @@ impl<'vm> Scope<'vm> {
                         });
                     }
 
-                    let template = Expression::ControlFlow(control_flow.into());
+                    let template = Expression::ControlFlow(control_flow);
                     nodes.push(template);
                 }
                 Instruction::Else { .. } => {
@@ -104,7 +105,12 @@ impl<'vm> Scope<'vm> {
         Ok(nodes)
     }
 
-    fn node(&mut self, ident: StringId, scope_size: usize, views: &mut ViewTemplates) -> Result<Expression> {
+    fn node(
+        &mut self,
+        ident: StringId,
+        scope_size: usize,
+        views: &mut ViewTemplates,
+    ) -> Result<Expression> {
         let ident = self.consts.lookup_string(ident);
 
         let mut attributes = Attributes::new();
@@ -130,7 +136,7 @@ impl<'vm> Scope<'vm> {
         self.instructions.drain(..ip);
 
         let scope = self.instructions.drain(..scope_size).collect();
-        let children = Scope::new(scope, &self.consts).exec(views)?;
+        let children = Scope::new(scope, self.consts).exec(views)?;
 
         let node = Expression::Node(SingleNodeExpr {
             ident: ident.to_string(),

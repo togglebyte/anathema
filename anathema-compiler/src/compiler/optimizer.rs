@@ -127,7 +127,7 @@ impl Optimizer {
                 &ParseExpr::LoadAttribute { key, value } => {
                     Expression::LoadAttribute { key, value }
                 }
-                ParseExpr::EOF => continue, // noop, we don't care about EOF
+                ParseExpr::Eof => continue, // noop, we don't care about EOF
                 ParseExpr::ScopeEnd => unreachable!("scopes are consumed by `opt_scope`"),
             };
 
@@ -277,7 +277,7 @@ mod test {
     #[test]
     fn optimize_else() {
         let src = "
-        if a 
+        if a
             a
         else
             a
@@ -317,7 +317,7 @@ mod test {
     fn optimize_for() {
         let src = "
         a
-        for b in b 
+        for b in b
             a
             b
             ";
@@ -356,8 +356,8 @@ mod test {
     #[test]
     fn nested_ifs() {
         let src = "
-        if a 
-            if a 
+        if a
+            if a
                 a
             ";
         let mut expressions = parse(src);
@@ -387,11 +387,11 @@ mod test {
     #[test]
     fn remove_empty_elses() {
         let src = "
-        if x 
+        if x
             a
             a
         else
-        if x 
+        if x
             a
         else
         b
@@ -444,7 +444,7 @@ mod test {
     #[test]
     fn remove_empty_if() {
         let src = "
-        if data 
+        if data
         x
         ";
         let mut expressions = parse(src);
@@ -461,7 +461,7 @@ mod test {
     #[test]
     fn remove_empty_else() {
         let src = "
-            if x 
+            if x
                 x
             else
             x
@@ -494,7 +494,7 @@ mod test {
     #[test]
     fn optimise_empty_if_else() {
         let src = "
-            if x 
+            if x
             else
             x
         ";
@@ -512,8 +512,8 @@ mod test {
     #[test]
     fn optimise_empty_if_else_if() {
         let src = "
-            if x 
-            else if x 
+            if x
+            else if x
             else
             x
         ";

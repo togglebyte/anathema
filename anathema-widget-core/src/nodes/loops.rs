@@ -1,14 +1,10 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{
-    Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef,
-};
+use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef};
 
 use super::Nodes;
-
 use crate::error::Result;
 use crate::expressions::{Collection, Expression};
-
 use crate::WidgetContainer;
 
 #[derive(Debug)]
@@ -110,7 +106,7 @@ impl<'e> LoopNode<'e> {
             Collection::Static(expressions) => {
                 let value = expressions.get(self.value_index)?;
                 self.value_index += 1;
-                Deferred::new(context).resolve(&value)
+                Deferred::new(context).resolve(value)
             }
             Collection::State { len, .. } if len == self.value_index => return None,
             Collection::State { ref path, .. } => {

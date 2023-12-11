@@ -16,7 +16,7 @@ pub enum Expression {
     Else(Option<ValueId>),
     ScopeStart,
     ScopeEnd,
-    EOF,
+    Eof,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -55,7 +55,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             _ => 0,
         };
 
-        let inst = Self {
+        Self {
             tokens,
             consts,
             src,
@@ -64,9 +64,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             closed_scopes: Vec::new(),
             base_indent,
             done: false,
-        };
-
-        inst
+        }
     }
 
     fn error(&self, kind: ErrorKind) -> Error {
@@ -158,7 +156,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         let ret = match indent {
             // No indent but open scopes
             None if !self.open_scopes.is_empty() => {
-                self.closed_scopes.extend(self.open_scopes.drain(..));
+                self.closed_scopes.append(&mut self.open_scopes);
                 Ok(None)
             }
             // No indent, no open scopes
@@ -422,7 +420,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
                 self.open_scopes.pop();
                 return Ok(Some(Expression::ScopeEnd));
             }
-            Kind::Eof => return Ok(Some(Expression::EOF)),
+            Kind::Eof => return Ok(Some(Expression::Eof)),
             Kind::Newline => {
                 self.tokens.consume_newlines();
                 Ok(None)
@@ -449,9 +447,9 @@ impl Iterator for Parser<'_, '_> {
         }
 
         match self.parse() {
-            Ok(Expression::EOF) => {
+            Ok(Expression::Eof) => {
                 self.done = true;
-                Some(Ok(Expression::EOF))
+                Some(Ok(Expression::Eof))
             }
             Err(e) => {
                 self.state = State::Done;
@@ -464,17 +462,16 @@ impl Iterator for Parser<'_, '_> {
 
 #[cfg(test)]
 mod test {
-    use crate::lexer::Lexer;
-
     use super::*;
+    use crate::lexer::Lexer;
 
     fn parse(src: &str) -> Vec<Result<Expression>> {
         let mut consts = Constants::new();
         let lexer = Lexer::new(src, &mut consts);
         let tokens = Tokens::new(lexer.collect::<Result<Vec<_>>>().unwrap(), src.len());
         let parser = Parser::new(tokens, &mut consts, src);
-        let expressions = parser.collect::<Vec<_>>();
-        expressions
+
+        parser.collect::<Vec<_>>()
     }
 
     fn parse_ok(src: &str) -> Vec<Expression> {
@@ -498,7 +495,7 @@ mod test {
                 key: 0.into(),
                 value: 0.into(),
             },
-            Expression::EOF,
+            Expression::Eof,
         ];
 
         let actual = parse_ok(src);
@@ -511,7 +508,7 @@ mod test {
         let expected = vec![
             Expression::Node(0.into()),
             Expression::LoadValue(0.into()),
-            Expression::EOF,
+            Expression::Eof,
         ];
 
         let actual = parse_ok(src);
@@ -537,7 +534,7 @@ mod test {
             Expression::Node(1.into()),
             Expression::ScopeEnd,
             Expression::Node(0.into()),
-            Expression::EOF,
+            Expression::Eof,
         ];
 
         let actual = parse_ok(src);
@@ -556,7 +553,7 @@ mod test {
             Expression::Node(2.into()),
             Expression::ScopeEnd,
             Expression::ScopeEnd,
-            Expression::EOF,
+            Expression::Eof,
         ];
 
         let actual = parse_ok(src);
@@ -567,8 +564,8 @@ mod test {
     fn parse_nested_for_loops() {
         let src = "
         x
-            for x in data 
-                for y in data 
+            for x in data
+                for y in data
                     x
         ";
         let mut instructions = parse_ok(src);
@@ -602,7 +599,7 @@ mod test {
         let src = "
         x
             y
-        for x in data 
+        for x in data
             y
         ";
         let mut instructions = parse_ok(src);
@@ -625,7 +622,7 @@ mod test {
     #[test]
     fn parse_if() {
         let src = "
-        if data 
+        if data
             x
         ";
         let mut instructions = parse_ok(src);
@@ -639,7 +636,7 @@ mod test {
     #[test]
     fn parse_else() {
         let src = "
-        if data 
+        if data
             x
         else
             y
@@ -659,9 +656,9 @@ mod test {
     #[test]
     fn parse_if_else_if_else() {
         let src = "
-        if data 
+        if data
             x
-        else if data 
+        else if data
             y
         else
             z
@@ -697,7 +694,7 @@ mod test {
     #[test]
     fn parse_empty_if() {
         let src = "
-            if x 
+            if x
             x
         ";
 
@@ -709,12 +706,12 @@ mod test {
     #[test]
     fn parse_no_instruction() {
         let src = "";
-        let expected: Vec<Expression> = vec![Expression::EOF];
+        let expected: Vec<Expression> = vec![Expression::Eof];
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
 
         let src = "\n// comment         \n";
-        let expected: Vec<Expression> = vec![Expression::EOF];
+        let expected: Vec<Expression> = vec![Expression::Eof];
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
     }

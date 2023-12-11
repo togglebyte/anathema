@@ -10,8 +10,7 @@ macro_rules! to_num {
                 Self::Float(_num) => panic!("nah, not this one"),
             }
         }
-
-    }
+    };
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -22,6 +21,30 @@ pub enum Num {
 }
 
 impl Num {
+    to_num!(to_i128, i128);
+
+    to_num!(to_u128, u128);
+
+    to_num!(to_usize, usize);
+
+    to_num!(to_isize, isize);
+
+    to_num!(to_u64, u64);
+
+    to_num!(to_i64, i64);
+
+    to_num!(to_u32, u32);
+
+    to_num!(to_i32, i32);
+
+    to_num!(to_u16, u16);
+
+    to_num!(to_i16, i16);
+
+    to_num!(to_u8, u8);
+
+    to_num!(to_i8, i8);
+
     pub fn to_negative(self) -> Self {
         Self::Signed(-self.to_i128() as i64)
     }
@@ -33,19 +56,6 @@ impl Num {
             _ => false,
         }
     }
-
-    to_num!(to_i128, i128);
-    to_num!(to_u128, u128);
-    to_num!(to_usize, usize);
-    to_num!(to_isize, isize);
-    to_num!(to_u64, u64);
-    to_num!(to_i64, i64);
-    to_num!(to_u32, u32);
-    to_num!(to_i32, i32);
-    to_num!(to_u16, u16);
-    to_num!(to_i16, i16);
-    to_num!(to_u8, u8);
-    to_num!(to_i8, i8);
 }
 
 impl Display for Num {
@@ -79,18 +89,18 @@ impl Add for Num {
             (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs + rhs),
 
             (Self::Signed(lhs), Self::Unsigned(rhs)) if lhs.is_negative() => {
-                if lhs.abs() as u64 >= rhs {
-                    Self::Signed(-((lhs.abs() as u64 - rhs) as i64))
+                if lhs.unsigned_abs() >= rhs {
+                    Self::Signed(-((lhs.unsigned_abs() - rhs) as i64))
                 } else {
-                    Self::Unsigned(rhs - lhs.abs() as u64)
+                    Self::Unsigned(rhs - lhs.unsigned_abs())
                 }
             }
 
             (Self::Unsigned(lhs), Self::Signed(rhs)) if rhs.is_negative() => {
-                if rhs.abs() as u64 >= lhs {
-                    Self::Signed(-((rhs.abs() as u64 - lhs) as i64))
+                if rhs.unsigned_abs() >= lhs {
+                    Self::Signed(-((rhs.unsigned_abs() - lhs) as i64))
                 } else {
-                    Self::Unsigned(lhs - rhs.abs() as u64)
+                    Self::Unsigned(lhs - rhs.unsigned_abs())
                 }
             }
 

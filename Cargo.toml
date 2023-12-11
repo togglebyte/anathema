@@ -13,6 +13,9 @@ anathema-widget-core = { path = "./anathema-widget-core" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-value-derive = { path = "./anathema-value-derive" }
 
+[lints]
+workspace = true
+
 [workspace.dependencies]
 bitflags = "2.4.0"
 crossterm = "0.27.0"
@@ -33,3 +36,13 @@ members = [
     "anathema-widgets",
     "anathema-value-derive",
 ]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+rust_2018_idioms = "deny"
+
+[workspace.lints.clippy]
+from_over_into = "allow"
+len_without_is_empty = "allow"
+new_without_default = "allow"
+should_implement_trait = "allow"

@@ -132,12 +132,16 @@ impl Constraints {
         }
 
         if !self.is_width_unbounded() {
-            self.max_width = self.max_width.saturating_sub((padding.left + padding.right) as usize);
+            self.max_width = self
+                .max_width
+                .saturating_sub((padding.left + padding.right) as usize);
             self.min_width = self.min_width.min(self.max_width);
         }
 
         if !self.is_height_unbounded() {
-            self.max_height = self.max_height.saturating_sub((padding.top + padding.bottom) as usize);
+            self.max_height = self
+                .max_height
+                .saturating_sub((padding.top + padding.bottom) as usize);
             self.min_height = self.min_height.min(self.max_height);
         }
     }

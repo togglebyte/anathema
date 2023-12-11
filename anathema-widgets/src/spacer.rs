@@ -30,13 +30,13 @@ impl Widget for Spacer {
         Self::KIND
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         SpacerLayout.layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {}
+    fn position<'tpl>(&mut self, _children: &mut Nodes<'_>, _ctx: PositionCtx) {}
 
-    fn paint(&mut self, _children: &mut Nodes, _ctx: PaintCtx<'_, WithSize>) {}
+    fn paint(&mut self, _children: &mut Nodes<'_>, _ctx: PaintCtx<'_, WithSize>) {}
 }
 
 pub(crate) struct SpacerFactory;

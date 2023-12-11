@@ -10,7 +10,11 @@ pub struct Query<'nodes, 'expr, F> {
 }
 
 impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
-    pub fn by_attrib(self, key: &str, value: impl Into<ValueExpr>) -> Query<'nodes, 'expr, impl Filter> {
+    pub fn by_attrib(
+        self,
+        key: &str,
+        value: impl Into<ValueExpr>,
+    ) -> Query<'nodes, 'expr, impl Filter> {
         let filter = ByAttribute(key.into(), value.into());
 
         Query {
@@ -30,7 +34,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
 
     pub fn filter<Fun>(self, f: Fun) -> Query<'nodes, 'expr, impl Filter>
     where
-        Fun: Fn(&Node) -> bool,
+        Fun: Fn(&Node<'_>) -> bool,
     {
         let filter = FilterFn(f);
         Query {
@@ -43,7 +47,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         let mut indices = vec![];
 
         for (index, node) in nodes.inner.iter_mut().enumerate() {
-            if filter.filter(&node) {
+            if filter.filter(node) {
                 indices.push(index);
             }
 
@@ -71,10 +75,10 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
 
     fn for_each_nodes<Fun>(filter: &F, nodes: &mut Nodes<'expr>, fun: &mut Fun)
     where
-        Fun: FnMut(&mut Node),
+        Fun: FnMut(&mut Node<'_>),
     {
         for node in &mut nodes.inner {
-            if filter.filter(&node) {
+            if filter.filter(node) {
                 fun(node);
             }
 
@@ -103,7 +107,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
 
     pub fn for_each<Fun>(self, mut fun: Fun)
     where
-        Fun: FnMut(&mut Node),
+        Fun: FnMut(&mut Node<'_>),
     {
         Self::for_each_nodes(&self.filter, self.nodes, &mut fun);
     }
@@ -116,7 +120,7 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
             }
 
             if !node.node_id.contains(&node_id.0) {
-                continue
+                continue;
             }
 
             return match &mut node.kind {
@@ -134,19 +138,19 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
                     }
                     None
                 }
-            }
+            };
         }
 
         None
     }
 
     pub fn get(&mut self, node_id: &NodeId) -> Option<&mut Node<'expr>> {
-        Self::get_node(node_id, &mut self.nodes)
+        Self::get_node(node_id, self.nodes)
     }
 }
 
 pub trait Filter {
-    fn filter(&self, _node: &Node) -> bool {
+    fn filter(&self, _node: &Node<'_>) -> bool {
         true
     }
 
@@ -171,7 +175,7 @@ where
     A: Filter,
     B: Filter,
 {
-    fn filter(&self, node: &Node) -> bool {
+    fn filter(&self, node: &Node<'_>) -> bool {
         if self.lhs.filter(node) {
             self.rhs.filter(node)
         } else {
@@ -185,10 +189,10 @@ impl Filter for () {}
 struct ByAttribute(String, ValueExpr);
 
 // TODO: attributes are not resolved at this point.
-//       Alternatively we can resolve all attributes upon creation, 
+//       Alternatively we can resolve all attributes upon creation,
 //       and thus having a cached value for lookups
 impl Filter for ByAttribute {
-    fn filter(&self, node: &Node) -> bool {
+    fn filter(&self, node: &Node<'_>) -> bool {
         match &node.kind {
             NodeKind::Single(Single { widget, .. }) => widget
                 .attributes
@@ -203,11 +207,9 @@ impl Filter for ByAttribute {
 struct ByTag(String);
 
 impl Filter for ByTag {
-    fn filter(&self, node: &Node) -> bool {
+    fn filter(&self, node: &Node<'_>) -> bool {
         match node.kind {
-            NodeKind::Single(Single { ident, .. }) => {
-                ident == self.0
-            }
+            NodeKind::Single(Single { ident, .. }) => ident == self.0,
             _ => false,
         }
     }
@@ -217,9 +219,9 @@ struct FilterFn<F>(F);
 
 impl<F> Filter for FilterFn<F>
 where
-    F: Fn(&Node) -> bool,
+    F: Fn(&Node<'_>) -> bool,
 {
-    fn filter(&self, node: &Node) -> bool {
+    fn filter(&self, node: &Node<'_>) -> bool {
         (self.0)(node)
     }
 }

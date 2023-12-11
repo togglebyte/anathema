@@ -28,7 +28,7 @@ impl Widget for Alignment {
         Self::KIND
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let size = Single.layout(nodes)?;
         if size == Size::ZERO {
             Ok(Size::ZERO)
@@ -45,7 +45,7 @@ impl Widget for Alignment {
         self.alignment.resolve(context, None);
     }
 
-    fn position(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         if let Some((child, children)) = children.first_mut() {
             let width = ctx.inner_size.width as i32;
             let height = ctx.inner_size.height as i32;

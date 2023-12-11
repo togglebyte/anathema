@@ -1,3 +1,5 @@
+#![allow(clippy::from_over_into)]
+
 use std::fmt::Debug;
 
 use anathema_render::Color;
@@ -6,7 +8,7 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, Path, ValueExpr, State};
+use crate::{Collection, List, Path, State, ValueExpr};
 
 mod num;
 mod owned;

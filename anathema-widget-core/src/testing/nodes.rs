@@ -17,10 +17,7 @@ use crate::{
 pub struct TestLayoutMany;
 
 impl Layout for TestLayoutMany {
-    fn layout<'nodes, 'expr, 'state>(
-        &mut self,
-        nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    ) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut size = Size::ZERO;
 
         let mut constraints = nodes.constraints;
@@ -48,14 +45,14 @@ impl Widget for TestWidget {
         "text"
     }
 
-    fn layout<'e>(&mut self, _nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, _nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         match self.0.value_ref() {
             Some(s) => Ok(Size::new(s.len(), 1)),
             None => Ok(Size::ZERO),
         }
     }
 
-    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {}
+    fn position<'tpl>(&mut self, _children: &mut Nodes<'_>, _ctx: PositionCtx) {}
 }
 
 struct TestWidgetFactory;
@@ -75,11 +72,11 @@ impl Widget for TestListWidget {
         "list"
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         TestLayoutMany.layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, _children: &mut Nodes<'_>, _ctx: PositionCtx) {
         todo!()
     }
 }
@@ -148,4 +145,3 @@ pub(crate) fn register_test_widget() {
     let _ = Factory::register("test", TestWidgetFactory);
     let _ = Factory::register("list", TestListWidgetFactory);
 }
-

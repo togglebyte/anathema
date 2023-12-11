@@ -174,7 +174,7 @@ impl<'expr> Nodes<'expr> {
     fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        match expr.eval(&context, self.next_id.next()) {
+        match expr.eval(context, self.next_id.next()) {
             Ok(node) => self.inner.push(node),
             Err(e) => return Some(Err(e)),
         };
@@ -209,6 +209,7 @@ impl<'expr> Nodes<'expr> {
     where
         F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
+        #[allow(clippy::while_let_loop)]
         loop {
             match self.next(context, &mut f)? {
                 ControlFlow::Continue(()) => continue,
@@ -323,7 +324,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
 
         match &mut node.kind {
             NodeKind::Single(Single { children, .. }) => {
-                return children.update(&node_id, change, &context)
+                return children.update(node_id, change, &context)
             }
             NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
             NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
@@ -353,8 +354,8 @@ mod test {
     use anathema_values::testing::{ident, list};
     use anathema_values::ValueExpr;
 
-    use crate::testing::nodes::*;
     use crate::testing::expressions::{expression, for_expression, if_expression};
+    use crate::testing::nodes::*;
 
     #[test]
     fn generate_a_single_widget() {

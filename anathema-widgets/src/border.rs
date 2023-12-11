@@ -82,12 +82,9 @@ impl DynValue for Sides {
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
-        match value {
-            Value::Dyn { inner, expr } => {
-                let sides = Resolver::new(context, node_id).resolve_list::<String>(expr);
-                *inner = Some(sides.into())
-            }
-            _ => {}
+        if let Value::Dyn { inner, expr } = value {
+            let sides = Resolver::new(context, node_id).resolve_list::<String>(expr);
+            *inner = Some(sides.into())
         }
     }
 }
@@ -325,7 +322,7 @@ impl Widget for Border {
         self.min_height.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         let mut layout = BorderLayout {
             min_height: self.min_height.value(),
             min_width: self.min_width.value(),
@@ -336,7 +333,7 @@ impl Widget for Border {
         layout.layout(nodes)
     }
 
-    fn position(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {
+    fn position(&mut self, children: &mut Nodes<'_>, mut ctx: PositionCtx) {
         let (child, children) = match children.first_mut() {
             Some(child) => child,
             None => return,
@@ -356,7 +353,7 @@ impl Widget for Border {
         child.position(children, ctx.pos);
     }
 
-    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         // Draw the child
         if let Some((child, children)) = children.first_mut() {
             // TODO: do we need the clipping region here?

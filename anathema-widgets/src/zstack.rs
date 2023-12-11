@@ -78,7 +78,7 @@ impl Widget for ZStack {
         self.min_height.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         if let Some(min_width) = self.min_width.value() {
             nodes.constraints.min_width = nodes.constraints.min_width.max(min_width);
         }
@@ -95,7 +95,7 @@ impl Widget for ZStack {
         Stacked.layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         for (widget, children) in children.iter_mut() {
             widget.position(children, ctx.pos);
         }

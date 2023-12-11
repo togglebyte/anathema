@@ -8,7 +8,7 @@ use crate::contexts::PaintCtx;
 use crate::expressions::Expression;
 use crate::layout::Constraints;
 use crate::nodes::{NodeKind, Single};
-use crate::{Nodes, Node, Pos};
+use crate::{Node, Nodes, Pos};
 
 pub mod expressions;
 pub mod nodes;
@@ -114,7 +114,7 @@ pub fn test_widget_container<'e>(
 ) {
     // Layout
     let constraints = Constraints::new(Some(expected.size.width), Some(expected.size.height));
-    widget.layout(children, constraints, &context).unwrap();
+    widget.layout(children, constraints, context).unwrap();
 
     // Position
     widget.position(children, Pos::ZERO);

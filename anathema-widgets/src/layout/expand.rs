@@ -45,10 +45,7 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
     indexed.into_iter().map(|(_, _, r)| r).collect()
 }
 
-pub fn layout<'nodes, 'state, 'expr>(
-    nodes: &mut LayoutNodes<'nodes, 'state, 'expr>,
-    axis: Axis,
-) -> Result<Size> {
+pub fn layout(nodes: &mut LayoutNodes<'_, '_, '_>, axis: Axis) -> Result<Size> {
     let constraints = nodes.constraints;
 
     let expansions = nodes

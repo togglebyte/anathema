@@ -51,8 +51,8 @@ impl VStack {
     /// Creates a new instance of a `VStack`
     pub fn new(width: Value<usize>, height: Value<usize>) -> Self {
         Self {
-            width: width.into(),
-            height: height.into(),
+            width,
+            height,
             min_width: Value::Empty,
             min_height: Value::Empty,
         }
@@ -71,7 +71,7 @@ impl Widget for VStack {
         self.min_height.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         if let Some(width) = self.width.value_ref() {
             nodes.constraints.max_width = nodes.constraints.max_width.min(*width);
         }
@@ -88,7 +88,7 @@ impl Widget for VStack {
         Vertical::new(Direction::Forward).layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         let mut pos = ctx.pos;
         for (widget, children) in children.iter_mut() {
             widget.position(children, pos);

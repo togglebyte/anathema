@@ -47,7 +47,7 @@ impl Text {
     fn text_and_style<'a>(
         &'a self,
         entry: &Entry,
-        children: &[&'a WidgetContainer],
+        children: &[&'a WidgetContainer<'_>],
     ) -> (&'a str, Style) {
         let widget_index = match entry {
             Entry::All { index, .. } => index,
@@ -74,7 +74,7 @@ impl Text {
     fn paint_line(
         &self,
         range: &mut std::ops::Range<usize>,
-        children: &[&WidgetContainer],
+        children: &[&WidgetContainer<'_>],
         y: usize,
         ctx: &mut PaintCtx<'_, WithSize>,
     ) {
@@ -122,14 +122,14 @@ impl Widget for Text {
         self.style.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.layout = TextLayout::ZERO;
         let max_size = Size::new(nodes.constraints.max_width, nodes.constraints.max_height);
         self.layout.set_max_size(max_size);
 
-        self.word_wrap
-            .value_ref()
-            .map(|wrap| self.layout.set_wrap(*wrap));
+        if let Some(wrap) = self.word_wrap.value_ref() {
+            self.layout.set_wrap(*wrap)
+        }
         self.layout.process(self.text.str());
 
         nodes.for_each(|mut span| {
@@ -147,7 +147,7 @@ impl Widget for Text {
         Ok(self.layout.size())
     }
 
-    fn paint<'ctx>(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint<'ctx>(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         let mut y = 0;
         let mut range = 0..0;
         let children = children.iter_mut().map(|(c, _)| &*c).collect::<Vec<_>>();
@@ -165,7 +165,7 @@ impl Widget for Text {
         self.paint_line(&mut range, &children, y, &mut ctx);
     }
 
-    fn position<'ctx>(&mut self, _: &mut Nodes, _: PositionCtx) {
+    fn position<'ctx>(&mut self, _: &mut Nodes<'_>, _: PositionCtx) {
         // NOTE: there is no need to position text as the text
         // is printed from the context position
     }
@@ -194,16 +194,16 @@ impl Widget for TextSpan {
         self.style.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, _nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout(&mut self, _nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
-    fn position<'ctx>(&mut self, _: &mut Nodes, _: PositionCtx) {
+    fn position<'ctx>(&mut self, _: &mut Nodes<'_>, _: PositionCtx) {
         // NOTE: there is no need to position text as the text is printed from the context position
         panic!("don't invoke position on the span directly.");
     }
 
-    fn paint<'ctx>(&mut self, _: &mut Nodes, _: PaintCtx<'_, WithSize>) {
+    fn paint<'ctx>(&mut self, _: &mut Nodes<'_>, _: PaintCtx<'_, WithSize>) {
         panic!("don't invoke paint on the span directly.");
     }
 }

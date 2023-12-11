@@ -31,6 +31,10 @@ impl<T> List<T> {
         self.inner.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn pop(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop()?;
         let index = self.inner.len();
@@ -112,12 +116,8 @@ where
                 value.deref().into()
             }
             Path::Composite(lhs, rhs) => match self.get(lhs, node_id) {
-                ValueRef::Map(map) => {
-                    map.get(rhs, node_id)
-                }
-                ValueRef::List(collection) => {
-                    collection.get(rhs, node_id)
-                }
+                ValueRef::Map(map) => map.get(rhs, node_id),
+                ValueRef::List(collection) => collection.get(rhs, node_id),
                 _ => ValueRef::Empty,
             },
             Path::Key(_) => ValueRef::Empty,
