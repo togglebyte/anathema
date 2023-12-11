@@ -96,6 +96,7 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             ('/', _) => Ok(Kind::Op(Operator::Div).to_token(index)),
             ('%', _) => Ok(Kind::Op(Operator::Mod).to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
+            ('@', _) => Ok(Kind::View.to_token(index)),
 
             // -----------------------------------------------------------------------------
             //     - Ident -
@@ -208,7 +209,6 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             "in" => Kind::In,
             "if" => Kind::If,
             "else" => Kind::Else,
-            "view" => Kind::View,
             "true" => Kind::Value(Value::Bool(true)),
             "false" => Kind::Value(Value::Bool(false)),
             s => {

@@ -681,11 +681,11 @@ mod test {
 
     #[test]
     fn parse_view() {
-        let src = "view mail";
+        let src = "@mail";
         let mut expressions = parse_ok(src);
         assert_eq!(expressions.remove(0), Expression::View(0.into()));
 
-        let src = "view mail state";
+        let src = "@mail state";
         let mut expressions = parse_ok(src);
         assert_eq!(expressions.remove(0), Expression::View(0.into()));
         assert_eq!(expressions.remove(0), Expression::LoadValue(0.into()));

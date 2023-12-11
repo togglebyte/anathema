@@ -144,6 +144,10 @@ pub trait View {
     fn blur(&mut self) {}
 }
 
+impl View for () {
+    type State = Self;
+}
+
 pub trait AnyView: Send {
     fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
 
