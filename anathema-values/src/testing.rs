@@ -1,9 +1,6 @@
-use std::ops::Deref;
-
 use crate::map::Map;
-use crate::state::State;
 use crate::{
-    Collection, Context, List, LocalScope, NodeId, Owned, Path, Resolver, StateValue, ValueExpr,
+    Context, List, LocalScope, Owned, Resolver, StateValue, ValueExpr,
     ValueRef, ValueResolver,
 };
 

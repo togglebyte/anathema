@@ -21,7 +21,7 @@ pub struct Runtime<'e> {
     constraints: Constraints,
     nodes: Nodes<'e>,
     events: Events,
-    fps: u8,
+    pub fps: u8,
     // meta: Meta,
 }
 

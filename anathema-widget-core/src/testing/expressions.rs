@@ -1,4 +1,3 @@
-use anathema_values::testing::ident;
 use anathema_values::{Attributes, Path, ValueExpr};
 
 use crate::expressions::{
@@ -20,7 +19,7 @@ pub fn expression(
     })
 }
 
-pub(crate) fn for_expression(
+pub fn for_expression(
     binding: impl Into<Path>,
     collection: Box<ValueExpr>,
     body: impl Into<Vec<Expression>>,
@@ -32,7 +31,7 @@ pub(crate) fn for_expression(
     })
 }
 
-pub(crate) fn if_expression(
+pub fn if_expression(
     if_true: (ValueExpr, Vec<Expression>),
     elses: Vec<(Option<ValueExpr>, Vec<Expression>)>,
 ) -> Expression {
@@ -51,7 +50,7 @@ pub(crate) fn if_expression(
     })
 }
 
-pub(crate) fn view_expression(id: impl Into<String>, state: Option<ValueExpr>, body: Vec<Expression>) -> Expression {
+pub fn view_expression(id: impl Into<String>, state: Option<ValueExpr>, body: Vec<Expression>) -> Expression {
     Expression::View(ViewExpr {
         id: id.into(),
         state,

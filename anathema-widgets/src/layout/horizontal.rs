@@ -1,9 +1,7 @@
 use anathema_render::Size;
-use anathema_values::Context;
-use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Direction, Layout};
-use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
+use anathema_widget_core::LayoutNodes;
 
 use super::many::Many;
 

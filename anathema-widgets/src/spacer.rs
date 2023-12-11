@@ -1,11 +1,8 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, ValueExpr};
-use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Layouts, Layout};
-use anathema_widget_core::{
-    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, LayoutNodes,
-};
+use anathema_widget_core::layout::Layout;
+use anathema_widget_core::{AnyWidget, FactoryContext, LayoutNodes, Nodes, Widget, WidgetFactory};
 
 use crate::layout::spacers::SpacerLayout;
 
@@ -34,17 +31,12 @@ impl Widget for Spacer {
     }
 
     fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
-        // debug_assert!(
-        //     layout.constraints.is_width_tight() && layout.constraints.is_height_tight(),
-        //     "the layout context needs to be tight for a spacer"
-        // );
-
         SpacerLayout.layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {}
+    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {}
 
-    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {}
+    fn paint(&mut self, _children: &mut Nodes, _ctx: PaintCtx<'_, WithSize>) {}
 }
 
 pub(crate) struct SpacerFactory;
@@ -55,98 +47,108 @@ impl WidgetFactory for SpacerFactory {
     }
 }
 
-// #[cfg(test)]
-// mod test {
+#[cfg(test)]
+mod test {
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
-//     use anathema_widget_core::template::{template, template_text};
-//     use anathema_widget_core::testing::FakeTerm;
+    use crate::testing::test_widget;
 
-//     use crate::testing::test_widget;
-//     use crate::{Border, VStack};
+    #[test]
+    fn space_out_hstack() {
+        let expr = expression(
+            "border",
+            None,
+            [],
+            [expression(
+                "hstack",
+                None,
+                [],
+                [
+                    expression("text", Some("left".into()), [], []),
+                    expression("spacer", None, [], []),
+                    expression("text", Some("right".into()), [], []),
+                ],
+            )],
+        );
 
-//     #[test]
-//     fn space_out_hstack() {
-//         let border = Border::thin(None, None);
-//         let body = [template(
-//             "hstack",
-//             (),
-//             [
-//                 template_text("left"),
-//                 template("spacer", (), vec![]),
-//                 template_text("right"),
-//             ],
-//         )];
-//         test_widget(
-//             border,
-//             body,
-//             FakeTerm::from_str(
-//                 r#"
-//             ╔═] Fake term [═╗
-//             ║┌─────────────┐║
-//             ║│left    right│║
-//             ║└─────────────┘║
-//             ║               ║
-//             ║               ║
-//             ║               ║
-//             ║               ║
-//             ╚═══════════════╝
-//             "#,
-//             ),
-//         );
-//     }
+        test_widget(
+            expr,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║┌─────────────┐║
+            ║│left    right│║
+            ║└─────────────┘║
+            ║               ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
-//     #[test]
-//     fn space_out_vstack() {
-//         let hstack = VStack::new(None, None);
-//         let body = [
-//             template_text("top"),
-//             template("spacer", (), vec![]),
-//             template_text("bottom"),
-//         ];
-//         test_widget(
-//             hstack,
-//             body,
-//             FakeTerm::from_str(
-//                 r#"
-//             ╔═] Fake term [═╗
-//             ║top            ║
-//             ║               ║
-//             ║               ║
-//             ║               ║
-//             ║               ║
-//             ║bottom         ║
-//             ╚═══════════════╝
-//             "#,
-//             ),
-//         );
-//     }
+    #[test]
+    fn space_out_vstack() {
+        let expr = expression(
+            "vstack",
+            None,
+            [],
+            [
+                expression("text", Some("top".into()), [], []),
+                expression("spacer", None, [], []),
+                expression("text", Some("bottom".into()), [], []),
+            ],
+        );
 
-//     #[test]
-//     fn centre_using_spacers() {
-//         let hstack = VStack::new(None, None);
-//         let body = [
-//             template_text("top"),
-//             template("spacer", (), vec![]),
-//             template_text("centre"),
-//             template("spacer", (), vec![]),
-//             template_text("bottom"),
-//         ];
-//         test_widget(
-//             hstack,
-//             body,
-//             FakeTerm::from_str(
-//                 r#"
-//             ╔═] Fake term [═╗
-//             ║top            ║
-//             ║               ║
-//             ║               ║
-//             ║centre         ║
-//             ║               ║
-//             ║               ║
-//             ║bottom         ║
-//             ╚═══════════════╝
-//             "#,
-//             ),
-//         );
-//     }
-// }
+        test_widget(
+            expr,
+            FakeTerm::from_str(
+                r#"
+                ╔═] Fake term [═╗
+                ║top            ║
+                ║               ║
+                ║               ║
+                ║               ║
+                ║               ║
+                ║bottom         ║
+                ╚═══════════════╝
+                "#,
+            ),
+        );
+    }
+
+    #[test]
+    fn centre_using_spacers() {
+        let expr = expression(
+            "vstack",
+            None,
+            [],
+            [
+                expression("text", Some("top".into()), [], []),
+                expression("spacer", None, [], []),
+                expression("text", Some("centre".into()), [], []),
+                expression("spacer", None, [], []),
+                expression("text", Some("bottom".into()), [], []),
+            ],
+        );
+
+        test_widget(
+            expr,
+            FakeTerm::from_str(
+                r#"
+                ╔═] Fake term [═╗
+                ║top            ║
+                ║               ║
+                ║               ║
+                ║centre         ║
+                ║               ║
+                ║               ║
+                ║bottom         ║
+                ╚═══════════════╝
+                "#,
+            ),
+        );
+    }
+}

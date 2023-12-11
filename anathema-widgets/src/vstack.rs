@@ -1,11 +1,9 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, Value, ValueExpr};
-use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_values::{Context, NodeId, Value};
+use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Direction, Layouts, Layout};
-use anathema_widget_core::{
-    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, LayoutNodes,
-};
+use anathema_widget_core::layout::{Direction, Layout};
+use anathema_widget_core::{AnyWidget, FactoryContext, LayoutNodes, Nodes, Widget, WidgetFactory};
 
 use crate::layout::vertical::Vertical;
 
@@ -66,6 +64,13 @@ impl Widget for VStack {
         "VStack"
     }
 
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
+        self.width.resolve(context, None);
+        self.min_width.resolve(context, None);
+        self.height.resolve(context, None);
+        self.min_height.resolve(context, None);
+    }
+
     fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         if let Some(width) = self.width.value_ref() {
             nodes.constraints.max_width = nodes.constraints.max_width.min(*width);
@@ -105,67 +110,74 @@ impl WidgetFactory for VStackFactory {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use anathema_widget_core::template::{template, template_text, Template};
-//     use anathema_widget_core::testing::FakeTerm;
+#[cfg(test)]
+mod test {
+    use anathema_widget_core::expressions::Expression;
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
-//     use super::*;
-//     use crate::testing::test_widget;
+    use crate::testing::test_widget;
 
-//     fn children(count: usize) -> Vec<Template> {
-//         (0..count)
-//             .map(|i| template("border", (), vec![template_text(i.to_string())]))
-//             .collect()
-//     }
+    fn children(count: usize) -> Vec<Expression> {
+        (0..count)
+            .map(|i| {
+                expression(
+                    "border",
+                    None,
+                    [],
+                    [expression("text", Some(i.into()), [], [])],
+                )
+            })
+            .collect()
+    }
 
-//     #[test]
-//     fn only_vstack() {
-//         let body = children(3);
-//         let vstack = VStack::new(None, None);
-//         test_widget(
-//             vstack,
-//             body,
-//             FakeTerm::from_str(
-//                 r#"
-//             ╔═] Fake term [═╗
-//             ║┌─┐            ║
-//             ║│0│            ║
-//             ║└─┘            ║
-//             ║┌─┐            ║
-//             ║│1│            ║
-//             ║└─┘            ║
-//             ║┌─┐            ║
-//             ║│2│            ║
-//             ║└─┘            ║
-//             ╚═══════════════╝
-//             "#,
-//             ),
-//         );
-//     }
+    #[test]
+    fn only_vstack() {
+        let vstack = expression("vstack", None, [], children(3));
+        test_widget(
+            vstack,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║┌─┐            ║
+            ║│0│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│1│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│2│            ║
+            ║└─┘            ║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
 
-//     #[test]
-//     fn fixed_height_stack() {
-//         let body = children(10);
-//         let vstack = VStack::new(None, 6);
-//         test_widget(
-//             vstack,
-//             body,
-//             FakeTerm::from_str(
-//                 r#"
-//             ╔═] Fake term [═╗
-//             ║┌─┐            ║
-//             ║│0│            ║
-//             ║└─┘            ║
-//             ║┌─┐            ║
-//             ║│1│            ║
-//             ║└─┘            ║
-//             ║               ║
-//             ║               ║
-//             ║               ║
-//             ╚═══════════════╝
-//             "#,
-//             ),
-//         );
-//     }
-// }
+    #[test]
+    fn fixed_height_stack() {
+        let vstack = expression(
+            "vstack",
+            None,
+            [("height".to_string(), 6.into())],
+            children(10),
+        );
+        test_widget(
+            vstack,
+            FakeTerm::from_str(
+                r#"
+            ╔═] Fake term [═╗
+            ║┌─┐            ║
+            ║│0│            ║
+            ║└─┘            ║
+            ║┌─┐            ║
+            ║│1│            ║
+            ║└─┘            ║
+            ║               ║
+            ║               ║
+            ║               ║
+            ╚═══════════════╝
+            "#,
+            ),
+        );
+    }
+}

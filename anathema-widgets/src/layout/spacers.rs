@@ -1,9 +1,7 @@
 use anathema_render::Size;
-use anathema_values::Context;
-use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Layout};
-use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
+use anathema_widget_core::LayoutNodes;
 
 use crate::Spacer;
 
@@ -26,10 +24,7 @@ impl Layout for SpacerLayout {
 /// inside already evaluated children.
 pub fn layout<'nodes, 'expr, 'state>(
     nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-    // ctx: &LayoutCtx,
-    // children: &mut Nodes<'e>,
     axis: Axis,
-    // data: &Context<'_, 'e>,
 ) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let count = nodes.filter(|widget| widget.kind() == Spacer::KIND).count();

@@ -454,7 +454,6 @@ mod test {
     use crate::map::Map;
     use crate::testing::{
         add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum,
-        TestExpression,
     };
     use crate::ValueRef;
 

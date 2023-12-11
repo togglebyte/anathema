@@ -1,11 +1,9 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, Value};
-use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_values::{Context, NodeId, Value};
+use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Layouts, Layout};
-use anathema_widget_core::{
-    AnyWidget, FactoryContext, Nodes, Widget, WidgetContainer, WidgetFactory, LayoutNodes,
-};
+use anathema_widget_core::layout::Layout;
+use anathema_widget_core::{AnyWidget, FactoryContext, LayoutNodes, Nodes, Widget, WidgetFactory};
 
 use crate::layout::stacked::Stacked;
 
@@ -73,6 +71,13 @@ impl Widget for ZStack {
         "ZStack"
     }
 
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
+        self.width.resolve(context, None);
+        self.min_width.resolve(context, None);
+        self.height.resolve(context, None);
+        self.min_height.resolve(context, None);
+    }
+
     fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         if let Some(min_width) = self.min_width.value() {
             nodes.constraints.min_width = nodes.constraints.min_width.max(min_width);
@@ -110,23 +115,29 @@ impl WidgetFactory for ZStackFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::template::{template, template_text};
-    use anathema_widget_core::testing::FakeTerm;
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
-    use super::*;
     use crate::testing::test_widget;
 
     #[test]
     fn border_title() {
-        let zstack = ZStack::new(None, None);
-        let body = [
-            template("border", (), [template("expand", (), [])]),
-            template("position", [("left", 2)], [template_text(" [title] ")]),
-        ];
+        let zstack = expression(
+            "zstack",
+            None,
+            [],
+            [
+                expression("border", None, [], [expression("expand", None, [], [])]),
+                expression(
+                    "position",
+                    None,
+                    [("left".to_string(), 2.into())],
+                    [expression("text", Some(" [title] ".into()), [], [])],
+                ),
+            ],
+        );
 
         test_widget(
             zstack,
-            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗
@@ -143,16 +154,19 @@ mod test {
 
     #[test]
     fn place_on_top() {
-        let zstack = ZStack::new(None, None);
-        let body = [
-            template_text("000"),
-            template_text("11"),
-            template_text("2"),
-        ];
+        let zstack = expression(
+            "zstack",
+            None,
+            [],
+            [
+                expression("text", Some("000".into()), [], []),
+                expression("text", Some("11".into()), [], []),
+                expression("text", Some("2".into()), [], []),
+            ],
+        );
 
         test_widget(
             zstack,
-            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══════╗

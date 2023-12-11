@@ -134,7 +134,7 @@ mod test {
     #[test]
     fn access_list() {
         let state = TestState::new();
-        let path = Path::from("generic_list").compose(0).compose(1);
+        let path = Path::from("generic_list").compose(1);
         let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None) else {
             panic!()
         };

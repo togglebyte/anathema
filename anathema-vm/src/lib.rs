@@ -76,16 +76,18 @@ impl Templates {
         Ok(())
     }
 
-    pub fn add_view(&mut self, ident: String, template: String, view: impl AnyView + 'static) {
+    pub fn add_view(&mut self, ident: impl Into<String>, template: String, view: impl AnyView + 'static) {
+        let ident = ident.into();
         self.view_templates.insert(ident.clone(), template);
         RegisteredViews::add_view(ident, view)
     }
 
-    pub fn add_prototype<F, T>(&mut self, ident: String, template: String, f: F)
+    pub fn add_prototype<F, T>(&mut self, ident: impl Into<String>, template: String, f: F)
     where
         F: Send + 'static + Fn() -> T,
         T: 'static + View + std::fmt::Debug + Send,
     {
+        let ident = ident.into();
         self.view_templates.insert(ident.clone(), template);
         RegisteredViews::add_prototype(ident, f)
     }

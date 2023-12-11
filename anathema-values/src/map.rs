@@ -105,6 +105,7 @@ where
 mod test {
     use super::*;
     use crate::testing::TestState;
+    use crate::Owned;
 
     #[test]
     fn access_map() {

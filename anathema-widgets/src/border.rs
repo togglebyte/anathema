@@ -1,16 +1,14 @@
 use std::fmt::Display;
 
-use anathema_render::{Size, Style};
+use anathema_render::Size;
 use anathema_values::{
-    impl_dyn_value, Attributes, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
-    ValueResolver,
+    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
 };
-use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Layout, Layouts};
+use anathema_widget_core::layout::Layout;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetContainer,
-    WidgetFactory, WidgetStyle,
+    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetFactory, WidgetStyle,
 };
 use smallvec::SmallVec;
 use unicode_width::UnicodeWidthChar;
@@ -317,7 +315,7 @@ impl Widget for Border {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
         self.style.resolve(context, None);
         self.border_style.resolve(context, None);
         self.sides.resolve(context, None);
@@ -348,6 +346,9 @@ impl Widget for Border {
             ctx.pos.y += 1;
         }
 
+        ctx.pos.x += ctx.padding.left as i32;
+        ctx.pos.y += ctx.padding.top as i32;
+
         if self.sides.value_or_default().contains(Sides::LEFT) {
             ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as i32;
         }
@@ -358,7 +359,8 @@ impl Widget for Border {
     fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
         // Draw the child
         if let Some((child, children)) = children.first_mut() {
-            let clipping_region = ctx.create_region();
+            // TODO: do we need the clipping region here?
+            // let clipping_region = ctx.create_region();
 
             // let child_ctx = ctx.sub_context(Some(&clipping_region));
             let child_ctx = ctx.sub_context(None);
@@ -480,7 +482,7 @@ impl WidgetFactory for BorderFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::generator::Expression;
+    use anathema_widget_core::expressions::Expression;
     use anathema_widget_core::testing::{expression, FakeTerm};
 
     use super::*;
@@ -506,7 +508,7 @@ mod test {
         attribs.push(("sides".into(), sides.into()));
 
         let children = match text {
-            Some(t) => vec![expression("text", Some(t), [], [])],
+            Some(t) => vec![expression("text", Some(t.into()), [], [])],
             None => vec![],
         };
         expression("border", None, attribs, children)

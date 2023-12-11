@@ -102,15 +102,11 @@ impl<'state, 'expr> Context<'state, 'expr> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::*;
-    use crate::ValueExpr;
-
-    type Sub = usize;
 
     #[test]
     fn scope_value() {
         let scope = LocalScope::new("value".into(), ValueRef::Str("hello world"));
-        let mut scopes = Scopes::new(&scope);
+        let scopes = Scopes::new(&scope);
 
         let inner_scope = LocalScope::new("value".into(), ValueRef::Str("inner hello"));
         let inner = scopes.reparent(&inner_scope);

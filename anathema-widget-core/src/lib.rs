@@ -9,11 +9,11 @@ pub mod views;
 mod widget;
 mod event;
 
-#[cfg(feature = "testing")]
+#[cfg(any(test, feature = "testing"))]
 pub mod testing;
 
 pub use anathema_render::Color;
-pub use nodes::Nodes;
+pub use nodes::{Node, Nodes};
 
 pub use crate::factory::{Factory, FactoryContext, WidgetFactory};
 pub use crate::layout::{

@@ -1,17 +1,28 @@
 use anathema_render::{Screen, ScreenPos, Size};
-use anathema_values::Context;
 use anathema_values::testing::TestState;
+use anathema_values::Context;
 
+pub use self::expressions::expression;
 use super::WidgetContainer;
 use crate::contexts::PaintCtx;
 use crate::expressions::Expression;
 use crate::layout::Constraints;
-use crate::{Nodes, Pos, Widget};
+use crate::nodes::{NodeKind, Single};
+use crate::{Nodes, Node, Pos};
 
-pub use self::expressions::expression;
-pub(crate) use self::expressions::{for_expression, if_expression, view_expression};
+pub mod expressions;
+pub mod nodes;
 
-mod expressions;
+impl<'e> Node<'e> {
+    pub(crate) fn single(&mut self) -> (&mut WidgetContainer<'e>, &mut Nodes<'e>) {
+        match &mut self.kind {
+            NodeKind::Single(Single {
+                widget, children, ..
+            }) => (widget, children),
+            _ => panic!(),
+        }
+    }
+}
 
 // -----------------------------------------------------------------------------
 //   - Here be (hacky) dragons -
@@ -66,16 +77,33 @@ impl FakeTerm {
         let screen = Screen::new(size);
         Self { screen, size, rows }
     }
+
+    fn rendered_output(&self) -> String {
+        let mut output_rows = vec![];
+        for y in 0..self.size.height {
+            let mut row = String::new();
+            for x in 0..self.size.width {
+                let c = self
+                    .screen
+                    .get(ScreenPos::new(x as u16, y as u16))
+                    .map(|(c, _)| c)
+                    .unwrap_or('E');
+                row.push(c);
+            }
+            output_rows.push(row);
+        }
+
+        output_rows.join("\n")
+    }
 }
 
 pub fn test_widget(expr: Expression, expected: FakeTerm) {
     let state = TestState::new();
     let context = Context::root(&state);
-    panic!("this can be implemented once the layout node thing is done");
-    // let mut node = expr.eval(&context, 0.into()).unwrap();
-    // let (widget, nodes) = node.single();
+    let mut node = expr.eval(&context, 0.into()).unwrap();
+    let (widget, nodes) = node.single();
 
-    // test_widget_container(widget, nodes, &context, expected)
+    test_widget_container(widget, nodes, &context, expected)
 }
 
 pub fn test_widget_container<'e>(
@@ -101,13 +129,19 @@ pub fn test_widget_container<'e>(
             let pos = ScreenPos::new(x as u16, y as u16);
             match expected.screen.get(pos).map(|(c, _)| c) {
                 Some(buffer_char) => assert_eq!(
-                    c, buffer_char,
-                    "in fake term \"{c}\", in buffer \"{buffer_char}\", pos: {pos:?}"
+                    c,
+                    buffer_char,
+                    "in fake term \"{c}\", in buffer \"{buffer_char}\", pos: {pos:?}\n{}",
+                    expected.rendered_output()
                 ),
                 None if c == ' ' => continue,
-                None => panic!("expected {c}, found nothing"),
+                None => {
+                    panic!(
+                        "expected {c}, found nothing\noutput: {}",
+                        expected.rendered_output()
+                    )
+                }
             }
         }
     }
 }
-

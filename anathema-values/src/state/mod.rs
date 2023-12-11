@@ -8,9 +8,11 @@ pub trait State: std::fmt::Debug {
     fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_>;
 
     #[doc(hidden)]
-    // This is here to keep the proc macro happy
-    fn get_value(&self, _: Option<&NodeId>) -> ValueRef<'_> {
-        ValueRef::Empty
+    fn get_value(&self, _: Option<&NodeId>) -> ValueRef<'_>
+    where
+        Self: Sized,
+    {
+        ValueRef::Map(self)
     }
 }
 

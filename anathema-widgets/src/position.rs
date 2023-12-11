@@ -1,9 +1,11 @@
 use anathema_render::Size;
-use anathema_values::{Context, NodeId, ValueRef, Value};
-use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_values::{Context, NodeId, Value};
+use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{HorzEdge, Layouts, VertEdge, Layout};
-use anathema_widget_core::{AnyWidget, Nodes, Pos, Widget, WidgetContainer, WidgetFactory, FactoryContext, LayoutNodes};
+use anathema_widget_core::layout::{HorzEdge, Layout, VertEdge};
+use anathema_widget_core::{
+    AnyWidget, FactoryContext, LayoutNodes, Nodes, Pos, Widget, WidgetFactory,
+};
 
 use crate::layout::single::Single;
 
@@ -65,6 +67,17 @@ impl Widget for Position {
         Self::KIND
     }
 
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
+        match &mut self.horz_edge {
+            HorzEdge::Left(val) => val.resolve(context, None),
+            HorzEdge::Right(val) => val.resolve(context, None),
+        }
+        match &mut self.vert_edge {
+            VertEdge::Top(val) => val.resolve(context, None),
+            VertEdge::Bottom(val) => val.resolve(context, None),
+        }
+    }
+
     fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         let mut layout = Single;
         let mut size = layout.layout(nodes)?;
@@ -87,7 +100,9 @@ impl Widget for Position {
 
         let x = match &self.horz_edge {
             HorzEdge::Left(x) => x.value_or(0),
-            HorzEdge::Right(x) => ctx.inner_size.width as i32 - x.value_or(0) - child.outer_size().width as i32,
+            HorzEdge::Right(x) => {
+                ctx.inner_size.width as i32 - x.value_or(0) - child.outer_size().width as i32
+            }
         };
 
         let y = match &self.vert_edge {
@@ -110,7 +125,7 @@ impl WidgetFactory for PositionFactory {
             Value::Empty => match ctx.get("right") {
                 Value::Empty => HorzEdge::Right(Value::Static(0)),
                 val => HorzEdge::Right(val),
-            }
+            },
             val => HorzEdge::Left(val),
         };
 
@@ -118,7 +133,7 @@ impl WidgetFactory for PositionFactory {
             Value::Empty => match ctx.get("bottom") {
                 Value::Empty => VertEdge::Top(Value::Static(0)),
                 val => VertEdge::Bottom(val),
-            }
+            },
             val => VertEdge::Top(val),
         };
 
@@ -129,19 +144,24 @@ impl WidgetFactory for PositionFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::template::template_text;
-    use anathema_widget_core::testing::FakeTerm;
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
-    use super::*;
     use crate::testing::test_widget;
 
     #[test]
     fn top_left() {
-        let body = [template_text("top left")];
+        let expr = expression(
+            "position",
+            None,
+            [
+                ("left".to_string(), 0.into()),
+                ("top".to_string(), 0.into()),
+            ],
+            [expression("text", Some("top left".into()), [], [])],
+        );
 
         test_widget(
-            Position::new(HorzEdge::Left(0), VertEdge::Top(0)),
-            body,
+            expr,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -157,10 +177,18 @@ mod test {
 
     #[test]
     fn top_right() {
-        let body = [template_text("top right")];
+        let expr = expression(
+            "position",
+            None,
+            [
+                ("right".to_string(), 0.into()),
+                ("top".to_string(), 0.into()),
+            ],
+            [expression("text", Some("top right".into()), [], [])],
+        );
+
         test_widget(
-            Position::new(HorzEdge::Right(0), VertEdge::Top(0)),
-            body,
+            expr,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -176,10 +204,17 @@ mod test {
 
     #[test]
     fn bottom_right() {
-        let body = [template_text("bottom right")];
+        let expr = expression(
+            "position",
+            None,
+            [
+                ("right".to_string(), 0.into()),
+                ("bottom".to_string(), 0.into()),
+            ],
+            [expression("text", Some("bottom right".into()), [], [])],
+        );
         test_widget(
-            Position::new(HorzEdge::Right(0), VertEdge::Bottom(0)),
-            body,
+            expr,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -195,10 +230,17 @@ mod test {
 
     #[test]
     fn bottom_left() {
-        let body = [template_text("bottom left")];
+        let expr = expression(
+            "position",
+            None,
+            [
+                ("left".to_string(), 0.into()),
+                ("bottom".to_string(), 0.into()),
+            ],
+            [expression("text", Some("bottom left".into()), [], [])],
+        );
         test_widget(
-            Position::new(HorzEdge::Left(0), VertEdge::Bottom(0)),
-            body,
+            expr,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

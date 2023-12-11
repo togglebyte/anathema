@@ -1,9 +1,7 @@
 use anathema_render::Size;
-use anathema_values::Context;
-use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::{Constraints, Layout};
-use anathema_widget_core::{Nodes, WidgetContainer, LayoutNodes};
+use anathema_widget_core::LayoutNodes;
 
 pub struct BorderLayout {
     pub min_width: Option<usize>,
@@ -55,50 +53,47 @@ impl Layout for BorderLayout {
 
         let mut size = Size::ZERO;
         nodes.next(|mut node| {
-                // Shrink the constraint for the child to fit inside the border
-                constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
-                    Some(w) => w,
-                    None => return Err(Error::InsufficientSpaceAvailble),
-                };
+            // Shrink the constraint for the child to fit inside the border
+            constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
+                Some(w) => w,
+                None => return Err(Error::InsufficientSpaceAvailble),
+            };
 
-                constraints.max_height =
-                    match constraints.max_height.checked_sub(border_size.height) {
-                        Some(h) => h,
-                        None => return Err(Error::InsufficientSpaceAvailble),
-                    };
+            constraints.max_height = match constraints.max_height.checked_sub(border_size.height) {
+                Some(h) => h,
+                None => return Err(Error::InsufficientSpaceAvailble),
+            };
 
-                if constraints.min_width > constraints.max_width {
-                    constraints.min_width = constraints.max_width;
-                }
+            if constraints.min_width > constraints.max_width {
+                constraints.min_width = constraints.max_width;
+            }
 
-                if constraints.min_height > constraints.max_height {
-                    constraints.min_height = constraints.max_height;
-                }
+            if constraints.min_height > constraints.max_height {
+                constraints.min_height = constraints.max_height;
+            }
 
-                if constraints.max_width == 0 || constraints.max_height == 0 {
-                    return Err(Error::InsufficientSpaceAvailble);
-                }
+            if constraints.max_width == 0 || constraints.max_height == 0 {
+                return Err(Error::InsufficientSpaceAvailble);
+            }
 
-                let inner_size = node.layout(constraints)?;
+            let inner_size = node.layout(constraints)?;
 
-                size = inner_size + border_size + padding_size;
+            size = inner_size + border_size + padding_size;
 
-                if let Some(min_width) = self.min_width {
-                    size.width = size.width.max(min_width);
-                }
+            if let Some(min_width) = self.min_width {
+                size.width = size.width.max(min_width);
+            }
 
-                if let Some(min_height) = self.min_height {
-                    size.height = size.height.max(min_height);
-                }
+            if let Some(min_height) = self.min_height {
+                size.height = size.height.max(min_height);
+            }
 
-                Ok(())
-            },
-        );
+            Ok(())
+        })?;
 
         match size {
             Size::ZERO => {
-                let mut size =
-                    Size::new(constraints.min_width, constraints.min_height);
+                let mut size = Size::new(constraints.min_width, constraints.min_height);
                 if is_width_tight {
                     size.width = constraints.max_width;
                 }

@@ -1,11 +1,9 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, Value};
-use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_values::{Value, Context, NodeId};
+use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::{Direction, Layout, Layouts};
-use anathema_widget_core::{
-    AnyWidget, FactoryContext, LayoutNodes, Nodes, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::layout::{Direction, Layout};
+use anathema_widget_core::{AnyWidget, FactoryContext, LayoutNodes, Nodes, Widget, WidgetFactory};
 
 use crate::layout::horizontal::Horizontal;
 
@@ -59,6 +57,13 @@ impl Widget for HStack {
         "HStack"
     }
 
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
+        self.width.resolve(context, None);
+        self.min_width.resolve(context, None);
+        self.height.resolve(context, None);
+        self.min_height.resolve(context, None);
+    }
+
     fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         if let Some(width) = self.width.value() {
             nodes.constraints.max_width = nodes.constraints.max_width.min(width);
@@ -100,25 +105,31 @@ impl WidgetFactory for HStackFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::template::{template, template_text, Template};
-    use anathema_widget_core::testing::FakeTerm;
+    use anathema_widget_core::expressions::Expression;
+    use anathema_widget_core::testing::{expression, FakeTerm};
 
-    use super::*;
     use crate::testing::test_widget;
 
-    fn children(count: usize) -> Vec<Template> {
+    fn children(count: usize) -> Vec<Expression> {
         (0..count)
-            .map(|i| template("border", (), [template_text(i.to_string())]))
+            .map(|i| {
+                expression(
+                    "border",
+                    None,
+                    [],
+                    [expression("text", Some(i.into()), [], [])],
+                )
+            })
             .collect()
     }
 
     #[test]
     fn only_hstack() {
-        let hstack = HStack::new(None, None);
-        let body = children(3);
+        let hstack = expression("hstack", None, [], children(3));
+
+        let _body = children(3);
         test_widget(
             hstack,
-            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗
@@ -135,11 +146,14 @@ mod test {
 
     #[test]
     fn fixed_width_stack() {
-        let hstack = HStack::new(6, None);
-        let body = children(10);
+        let hstack = expression(
+            "hstack",
+            None,
+            [("width".to_string(), 6.into())],
+            children(10),
+        );
         test_widget(
             hstack,
-            body,
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [═╗

@@ -1,11 +1,11 @@
 use anathema_render::Size;
-use anathema_values::{Context, Value};
-use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::{Axis, Constraints};
-use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
+use anathema_widget_core::LayoutNodes;
 
 use crate::Expand;
+
+const DEFAULT_FACTOR: usize = 1;
 
 /// Distributes the total size over a list of weights
 ///
@@ -47,10 +47,7 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 
 pub fn layout<'nodes, 'state, 'expr>(
     nodes: &mut LayoutNodes<'nodes, 'state, 'expr>,
-    // ctx: &LayoutCtx,
-    // children: &mut Nodes<'e>,
     axis: Axis,
-    // data: &Context<'_, 'e>,
 ) -> Result<Size> {
     let constraints = nodes.constraints;
 
@@ -60,7 +57,7 @@ pub fn layout<'nodes, 'state, 'expr>(
 
     let factors = expansions
         .iter()
-        .map(|w| w.to_ref::<Expand>().factor.value_or_default())
+        .map(|w| w.to_ref::<Expand>().factor.value_or(DEFAULT_FACTOR))
         .collect::<Vec<_>>();
 
     let mut size = Size::ZERO;
@@ -70,7 +67,6 @@ pub fn layout<'nodes, 'state, 'expr>(
     }
 
     // Distribute the available space
-
     let sizes = match axis {
         Axis::Horizontal => distribute_size(&factors, constraints.max_width),
         Axis::Vertical => distribute_size(&factors, constraints.max_height),

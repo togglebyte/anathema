@@ -1,9 +1,7 @@
 use anathema_render::Size;
-use anathema_values::Context;
-use anathema_widget_core::contexts::LayoutCtx;
 use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::layout::{Axis, Constraints, Direction, Layout};
-use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
+use anathema_widget_core::LayoutNodes;
 
 use super::{expand, spacers};
 use crate::{Expand, Spacer};
@@ -53,10 +51,6 @@ impl SizeMod {
                 self.max_size.height - self.inner.height,
             ),
         }
-    }
-
-    fn to_size(self) -> Size {
-        self.inner
     }
 }
 
@@ -126,11 +120,7 @@ impl Layout for Many {
     fn layout<'nodes, 'expr, 'state>(
         &mut self,
         nodes: &mut LayoutNodes<'nodes, 'expr, 'state>,
-        // children: &mut Nodes<'e>,
-        // layout: &LayoutCtx,
-        // data: &Context<'_, 'e>,
     ) -> Result<Size> {
-        // let max_constraints = layout.padded_constraints();
         let mut max_constraints = nodes.constraints;
         max_constraints.apply_padding(nodes.padding);
 
@@ -146,8 +136,7 @@ impl Layout for Many {
 
         let mut size = Size::ZERO;
 
-        // children.for_each(data, layout, |widget, children, context| {
-        nodes.for_each(|mut node| {
+        let res = nodes.for_each(|mut node| {
             if [Spacer::KIND, Expand::KIND].contains(&node.kind()) {
                 return Ok(());
             }
@@ -178,17 +167,17 @@ impl Layout for Many {
             Ok(())
         });
 
+        match res {
+            Ok(()) | Err(Error::InsufficientSpaceAvailble) => {}
+            Err(e) => return Err(e),
+        }
+
         // Apply spacer and expand if the layout is constrained
         if !self.unconstrained {
-            // let mut exp_ctx = *layout;
-            // exp_ctx.constraints = used_size.to_constraints();
             nodes.set_constraints(used_size.to_constraints());
             let expanded_size = expand::layout(nodes, self.axis)?;
             used_size.apply(expanded_size);
 
-            // TODO clean out all comments
-            // let mut space_ctx = *layout;
-            // space_ctx.constraints = used_size.to_constraints();
             nodes.set_constraints(used_size.to_constraints());
             let spacer_size = spacers::layout(nodes, self.axis)?;
             used_size.apply(spacer_size);

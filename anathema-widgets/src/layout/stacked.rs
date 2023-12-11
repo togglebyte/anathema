@@ -1,9 +1,7 @@
 use anathema_render::Size;
-use anathema_values::Context;
-use anathema_widget_core::contexts::LayoutCtx;
-use anathema_widget_core::error::{Error, Result};
+use anathema_widget_core::error::Result;
 use anathema_widget_core::layout::Layout;
-use anathema_widget_core::{LayoutNodes, Nodes, WidgetContainer};
+use anathema_widget_core::LayoutNodes;
 
 pub struct Stacked;
 
@@ -28,7 +26,7 @@ impl Layout for Stacked {
             height = height.max(widget_size.height);
 
             Ok(())
-        });
+        })?;
 
         Ok(Size { width, height })
     }

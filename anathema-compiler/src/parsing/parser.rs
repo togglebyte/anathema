@@ -481,10 +481,6 @@ mod test {
         parse(src).into_iter().map(Result::unwrap).collect()
     }
 
-    fn parse_err(src: &str) -> Vec<Error> {
-        parse(src).into_iter().filter_map(Result::err).collect()
-    }
-
     #[test]
     fn parse_single_instruction() {
         let src = "a";
@@ -688,14 +684,14 @@ mod test {
 
     #[test]
     fn parse_view() {
-        let src = "view 'mail'";
+        let src = "view mail";
         let mut expressions = parse_ok(src);
         assert_eq!(expressions.remove(0), Expression::View(0.into()));
 
-        let src = "view 'mail' state";
+        let src = "view mail state";
         let mut expressions = parse_ok(src);
         assert_eq!(expressions.remove(0), Expression::View(0.into()));
-        assert_eq!(expressions.remove(0), Expression::LoadValue(1.into()));
+        assert_eq!(expressions.remove(0), Expression::LoadValue(0.into()));
     }
 
     #[test]

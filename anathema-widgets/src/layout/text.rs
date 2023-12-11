@@ -1,5 +1,7 @@
 use anathema_render::Size;
-use anathema_values::{impl_dyn_value, Resolver, ValueResolver, Context, DynValue, NodeId, Value, ValueExpr, ValueRef};
+use anathema_values::{
+    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
+};
 use unicode_width::UnicodeWidthChar;
 
 fn is_word_boundary(c: char) -> bool {
@@ -160,7 +162,7 @@ impl Lines {
 /// A word boundary
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 struct WordBoundary {
-    // The width up to the word boundary
+    /// The width up to the word boundary
     width: usize,
     range: Range,
     entry_index: usize,

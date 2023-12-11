@@ -71,6 +71,12 @@ impl<T> DerefMut for StateValue<T> {
     }
 }
 
+impl<T> From<T> for StateValue<T> {
+    fn from(val: T) -> StateValue<T> {
+        StateValue::new(val)
+    }
+}
+
 impl<'a> From<&'a StateValue<String>> for ValueRef<'a> {
     fn from(value: &'a StateValue<String>) -> Self {
         ValueRef::Str(value.inner.as_str())

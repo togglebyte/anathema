@@ -1,12 +1,10 @@
 use anathema_render::Size;
-use anathema_values::{Attributes, Context, NodeId, Value, ValueExpr};
-use anathema_widget_core::contexts::{LayoutCtx, PositionCtx};
+use anathema_values::{Context, NodeId, Value};
+use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
+use anathema_widget_core::layout::{Align, Layout};
 use anathema_widget_core::nodes::Nodes;
-use anathema_widget_core::layout::{Align, Layouts, Layout};
-use anathema_widget_core::{
-    AnyWidget, FactoryContext, LayoutNodes, Pos, Widget, WidgetContainer, WidgetFactory,
-};
+use anathema_widget_core::{AnyWidget, FactoryContext, LayoutNodes, Pos, Widget, WidgetFactory};
 
 use crate::layout::single::Single;
 
@@ -43,7 +41,7 @@ impl Widget for Alignment {
         }
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
         self.alignment.resolve(context, None);
     }
 
@@ -86,14 +84,14 @@ impl WidgetFactory for AlignmentFactory {
 
 #[cfg(test)]
 mod test {
-    use anathema_widget_core::layout::{Constraints, Padding};
+    use anathema_values::ValueExpr;
     use anathema_widget_core::testing::{expression, FakeTerm};
 
     use super::*;
     use crate::testing::test_widget;
 
     fn align_widget(align: Align, expected: FakeTerm) {
-        let text = expression("text", Some("AB"), [], []);
+        let text = expression("text", ValueExpr::String("AB".into()), [], []);
         let alignment = expression(
             "alignment",
             None,
@@ -246,18 +244,5 @@ mod test {
             "#,
             ),
         );
-    }
-
-    #[test]
-    fn unconstrained_alignment_without_child() {
-        // let constraints = Constraints::unbounded();
-        // let mut children = vec![];
-        // let data = DataCtx::default();
-        // let store = Values::new(&data);
-        // let ctx = LayoutCtx::new(&[], &store, constraints, Padding::ZERO);
-        // let mut alignment = Alignment::new(Align::Left);
-        // let actual = alignment.layout(ctx, &mut children).unwrap();
-        // let expected = Size::ZERO;
-        // assert_eq!(expected, actual);
     }
 }

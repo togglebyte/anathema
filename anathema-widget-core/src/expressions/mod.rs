@@ -8,7 +8,7 @@ use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::nodes::{IfElse, LoopNode, Node, NodeKind, Nodes, Single, View};
 use crate::views::{RegisteredViews, TabIndex, Views};
-use crate::{Factory, Padding, Pos, WidgetContainer};
+use crate::{Factory, Pos, WidgetContainer};
 
 mod controlflow;
 
@@ -47,8 +47,8 @@ impl SingleNodeExpr {
 
         let widget = WidgetContainer {
             display: context.get("display"),
-            background: context.get("background"), //context.background(),
-            padding: Padding::ZERO,                // context.padding(),
+            background: context.get("background"),
+            padding: context.get("padding"),
             pos: Pos::ZERO,
             size: Size::ZERO,
 
@@ -249,15 +249,16 @@ impl Expression {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "testing"))]
 mod test {
     use anathema_values::testing::{list, TestState};
 
     use super::*;
     use crate::contexts::LayoutCtx;
     use crate::layout::Constraints;
-    use crate::nodes::testing::*;
-    use crate::testing::{expression, for_expression, if_expression, view_expression};
+    use crate::testing::nodes::*;
+    use crate::testing::expressions::{expression, for_expression, if_expression, view_expression};
+    use crate::Padding;
 
     impl Expression {
         pub fn test<'a>(self) -> TestExpression<TestState> {
@@ -325,7 +326,7 @@ mod test {
     #[should_panic(expected = "ViewNotFound")]
     fn eval_missing_view() {
         let expr = view_expression("theview", None, vec![]).test();
-        let node = expr.eval().unwrap();
+        let _ = expr.eval().unwrap();
     }
 
     #[test]
@@ -349,7 +350,7 @@ mod test {
     fn consume_view_twice() {
         RegisteredViews::add_view("aview", AView);
         let expr = view_expression("aview", None, vec![]).test();
-        let node = expr.eval().unwrap();
-        let node = expr.eval().unwrap();
+        let _ = expr.eval().unwrap();
+        let _ = expr.eval().unwrap();
     }
 }

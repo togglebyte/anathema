@@ -1,3 +1,4 @@
+use anathema_render::Size;
 use anathema_values::{Context, DynValue, Owned, Resolver, Value, ValueRef};
 
 /// Represents the padding of a widget.
@@ -22,16 +23,16 @@ use anathema_values::{Context, DynValue, Owned, Resolver, Value, ValueRef};
 /// │      │
 /// └──────┘
 /// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub struct Padding {
     /// Top padding
-    pub top: usize,
+    pub top: u16,
     /// Right padding
-    pub right: usize,
+    pub right: u16,
     /// Bottom padding
-    pub bottom: usize,
+    pub bottom: u16,
     /// Left padding
-    pub left: usize,
+    pub left: u16,
 }
 
 impl Padding {
@@ -39,7 +40,7 @@ impl Padding {
     pub const ZERO: Padding = Self::new(0);
 
     /// Create a new instance padding
-    pub const fn new(padding: usize) -> Self {
+    pub const fn new(padding: u16) -> Self {
         Self {
             top: padding,
             right: padding,
@@ -48,7 +49,7 @@ impl Padding {
         }
     }
 
-    pub fn from_iter(mut iter: impl Iterator<Item = usize>) -> Self {
+    pub fn from_iter(mut iter: impl Iterator<Item = u16>) -> Self {
         let Some(n) = iter.next() else {
             return Self::ZERO;
         };
@@ -83,6 +84,14 @@ impl Padding {
         std::mem::swap(&mut padding, self);
         padding
     }
+
+    pub fn size(&self) -> Size {
+        Size {
+            width: (self.left + self.right) as usize,
+            height: (self.top + self.bottom) as usize,
+        }
+    }
+
 }
 
 impl DynValue for Padding {
@@ -98,17 +107,17 @@ impl DynValue for Padding {
         let value = resolver.resolve(expr);
 
         let inner = match value {
-            ValueRef::Owned(Owned::Num(n)) => Some(Self::new(n.to_usize())),
+            ValueRef::Owned(Owned::Num(n)) => Some(Self::new(n.to_u16())),
             ValueRef::Expressions(values) => {
-                values
+                let padding = values
                     .iter()
                     .map(|expr| Resolver::new(context, node_id).resolve(expr))
                     .map(|val| match val {
-                        ValueRef::Owned(Owned::Num(n)) => n.to_usize(),
+                        ValueRef::Owned(Owned::Num(n)) => n.to_u16(),
                         _ => 0,
-                    })
-                    .collect::<Vec<_>>();
-                panic!("come back and deal with padding please")
+                    });
+
+                Some(Padding::from_iter(padding))
             }
             _ => None,
         };
@@ -126,14 +135,35 @@ impl DynValue for Padding {
     }
 
     fn resolve(
-        _value: &mut Value<Self>,
-        _context: &Context<'_, '_>,
-        _node_id: Option<&anathema_values::NodeId>,
-    ) {
-        todo!()
+        value: &mut Value<Self>,
+        context: &Context<'_, '_>,
+        node_id: Option<&anathema_values::NodeId>,
+    ) where
+        Self: Sized,
+    {
+        if let Value::Dyn { inner, expr } = value {
+            let mut resolver = Resolver::new(context, node_id);
+            let value = resolver.resolve(expr);
+            *inner = match value {
+                ValueRef::Owned(Owned::Num(n)) => Some(Self::new(n.to_u16())),
+                ValueRef::Expressions(values) => {
+                    let padding = values
+                        .iter()
+                        .map(|expr| Resolver::new(context, node_id).resolve(expr))
+                        .map(|val| match val {
+                            ValueRef::Owned(Owned::Num(n)) => n.to_u16(),
+                            _ => 0,
+                        });
+
+                    Some(Padding::from_iter(padding))
+                }
+                _ => None,
+            };
+        }
     }
 }
 
+#[cfg(feature = "testing")]
 #[cfg(test)]
 mod test {
     use anathema_values::testing::{unum, TestState};

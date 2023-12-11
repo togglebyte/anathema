@@ -1,6 +1,19 @@
 use std::fmt::{self, Display};
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
+macro_rules! to_num {
+    ($fn_name:ident, $num_type:ty) => {
+        pub fn $fn_name(self) -> $num_type {
+            match self {
+                Self::Signed(num) => num as $num_type,
+                Self::Unsigned(num) => num as $num_type,
+                Self::Float(_num) => panic!("nah, not this one"),
+            }
+        }
+
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Num {
     Signed(i64),
@@ -21,21 +34,18 @@ impl Num {
         }
     }
 
-    pub(crate) fn to_i128(self) -> i128 {
-        match self {
-            Self::Signed(num) => num as i128,
-            Self::Unsigned(num) => num as i128,
-            Self::Float(_num) => panic!("nah, not this one"),
-        }
-    }
-
-    pub fn to_usize(self) -> usize {
-        match self {
-            Self::Signed(num) => num as usize,
-            Self::Unsigned(num) => num as usize,
-            Self::Float(_num) => panic!("nah, not this one"),
-        }
-    }
+    to_num!(to_i128, i128);
+    to_num!(to_u128, u128);
+    to_num!(to_usize, usize);
+    to_num!(to_isize, isize);
+    to_num!(to_u64, u64);
+    to_num!(to_i64, i64);
+    to_num!(to_u32, u32);
+    to_num!(to_i32, i32);
+    to_num!(to_u16, u16);
+    to_num!(to_i16, i16);
+    to_num!(to_u8, u8);
+    to_num!(to_i8, i8);
 }
 
 impl Display for Num {

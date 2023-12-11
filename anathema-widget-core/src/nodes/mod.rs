@@ -1,12 +1,7 @@
-#[cfg(any(attribute = "testing", test))]
-pub(crate) mod testing;
-
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{
-    Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver,
-};
+use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -117,18 +112,6 @@ impl<'e> Node<'e> {
     }
 }
 
-#[cfg(any(test, feature = "testing"))]
-impl<'e> Node<'e> {
-    pub(crate) fn single(&mut self) -> (&mut WidgetContainer<'e>, &mut Nodes<'e>) {
-        match &mut self.kind {
-            NodeKind::Single(Single {
-                widget, children, ..
-            }) => (widget, children),
-            _ => panic!(),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Single<'e> {
     pub(crate) widget: WidgetContainer<'e>,
@@ -218,14 +201,10 @@ impl<'expr> Nodes<'expr> {
         F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
     {
         loop {
-            // TODO: Use `?` here
-            if let Ok(res) = self.next(context, &mut f) {
-                match res {
-                    ControlFlow::Continue(()) => continue,
-                    ControlFlow::Break(()) => break,
-                }
+            match self.next(context, &mut f)? {
+                ControlFlow::Continue(()) => continue,
+                ControlFlow::Break(()) => break,
             }
-            break;
         }
         Ok(())
     }
@@ -365,8 +344,8 @@ mod test {
     use anathema_values::testing::{ident, list};
     use anathema_values::ValueExpr;
 
-    use crate::nodes::testing::*;
-    use crate::testing::{expression, for_expression, if_expression};
+    use crate::testing::nodes::*;
+    use crate::testing::expressions::{expression, for_expression, if_expression};
 
     #[test]
     fn generate_a_single_widget() {
@@ -398,10 +377,9 @@ mod test {
         assert_eq!(nodes.nodes.count(), 3);
     }
 
-    #[test]
-    fn if_else() {
-        let is_true = false.into();
-        let is_else = Some(false.into());
+    fn test_if_else(is_true: bool, else_cond: Option<bool>, expected: &str) {
+        let is_true = is_true.into();
+        let is_else = else_cond.map(|val| val.into());
 
         let else_if_expr = vec![expression("test", Some("else branch".into()), [], [])];
         let if_expr = vec![expression("test", Some("true".into()), [], [])];
@@ -417,7 +395,18 @@ mod test {
             vec![(is_else, else_if_expr), (None, else_expr)],
         )];
         let mut nodes = TestNodes::new(&exprs);
-        let size = nodes.layout().unwrap();
-        panic!("{size:?}");
+        let _ = nodes.layout().unwrap();
+        let (node, _) = nodes.nodes.first_mut().unwrap();
+        let widget = node.to_ref::<TestWidget>();
+
+        assert_eq!(widget.0.value_ref().unwrap(), expected);
+    }
+
+    #[test]
+    fn if_else() {
+        test_if_else(true, None, "true");
+        test_if_else(false, Some(true), "else branch");
+        test_if_else(false, None, "else branch");
+        test_if_else(false, Some(false), "else branch without condition");
     }
 }

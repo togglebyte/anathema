@@ -1,11 +1,10 @@
-use std::fmt::Write;
-
 use anathema_render::{Size, Style};
-use anathema_values::{Attributes, Context, DynValue, NodeId, Path, State, Value, ValueExpr};
-use anathema_widget_core::contexts::{LayoutCtx, PaintCtx, PositionCtx, WithSize};
+use anathema_values::{Context, NodeId, Value};
+use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LocalPos, Nodes, Widget, WidgetContainer, WidgetFactory, WidgetStyle, LayoutNodes,
+    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetContainer,
+    WidgetFactory, WidgetStyle,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -116,7 +115,7 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
         self.word_wrap.resolve(context, None);
         self.text_alignment.resolve(context, None);
         self.text.resolve(context, None);
@@ -143,7 +142,7 @@ impl Widget for Text {
 
             self.layout.process(inner_span.text.str());
             Ok(())
-        });
+        })?;
 
         Ok(self.layout.size())
     }
@@ -190,12 +189,12 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
         self.text.resolve(context, None);
         self.style.resolve(context, None);
     }
 
-    fn layout<'e>(&mut self, nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
+    fn layout<'e>(&mut self, _nodes: &mut LayoutNodes<'_, '_, 'e>) -> Result<Size> {
         panic!("layout should never be called directly on a span");
     }
 
@@ -242,15 +241,15 @@ impl WidgetFactory for SpanFactory {
 
 #[cfg(test)]
 mod test {
+    use anathema_values::ValueExpr;
     use anathema_widget_core::testing::{expression, FakeTerm};
 
-    use super::*;
     use crate::testing::test_widget;
 
     #[test]
     fn word_wrap_excessive_space() {
         test_widget(
-            expression("text", Some("hello      how are     you"), [], []),
+            expression("text", Some("hello      how are     you".into()), [], []),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -269,7 +268,7 @@ mod test {
     #[test]
     fn word_wrap() {
         test_widget(
-            expression("text", Some("hello how are you"), [], []),
+            expression("text", Some("hello how are you".into()), [], []),
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [══╗
@@ -287,7 +286,7 @@ mod test {
         test_widget(
             expression(
                 "text",
-                Some("hello how are you"),
+                Some("hello how are you".into()),
                 [("wrap".into(), ValueExpr::from("overflow"))],
                 [],
             ),
@@ -308,7 +307,7 @@ mod test {
         test_widget(
             expression(
                 "text",
-                Some("hellohowareyoudoing"),
+                Some("hellohowareyoudoing".into()),
                 [("wrap".into(), ValueExpr::from("break"))],
                 [],
             ),
@@ -327,12 +326,12 @@ mod test {
     #[test]
     fn char_wrap_layout_multiple_spans() {
         let body = [
-            expression("span", Some("two"), [], []),
-            expression("span", Some(" averylongword"), [], []),
-            expression("span", Some(" bunny "), [], []),
+            expression("span", Some("two".into()), [], []),
+            expression("span", Some(" averylongword".into()), [], []),
+            expression("span", Some(" bunny ".into()), [], []),
         ];
 
-        let text = expression("text", Some("one"), [], body);
+        let text = expression("text", Some("one".into()), [], body);
 
         test_widget(
             text,
@@ -353,7 +352,7 @@ mod test {
         test_widget(
             expression(
                 "text",
-                Some("a one xxxxxxxxxxxxxxxxxx"),
+                Some("a one xxxxxxxxxxxxxxxxxx".into()),
                 [("text-align".into(), ValueExpr::from("right"))],
                 [],
             ),
@@ -374,7 +373,7 @@ mod test {
         test_widget(
             expression(
                 "text",
-                Some("a one xxxxxxxxxxxxxxxxxx"),
+                Some("a one xxxxxxxxxxxxxxxxxx".into()),
                 [("text-align".into(), ValueExpr::from("center"))],
                 [],
             ),

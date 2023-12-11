@@ -36,14 +36,14 @@ impl LayoutCtx {
         if !constraints.is_width_unbounded() {
             constraints.max_width = constraints
                 .max_width
-                .saturating_sub(padding.left + padding.right);
+                .saturating_sub(padding.left as usize + padding.right as usize);
             constraints.min_width = constraints.min_width.min(constraints.max_width);
         }
 
         if !constraints.is_height_unbounded() {
             constraints.max_height = constraints
                 .max_height
-                .saturating_sub(padding.top + padding.bottom);
+                .saturating_sub(padding.top as usize + padding.bottom as usize);
             constraints.min_height = constraints.min_height.min(constraints.max_height);
         }
 
@@ -51,12 +51,7 @@ impl LayoutCtx {
     }
 
     pub fn padding_size(&self) -> Size {
-        if self.padding != Padding::ZERO {
-            let padding = self.padding;
-            Size::new(padding.left + padding.right, padding.top + padding.bottom)
-        } else {
-            Size::ZERO
-        }
+        self.padding.size()
     }
 }
 
@@ -257,14 +252,16 @@ pub struct PositionCtx {
     pub pos: Pos,
     pub inner_size: Size,
     pub alignment: Option<Align>,
+    pub padding: Padding,
 }
 
 impl PositionCtx {
-    pub fn new(pos: Pos, inner_size: Size) -> Self {
+    pub fn new(pos: Pos, inner_size: Size, padding: Padding) -> Self {
         Self {
             pos,
             inner_size,
             alignment: None,
+            padding,
         }
     }
 }

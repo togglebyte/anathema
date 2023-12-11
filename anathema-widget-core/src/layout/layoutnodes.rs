@@ -40,12 +40,7 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
     // }
 
     pub fn padding_size(&self) -> Size {
-        if self.padding != Padding::ZERO {
-            let padding = self.padding;
-            Size::new(padding.left + padding.right, padding.top + padding.bottom)
-        } else {
-            Size::ZERO
-        }
+        self.padding.size()
     }
 
     pub fn next<F>(&mut self, mut f: F) -> Result<()>
