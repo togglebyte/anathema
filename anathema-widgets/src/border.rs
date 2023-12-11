@@ -107,11 +107,11 @@ impl From<SmallVec<[String; 4]>> for Sides {
     }
 }
 
-impl From<Sides> for ValueExpr {
-    fn from(val: Sides) -> Self {
+impl Into<ValueExpr> for Sides {
+    fn into(self) -> ValueExpr {
         let mut sides = vec![];
 
-        for side in val {
+        for side in self {
             if side.contains(Sides::ALL) {
                 sides.push("all".into());
             }
