@@ -88,7 +88,6 @@ impl ValueExpr {
         self,
         inner: impl IntoIterator<Item = (K, T)>,
     ) -> TestExpression<T> {
-        let inner = inner.into_iter().map(|(k, v)| (k, v));
         TestExpression {
             state: Map::new(inner),
             expr: Box::new(self),
