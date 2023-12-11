@@ -91,13 +91,13 @@ impl Widget for Expand {
         Ok(size)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         if let Some((widget, children)) = children.first_mut() {
             widget.position(children, ctx.pos)
         }
     }
 
-    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         if let Some(fill) = self.fill.value_ref() {
             for y in 0..ctx.local_size.height {
                 let mut used_width = 0;

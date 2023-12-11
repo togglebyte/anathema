@@ -92,7 +92,7 @@ impl Widget for Position {
         Ok(size)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, mut ctx: PositionCtx) {
         let (child, children) = match children.first_mut() {
             Some(c) => c,
             None => return,

@@ -135,7 +135,7 @@ impl WidgetContainer<'_> {
         Ok(self.size)
     }
 
-    pub fn position(&mut self, children: &mut Nodes, pos: Pos) {
+    pub fn position(&mut self, children: &mut Nodes<'_>, pos: Pos) {
         self.pos = pos;
 
         let pos = Pos::new(self.pos.x, self.pos.y);
@@ -144,7 +144,7 @@ impl WidgetContainer<'_> {
         self.inner.position(children, ctx);
     }
 
-    pub fn paint(&mut self, children: &mut Nodes, ctx: PaintCtx<'_, Unsized>) {
+    pub fn paint(&mut self, children: &mut Nodes<'_>, ctx: PaintCtx<'_, Unsized>) {
         if let Display::Hide | Display::Exclude = self.display.value_or_default() {
             return;
         }

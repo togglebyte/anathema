@@ -333,7 +333,7 @@ impl Widget for Border {
         layout.layout(nodes)
     }
 
-    fn position(&mut self, children: &mut Nodes, mut ctx: PositionCtx) {
+    fn position(&mut self, children: &mut Nodes<'_>, mut ctx: PositionCtx) {
         let (child, children) = match children.first_mut() {
             Some(child) => child,
             None => return,
@@ -353,7 +353,7 @@ impl Widget for Border {
         child.position(children, ctx.pos);
     }
 
-    fn paint(&mut self, children: &mut Nodes, mut ctx: PaintCtx<'_, WithSize>) {
+    fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         // Draw the child
         if let Some((child, children)) = children.first_mut() {
             // TODO: do we need the clipping region here?

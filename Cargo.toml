@@ -37,6 +37,10 @@ members = [
     "anathema-value-derive",
 ]
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+rust_2018_idioms = "deny"
+
 [workspace.lints.clippy]
 len_without_is_empty = "allow"
 new_without_default = "allow"

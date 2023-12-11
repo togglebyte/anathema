@@ -52,7 +52,7 @@ impl Widget for TestWidget {
         }
     }
 
-    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {}
+    fn position<'tpl>(&mut self, _children: &mut Nodes<'_>, _ctx: PositionCtx) {}
 }
 
 struct TestWidgetFactory;
@@ -76,7 +76,7 @@ impl Widget for TestListWidget {
         TestLayoutMany.layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, _children: &mut Nodes, _ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, _children: &mut Nodes<'_>, _ctx: PositionCtx) {
         todo!()
     }
 }

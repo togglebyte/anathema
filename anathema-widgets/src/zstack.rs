@@ -95,7 +95,7 @@ impl Widget for ZStack {
         Stacked.layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         for (widget, children) in children.iter_mut() {
             widget.position(children, ctx.pos);
         }

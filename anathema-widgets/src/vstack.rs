@@ -88,7 +88,7 @@ impl Widget for VStack {
         Vertical::new(Direction::Forward).layout(nodes)
     }
 
-    fn position<'tpl>(&mut self, children: &mut Nodes, ctx: PositionCtx) {
+    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
         let mut pos = ctx.pos;
         for (widget, children) in children.iter_mut() {
             widget.position(children, pos);
