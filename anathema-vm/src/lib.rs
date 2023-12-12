@@ -125,9 +125,9 @@ mod test {
     #[test]
     #[should_panic(expected = "circular dependencies")]
     fn circular_deps() {
-        let mut t = Templates::new("view a".into());
-        t.add_view("a", "view b".to_string(), AView);
-        t.add_view("b", "view a".to_string(), AView);
+        let mut t = Templates::new("@a".into());
+        t.add_view("a", "@b".to_string(), AView);
+        t.add_view("b", "@a".to_string(), AView);
         t.compile().unwrap();
     }
 }

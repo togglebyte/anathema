@@ -45,12 +45,11 @@ impl Layout for BorderLayout {
         constraints.apply_padding(nodes.padding);
         let padding_size = nodes.padding_size();
 
-        let is_height_tight = constraints.is_height_tight();
-        let is_width_tight = constraints.is_width_tight();
-
         let mut size = Size::ZERO;
+
         nodes.next(|mut node| {
             // Shrink the constraint for the child to fit inside the border
+            let mut constraints = constraints;
             constraints.max_width = match constraints.max_width.checked_sub(border_size.width) {
                 Some(w) => w,
                 None => return Err(Error::InsufficientSpaceAvailble),
@@ -88,18 +87,9 @@ impl Layout for BorderLayout {
             Ok(())
         })?;
 
-        match size {
-            Size::ZERO => {
-                let mut size = Size::new(constraints.min_width, constraints.min_height);
-                if is_width_tight {
-                    size.width = constraints.max_width;
-                }
-                if is_height_tight {
-                    size.height = constraints.max_height;
-                }
-                Ok(size)
-            }
-            _ => Ok(size),
-        }
+        size.width = size.width.max(constraints.min_width);
+        size.height = size.height.max(constraints.min_height);
+
+        Ok(size)
     }
 }

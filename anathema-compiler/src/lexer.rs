@@ -414,7 +414,7 @@ mod test {
 
     #[test]
     fn view() {
-        let input = "view";
+        let input = "@view";
         assert_eq!(Kind::View, token_kind(input));
     }
 

@@ -22,6 +22,7 @@ pub struct Runtime<'e> {
     nodes: Nodes<'e>,
     events: Events,
     pub fps: u8,
+    needs_layout: bool,
     // meta: Meta,
 }
 
@@ -55,6 +56,7 @@ impl<'e> Runtime<'e> {
             enable_mouse: false,
             events: Events,
             fps: 30,
+            needs_layout: true,
             // meta: Meta::new(size),
         };
 
@@ -93,6 +95,7 @@ impl<'e> Runtime<'e> {
             return;
         }
 
+        self.needs_layout = true;
         let context = Context::root(&());
 
         for (node_id, change) in dirty_nodes {
@@ -217,22 +220,28 @@ impl<'e> Runtime<'e> {
 
             // *self.meta.count = self.nodes.count();
             let _total = Instant::now();
-            self.layout()?;
-            // *self.meta.timings.layout = total.elapsed();
 
-            let _now = Instant::now();
-            self.position();
-            // *self.meta.timings.position = now.elapsed();
+            if self.needs_layout {
+                self.layout()?;
+                // *self.meta.timings.layout = total.elapsed();
 
-            let _now = Instant::now();
-            self.paint();
-            // *self.meta.timings.paint = now.elapsed();
+                let _now = Instant::now();
+                self.position();
+                // *self.meta.timings.position = now.elapsed();
 
-            let _now = Instant::now();
-            self.screen.render(&mut self.output)?;
-            // *self.meta.timings.render = now.elapsed();
-            // *self.meta.timings.total = total.elapsed();
-            self.screen.erase();
+                let _now = Instant::now();
+                self.paint();
+
+                // *self.meta.timings.paint = now.elapsed();
+
+                let _now = Instant::now();
+                self.screen.render(&mut self.output)?;
+                // *self.meta.timings.render = now.elapsed();
+                // *self.meta.timings.total = total.elapsed();
+                self.screen.erase();
+
+                self.needs_layout = false;
+            }
 
             self.tick_views();
 

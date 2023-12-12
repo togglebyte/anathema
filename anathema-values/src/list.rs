@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::ops::Deref;
 
@@ -7,7 +8,7 @@ use crate::{Change, Collection, NodeId, Path, StateValue, ValueRef, DIRTY_NODES}
 
 #[derive(Debug)]
 pub struct List<T> {
-    inner: Vec<StateValue<T>>,
+    inner: VecDeque<StateValue<T>>,
     subscribers: RefCell<Vec<NodeId>>,
 }
 
@@ -35,8 +36,8 @@ impl<T> List<T> {
         self.len() == 0
     }
 
-    pub fn pop(&mut self) -> Option<StateValue<T>> {
-        let ret = self.inner.pop()?;
+    pub fn pop_front(&mut self) -> Option<StateValue<T>> {
+        let ret = self.inner.pop_front()?;
         let index = self.inner.len();
         for s in self.subscribers.borrow().iter() {
             DIRTY_NODES.with(|nodes| {
@@ -48,7 +49,20 @@ impl<T> List<T> {
         Some(ret)
     }
 
-    pub fn remove(&mut self, index: usize) -> StateValue<T> {
+    pub fn pop_back(&mut self) -> Option<StateValue<T>> {
+        let ret = self.inner.pop_back()?;
+        let index = self.inner.len();
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| {
+                nodes
+                    .borrow_mut()
+                    .push((s.clone(), Change::RemoveIndex(index)))
+            });
+        }
+        Some(ret)
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<StateValue<T>> {
         let ret = self.inner.remove(index);
         for s in self.subscribers.borrow().iter() {
             DIRTY_NODES.with(|nodes| {
@@ -60,8 +74,15 @@ impl<T> List<T> {
         ret
     }
 
-    pub fn push(&mut self, value: T) {
-        self.inner.push(StateValue::new(value));
+    pub fn push_front(&mut self, value: T) {
+        self.inner.push_front(StateValue::new(value));
+        for s in self.subscribers.borrow().iter() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::InsertIndex(0))));
+        }
+    }
+
+    pub fn push_back(&mut self, value: T) {
+        self.inner.push_back(StateValue::new(value));
         for s in self.subscribers.borrow().iter() {
             DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Push)));
         }

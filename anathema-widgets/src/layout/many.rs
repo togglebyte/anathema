@@ -54,7 +54,7 @@ impl SizeMod {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Offset {
     axis: Axis,
     inner: i32,
@@ -110,10 +110,6 @@ impl Many {
             unconstrained,
         }
     }
-
-    pub fn offset(&self) -> i32 {
-        self.offset.inner
-    }
 }
 
 impl Layout for Many {
@@ -125,11 +121,6 @@ impl Layout for Many {
             Size::new(max_constraints.max_width, max_constraints.max_height),
             self.axis,
         );
-
-        if let Direction::Backward = self.direction {
-            panic!("this has to be done at some point...");
-            // gen.flip();
-        }
 
         let mut size = Size::ZERO;
 
@@ -195,6 +186,10 @@ impl Layout for Many {
                     .max(used_size.inner.width)
                     .max(max_constraints.min_width);
             }
+        }
+
+        if let Direction::Backward = self.direction {
+            size = used_size.max_size;
         }
 
         Ok(size)

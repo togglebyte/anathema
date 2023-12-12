@@ -215,8 +215,9 @@ impl TryFrom<ValueRef<'_>> for Axis {
 }
 
 /// Direction
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, Default)]
 pub enum Direction {
+    #[default]
     Forward,
     Backward,
 }
@@ -241,6 +242,20 @@ impl TryFrom<&str> for Direction {
         }
     }
 }
+
+impl TryFrom<ValueRef<'_>> for Direction {
+    type Error = ();
+
+    fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
+        match value {
+            ValueRef::Str("forward" | "horizontal") => Ok(Self::Forward),
+            ValueRef::Str("backward" | "vertical") => Ok(Self::Backward),
+            _ => Err(()),
+        }
+    }
+}
+
+impl_dyn_value!(Direction);
 
 // -----------------------------------------------------------------------------
 //     - Pos -

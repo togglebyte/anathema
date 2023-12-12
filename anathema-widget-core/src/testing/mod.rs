@@ -137,7 +137,7 @@ pub fn test_widget_container<'e>(
                 None if c == ' ' => continue,
                 None => {
                     panic!(
-                        "expected {c}, found nothing\noutput: {}",
+                        "expected {c}, found nothing\noutput: \n{}",
                         expected.rendered_output()
                     )
                 }

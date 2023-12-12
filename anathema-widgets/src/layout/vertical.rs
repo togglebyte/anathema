@@ -5,7 +5,6 @@ use anathema_widget_core::LayoutNodes;
 
 use super::many::Many;
 
-#[derive(Debug)]
 pub struct Vertical(Many);
 
 impl Vertical {
