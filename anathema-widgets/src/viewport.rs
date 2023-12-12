@@ -27,10 +27,8 @@ impl Viewport {
     pub fn offset(&self) -> i32 {
         let mut offset = self.offset.value_or_default();
 
-        if self.clamp.value_or(false) {
-            if offset < 0 {
-                offset = 0;
-            }
+        if self.clamp.value_or(false) && offset < 0 {
+            offset = 0;
         }
 
         offset
@@ -71,9 +69,9 @@ impl Widget for Viewport {
             match axis {
                 Axis::Horizontal => {
                     let total = children
-                    .iter_mut()
-                    .map(|(w, _)| w.size.width)
-                    .sum::<usize>();
+                        .iter_mut()
+                        .map(|(w, _)| w.size.width)
+                        .sum::<usize>();
 
                     let h = ctx.inner_size.width as i32 + offset;
                     if h > total as i32 {
@@ -82,9 +80,9 @@ impl Widget for Viewport {
                 }
                 Axis::Vertical => {
                     let total = children
-                    .iter_mut()
-                    .map(|(w, _)| w.size.height)
-                    .sum::<usize>();
+                        .iter_mut()
+                        .map(|(w, _)| w.size.height)
+                        .sum::<usize>();
 
                     let v = ctx.inner_size.height as i32 + offset;
                     if v > total as i32 {
