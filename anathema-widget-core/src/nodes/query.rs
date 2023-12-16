@@ -2,7 +2,7 @@ use anathema_values::{NodeId, ValueExpr};
 
 use super::{LoopNode, Node, Single, View};
 use crate::nodes::NodeKind;
-use crate::Nodes;
+use crate::{Nodes, WidgetContainer};
 
 pub struct Query<'nodes, 'expr, F> {
     pub(super) nodes: &'nodes mut Nodes<'expr>,
@@ -110,6 +110,46 @@ impl<'nodes, 'expr: 'nodes, F: Filter> Query<'nodes, 'expr, F> {
         Fun: FnMut(&mut Node<'_>),
     {
         Self::for_each_nodes(&self.filter, self.nodes, &mut fun);
+    }
+
+    fn first_node<'a>(
+        filter: &F,
+        nodes: &'a mut Nodes<'expr>,
+    ) -> Option<&'a mut WidgetContainer<'expr>> {
+        for node in nodes.inner.iter_mut() {
+            let found = filter.filter(node);
+
+            let n = match &mut node.kind {
+                NodeKind::Single(Single { widget, .. }) if found => return Some(widget),
+                NodeKind::Single(Single { children, .. }) => Self::first_node(filter, children),
+                NodeKind::View(View { nodes, .. }) => Self::first_node(filter, nodes),
+                NodeKind::Loop(LoopNode { iterations, .. }) => {
+                    for iteration in iterations {
+                        if let Some(node) = Self::first_node(filter, &mut iteration.body) {
+                            return Some(node);
+                        }
+                    }
+                    None
+                }
+                NodeKind::ControlFlow(if_else) => {
+                    if let Some(body) = if_else.body_mut() {
+                        Self::first_node(filter, body)
+                    } else {
+                        None
+                    }
+                }
+            };
+
+            if n.is_some() {
+                return n;
+            }
+        }
+
+        None
+    }
+
+    pub fn first(&mut self) -> Option<&mut WidgetContainer<'expr>> {
+        Self::first_node(&self.filter, self.nodes)
     }
 
     fn get_node<'a>(node_id: &NodeId, nodes: &'a mut Nodes<'expr>) -> Option<&'a mut Node<'expr>> {

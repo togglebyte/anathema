@@ -1,14 +1,12 @@
-use anathema_render::{Size, Style};
+use anathema_render::Size;
 use anathema_values::{Context, NodeId, Value};
 use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
 use anathema_widget_core::{
-    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetContainer,
-    WidgetFactory, WidgetStyle,
+    AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetFactory, WidgetStyle,
 };
-use unicode_width::UnicodeWidthStr;
 
-use crate::layout::text::{Entry, Range, TextAlignment, TextLayout, Wrap};
+use crate::layout::text::{Line, TextAlignment, TextLayout, Wrap};
 
 // -----------------------------------------------------------------------------
 //     - Text -
@@ -37,6 +35,8 @@ pub struct Text {
     pub text: Value<String>,
     /// Text style
     pub style: WidgetStyle,
+    /// Squash empty lines containing a singular whitespace char
+    pub squash: Value<bool>,
 
     layout: TextLayout,
 }
@@ -44,69 +44,40 @@ pub struct Text {
 impl Text {
     pub const KIND: &'static str = "Text";
 
-    fn text_and_style<'a>(
-        &'a self,
-        entry: &Entry,
-        children: &[&'a WidgetContainer<'_>],
-    ) -> (&'a str, Style) {
-        let widget_index = match entry {
-            Entry::All { index, .. } => index,
-            Entry::Range(Range { slice, .. }) => slice,
-            Entry::Newline => {
-                unreachable!("when painting the lines, the `Entry::NewLine` is always skipped")
-            }
-        };
-
-        let (text, style) = if *widget_index == 0 {
-            (self.text.str(), self.style.style())
-        } else {
-            let span = &children[widget_index - 1].to_ref::<TextSpan>();
-            (span.text.str(), span.style.style())
-        };
-
-        if let Entry::Range(Range { start, end, .. }) = entry {
-            (&text[*start..*end], style)
-        } else {
-            (text, style)
-        }
-    }
-
     fn paint_line(
         &self,
-        range: &mut std::ops::Range<usize>,
-        children: &[&WidgetContainer<'_>],
+        line: &Line,
+        children: &[&TextSpan],
         y: usize,
         ctx: &mut PaintCtx<'_, WithSize>,
     ) {
         let mut pos = LocalPos::new(0, y);
 
-        // Calculate the line width.
-        // This is only relevant if `Align` is not `Left`.
-        let mut line_width = 0;
-        for entry in &self.layout.lines.inner[range.clone()] {
-            let (text, _) = self.text_and_style(entry, children);
-            line_width += text.width();
-        }
-
         let max_width = self.layout.size().width;
         match self.text_alignment.value_or_default() {
             TextAlignment::Left => {}
-            TextAlignment::Centre => pos.x = max_width / 2 - line_width / 2,
-            TextAlignment::Right => pos.x = max_width - line_width,
+            TextAlignment::Centre => pos.x = max_width / 2 - line.width / 2,
+            TextAlignment::Right => pos.x = max_width - line.width,
         }
 
-        // ... then print the chars
-        for entry_index in range.clone() {
-            let entry = &self.layout.lines.inner[entry_index];
-            let (text, style) = self.text_and_style(entry, children);
+        for segment in &line.segments {
+            let (text, style) = match segment.index {
+                0 => (self.text.str(), self.style.style()),
+                i => {
+                    let child = children[i - 1];
+                    let text = child.text.str();
+                    let style = child.style.style();
+                    (text, style)
+                }
+            };
+
+            let text = segment.slice(text);
             let Some(new_pos) = ctx.print(text, style, pos) else {
                 continue;
             };
+
             pos = new_pos;
         }
-
-        range.end += 1;
-        range.start = range.end;
     }
 }
 
@@ -120,16 +91,18 @@ impl Widget for Text {
         self.text_alignment.resolve(context, None);
         self.text.resolve(context, None);
         self.style.resolve(context, None);
+        self.squash.resolve(context, None);
     }
 
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
-        self.layout = TextLayout::ZERO;
-        let max_size = Size::new(nodes.constraints.max_width, nodes.constraints.max_height);
-        self.layout.set_max_size(max_size);
+        self.layout
+            .reset(nodes.constraints.max_width, self.squash.value_or(true));
 
-        if let Some(wrap) = self.word_wrap.value_ref() {
-            self.layout.set_wrap(*wrap)
-        }
+        // TODO: impl word wrap
+        // if let Some(wrap) = self.word_wrap.value_ref() {
+        //     self.layout.set_wrap(*wrap)
+        // }
+
         self.layout.process(self.text.str());
 
         nodes.for_each(|mut span| {
@@ -144,25 +117,20 @@ impl Widget for Text {
             Ok(())
         })?;
 
+        self.layout.finish();
+
         Ok(self.layout.size())
     }
 
     fn paint<'ctx>(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
-        let mut y = 0;
-        let mut range = 0..0;
-        let children = children.iter_mut().map(|(c, _)| &*c).collect::<Vec<_>>();
-        for entry in &self.layout.lines.inner {
-            match entry {
-                Entry::All { .. } | Entry::Range(_) => range.end += 1,
-                Entry::Newline => {
-                    self.paint_line(&mut range, &children, y, &mut ctx);
-                    y += 1;
-                    continue;
-                }
-            };
+        let children = children
+            .iter_mut()
+            .map(|(c, _)| c.to_ref::<TextSpan>())
+            .collect::<Vec<_>>();
+        let lines = self.layout.lines();
+        for (y, line) in lines.iter().enumerate() {
+            self.paint_line(line, children.as_slice(), y, &mut ctx);
         }
-
-        self.paint_line(&mut range, &children, y, &mut ctx);
     }
 
     fn position<'ctx>(&mut self, _: &mut Nodes<'_>, _: PositionCtx) {
@@ -212,12 +180,14 @@ pub(crate) struct TextFactory;
 
 impl WidgetFactory for TextFactory {
     fn make(&self, mut ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
+        let word_wrap = ctx.get("wrap");
         let mut widget = Text {
-            word_wrap: ctx.get("wrap"),
             text_alignment: ctx.get("text-align"),
+            squash: ctx.get("squash"),
             style: ctx.style(),
-            layout: TextLayout::ZERO,
+            layout: TextLayout::new(0, false, word_wrap.value_or_default()),
             text: ctx.text.take(),
+            word_wrap,
         };
         widget.text.resolve(ctx.ctx, Some(&ctx.node_id));
 
@@ -359,7 +329,7 @@ mod test {
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
-            ║             a one║
+            ║            a one ║
             ║xxxxxxxxxxxxxxxxxx║
             ║                  ║
             ╚══════════════════╝
@@ -380,7 +350,7 @@ mod test {
             FakeTerm::from_str(
                 r#"
             ╔═] Fake term [════╗
-            ║       a one      ║
+            ║      a one       ║
             ║xxxxxxxxxxxxxxxxxx║
             ║                  ║
             ╚══════════════════╝

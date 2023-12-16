@@ -9,6 +9,7 @@ mod expand;
 mod hstack;
 mod position;
 mod spacer;
+mod stack;
 mod text;
 mod viewport;
 mod vstack;

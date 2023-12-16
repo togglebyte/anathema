@@ -171,22 +171,26 @@ impl Layout for Many {
             used_size.apply(spacer_size);
         }
 
-        match self.axis {
-            Axis::Vertical => {
-                size.width = size.width.max(used_size.inner.width);
-                size.height = size
-                    .height
-                    .max(used_size.inner.height)
-                    .max(max_constraints.min_height);
-            }
-            Axis::Horizontal => {
-                size.height = size.height.max(used_size.inner.height);
-                size.width = size
-                    .width
-                    .max(used_size.inner.width)
-                    .max(max_constraints.min_width);
-            }
-        }
+        size.width = used_size.inner.width.max(max_constraints.min_width);
+        size.height = (used_size.inner.height).max(max_constraints.min_height);
+
+        // match self.axis {
+        //     Axis::Vertical => {
+        //         size.width = used_size.inner.width.max(max_constraints.min_width;
+        //         size.height = (used_size.inner.height).max(max_constraints.min_height);
+        //     }
+        //     Axis::Horizontal => {
+        //         size.height = size.height.max(used_size.inner.height);
+        //         size.height = size
+        //             .height
+        //             .max(used_size.inner.height)
+        //             .max(max_constraints.min_height);
+        //         size.width = size
+        //             .width
+        //             .max(used_size.inner.width)
+        //             .max(max_constraints.min_width);
+        //     }
+        // }
 
         if let Direction::Backward = self.direction {
             size = used_size.max_size;

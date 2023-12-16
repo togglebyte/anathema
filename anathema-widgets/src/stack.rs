@@ -2,11 +2,11 @@ use anathema_render::Size;
 use anathema_values::{Context, NodeId, Value};
 use anathema_widget_core::contexts::PositionCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::{
-    AnyWidget, Axis, FactoryContext, LayoutNodes, Nodes, Widget, WidgetFactory,
-};
+use anathema_widget_core::layout::{Direction, Layout};
+use anathema_widget_core::{Axis, LayoutNodes, Nodes};
 
-use crate::stack::Stack;
+use crate::layout::horizontal::Horizontal;
+use crate::layout::vertical::Vertical;
 
 /// A widget that lays out its children vertically.
 /// ```text
@@ -35,43 +35,74 @@ use crate::stack::Stack;
 /// 3
 /// ```
 #[derive(Debug)]
-pub struct VStack(Stack);
+pub struct Stack {
+    /// If a width is provided then the layout constraints will be tight for width
+    pub width: Value<usize>,
+    /// If a height is provided then the layout constraints will be tight for height
+    pub height: Value<usize>,
+    /// The minimum width. This will force the minimum constrained width to expand to
+    /// this value.
+    pub min_width: Value<usize>,
+    /// The minimum height. This will force the minimum constrained height to expand to
+    /// this value.
+    pub min_height: Value<usize>,
+    axis: Axis,
+}
 
-impl VStack {
+impl Stack {
     /// Creates a new instance of a `VStack`
-    pub fn new(width: Value<usize>, height: Value<usize>) -> Self {
-        Self(Stack::new(width, height, Axis::Vertical))
+    pub fn new(width: Value<usize>, height: Value<usize>, axis: Axis) -> Self {
+        Self {
+            width,
+            height,
+            min_width: Value::Empty,
+            min_height: Value::Empty,
+            axis,
+        }
     }
 }
 
-impl Widget for VStack {
-    fn kind(&self) -> &'static str {
-        "VStack"
+impl Stack {
+    pub(crate) fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
+        self.width.resolve(context, None);
+        self.min_width.resolve(context, None);
+        self.height.resolve(context, None);
+        self.min_height.resolve(context, None);
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        self.0.update(context, node_id)
+    pub(crate) fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
+        if let Some(width) = self.width.value() {
+            nodes.constraints.max_width = nodes.constraints.max_width.min(width);
+            nodes.constraints.min_width = nodes.constraints.max_width.min(width);
+        }
+
+        if let Some(height) = self.height.value() {
+            nodes.constraints.max_height = nodes.constraints.max_height.min(height);
+            nodes.constraints.min_height = nodes.constraints.max_height.min(height);
+        }
+
+        if let Some(min_width) = self.min_width.value() {
+            nodes.constraints.min_width = nodes.constraints.min_width.max(min_width);
+        }
+        if let Some(min_height) = self.min_height.value() {
+            nodes.constraints.min_height = nodes.constraints.min_height.max(min_height);
+        }
+
+        match self.axis {
+            Axis::Vertical => Vertical::new(Direction::Forward).layout(nodes),
+            Axis::Horizontal => Horizontal::new(Direction::Forward).layout(nodes),
+        }
     }
 
-    fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
-        self.0.layout(nodes)
-    }
-
-    fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
-        self.0.position(children, ctx)
-    }
-}
-
-pub(crate) struct VStackFactory;
-
-impl WidgetFactory for VStackFactory {
-    fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let width = ctx.get("width");
-        let height = ctx.get("height");
-        let mut widget = VStack::new(width, height);
-        widget.0.min_width = ctx.get("min-width");
-        widget.0.min_height = ctx.get("min-height");
-        Ok(Box::new(widget))
+    pub(crate) fn position(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
+        let mut pos = ctx.pos;
+        for (widget, children) in children.iter_mut() {
+            widget.position(children, pos);
+            match self.axis {
+                Axis::Vertical => pos.y += widget.outer_size().height as i32,
+                Axis::Horizontal => pos.x += widget.outer_size().width as i32,
+            }
+        }
     }
 }
 
