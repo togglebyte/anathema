@@ -8,6 +8,8 @@ impl<T> Storage<T> {
         Self(Slab::empty())
     }
 
+    // De-duplicate values.
+    // If the value already exist, just return the value position,
     pub(crate) fn push(&mut self, value: T) -> usize
     where
         T: PartialEq,

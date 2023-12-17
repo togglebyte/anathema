@@ -1,7 +1,7 @@
 use self::optimizer::Expression;
 pub(crate) use self::optimizer::Optimizer;
 use super::error::Result;
-use crate::{StringId, ValueId};
+use crate::{StringId, ValueId, ViewId};
 
 mod optimizer;
 
@@ -20,7 +20,7 @@ pub enum Instruction {
         data: ValueId,
         size: usize,
     },
-    View(StringId),
+    View(ViewId),
     Node {
         ident: StringId,
         scope_size: usize,
@@ -70,7 +70,7 @@ impl Compiler {
             self.ep += 1;
             match expr {
                 Expression::Node { ident, scope_size } => self.compile_node(*ident, *scope_size),
-                Expression::View(ident) => self.compile_view(*ident),
+                Expression::View(view) => self.compile_view(*view),
                 Expression::LoadText(index) => self.compile_text(*index),
                 Expression::LoadAttribute { key, value } => self.compile_attribute(*key, *value),
                 Expression::If { cond, size } => {
@@ -89,8 +89,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_view(&mut self, ident: StringId) -> Result<()> {
-        self.output.push(Instruction::View(ident));
+    fn compile_view(&mut self, view: ViewId) -> Result<()> {
+        self.output.push(Instruction::View(view));
         Ok(())
     }
 

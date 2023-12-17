@@ -5,11 +5,12 @@ pub use self::strings::StringId;
 use self::strings::Strings;
 pub use self::values::ValueId;
 use self::values::Values;
+pub use self::views::{ViewId, ViewIds};
 
-mod paths;
 mod storage;
 mod strings;
 mod values;
+pub mod views;
 
 // -----------------------------------------------------------------------------
 //   - Constants -
@@ -31,6 +32,10 @@ impl Constants {
 
     pub(crate) fn store_string(&mut self, string: impl Into<String>) -> StringId {
         self.strings.push(string.into())
+    }
+
+    pub(crate) fn store_view(&mut self, views: &mut ViewIds, string: String) -> ViewId {
+        views.push(string)
     }
 
     pub fn store_value(&mut self, value: ValueExpr) -> ValueId {

@@ -20,16 +20,16 @@ enum ViewFactory {
 static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
 static TAB_VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
 static VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
-static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<String, ViewFactory>>> = OnceLock::new();
+static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<usize, ViewFactory>>> = OnceLock::new();
 
 pub struct RegisteredViews;
 
 impl RegisteredViews {
-    pub fn add_view(key: impl Into<String>, view: impl AnyView + 'static) {
+    pub fn add_view(key: usize, view: impl AnyView + 'static) {
         Self::add(key, ViewFactory::View(Some(Box::new(view))));
     }
 
-    pub fn add_prototype<T, F>(key: impl Into<String>, f: F)
+    pub fn add_prototype<T, F>(key: usize, f: F)
     where
         F: Send + 'static + Fn() -> T,
         T: 'static + View + Debug + Send,
@@ -37,16 +37,16 @@ impl RegisteredViews {
         Self::add(key, ViewFactory::Prototype(Box::new(move || Box::new(f()))));
     }
 
-    fn add(key: impl Into<String>, view: ViewFactory) {
+    fn add(key: usize, view: ViewFactory) {
         REGISTERED_VIEWS
             .get_or_init(Default::default)
             .lock()
-            .insert(key.into(), view);
+            .insert(key, view);
     }
 
-    pub fn get(id: &str) -> Result<Box<dyn AnyView>> {
+    pub fn get(id: usize) -> Result<Box<dyn AnyView>> {
         let mut views = REGISTERED_VIEWS.get_or_init(Default::default).lock();
-        let view = views.get_mut(id);
+        let view = views.get_mut(&id);
 
         match view {
             None => Err(Error::ViewNotFound),

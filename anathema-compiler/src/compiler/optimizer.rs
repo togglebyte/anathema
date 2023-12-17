@@ -1,5 +1,5 @@
 use crate::parsing::parser::Expression as ParseExpr;
-use crate::{StringId, ValueId};
+use crate::{StringId, ValueId, ViewId};
 
 enum ControlFlow {
     If(ValueId),
@@ -21,7 +21,7 @@ pub(crate) enum Expression {
         binding: StringId,
         size: usize,
     },
-    View(StringId),
+    View(ViewId),
     LoadText(ValueId),
     LoadAttribute {
         key: StringId,
@@ -216,13 +216,14 @@ mod test {
     use crate::lexer::Lexer;
     use crate::parsing::parser::Parser;
     use crate::token::Tokens;
-    use crate::Constants;
+    use crate::{Constants, ViewIds};
 
     fn parse(src: &str) -> Vec<Expression> {
         let mut consts = Constants::new();
+        let mut view_ids = ViewIds::new();
         let lexer = Lexer::new(src, &mut consts);
         let tokens = Tokens::new(lexer.collect::<Result<_, _>>().unwrap(), src.len());
-        let parser = Parser::new(tokens, &mut consts, src);
+        let parser = Parser::new(tokens, &mut consts, src, &mut view_ids);
         let expr = parser.map(|e| e.unwrap()).collect();
         let opt = Optimizer::new(expr);
         opt.optimize()

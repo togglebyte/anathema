@@ -3,13 +3,13 @@ use anathema_values::ValueExpr;
 use super::pratt::{eval, expr};
 use crate::error::{src_line_no, Error, ErrorKind, Result};
 use crate::token::{Kind, Operator, Tokens, Value};
-use crate::{Constants, StringId, ValueId};
+use crate::{Constants, StringId, ValueId, ViewId, ViewIds};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expression {
     LoadValue(ValueId),
     LoadAttribute { key: StringId, value: ValueId },
-    View(StringId),
+    View(ViewId),
     Node(StringId),
     For { data: ValueId, binding: StringId },
     If(ValueId),
@@ -36,8 +36,9 @@ enum State {
 // -----------------------------------------------------------------------------
 //     - Parser -
 // -----------------------------------------------------------------------------
-pub struct Parser<'src, 'consts> {
+pub struct Parser<'src, 'consts, 'view> {
     tokens: Tokens,
+    views: &'view mut ViewIds,
     consts: &'consts mut Constants,
     src: &'src str,
     state: State,
@@ -47,8 +48,13 @@ pub struct Parser<'src, 'consts> {
     done: bool,
 }
 
-impl<'src, 'consts> Parser<'src, 'consts> {
-    pub(crate) fn new(mut tokens: Tokens, consts: &'consts mut Constants, src: &'src str) -> Self {
+impl<'src, 'consts, 'view> Parser<'src, 'consts, 'view> {
+    pub(crate) fn new(
+        mut tokens: Tokens,
+        consts: &'consts mut Constants,
+        src: &'src str,
+        views: &'view mut ViewIds,
+    ) -> Self {
         tokens.consume_newlines();
         let base_indent = match tokens.peek() {
             Kind::Indent(indent) => indent,
@@ -58,6 +64,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
         Self {
             tokens,
             consts,
+            views,
             src,
             state: State::EnterScope,
             open_scopes: Vec::new(),
@@ -288,11 +295,13 @@ impl<'src, 'consts> Parser<'src, 'consts> {
             self.tokens.consume_indent();
 
             let ident = self.read_ident()?;
+            let ident = self.consts.lookup_string(ident);
+            let view_id = self.consts.store_view(self.views, ident.to_owned());
             self.tokens.consume_indent();
 
             self.next_state();
             self.next_state();
-            Ok(Some(Expression::View(ident)))
+            Ok(Some(Expression::View(view_id)))
         } else {
             self.next_state();
             Ok(None)
@@ -438,7 +447,7 @@ impl<'src, 'consts> Parser<'src, 'consts> {
 // -----------------------------------------------------------------------------
 //     - Iterator -
 // -----------------------------------------------------------------------------
-impl Iterator for Parser<'_, '_> {
+impl Iterator for Parser<'_, '_, '_> {
     type Item = Result<Expression>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -467,9 +476,10 @@ mod test {
 
     fn parse(src: &str) -> Vec<Result<Expression>> {
         let mut consts = Constants::new();
+        let mut view_ids = ViewIds::new();
         let lexer = Lexer::new(src, &mut consts);
         let tokens = Tokens::new(lexer.collect::<Result<Vec<_>>>().unwrap(), src.len());
-        let parser = Parser::new(tokens, &mut consts, src);
+        let parser = Parser::new(tokens, &mut consts, src, &mut view_ids);
 
         parser.collect::<Vec<_>>()
     }

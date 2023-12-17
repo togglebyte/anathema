@@ -1,4 +1,4 @@
-use anathema_compiler::{Constants, Instruction, StringId};
+use anathema_compiler::{Constants, Instruction, StringId, ViewId};
 use anathema_values::{Attributes, ValueExpr};
 use anathema_widget_core::expressions::{
     ControlFlow, ElseExpr, Expression, IfExpr, LoopExpr, SingleNodeExpr, ViewExpr,
@@ -148,9 +148,7 @@ impl<'vm> Scope<'vm> {
         Ok(node)
     }
 
-    fn view(&mut self, ident: StringId, views: &mut ViewTemplates) -> Result<Expression> {
-        let ident = self.consts.lookup_string(ident).to_owned();
-
+    fn view(&mut self, view: ViewId, views: &mut ViewTemplates) -> Result<Expression> {
         let state = match self.instructions.get(0) {
             Some(Instruction::LoadValue(i)) => {
                 let val = self.consts.lookup_value(*i).clone();
@@ -160,10 +158,10 @@ impl<'vm> Scope<'vm> {
             _ => None,
         };
 
-        let body = views.get(&ident)?;
+        let body = views.get(view)?;
 
         let node = Expression::View(ViewExpr {
-            id: ident,
+            id: view.0,
             body,
             state,
         });

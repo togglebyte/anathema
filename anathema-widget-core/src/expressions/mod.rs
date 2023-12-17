@@ -12,6 +12,17 @@ use crate::{Factory, Pos, WidgetContainer};
 
 mod controlflow;
 
+// Create the root view, this is so events can be handled and state can
+// be associated with the root view, without having to register additional
+// views.
+pub fn root_view(body: Vec<Expression>, id: usize) -> Expression {
+    Expression::View(ViewExpr {
+        id,
+        state: None,
+        body,
+    })
+}
+
 // -----------------------------------------------------------------------------
 //   - A single Node -
 // -----------------------------------------------------------------------------
@@ -187,7 +198,7 @@ pub(crate) enum ViewState<'e> {
 
 #[derive(Debug, Clone)]
 pub struct ViewExpr {
-    pub id: String,
+    pub id: usize,
     pub state: Option<ValueExpr>,
     pub body: Vec<Expression>,
 }
@@ -212,7 +223,7 @@ impl ViewExpr {
 
         let node = Node {
             kind: NodeKind::View(View {
-                view: RegisteredViews::get(&self.id)?,
+                view: RegisteredViews::get(self.id)?,
                 nodes: Nodes::new(&self.body, node_id.child(0)),
                 state,
             }),
@@ -325,15 +336,15 @@ mod test {
     #[test]
     #[should_panic(expected = "ViewNotFound")]
     fn eval_missing_view() {
-        let expr = view_expression("theview", None, vec![]).test();
+        let expr = view_expression(12345, None, vec![]).test();
         let _ = expr.eval().unwrap();
     }
 
     #[test]
     fn eval_prototype_view() {
-        RegisteredViews::add_prototype("aview", || AView);
+        RegisteredViews::add_prototype(0, || AView);
 
-        let expr = view_expression("aview", None, vec![]).test();
+        let expr = view_expression(0, None, vec![]).test();
         let node = expr.eval().unwrap();
 
         assert!(matches!(
@@ -348,8 +359,8 @@ mod test {
     #[test]
     #[should_panic(expected = "ViewConsumed")]
     fn consume_view_twice() {
-        RegisteredViews::add_view("aview", AView);
-        let expr = view_expression("aview", None, vec![]).test();
+        RegisteredViews::add_view(0, AView);
+        let expr = view_expression(0, None, vec![]).test();
         let _ = expr.eval().unwrap();
         let _ = expr.eval().unwrap();
     }

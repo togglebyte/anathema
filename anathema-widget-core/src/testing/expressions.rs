@@ -51,14 +51,6 @@ pub fn if_expression(
     })
 }
 
-pub fn view_expression(
-    id: impl Into<String>,
-    state: Option<ValueExpr>,
-    body: Vec<Expression>,
-) -> Expression {
-    Expression::View(ViewExpr {
-        id: id.into(),
-        state,
-        body,
-    })
+pub fn view_expression(id: usize, state: Option<ValueExpr>, body: Vec<Expression>) -> Expression {
+    Expression::View(ViewExpr { id, state, body })
 }
