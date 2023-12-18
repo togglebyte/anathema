@@ -79,7 +79,8 @@ impl<'e> LoopNode<'e> {
                 }
             };
 
-            while let Ok(res) = iter.body.next(&context, f) {
+            loop {
+                let res = iter.body.next(&context, f)?;
                 match res {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
@@ -151,10 +152,6 @@ impl<'e> LoopNode<'e> {
         &mut self,
     ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
         self.iterations.iter_mut().flat_map(|i| i.body.iter_mut())
-    }
-
-    pub(super) fn node_ids(&self) -> Box<dyn Iterator<Item = &NodeId> + '_> {
-        Box::new(self.iterations.iter().flat_map(|i| i.body.node_ids()))
     }
 
     pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {

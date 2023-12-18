@@ -90,10 +90,6 @@ impl<'e> IfElse<'e> {
             .flat_map(|nodes| nodes.iter_mut())
     }
 
-    pub(super) fn node_ids(&self) -> Box<dyn Iterator<Item = &NodeId> + '_> {
-        Box::new(self.body().into_iter().flat_map(|nodes| nodes.node_ids()))
-    }
-
     pub(super) fn reset_cache(&mut self) {
         self.if_node.body.reset_cache();
         self.elses.iter_mut().for_each(|e| e.body.reset_cache());

@@ -110,7 +110,7 @@ impl<'e> Node<'e> {
             },
             NodeKind::View(View { tabindex, .. }) => {
                 tabindex.resolve(&context, None);
-                Views::update(self.node_id.clone(), tabindex.value());
+                Views::update(&self.node_id, tabindex.value());
             }
             // NOTE: the control flow has no immediate information
             // that needs updating, so an update should never end with the
@@ -179,6 +179,21 @@ pub struct Nodes<'expr> {
 }
 
 impl<'expr> Nodes<'expr> {
+    pub fn with_view<F>(&mut self, node_id: &NodeId, mut f: F)
+    where
+        F: FnMut(&mut View<'_>),
+    {
+        if let Some(node) = self.query().get(node_id) {
+            if let Node {
+                kind: NodeKind::View(view),
+                ..
+            } = node
+            {
+                f(view);
+            }
+        }
+    }
+
     fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
@@ -266,19 +281,6 @@ impl<'expr> Nodes<'expr> {
             nodes: self,
             filter: (),
         }
-    }
-
-    fn node_ids(&self) -> impl Iterator<Item = &NodeId> + '_ {
-        self.inner.iter().flat_map(|node| match &node.kind {
-            NodeKind::Single(Single {
-                widget: _,
-                children,
-                ..
-            }) => Box::new(std::iter::once(&node.node_id).chain(children.node_ids())),
-            NodeKind::Loop(loop_state) => loop_state.node_ids(),
-            NodeKind::ControlFlow(control_flow) => control_flow.node_ids(),
-            NodeKind::View(View { nodes, .. }) => Box::new(nodes.node_ids()),
-        })
     }
 
     /// A mutable iterator over [`WidgetContainer`]s and their children

@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef, Value,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, State, Value, ValueExpr, ValueRef,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -207,7 +207,6 @@ pub struct ViewExpr {
 
 impl ViewExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
-
         let state = match &self.state {
             Some(expr) => {
                 let mut resolver = Deferred::new(context);
@@ -221,10 +220,11 @@ impl ViewExpr {
             None => ViewState::Internal,
         };
 
-        let tabindex = self.attributes.get("tabindex").map(|expr| {
-            let mut resolver = Deferred::new(context);
-            u32::init_value(context, Some(&node_id), expr)
-        }).unwrap_or(Value::Empty);
+        let tabindex = self
+            .attributes
+            .get("tabindex")
+            .map(|expr| u32::init_value(context, Some(&node_id), expr))
+            .unwrap_or(Value::Empty);
 
         Views::insert(node_id.clone(), tabindex.value());
 

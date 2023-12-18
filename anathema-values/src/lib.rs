@@ -45,6 +45,10 @@ pub fn drain_dirty_nodes() -> Vec<(NodeId, Change)> {
     DIRTY_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
 }
 
+pub fn drain_removed_nodes() -> Vec<NodeId> {
+    REMOVED_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
+}
+
 pub fn remove_node(node: NodeId) {
     REMOVED_NODES.with(|nodes| nodes.borrow_mut().push(node));
 }

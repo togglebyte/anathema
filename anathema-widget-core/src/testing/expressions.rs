@@ -52,5 +52,10 @@ pub fn if_expression(
 }
 
 pub fn view_expression(id: usize, state: Option<ValueExpr>, body: Vec<Expression>) -> Expression {
-    Expression::View(ViewExpr { id, state, body, attributes: Attributes::new() })
+    Expression::View(ViewExpr {
+        id,
+        state,
+        body,
+        attributes: Attributes::new(),
+    })
 }

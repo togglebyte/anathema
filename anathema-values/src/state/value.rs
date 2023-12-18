@@ -12,6 +12,7 @@ pub enum Change {
     Update,
     Push,
     InsertIndex(usize),
+    // TODO: is this needed?
     InsertKey(String),
     RemoveIndex(usize),
     RemoveKey(String),

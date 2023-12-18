@@ -1,17 +1,6 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::ops::Deref;
 use std::time::Duration;
 
 use anathema_render::Size;
-use anathema_values::{Collection, NodeId, Path, State, Value};
-use anathema_widget_core::Nodes;
-
-const META: &'static str = "_meta";
-const TIMINGS: &'static str = "timings";
-const SIZE: &'static str = "size";
-const FOCUS: &'static str = "focus";
-const COUNT: &'static str = "count";
 
 #[derive(Debug)]
 pub struct Meta {

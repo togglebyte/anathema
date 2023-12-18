@@ -131,16 +131,11 @@ impl<'state> Resolver<'_, 'state> {
                     ValueRef::Str(val) => Some(val.into()),
                     ValueRef::Owned(val) => Some(val.to_string()),
                     ValueRef::Empty => None,
-                    val => {
-                        // TODO: panic...
-                        panic!("don't panic here: {val:?}")
-                    }
+                    _ => None,
                 }
             }
             ValueRef::Empty => None,
-
-            // TODO: probably shouldn't panic here, but we'll do it while working on this
-            v => panic!("{v:?}"),
+            _ => None,
         }
     }
 

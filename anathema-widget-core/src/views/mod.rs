@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::OnceLock;
 
 use anathema_values::hashmap::HashMap;
@@ -58,6 +57,7 @@ impl RegisteredViews {
     }
 }
 
+/// NodeIds for views and their tab index
 pub struct Views;
 
 impl Views {
@@ -65,18 +65,25 @@ impl Views {
         VIEWS.lock()
     }
 
-    pub fn for_each<F>(f: F)
+    pub fn for_each<F>(mut f: F)
     where
-        F: FnMut(&NodeId, &Option<u32>),
+        F: FnMut(&NodeId, Option<u32>),
     {
-        // VIEWS.lock().iter().for_each(f);
+        VIEWS
+            .lock()
+            .iter()
+            .map(|field| (field.key(), field.value))
+            .for_each(|(key, value)| f(key, value));
     }
 
     pub(crate) fn insert(node_id: NodeId, tabindex: Option<u32>) {
         VIEWS.lock().insert(node_id, tabindex);
     }
 
-    pub(crate) fn update(node_id: NodeId, tabindex: Option<u32>) {
+    pub(crate) fn update(node_id: &NodeId, tabindex: Option<u32>) {
+        if let Some(old_index) = VIEWS.lock().get_mut(node_id) {
+            *old_index = tabindex;
+        }
     }
 }
 
