@@ -32,8 +32,6 @@ impl<'a> FactoryContext<'a> {
     }
 
     pub fn style(&self) -> WidgetStyle {
-        let _fg: Value<anathema_render::Color> = self.get("foreground");
-
         WidgetStyle {
             fg: self.get("foreground"),
             bg: self.get("background"),

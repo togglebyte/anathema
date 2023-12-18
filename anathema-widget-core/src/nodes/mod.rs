@@ -2,14 +2,16 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver};
+use anathema_values::{
+    Change, Context, LocalScope, NodeId, Resolver, Value, ValueRef, ValueResolver,
+};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
 use self::query::Query;
 use crate::error::Result;
 use crate::expressions::{Expression, ViewState};
-use crate::views::AnyView;
+use crate::views::{AnyView, Views};
 use crate::{Event, WidgetContainer};
 
 mod controlflow;
@@ -56,7 +58,9 @@ impl<'e> Node<'e> {
 
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::View(View { nodes, state, view }) => {
+            NodeKind::View(View {
+                nodes, state, view, ..
+            }) => {
                 let context = match state {
                     ViewState::Static(state) => Context::root(*state),
                     ViewState::External { path, .. } => {
@@ -104,11 +108,14 @@ impl<'e> Node<'e> {
                 Change::Push => loop_node.push(),
                 _ => (),
             },
-            // NOTE: the control flow and view has no immediate information
+            NodeKind::View(View { tabindex, .. }) => {
+                tabindex.resolve(&context, None);
+                Views::update(self.node_id.clone(), tabindex.value());
+            }
+            // NOTE: the control flow has no immediate information
             // that needs updating, so an update should never end with the
             // control flow node
             NodeKind::ControlFlow(_) => {}
-            NodeKind::View(View { .. }) => todo!(),
         }
     }
 }
@@ -124,6 +131,7 @@ pub struct View<'e> {
     pub(crate) view: Box<dyn AnyView>,
     pub(crate) nodes: Nodes<'e>,
     pub(crate) state: ViewState<'e>,
+    pub tabindex: Value<u32>,
 }
 
 impl fmt::Debug for View<'_> {

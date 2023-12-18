@@ -105,16 +105,8 @@ impl<'vm> Scope<'vm> {
         Ok(nodes)
     }
 
-    fn node(
-        &mut self,
-        ident: StringId,
-        scope_size: usize,
-        views: &mut ViewTemplates,
-    ) -> Result<Expression> {
-        let ident = self.consts.lookup_string(ident);
-
+    fn attributes(&mut self) -> Attributes {
         let mut attributes = Attributes::new();
-        let mut text = None::<ValueExpr>;
         let mut ip = 0;
 
         loop {
@@ -124,6 +116,31 @@ impl<'vm> Scope<'vm> {
                     let value = self.consts.lookup_value(*value);
                     attributes.insert(key.to_string(), value.clone());
                 }
+                _ => break,
+            }
+            ip += 1;
+        }
+
+        // Remove processed attribute and text instructions
+        self.instructions.drain(..ip);
+        attributes
+    }
+
+    fn node(
+        &mut self,
+        ident: StringId,
+        scope_size: usize,
+        views: &mut ViewTemplates,
+    ) -> Result<Expression> {
+        let ident = self.consts.lookup_string(ident);
+
+        let mut text = None::<ValueExpr>;
+        // let mut attributes = Attributes::new();
+        let attributes = self.attributes();
+        let mut ip = 0;
+
+        loop {
+            match self.instructions.get(ip) {
                 Some(Instruction::LoadValue(i)) => {
                     text = Some(self.consts.lookup_value(*i).clone())
                 }
@@ -149,6 +166,8 @@ impl<'vm> Scope<'vm> {
     }
 
     fn view(&mut self, view: ViewId, views: &mut ViewTemplates) -> Result<Expression> {
+        let attributes = self.attributes();
+
         let state = match self.instructions.get(0) {
             Some(Instruction::LoadValue(i)) => {
                 let val = self.consts.lookup_value(*i).clone();
@@ -163,6 +182,7 @@ impl<'vm> Scope<'vm> {
         let node = Expression::View(ViewExpr {
             id: view.0,
             body,
+            attributes,
             state,
         });
 

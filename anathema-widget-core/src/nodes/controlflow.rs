@@ -1,7 +1,6 @@
 use anathema_values::{Change, Context, DynValue, NodeId, Value};
 
 use crate::expressions::{ElseExpr, IfExpr};
-use crate::views::TabIndex;
 use crate::{Nodes, WidgetContainer};
 
 #[derive(Debug)]
@@ -110,13 +109,6 @@ impl<'e> IfElse<'e> {
             if self.if_node.node_id.eq(node_id) {
                 self.if_node.resolve(context);
                 let current = self.if_node.cond.value_or_default();
-                if self.if_node.previous != current && !current {
-                    // remove from tab index
-                    TabIndex::remove_all(self.if_node.body.node_ids());
-                } else {
-                    // add to tab index
-                    TabIndex::add_all(self.if_node.body.node_ids());
-                }
                 self.if_node.previous = current;
             } else {
                 self.if_node.body.update(node_id, change, context);
@@ -129,13 +121,6 @@ impl<'e> IfElse<'e> {
                 if e.node_id.eq(node_id) {
                     e.resolve(context);
                     let current = self.if_node.cond.value_or_default();
-                    if e.previous != current && !current {
-                        // remove from tab index
-                        TabIndex::remove_all(e.body.node_ids());
-                    } else {
-                        // add to tab index
-                        TabIndex::add_all(e.body.node_ids());
-                    }
                     e.previous = current;
                 } else {
                     e.body.update(node_id, change, context);
@@ -150,6 +135,7 @@ impl<'e> IfElse<'e> {
 #[derive(Debug)]
 pub struct If<'e> {
     cond: Value<bool>,
+    // Previous condition value
     previous: bool,
     pub(super) body: Nodes<'e>,
     node_id: NodeId,
@@ -168,6 +154,7 @@ impl If<'_> {
 #[derive(Debug)]
 pub struct Else<'e> {
     cond: Option<Value<bool>>,
+    // Previous condition value
     previous: bool,
     pub(super) body: Nodes<'e>,
     node_id: NodeId,

@@ -1,13 +1,13 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef, Value,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::nodes::{IfElse, LoopNode, Node, NodeKind, Nodes, Single, View};
-use crate::views::{RegisteredViews, TabIndex, Views};
+use crate::views::{RegisteredViews, Views};
 use crate::{Factory, Pos, WidgetContainer};
 
 mod controlflow;
@@ -20,6 +20,7 @@ pub fn root_view(body: Vec<Expression>, id: usize) -> Expression {
         id,
         state: None,
         body,
+        attributes: Attributes::new(),
     })
 }
 
@@ -201,12 +202,11 @@ pub struct ViewExpr {
     pub id: usize,
     pub state: Option<ValueExpr>,
     pub body: Vec<Expression>,
+    pub attributes: Attributes,
 }
 
 impl ViewExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
-        TabIndex::insert(node_id.clone());
-        Views::insert(node_id.clone());
 
         let state = match &self.state {
             Some(expr) => {
@@ -221,11 +221,19 @@ impl ViewExpr {
             None => ViewState::Internal,
         };
 
+        let tabindex = self.attributes.get("tabindex").map(|expr| {
+            let mut resolver = Deferred::new(context);
+            u32::init_value(context, Some(&node_id), expr)
+        }).unwrap_or(Value::Empty);
+
+        Views::insert(node_id.clone(), tabindex.value());
+
         let node = Node {
             kind: NodeKind::View(View {
                 view: RegisteredViews::get(self.id)?,
                 nodes: Nodes::new(&self.body, node_id.child(0)),
                 state,
+                tabindex,
             }),
             node_id,
             scope: context.new_scope(),

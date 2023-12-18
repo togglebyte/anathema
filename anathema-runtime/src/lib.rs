@@ -1,17 +1,20 @@
+use std::cmp::Ordering;
 use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context};
+use anathema_values::{drain_dirty_nodes, Context, NodeId};
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
-use anathema_widget_core::views::{TabIndex, Views};
+use anathema_widget_core::views::Views;
 use anathema_widget_core::{Event, Events, KeyCode, KeyModifiers, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+
+mod meta;
 
 pub struct Runtime<'e> {
     pub enable_meta: bool,
@@ -23,7 +26,9 @@ pub struct Runtime<'e> {
     events: Events,
     pub fps: u8,
     needs_layout: bool,
-    // meta: Meta,
+    meta: meta::Meta,
+    tabindex: Option<u32>,
+    current_focus: Option<NodeId>,
 }
 
 impl<'e> Drop for Runtime<'e> {
@@ -57,7 +62,9 @@ impl<'e> Runtime<'e> {
             events: Events,
             fps: 30,
             needs_layout: true,
-            // meta: Meta::new(size),
+            meta: meta::Meta::new(size),
+            tabindex: None,
+            current_focus: None,
         };
 
         Ok(inst)
@@ -109,7 +116,7 @@ impl<'e> Runtime<'e> {
     }
 
     fn tick_views(&mut self) {
-        Views::for_each(|node_id| {
+        Views::for_each(|node_id, _| {
             if let Some(Node {
                 kind: NodeKind::View(view),
                 ..
@@ -135,36 +142,81 @@ impl<'e> Runtime<'e> {
         //   TODO: this should be behind a setting on the runtime
         //   Just need to come up with a good name for it.
         //   Should probably be on by default
+        //
+        //   This is also a massive hack to try things out...
+        // -----------------------------------------------------------------------------
+        // -----------------------------------------------------------------------------
+        //   - This is an awful hack for now -
         // -----------------------------------------------------------------------------
         if let Event::KeyPress(KeyCode::Tab, modifiers, ..) = event {
-            if let Some(current) = TabIndex::current() {
-                if let Some(Node {
-                    kind: NodeKind::View(view),
-                    ..
-                }) = self.nodes.query().get(&current)
-                {
-                    view.blur();
+            let views = Views::all();
+            let mut values = views
+                .iter()
+                .filter_map(|f| Some((f.key(), f.value?)))
+                .collect::<Vec<_>>();
+            values.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+            for ((node_id, tabindex)) in &values {
+                match self.tabindex {
+                    None => {
+                        self.tabindex = Some(*tabindex);
+                        self.focus_widget((*node_id).clone());
+                        return event;
+                    }
+                    Some(current_tabindex) => {
+                        match current_tabindex.cmp(tabindex) {
+                            Ordering::Less => {
+                                // tab
+                                if !modifiers.contains(KeyModifiers::SHIFT) {
+                                    self.tabindex = Some(*tabindex);
+                                    self.focus_widget((*node_id).clone());
+                                    return event;
+                                }
+                            }
+                            Ordering::Equal => {}
+                            Ordering::Greater => {
+                                // Shift tab
+                                if modifiers.contains(KeyModifiers::SHIFT) {
+                                    self.tabindex = Some(*tabindex);
+                                    self.focus_widget((*node_id).clone());
+                                    return event;
+                                }
+                            }
+                        }
+                    }
+                    Some(_) => continue,
                 }
             }
 
-            if modifiers.contains(KeyModifiers::SHIFT) {
-                TabIndex::prev();
-            } else {
-                TabIndex::next();
-            }
-
-            if let Some(current) = TabIndex::current() {
-                if let Some(Node {
-                    kind: NodeKind::View(view),
-                    ..
-                }) = self.nodes.query().get(&current)
-                {
-                    view.focus();
-                }
-            }
+            values.first().map(|(node_id, tabindex)| {
+                self.tabindex = Some(*tabindex);
+                self.focus_widget((*node_id).clone());
+            });
         }
 
         event
+    }
+
+    fn focus_widget(&mut self, node_id: NodeId) {
+        if let Some(Node {
+            kind: NodeKind::View(view),
+            ..
+        }) = self.nodes.query().get(&node_id)
+        {
+            view.focus();
+
+            if let Some(old) = self.current_focus.take() {
+                if let Some(Node {
+                    kind: NodeKind::View(old_view),
+                    ..
+                }) = self.nodes.query().get(&old)
+                {
+                    old_view.blur();
+                }
+            }
+
+            self.current_focus = Some(node_id);
+        }
     }
 
     pub fn run(mut self) -> Result<()> {
@@ -197,7 +249,7 @@ impl<'e> Runtime<'e> {
                         self.constraints.max_width = size.width;
                         self.constraints.max_height = size.height;
 
-                        // self.meta.size = size;
+                        self.meta.size = size;
                     }
                     Event::Blur => (),  //self.meta.focus = false,
                     Event::Focus => (), //self.meta.focus = true,
@@ -205,39 +257,40 @@ impl<'e> Runtime<'e> {
                     _ => {}
                 }
 
-                if let Some(id) = TabIndex::current() {
+                if let Some(view_id) = self.current_focus.as_ref() {
                     if let Some(Node {
                         kind: NodeKind::View(view),
                         ..
-                    }) = self.nodes.query().get(&id)
+                    }) = self.nodes.query().get(view_id)
                     {
                         view.on_event(event);
                     }
                 }
+
             }
 
             self.changes();
 
-            // *self.meta.count = self.nodes.count();
-            let _total = Instant::now();
+            self.meta.count = self.nodes.count();
+            let total = Instant::now();
 
             if self.needs_layout {
                 self.layout()?;
-                // *self.meta.timings.layout = total.elapsed();
+                self.meta.timings.layout = total.elapsed();
 
                 let _now = Instant::now();
                 self.position();
-                // *self.meta.timings.position = now.elapsed();
+                self.meta.timings.position = now.elapsed();
 
                 let _now = Instant::now();
                 self.paint();
 
-                // *self.meta.timings.paint = now.elapsed();
+                self.meta.timings.paint = now.elapsed();
 
                 let _now = Instant::now();
                 self.screen.render(&mut self.output)?;
-                // *self.meta.timings.render = now.elapsed();
-                // *self.meta.timings.total = total.elapsed();
+                self.meta.timings.render = now.elapsed();
+                self.meta.timings.total = total.elapsed();
                 self.screen.erase();
 
                 self.needs_layout = false;
