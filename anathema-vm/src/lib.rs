@@ -33,6 +33,7 @@ impl ViewTemplates {
         self.dep_list.push(view);
 
         let ret = match self.inner.remove(&view) {
+            // TODO: make this panic into an error 
             None => panic!("no template, make this an error instead: {view}"),
             Some(Template::Pending(src)) => {
                 let expressions = templates(&src, self)?;

@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef};
+use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef, NextNodeId};
 
 use super::Nodes;
 use crate::error::Result;
@@ -34,6 +34,7 @@ pub struct LoopNode<'e> {
     pub(super) collection: Collection<'e>,
     pub(super) value_index: usize,
     node_id: NodeId,
+    next_node_id: NextNodeId,
 }
 
 impl<'e> LoopNode<'e> {
@@ -43,6 +44,7 @@ impl<'e> LoopNode<'e> {
         collection: Collection<'e>,
         node_id: NodeId,
     ) -> Self {
+        let next_node_id = NextNodeId::new(node_id.last());
         Self {
             expressions,
             iterations: vec![],
@@ -51,6 +53,7 @@ impl<'e> LoopNode<'e> {
             value_index: 0,
             current_iteration: 0,
             node_id,
+            next_node_id,
         }
     }
 
@@ -74,7 +77,7 @@ impl<'e> LoopNode<'e> {
                 Some(iter) => iter,
                 None => {
                     self.iterations
-                        .push(Iteration::new(self.expressions, self.node_id.next()));
+                        .push(Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)));
                     &mut self.iterations[self.current_iteration]
                 }
             };
@@ -145,7 +148,7 @@ impl<'e> LoopNode<'e> {
         self.collection.insert(index);
         self.current_iteration = index;
         self.iterations
-            .insert(index, Iteration::new(self.expressions, self.node_id.next()));
+            .insert(index, Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)));
     }
 
     pub(super) fn iter_mut(

@@ -2,7 +2,7 @@ use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, drain_removed_nodes, Context};
+use anathema_values::{drain_dirty_nodes, Context};
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
@@ -113,16 +113,11 @@ impl<'e> Runtime<'e> {
         for (node_id, change) in dirty_nodes {
             self.nodes.update(node_id.as_slice(), &change, &context);
         }
-
-        // TODO: finish this. Need to figure out a good way to notify that
-        //       a values should have a sub removed.
-        for node in drain_removed_nodes() {
-        }
     }
 
     fn tick_views(&mut self) {
         Views::for_each(|node_id, _| {
-            self.nodes.with_view(node_id, |view| view.tick());
+            self.nodes.with_view(node_id, |view| view.tick(&self.meta));
         });
     }
 
@@ -200,14 +195,14 @@ impl<'e> Runtime<'e> {
                     _ => {}
                 }
 
-                if let Some(view_id) = self.tabindex.current_node() {
-                    if let Some(Node {
-                        kind: NodeKind::View(view),
-                        ..
-                    }) = self.nodes.query().get(view_id)
-                    {
-                        view.on_event(event);
+                if self.enable_tabindex {
+                    if let Some(view_id) = self.tabindex.current_node() {
+                        self.nodes.with_view(view_id, |view| view.on_event(event));
                     }
+                } else {
+                    // TODO: this is a bit sketchy
+                    let root = 0.into();
+                    self.nodes.with_view(&root, |view| view.on_event(event));
                 }
             }
 

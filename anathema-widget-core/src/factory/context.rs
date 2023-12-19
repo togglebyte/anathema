@@ -49,6 +49,6 @@ impl<'a> FactoryContext<'a> {
         let Some(val) = self.attributes.get(name) else {
             return Value::Empty;
         };
-        T::init_value(self.ctx, Some(&self.node_id), val)
+        T::init_value(self.ctx, &self.node_id, val)
     }
 }

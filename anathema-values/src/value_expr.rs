@@ -82,12 +82,12 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
 /// Resolve the expression, including deferred values.
 pub struct Resolver<'ctx, 'state> {
     context: &'ctx Context<'state, 'state>,
-    node_id: Option<&'state NodeId>,
+    node_id: &'state NodeId,
     is_deferred: bool,
 }
 
 impl<'ctx, 'state> Resolver<'ctx, 'state> {
-    pub fn new(context: &'ctx Context<'state, 'state>, node_id: Option<&'state NodeId>) -> Self {
+    pub fn new(context: &'ctx Context<'state, 'state>, node_id: &'state NodeId) -> Self {
         Self {
             context,
             node_id,

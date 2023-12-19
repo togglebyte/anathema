@@ -63,7 +63,7 @@ impl Default for Sides {
 impl DynValue for Sides {
     fn init_value(
         context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
+        node_id: &NodeId,
         expr: &ValueExpr,
     ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
@@ -81,7 +81,7 @@ impl DynValue for Sides {
         }
     }
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
             let sides = Resolver::new(context, node_id).resolve_list::<String>(expr);
             *inner = Some(sides.into())
@@ -312,14 +312,14 @@ impl Widget for Border {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.style.resolve(context, None);
-        self.border_style.resolve(context, None);
-        self.sides.resolve(context, None);
-        self.height.resolve(context, None);
-        self.width.resolve(context, None);
-        self.min_width.resolve(context, None);
-        self.min_height.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.style.resolve(context, node_id);
+        self.border_style.resolve(context, node_id);
+        self.sides.resolve(context, node_id);
+        self.height.resolve(context, node_id);
+        self.width.resolve(context, node_id);
+        self.min_width.resolve(context, node_id);
+        self.min_height.resolve(context, node_id);
     }
 
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {

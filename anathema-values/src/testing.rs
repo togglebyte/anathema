@@ -1,6 +1,6 @@
 use crate::map::Map;
 use crate::{
-    Context, List, LocalScope, Owned, Resolver, StateValue, ValueExpr, ValueRef, ValueResolver,
+    Context, List, LocalScope, Owned, Resolver, StateValue, ValueExpr, ValueRef, ValueResolver, NodeId,
 };
 
 #[derive(Debug, crate::State)]
@@ -51,6 +51,7 @@ pub struct TestExpression<T> {
     pub state: Map<T>,
     scope: LocalScope<'static>,
     pub expr: Box<ValueExpr>,
+    node_id: NodeId,
 }
 
 impl<T: std::fmt::Debug> TestExpression<T>
@@ -59,19 +60,19 @@ where
 {
     pub fn eval(&self) -> ValueRef<'_> {
         let context = Context::new(&self.state, &self.scope);
-        let mut resolver = Resolver::new(&context, None);
+        let mut resolver = Resolver::new(&context, &self.node_id);
         resolver.resolve(&self.expr)
     }
 
     pub fn eval_string(&self) -> Option<String> {
         let context = Context::new(&self.state, &self.scope);
-        let mut resolver = Resolver::new(&context, None);
+        let mut resolver = Resolver::new(&context, &self.node_id);
         resolver.resolve_string(&self.expr)
     }
 
     pub fn eval_bool(&self, b: bool) -> bool {
         let context = Context::new(&self.state, &self.scope);
-        let mut resolver = Resolver::new(&context, None);
+        let mut resolver = Resolver::new(&context, &self.node_id);
         resolver.resolve_bool(&self.expr) == b
     }
 
@@ -92,6 +93,7 @@ impl ValueExpr {
             state: Map::new(inner),
             expr: Box::new(self),
             scope: LocalScope::empty(),
+            node_id: 0.into(),
         }
     }
 
@@ -100,6 +102,7 @@ impl ValueExpr {
             state: Map::empty(),
             expr: Box::new(self),
             scope: LocalScope::empty(),
+            node_id: 0.into(),
         }
     }
 }

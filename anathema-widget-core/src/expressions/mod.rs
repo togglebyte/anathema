@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, State, Value, ValueExpr, ValueRef,
+    Attributes, Context, Deferred, DynValue, NodeId, Path, State, Value, ValueExpr, ValueRef, NextNodeId,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -46,7 +46,7 @@ impl SingleNodeExpr {
         let text = self
             .text
             .as_ref()
-            .map(|text| String::init_value(context, Some(&node_id), text))
+            .map(|text| String::init_value(context, &node_id, text))
             .unwrap_or_default();
 
         let context = FactoryContext::new(
@@ -136,7 +136,7 @@ impl LoopExpr {
                 match val {
                     ValueRef::Expressions(list) => Collection::Static(list),
                     ValueRef::Deferred(path) => {
-                        let len = match context.state.get(&path, Some(&node_id)) {
+                        let len = match context.state.get(&path, &node_id) {
                             ValueRef::List(list) => list.len(),
                             _ => 0,
                         };
@@ -176,12 +176,16 @@ pub struct ControlFlow {
 
 impl ControlFlow {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
+        let inner_node_id = node_id.child(0);
+        let next_node = NextNodeId::new(node_id.last());
+
         let node = Node {
             kind: NodeKind::ControlFlow(IfElse::new(
                 &self.if_expr,
                 &self.elses,
                 context,
-                node_id.child(0),
+                inner_node_id,
+                next_node,
             )),
             node_id,
             scope: context.new_scope(),
@@ -223,7 +227,7 @@ impl ViewExpr {
         let tabindex = self
             .attributes
             .get("tabindex")
-            .map(|expr| u32::init_value(context, Some(&node_id), expr))
+            .map(|expr| u32::init_value(context, &node_id, expr))
             .unwrap_or(Value::Empty);
 
         Views::insert(node_id.clone(), tabindex.value());

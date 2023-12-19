@@ -3,7 +3,7 @@ use std::cell::RefCell;
 pub use anathema_value_derive::State;
 
 pub use self::collection::Collection;
-pub use self::id::NodeId;
+pub use self::id::{NextNodeId, NodeId};
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::path::Path;
@@ -38,19 +38,10 @@ pub type Attributes = hashmap::HashMap<String, ValueExpr>;
 
 thread_local! {
     static DIRTY_NODES: RefCell<Vec<(NodeId, Change)>> = Default::default();
-    static REMOVED_NODES: RefCell<Vec<NodeId>> = Default::default();
 }
 
 pub fn drain_dirty_nodes() -> Vec<(NodeId, Change)> {
     DIRTY_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
-}
-
-pub fn drain_removed_nodes() -> Vec<NodeId> {
-    REMOVED_NODES.with(|nodes| nodes.borrow_mut().drain(..).collect())
-}
-
-pub fn remove_node(node: NodeId) {
-    REMOVED_NODES.with(|nodes| nodes.borrow_mut().push(node));
 }
 
 #[cfg(any(feature = "testing", test))]
@@ -71,7 +62,7 @@ impl<T> Value<T>
 where
     T: DynValue,
 {
-    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         T::resolve(self, context, node_id);
     }
 }
@@ -157,7 +148,7 @@ impl Value<String> {
 impl DynValue for String {
     fn init_value(
         context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
+        node_id: &NodeId,
         expr: &ValueExpr,
     ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
@@ -175,7 +166,7 @@ impl DynValue for String {
         }
     }
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
             *inner = Resolver::new(context, node_id).resolve_string(expr)
         }
@@ -185,13 +176,13 @@ impl DynValue for String {
 pub trait DynValue {
     fn init_value(
         context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
+        node_id: &NodeId,
         expr: &ValueExpr,
     ) -> Value<Self>
     where
         Self: Sized;
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>)
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId)
     where
         Self: Sized;
 }
@@ -202,7 +193,7 @@ macro_rules! impl_dyn_value {
         impl DynValue for $t {
             fn init_value(
                 context: &Context<'_, '_>,
-                node_id: Option<&NodeId>,
+                node_id: &NodeId,
                 expr: &ValueExpr,
             ) -> Value<Self> {
                 let mut resolver = Resolver::new(context, node_id);
@@ -223,7 +214,7 @@ macro_rules! impl_dyn_value {
             fn resolve(
                 value: &mut Value<Self>,
                 context: &Context<'_, '_>,
-                node_id: Option<&NodeId>,
+                node_id: &NodeId,
             ) {
                 match value {
                     Value::Dyn { inner, expr } => {
@@ -242,7 +233,7 @@ macro_rules! impl_dyn_value {
 impl DynValue for bool {
     fn init_value(
         context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
+        node_id: &NodeId,
         expr: &ValueExpr,
     ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
@@ -259,7 +250,7 @@ impl DynValue for bool {
         }
     }
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
             let mut resolver = Resolver::new(context, node_id);
             *inner = Some(resolver.resolve(expr).is_true())
@@ -270,7 +261,7 @@ impl DynValue for bool {
 impl DynValue for anathema_render::Color {
     fn init_value(
         context: &Context<'_, '_>,
-        node_id: Option<&NodeId>,
+        node_id: &NodeId,
         expr: &ValueExpr,
     ) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
@@ -291,7 +282,7 @@ impl DynValue for anathema_render::Color {
         }
     }
 
-    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: Option<&NodeId>) {
+    fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
             *inner = Resolver::new(context, node_id)
                 .resolve(expr)

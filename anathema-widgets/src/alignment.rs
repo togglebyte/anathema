@@ -41,8 +41,8 @@ impl Widget for Alignment {
         }
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.alignment.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.alignment.resolve(context, node_id);
     }
 
     fn position(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {

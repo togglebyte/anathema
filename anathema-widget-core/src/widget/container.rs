@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 use anathema_render::{Color, ScreenPos, Size, Style};
-use anathema_values::{remove_node, Attributes, Context, NodeId, Value};
+use anathema_values::{Attributes, Context, NodeId, Value};
 
 use super::{AnyWidget, Widget};
 use crate::contexts::{PaintCtx, PositionCtx, Unsized, WithSize};
@@ -176,17 +176,9 @@ impl WidgetContainer<'_> {
     }
 
     pub fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        self.background.resolve(context, Some(node_id));
-        self.display.resolve(context, Some(node_id));
-        self.padding.resolve(context, Some(node_id));
+        self.background.resolve(context, node_id);
+        self.display.resolve(context, node_id);
+        self.padding.resolve(context, node_id);
         self.inner.update(context, node_id);
-    }
-}
-
-impl Drop for WidgetContainer<'_> {
-    fn drop(&mut self) {
-        let mut removed_node = NodeId::disposable();
-        std::mem::swap(&mut self.node_id, &mut removed_node);
-        remove_node(removed_node);
     }
 }

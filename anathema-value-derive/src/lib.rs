@@ -23,7 +23,7 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
     Ok(quote! {
         # use ::anathema::values::{self, ValueRef, Path, state};
         impl state::State for #name {
-            fn get(&self, key: &values::Path, node_id: Option<&values::NodeId>) -> values::ValueRef<'_> {
+            fn get(&self, key: &values::Path, node_id: &values::NodeId) -> values::ValueRef<'_> {
                 match key {
                     Path::Key(s) => match s.as_str() {
                         #(

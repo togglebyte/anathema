@@ -104,10 +104,8 @@ impl<T: Debug> List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    pub fn get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
-        if let Some(node_id) = node_id.cloned() {
-            self.subscribe(node_id);
-        }
+    pub fn get_value(&self, node_id: &NodeId) -> ValueRef<'_> {
+        self.subscribe(node_id.clone());
         ValueRef::List(self)
     }
 }
@@ -125,15 +123,13 @@ impl<T: Debug> State for List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+    fn get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
         match key {
             Path::Index(index) => {
                 let Some(value) = self.inner.get(*index) else {
                     return ValueRef::Empty;
                 };
-                if let Some(node_id) = node_id.cloned() {
-                    value.subscribe(node_id);
-                }
+                value.subscribe(node_id.clone());
                 value.deref().into()
             }
             Path::Composite(lhs, rhs) => match self.get(lhs, node_id) {
@@ -156,7 +152,8 @@ mod test {
     fn access_list() {
         let state = TestState::new();
         let path = Path::from("generic_list").compose(1);
-        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, None) else {
+        let node_id = 0.into();
+        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, &node_id) else {
             panic!()
         };
         assert_eq!(x.to_i128(), 2);

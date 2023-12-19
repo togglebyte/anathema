@@ -1,9 +1,10 @@
+use std::any::Any;
 use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, LocalScope, NodeId, Resolver, Value, ValueRef, ValueResolver,
+    Change, Context, LocalScope, NodeId, Resolver, Value, ValueRef, ValueResolver, NextNodeId,
 };
 
 pub(crate) use self::controlflow::IfElse;
@@ -64,7 +65,7 @@ impl<'e> Node<'e> {
                 let context = match state {
                     ViewState::Static(state) => Context::root(*state),
                     ViewState::External { path, .. } => {
-                        let mut resolver = Resolver::new(context, Some(&self.node_id));
+                        let mut resolver = Resolver::new(context, &self.node_id);
                         match resolver.lookup_path(path) {
                             ValueRef::Map(state) => Context::root(state),
                             _ => Context::root(&()),
@@ -109,7 +110,7 @@ impl<'e> Node<'e> {
                 _ => (),
             },
             NodeKind::View(View { tabindex, .. }) => {
-                tabindex.resolve(&context, None);
+                tabindex.resolve(&context, &self.node_id);
                 Views::update(&self.node_id, tabindex.value());
             }
             // NOTE: the control flow has no immediate information
@@ -174,7 +175,8 @@ pub struct Nodes<'expr> {
     expressions: &'expr [Expression],
     inner: Vec<Node<'expr>>,
     expr_index: usize,
-    next_id: NodeId,
+    root_id: NodeId,
+    next_node_id: NextNodeId,
     cache_index: usize,
 }
 
@@ -197,7 +199,7 @@ impl<'expr> Nodes<'expr> {
     fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        match expr.eval(context, self.next_id.next()) {
+        match expr.eval(context, self.next_node_id.next(&self.root_id)) {
             Ok(node) => self.inner.push(node),
             Err(e) => return Some(Err(e)),
         };
@@ -249,12 +251,13 @@ impl<'expr> Nodes<'expr> {
         update(&mut self.inner, node_id, change, context);
     }
 
-    pub(crate) fn new(expressions: &'expr [Expression], next_id: NodeId) -> Self {
+    pub(crate) fn new(expressions: &'expr [Expression], root_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
             expr_index: 0,
-            next_id,
+            next_node_id: NextNodeId::new(root_id.last()),
+            root_id,
             cache_index: 0,
         }
     }
@@ -343,7 +346,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                 let context = match &view.state {
                     ViewState::Static(state) => Context::root(*state),
                     ViewState::External { path, .. } => {
-                        let mut resolver = Resolver::new(&context, Some(&node.node_id));
+                        let mut resolver = Resolver::new(&context, &node.node_id);
                         match resolver.lookup_path(path) {
                             ValueRef::Map(state) => Context::root(state),
                             _ => Context::root(&()),

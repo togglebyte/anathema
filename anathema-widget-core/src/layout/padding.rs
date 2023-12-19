@@ -100,7 +100,7 @@ impl FromIterator<u16> for Padding {
 impl DynValue for Padding {
     fn init_value(
         context: &Context<'_, '_>,
-        node_id: Option<&anathema_values::NodeId>,
+        node_id: &anathema_values::NodeId,
         expr: &anathema_values::ValueExpr,
     ) -> Value<Self>
     where
@@ -140,7 +140,7 @@ impl DynValue for Padding {
     fn resolve(
         value: &mut Value<Self>,
         context: &Context<'_, '_>,
-        node_id: Option<&anathema_values::NodeId>,
+        node_id: &anathema_values::NodeId,
     ) where
         Self: Sized,
     {
@@ -214,12 +214,13 @@ mod test {
 
     #[test]
     fn resolve_padding() {
+        let node_id = 0.into();
         let state = TestState::new();
         let ctx = Context::root(&state);
-        let _resolver = Resolver::new(&ctx, None);
+        let _resolver = Resolver::new(&ctx, &node_id);
 
         let e = unum(2);
-        let actual = Padding::init_value(&ctx, None, &e);
+        let actual = Padding::init_value(&ctx, &node_id, &e);
 
         let expected = Padding::new(2);
         assert_eq!(&expected, actual.value_ref().unwrap());

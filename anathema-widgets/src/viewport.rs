@@ -51,11 +51,11 @@ impl Widget for Viewport {
         many.layout(nodes)
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.direction.resolve(context, None);
-        self.axis.resolve(context, None);
-        self.offset.resolve(context, None);
-        self.clamp.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.direction.resolve(context, node_id);
+        self.axis.resolve(context, node_id);
+        self.offset.resolve(context, node_id);
+        self.clamp.resolve(context, node_id);
     }
 
     fn position<'tpl>(&mut self, children: &mut Nodes<'_>, ctx: PositionCtx) {
