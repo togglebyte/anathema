@@ -105,14 +105,3 @@ impl TabIndexing {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn next_id() {
-        // Views::insert(0.into(), Some(0));
-        // assert_eq!(expected, actual);
-    }
-}
