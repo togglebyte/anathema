@@ -2,14 +2,16 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, LocalScope, NodeId, Resolver, ValueRef, ValueResolver};
+use anathema_values::{
+    Change, Context, LocalScope, NextNodeId, NodeId, Resolver, Value, ValueRef, ValueResolver,
+};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
 use self::query::Query;
 use crate::error::Result;
 use crate::expressions::{Expression, ViewState};
-use crate::views::AnyView;
+use crate::views::{AnyView, Views};
 use crate::{Event, WidgetContainer};
 
 mod controlflow;
@@ -56,11 +58,13 @@ impl<'e> Node<'e> {
 
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::View(View { nodes, state, view }) => {
+            NodeKind::View(View {
+                nodes, state, view, ..
+            }) => {
                 let context = match state {
                     ViewState::Static(state) => Context::root(*state),
                     ViewState::External { path, .. } => {
-                        let mut resolver = Resolver::new(context, Some(&self.node_id));
+                        let mut resolver = Resolver::new(context, &self.node_id);
                         match resolver.lookup_path(path) {
                             ValueRef::Map(state) => Context::root(state),
                             _ => Context::root(&()),
@@ -104,11 +108,14 @@ impl<'e> Node<'e> {
                 Change::Push => loop_node.push(),
                 _ => (),
             },
-            // NOTE: the control flow and view has no immediate information
+            NodeKind::View(View { tabindex, .. }) => {
+                tabindex.resolve(&context, &self.node_id);
+                Views::update(&self.node_id, tabindex.value());
+            }
+            // NOTE: the control flow has no immediate information
             // that needs updating, so an update should never end with the
             // control flow node
             NodeKind::ControlFlow(_) => {}
-            NodeKind::View(View { .. }) => todo!(),
         }
     }
 }
@@ -124,6 +131,7 @@ pub struct View<'e> {
     pub(crate) view: Box<dyn AnyView>,
     pub(crate) nodes: Nodes<'e>,
     pub(crate) state: ViewState<'e>,
+    pub tabindex: Value<u32>,
 }
 
 impl fmt::Debug for View<'_> {
@@ -166,15 +174,29 @@ pub struct Nodes<'expr> {
     expressions: &'expr [Expression],
     inner: Vec<Node<'expr>>,
     expr_index: usize,
-    next_id: NodeId,
+    root_id: NodeId,
+    next_node_id: NextNodeId,
     cache_index: usize,
 }
 
 impl<'expr> Nodes<'expr> {
+    pub fn with_view<F>(&mut self, node_id: &NodeId, mut f: F)
+    where
+        F: FnMut(&mut View<'_>),
+    {
+        if let Some(Node {
+            kind: NodeKind::View(view),
+            ..
+        }) = self.query().get(node_id)
+        {
+            f(view);
+        }
+    }
+
     fn new_node(&mut self, context: &Context<'_, 'expr>) -> Option<Result<()>> {
         let expr = self.expressions.get(self.expr_index)?;
         self.expr_index += 1;
-        match expr.eval(context, self.next_id.next()) {
+        match expr.eval(context, self.next_node_id.next(&self.root_id)) {
             Ok(node) => self.inner.push(node),
             Err(e) => return Some(Err(e)),
         };
@@ -226,12 +248,13 @@ impl<'expr> Nodes<'expr> {
         update(&mut self.inner, node_id, change, context);
     }
 
-    pub(crate) fn new(expressions: &'expr [Expression], next_id: NodeId) -> Self {
+    pub(crate) fn new(expressions: &'expr [Expression], root_id: NodeId) -> Self {
         Self {
             expressions,
             inner: vec![],
             expr_index: 0,
-            next_id,
+            next_node_id: NextNodeId::new(root_id.last()),
+            root_id,
             cache_index: 0,
         }
     }
@@ -258,19 +281,6 @@ impl<'expr> Nodes<'expr> {
             nodes: self,
             filter: (),
         }
-    }
-
-    fn node_ids(&self) -> impl Iterator<Item = &NodeId> + '_ {
-        self.inner.iter().flat_map(|node| match &node.kind {
-            NodeKind::Single(Single {
-                widget: _,
-                children,
-                ..
-            }) => Box::new(std::iter::once(&node.node_id).chain(children.node_ids())),
-            NodeKind::Loop(loop_state) => loop_state.node_ids(),
-            NodeKind::ControlFlow(control_flow) => control_flow.node_ids(),
-            NodeKind::View(View { nodes, .. }) => Box::new(nodes.node_ids()),
-        })
     }
 
     /// A mutable iterator over [`WidgetContainer`]s and their children
@@ -333,7 +343,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                 let context = match &view.state {
                     ViewState::Static(state) => Context::root(*state),
                     ViewState::External { path, .. } => {
-                        let mut resolver = Resolver::new(&context, Some(&node.node_id));
+                        let mut resolver = Resolver::new(&context, &node.node_id);
                         match resolver.lookup_path(path) {
                             ValueRef::Map(state) => Context::root(state),
                             _ => Context::root(&()),

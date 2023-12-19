@@ -67,14 +67,14 @@ impl Widget for Position {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         match &mut self.horz_edge {
-            HorzEdge::Left(val) => val.resolve(context, None),
-            HorzEdge::Right(val) => val.resolve(context, None),
+            HorzEdge::Left(val) => val.resolve(context, node_id),
+            HorzEdge::Right(val) => val.resolve(context, node_id),
         }
         match &mut self.vert_edge {
-            VertEdge::Top(val) => val.resolve(context, None),
-            VertEdge::Bottom(val) => val.resolve(context, None),
+            VertEdge::Top(val) => val.resolve(context, node_id),
+            VertEdge::Bottom(val) => val.resolve(context, node_id),
         }
     }
 

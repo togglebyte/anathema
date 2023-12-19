@@ -5,10 +5,10 @@ mod value;
 
 pub trait State: std::fmt::Debug {
     /// Get a value reference from the state
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_>;
+    fn get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_>;
 
     #[doc(hidden)]
-    fn get_value(&self, _: Option<&NodeId>) -> ValueRef<'_>
+    fn get_value(&self, _: &NodeId) -> ValueRef<'_>
     where
         Self: Sized,
     {
@@ -18,7 +18,7 @@ pub trait State: std::fmt::Debug {
 
 /// This exists so you can have a view with a default state of a unit
 impl State for () {
-    fn get(&self, _: &Path, _: Option<&NodeId>) -> ValueRef<'_> {
+    fn get(&self, _: &Path, _: &NodeId) -> ValueRef<'_> {
         ValueRef::Empty
     }
 }

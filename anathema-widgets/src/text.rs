@@ -86,22 +86,17 @@ impl Widget for Text {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.word_wrap.resolve(context, None);
-        self.text_alignment.resolve(context, None);
-        self.text.resolve(context, None);
-        self.style.resolve(context, None);
-        self.squash.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.word_wrap.resolve(context, node_id);
+        self.text_alignment.resolve(context, node_id);
+        self.text.resolve(context, node_id);
+        self.style.resolve(context, node_id);
+        self.squash.resolve(context, node_id);
     }
 
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
         self.layout
             .reset(nodes.constraints.max_width, self.squash.value_or(true));
-
-        // TODO: impl word wrap
-        // if let Some(wrap) = self.word_wrap.value_ref() {
-        //     self.layout.set_wrap(*wrap)
-        // }
 
         self.layout.process(self.text.str());
 
@@ -157,9 +152,9 @@ impl Widget for TextSpan {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.text.resolve(context, None);
-        self.style.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.text.resolve(context, node_id);
+        self.style.resolve(context, node_id);
     }
 
     fn layout(&mut self, _nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
@@ -189,7 +184,7 @@ impl WidgetFactory for TextFactory {
             text: ctx.text.take(),
             word_wrap,
         };
-        widget.text.resolve(ctx.ctx, Some(&ctx.node_id));
+        widget.text.resolve(ctx.ctx, &ctx.node_id);
 
         Ok(Box::new(widget))
     }
@@ -203,7 +198,7 @@ impl WidgetFactory for SpanFactory {
             text: ctx.text.take(),
             style: ctx.style(),
         };
-        widget.text.resolve(ctx.ctx, Some(&ctx.node_id));
+        widget.text.resolve(ctx.ctx, &ctx.node_id);
 
         Ok(Box::new(widget))
     }

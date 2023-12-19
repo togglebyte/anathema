@@ -82,12 +82,12 @@ impl<'a, 'expr> ValueResolver<'expr> for Deferred<'a, 'expr> {
 /// Resolve the expression, including deferred values.
 pub struct Resolver<'ctx, 'state> {
     context: &'ctx Context<'state, 'state>,
-    node_id: Option<&'state NodeId>,
+    node_id: &'state NodeId,
     is_deferred: bool,
 }
 
 impl<'ctx, 'state> Resolver<'ctx, 'state> {
-    pub fn new(context: &'ctx Context<'state, 'state>, node_id: Option<&'state NodeId>) -> Self {
+    pub fn new(context: &'ctx Context<'state, 'state>, node_id: &'state NodeId) -> Self {
         Self {
             context,
             node_id,
@@ -131,16 +131,11 @@ impl<'state> Resolver<'_, 'state> {
                     ValueRef::Str(val) => Some(val.into()),
                     ValueRef::Owned(val) => Some(val.to_string()),
                     ValueRef::Empty => None,
-                    val => {
-                        // TODO: panic...
-                        panic!("don't panic here: {val:?}")
-                    }
+                    _ => None,
                 }
             }
             ValueRef::Empty => None,
-
-            // TODO: probably shouldn't panic here, but we'll do it while working on this
-            v => panic!("{v:?}"),
+            _ => None,
         }
     }
 

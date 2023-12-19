@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef};
+use anathema_values::{Change, Context, Deferred, LocalScope, NextNodeId, NodeId, Path, ValueRef};
 
 use super::Nodes;
 use crate::error::Result;
@@ -34,6 +34,7 @@ pub struct LoopNode<'e> {
     pub(super) collection: Collection<'e>,
     pub(super) value_index: usize,
     node_id: NodeId,
+    next_node_id: NextNodeId,
 }
 
 impl<'e> LoopNode<'e> {
@@ -43,6 +44,7 @@ impl<'e> LoopNode<'e> {
         collection: Collection<'e>,
         node_id: NodeId,
     ) -> Self {
+        let next_node_id = NextNodeId::new(node_id.last());
         Self {
             expressions,
             iterations: vec![],
@@ -51,6 +53,7 @@ impl<'e> LoopNode<'e> {
             value_index: 0,
             current_iteration: 0,
             node_id,
+            next_node_id,
         }
     }
 
@@ -73,13 +76,16 @@ impl<'e> LoopNode<'e> {
             let iter = match self.iterations.get_mut(self.current_iteration) {
                 Some(iter) => iter,
                 None => {
-                    self.iterations
-                        .push(Iteration::new(self.expressions, self.node_id.next()));
+                    self.iterations.push(Iteration::new(
+                        self.expressions,
+                        self.next_node_id.next(&self.node_id),
+                    ));
                     &mut self.iterations[self.current_iteration]
                 }
             };
 
-            while let Ok(res) = iter.body.next(&context, f) {
+            loop {
+                let res = iter.body.next(&context, f)?;
                 match res {
                     ControlFlow::Continue(()) => continue,
                     ControlFlow::Break(()) => break,
@@ -143,18 +149,16 @@ impl<'e> LoopNode<'e> {
     pub(super) fn insert(&mut self, index: usize) {
         self.collection.insert(index);
         self.current_iteration = index;
-        self.iterations
-            .insert(index, Iteration::new(self.expressions, self.node_id.next()));
+        self.iterations.insert(
+            index,
+            Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)),
+        );
     }
 
     pub(super) fn iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&mut WidgetContainer<'e>, &mut Nodes<'e>)> + '_ {
         self.iterations.iter_mut().flat_map(|i| i.body.iter_mut())
-    }
-
-    pub(super) fn node_ids(&self) -> Box<dyn Iterator<Item = &NodeId> + '_> {
-        Box::new(self.iterations.iter().flat_map(|i| i.body.node_ids()))
     }
 
     pub(super) fn update(&mut self, node_id: &[usize], change: &Change, context: &Context<'_, '_>) {

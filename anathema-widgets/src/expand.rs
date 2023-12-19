@@ -71,9 +71,9 @@ impl Widget for Expand {
         Self::KIND
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.axis.resolve(context, None);
-        self.fill.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.axis.resolve(context, node_id);
+        self.fill.resolve(context, node_id);
     }
 
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {

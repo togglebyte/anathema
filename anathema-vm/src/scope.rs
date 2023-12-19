@@ -105,6 +105,22 @@ impl<'vm> Scope<'vm> {
         Ok(nodes)
     }
 
+    fn attributes(&mut self) -> Attributes {
+        let mut attributes = Attributes::new();
+        let mut ip = 0;
+
+        while let Some(Instruction::LoadAttribute { key, value }) = self.instructions.get(ip) {
+            let key = self.consts.lookup_string(*key);
+            let value = self.consts.lookup_value(*value);
+            attributes.insert(key.to_string(), value.clone());
+            ip += 1;
+        }
+
+        // Remove processed attribute and text instructions
+        self.instructions.drain(..ip);
+        attributes
+    }
+
     fn node(
         &mut self,
         ident: StringId,
@@ -113,22 +129,13 @@ impl<'vm> Scope<'vm> {
     ) -> Result<Expression> {
         let ident = self.consts.lookup_string(ident);
 
-        let mut attributes = Attributes::new();
         let mut text = None::<ValueExpr>;
+        // let mut attributes = Attributes::new();
+        let attributes = self.attributes();
         let mut ip = 0;
 
-        loop {
-            match self.instructions.get(ip) {
-                Some(Instruction::LoadAttribute { key, value }) => {
-                    let key = self.consts.lookup_string(*key);
-                    let value = self.consts.lookup_value(*value);
-                    attributes.insert(key.to_string(), value.clone());
-                }
-                Some(Instruction::LoadValue(i)) => {
-                    text = Some(self.consts.lookup_value(*i).clone())
-                }
-                _ => break,
-            }
+        while let Some(Instruction::LoadValue(i)) = self.instructions.get(ip) {
+            text = Some(self.consts.lookup_value(*i).clone());
             ip += 1;
         }
 
@@ -149,6 +156,8 @@ impl<'vm> Scope<'vm> {
     }
 
     fn view(&mut self, view: ViewId, views: &mut ViewTemplates) -> Result<Expression> {
+        let attributes = self.attributes();
+
         let state = match self.instructions.get(0) {
             Some(Instruction::LoadValue(i)) => {
                 let val = self.consts.lookup_value(*i).clone();
@@ -163,6 +172,7 @@ impl<'vm> Scope<'vm> {
         let node = Expression::View(ViewExpr {
             id: view.0,
             body,
+            attributes,
             state,
         });
 

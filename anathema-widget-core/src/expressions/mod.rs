@@ -1,13 +1,14 @@
 use anathema_render::Size;
 use anathema_values::{
-    Attributes, Context, Deferred, DynValue, NodeId, Path, State, ValueExpr, ValueRef,
+    Attributes, Context, Deferred, DynValue, NextNodeId, NodeId, Path, State, Value, ValueExpr,
+    ValueRef,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
 use crate::error::Result;
 use crate::factory::FactoryContext;
 use crate::nodes::{IfElse, LoopNode, Node, NodeKind, Nodes, Single, View};
-use crate::views::{RegisteredViews, TabIndex, Views};
+use crate::views::{RegisteredViews, Views};
 use crate::{Factory, Pos, WidgetContainer};
 
 mod controlflow;
@@ -20,6 +21,7 @@ pub fn root_view(body: Vec<Expression>, id: usize) -> Expression {
         id,
         state: None,
         body,
+        attributes: Attributes::new(),
     })
 }
 
@@ -45,7 +47,7 @@ impl SingleNodeExpr {
         let text = self
             .text
             .as_ref()
-            .map(|text| String::init_value(context, Some(&node_id), text))
+            .map(|text| String::init_value(context, &node_id, text))
             .unwrap_or_default();
 
         let context = FactoryContext::new(
@@ -62,8 +64,6 @@ impl SingleNodeExpr {
             padding: context.get("padding"),
             pos: Pos::ZERO,
             size: Size::ZERO,
-
-            node_id: node_id.clone(),
             inner: Factory::exec(context)?,
             expr: None,
             attributes: &self.attributes,
@@ -135,7 +135,7 @@ impl LoopExpr {
                 match val {
                     ValueRef::Expressions(list) => Collection::Static(list),
                     ValueRef::Deferred(path) => {
-                        let len = match context.state.get(&path, Some(&node_id)) {
+                        let len = match context.state.get(&path, &node_id) {
                             ValueRef::List(list) => list.len(),
                             _ => 0,
                         };
@@ -175,12 +175,16 @@ pub struct ControlFlow {
 
 impl ControlFlow {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
+        let inner_node_id = node_id.child(0);
+        let next_node = NextNodeId::new(node_id.last());
+
         let node = Node {
             kind: NodeKind::ControlFlow(IfElse::new(
                 &self.if_expr,
                 &self.elses,
                 context,
-                node_id.child(0),
+                inner_node_id,
+                next_node,
             )),
             node_id,
             scope: context.new_scope(),
@@ -201,13 +205,11 @@ pub struct ViewExpr {
     pub id: usize,
     pub state: Option<ValueExpr>,
     pub body: Vec<Expression>,
+    pub attributes: Attributes,
 }
 
 impl ViewExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
-        TabIndex::insert(node_id.clone());
-        Views::insert(node_id.clone());
-
         let state = match &self.state {
             Some(expr) => {
                 let mut resolver = Deferred::new(context);
@@ -221,11 +223,20 @@ impl ViewExpr {
             None => ViewState::Internal,
         };
 
+        let tabindex = self
+            .attributes
+            .get("tabindex")
+            .map(|expr| u32::init_value(context, &node_id, expr))
+            .unwrap_or(Value::Empty);
+
+        Views::insert(node_id.clone(), tabindex.value());
+
         let node = Node {
             kind: NodeKind::View(View {
                 view: RegisteredViews::get(self.id)?,
                 nodes: Nodes::new(&self.body, node_id.child(0)),
                 state,
+                tabindex,
             }),
             node_id,
             scope: context.new_scope(),

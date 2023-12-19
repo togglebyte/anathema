@@ -53,15 +53,15 @@ impl WidgetStyle {
         }
     }
 
-    pub fn resolve(&mut self, context: &Context<'_, '_>, _node_id: Option<&NodeId>) {
-        self.fg.resolve(context, None);
-        self.bg.resolve(context, None);
-        self.bold.resolve(context, None);
-        self.dim.resolve(context, None);
-        self.italic.resolve(context, None);
-        self.underlined.resolve(context, None);
-        self.crossed_out.resolve(context, None);
-        self.overlined.resolve(context, None);
-        self.inverse.resolve(context, None);
+    pub fn resolve(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.fg.resolve(context, node_id);
+        self.bg.resolve(context, node_id);
+        self.bold.resolve(context, node_id);
+        self.dim.resolve(context, node_id);
+        self.italic.resolve(context, node_id);
+        self.underlined.resolve(context, node_id);
+        self.crossed_out.resolve(context, node_id);
+        self.overlined.resolve(context, node_id);
+        self.inverse.resolve(context, node_id);
     }
 }

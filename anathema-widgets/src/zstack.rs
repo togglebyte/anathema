@@ -71,11 +71,11 @@ impl Widget for ZStack {
         "ZStack"
     }
 
-    fn update(&mut self, context: &Context<'_, '_>, _node_id: &NodeId) {
-        self.width.resolve(context, None);
-        self.min_width.resolve(context, None);
-        self.height.resolve(context, None);
-        self.min_height.resolve(context, None);
+    fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
+        self.width.resolve(context, node_id);
+        self.min_width.resolve(context, node_id);
+        self.height.resolve(context, node_id);
+        self.min_height.resolve(context, node_id);
     }
 
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {

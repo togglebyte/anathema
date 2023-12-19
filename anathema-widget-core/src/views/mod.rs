@@ -1,11 +1,10 @@
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::OnceLock;
 
 use anathema_values::hashmap::HashMap;
 use anathema_values::{NodeId, State};
-use kempt::Set;
-use parking_lot::Mutex;
+use kempt::Map;
+use parking_lot::{Mutex, MutexGuard};
 
 use crate::error::{Error, Result};
 use crate::{Event, Nodes};
@@ -17,9 +16,7 @@ enum ViewFactory {
     Prototype(Box<ViewFn>),
 }
 
-static TAB_INDEX: AtomicUsize = AtomicUsize::new(0);
-static TAB_VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
-static VIEWS: Mutex<Set<NodeId>> = Mutex::new(Set::new());
+static VIEWS: Mutex<Map<NodeId, Option<u32>>> = Mutex::new(Map::new());
 static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<usize, ViewFactory>>> = OnceLock::new();
 
 pub struct RegisteredViews;
@@ -60,71 +57,33 @@ impl RegisteredViews {
     }
 }
 
-pub struct TabIndex;
-
-impl TabIndex {
-    pub fn next() {
-        TAB_INDEX.fetch_add(1, Ordering::Relaxed);
-
-        let len = TAB_VIEWS.lock().len();
-
-        if TAB_INDEX.load(Ordering::Relaxed) == len {
-            TAB_INDEX.store(0, Ordering::Relaxed);
-        }
-    }
-
-    pub fn prev() {
-        TAB_INDEX.fetch_sub(1, Ordering::Relaxed);
-
-        let len = TAB_VIEWS.lock().len();
-
-        if TAB_INDEX.load(Ordering::Relaxed) == 0 {
-            TAB_INDEX.store(len - 1, Ordering::Relaxed);
-        }
-    }
-
-    pub(crate) fn insert(node_id: NodeId) {
-        TAB_VIEWS.lock().insert(node_id);
-    }
-
-    pub(crate) fn remove_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
-        let mut views = TAB_VIEWS.lock();
-        node_ids.for_each(|id| {
-            views.remove(id);
-        });
-    }
-
-    pub(crate) fn add_all<'a>(node_ids: impl Iterator<Item = &'a NodeId>) {
-        let mut views = TAB_VIEWS.lock();
-
-        node_ids.cloned().for_each(|id| {
-            views.insert(id);
-        });
-    }
-
-    pub fn current() -> Option<NodeId> {
-        let index = TAB_INDEX.load(Ordering::Relaxed);
-        let _all = TAB_VIEWS.lock().clone();
-        TAB_VIEWS.lock().member(index).cloned()
-    }
-}
-
+/// NodeIds for views and their tab index
 pub struct Views;
 
 impl Views {
-    pub fn all() -> Vec<NodeId> {
-        VIEWS.lock().iter().cloned().collect()
+    pub fn all<'a>() -> MutexGuard<'a, Map<NodeId, Option<u32>>> {
+        VIEWS.lock()
     }
 
-    pub fn for_each<F>(f: F)
+    pub fn for_each<F>(mut f: F)
     where
-        F: FnMut(&NodeId),
+        F: FnMut(&NodeId, Option<u32>),
     {
-        VIEWS.lock().iter().for_each(f);
+        VIEWS
+            .lock()
+            .iter()
+            .map(|field| (field.key(), field.value))
+            .for_each(|(key, value)| f(key, value));
     }
 
-    pub(crate) fn insert(node_id: NodeId) {
-        VIEWS.lock().insert(node_id);
+    pub(crate) fn insert(node_id: NodeId, tabindex: Option<u32>) {
+        VIEWS.lock().insert(node_id, tabindex);
+    }
+
+    pub(crate) fn update(node_id: &NodeId, tabindex: Option<u32>) {
+        if let Some(old_index) = VIEWS.lock().get_mut(node_id) {
+            *old_index = tabindex;
+        }
     }
 }
 

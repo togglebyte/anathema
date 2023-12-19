@@ -12,6 +12,7 @@ pub enum Change {
     Update,
     Push,
     InsertIndex(usize),
+    // TODO: is this needed?
     InsertKey(String),
     RemoveIndex(usize),
     RemoveKey(String),
@@ -32,7 +33,7 @@ impl<T> StateValue<T> {
     }
 
     #[doc(hidden)]
-    pub fn get(&self, _: &Path, _: Option<&NodeId>) -> ValueRef<'_> {
+    pub fn get(&self, _: &Path, _: &NodeId) -> ValueRef<'_> {
         ValueRef::Empty
     }
 
@@ -45,10 +46,8 @@ impl<T> StateValue<T>
 where
     for<'b> &'b T: Into<ValueRef<'b>>,
 {
-    pub fn get_value(&self, node_id: Option<&NodeId>) -> ValueRef<'_> {
-        if let Some(node_id) = node_id.cloned() {
-            self.subscribe(node_id);
-        }
+    pub fn get_value(&self, node_id: &NodeId) -> ValueRef<'_> {
+        self.subscribe(node_id.clone());
         (&self.inner).into()
     }
 }
@@ -63,7 +62,7 @@ impl<T> Deref for StateValue<T> {
 
 impl<T> DerefMut for StateValue<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain() {
             DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Update)));
         }
 
@@ -93,7 +92,7 @@ where
 }
 
 impl<T: State> State for StateValue<T> {
-    fn get(&self, key: &Path, node_id: Option<&NodeId>) -> ValueRef<'_> {
+    fn get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
         self.inner.get(key, node_id)
     }
 }
