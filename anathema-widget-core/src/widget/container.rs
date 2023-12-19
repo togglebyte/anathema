@@ -24,8 +24,6 @@ pub struct WidgetContainer<'e> {
     pub(crate) inner: Box<dyn AnyWidget>,
     pub pos: Pos,
     pub size: Size,
-    // TODO: do we need the node_id here?
-    pub(crate) node_id: NodeId,
     pub expr: Option<&'e Expression>,
     pub attributes: &'e Attributes,
 }

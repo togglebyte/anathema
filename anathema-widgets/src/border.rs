@@ -61,11 +61,7 @@ impl Default for Sides {
 }
 
 impl DynValue for Sides {
-    fn init_value(
-        context: &Context<'_, '_>,
-        node_id: &NodeId,
-        expr: &ValueExpr,
-    ) -> Value<Self> {
+    fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
         let inner = resolver.resolve_list(expr);
 

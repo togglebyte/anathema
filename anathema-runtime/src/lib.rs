@@ -7,7 +7,7 @@ use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::nodes::{make_it_so, Node, NodeKind, Nodes};
+use anathema_widget_core::nodes::{make_it_so, Nodes};
 use anathema_widget_core::views::Views;
 use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
@@ -117,7 +117,7 @@ impl<'e> Runtime<'e> {
 
     fn tick_views(&mut self) {
         Views::for_each(|node_id, _| {
-            self.nodes.with_view(node_id, |view| view.tick(&self.meta));
+            self.nodes.with_view(node_id, |view| view.tick());
         });
     }
 

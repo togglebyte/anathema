@@ -87,7 +87,6 @@ impl Widget for Text {
     }
 
     fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
-        let t = self.text.str();
         self.word_wrap.resolve(context, node_id);
         self.text_alignment.resolve(context, node_id);
         self.text.resolve(context, node_id);

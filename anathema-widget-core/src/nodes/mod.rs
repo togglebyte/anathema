@@ -1,10 +1,9 @@
-use std::any::Any;
 use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, LocalScope, NodeId, Resolver, Value, ValueRef, ValueResolver, NextNodeId,
+    Change, Context, LocalScope, NextNodeId, NodeId, Resolver, Value, ValueRef, ValueResolver,
 };
 
 pub(crate) use self::controlflow::IfElse;
@@ -185,14 +184,12 @@ impl<'expr> Nodes<'expr> {
     where
         F: FnMut(&mut View<'_>),
     {
-        if let Some(node) = self.query().get(node_id) {
-            if let Node {
-                kind: NodeKind::View(view),
-                ..
-            } = node
-            {
-                f(view);
-            }
+        if let Some(Node {
+            kind: NodeKind::View(view),
+            ..
+        }) = self.query().get(node_id)
+        {
+            f(view);
         }
     }
 

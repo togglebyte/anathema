@@ -63,8 +63,6 @@ impl SingleNodeExpr {
             padding: context.get("padding"),
             pos: Pos::ZERO,
             size: Size::ZERO,
-
-            node_id: node_id.clone(),
             inner: Factory::exec(context)?,
             expr: None,
             attributes: &self.attributes,
