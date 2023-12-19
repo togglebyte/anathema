@@ -1,6 +1,7 @@
 use crate::map::Map;
 use crate::{
-    Context, List, LocalScope, Owned, Resolver, StateValue, ValueExpr, ValueRef, ValueResolver, NodeId,
+    Context, List, LocalScope, NodeId, Owned, Resolver, StateValue, ValueExpr, ValueRef,
+    ValueResolver,
 };
 
 #[derive(Debug, crate::State)]

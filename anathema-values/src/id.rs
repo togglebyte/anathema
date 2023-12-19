@@ -57,19 +57,17 @@ impl NodeId {
     //     ret
     // }
 
+    //     pub fn child(&self, next: usize) -> Self {
+    //         let mut v = Vec::with_capacity(self.0.len() + 1);
+    //         v.extend_from_slice(&*self.0);
+    //         v.push(next);
+    //         Self(v.into())
+    //     }
 
-//     pub fn child(&self, next: usize) -> Self {
-//         let mut v = Vec::with_capacity(self.0.len() + 1);
-//         v.extend_from_slice(&*self.0);
-//         v.push(next);
-//         Self(v.into())
-//     }
-
-//     pub fn as_slice(&self) -> &[usize] {
-//         &self.0
-//     }
+    //     pub fn as_slice(&self) -> &[usize] {
+    //         &self.0
+    //     }
 }
-
 
 impl NodeId {
     // pub fn new(id: usize) -> Self {

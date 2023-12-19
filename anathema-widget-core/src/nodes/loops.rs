@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, Deferred, LocalScope, NodeId, Path, ValueRef, NextNodeId};
+use anathema_values::{Change, Context, Deferred, LocalScope, NextNodeId, NodeId, Path, ValueRef};
 
 use super::Nodes;
 use crate::error::Result;
@@ -76,8 +76,10 @@ impl<'e> LoopNode<'e> {
             let iter = match self.iterations.get_mut(self.current_iteration) {
                 Some(iter) => iter,
                 None => {
-                    self.iterations
-                        .push(Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)));
+                    self.iterations.push(Iteration::new(
+                        self.expressions,
+                        self.next_node_id.next(&self.node_id),
+                    ));
                     &mut self.iterations[self.current_iteration]
                 }
             };
@@ -147,8 +149,10 @@ impl<'e> LoopNode<'e> {
     pub(super) fn insert(&mut self, index: usize) {
         self.collection.insert(index);
         self.current_iteration = index;
-        self.iterations
-            .insert(index, Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)));
+        self.iterations.insert(
+            index,
+            Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)),
+        );
     }
 
     pub(super) fn iter_mut(

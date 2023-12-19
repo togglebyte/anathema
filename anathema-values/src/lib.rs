@@ -146,11 +146,7 @@ impl Value<String> {
 }
 
 impl DynValue for String {
-    fn init_value(
-        context: &Context<'_, '_>,
-        node_id: &NodeId,
-        expr: &ValueExpr,
-    ) -> Value<Self> {
+    fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
         let inner = resolver.resolve_string(expr);
 
@@ -174,11 +170,7 @@ impl DynValue for String {
 }
 
 pub trait DynValue {
-    fn init_value(
-        context: &Context<'_, '_>,
-        node_id: &NodeId,
-        expr: &ValueExpr,
-    ) -> Value<Self>
+    fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self>
     where
         Self: Sized;
 
@@ -211,11 +203,7 @@ macro_rules! impl_dyn_value {
                 }
             }
 
-            fn resolve(
-                value: &mut Value<Self>,
-                context: &Context<'_, '_>,
-                node_id: &NodeId,
-            ) {
+            fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
                 match value {
                     Value::Dyn { inner, expr } => {
                         *inner = Resolver::new(context, node_id)
@@ -231,11 +219,7 @@ macro_rules! impl_dyn_value {
 }
 
 impl DynValue for bool {
-    fn init_value(
-        context: &Context<'_, '_>,
-        node_id: &NodeId,
-        expr: &ValueExpr,
-    ) -> Value<Self> {
+    fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
         let val = resolver.resolve(expr);
         match resolver.is_deferred() {
@@ -259,11 +243,7 @@ impl DynValue for bool {
 }
 
 impl DynValue for anathema_render::Color {
-    fn init_value(
-        context: &Context<'_, '_>,
-        node_id: &NodeId,
-        expr: &ValueExpr,
-    ) -> Value<Self> {
+    fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
         let mut resolver = Resolver::new(context, node_id);
         let inner = match resolver.resolve(expr) {
             ValueRef::Str(col) => anathema_render::Color::try_from(col).ok(),
