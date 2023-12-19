@@ -109,15 +109,10 @@ impl<'vm> Scope<'vm> {
         let mut attributes = Attributes::new();
         let mut ip = 0;
 
-        loop {
-            match self.instructions.get(ip) {
-                Some(Instruction::LoadAttribute { key, value }) => {
-                    let key = self.consts.lookup_string(*key);
-                    let value = self.consts.lookup_value(*value);
-                    attributes.insert(key.to_string(), value.clone());
-                }
-                _ => break,
-            }
+        while let Some(Instruction::LoadAttribute { key, value }) = self.instructions.get(ip) {
+            let key = self.consts.lookup_string(*key);
+            let value = self.consts.lookup_value(*value);
+            attributes.insert(key.to_string(), value.clone());
             ip += 1;
         }
 
@@ -139,13 +134,8 @@ impl<'vm> Scope<'vm> {
         let attributes = self.attributes();
         let mut ip = 0;
 
-        loop {
-            match self.instructions.get(ip) {
-                Some(Instruction::LoadValue(i)) => {
-                    text = Some(self.consts.lookup_value(*i).clone())
-                }
-                _ => break,
-            }
+        while let Some(Instruction::LoadValue(i)) = self.instructions.get(ip) {
+            text = Some(self.consts.lookup_value(*i).clone());
             ip += 1;
         }
 

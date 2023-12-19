@@ -13,11 +13,11 @@ struct TabIndexRef<'a> {
     index: u32,
 }
 
-impl<'a> TabIndexRef<'a> {
-    fn into_owned(&self) -> TabIndex {
+impl From<&TabIndexRef<'_>> for TabIndex {
+    fn from(value: &TabIndexRef<'_>) -> Self {
         TabIndex {
-            index: self.index,
-            node_id: self.node_id.to_owned(),
+            index: value.index,
+            node_id: value.node_id.to_owned(),
         }
     }
 }
@@ -86,7 +86,7 @@ impl TabIndexing {
 
         match self.current_focus.take() {
             None => {
-                self.current_focus = Some(views[default].into_owned());
+                self.current_focus = Some(TabIndex::from(&views[default]));
                 None
             }
             Some(old) => {
@@ -98,7 +98,7 @@ impl TabIndexing {
 
                 let next = direction.next(old_index, views.len() - 1);
 
-                self.current_focus = Some(views[next].into_owned());
+                self.current_focus = Some(TabIndex::from(&views[next]));
 
                 Some(old.node_id)
             }
