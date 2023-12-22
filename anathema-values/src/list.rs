@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::ops::Deref;
+use std::ops::{Deref, Index, IndexMut};
 
 use crate::state::State;
 use crate::{Change, Collection, NodeId, Path, StateValue, ValueRef, DIRTY_NODES};
@@ -100,6 +100,7 @@ impl<T> List<T> {
     }
 }
 
+
 impl<T: Debug> List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
@@ -123,7 +124,7 @@ impl<T: Debug> State for List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    fn get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
+    fn state_get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
         match key {
             Path::Index(index) => {
                 let Some(value) = self.inner.get(*index) else {
@@ -132,13 +133,27 @@ where
                 value.subscribe(node_id.clone());
                 value.deref().into()
             }
-            Path::Composite(lhs, rhs) => match self.get(lhs, node_id) {
-                ValueRef::Map(map) => map.get(rhs, node_id),
-                ValueRef::List(collection) => collection.get(rhs, node_id),
+            Path::Composite(lhs, rhs) => match self.state_get(lhs, node_id) {
+                ValueRef::Map(map) => map.state_get(rhs, node_id),
+                ValueRef::List(collection) => collection.state_get(rhs, node_id),
                 _ => ValueRef::Empty,
             },
             Path::Key(_) => ValueRef::Empty,
         }
+    }
+}
+
+impl<T> Index<usize> for List<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.inner[index]
+    }
+}
+
+impl<T> IndexMut<usize> for List<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.inner[index]
     }
 }
 
@@ -153,7 +168,7 @@ mod test {
         let state = TestState::new();
         let path = Path::from("generic_list").compose(1);
         let node_id = 0.into();
-        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, &node_id) else {
+        let ValueRef::Owned(Owned::Num(x)) = state.state_get(&path, &node_id) else {
             panic!()
         };
         assert_eq!(x.to_i128(), 2);

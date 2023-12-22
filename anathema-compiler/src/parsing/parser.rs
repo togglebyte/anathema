@@ -369,26 +369,27 @@ impl<'src, 'consts, 'view> Parser<'src, 'consts, 'view> {
     fn parse_value(&mut self) -> Result<Option<Expression>> {
         self.tokens.consume_indent();
 
+        // TODO: does this make sense?
         // Only valid tokens here are:
         // * [
         // * \n
         // * Text
         // * EOF
-        match self.tokens.peek() {
-            Kind::Newline
-            | Kind::Value(Value::String(_))
-            | Kind::Value(Value::Ident(_))
-            | Kind::Op(Operator::Minus)
-            | Kind::Op(Operator::LParen)
-            | Kind::Op(Operator::LBracket)
-            | Kind::Op(Operator::LCurly)
-            | Kind::Eof => {}
-            _ => {
-                return Err(self.error(ErrorKind::InvalidToken {
-                    expected: "either a new line, `[` or text",
-                }))
-            }
-        }
+        // match self.tokens.peek() {
+        //     Kind::Newline
+        //     | Kind::Value(Value::String(_))
+        //     | Kind::Value(Value::Ident(_))
+        //     | Kind::Op(Operator::Minus)
+        //     | Kind::Op(Operator::LParen)
+        //     | Kind::Op(Operator::LBracket)
+        //     | Kind::Op(Operator::LCurly)
+        //     | Kind::Eof => {}
+        //     _ => {
+        //         return Err(self.error(ErrorKind::InvalidToken {
+        //             expected: "either a new line, `[` or text",
+        //         }))
+        //     }
+        // }
 
         if matches!(self.tokens.peek(), Kind::Newline | Kind::Eof) {
             self.next_state();

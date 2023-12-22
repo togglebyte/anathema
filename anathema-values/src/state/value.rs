@@ -33,7 +33,7 @@ impl<T> StateValue<T> {
     }
 
     #[doc(hidden)]
-    pub fn get(&self, _: &Path, _: &NodeId) -> ValueRef<'_> {
+    pub fn state_get(&self, _: &Path, _: &NodeId) -> ValueRef<'_> {
         ValueRef::Empty
     }
 
@@ -92,8 +92,8 @@ where
 }
 
 impl<T: State> State for StateValue<T> {
-    fn get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
-        self.inner.get(key, node_id)
+    fn state_get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
+        self.inner.state_get(key, node_id)
     }
 }
 

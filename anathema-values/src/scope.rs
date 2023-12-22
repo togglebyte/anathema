@@ -1,64 +1,78 @@
 use std::rc::Rc;
 
+use crate::hashmap::HashMap;
 use crate::state::State;
-use crate::{Path, ValueRef};
+use crate::{Path, ValueExpr, ValueRef};
+
+// Scopes can only borrow values with the same lifetime as an expressions.
+// Any scoped value that belongs to or contains state can only be scoped as deferred expressions.
+#[derive(Debug, Clone, Copy)]
+pub enum ScopeValue<'expr> {
+    Value(ValueRef<'expr>),
+    Deferred(&'expr ValueExpr),
+    DeferredList(usize, &'expr ValueExpr),
+}
 
 #[derive(Debug, Clone)]
-pub enum LocalScope<'expr> {
-    Empty,
-    Value(Rc<(Path, ValueRef<'expr>)>),
+pub struct Scope<'expr>(HashMap<Path, ScopeValue<'expr>>);
+
+impl<'expr> Scope<'expr> {
+    pub fn new() -> Self {
+        Self(HashMap::default())
+    }
+
+    fn lookup(&self, lookup_path: &Path) -> Option<&ScopeValue<'expr>> {
+        self.0.get(lookup_path)
+    }
+
+    pub fn scope(&mut self, path: Path, value: ScopeValue<'expr> ) {
+        self.0.insert(path, value);
+    }
+
+    pub fn value(&mut self, path: Path, value: ValueRef<'expr>) {
+        self.0.insert(path, ScopeValue::Value(value));
+    }
+
+    pub fn deferred(&mut self, path: Path, expr: &'expr ValueExpr) {
+        self.0.insert(path, ScopeValue::Deferred(expr));
+    }
 }
 
-impl<'expr> LocalScope<'expr> {
-    pub fn new(path: Path, value: ValueRef<'expr>) -> Self {
-        Self::Value(Rc::new((path, value)))
-    }
-
-    pub fn empty() -> Self {
-        Self::Empty
-    }
-
-    pub fn lookup(&self, path: &Path) -> ValueRef<'expr> {
-        match self {
-            Self::Empty => ValueRef::Empty,
-            Self::Value(val) if val.0.eq(path) => val.1.clone(),
-            Self::Value(_) => ValueRef::Empty,
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Scopes<'a, 'expr> {
-    scope: &'a LocalScope<'expr>,
     parent: Option<&'a Scopes<'a, 'expr>>,
+    scope: &'a Scope<'expr>,
 }
 
 impl<'a, 'expr> Scopes<'a, 'expr> {
-    fn new(scope: &'a LocalScope<'expr>) -> Self {
+    fn new(scope: &'a Scope<'expr>) -> Self {
         Self {
             scope,
             parent: None,
         }
     }
 
-    pub fn reparent(&self, scope: &'a LocalScope<'expr>) -> Scopes<'_, 'expr> {
+    /// Make the current scope the parent scope, and assign a new scope
+    /// as the top most scope.
+    pub fn reparent(&self, scope: &'a Scope<'expr>) -> Scopes<'_, 'expr> {
         Scopes {
             scope,
             parent: Some(self),
         }
     }
 
-    pub(crate) fn lookup(&self, path: &Path) -> ValueRef<'expr> {
-        match self.scope.lookup(path) {
-            ValueRef::Empty => self
-                .parent
-                .map(|p| p.lookup(path))
-                .unwrap_or(ValueRef::Empty),
-            val => val,
-        }
+    pub(crate) fn lookup(&self, lookup_path: &Path) -> Option<&ScopeValue<'expr>> {
+        self.scope
+            .lookup(lookup_path)
+            .or_else(|| self.parent.and_then(|p| p.lookup(lookup_path)))
     }
 }
 
+// Lookup is done elsewhere as the resolver affects the lifetime, therefore there
+// is no lookup function on the scope.
+//
+// For a deferred resolver everything has the same lifetime as the expressions,
+// for an immediate resolver the lifetime can only be that of the frame, during the layout step
 #[derive(Debug)]
 pub struct Context<'state, 'expr> {
     pub state: &'state dyn State,
@@ -66,18 +80,18 @@ pub struct Context<'state, 'expr> {
 }
 
 impl<'state, 'expr> Context<'state, 'expr> {
-    pub fn root(state: &'state dyn State) -> Self {
-        Self::new(state, &LocalScope::Empty)
+    pub fn root(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
+        Self::new(state, scope)
     }
 
-    pub fn new(state: &'state dyn State, scope: &'state LocalScope<'expr>) -> Self {
+    pub fn new(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
         Self {
             state,
             scopes: Scopes::new(scope),
         }
     }
 
-    pub fn reparent(&'state self, scope: &'state LocalScope<'expr>) -> Context<'state, 'expr> {
+    pub fn reparent(&'state self, scope: &'state Scope<'expr>) -> Context<'state, 'expr> {
         Self {
             state: self.state,
             scopes: self.scopes.reparent(scope),
@@ -93,8 +107,8 @@ impl<'state, 'expr> Context<'state, 'expr> {
 
     // TODO: rename this.
     // It's not really creating a new scope but rather cloning the
-    // existing scope to the used when evaluating a new node
-    pub fn new_scope(&self) -> LocalScope<'expr> {
+    // existing scope to be used when evaluating a new node
+    pub fn new_scope(&self) -> Scope<'expr> {
         self.scopes.scope.clone()
     }
 }
@@ -105,18 +119,26 @@ mod test {
 
     #[test]
     fn scope_value() {
-        let scope = LocalScope::new("value".into(), ValueRef::Str("hello world"));
+        let scope = ScopeValue::value("value".into(), ValueRef::Str("hello world"));
         let scopes = Scopes::new(&scope);
 
-        let inner_scope = LocalScope::new("value".into(), ValueRef::Str("inner hello"));
+        let inner_scope = ScopeValue::value("value".into(), ValueRef::Str("inner hello"));
         let inner = scopes.reparent(&inner_scope);
 
-        let ValueRef::Str(lhs) = inner.lookup(&"value".into()) else {
+        let &ScopeValue::Value {
+            value: ValueRef::Str(lhs),
+            ..
+        } = inner.lookup(&"value".into())
+        else {
             panic!()
         };
         assert_eq!(lhs, "inner hello");
 
-        let ValueRef::Str(lhs) = scope.lookup(&"value".into()) else {
+        let &ScopeValue::Value {
+            value: ValueRef::Str(lhs),
+            ..
+        } = scopes.lookup(&"value".into())
+        else {
             panic!()
         };
         assert_eq!(lhs, "hello world");
