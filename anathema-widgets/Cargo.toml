@@ -13,7 +13,6 @@ anathema-widget-core = { path = "../anathema-widget-core" }
 anathema-values = { path = "../anathema-values" }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }
-smallvec = { workspace = true }
 
 [lints]
 workspace = true

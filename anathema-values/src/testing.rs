@@ -1,8 +1,6 @@
 use crate::map::Map;
-use crate::{
-    Context, List, LocalScope, NodeId, Owned, Resolver, StateValue, ValueExpr, ValueRef,
-    ValueResolver,
-};
+use crate::scope::Scope;
+use crate::{Context, Immediate, List, NodeId, Owned, StateValue, ValueExpr, ValueRef};
 
 #[derive(Debug, crate::State)]
 pub struct Inner {
@@ -50,7 +48,7 @@ impl TestState {
 #[derive(Debug)]
 pub struct TestExpression<T> {
     pub state: Map<T>,
-    scope: LocalScope<'static>,
+    scope: Scope<'static>,
     pub expr: Box<ValueExpr>,
     node_id: NodeId,
 }
@@ -61,20 +59,20 @@ where
 {
     pub fn eval(&self) -> ValueRef<'_> {
         let context = Context::new(&self.state, &self.scope);
-        let mut resolver = Resolver::new(&context, &self.node_id);
-        resolver.resolve(&self.expr)
+        let mut resolver = Immediate::new(&context, &self.node_id);
+        self.expr.eval(&mut resolver)
     }
 
     pub fn eval_string(&self) -> Option<String> {
         let context = Context::new(&self.state, &self.scope);
-        let mut resolver = Resolver::new(&context, &self.node_id);
-        resolver.resolve_string(&self.expr)
+        let mut resolver = Immediate::new(&context, &self.node_id);
+        self.expr.eval_string(&mut resolver)
     }
 
     pub fn eval_bool(&self, b: bool) -> bool {
         let context = Context::new(&self.state, &self.scope);
-        let mut resolver = Resolver::new(&context, &self.node_id);
-        resolver.resolve_bool(&self.expr) == b
+        let mut resolver = Immediate::new(&context, &self.node_id);
+        self.expr.eval(&mut resolver).is_true() == b
     }
 
     pub fn expect_owned(self, expected: impl Into<Owned>) {
@@ -93,7 +91,7 @@ impl ValueExpr {
         TestExpression {
             state: Map::new(inner),
             expr: Box::new(self),
-            scope: LocalScope::empty(),
+            scope: Scope::new(),
             node_id: 0.into(),
         }
     }
@@ -102,7 +100,7 @@ impl ValueExpr {
         TestExpression {
             state: Map::empty(),
             expr: Box::new(self),
-            scope: LocalScope::empty(),
+            scope: Scope::new(),
             node_id: 0.into(),
         }
     }

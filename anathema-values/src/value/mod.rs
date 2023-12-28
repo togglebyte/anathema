@@ -8,28 +8,58 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, Path, State, ValueExpr};
+use crate::{Collection, List, State, ValueExpr};
 
 mod num;
 mod owned;
 
+#[derive(Debug, Clone, Copy)]
+pub struct Expressions<'a>(pub &'a [ValueExpr]);
+
+impl<'a> Expressions<'a> {
+    pub fn new(inner: &'a [ValueExpr]) -> Self {
+        Self(inner)
+    }
+
+    pub(crate) fn get(&self, index: usize) -> Option<&'a ValueExpr> {
+        self.0.get(index)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ExpressionMap<'a>(pub &'a HashMap<String, ValueExpr>);
+
+impl<'a> ExpressionMap<'a> {
+    pub fn new(inner: &'a HashMap<String, ValueExpr>) -> Self {
+        Self(inner)
+    }
+
+    pub(crate) fn get(&self, ident: &str) -> Option<&'a ValueExpr> {
+        self.0.get(ident)
+    }
+}
+
 // -----------------------------------------------------------------------------
 //   - Value ref -
+//   Values references to state has a shorter lifetime as they
+//   can only live for the duration of the frame (layout).
+//
+//   So the lifetime for a value reference is either 'expression or that of
+//   the state (during the layout step)
 // -----------------------------------------------------------------------------
 /// A value reference is either owned or referencing something
 /// inside an expression.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum ValueRef<'a> {
     Str(&'a str),
     Map(&'a dyn State),
     List(&'a dyn Collection),
-    Expressions(&'a [ValueExpr]),
-    ExpressionMap(&'a HashMap<String, ValueExpr>),
+    Expressions(Expressions<'a>),
+    ExpressionMap(ExpressionMap<'a>),
     Owned(Owned),
-    /// A deferred lookup.
-    /// This should only ever be a path into a state, and
-    /// a state should never return a deferred value.
-    Deferred(Path),
+    /// * This should only ever occur when using a deferred resolver.
+    /// * A state should never return a deferred value.
+    Deferred,
     #[default]
     Empty,
 }

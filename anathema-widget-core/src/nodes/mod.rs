@@ -2,9 +2,7 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{
-    Change, Context, LocalScope, NextNodeId, NodeId, Resolver, Value, ValueRef, ValueResolver,
-};
+use anathema_values::{Change, Context, Immediate, NextNodeId, NodeId, Scope, Value, ValueRef};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -23,15 +21,33 @@ pub fn make_it_so(expressions: &[crate::expressions::Expression]) -> Nodes<'_> {
     Nodes::new(expressions, 0.into())
 }
 
+// TODO: good grief rename this function!
+fn c_and_b<'e, F>(
+    nodes: &mut Nodes<'e>,
+    context: &Context<'_, 'e>,
+    f: &mut F,
+) -> Result<ControlFlow<(), ()>>
+where
+    F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
+{
+    while let Ok(res) = nodes.next(context, f) {
+        match res {
+            ControlFlow::Continue(()) => continue,
+            ControlFlow::Break(()) => break,
+        }
+    }
+
+    Ok(ControlFlow::Continue(()))
+}
+
 #[derive(Debug)]
 pub struct Node<'e> {
     pub node_id: NodeId,
     pub kind: NodeKind<'e>,
-    pub(crate) scope: LocalScope<'e>,
+    pub(crate) scope: Scope<'e>,
 }
 
 impl<'e> Node<'e> {
-    // TODO: this is a very chunky match statement. Let's make it nice!
     pub fn next<F>(&mut self, context: &Context<'_, 'e>, f: &mut F) -> Result<ControlFlow<(), ()>>
     where
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
@@ -48,38 +64,42 @@ impl<'e> Node<'e> {
                 let Some(body) = if_else.body_mut() else {
                     return Ok(ControlFlow::Break(()));
                 };
-
-                while let Ok(res) = body.next(context, f) {
-                    match res {
-                        ControlFlow::Continue(()) => continue,
-                        ControlFlow::Break(()) => break,
-                    }
-                }
-
-                Ok(ControlFlow::Continue(()))
+                c_and_b(body, context, f)
             }
             NodeKind::View(View {
                 nodes, state, view, ..
             }) => {
                 let context = match state {
-                    ViewState::Static(state) => Context::root(*state),
-                    ViewState::External { path, .. } => {
-                        let mut resolver = Resolver::new(context, &self.node_id);
-                        match resolver.lookup_path(path) {
-                            ValueRef::Map(state) => Context::root(state),
-                            _ => Context::root(&()),
+                    ViewState::Dynamic(state) => Context::root(*state, &self.scope),
+                    ViewState::External { expr, .. } => {
+                        let mut resolver = Immediate::new(context, &self.node_id);
+
+                        match expr.eval(&mut resolver) {
+                            ValueRef::Map(state) => Context::root(state, &self.scope),
+                            _ => Context::root(&(), &self.scope),
                         }
                     }
-                    ViewState::Internal => Context::root(view.get_any_state()),
-                };
+                    ViewState::Map(map) => {
+                        // This and the update function:
+                        // Scopes should be improved upon
+                        // so more than one value can be scoped.
+                        //
+                        // Then it would be possible to scope
+                        // all the external expressions and resolve them when needed.
+                        //
+                        // This needs to be tested with nested states
 
-                while let Ok(res) = nodes.next(&context, f) {
-                    match res {
-                        ControlFlow::Continue(()) => continue,
-                        ControlFlow::Break(()) => break,
+                        for (k, expr) in map.0 {
+                            self.scope.deferred(k, expr);
+                        }
+
+                        let context = context.reparent(&self.scope);
+
+                        return c_and_b(nodes, &context, f);
                     }
-                }
-                Ok(ControlFlow::Continue(()))
+                    ViewState::Internal => Context::root(view.get_any_state(), &self.scope),
+                };
+                c_and_b(nodes, &context, f)
             }
         }
     }
@@ -108,7 +128,9 @@ impl<'e> Node<'e> {
                 Change::Push => loop_node.push(),
                 _ => (),
             },
-            NodeKind::View(View { tabindex, .. }) => {
+            NodeKind::View(View {
+                tabindex, state: _, ..
+            }) => {
                 tabindex.resolve(&context, &self.node_id);
                 Views::update(&self.node_id, tabindex.value());
             }
@@ -321,6 +343,7 @@ fn count_widgets<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 // Apply change / update to relevant nodes
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
+        let _id = format!("current: {:?} | target {node_id:?}", node.node_id);
         if !node.node_id.contains(node_id) {
             continue;
         }
@@ -340,17 +363,20 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
             NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
             NodeKind::View(view) => {
                 // TODO: make this into its own function
-                let context = match &view.state {
-                    ViewState::Static(state) => Context::root(*state),
-                    ViewState::External { path, .. } => {
-                        let mut resolver = Resolver::new(&context, &node.node_id);
-                        match resolver.lookup_path(path) {
-                            ValueRef::Map(state) => Context::root(state),
-                            _ => Context::root(&()),
+                let state = match &view.state {
+                    ViewState::Dynamic(state) => *state,
+                    ViewState::External { expr, .. } => {
+                        let mut resolver = Immediate::new(&context, &node.node_id);
+                        match expr.eval(&mut resolver) {
+                            ValueRef::Map(state) => state,
+                            _ => &(),
                         }
                     }
-                    ViewState::Internal => Context::root(view.view.get_any_state()),
+                    ViewState::Map(_map) => context.state,
+                    ViewState::Internal => view.view.get_any_state(),
                 };
+
+                let context = Context::root(state, &node.scope);
 
                 return view.nodes.update(node_id, change, &context);
             }
@@ -380,10 +406,10 @@ mod test {
         let string = "hello".into();
         let body = expression("test", Some(string), [], []);
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
-        let mut nodes = TestNodes::new(&exprs);
-        let size = nodes.layout().unwrap();
+        let mut runtime = test_runtime(&exprs);
+        let size = runtime.layout().unwrap();
         assert_eq!(size, Size::new(5, 3));
-        assert_eq!(nodes.nodes.count(), 3);
+        assert_eq!(runtime.nodes.count(), 3);
     }
 
     #[test]
@@ -391,10 +417,10 @@ mod test {
         let string = ValueExpr::Ident("item".into());
         let body = expression("test", Some(string), [], []);
         let exprs = vec![for_expression("item", ident("generic_list"), [body])];
-        let mut nodes = TestNodes::new(&exprs);
-        let size = nodes.layout().unwrap();
+        let mut runtime = test_runtime(&exprs);
+        let size = runtime.layout().unwrap();
         assert_eq!(size, Size::new(1, 3));
-        assert_eq!(nodes.nodes.count(), 3);
+        assert_eq!(runtime.nodes.count(), 3);
     }
 
     fn test_if_else(is_true: bool, else_cond: Option<bool>, expected: &str) {
@@ -414,9 +440,9 @@ mod test {
             (is_true, if_expr),
             vec![(is_else, else_if_expr), (None, else_expr)],
         )];
-        let mut nodes = TestNodes::new(&exprs);
-        let _ = nodes.layout().unwrap();
-        let (node, _) = nodes.nodes.first_mut().unwrap();
+        let mut runtime = test_runtime(&exprs);
+        let _ = runtime.layout().unwrap();
+        let (node, _) = runtime.nodes.first_mut().unwrap();
         let widget = node.to_ref::<TestWidget>();
 
         assert_eq!(widget.0.value_ref().unwrap(), expected);

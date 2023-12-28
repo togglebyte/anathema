@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fmt::Debug;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use crate::hashmap::HashMap;
 use crate::state::State;
@@ -53,6 +53,14 @@ impl<T> Map<T> {
             });
         }
     }
+
+    pub fn get(&self, key: &str) -> Option<&T> {
+        self.inner.get(key).map(|v| &v.inner)
+    }
+
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut T> {
+        self.inner.get_mut(key).map(|v| v.deref_mut())
+    }
 }
 
 impl<T: Debug> Map<T>
@@ -78,7 +86,7 @@ impl<T: Debug> State for Map<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    fn get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
+    fn state_get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_> {
         match key {
             Path::Key(key) => {
                 let Some(value) = self.inner.get(key) else {
@@ -87,9 +95,9 @@ where
                 value.subscribe(node_id.clone());
                 value.deref().into()
             }
-            Path::Composite(lhs, rhs) => match self.get(lhs, node_id) {
-                ValueRef::Map(map) => map.get(rhs, node_id),
-                ValueRef::List(collection) => collection.get(rhs, node_id),
+            Path::Composite(lhs, rhs) => match self.state_get(lhs, node_id) {
+                ValueRef::Map(map) => map.state_get(rhs, node_id),
+                ValueRef::List(collection) => collection.state_get(rhs, node_id),
                 _ => ValueRef::Empty,
             },
             Path::Index(_) => ValueRef::Empty,
@@ -108,7 +116,7 @@ mod test {
         let state = TestState::new();
         let path = Path::from("generic_map").compose("inner").compose("second");
         let node_id = 0.into();
-        let ValueRef::Owned(Owned::Num(x)) = state.get(&path, &node_id) else {
+        let ValueRef::Owned(Owned::Num(x)) = state.state_get(&path, &node_id) else {
             panic!()
         };
         assert_eq!(x.to_i128(), 2);

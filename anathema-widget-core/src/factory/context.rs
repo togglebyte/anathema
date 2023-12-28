@@ -52,3 +52,25 @@ impl<'a> FactoryContext<'a> {
         T::init_value(self.ctx, &self.node_id, val)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use anathema_values::testing::TestState;
+    use anathema_values::{Scope, ValueExpr};
+
+    use super::*;
+
+    #[test]
+    fn get_attribute() {
+        let state = TestState::new();
+        let root = Scope::new();
+        let ctx = Context::new(&state, &root);
+        let mut attributes = Attributes::new();
+        attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
+
+        let ctx = FactoryContext::new(&ctx, 0.into(), "border", &attributes, Value::Empty);
+
+        let name = ctx.get::<String>("name");
+        assert_eq!("Dirk Gently", name.str());
+    }
+}

@@ -164,7 +164,8 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
                     lhs: Box::new(left),
                     index: Box::new(expr_bp(tokens, prec::INITIAL)),
                 };
-                let Kind::Op(Operator::RBracket) = tokens.next_no_indent() else {
+                let next_token = tokens.next_no_indent();
+                let Kind::Op(Operator::RBracket) = next_token else {
                     panic!("invalid token");
                 };
                 continue;

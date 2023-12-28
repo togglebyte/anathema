@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use anathema_render::Size;
 use anathema_values::{
-    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
+    impl_dyn_value, Context, DynValue, Expressions, Immediate, NodeId, Value, ValueExpr, ValueRef,
 };
 use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
 use anathema_widget_core::error::Result;
@@ -10,7 +10,6 @@ use anathema_widget_core::layout::Layout;
 use anathema_widget_core::{
     AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetFactory, WidgetStyle,
 };
-use smallvec::SmallVec;
 use unicode_width::UnicodeWidthChar;
 
 use crate::layout::border::BorderLayout;
@@ -62,41 +61,83 @@ impl Default for Sides {
 
 impl DynValue for Sides {
     fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
-        let mut resolver = Resolver::new(context, node_id);
-        let inner = resolver.resolve_list(expr);
+        // TODO: smells like copy and past in here!
+        let mut resolver = Immediate::new(context, node_id);
+        let value = expr.eval(&mut resolver);
+
+        let inner = match value {
+            ValueRef::Str(s) => s.into(),
+            ValueRef::Expressions(Expressions(values)) => {
+                let mut sides = Sides::EMPTY;
+
+                values
+                    .iter()
+                    .map(|expr| expr.eval(&mut Immediate::new(context, node_id)))
+                    .for_each(|val| match val {
+                        ValueRef::Str(s) => sides |= s.into(),
+                        _ => {}
+                    });
+
+                sides
+            }
+            _ => Sides::EMPTY,
+        };
 
         match resolver.is_deferred() {
             true => Value::Dyn {
-                inner: Some(inner.into()),
+                inner: Some(inner),
                 expr: expr.clone(),
             },
-            false => match inner.is_empty() {
-                false => Value::Static(inner.into()),
-                true => Value::Empty,
-            },
+            false => Value::Static(inner),
         }
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
-            let sides = Resolver::new(context, node_id).resolve_list::<String>(expr);
-            *inner = Some(sides.into())
+            let mut resolver = Immediate::new(context, node_id);
+            let value = expr.eval(&mut resolver);
+
+            *inner = match value {
+                ValueRef::Str(s) => s.into(),
+                ValueRef::Expressions(Expressions(values)) => {
+                    let mut sides = Sides::EMPTY;
+
+                    values
+                        .iter()
+                        .map(|expr| expr.eval(&mut Immediate::new(context, node_id)))
+                        .for_each(|val| match val {
+                            ValueRef::Str(s) => sides |= s.into(),
+                            _ => {}
+                        });
+
+                    sides
+                }
+                _ => Sides::EMPTY,
+            }
+            .into();
         }
     }
 }
 
-impl From<SmallVec<[String; 4]>> for Sides {
-    fn from(value: SmallVec<[String; 4]>) -> Self {
+impl From<&str> for Sides {
+    fn from(value: &str) -> Self {
+        match value {
+            "all" => Sides::ALL,
+            "top" => Sides::TOP,
+            "left" => Sides::LEFT,
+            "right" => Sides::RIGHT,
+            "bottom" => Sides::BOTTOM,
+            _ => Sides::EMPTY,
+        }
+    }
+}
+
+impl From<Vec<String>> for Sides {
+    fn from(value: Vec<String>) -> Self {
         let mut sides = Sides::EMPTY;
+
         for side in value {
-            match side.as_str() {
-                "all" => sides |= Sides::ALL,
-                "top" => sides |= Sides::TOP,
-                "left" => sides |= Sides::LEFT,
-                "right" => sides |= Sides::RIGHT,
-                "bottom" => sides |= Sides::BOTTOM,
-                _ => {}
-            }
+            sides |= side.as_str().into();
         }
 
         sides

@@ -92,7 +92,7 @@ pub trait View {
 
     fn on_event(&mut self, _event: Event, _nodes: &mut Nodes<'_>) {}
 
-    fn get_state(&self) -> &dyn State {
+    fn state(&self) -> &dyn State {
         &()
     }
 
@@ -128,7 +128,7 @@ where
     }
 
     fn get_any_state(&self) -> &dyn State {
-        self.get_state()
+        self.state()
     }
 
     fn tick_any(&mut self) {

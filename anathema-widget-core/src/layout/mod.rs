@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use anathema_render::{ScreenPos, Size};
 use anathema_values::{
-    impl_dyn_value, Context, DynValue, NodeId, Resolver, Value, ValueExpr, ValueRef,
+    impl_dyn_value, Context, DynValue, Immediate, NodeId, Value, ValueExpr, ValueRef,
 };
 pub use layoutnodes::{LayoutNode, LayoutNodes};
 

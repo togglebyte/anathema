@@ -87,6 +87,12 @@ impl From<&str> for Path {
     }
 }
 
+impl From<&String> for Path {
+    fn from(s: &String) -> Self {
+        Self::Key(s.into())
+    }
+}
+
 impl From<String> for Path {
     fn from(s: String) -> Self {
         Self::Key(s)

@@ -2,7 +2,7 @@ use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context};
+use anathema_values::{drain_dirty_nodes, Context, Scope};
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
@@ -11,8 +11,9 @@ use anathema_widget_core::nodes::{make_it_so, Nodes};
 use anathema_widget_core::views::Views;
 use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::terminal::enable_raw_mode;
 pub use meta::Meta;
+use tabindex::Direction;
 
 use crate::tabindex::TabIndexing;
 
@@ -24,6 +25,7 @@ pub struct Runtime<'e> {
     pub enable_mouse: bool,
     pub enable_ctrlc: bool,
     pub enable_tabindex: bool,
+    pub enable_alt_screen: bool,
     pub fps: u8,
     screen: Screen,
     output: Stdout,
@@ -37,32 +39,28 @@ pub struct Runtime<'e> {
 
 impl<'e> Drop for Runtime<'e> {
     fn drop(&mut self) {
-        let _ = Screen::show_cursor(&mut self.output);
-        let _ = disable_raw_mode();
+        let _ = self.screen.restore(&mut self.output);
     }
 }
 
 impl<'e> Runtime<'e> {
     pub fn new(expressions: &'e [Expression]) -> Result<Self> {
-        let nodes = make_it_so(expressions);
-
         register_default_widgets()?;
-        enable_raw_mode()?;
 
-        let mut stdout = stdout();
-        Screen::hide_cursor(&mut stdout)?;
+        let nodes = make_it_so(expressions);
 
         let size: Size = size()?.into();
         let constraints = Constraints::new(Some(size.width), Some(size.height));
         let screen = Screen::new(size);
 
         let inst = Self {
-            output: stdout,
+            output: stdout(),
             screen,
             constraints,
             nodes,
             enable_meta: false,
             enable_mouse: false,
+            enable_alt_screen: true,
             events: Events,
             fps: 30,
             needs_layout: true,
@@ -77,7 +75,8 @@ impl<'e> Runtime<'e> {
 
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
-        let context = Context::root(&());
+        let scope = Scope::new();
+        let context = Context::root(&(), &scope);
         let mut nodes =
             LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 
@@ -108,7 +107,8 @@ impl<'e> Runtime<'e> {
         }
 
         self.needs_layout = true;
-        let context = Context::root(&());
+        let scope = Scope::new();
+        let context = Context::root(&(), &scope);
 
         for (node_id, change) in dirty_nodes {
             self.nodes.update(node_id.as_slice(), &change, &context);
@@ -139,8 +139,8 @@ impl<'e> Runtime<'e> {
         if self.enable_tabindex {
             if let Event::KeyPress(code @ (KeyCode::Tab | KeyCode::BackTab), ..) = event {
                 let dir = match code {
-                    KeyCode::Tab => tabindex::Direction::Forwards,
-                    KeyCode::BackTab => tabindex::Direction::Backwards,
+                    KeyCode::Tab => Direction::Forwards,
+                    KeyCode::BackTab => Direction::Backwards,
                     _ => unreachable!(),
                 };
 
@@ -158,8 +158,21 @@ impl<'e> Runtime<'e> {
     }
 
     pub fn run(mut self) -> Result<()> {
+        if self.enable_alt_screen {
+            self.screen.enter_alt_screen(&mut self.output)?;
+        }
+
+        enable_raw_mode()?;
+        Screen::hide_cursor(&mut self.output)?;
+
+        self.layout()?;
+
         if self.enable_mouse {
             Screen::enable_mouse(&mut self.output)?;
+        }
+
+        if self.enable_tabindex {
+            self.tabindex.next(Direction::Forwards);
         }
 
         self.screen.clear_all(&mut self.output)?;

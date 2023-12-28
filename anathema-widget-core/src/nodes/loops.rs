@@ -1,6 +1,8 @@
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, Deferred, LocalScope, NextNodeId, NodeId, Path, ValueRef};
+use anathema_values::{
+    Change, Context, Deferred, NextNodeId, NodeId, Path, Scope, ScopeValue, ValueRef,
+};
 
 use super::Nodes;
 use crate::error::Result;
@@ -66,11 +68,12 @@ impl<'e> LoopNode<'e> {
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         loop {
-            let Some(value) = self.next_value(context) else {
+            let Some(scope_val) = self.scope_next_value(context) else {
                 return Ok(ControlFlow::Continue(()));
             };
 
-            let scope = LocalScope::new(self.binding.clone(), value);
+            let mut scope = Scope::new();
+            scope.scope(self.binding.clone(), scope_val);
             let context = context.reparent(&scope);
 
             let iter = match self.iterations.get_mut(self.current_iteration) {
@@ -107,23 +110,26 @@ impl<'e> LoopNode<'e> {
         self.iterations.iter().map(|i| i.body.count()).sum()
     }
 
-    fn next_value(&mut self, context: &Context<'_, 'e>) -> Option<ValueRef<'e>> {
-        let val = match self.collection {
+    fn scope_next_value(&mut self, context: &Context<'_, 'e>) -> Option<ScopeValue<'e>> {
+        match self.collection {
             Collection::Static(expressions) => {
-                let value = expressions.get(self.value_index)?;
+                let expr = expressions.get(self.value_index)?;
                 self.value_index += 1;
-                Deferred::new(context).resolve(value)
+                let mut resolver = Deferred::new(context);
+                let val = match expr.eval(&mut resolver) {
+                    ValueRef::Deferred => ScopeValue::Deferred(expr),
+                    value => ScopeValue::Value(value),
+                };
+                Some(val)
             }
-            Collection::State { len, .. } if len == self.value_index => return None,
-            Collection::State { ref path, .. } => {
-                let path = path.compose(self.value_index);
+            Collection::State { len, .. } if len == self.value_index => None,
+            Collection::State { expr, .. } => {
+                let value = ScopeValue::DeferredList(self.value_index, expr);
                 self.value_index += 1;
-                ValueRef::Deferred(path)
+                Some(value)
             }
-            Collection::Empty => return None,
-        };
-
-        Some(val)
+            Collection::Empty => None,
+        }
     }
 
     pub(super) fn remove(&mut self, index: usize) {
@@ -134,9 +140,9 @@ impl<'e> LoopNode<'e> {
         self.value_index -= 1;
         self.current_iteration = self.iterations.len() - 1;
         // Remove the iteration
+        // TODO:
         // Remove all the views inside the iteration
         // that are currently in:
-        // * TabIndex
         // * Views
         self.iterations.remove(index);
     }
