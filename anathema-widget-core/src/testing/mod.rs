@@ -1,6 +1,6 @@
 use anathema_render::{Screen, ScreenPos, Size};
 use anathema_values::testing::TestState;
-use anathema_values::Context;
+use anathema_values::{Context, Scope};
 
 pub use self::expressions::expression;
 use super::WidgetContainer;
@@ -98,13 +98,13 @@ impl FakeTerm {
 }
 
 pub fn test_widget(expr: Expression, expected: FakeTerm) {
-    panic!()
-    // let state = TestState::new();
-    // let context = Context::root(&state);
-    // let mut node = expr.eval(&context, 0.into()).unwrap();
-    // let (widget, nodes) = node.single();
+    let state = TestState::new();
+    let scopes = Scope::new();
+    let context = Context::root(&state, &scopes);
+    let mut node = expr.eval(&context, 0.into()).unwrap();
+    let (widget, nodes) = node.single();
 
-    // test_widget_container(widget, nodes, &context, expected)
+    test_widget_container(widget, nodes, &context, expected)
 }
 
 pub fn test_widget_container<'e>(

@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::hashmap::HashMap;
 use crate::state::State;
 use crate::{Path, ValueExpr, ValueRef};
@@ -25,16 +23,16 @@ impl<'expr> Scope<'expr> {
         self.0.get(lookup_path)
     }
 
-    pub fn scope(&mut self, path: Path, value: ScopeValue<'expr> ) {
+    pub fn scope(&mut self, path: Path, value: ScopeValue<'expr>) {
         self.0.insert(path, value);
     }
 
-    pub fn value(&mut self, path: Path, value: ValueRef<'expr>) {
-        self.0.insert(path, ScopeValue::Value(value));
+    pub fn value(&mut self, path: impl Into<Path>, value: ValueRef<'expr>) {
+        self.0.insert(path.into(), ScopeValue::Value(value));
     }
 
-    pub fn deferred(&mut self, path: Path, expr: &'expr ValueExpr) {
-        self.0.insert(path, ScopeValue::Deferred(expr));
+    pub fn deferred(&mut self, path: impl Into<Path>, expr: &'expr ValueExpr) {
+        self.0.insert(path.into(), ScopeValue::Deferred(expr));
     }
 }
 
@@ -98,17 +96,7 @@ impl<'state, 'expr> Context<'state, 'expr> {
         }
     }
 
-    // pub(crate) fn lookup_path(&self, path: &Path) -> ValueRef<'expr> {
-    //     match self.scopes.lookup(path) {
-    //         ValueRef::Empty => ValueRef::Deferred(path.clone()),
-    //         val => val,
-    //     }
-    // }
-
-    // TODO: rename this.
-    // It's not really creating a new scope but rather cloning the
-    // existing scope to be used when evaluating a new node
-    pub fn new_scope(&self) -> Scope<'expr> {
+    pub fn clone_scope(&self) -> Scope<'expr> {
         self.scopes.scope.clone()
     }
 }
@@ -119,68 +107,26 @@ mod test {
 
     #[test]
     fn scope_value() {
-        let scope = ScopeValue::value("value".into(), ValueRef::Str("hello world"));
+        let mut scope = Scope::new();
+        scope.value("value", ValueRef::Str("hello world"));
         let scopes = Scopes::new(&scope);
 
-        let inner_scope = ScopeValue::value("value".into(), ValueRef::Str("inner hello"));
-        let inner = scopes.reparent(&inner_scope);
+        let mut inner_scope = Scope::new();
+        inner_scope.value("value", ValueRef::Str("inner hello"));
 
-        let &ScopeValue::Value {
-            value: ValueRef::Str(lhs),
-            ..
-        } = inner.lookup(&"value".into())
-        else {
-            panic!()
-        };
-        assert_eq!(lhs, "inner hello");
+        {
+            let scopes = scopes.reparent(&inner_scope);
 
-        let &ScopeValue::Value {
-            value: ValueRef::Str(lhs),
-            ..
-        } = scopes.lookup(&"value".into())
-        else {
+            let &ScopeValue::Value(ValueRef::Str(lhs)) = scopes.lookup(&"value".into()).unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(lhs, "inner hello");
+        }
+
+        let &ScopeValue::Value(ValueRef::Str(lhs)) = scopes.lookup(&"value".into()).unwrap() else {
             panic!()
         };
         assert_eq!(lhs, "hello world");
     }
-
-    // #[test]
-    // fn dynamic_attribute() {
-    //     let mut state = TestState::new();
-    //     let mut root = Scope::new(None);
-    //     let ctx = Context::new(&mut state, &mut root);
-    //     let mut attributes = Attributes::new();
-    //     attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
-
-    //     let id = Some(123.into());
-    //     let name = ctx.attribute::<String>("name", id.as_ref(), &attributes);
-    //     assert_eq!("Dirk Gently", name.value().unwrap());
-    // }
-
-    // #[test]
-    // fn context_lookup() {
-    //     let state = TestState::new();
-    //     let scope = Scope::new(None);
-    //     let context = Context::new(&state, &scope);
-
-    //     let path = Path::from("inner").compose("name");
-    //     let value = context.lookup_value::<String>(&path, None);
-    //     let value: &str = value.value().unwrap();
-    //     assert!(matches!(value, "Fiddle McStick"));
-    // }
-
-    // #[test]
-    // fn singular_state_value() {
-    //     let state = TestState::new();
-    //     let scope = Scope::new(None);
-    //     let context = Context::new(&state, &scope);
-    //     let path = Path::from("inner").compose("name");
-    // }
-
-    // #[test]
-    // fn collection_with_one_state_value() {
-    //     let state = TestState::new();
-    //     let scope = Scope::new(None);
-    //     let context = Context::new(&state, &scope);
-    // }
 }

@@ -1,9 +1,6 @@
 use crate::map::Map;
 use crate::scope::Scope;
-use crate::{
-    Context, List, ScopeValue, NodeId, Owned, Immediate, StateValue, ValueExpr, ValueRef,
-    Resolver,
-};
+use crate::{Context, Immediate, List, NodeId, Owned, StateValue, ValueExpr, ValueRef};
 
 #[derive(Debug, crate::State)]
 pub struct Inner {

@@ -1,5 +1,5 @@
 use anathema_render::Size;
-use anathema_values::{Context, DynValue, Owned, Immediate, Value, ValueRef, Expressions};
+use anathema_values::{Context, DynValue, Expressions, Immediate, Owned, Value, ValueRef};
 
 /// Represents the padding of a widget.
 /// Padding is not applicable to `text:` widgets.
@@ -171,6 +171,7 @@ impl DynValue for Padding {
 #[cfg(test)]
 mod test {
     use anathema_values::testing::{unum, TestState};
+    use anathema_values::Scope;
 
     use super::*;
 
@@ -217,7 +218,8 @@ mod test {
     fn resolve_padding() {
         let node_id = 0.into();
         let state = TestState::new();
-        let ctx = Context::root(&state);
+        let scope = Scope::new();
+        let ctx = Context::root(&state, &scope);
         let _resolver = Immediate::new(&ctx, &node_id);
 
         let e = unum(2);

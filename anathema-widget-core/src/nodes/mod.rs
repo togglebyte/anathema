@@ -2,9 +2,7 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{
-    Change, Context, Immediate, NextNodeId, NodeId, Path, Resolver, Scope, Value, ValueRef,
-};
+use anathema_values::{Change, Context, Immediate, NextNodeId, NodeId, Scope, Value, ValueRef};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -92,8 +90,7 @@ impl<'e> Node<'e> {
                         // This needs to be tested with nested states
 
                         for (k, expr) in map.0 {
-                            let path = k.clone().into();
-                            self.scope.deferred(path, expr);
+                            self.scope.deferred(k, expr);
                         }
 
                         let context = context.reparent(&self.scope);
@@ -132,7 +129,7 @@ impl<'e> Node<'e> {
                 _ => (),
             },
             NodeKind::View(View {
-                tabindex, state, ..
+                tabindex, state: _, ..
             }) => {
                 tabindex.resolve(&context, &self.node_id);
                 Views::update(&self.node_id, tabindex.value());
@@ -346,7 +343,7 @@ fn count_widgets<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 // Apply change / update to relevant nodes
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
-        let id = format!("current: {:?} | target {node_id:?}", node.node_id);
+        let _id = format!("current: {:?} | target {node_id:?}", node.node_id);
         if !node.node_id.contains(node_id) {
             continue;
         }
@@ -375,7 +372,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                             _ => &(),
                         }
                     }
-                    ViewState::Map(map) => context.state,
+                    ViewState::Map(_map) => context.state,
                     ViewState::Internal => view.view.get_any_state(),
                 };
 
@@ -409,10 +406,10 @@ mod test {
         let string = "hello".into();
         let body = expression("test", Some(string), [], []);
         let exprs = vec![for_expression("item", list([1, 2, 3]), [body])];
-        let mut nodes = TestNodes::new(&exprs);
-        let size = nodes.layout().unwrap();
+        let mut runtime = test_runtime(&exprs);
+        let size = runtime.layout().unwrap();
         assert_eq!(size, Size::new(5, 3));
-        assert_eq!(nodes.nodes.count(), 3);
+        assert_eq!(runtime.nodes.count(), 3);
     }
 
     #[test]
@@ -420,10 +417,10 @@ mod test {
         let string = ValueExpr::Ident("item".into());
         let body = expression("test", Some(string), [], []);
         let exprs = vec![for_expression("item", ident("generic_list"), [body])];
-        let mut nodes = TestNodes::new(&exprs);
-        let size = nodes.layout().unwrap();
+        let mut runtime = test_runtime(&exprs);
+        let size = runtime.layout().unwrap();
         assert_eq!(size, Size::new(1, 3));
-        assert_eq!(nodes.nodes.count(), 3);
+        assert_eq!(runtime.nodes.count(), 3);
     }
 
     fn test_if_else(is_true: bool, else_cond: Option<bool>, expected: &str) {
@@ -443,9 +440,9 @@ mod test {
             (is_true, if_expr),
             vec![(is_else, else_if_expr), (None, else_expr)],
         )];
-        let mut nodes = TestNodes::new(&exprs);
-        let _ = nodes.layout().unwrap();
-        let (node, _) = nodes.nodes.first_mut().unwrap();
+        let mut runtime = test_runtime(&exprs);
+        let _ = runtime.layout().unwrap();
+        let (node, _) = runtime.nodes.first_mut().unwrap();
         let widget = node.to_ref::<TestWidget>();
 
         assert_eq!(widget.0.value_ref().unwrap(), expected);

@@ -1,91 +1,9 @@
 use std::fmt::Display;
 use std::rc::Rc;
 
-use smallvec::SmallVec;
-
 use crate::hashmap::HashMap;
 use crate::value::{ExpressionMap, Expressions};
-use crate::{Context, NodeId, Num, Owned, Path, ScopeValue, ValueRef};
-
-// // -----------------------------------------------------------------------------
-// //   - This is so insanely gross... -
-// //   that it should be set on fire and forgotten
-// //   TODO: rewrite this to something less gross
-// // -----------------------------------------------------------------------------
-// fn lookup_static_collection<'a>(
-//     value_ref: ValueRef<'a>,
-//     path: &Path,
-//     resolver: &mut impl Resolver<'a>,
-// ) -> ValueRef<'a> {
-//     match value_ref {
-//         ValueRef::ExpressionMap(_) | ValueRef::Expressions(_) => {}
-//         val => return val,
-//     }
-
-//     match value_ref {
-//         ValueRef::ExpressionMap(map) => {}
-//         ValueRef::Expressions(list) => {}
-//         _ => unreachable!(),
-//     }
-
-//     if let Some(path) = path.rhs() {
-//         match path {
-//             Path::Index(idx) => {
-//                 if let ValueRef::Expressions(list) = value_ref {
-//                     return list
-//                         .0
-//                         .get(*idx)
-//                         .map(|val| val.eval(resolver))
-//                         .unwrap_or(ValueRef::Empty);
-//                 }
-//             }
-//             Path::Key(key) => {
-//                 if let ValueRef::ExpressionMap(map) = value_ref {
-//                     return map
-//                         .0
-//                         .get(key)
-//                         .map(|val| val.eval(resolver))
-//                         .unwrap_or(ValueRef::Empty);
-//                 }
-//             }
-//             Path::Composite(lhs, rhs) => match &**lhs {
-//                 Path::Index(idx) => {
-//                     if let ValueRef::Expressions(list) = value_ref {
-//                         match list
-//                             .0
-//                             .get(*idx)
-//                             .map(|val| val.eval(resolver))
-//                             .unwrap_or(ValueRef::Empty)
-//                         {
-//                             val @ ValueRef::Expressions(_) | val @ ValueRef::ExpressionMap(_) => {
-//                                 return lookup_static_collection(val, path, resolver);
-//                             }
-//                             _ => return ValueRef::Empty,
-//                         }
-//                     }
-//                 }
-//                 Path::Key(key) => {
-//                     if let ValueRef::ExpressionMap(map) = value_ref {
-//                         match map
-//                             .0
-//                             .get(key)
-//                             .map(|val| val.eval(resolver))
-//                             .unwrap_or(ValueRef::Empty)
-//                         {
-//                             val @ ValueRef::Expressions(_) | val @ ValueRef::ExpressionMap(_) => {
-//                                 return lookup_static_collection(val, path, resolver);
-//                             }
-//                             _ => return ValueRef::Empty,
-//                         }
-//                     }
-//                 }
-//                 _ => unreachable!(),
-//             },
-//         }
-//     }
-
-//     value_ref
-// }
+use crate::{Context, NodeId, Owned, Path, ScopeValue, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Value resolver trait -
@@ -98,14 +16,6 @@ pub trait Resolver<'expr> {
     fn resolve_list_lookup(&mut self, list: &'expr ValueExpr, index: usize) -> ValueRef<'expr>;
 
     fn resolve_map_lookup(&mut self, map: &'expr ValueExpr, ident: &str) -> ValueRef<'expr>;
-
-    // fn resolve_number(&mut self, value: &'expr ValueExpr) -> Option<Num>;
-
-    // fn resolve_bool(&mut self, value: &'expr ValueExpr) -> bool;
-
-    // fn resolve_path(&mut self, value: &'expr ValueExpr) -> Option<Path>;
-
-    // fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr>;
 }
 
 // -----------------------------------------------------------------------------
@@ -128,8 +38,12 @@ impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
         match self.context.scopes.lookup(path) {
             None => ValueRef::Deferred,
             Some(ScopeValue::Value(value)) => value.clone(),
-            Some(ScopeValue::Deferred(..)) => panic!("not sure what to do here yet, can this even happen?"),
-            Some(ScopeValue::DeferredList(..)) => panic!("not sure what to do here yet, can this even happen?"),
+            Some(ScopeValue::Deferred(..)) => {
+                panic!("not sure what to do here yet, can this even happen?")
+            }
+            Some(ScopeValue::DeferredList(..)) => {
+                panic!("not sure what to do here yet, can this even happen?")
+            }
         }
     }
 
@@ -148,7 +62,6 @@ impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
                 .map(|expr| expr.eval(self))
                 .unwrap_or(ValueRef::Empty),
             ValueRef::Deferred => ValueRef::Deferred,
-            lark => panic!("{lark:?}"),
             _ => ValueRef::Empty,
         }
     }
@@ -160,48 +73,9 @@ impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
                 .map(|expr| expr.eval(self))
                 .unwrap_or(ValueRef::Empty),
             ValueRef::Deferred => ValueRef::Deferred,
-            lark => panic!("{lark:?}"),
             _ => ValueRef::Empty,
         }
     }
-
-    // fn resolve_number(&mut self, value: &'expr ValueExpr) -> Option<Num> {
-    //     match value.eval(self) {
-    //         ValueRef::Owned(Owned::Num(num)) => Some(num),
-    //         _ => None,
-    //     }
-    // }
-
-    // fn resolve_bool(&mut self, value: &'expr ValueExpr) -> bool {
-    //     value.eval(self).is_true()
-    // }
-
-    // fn resolve_path(&mut self, value: &'expr ValueExpr) -> Option<Path> {
-    //     match value {
-    //         ValueExpr::Ident(path) => Some(Path::from(&**path)),
-    //         ValueExpr::Index(lhs, index) => {
-    //             // lhs can only be either an ident or an index
-    //             let lhs = self.resolve_path(lhs)?;
-    //             let index = self.resolve_number(index)?.to_usize();
-    //             Some(lhs.compose(index))
-    //         }
-    //         ValueExpr::Dot(lhs, rhs) => {
-    //             let lhs = self.resolve_path(lhs)?;
-    //             let rhs = self.resolve_path(rhs)?;
-    //             Some(lhs.compose(rhs))
-    //         }
-    //         _ => None,
-    //     }
-    // }
-
-    // fn lookup_path(&mut self, path: &Path) -> ValueRef<'expr> {
-    //     match self.context.scopes.lookup(path) {
-    //         value @ ValueRef::ExpressionMap(_) => lookup_static_collection(value, path, self),
-    //         value @ ValueRef::Expressions(_) => lookup_static_collection(value, path, self),
-    //         ValueRef::Empty => ValueRef::Deferred(path.clone()),
-    //         val => val,
-    //     }
-    // }
 }
 
 // -----------------------------------------------------------------------------
@@ -230,86 +104,9 @@ impl<'ctx, 'state> Immediate<'ctx, 'state> {
 }
 
 impl<'state> Immediate<'_, 'state> {
-    // pub fn resolve(&mut self, value: &'state ValueExpr) -> ValueRef<'state> {
-    //     match value.eval(self) {
-    //         ValueRef::Deferred => {
-    //             self.is_deferred = true;
-    //             self.context.state.get(&path, self.node_id)
-    //         }
-    //         val => val,
-    //     }
-    // }
-
     pub fn is_deferred(&self) -> bool {
         self.is_deferred
     }
-
-    // pub fn resolve_string(&mut self, value: &'state ValueExpr) -> Option<String> {
-    //     match value.eval(self) {
-    //         ValueRef::Str(s) => Some(s.into()),
-    //         ValueRef::Owned(s) => Some(s.to_string()),
-    //         ValueRef::Expressions(Expressions(list)) => {
-    //             let mut s = String::new();
-    //             for expr in list {
-    //                 let res = self.resolve_string(expr);
-    //                 if let Some(res) = res {
-    //                     s.push_str(&res);
-    //                 }
-    //             }
-    //             Some(s)
-    //         }
-    //         ValueRef::Deferred(path) => {
-    //             self.is_deferred = true;
-    //             match self.context.state.get(&path, self.node_id) {
-    //                 ValueRef::Str(val) => Some(val.into()),
-    //                 ValueRef::Owned(val) => Some(val.to_string()),
-    //                 ValueRef::Empty => None,
-    //                 _ => None,
-    //             }
-    //         }
-    //         ValueRef::Empty => None,
-    //         _ => None,
-    //     }
-    // }
-
-    // pub fn resolve_list<T>(&mut self, value: &'state ValueExpr) -> SmallVec<[T; 4]>
-    // where
-    //     T: for<'b> TryFrom<ValueRef<'b>>,
-    // {
-    //     let mut output = SmallVec::<[T; 4]>::new();
-    //     let value = value.eval(self);
-    //     let value = match value {
-    //         ValueRef::Deferred(path) => {
-    //             self.is_deferred = true;
-    //             self.context.state.get(&path, self.node_id)
-    //         }
-    //         val => val,
-    //     };
-
-    //     let mut resolver = Self::new(self.context, self.node_id);
-    //     match value {
-    //         ValueRef::Expressions(Expressions(list)) => {
-    //             for expr in list {
-    //                 let val = expr.eval(&mut resolver);
-    //                 let Ok(val) = T::try_from(val) else { continue };
-    //                 output.push(val);
-    //             }
-
-    //             if resolver.is_deferred {
-    //                 self.is_deferred = true;
-    //             }
-
-    //             output
-    //         }
-    //         val => {
-    //             let Ok(val) = T::try_from(val) else {
-    //                 return output;
-    //             };
-    //             output.push(val);
-    //             output
-    //         }
-    //     }
-    // }
 }
 
 impl<'state> Resolver<'state> for Immediate<'_, 'state> {
@@ -359,7 +156,6 @@ impl<'state> Resolver<'state> for Immediate<'_, 'state> {
                 };
                 value_expr.eval(self)
             }
-            lark => panic!("{lark:?}"),
             _ => ValueRef::Empty,
         }
     }
@@ -380,74 +176,6 @@ impl<'state> Resolver<'state> for Immediate<'_, 'state> {
             _ => ValueRef::Empty,
         }
     }
-
-    // fn resolve_number(&mut self, value: &'state ValueExpr) -> Option<Num> {
-    //     match value.eval(self) {
-    //         ValueRef::Owned(Owned::Num(num)) => Some(num),
-    //         ValueRef::Deferred(path) => {
-    //             self.is_deferred = true;
-    //             match self.context.state.get(&path, self.node_id) {
-    //                 ValueRef::Owned(Owned::Num(num)) => Some(num),
-    //                 _ => None,
-    //             }
-    //         }
-    //         _ => None,
-    //     }
-    // }
-
-    // fn resolve_bool(&mut self, value: &'state ValueExpr) -> bool {
-    //     match value.eval(self) {
-    //         ValueRef::Deferred(path) => {
-    //             self.is_deferred = true;
-    //             self.context.state.get(&path, self.node_id).is_true()
-    //         }
-    //         val => val.is_true(),
-    //     }
-    // }
-
-    // fn resolve_path(&mut self, value: &'state ValueExpr) -> Option<Path> {
-    //     match value {
-    //         ValueExpr::Ident(path) => {
-    //             let path = Path::from(&**path);
-    //             match self.context.scopes.lookup(&path) {
-    //                 ValueRef::Deferred(path) => Some(path),
-    //                 ValueRef::Empty => Some(path),
-    //                 val => {
-    //                     Some(path)
-    //                     // panic!("this should never be anythign but a deferred path: {val:?}")
-    //                 }
-    //             }
-    //         }
-    //         ValueExpr::Index(lhs, index) => {
-    //             // lhs can only be either an ident or an index
-    //             let lhs = self.resolve_path(lhs)?;
-    //             let index = self.resolve_number(index)?.to_usize();
-    //             Some(lhs.compose(index))
-    //         }
-    //         ValueExpr::Dot(lhs, rhs) => {
-    //             let lhs = self.resolve_path(lhs)?;
-    //             let rhs = self.resolve_path(rhs)?;
-    //             Some(lhs.compose(rhs))
-    //         }
-    //         _ => None,
-    //     }
-    // }
-
-    // fn lookup_path(&mut self, path: &Path) -> ValueRef<'state> {
-    //     match self.context.scopes.lookup(path) {
-    //         ValueRef::Deferred(ref path) => {
-    //             self.is_deferred = true;
-    //             self.context.state.get(path, self.node_id)
-    //         }
-    //         ValueRef::Empty => {
-    //             self.is_deferred = true;
-    //             self.context.state.get(path, self.node_id)
-    //         }
-    //         value @ ValueRef::ExpressionMap(_) => lookup_static_collection(value, path, self),
-    //         value @ ValueRef::Expressions(_) => lookup_static_collection(value, path, self),
-    //         val => val,
-    //     }
-    // }
 }
 
 // -----------------------------------------------------------------------------
@@ -469,7 +197,8 @@ pub enum ValueExpr {
     Dot(Box<ValueExpr>, Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
 
-    // TODO: does the list and the hashmap even need to be RCd?
+    // List and Map are both Rc'd as expressions
+    // are cloned for `Value<T>`.
     List(Rc<[ValueExpr]>),
     Map(Rc<HashMap<String, ValueExpr>>),
 

@@ -1,12 +1,12 @@
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, State, Value};
+use anathema_values::{Context, Scope, State, Value};
 
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::layout::{Constraints, Layout};
-use crate::nodes::Node;
+use crate::nodes::{make_it_so, Node};
 use crate::{
     AnyWidget, Factory, FactoryContext, LayoutNodes, Nodes, Padding, Widget, WidgetFactory,
 };
@@ -98,13 +98,12 @@ pub struct TestExpression<S> {
     pub state: S,
     pub expr: Box<Expression>,
     pub layout: LayoutCtx,
+    pub scope: Scope<'static>,
 }
 
 impl<S: State> TestExpression<S> {
     pub fn ctx(&self) -> Context<'_, '_> {
-        panic!()
-        // let ctx = Context::root(&self.state);
-        // ctx
+        Context::root(&self.state, &self.scope)
     }
 
     pub fn eval(&self) -> Result<Node<'_>> {
@@ -115,33 +114,69 @@ impl<S: State> TestExpression<S> {
 // -----------------------------------------------------------------------------
 //   - Test node -
 // -----------------------------------------------------------------------------
-pub struct TestNodes<'e> {
+
+pub struct TestRuntime<'e> {
     pub nodes: Nodes<'e>,
+    constraints: Constraints,
     state: TestState,
 }
 
-impl<'e> TestNodes<'e> {
-    pub fn new(exprs: &'e [Expression]) -> Self {
-        register_test_widget();
-        let nodes = Nodes::new(exprs, 0.into());
-        Self {
-            nodes,
-            state: TestState::new(),
-        }
-    }
-
+impl TestRuntime<'_> {
     pub fn layout(&mut self) -> Result<Size> {
-        panic!()
-        // let context = Context::root(&self.state);
-        // let mut layout_nodes = LayoutNodes::new(
-        //     &mut self.nodes,
-        //     Constraints::new(120, 40),
-        //     Padding::ZERO,
-        //     &context,
-        // );
-        // TestLayoutMany.layout(&mut layout_nodes)
+        self.nodes.reset_cache();
+        let scope = Scope::new();
+        let context = Context::root(&self.state, &scope);
+        let mut nodes =
+            LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
+
+        let mut size = Size::ZERO;
+        nodes.for_each(|mut node| {
+            let node_size = node.layout(self.constraints)?;
+            size.width = size.width.max(node_size.width);
+            size.height += node_size.height;
+            Ok(())
+        })?;
+
+        Ok(size)
     }
 }
+
+pub fn test_runtime(exprs: &[Expression]) -> TestRuntime<'_> {
+    register_test_widget();
+    let nodes = make_it_so(exprs);
+    TestRuntime {
+        nodes,
+        constraints: Constraints::new(80, 25),
+        state: TestState::new(),
+    }
+}
+
+// pub struct TestNodes<'e> {
+//     pub nodes: Nodes<'e>,
+//     state: TestState,
+// }
+
+// impl<'e> TestNodes<'e> {
+//     pub fn new(exprs: &'e [Expression]) -> Self {
+//         register_test_widget();
+//         let nodes = Nodes::new(exprs, 0.into());
+//         Self {
+//             nodes,
+//             state: TestState::new(),
+//         }
+//     }
+
+//     pub fn layout(&mut self) -> Result<Size> {
+//         let context = Context::root(&self.state);
+//         let mut layout_nodes = LayoutNodes::new(
+//             &mut self.nodes,
+//             Constraints::new(120, 40),
+//             Padding::ZERO,
+//             &context,
+//         );
+//         TestLayoutMany.layout(&mut layout_nodes)
+//     }
+// }
 
 pub(crate) fn register_test_widget() {
     let _ = Factory::register("test", TestWidgetFactory);

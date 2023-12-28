@@ -1,5 +1,5 @@
 use std::fmt::{self, Display};
-use std::ops::{Deref, Sub};
+use std::ops::Deref;
 
 /// Path lookup
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -73,29 +73,6 @@ impl Path {
             }
         }
     }
-
-    // Strip the first part of the path away.
-    // This is used when looking up values from maps and lists
-    // declared in the template.
-    pub(super) fn sub(&self, rhs: &Path) -> Option<&Path> {
-        if let Path::Composite(l_lhs, l_rhs) = self {
-            match (&**l_lhs, rhs) {
-                (Path::Key(l_key), Path::Key(r_key)) if l_key == r_key => Some(l_rhs),
-                (Path::Index(l_idx), Path::Index(r_idx)) if l_idx == r_idx => Some(l_rhs),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-
-    pub(super) fn rhs(&self) -> Option<&Path> {
-        if let Path::Composite(_, rhs) = self {
-            Some(rhs)
-        } else {
-            None
-        }
-    }
 }
 
 impl From<usize> for Path {
@@ -106,6 +83,12 @@ impl From<usize> for Path {
 
 impl From<&str> for Path {
     fn from(s: &str) -> Self {
+        Self::Key(s.into())
+    }
+}
+
+impl From<&String> for Path {
+    fn from(s: &String) -> Self {
         Self::Key(s.into())
     }
 }

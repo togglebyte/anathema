@@ -1,7 +1,6 @@
 #![allow(clippy::from_over_into)]
 
 use std::fmt::Debug;
-use std::ops::Deref;
 
 use anathema_render::Color;
 
@@ -9,7 +8,7 @@ pub use self::num::Num;
 pub use self::owned::Owned;
 use crate::hashmap::HashMap;
 use crate::map::Map;
-use crate::{Collection, List, NodeId, Path, State, ValueExpr, Resolver, Context, Immediate};
+use crate::{Collection, List, State, ValueExpr};
 
 mod num;
 mod owned;
@@ -42,10 +41,10 @@ impl<'a> ExpressionMap<'a> {
 
 // -----------------------------------------------------------------------------
 //   - Value ref -
-//   Values references to state has a shorter lifetime as they 
+//   Values references to state has a shorter lifetime as they
 //   can only live for the duration of the frame (layout).
 //
-//   So the lifetime for a value reference is either 'expression or that of 
+//   So the lifetime for a value reference is either 'expression or that of
 //   the state (during the layout step)
 // -----------------------------------------------------------------------------
 /// A value reference is either owned or referencing something

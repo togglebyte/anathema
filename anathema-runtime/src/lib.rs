@@ -11,7 +11,7 @@ use anathema_widget_core::nodes::{make_it_so, Nodes};
 use anathema_widget_core::views::Views;
 use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::terminal::enable_raw_mode;
 pub use meta::Meta;
 use tabindex::Direction;
 
@@ -39,7 +39,7 @@ pub struct Runtime<'e> {
 
 impl<'e> Drop for Runtime<'e> {
     fn drop(&mut self) {
-        self.screen.restore(&mut self.output);
+        let _ = self.screen.restore(&mut self.output);
     }
 }
 
@@ -49,14 +49,12 @@ impl<'e> Runtime<'e> {
 
         let nodes = make_it_so(expressions);
 
-        let mut stdout = stdout();
-
         let size: Size = size()?.into();
         let constraints = Constraints::new(Some(size.width), Some(size.height));
         let screen = Screen::new(size);
 
-        let mut inst = Self {
-            output: stdout,
+        let inst = Self {
+            output: stdout(),
             screen,
             constraints,
             nodes,
@@ -107,8 +105,6 @@ impl<'e> Runtime<'e> {
         if dirty_nodes.is_empty() {
             return;
         }
-
-        let dn = format!("{dirty_nodes:?}");
 
         self.needs_layout = true;
         let scope = Scope::new();
@@ -163,7 +159,7 @@ impl<'e> Runtime<'e> {
 
     pub fn run(mut self) -> Result<()> {
         if self.enable_alt_screen {
-            self.screen.enter_alt_screen(&mut self.output);
+            self.screen.enter_alt_screen(&mut self.output)?;
         }
 
         enable_raw_mode()?;

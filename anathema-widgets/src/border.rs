@@ -10,7 +10,6 @@ use anathema_widget_core::layout::Layout;
 use anathema_widget_core::{
     AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetFactory, WidgetStyle,
 };
-use smallvec::SmallVec;
 use unicode_width::UnicodeWidthChar;
 
 use crate::layout::border::BorderLayout;
@@ -94,11 +93,29 @@ impl DynValue for Sides {
     }
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
-        panic!()
-        // if let Value::Dyn { inner, expr } = value {
-        //     let sides = Immediate::new(context, node_id).resolve_list::<String>(expr);
-        //     *inner = Some(sides.into())
-        // }
+        if let Value::Dyn { inner, expr } = value {
+            let mut resolver = Immediate::new(context, node_id);
+            let value = expr.eval(&mut resolver);
+
+            *inner = match value {
+                ValueRef::Str(s) => s.into(),
+                ValueRef::Expressions(Expressions(values)) => {
+                    let mut sides = Sides::EMPTY;
+
+                    values
+                        .iter()
+                        .map(|expr| expr.eval(&mut Immediate::new(context, node_id)))
+                        .for_each(|val| match val {
+                            ValueRef::Str(s) => sides |= s.into(),
+                            _ => {}
+                        });
+
+                    sides
+                }
+                _ => Sides::EMPTY,
+            }
+            .into();
+        }
     }
 }
 
@@ -115,8 +132,8 @@ impl From<&str> for Sides {
     }
 }
 
-impl From<SmallVec<[String; 4]>> for Sides {
-    fn from(value: SmallVec<[String; 4]>) -> Self {
+impl From<Vec<String>> for Sides {
+    fn from(value: Vec<String>) -> Self {
         let mut sides = Sides::EMPTY;
 
         for side in value {

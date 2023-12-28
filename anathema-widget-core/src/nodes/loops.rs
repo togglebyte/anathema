@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, Deferred, Immediate, NextNodeId, NodeId, Path, Scope, ScopeValue, ValueRef,
+    Change, Context, Deferred, NextNodeId, NodeId, Path, Scope, ScopeValue, ValueRef,
 };
 
 use super::Nodes;

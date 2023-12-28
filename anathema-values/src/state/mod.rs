@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 //   - Notes about state -
 //   State can either belong to a `View` or be passed to a `View`.
-//   Any state owned by a view has to be returned by `View::state()` to be 
+//   Any state owned by a view has to be returned by `View::state()` to be
 //   accessible inside the templates.
 //
 //   State owned by the `View` is referred to as Internal State.

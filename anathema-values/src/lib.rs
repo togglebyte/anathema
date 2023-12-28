@@ -7,7 +7,7 @@ pub use self::id::{NextNodeId, NodeId};
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::path::Path;
-pub use self::scope::{Context, ScopeValue, Scope};
+pub use self::scope::{Context, Scope, ScopeValue};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
 pub use self::value::{ExpressionMap, Expressions, Num, Owned, ValueRef};

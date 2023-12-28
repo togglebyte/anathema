@@ -122,7 +122,6 @@ pub(crate) struct ExpandFactory;
 
 impl WidgetFactory for ExpandFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let axis = ctx.get::<Axis>("axis");
         let widget = Expand {
             axis: ctx.get("axis"),
             fill: ctx.get("fill"),

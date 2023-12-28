@@ -100,7 +100,6 @@ impl<T> List<T> {
     }
 }
 
-
 impl<T: Debug> List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,

@@ -1,7 +1,7 @@
 use anathema_render::Size;
 use anathema_values::{
     Attributes, Context, Deferred, DynValue, ExpressionMap, Expressions, Immediate, NextNodeId,
-    NodeId, Path, Resolver, State, Value, ValueExpr, ValueRef,
+    NodeId, Path, State, Value, ValueExpr, ValueRef,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -42,7 +42,7 @@ impl SingleNodeExpr {
         // values, however this message was attached to another message so here we are... (the
         // other message was an issue that is now resolved under the name of FactoryContext)
 
-        let scope = context.new_scope();
+        let scope = context.clone_scope();
 
         let text = self
             .text
@@ -159,7 +159,7 @@ impl LoopExpr {
         let node = Node {
             kind: NodeKind::Loop(loop_node),
             node_id,
-            scope: context.new_scope(),
+            scope: context.clone_scope(),
         };
 
         Ok(node)
@@ -189,7 +189,7 @@ impl ControlFlow {
                 next_node,
             )),
             node_id,
-            scope: context.new_scope(),
+            scope: context.clone_scope(),
         };
         Ok(node)
     }
@@ -250,7 +250,7 @@ impl ViewExpr {
                 tabindex,
             }),
             node_id,
-            scope: context.new_scope(),
+            scope: context.clone_scope(),
         };
         Ok(node)
     }
@@ -285,6 +285,7 @@ impl Expression {
 #[cfg(all(test, feature = "testing"))]
 mod test {
     use anathema_values::testing::{list, TestState};
+    use anathema_values::Scope;
 
     use super::*;
     use crate::contexts::LayoutCtx;
@@ -303,6 +304,7 @@ mod test {
                 state: TestState::new(),
                 expr: Box::new(self),
                 layout: LayoutCtx::new(constraint, Padding::ZERO),
+                scope: Scope::new(),
             }
         }
     }
