@@ -76,6 +76,14 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
                 let _ = self.chars.next();
                 Ok(Kind::Op(Operator::EqualEqual).to_token(index))
             }
+            ('>', Some('=')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Op(Operator::GreaterThanOrEqual).to_token(index))
+            }
+            ('<', Some('=')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Op(Operator::LessThanOrEqual).to_token(index))
+            }
 
             // -----------------------------------------------------------------------------
             //     - Single tokens -
@@ -95,6 +103,8 @@ impl<'src, 'consts> Lexer<'src, 'consts> {
             ('*', _) => Ok(Kind::Op(Operator::Mul).to_token(index)),
             ('/', _) => Ok(Kind::Op(Operator::Div).to_token(index)),
             ('%', _) => Ok(Kind::Op(Operator::Mod).to_token(index)),
+            ('>', _) => Ok(Kind::Op(Operator::GreaterThan).to_token(index)),
+            ('<', _) => Ok(Kind::Op(Operator::LessThan).to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
             ('@', _) => Ok(Kind::View.to_token(index)),
 

@@ -106,10 +106,7 @@ impl<'e> Node<'e> {
 
                         return c_and_b(nodes, &context, f);
                     }
-                    ViewState::Internal => {
-                        let mut context = Context::new(view.get_any_state(), &self.scope);
-                        context
-                    }
+                    ViewState::Internal => Context::new(view.get_any_state(), &self.scope),
                 };
                 c_and_b(nodes, &context, f)
             }

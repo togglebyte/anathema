@@ -23,7 +23,14 @@ pub mod prec {
 fn get_precedence(op: Operator) -> u8 {
     match op {
         Operator::Equal => prec::ASSIGNMENT,
-        Operator::Or | Operator::And | Operator::EqualEqual => prec::CONDITIONAL,
+        Operator::Or 
+        | Operator::And 
+        | Operator::EqualEqual 
+        | Operator::GreaterThan 
+        | Operator::GreaterThanOrEqual
+        | Operator::LessThan 
+        | Operator::LessThanOrEqual
+        => prec::CONDITIONAL,
         Operator::Plus | Operator::Minus => prec::SUM,
         Operator::Mul | Operator::Div | Operator::Mod => prec::PRODUCT,
         Operator::LParen => prec::CALL,

@@ -144,6 +144,22 @@ pub fn add(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
     ValueExpr::Add(lhs, rhs).into()
 }
 
+pub fn greater_than(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Greater(lhs, rhs).into()
+}
+
+pub fn greater_than_equal(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::GreaterEqual(lhs, rhs).into()
+}
+
+pub fn less_than(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::Less(lhs, rhs).into()
+}
+
+pub fn less_than_equal(lhs: Box<ValueExpr>, rhs: Box<ValueExpr>) -> Box<ValueExpr> {
+    ValueExpr::LessEqual(lhs, rhs).into()
+}
+
 // -----------------------------------------------------------------------------
 //   - Values -
 // -----------------------------------------------------------------------------

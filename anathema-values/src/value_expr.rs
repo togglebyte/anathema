@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::hashmap::HashMap;
 use crate::value::{ExpressionMap, Expressions};
-use crate::{Context, NodeId, Owned, Path, ScopeValue, State, ValueRef};
+use crate::{Context, NodeId, Owned, Path, ScopeValue, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Value resolver trait -
@@ -210,6 +210,10 @@ pub enum ValueExpr {
     And(Box<ValueExpr>, Box<ValueExpr>),
     Or(Box<ValueExpr>, Box<ValueExpr>),
     Equality(Box<ValueExpr>, Box<ValueExpr>),
+    Greater(Box<ValueExpr>, Box<ValueExpr>),
+    GreaterEqual(Box<ValueExpr>, Box<ValueExpr>),
+    Less(Box<ValueExpr>, Box<ValueExpr>),
+    LessEqual(Box<ValueExpr>, Box<ValueExpr>),
 
     Ident(Rc<str>),
     Dot(Box<ValueExpr>, Box<ValueExpr>),
@@ -265,6 +269,10 @@ impl Display for ValueExpr {
             Self::And(lhs, rhs) => write!(f, "{lhs} && {rhs}"),
             Self::Or(lhs, rhs) => write!(f, "{lhs} || {rhs}"),
             Self::Equality(lhs, rhs) => write!(f, "{lhs} == {rhs}"),
+            Self::Greater(lhs, rhs) => write!(f, "{lhs} > {rhs}"),
+            Self::GreaterEqual(lhs, rhs) => write!(f, "{lhs} >= {rhs}"),
+            Self::Less(lhs, rhs) => write!(f, "{lhs} < {rhs}"),
+            Self::LessEqual(lhs, rhs) => write!(f, "{lhs} <= {rhs}"),
         }
     }
 }
@@ -353,7 +361,11 @@ impl ValueExpr {
             | Self::Sub(lhs, rhs)
             | Self::Mul(lhs, rhs)
             | Self::Mod(lhs, rhs)
-            | Self::Div(lhs, rhs)) => {
+            | Self::Div(lhs, rhs)
+            | Self::Greater(lhs, rhs)
+            | Self::GreaterEqual(lhs, rhs)
+            | Self::Less(lhs, rhs)
+            | Self::LessEqual(lhs, rhs)) => {
                 let lhs = eval_num!(lhs, resolver);
                 let rhs = eval_num!(rhs, resolver);
 
@@ -364,6 +376,16 @@ impl ValueExpr {
                     Self::Mod(..) => ValueRef::Owned(Owned::Num(lhs % rhs)),
                     Self::Div(..) if !rhs.is_zero() => ValueRef::Owned(Owned::Num(lhs / rhs)),
                     Self::Div(..) => ValueRef::Empty,
+                    Self::Greater(..) => {
+                        ValueRef::Owned(Owned::Bool(lhs.to_u128() > rhs.to_u128()))
+                    }
+                    Self::GreaterEqual(..) => {
+                        ValueRef::Owned(Owned::Bool(lhs.to_u128() >= rhs.to_u128()))
+                    }
+                    Self::Less(..) => ValueRef::Owned(Owned::Bool(lhs.to_u128() < rhs.to_u128())),
+                    Self::LessEqual(..) => {
+                        ValueRef::Owned(Owned::Bool(lhs.to_u128() <= rhs.to_u128()))
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -443,7 +465,7 @@ impl From<&str> for ValueExpr {
 mod test {
     use crate::map::Map;
     use crate::testing::{
-        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum,
+        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum, greater_than, greater_than_equal, less_than, less_than_equal,
     };
     use crate::ValueRef;
 
@@ -481,6 +503,36 @@ mod test {
     fn mod_static() {
         let expr = modulo(unum(5), unum(3));
         expr.test().expect_owned(2u8);
+    }
+
+    #[test]
+    fn greater_than_static() {
+        let expr = greater_than(unum(5), unum(3));
+        expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn greater_than_equal_static() {
+        let expr = greater_than_equal(unum(5), unum(3));
+        expr.test().expect_owned(true);
+
+        let expr = greater_than_equal(unum(3), unum(3));
+        expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn less_than_static() {
+        let expr = less_than(unum(2), unum(3));
+        expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn less_than_equal_static() {
+        let expr = less_than_equal(unum(2), unum(3));
+        expr.test().expect_owned(true);
+
+        let expr = less_than_equal(unum(3), unum(3));
+        expr.test().expect_owned(true);
     }
 
     #[test]
