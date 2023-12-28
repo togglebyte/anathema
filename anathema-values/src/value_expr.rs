@@ -37,7 +37,7 @@ impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
     fn resolve(&mut self, path: &Path) -> ValueRef<'expr> {
         match self.context.scopes.lookup(path) {
             None => ValueRef::Deferred,
-            Some(ScopeValue::Value(value)) => value.clone(),
+            Some(ScopeValue::Value(value)) => *value,
             Some(ScopeValue::Deferred(..)) => {
                 panic!("not sure what to do here yet, can this even happen?")
             }
@@ -117,7 +117,7 @@ impl<'state> Resolver<'state> for Immediate<'_, 'state> {
                 self.is_deferred = true;
                 expr.eval(self)
             }
-            Some(&ScopeValue::DeferredList(index, ref expr)) => {
+            Some(&ScopeValue::DeferredList(index, expr)) => {
                 self.is_deferred = true;
                 match expr.eval(self) {
                     ValueRef::List(list) => {

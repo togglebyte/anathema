@@ -73,9 +73,10 @@ impl DynValue for Sides {
                 values
                     .iter()
                     .map(|expr| expr.eval(&mut Immediate::new(context, node_id)))
-                    .for_each(|val| match val {
-                        ValueRef::Str(s) => sides |= s.into(),
-                        _ => {}
+                    .for_each(|val| {
+                        if let ValueRef::Str(s) = val {
+                            sides |= s.into();
+                        }
                     });
 
                 sides
@@ -105,9 +106,10 @@ impl DynValue for Sides {
                     values
                         .iter()
                         .map(|expr| expr.eval(&mut Immediate::new(context, node_id)))
-                        .for_each(|val| match val {
-                            ValueRef::Str(s) => sides |= s.into(),
-                            _ => {}
+                        .for_each(|val| {
+                            if let ValueRef::Str(s) = val {
+                                sides |= s.into();
+                            }
                         });
 
                     sides
