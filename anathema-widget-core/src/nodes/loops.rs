@@ -68,11 +68,13 @@ impl<'e> LoopNode<'e> {
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         loop {
+            let mut scope = Scope::new();
+            scope.scope("loop", ScopeValue::Value(ValueRef::Owned(self.value_index.into())));
+
             let Some(scope_val) = self.scope_next_value(context) else {
                 return Ok(ControlFlow::Continue(()));
             };
 
-            let mut scope = Scope::new();
             scope.scope(self.binding.clone(), scope_val);
             let context = context.reparent(&scope);
 

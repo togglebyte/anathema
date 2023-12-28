@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::hashmap::HashMap;
 use crate::value::{ExpressionMap, Expressions};
-use crate::{Context, NodeId, Owned, Path, ScopeValue, ValueRef};
+use crate::{Context, NodeId, Owned, Path, ScopeValue, State, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Value resolver trait -
@@ -128,13 +128,31 @@ impl<'state> Resolver<'state> for Immediate<'_, 'state> {
                     _ => panic!(),
                 }
             }
-            None => match self.context.state.state_get(path, self.node_id) {
-                ValueRef::Empty => ValueRef::Empty,
-                val => {
-                    self.is_deferred = true;
-                    val
+            None => {
+                //
+                match self
+                    .context
+                    .internal_state
+                    .map(|s| s.state_get(path, self.node_id))
+                {
+                    Some(ValueRef::Empty) | None => {
+                        match self.context.state.state_get(path, self.node_id) {
+                            ValueRef::Empty => ValueRef::Empty,
+                            val => {
+                                self.is_deferred = true;
+                                val
+                            }
+                        }
+                    }
+                    Some(val) => match val {
+                        ValueRef::Empty => ValueRef::Empty,
+                        val => {
+                            self.is_deferred = true;
+                            val
+                        }
+                    },
                 }
-            },
+            }
         }
     }
 

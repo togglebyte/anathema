@@ -76,7 +76,7 @@ impl<'e> Runtime<'e> {
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
         let scope = Scope::new();
-        let context = Context::root(&(), &scope);
+        let context = Context::new(&(), &scope);
         let mut nodes =
             LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 
@@ -108,7 +108,7 @@ impl<'e> Runtime<'e> {
 
         self.needs_layout = true;
         let scope = Scope::new();
-        let context = Context::root(&(), &scope);
+        let context = Context::new(&(), &scope);
 
         for (node_id, change) in dirty_nodes {
             self.nodes.update(node_id.as_slice(), &change, &context);
