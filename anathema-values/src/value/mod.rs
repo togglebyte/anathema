@@ -195,6 +195,7 @@ macro_rules! val_try_from {
 
 val_try_from!(bool, Bool);
 val_try_from!(Color, Color);
+val_try_from!(char, Char);
 
 num_try_from!(usize, Unsigned);
 num_try_from!(u64, Unsigned);

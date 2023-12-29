@@ -286,3 +286,5 @@ impl_dyn_value!(i8);
 
 impl_dyn_value!(f64);
 impl_dyn_value!(f32);
+
+impl_dyn_value!(char);

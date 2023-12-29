@@ -9,6 +9,7 @@ use crate::Num;
 pub enum Owned {
     Num(Num),
     Bool(bool),
+    Char(char),
     Color(Color),
 }
 
@@ -39,6 +40,18 @@ impl From<Color> for Owned {
 impl From<&Color> for Owned {
     fn from(val: &Color) -> Self {
         Self::Color(*val)
+    }
+}
+
+impl From<char> for Owned {
+    fn from(val: char) -> Self {
+        Self::Char(val)
+    }
+}
+
+impl From<&char> for Owned {
+    fn from(val: &char) -> Self {
+        Self::Char(*val)
     }
 }
 
@@ -82,7 +95,8 @@ impl Display for Owned {
         match self {
             Self::Num(num) => write!(f, "{num}"),
             Self::Color(color) => write!(f, "{color:?}"),
-            Self::Bool(b) => write!(f, "{b:?}"),
+            Self::Bool(b) => write!(f, "{b}"),
+            Self::Char(c) => write!(f, "{c}"),
         }
     }
 }
