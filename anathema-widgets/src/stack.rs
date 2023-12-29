@@ -89,8 +89,8 @@ impl Stack {
         }
 
         match self.axis {
-            Axis::Vertical => Vertical::new(Direction::Forward).layout(nodes),
-            Axis::Horizontal => Horizontal::new(Direction::Forward).layout(nodes),
+            Axis::Vertical => Vertical::new(Direction::Forwards).layout(nodes),
+            Axis::Horizontal => Horizontal::new(Direction::Forwards).layout(nodes),
         }
     }
 

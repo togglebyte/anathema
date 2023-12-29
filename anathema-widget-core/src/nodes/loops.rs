@@ -69,11 +69,15 @@ impl<'e> LoopNode<'e> {
     {
         loop {
             let mut scope = Scope::new();
-            scope.scope("loop", ScopeValue::Value(ValueRef::Owned(self.value_index.into())));
+            scope.scope(
+                "loop",
+                ScopeValue::Value(ValueRef::Owned(self.value_index.into())),
+            );
 
             let Some(scope_val) = self.scope_next_value(context) else {
                 return Ok(ControlFlow::Continue(()));
             };
+            self.value_index += 1;
 
             scope.scope(self.binding.clone(), scope_val);
             let context = context.reparent(&scope);
@@ -116,7 +120,6 @@ impl<'e> LoopNode<'e> {
         match self.collection {
             Collection::Static(expressions) => {
                 let expr = expressions.get(self.value_index)?;
-                self.value_index += 1;
                 let mut resolver = Deferred::new(context);
                 let val = match expr.eval(&mut resolver) {
                     ValueRef::Deferred => ScopeValue::Deferred(expr),
@@ -127,7 +130,6 @@ impl<'e> LoopNode<'e> {
             Collection::State { len, .. } if len == self.value_index => None,
             Collection::State { expr, .. } => {
                 let value = ScopeValue::DeferredList(self.value_index, expr);
-                self.value_index += 1;
                 Some(value)
             }
             Collection::Empty => None,

@@ -7,6 +7,13 @@ use crate::{NodeId, Owned, Path, State, ValueRef, DIRTY_NODES};
 // TODO: Can we make this `Copy` as well?
 //       This depends if `RemoveKey` is required here or not.
 //       TB 2023-11-11
+//
+//       If all keys can be changed to use the constants created
+//       during template parsing this could become `Copy`.
+//       However then we need a solution for the `get` function on maps
+//       as they still take string for lookups (this is used
+//       when getting a value from a state inside a view, where
+//       the state contains a map)
 #[derive(Debug, Clone, PartialEq)]
 pub enum Change {
     Update,

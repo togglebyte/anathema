@@ -92,7 +92,7 @@ impl Widget for Viewport {
             };
         }
 
-        if let Direction::Backward = direction {
+        if let Direction::Backwards = direction {
             match axis {
                 Axis::Horizontal => pos.x += ctx.inner_size.width as i32,
                 Axis::Vertical => pos.y += ctx.inner_size.height as i32,
@@ -100,8 +100,8 @@ impl Widget for Viewport {
         }
 
         let offset = match direction {
-            Direction::Forward => -offset,
-            Direction::Backward => offset,
+            Direction::Forwards => -offset,
+            Direction::Backwards => offset,
         };
 
         match axis {
@@ -110,22 +110,22 @@ impl Widget for Viewport {
         }
 
         for (widget, children) in children.iter_mut() {
-            if let Direction::Forward = direction {
+            if let Direction::Forwards = direction {
                 widget.position(children, pos);
             }
 
             match direction {
-                Direction::Forward => match axis {
+                Direction::Forwards => match axis {
                     Axis::Horizontal => pos.x += widget.outer_size().width as i32,
                     Axis::Vertical => pos.y += widget.outer_size().height as i32,
                 },
-                Direction::Backward => match axis {
+                Direction::Backwards => match axis {
                     Axis::Horizontal => pos.x -= widget.outer_size().width as i32,
                     Axis::Vertical => pos.y -= widget.outer_size().height as i32,
                 },
             }
 
-            if let Direction::Backward = direction {
+            if let Direction::Backwards = direction {
                 widget.position(children, pos);
             }
         }
@@ -134,7 +134,8 @@ impl Widget for Viewport {
     fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         let region = ctx.create_region();
         for (widget, children) in children.iter_mut() {
-            let ctx = ctx.sub_context(Some(&region));
+            let mut ctx = ctx.to_unsized();
+            ctx.set_region(&region);
             widget.paint(children, ctx);
         }
     }

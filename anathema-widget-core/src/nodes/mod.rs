@@ -71,7 +71,7 @@ impl<'e> Node<'e> {
             }) => {
                 let context = match state {
                     ViewState::Dynamic(state) => {
-                        let mut context = Context::new(*state, &self.scope);
+                        let mut context = context.new(*state, &self.scope);
                         context.internal_state = Some(view.get_any_state());
                         context
                     }
@@ -80,11 +80,11 @@ impl<'e> Node<'e> {
 
                         match expr.eval(&mut resolver) {
                             ValueRef::Map(state) => {
-                                let mut context = Context::new(state, &self.scope);
+                                let mut context = context.new(state, &self.scope);
                                 context.internal_state = Some(view.get_any_state());
                                 context
                             }
-                            _ => Context::new(&(), &self.scope),
+                            _ => context.new(&(), &self.scope),
                         }
                     }
                     ViewState::Map(map) => {
@@ -106,7 +106,7 @@ impl<'e> Node<'e> {
 
                         return c_and_b(nodes, &context, f);
                     }
-                    ViewState::Internal => Context::new(view.get_any_state(), &self.scope),
+                    ViewState::Internal => context.new(view.get_any_state(), &self.scope),
                 };
                 c_and_b(nodes, &context, f)
             }
@@ -352,7 +352,6 @@ fn count_widgets<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 // Apply change / update to relevant nodes
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
-        let _id = format!("current: {:?} | target {node_id:?}", node.node_id);
         if !node.node_id.contains(node_id) {
             continue;
         }
@@ -385,7 +384,7 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                     ViewState::Internal => view.view.get_any_state(),
                 };
 
-                let mut context = Context::new(state, &node.scope);
+                let mut context = context.new(state, &node.scope);
                 context.internal_state = Some(view.view.get_any_state());
 
                 return view.nodes.update(node_id, change, &context);

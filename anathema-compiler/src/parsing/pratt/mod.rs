@@ -12,10 +12,11 @@ pub mod prec {
     pub const INITIAL: u8 = 0;
     pub const ASSIGNMENT: u8 = 1;
     pub const CONDITIONAL: u8 = 2;
-    pub const SUM: u8 = 3;
-    pub const PRODUCT: u8 = 4;
-    pub const PREFIX: u8 = 6;
-    pub const CALL: u8 = 8;
+    pub const LOGICAL: u8 = 3;
+    pub const SUM: u8 = 4;
+    pub const PRODUCT: u8 = 5;
+    pub const PREFIX: u8 = 7;
+    pub const CALL: u8 = 9;
     pub const SELECTION: u8 = 9;
     pub const SUBCRIPT: u8 = 10;
 }
@@ -23,14 +24,11 @@ pub mod prec {
 fn get_precedence(op: Operator) -> u8 {
     match op {
         Operator::Equal => prec::ASSIGNMENT,
-        Operator::Or 
-        | Operator::And 
-        | Operator::EqualEqual 
-        | Operator::GreaterThan 
+        Operator::GreaterThan
         | Operator::GreaterThanOrEqual
-        | Operator::LessThan 
-        | Operator::LessThanOrEqual
-        => prec::CONDITIONAL,
+        | Operator::LessThan
+        | Operator::LessThanOrEqual => prec::LOGICAL,
+        Operator::Or | Operator::And | Operator::EqualEqual => prec::CONDITIONAL,
         Operator::Plus | Operator::Minus => prec::SUM,
         Operator::Mul | Operator::Div | Operator::Mod => prec::PRODUCT,
         Operator::LParen => prec::CALL,

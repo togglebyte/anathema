@@ -85,6 +85,11 @@ impl Views {
             *old_index = tabindex;
         }
     }
+
+    #[cfg(feature = "testing")]
+    pub fn test_insert(node_id: impl Into<NodeId>, tab_index: Option<u32>) {
+        Self::insert(node_id.into(), tab_index)
+    }
 }
 
 pub trait View {

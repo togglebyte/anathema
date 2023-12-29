@@ -395,12 +395,7 @@ impl Widget for Border {
     fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         // Draw the child
         if let Some((child, children)) = children.first_mut() {
-            // TODO: do we need the clipping region here?
-            // let clipping_region = ctx.create_region();
-
-            // let child_ctx = ctx.sub_context(Some(&clipping_region));
-            let child_ctx = ctx.sub_context(None);
-
+            let child_ctx = ctx.to_unsized();
             child.paint(children, child_ctx);
         }
 

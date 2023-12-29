@@ -40,7 +40,7 @@ pub trait Widget {
 
     fn paint(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
         for (widget, children) in children.iter_mut() {
-            let ctx = ctx.sub_context(None);
+            let ctx = ctx.to_unsized();
             widget.paint(children, ctx);
         }
     }

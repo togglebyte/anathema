@@ -12,6 +12,12 @@ use crate::layout::single::Single;
 /// See [`Align`](crate::layout::Align) for more information.
 ///
 /// If the alignment has no children it will have a size of zero.
+///
+/// ```text
+/// alignment [align: "centre"]
+///     border [background: "red"]
+///         text "Warning: out of tea"
+/// ```
 #[derive(Debug)]
 pub struct Alignment {
     /// The alignment

@@ -113,6 +113,10 @@ impl<'screen> PaintCtx<'screen, Unsized> {
             state: WithSize::new(size, global_pos),
         }
     }
+
+    pub fn set_region(&mut self, region: &'screen Region) {
+        self.clip = Some(region);
+    }
 }
 
 impl<'screen> PaintCtx<'screen, WithSize> {
@@ -232,14 +236,6 @@ impl<'screen> PaintCtx<'screen, WithSize> {
                 x: input_pos.x + width,
                 y: input_pos.y,
             })
-        }
-    }
-
-    pub fn sub_context<'a>(&'a mut self, clip: Option<&'a Region>) -> PaintCtx<'_, Unsized> {
-        PaintCtx {
-            screen: self.screen,
-            clip,
-            state: Unsized,
         }
     }
 }

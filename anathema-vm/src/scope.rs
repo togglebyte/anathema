@@ -70,7 +70,7 @@ impl<'vm> Scope<'vm> {
                     };
 
                     loop {
-                        let Some(&Instruction::Else { cond, size }) = self.instructions.get(0)
+                        let Some(&Instruction::Else { cond, size }) = self.instructions.first()
                         else {
                             break;
                         };
@@ -158,7 +158,7 @@ impl<'vm> Scope<'vm> {
     fn view(&mut self, view: ViewId, views: &mut ViewTemplates) -> Result<Expression> {
         let attributes = self.attributes();
 
-        let state = match self.instructions.get(0) {
+        let state = match self.instructions.first() {
             Some(Instruction::LoadValue(i)) => {
                 let val = self.consts.lookup_value(*i).clone();
                 let _ = self.instructions.remove(0);

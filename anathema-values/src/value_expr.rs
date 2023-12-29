@@ -137,7 +137,16 @@ impl<'state> Resolver<'state> for Immediate<'_, 'state> {
                 {
                     Some(ValueRef::Empty) | None => {
                         match self.context.state.state_get(path, self.node_id) {
-                            ValueRef::Empty => ValueRef::Empty,
+                            ValueRef::Empty => match self.context.meta {
+                                Some(meta) => match meta.state_get(path, self.node_id) {
+                                    ValueRef::Empty => ValueRef::Empty,
+                                    val => {
+                                        self.is_deferred = true;
+                                        val
+                                    }
+                                },
+                                None => ValueRef::Empty,
+                            },
                             val => {
                                 self.is_deferred = true;
                                 val
@@ -219,8 +228,8 @@ pub enum ValueExpr {
     Dot(Box<ValueExpr>, Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
 
-    // List and Map are both Rc'd as expressions
-    // are cloned for `Value<T>`.
+    // List and Map are both Rc'd as expressions are
+    // cloned for `Value<T>` and a few other places.
     List(Rc<[ValueExpr]>),
     Map(Rc<HashMap<String, ValueExpr>>),
 
@@ -329,17 +338,23 @@ impl ValueExpr {
                 }
                 Some(s)
             }
-            ValueRef::Deferred => {
-                panic!()
-                // self.is_deferred = true;
-                // match self.context.state.get(&path, self.node_id) {
-                //     ValueRef::Str(val) => Some(val.into()),
-                //     ValueRef::Owned(val) => Some(val.to_string()),
-                //     ValueRef::Empty => None,
-                //     _ => None,
-                // }
+            _ => None,
+        }
+    }
+
+    pub fn eval_vec<'expr>(
+        &'expr self,
+        resolver: &mut impl Resolver<'expr>,
+    ) -> Option<Vec<ValueRef<'_>>> {
+        match self.eval(resolver) {
+            ValueRef::Expressions(Expressions(list)) => {
+                let mut v = Vec::with_capacity(list.len());
+                for expr in list {
+                    let res = expr.eval(resolver);
+                    v.push(res);
+                }
+                Some(v)
             }
-            ValueRef::Empty => None,
             _ => None,
         }
     }
@@ -465,7 +480,8 @@ impl From<&str> for ValueExpr {
 mod test {
     use crate::map::Map;
     use crate::testing::{
-        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum, greater_than, greater_than_equal, less_than, less_than_equal,
+        add, and, div, dot, eq, greater_than, greater_than_equal, ident, inum, less_than,
+        less_than_equal, list, modulo, mul, neg, not, or, strlit, sub, unum,
     };
     use crate::ValueRef;
 
@@ -518,6 +534,15 @@ mod test {
 
         let expr = greater_than_equal(unum(3), unum(3));
         expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn greater_than_equal_dynamic() {
+        let expr = greater_than_equal(unum(5), ident("counter"));
+        expr.with_data([("counter", 3)]).expect_owned(true);
+
+        let expr = greater_than_equal(unum(5), ident("counter"));
+        expr.with_data([("counter", 30)]).expect_owned(false);
     }
 
     #[test]

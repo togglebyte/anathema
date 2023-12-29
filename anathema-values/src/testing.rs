@@ -58,19 +58,19 @@ where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
     pub fn eval(&self) -> ValueRef<'_> {
-        let context = Context::new(&self.state, &self.scope);
+        let context = Context::root(&self.state, &self.scope);
         let mut resolver = Immediate::new(&context, &self.node_id);
         self.expr.eval(&mut resolver)
     }
 
     pub fn eval_string(&self) -> Option<String> {
-        let context = Context::new(&self.state, &self.scope);
+        let context = Context::root(&self.state, &self.scope);
         let mut resolver = Immediate::new(&context, &self.node_id);
         self.expr.eval_string(&mut resolver)
     }
 
     pub fn eval_bool(&self, b: bool) -> bool {
-        let context = Context::new(&self.state, &self.scope);
+        let context = Context::root(&self.state, &self.scope);
         let mut resolver = Immediate::new(&context, &self.node_id);
         self.expr.eval(&mut resolver).is_true() == b
     }

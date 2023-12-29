@@ -112,7 +112,7 @@ impl Widget for Expand {
         }
 
         if let Some((widget, children)) = children.first_mut() {
-            let ctx = ctx.sub_context(None);
+            let ctx = ctx.to_unsized();
             widget.paint(children, ctx);
         }
     }

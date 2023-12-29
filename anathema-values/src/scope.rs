@@ -75,15 +75,26 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
 pub struct Context<'state, 'expr> {
     pub state: &'state dyn State,
     pub internal_state: Option<&'state dyn State>,
+    pub meta: Option<&'state dyn State>,
     pub scopes: Scopes<'state, 'expr>,
 }
 
 impl<'state, 'expr> Context<'state, 'expr> {
-    pub fn new(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
+    pub fn root(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
         Self {
             state,
-            internal_state: None,
             scopes: Scopes::new(scope),
+            meta: None,
+            internal_state: None,
+        }
+    }
+
+    pub fn new(&self, state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
+        Self {
+            state,
+            scopes: Scopes::new(scope),
+            internal_state: self.internal_state,
+            meta: self.meta,
         }
     }
 
@@ -91,6 +102,7 @@ impl<'state, 'expr> Context<'state, 'expr> {
         Self {
             state: self.state,
             internal_state: self.internal_state,
+            meta: self.meta,
             scopes: self.scopes.reparent(scope),
         }
     }

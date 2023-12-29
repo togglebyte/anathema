@@ -218,7 +218,7 @@ impl ViewExpr {
     fn eval<'e>(&'e self, context: &Context<'_, 'e>, node_id: NodeId) -> Result<Node<'e>> {
         let tabindex = self
             .attributes
-            .get("tabindex")
+            .get("tabindex") // TODO: should be a constant. Look into reserving (more) keywords
             .map(|expr| u32::init_value(context, &node_id, expr))
             .unwrap_or(Value::Empty);
 
