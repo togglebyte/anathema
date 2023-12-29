@@ -64,51 +64,50 @@ impl TabIndexing {
 impl TabIndexing {
     // Return the previously focused node so it can be "blurred".
     pub(super) fn next(&mut self, direction: Direction) -> Option<NodeId> {
-        let views = Views::all();
-
-        let mut views = views
-            .iter()
-            .filter_map(|f| {
-                Some(TabIndexRef {
-                    node_id: f.key(),
-                    index: f.value?,
+        Views::all(|views| {
+            let mut views = views
+                .iter()
+                .filter_map(|f| {
+                    Some(TabIndexRef {
+                        node_id: f.key(),
+                        index: f.value?,
+                    })
                 })
-            })
-            .collect::<Vec<_>>();
+                .collect::<Vec<_>>();
 
-        if views.is_empty() {
-            return None;
-        }
-
-        views.sort_by(|a, b| a.index.partial_cmp(&b.index).unwrap());
-
-        let default = direction.default(views.len() - 1);
-
-        match self.current_focus.take() {
-            None => {
-                self.current_focus = Some(TabIndex::from(&views[default]));
-                None
+            if views.is_empty() {
+                return None;
             }
-            Some(old) => {
-                let old_index = match views.binary_search_by(|idx| idx.index.cmp(&old.index)) {
-                    Ok(i) => i,
-                    Err(i) if i < views.len() => i,
-                    Err(_) => default,
-                };
 
-                let next = direction.next(old_index, views.len() - 1);
+            views.sort_by(|a, b| a.index.partial_cmp(&b.index).unwrap());
 
-                self.current_focus = Some(TabIndex::from(&views[next]));
+            let default = direction.default(views.len() - 1);
 
-                Some(old.node_id)
+            match self.current_focus.take() {
+                None => {
+                    self.current_focus = Some(TabIndex::from(&views[default]));
+                    None
+                }
+                Some(old) => {
+                    let old_index = match views.binary_search_by(|idx| idx.index.cmp(&old.index)) {
+                        Ok(i) => i,
+                        Err(i) if i < views.len() => i,
+                        Err(_) => default,
+                    };
+
+                    let next = direction.next(old_index, views.len() - 1);
+
+                    self.current_focus = Some(TabIndex::from(&views[next]));
+
+                    Some(old.node_id)
+                }
             }
-        }
+        })
     }
 }
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     fn ids() -> Vec<(NodeId, u32)> {
@@ -120,6 +119,7 @@ mod test {
     }
 
     fn insert_ids() {
+        Views::test_clear();
         let node_ids = ids();
 
         for (id, index) in &node_ids {
@@ -181,8 +181,9 @@ mod test {
 
     #[test]
     fn insert_view() {
-        let node_ids = ids();
         insert_ids();
+
+        let node_ids = ids();
         let mut tabs = TabIndexing::new();
 
         node_ids

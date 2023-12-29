@@ -17,6 +17,7 @@ anathema-widget-core = { path = "../anathema-widget-core" }
 anathema-widgets = { path = "../anathema-widgets" }
 crossterm = { workspace = true }
 flume = { workspace = true }
+kempt = { workspace = true }
 
 [lints]
 workspace = true

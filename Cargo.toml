@@ -23,6 +23,7 @@ unicode-width = "0.1.10"
 thiserror = "1.0.40"
 flume = "0.10.14"
 parking_lot = "0.12.1"
+kempt = "0.2.3"
 
 [workspace]
 members = [

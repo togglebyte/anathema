@@ -1,10 +1,11 @@
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::sync::OnceLock;
 
 use anathema_values::hashmap::HashMap;
 use anathema_values::{NodeId, State};
 use kempt::Map;
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 
 use crate::error::{Error, Result};
 use crate::{Event, Nodes};
@@ -16,8 +17,11 @@ enum ViewFactory {
     Prototype(Box<ViewFn>),
 }
 
-static VIEWS: Mutex<Map<NodeId, Option<u32>>> = Mutex::new(Map::new());
 static REGISTERED_VIEWS: OnceLock<Mutex<HashMap<usize, ViewFactory>>> = OnceLock::new();
+
+thread_local! {
+    static VIEWS: RefCell<Map<NodeId, Option<u32>>> = RefCell::new(Map::new());
+}
 
 pub struct RegisteredViews;
 
@@ -61,34 +65,45 @@ impl RegisteredViews {
 pub struct Views;
 
 impl Views {
-    pub fn all<'a>() -> MutexGuard<'a, Map<NodeId, Option<u32>>> {
-        VIEWS.lock()
+    pub fn all<F>(mut f: F) -> Option<NodeId>
+    where
+        F: FnMut(&mut Map<NodeId, Option<u32>>) -> Option<NodeId>,
+    {
+        VIEWS.with_borrow_mut(|views| f(views))
     }
 
     pub fn for_each<F>(mut f: F)
     where
         F: FnMut(&NodeId, Option<u32>),
     {
-        VIEWS
-            .lock()
-            .iter()
-            .map(|field| (field.key(), field.value))
-            .for_each(|(key, value)| f(key, value));
+        VIEWS.with_borrow(|views| {
+            views
+                .iter()
+                .map(|field| (field.key(), field.value))
+                .for_each(|(key, value)| f(key, value));
+        })
     }
 
     pub(crate) fn insert(node_id: NodeId, tabindex: Option<u32>) {
-        VIEWS.lock().insert(node_id, tabindex);
+        VIEWS.with_borrow_mut(|views| views.insert(node_id, tabindex));
     }
 
     pub(crate) fn update(node_id: &NodeId, tabindex: Option<u32>) {
-        if let Some(old_index) = VIEWS.lock().get_mut(node_id) {
-            *old_index = tabindex;
-        }
+        VIEWS.with_borrow_mut(|views| {
+            if let Some(old_index) = views.get_mut(node_id) {
+                *old_index = tabindex;
+            }
+        });
     }
 
     #[cfg(feature = "testing")]
     pub fn test_insert(node_id: impl Into<NodeId>, tab_index: Option<u32>) {
         Self::insert(node_id.into(), tab_index)
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn test_clear() {
+        VIEWS.with_borrow_mut(|views| views.clear());
     }
 }
 
