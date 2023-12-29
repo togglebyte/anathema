@@ -108,8 +108,6 @@ impl Views {
 }
 
 pub trait View {
-    type State: 'static;
-
     fn on_event(&mut self, _event: Event, _nodes: &mut Nodes<'_>) {}
 
     fn state(&self) -> &dyn State {
@@ -123,9 +121,7 @@ pub trait View {
     fn blur(&mut self) {}
 }
 
-impl View for () {
-    type State = Self;
-}
+impl View for () {}
 
 pub trait AnyView: Send {
     fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);

@@ -17,7 +17,7 @@ use crate::layout::text::{Line, TextAlignment, TextLayout, Wrap};
 /// * background
 /// * foreground
 /// * text-align
-/// * wordwrap
+/// * wrap
 /// ```
 ///
 /// Note: Spans, unlike other widgets, does not require a widget id
