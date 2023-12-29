@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_values::{
-    Change, Context, Deferred, NextNodeId, NodeId, Path, Scope, ScopeValue, ValueRef,
+    Change, Context, Deferred, NextNodeId, NodeId, Path, ScopeStorage, ScopeValue, ValueRef,
 };
 
 use super::Nodes;
@@ -61,6 +61,7 @@ impl<'e> LoopNode<'e> {
 
     pub(super) fn next<F>(
         &mut self,
+        scope: &mut ScopeStorage<'e>,
         context: &Context<'_, 'e>,
         f: &mut F,
     ) -> Result<ControlFlow<(), ()>>
@@ -68,10 +69,10 @@ impl<'e> LoopNode<'e> {
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         loop {
-            let mut scope = Scope::new();
-            scope.scope(
+            scope.value(
+                // TODO: make this into a constant
                 "loop",
-                ScopeValue::Value(ValueRef::Owned(self.value_index.into())),
+                ValueRef::Owned(self.value_index.into()),
             );
 
             let Some(scope_val) = self.scope_next_value(context) else {
@@ -79,8 +80,10 @@ impl<'e> LoopNode<'e> {
             };
             self.value_index += 1;
 
-            scope.scope(self.binding.clone(), scope_val);
-            let context = context.reparent(&scope);
+            scope.insert(self.binding.clone(), scope_val);
+
+            let scope = context.new_scope(scope);
+            let context = context.with_scope(&scope);
 
             let iter = match self.iterations.get_mut(self.current_iteration) {
                 Some(iter) => iter,
@@ -120,7 +123,7 @@ impl<'e> LoopNode<'e> {
         match self.collection {
             Collection::Static(expressions) => {
                 let expr = expressions.get(self.value_index)?;
-                let mut resolver = Deferred::new(context);
+                let mut resolver = Deferred::new(context.lookup());
                 let val = match expr.eval(&mut resolver) {
                     ValueRef::Deferred => ScopeValue::Deferred(expr),
                     value => ScopeValue::Value(value),
@@ -129,8 +132,7 @@ impl<'e> LoopNode<'e> {
             }
             Collection::State { len, .. } if len == self.value_index => None,
             Collection::State { expr, .. } => {
-                let value = ScopeValue::DeferredList(self.value_index, expr);
-                Some(value)
+                Some(ScopeValue::DeferredList(self.value_index, expr))
             }
             Collection::Empty => None,
         }

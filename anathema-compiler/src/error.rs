@@ -79,7 +79,7 @@ impl Display for Error {
             ErrorKind::UnterminatedAttributes => "unterminated attributes (missing `]`)".into(),
             ErrorKind::UnterminatedElement => "unterminated element".into(),
             ErrorKind::InvalidToken { expected } => {
-                format!("invalid token. expected: {expected}")
+                format!("invalid token (expected: \"{expected}\")")
             }
             ErrorKind::InvalidNumber => "invalid number".into(),
             ErrorKind::InvalidIndex => "invalid index".into(),

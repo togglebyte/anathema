@@ -56,15 +56,14 @@ impl<'a> FactoryContext<'a> {
 #[cfg(test)]
 mod test {
     use anathema_values::testing::TestState;
-    use anathema_values::{Scope, ValueExpr};
+    use anathema_values::ValueExpr;
 
     use super::*;
 
     #[test]
     fn get_attribute() {
         let state = TestState::new();
-        let root = Scope::new();
-        let ctx = Context::root(&state, &root);
+        let ctx = Context::root(&state);
         let mut attributes = Attributes::new();
         attributes.insert("name".to_string(), ValueExpr::Ident("name".into()));
 

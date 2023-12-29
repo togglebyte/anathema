@@ -1,7 +1,7 @@
 use anathema_render::Size;
 use anathema_values::{
     Attributes, Context, Deferred, DynValue, ExpressionMap, Expressions, Immediate, NextNodeId,
-    NodeId, Path, State, Value, ValueExpr, ValueRef,
+    NodeId, Path, ScopeStorage, State, Value, ValueExpr, ValueRef,
 };
 
 pub use self::controlflow::{ElseExpr, IfExpr};
@@ -126,12 +126,12 @@ impl LoopExpr {
         let collection = match &self.collection {
             ValueExpr::List(list) => Collection::Static(list),
             col => {
-                let mut resolver = Deferred::new(context);
+                let mut resolver = Deferred::new(context.lookup());
                 let val = col.eval(&mut resolver);
                 match val {
                     ValueRef::Expressions(Expressions(list)) => Collection::Static(list),
                     ValueRef::Deferred => {
-                        let mut resolver = Immediate::new(context, &node_id);
+                        let mut resolver = Immediate::new(context.lookup(), &node_id);
                         let val = col.eval(&mut resolver);
                         let len = match val {
                             ValueRef::List(list) => list.len(),
@@ -155,7 +155,7 @@ impl LoopExpr {
         let node = Node {
             kind: NodeKind::Loop(loop_node),
             node_id,
-            scope: context.clone_scope(),
+            scope: ScopeStorage::new(),
         };
 
         Ok(node)
@@ -185,7 +185,7 @@ impl ControlFlow {
                 next_node,
             )),
             node_id,
-            scope: context.clone_scope(),
+            scope: ScopeStorage::new(),
         };
         Ok(node)
     }
@@ -198,13 +198,6 @@ pub(crate) enum ViewState<'e> {
     Map(ExpressionMap<'e>),
     Internal,
 }
-
-// impl<'e> ViewState<'e> {
-//     pub(crate) fn resolve(&mut self, context: &Context<'_, '_>, node_id: &NodeId) -> ResolvedMap<'_>  {
-//         let Self::Map(map) = self else { return };
-//         map.resolve(context, node_id)
-//     }
-// }
 
 #[derive(Debug, Clone)]
 pub struct ViewExpr {
@@ -226,7 +219,7 @@ impl ViewExpr {
 
         let state = match self.state {
             Some(ref expr) => {
-                let mut resolver = Deferred::new(context);
+                let mut resolver = Deferred::new(context.lookup());
                 let val = expr.eval(&mut resolver);
                 match val {
                     ValueRef::Map(state) => ViewState::Dynamic(state),
@@ -246,7 +239,7 @@ impl ViewExpr {
                 tabindex,
             }),
             node_id,
-            scope: context.clone_scope(),
+            scope: ScopeStorage::new(),
         };
         Ok(node)
     }
@@ -281,7 +274,6 @@ impl Expression {
 #[cfg(all(test, feature = "testing"))]
 mod test {
     use anathema_values::testing::{list, TestState};
-    use anathema_values::Scope;
 
     use super::*;
     use crate::contexts::LayoutCtx;
@@ -300,7 +292,6 @@ mod test {
                 state: TestState::new(),
                 expr: Box::new(self),
                 layout: LayoutCtx::new(constraint, Padding::ZERO),
-                scope: Scope::new(),
             }
         }
     }

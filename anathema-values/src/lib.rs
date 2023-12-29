@@ -7,7 +7,7 @@ pub use self::id::{NextNodeId, NodeId};
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::path::Path;
-pub use self::scope::{Context, Scope, ScopeValue};
+pub use self::scope::{Context, Scope, ScopeStorage, ScopeValue};
 pub use self::slab::Slab;
 pub use self::state::{Change, State, StateValue};
 pub use self::value::{ExpressionMap, Expressions, Num, Owned, ValueRef};
@@ -158,7 +158,7 @@ pub trait DynValue {
 
 impl DynValue for String {
     fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
-        let mut resolver = Immediate::new(context, node_id);
+        let mut resolver = Immediate::new(context.lookup(), node_id);
         let inner = expr.eval_string(&mut resolver);
 
         match resolver.is_deferred() {
@@ -175,7 +175,7 @@ impl DynValue for String {
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
-            let mut resolver = Immediate::new(context, node_id);
+            let mut resolver = Immediate::new(context.lookup(), node_id);
             *inner = expr.eval_string(&mut resolver)
         }
     }
@@ -190,7 +190,7 @@ macro_rules! impl_dyn_value {
                 node_id: &NodeId,
                 expr: &ValueExpr,
             ) -> Value<Self> {
-                let mut resolver = Immediate::new(context, node_id);
+                let mut resolver = Immediate::new(context.lookup(), node_id);
                 let inner = expr.eval(&mut resolver).try_into().ok();
 
                 match resolver.is_deferred() {
@@ -208,7 +208,7 @@ macro_rules! impl_dyn_value {
             fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
                 match value {
                     Value::Dyn { inner, expr } => {
-                        let mut resolver = Immediate::new(context, node_id);
+                        let mut resolver = Immediate::new(context.lookup(), node_id);
                         *inner = expr.eval(&mut resolver).try_into().ok()
                     }
                     _ => {}
@@ -220,7 +220,7 @@ macro_rules! impl_dyn_value {
 
 impl DynValue for bool {
     fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
-        let mut resolver = Immediate::new(context, node_id);
+        let mut resolver = Immediate::new(context.lookup(), node_id);
         let val = expr.eval(&mut resolver);
         match resolver.is_deferred() {
             true => Value::Dyn {
@@ -236,7 +236,7 @@ impl DynValue for bool {
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
-            let mut resolver = Immediate::new(context, node_id);
+            let mut resolver = Immediate::new(context.lookup(), node_id);
             *inner = Some(expr.eval(&mut resolver).is_true());
         }
     }
@@ -244,7 +244,7 @@ impl DynValue for bool {
 
 impl DynValue for anathema_render::Color {
     fn init_value(context: &Context<'_, '_>, node_id: &NodeId, expr: &ValueExpr) -> Value<Self> {
-        let mut resolver = Immediate::new(context, node_id);
+        let mut resolver = Immediate::new(context.lookup(), node_id);
         let inner = match expr.eval(&mut resolver) {
             ValueRef::Str(col) => anathema_render::Color::try_from(col).ok(),
             val => val.try_into().ok(),
@@ -264,7 +264,7 @@ impl DynValue for anathema_render::Color {
 
     fn resolve(value: &mut Value<Self>, context: &Context<'_, '_>, node_id: &NodeId) {
         if let Value::Dyn { inner, expr } = value {
-            let mut resolver = Immediate::new(context, node_id);
+            let mut resolver = Immediate::new(context.lookup(), node_id);
             *inner = expr.eval(&mut resolver).try_into().ok()
         }
     }
@@ -286,3 +286,5 @@ impl_dyn_value!(i8);
 
 impl_dyn_value!(f64);
 impl_dyn_value!(f32);
+
+impl_dyn_value!(char);

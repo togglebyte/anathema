@@ -43,6 +43,7 @@ pub enum Path {
     /// Index in a collection
     Index(usize),
     /// Composite key, made up by two or more keys
+    // TODO: can we get rid of this now? - TB 2023-12-30
     Composite(Box<Path>, Box<Path>),
 }
 
