@@ -21,4 +21,5 @@ pub use crate::layout::{
     Align, Axis, Direction, Display, LayoutNode, LayoutNodes, LocalPos, Padding, Pos, Region,
 };
 pub use crate::style::WidgetStyle;
+pub use crate::views::View;
 pub use crate::widget::{AnyWidget, Widget, WidgetContainer};

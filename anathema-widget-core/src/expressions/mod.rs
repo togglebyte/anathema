@@ -307,9 +307,7 @@ mod test {
 
     #[derive(Debug)]
     struct AView;
-    impl crate::views::View for AView {
-        type State = ();
-    }
+    impl crate::views::View for AView {}
 
     #[test]
     fn eval_node() {

@@ -126,9 +126,7 @@ mod test {
     use super::*;
 
     struct AView;
-    impl View for AView {
-        type State = ();
-    }
+    impl View for AView {}
 
     #[test]
     #[should_panic(expected = "circular dependencies")]
