@@ -206,7 +206,7 @@ impl Tree {
 #[derive(Debug)]
 pub struct TextLayout {
     tree: Tree,
-    max_width: usize,
+    max_size: Size,
     current_width: usize,
     lines: Vec<Line>,
     // Ignore a line if it contains a singular whitespace
@@ -216,10 +216,10 @@ pub struct TextLayout {
 }
 
 impl TextLayout {
-    pub fn new(max_width: usize, squash: bool, wrap: Wrap) -> Self {
+    pub fn new(max_size: Size, squash: bool, wrap: Wrap) -> Self {
         Self {
             tree: Tree::new(),
-            max_width,
+            max_size,
             current_width: 0,
             lines: vec![],
             squash,
@@ -232,8 +232,8 @@ impl TextLayout {
         &self.lines
     }
 
-    pub fn reset(&mut self, max_width: usize, squash: bool) {
-        self.max_width = max_width;
+    pub fn reset(&mut self, max_size: Size, squash: bool) {
+        self.max_size = max_size;
         self.lines.clear();
         self.current_width = 0;
         self.slice_index = 0;
@@ -245,7 +245,7 @@ impl TextLayout {
         for (i, c) in s.char_indices() {
             let width = c.width().unwrap_or(0);
 
-            if width + self.current_width > self.max_width {
+            if width + self.current_width > self.max_size.width {
                 // Squash = remove whitespace that would otherwise
                 // be trailing the last character on the left
                 let line = if c.is_whitespace() && self.squash {
@@ -258,6 +258,10 @@ impl TextLayout {
                 self.current_width = self.tree.left.width();
 
                 self.lines.push(line);
+                if self.lines.len() == self.max_size.height {
+                    return;
+                }
+
                 if c.is_whitespace() && self.squash {
                     continue;
                 }
@@ -288,7 +292,7 @@ impl TextLayout {
     fn process_word_break(&mut self, s: &str) {
         for (i, c) in s.char_indices() {
             let width = c.width().unwrap_or(0);
-            if width + self.current_width > self.max_width {
+            if width + self.current_width > self.max_size.width {
                 let line = self.tree.drain(Drain::Left);
                 self.lines.push(line);
                 self.current_width = 0;
@@ -313,8 +317,10 @@ impl TextLayout {
     }
 
     pub fn finish(&mut self) {
-        let line = self.tree.drain(Drain::All);
-        self.lines.push(line);
+        if self.lines.len() < self.max_size.height {
+            let line = self.tree.drain(Drain::All);
+            self.lines.push(line);
+        }
     }
 
     pub fn process(&mut self, s: &str) {

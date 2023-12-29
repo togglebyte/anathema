@@ -23,8 +23,8 @@ impl<'expr> Scope<'expr> {
         self.0.get(lookup_path)
     }
 
-    pub fn scope(&mut self, path: Path, value: ScopeValue<'expr>) {
-        self.0.insert(path, value);
+    pub fn scope(&mut self, path: impl Into<Path>, value: ScopeValue<'expr>) {
+        self.0.insert(path.into(), value);
     }
 
     pub fn value(&mut self, path: impl Into<Path>, value: ValueRef<'expr>) {
@@ -74,24 +74,35 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
 #[derive(Debug)]
 pub struct Context<'state, 'expr> {
     pub state: &'state dyn State,
+    pub internal_state: Option<&'state dyn State>,
+    pub meta: Option<&'state dyn State>,
     pub scopes: Scopes<'state, 'expr>,
 }
 
 impl<'state, 'expr> Context<'state, 'expr> {
     pub fn root(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
-        Self::new(state, scope)
-    }
-
-    pub fn new(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
         Self {
             state,
             scopes: Scopes::new(scope),
+            meta: None,
+            internal_state: None,
+        }
+    }
+
+    pub fn new(&self, state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
+        Self {
+            state,
+            scopes: Scopes::new(scope),
+            internal_state: self.internal_state,
+            meta: self.meta,
         }
     }
 
     pub fn reparent(&'state self, scope: &'state Scope<'expr>) -> Context<'state, 'expr> {
         Self {
             state: self.state,
+            internal_state: self.internal_state,
+            meta: self.meta,
             scopes: self.scopes.reparent(scope),
         }
     }

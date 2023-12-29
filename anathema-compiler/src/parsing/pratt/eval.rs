@@ -54,6 +54,18 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
             Operator::EqualEqual => {
                 ValueExpr::Equality(eval(*lhs, consts).into(), eval(*rhs, consts).into())
             }
+            Operator::GreaterThan => {
+                ValueExpr::Greater(eval(*lhs, consts).into(), eval(*rhs, consts).into())
+            }
+            Operator::GreaterThanOrEqual => {
+                ValueExpr::GreaterEqual(eval(*lhs, consts).into(), eval(*rhs, consts).into())
+            }
+            Operator::LessThan => {
+                ValueExpr::Less(eval(*lhs, consts).into(), eval(*rhs, consts).into())
+            }
+            Operator::LessThanOrEqual => {
+                ValueExpr::LessEqual(eval(*lhs, consts).into(), eval(*rhs, consts).into())
+            }
             Operator::Or | Operator::And => {
                 let lhs = eval(*lhs, consts);
                 let rhs = eval(*rhs, consts);

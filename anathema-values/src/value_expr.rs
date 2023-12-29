@@ -128,13 +128,40 @@ impl<'state> Resolver<'state> for Immediate<'_, 'state> {
                     _ => panic!(),
                 }
             }
-            None => match self.context.state.state_get(path, self.node_id) {
-                ValueRef::Empty => ValueRef::Empty,
-                val => {
-                    self.is_deferred = true;
-                    val
+            None => {
+                //
+                match self
+                    .context
+                    .internal_state
+                    .map(|s| s.state_get(path, self.node_id))
+                {
+                    Some(ValueRef::Empty) | None => {
+                        match self.context.state.state_get(path, self.node_id) {
+                            ValueRef::Empty => match self.context.meta {
+                                Some(meta) => match meta.state_get(path, self.node_id) {
+                                    ValueRef::Empty => ValueRef::Empty,
+                                    val => {
+                                        self.is_deferred = true;
+                                        val
+                                    }
+                                },
+                                None => ValueRef::Empty,
+                            },
+                            val => {
+                                self.is_deferred = true;
+                                val
+                            }
+                        }
+                    }
+                    Some(val) => match val {
+                        ValueRef::Empty => ValueRef::Empty,
+                        val => {
+                            self.is_deferred = true;
+                            val
+                        }
+                    },
                 }
-            },
+            }
         }
     }
 
@@ -192,13 +219,17 @@ pub enum ValueExpr {
     And(Box<ValueExpr>, Box<ValueExpr>),
     Or(Box<ValueExpr>, Box<ValueExpr>),
     Equality(Box<ValueExpr>, Box<ValueExpr>),
+    Greater(Box<ValueExpr>, Box<ValueExpr>),
+    GreaterEqual(Box<ValueExpr>, Box<ValueExpr>),
+    Less(Box<ValueExpr>, Box<ValueExpr>),
+    LessEqual(Box<ValueExpr>, Box<ValueExpr>),
 
     Ident(Rc<str>),
     Dot(Box<ValueExpr>, Box<ValueExpr>),
     Index(Box<ValueExpr>, Box<ValueExpr>),
 
-    // List and Map are both Rc'd as expressions
-    // are cloned for `Value<T>`.
+    // List and Map are both Rc'd as expressions are
+    // cloned for `Value<T>` and a few other places.
     List(Rc<[ValueExpr]>),
     Map(Rc<HashMap<String, ValueExpr>>),
 
@@ -247,6 +278,10 @@ impl Display for ValueExpr {
             Self::And(lhs, rhs) => write!(f, "{lhs} && {rhs}"),
             Self::Or(lhs, rhs) => write!(f, "{lhs} || {rhs}"),
             Self::Equality(lhs, rhs) => write!(f, "{lhs} == {rhs}"),
+            Self::Greater(lhs, rhs) => write!(f, "{lhs} > {rhs}"),
+            Self::GreaterEqual(lhs, rhs) => write!(f, "{lhs} >= {rhs}"),
+            Self::Less(lhs, rhs) => write!(f, "{lhs} < {rhs}"),
+            Self::LessEqual(lhs, rhs) => write!(f, "{lhs} <= {rhs}"),
         }
     }
 }
@@ -303,17 +338,23 @@ impl ValueExpr {
                 }
                 Some(s)
             }
-            ValueRef::Deferred => {
-                panic!()
-                // self.is_deferred = true;
-                // match self.context.state.get(&path, self.node_id) {
-                //     ValueRef::Str(val) => Some(val.into()),
-                //     ValueRef::Owned(val) => Some(val.to_string()),
-                //     ValueRef::Empty => None,
-                //     _ => None,
-                // }
+            _ => None,
+        }
+    }
+
+    pub fn eval_vec<'expr>(
+        &'expr self,
+        resolver: &mut impl Resolver<'expr>,
+    ) -> Option<Vec<ValueRef<'_>>> {
+        match self.eval(resolver) {
+            ValueRef::Expressions(Expressions(list)) => {
+                let mut v = Vec::with_capacity(list.len());
+                for expr in list {
+                    let res = expr.eval(resolver);
+                    v.push(res);
+                }
+                Some(v)
             }
-            ValueRef::Empty => None,
             _ => None,
         }
     }
@@ -335,7 +376,11 @@ impl ValueExpr {
             | Self::Sub(lhs, rhs)
             | Self::Mul(lhs, rhs)
             | Self::Mod(lhs, rhs)
-            | Self::Div(lhs, rhs)) => {
+            | Self::Div(lhs, rhs)
+            | Self::Greater(lhs, rhs)
+            | Self::GreaterEqual(lhs, rhs)
+            | Self::Less(lhs, rhs)
+            | Self::LessEqual(lhs, rhs)) => {
                 let lhs = eval_num!(lhs, resolver);
                 let rhs = eval_num!(rhs, resolver);
 
@@ -346,6 +391,16 @@ impl ValueExpr {
                     Self::Mod(..) => ValueRef::Owned(Owned::Num(lhs % rhs)),
                     Self::Div(..) if !rhs.is_zero() => ValueRef::Owned(Owned::Num(lhs / rhs)),
                     Self::Div(..) => ValueRef::Empty,
+                    Self::Greater(..) => {
+                        ValueRef::Owned(Owned::Bool(lhs.to_u128() > rhs.to_u128()))
+                    }
+                    Self::GreaterEqual(..) => {
+                        ValueRef::Owned(Owned::Bool(lhs.to_u128() >= rhs.to_u128()))
+                    }
+                    Self::Less(..) => ValueRef::Owned(Owned::Bool(lhs.to_u128() < rhs.to_u128())),
+                    Self::LessEqual(..) => {
+                        ValueRef::Owned(Owned::Bool(lhs.to_u128() <= rhs.to_u128()))
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -425,7 +480,8 @@ impl From<&str> for ValueExpr {
 mod test {
     use crate::map::Map;
     use crate::testing::{
-        add, and, div, dot, eq, ident, inum, list, modulo, mul, neg, not, or, strlit, sub, unum,
+        add, and, div, dot, eq, greater_than, greater_than_equal, ident, inum, less_than,
+        less_than_equal, list, modulo, mul, neg, not, or, strlit, sub, unum,
     };
     use crate::ValueRef;
 
@@ -463,6 +519,45 @@ mod test {
     fn mod_static() {
         let expr = modulo(unum(5), unum(3));
         expr.test().expect_owned(2u8);
+    }
+
+    #[test]
+    fn greater_than_static() {
+        let expr = greater_than(unum(5), unum(3));
+        expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn greater_than_equal_static() {
+        let expr = greater_than_equal(unum(5), unum(3));
+        expr.test().expect_owned(true);
+
+        let expr = greater_than_equal(unum(3), unum(3));
+        expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn greater_than_equal_dynamic() {
+        let expr = greater_than_equal(unum(5), ident("counter"));
+        expr.with_data([("counter", 3)]).expect_owned(true);
+
+        let expr = greater_than_equal(unum(5), ident("counter"));
+        expr.with_data([("counter", 30)]).expect_owned(false);
+    }
+
+    #[test]
+    fn less_than_static() {
+        let expr = less_than(unum(2), unum(3));
+        expr.test().expect_owned(true);
+    }
+
+    #[test]
+    fn less_than_equal_static() {
+        let expr = less_than_equal(unum(2), unum(3));
+        expr.test().expect_owned(true);
+
+        let expr = less_than_equal(unum(3), unum(3));
+        expr.test().expect_owned(true);
     }
 
     #[test]

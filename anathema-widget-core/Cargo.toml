@@ -15,7 +15,7 @@ unicode-width = { workspace = true }
 thiserror = { workspace = true }
 crossterm = { workspace = true }
 parking_lot = { workspace = true }
-kempt = "0.2.2"
+kempt = { workspace = true }
 
 [lints]
 workspace = true

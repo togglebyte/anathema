@@ -192,7 +192,7 @@ impl Layout for Many {
         //     }
         // }
 
-        if let Direction::Backward = self.direction {
+        if let Direction::Backwards = self.direction {
             size = used_size.max_size;
         }
 

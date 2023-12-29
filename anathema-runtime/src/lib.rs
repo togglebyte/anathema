@@ -12,14 +12,29 @@ use anathema_widget_core::views::Views;
 use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Padding, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::enable_raw_mode;
-pub use meta::Meta;
 use tabindex::Direction;
 
 use crate::tabindex::TabIndexing;
 
+#[allow(unused_extern_crates)]
+extern crate anathema_values as anathema;
+
 mod meta;
 mod tabindex;
 
+/// The runtime handles events, tab indices and configuration of the display
+///
+/// ```
+/// # use anathema_runtime::Runtime;
+/// # fn run() {
+/// # let expressions = vec![];
+/// let mut runtime = Runtime::new(&expressions).unwrap();
+/// runtime.enable_mouse = true;
+/// runtime.enable_alt_screen = false;
+/// runtime.fps = 120;
+/// runtime.run().unwrap();
+/// # }
+/// ```
 pub struct Runtime<'e> {
     pub enable_meta: bool,
     pub enable_mouse: bool,
@@ -64,7 +79,7 @@ impl<'e> Runtime<'e> {
             events: Events,
             fps: 30,
             needs_layout: true,
-            meta: meta::Meta::new(size),
+            meta: meta::Meta::new(size.width, size.height),
             tabindex: TabIndexing::new(),
             enable_ctrlc: true,
             enable_tabindex: true,
@@ -76,7 +91,11 @@ impl<'e> Runtime<'e> {
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
         let scope = Scope::new();
-        let context = Context::root(&(), &scope);
+        let mut context = Context::root(&(), &scope);
+        if self.enable_meta {
+            context.meta = Some(&self.meta);
+        }
+
         let mut nodes =
             LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 
@@ -108,7 +127,10 @@ impl<'e> Runtime<'e> {
 
         self.needs_layout = true;
         let scope = Scope::new();
-        let context = Context::root(&(), &scope);
+        let mut context = Context::root(&(), &scope);
+        if self.enable_meta {
+            context.meta = Some(&self.meta);
+        }
 
         for (node_id, change) in dirty_nodes {
             self.nodes.update(node_id.as_slice(), &change, &context);
@@ -173,6 +195,9 @@ impl<'e> Runtime<'e> {
 
         if self.enable_tabindex {
             self.tabindex.next(Direction::Forwards);
+            if let Some(next) = self.tabindex.current_node() {
+                self.nodes.with_view(next, |view| view.focus());
+            }
         }
 
         self.screen.clear_all(&mut self.output)?;
@@ -200,10 +225,11 @@ impl<'e> Runtime<'e> {
                         self.constraints.max_width = size.width;
                         self.constraints.max_height = size.height;
 
-                        self.meta.size = size;
+                        *self.meta._size.width = size.width;
+                        *self.meta._size.height = size.height;
                     }
-                    Event::Blur => (),  //self.meta.focus = false,
-                    Event::Focus => (), //self.meta.focus = true,
+                    Event::Blur => *self.meta._focus = false,
+                    Event::Focus => *self.meta._focus = true,
                     Event::Quit => break 'run Ok(()),
                     _ => {}
                 }
@@ -214,33 +240,34 @@ impl<'e> Runtime<'e> {
                     }
                 } else {
                     // TODO: this is a bit sketchy
-                    let root = 0.into();
+                    let root = 0.into(); // TODO: this should be a `const`
                     self.nodes.with_view(&root, |view| view.on_event(event));
                 }
             }
 
             self.changes();
 
-            self.meta.count = self.nodes.count();
+            *self.meta._count = self.nodes.count();
 
+            // TODO: the meta info should only be updated if `self.enable_meta`
             if self.needs_layout {
                 let meta_total = Instant::now();
 
                 self.layout()?;
-                self.meta.timings.layout = meta_total.elapsed();
+                *self.meta._timings.layout = format!("{:?}", meta_total.elapsed());
 
                 let now = Instant::now();
                 self.position();
-                self.meta.timings.position = now.elapsed();
+                *self.meta._timings.position = format!("{:?}", now.elapsed());
 
                 let now = Instant::now();
                 self.paint();
-                self.meta.timings.paint = now.elapsed();
+                *self.meta._timings.paint = format!("{:?}", now.elapsed());
 
                 let now = Instant::now();
                 self.screen.render(&mut self.output)?;
-                self.meta.timings.render = now.elapsed();
-                self.meta.timings.total = meta_total.elapsed();
+                *self.meta._timings.render = format!("{:?}", now.elapsed());
+                *self.meta._timings.total = format!("{:?}", meta_total.elapsed());
                 self.screen.erase();
 
                 self.needs_layout = false;

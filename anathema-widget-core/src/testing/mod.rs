@@ -99,8 +99,8 @@ impl FakeTerm {
 
 pub fn test_widget(expr: Expression, expected: FakeTerm) {
     let state = TestState::new();
-    let scopes = Scope::new();
-    let context = Context::root(&state, &scopes);
+    let scope = Scope::new();
+    let context = Context::root(&state, &scope);
     let mut node = expr.eval(&context, 0.into()).unwrap();
     let (widget, nodes) = node.single();
 

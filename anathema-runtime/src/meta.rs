@@ -1,31 +1,39 @@
-use std::time::Duration;
+use anathema::values::State;
+use anathema::StateValue;
 
-use anathema_render::Size;
+#[derive(Debug, State)]
+pub(super) struct Size {
+    pub(super) width: StateValue<usize>,
+    pub(super) height: StateValue<usize>,
+}
 
-#[derive(Debug)]
-pub struct Meta {
-    pub size: Size,
-    pub timings: Timings,
-    pub focus: bool,
-    pub count: usize,
+#[derive(Debug, State)]
+pub(super) struct Meta {
+    pub(super) _size: Size,
+    pub(super) _timings: Timings,
+    pub(super) _focus: StateValue<bool>,
+    pub(super) _count: StateValue<usize>,
 }
 
 impl Meta {
-    pub fn new(size: Size) -> Self {
+    pub(super) fn new(width: usize, height: usize) -> Self {
         Self {
-            size,
-            timings: Timings::default(),
-            focus: true,
-            count: 0,
+            _size: Size {
+                width: width.into(),
+                height: height.into(),
+            },
+            _timings: Timings::default(),
+            _focus: true.into(),
+            _count: 0.into(),
         }
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Timings {
-    pub layout: Duration,
-    pub position: Duration,
-    pub paint: Duration,
-    pub render: Duration,
-    pub total: Duration,
+#[derive(Debug, Default, State)]
+pub(super) struct Timings {
+    pub(super) layout: StateValue<String>,
+    pub(super) position: StateValue<String>,
+    pub(super) paint: StateValue<String>,
+    pub(super) render: StateValue<String>,
+    pub(super) total: StateValue<String>,
 }

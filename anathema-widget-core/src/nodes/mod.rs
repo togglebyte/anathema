@@ -70,13 +70,21 @@ impl<'e> Node<'e> {
                 nodes, state, view, ..
             }) => {
                 let context = match state {
-                    ViewState::Dynamic(state) => Context::root(*state, &self.scope),
+                    ViewState::Dynamic(state) => {
+                        let mut context = context.new(*state, &self.scope);
+                        context.internal_state = Some(view.get_any_state());
+                        context
+                    }
                     ViewState::External { expr, .. } => {
                         let mut resolver = Immediate::new(context, &self.node_id);
 
                         match expr.eval(&mut resolver) {
-                            ValueRef::Map(state) => Context::root(state, &self.scope),
-                            _ => Context::root(&(), &self.scope),
+                            ValueRef::Map(state) => {
+                                let mut context = context.new(state, &self.scope);
+                                context.internal_state = Some(view.get_any_state());
+                                context
+                            }
+                            _ => context.new(&(), &self.scope),
                         }
                     }
                     ViewState::Map(map) => {
@@ -93,11 +101,12 @@ impl<'e> Node<'e> {
                             self.scope.deferred(k, expr);
                         }
 
-                        let context = context.reparent(&self.scope);
+                        let mut context = context.reparent(&self.scope);
+                        context.internal_state = Some(view.get_any_state());
 
                         return c_and_b(nodes, &context, f);
                     }
-                    ViewState::Internal => Context::root(view.get_any_state(), &self.scope),
+                    ViewState::Internal => context.new(view.get_any_state(), &self.scope),
                 };
                 c_and_b(nodes, &context, f)
             }
@@ -343,7 +352,6 @@ fn count_widgets<'a>(nodes: impl Iterator<Item = &'a Node<'a>>) -> usize {
 // Apply change / update to relevant nodes
 fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &Context<'_, '_>) {
     for node in nodes {
-        let _id = format!("current: {:?} | target {node_id:?}", node.node_id);
         if !node.node_id.contains(node_id) {
             continue;
         }
@@ -363,8 +371,8 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
             NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
             NodeKind::View(view) => {
                 // TODO: make this into its own function
-                let state = match &view.state {
-                    ViewState::Dynamic(state) => *state,
+                let state = match view.state {
+                    ViewState::Dynamic(state) => state,
                     ViewState::External { expr, .. } => {
                         let mut resolver = Immediate::new(&context, &node.node_id);
                         match expr.eval(&mut resolver) {
@@ -376,7 +384,8 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
                     ViewState::Internal => view.view.get_any_state(),
                 };
 
-                let context = Context::root(state, &node.scope);
+                let mut context = context.new(state, &node.scope);
+                context.internal_state = Some(view.view.get_any_state());
 
                 return view.nodes.update(node_id, change, &context);
             }

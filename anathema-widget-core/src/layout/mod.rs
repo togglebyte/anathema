@@ -218,15 +218,15 @@ impl TryFrom<ValueRef<'_>> for Axis {
 #[derive(Debug, Copy, Clone, Default)]
 pub enum Direction {
     #[default]
-    Forward,
-    Backward,
+    Forwards,
+    Backwards,
 }
 
 impl Direction {
     pub fn reverse(&self) -> Self {
         match self {
-            Self::Forward => Self::Backward,
-            Self::Backward => Self::Forward,
+            Self::Forwards => Self::Backwards,
+            Self::Backwards => Self::Forwards,
         }
     }
 }
@@ -236,8 +236,8 @@ impl TryFrom<&str> for Direction {
 
     fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
         match value {
-            "forward" => Ok(Self::Forward),
-            "backward" => Ok(Self::Backward),
+            "fwd" | "forwards" | "forward" => Ok(Self::Forwards),
+            "bck" | "backwards" | "backward" => Ok(Self::Backwards),
             _ => Err(()),
         }
     }
@@ -248,8 +248,8 @@ impl TryFrom<ValueRef<'_>> for Direction {
 
     fn try_from(value: ValueRef<'_>) -> std::result::Result<Self, Self::Error> {
         match value {
-            ValueRef::Str("forward" | "horizontal") => Ok(Self::Forward),
-            ValueRef::Str("backward" | "vertical") => Ok(Self::Backward),
+            ValueRef::Str("fwd" | "forwards" | "forward") => Ok(Self::Forwards),
+            ValueRef::Str("bck" | "backwards" | "backward") => Ok(Self::Backwards),
             _ => Err(()),
         }
     }

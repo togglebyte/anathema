@@ -32,7 +32,7 @@ mod value_expr;
 #[allow(unused_extern_crates)]
 extern crate self as anathema;
 #[allow(unused_imports)]
-use crate as values;
+pub use crate as values;
 
 pub type Attributes = hashmap::HashMap<String, ValueExpr>;
 

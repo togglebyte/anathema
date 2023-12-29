@@ -95,8 +95,11 @@ impl Widget for Text {
     }
 
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
-        self.layout
-            .reset(nodes.constraints.max_width, self.squash.value_or(true));
+        let constraints = nodes.constraints;
+        self.layout.reset(
+            Size::new(constraints.max_width, constraints.max_height),
+            self.squash.value_or(true),
+        );
 
         self.layout.process(self.text.str());
 
@@ -114,7 +117,8 @@ impl Widget for Text {
 
         self.layout.finish();
 
-        Ok(self.layout.size())
+        let size = self.layout.size();
+        Ok(size)
     }
 
     fn paint<'ctx>(&mut self, children: &mut Nodes<'_>, mut ctx: PaintCtx<'_, WithSize>) {
@@ -180,7 +184,7 @@ impl WidgetFactory for TextFactory {
             text_alignment: ctx.get("text-align"),
             squash: ctx.get("squash"),
             style: ctx.style(),
-            layout: TextLayout::new(0, false, word_wrap.value_or_default()),
+            layout: TextLayout::new(Size::ZERO, false, word_wrap.value_or_default()),
             text: ctx.text.take(),
             word_wrap,
         };
