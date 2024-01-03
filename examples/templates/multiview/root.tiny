@@ -1,0 +1,3 @@
+border
+    vstack
+        @itemlist [] { "items": items }

@@ -2,8 +2,9 @@ use std::fmt::Display;
 use std::rc::Rc;
 
 use crate::hashmap::HashMap;
+use crate::scope::ContextRef;
 use crate::value::{ExpressionMap, Expressions};
-use crate::{Context, NodeId, Owned, Path, ScopeValue, ValueRef};
+use crate::{Collection, NodeId, Owned, Path, ScopeValue, State, ValueRef};
 
 // -----------------------------------------------------------------------------
 //   - Value resolver trait -
@@ -11,11 +12,9 @@ use crate::{Context, NodeId, Owned, Path, ScopeValue, ValueRef};
 pub trait Resolver<'expr> {
     fn resolve(&mut self, path: &Path) -> ValueRef<'expr>;
 
-    fn lookup(&mut self, ident: &str) -> ValueRef<'expr>;
+    fn resolve_list(&mut self, list: &'expr dyn Collection, index: usize) -> ValueRef<'expr>;
 
-    fn resolve_list_lookup(&mut self, list: &'expr ValueExpr, index: usize) -> ValueRef<'expr>;
-
-    fn resolve_map_lookup(&mut self, map: &'expr ValueExpr, ident: &str) -> ValueRef<'expr>;
+    fn resolve_map(&mut self, map: &'expr dyn State, key: &str) -> ValueRef<'expr>;
 }
 
 // -----------------------------------------------------------------------------
@@ -24,57 +23,38 @@ pub trait Resolver<'expr> {
 /// Only resolve up until a deferred path.
 /// This means `ValueExpr::Deferred` will not be resolved, and instead returned.
 pub struct Deferred<'a, 'expr> {
-    context: &'a Context<'a, 'expr>,
+    context: ContextRef<'a, 'expr>,
 }
 
 impl<'a, 'expr> Deferred<'a, 'expr> {
-    pub fn new(context: &'a Context<'a, 'expr>) -> Self {
+    pub fn new(context: ContextRef<'a, 'expr>) -> Self {
         Self { context }
     }
 }
 
 impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
     fn resolve(&mut self, path: &Path) -> ValueRef<'expr> {
-        match self.context.scopes.lookup(path) {
-            None => ValueRef::Deferred,
-            Some(ScopeValue::Value(value)) => *value,
-            Some(ScopeValue::Deferred(..)) => {
-                panic!("not sure what to do here yet, can this even happen?")
+        match self.context.lookup_scope(path) {
+            None => {
+                if let Some(context) = self.context.pop() {
+                    let mut resolver = Self::new(context);
+                    resolver.resolve(path)
+                } else {
+                    ValueRef::Deferred
+                }
             }
-            Some(ScopeValue::DeferredList(..)) => {
-                panic!("not sure what to do here yet, can this even happen?")
-            }
+            Some(ScopeValue::Value(value)) => value,
+            Some(ScopeValue::Deferred(..)) => ValueRef::Deferred,
+            Some(ScopeValue::DeferredList(..)) => ValueRef::Deferred,
         }
     }
 
-    fn lookup(&mut self, ident: &str) -> ValueRef<'expr> {
-        let val = self.context.scopes.lookup(&(ident.into()));
-        match val {
-            Some(ScopeValue::Value(value)) => *value,
-            _ => ValueRef::Deferred,
-        }
+    fn resolve_list(&mut self, _: &dyn Collection, _: usize) -> ValueRef<'expr> {
+        ValueRef::Deferred
     }
 
-    fn resolve_list_lookup(&mut self, list: &'expr ValueExpr, index: usize) -> ValueRef<'expr> {
-        match list.eval(self) {
-            ValueRef::Expressions(list) => list
-                .get(index)
-                .map(|expr| expr.eval(self))
-                .unwrap_or(ValueRef::Empty),
-            ValueRef::Deferred => ValueRef::Deferred,
-            _ => ValueRef::Empty,
-        }
-    }
-
-    fn resolve_map_lookup(&mut self, map: &'expr ValueExpr, ident: &str) -> ValueRef<'expr> {
-        match map.eval(self) {
-            ValueRef::ExpressionMap(map) => map
-                .get(ident)
-                .map(|expr| expr.eval(self))
-                .unwrap_or(ValueRef::Empty),
-            ValueRef::Deferred => ValueRef::Deferred,
-            _ => ValueRef::Empty,
-        }
+    fn resolve_map(&mut self, _: &dyn State, _: &str) -> ValueRef<'expr> {
+        ValueRef::Deferred
     }
 }
 
@@ -87,14 +67,14 @@ impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
 //   access the state, therefore no other resolver needs a NodeId
 // -----------------------------------------------------------------------------
 /// Resolve the expression, including deferred values.
-pub struct Immediate<'ctx, 'state> {
-    context: &'ctx Context<'state, 'state>,
-    node_id: &'state NodeId,
+pub struct Immediate<'frame> {
+    context: ContextRef<'frame, 'frame>,
+    node_id: &'frame NodeId,
     is_deferred: bool,
 }
 
-impl<'ctx, 'state> Immediate<'ctx, 'state> {
-    pub fn new(context: &'ctx Context<'state, 'state>, node_id: &'state NodeId) -> Self {
+impl<'frame> Immediate<'frame> {
+    pub fn new(context: ContextRef<'frame, 'frame>, node_id: &'frame NodeId) -> Self {
         Self {
             context,
             node_id,
@@ -103,105 +83,84 @@ impl<'ctx, 'state> Immediate<'ctx, 'state> {
     }
 }
 
-impl<'state> Immediate<'_, 'state> {
+impl Immediate<'_> {
     pub fn is_deferred(&self) -> bool {
         self.is_deferred
     }
 }
 
-impl<'state> Resolver<'state> for Immediate<'_, 'state> {
-    fn resolve(&mut self, path: &Path) -> ValueRef<'state> {
-        match self.context.scopes.lookup(path) {
-            Some(ScopeValue::Value(value)) => *value,
-            Some(ScopeValue::Deferred(expr)) => {
-                self.is_deferred = true;
-                expr.eval(self)
-            }
-            Some(&ScopeValue::DeferredList(index, expr)) => {
-                self.is_deferred = true;
-                match expr.eval(self) {
-                    ValueRef::List(list) => {
-                        let path = index.into();
-                        list.state_get(&path, self.node_id)
-                    }
-                    // TODO: this might be unreachable, investimagate!
-                    _ => panic!(),
-                }
-            }
-            None => {
-                //
-                match self
-                    .context
-                    .internal_state
-                    .map(|s| s.state_get(path, self.node_id))
-                {
-                    Some(ValueRef::Empty) | None => {
-                        match self.context.state.state_get(path, self.node_id) {
-                            ValueRef::Empty => match self.context.meta {
-                                Some(meta) => match meta.state_get(path, self.node_id) {
-                                    ValueRef::Empty => ValueRef::Empty,
-                                    val => {
-                                        self.is_deferred = true;
-                                        val
-                                    }
-                                },
-                                None => ValueRef::Empty,
-                            },
-                            val => {
-                                self.is_deferred = true;
-                                val
-                            }
-                        }
-                    }
-                    Some(val) => match val {
-                        ValueRef::Empty => ValueRef::Empty,
-                        val => {
+impl<'frame> Resolver<'frame> for Immediate<'frame> {
+    fn resolve(&mut self, path: &Path) -> ValueRef<'frame> {
+        // 1. state
+        // 2. scope -> state, scope, [parent]---|
+        // 3. parent                            |
+        //    |                                 |
+        // +--+---------------------------------+
+        // |
+        // | / Once lookup occurs in the parent
+        // |/  it should not traverse back up
+        //  \_ to the most recent state
+        //
+
+        // loop:
+        //     context.get_state()
+        //     context.get_scope()
+        //     resolver = new resolver with context.pop();
+        //     if resolver.is_deferred {
+        //         self.is_deferred = true;
+        //     }
+
+        match self.context.lookup_state(path, self.node_id) {
+            ValueRef::Empty => match self.context.lookup_scope(path) {
+                None => {
+                    if let Some(context) = self.context.pop() {
+                        let mut resolver = Self::new(context, self.node_id);
+                        let val = resolver.resolve(path);
+                        if resolver.is_deferred {
                             self.is_deferred = true;
-                            val
                         }
-                    },
+                        val
+                    } else {
+                        ValueRef::Empty
+                    }
                 }
+                Some(ScopeValue::Value(val)) => val,
+                Some(ScopeValue::Deferred(expr)) => {
+                    self.is_deferred = true;
+                    expr.eval(self)
+                }
+                Some(ScopeValue::DeferredList(index, expr)) => {
+                    self.is_deferred = true;
+                    match expr.eval(self) {
+                        ValueRef::Expressions(expressions) => expressions
+                            .get(index)
+                            .expect("Index bounds check in loop expression")
+                            .eval(self),
+                        ValueRef::List(list) => {
+                            let path = index.into();
+                            list.state_get(&path, self.node_id)
+                        }
+                        _ => ValueRef::Empty,
+                    }
+                }
+            },
+            val => {
+                self.is_deferred = true;
+                val
             }
         }
     }
 
-    fn lookup(&mut self, ident: &str) -> ValueRef<'state> {
-        let path = ident.into();
-        self.resolve(&path)
+    fn resolve_list(&mut self, list: &'frame dyn Collection, index: usize) -> ValueRef<'frame> {
+        let path = index.into();
+        self.is_deferred = true;
+        list.state_get(&path, self.node_id)
     }
 
-    fn resolve_list_lookup(&mut self, list: &'state ValueExpr, index: usize) -> ValueRef<'state> {
-        match list.eval(self) {
-            ValueRef::List(list) => {
-                let index = index.into();
-                list.state_get(&index, self.node_id)
-            }
-            ValueRef::Expressions(list) => {
-                let value_expr = match list.get(index) {
-                    None => return ValueRef::Empty,
-                    Some(expr) => expr,
-                };
-                value_expr.eval(self)
-            }
-            _ => ValueRef::Empty,
-        }
-    }
-
-    fn resolve_map_lookup(&mut self, map: &'state ValueExpr, ident: &str) -> ValueRef<'state> {
-        match map.eval(self) {
-            ValueRef::Map(map) => {
-                let ident = ident.into();
-                map.state_get(&ident, self.node_id)
-            }
-            ValueRef::ExpressionMap(map) => {
-                let value_expr = match map.get(ident) {
-                    None => return ValueRef::Empty,
-                    Some(expr) => expr,
-                };
-                value_expr.eval(self)
-            }
-            _ => ValueRef::Empty,
-        }
+    fn resolve_map(&mut self, map: &'frame dyn State, key: &str) -> ValueRef<'frame> {
+        let path = key.into();
+        self.is_deferred = true;
+        map.state_get(&path, self.node_id)
     }
 }
 
@@ -297,33 +256,6 @@ macro_rules! eval_num {
 }
 
 impl ValueExpr {
-    fn eval_list_lookup<'expr>(
-        &'expr self,
-        resolver: &mut impl Resolver<'expr>,
-        index: &'expr ValueExpr,
-    ) -> ValueRef<'expr> {
-        let index = match index.eval(resolver) {
-            ValueRef::Owned(Owned::Num(n)) => n.to_usize(),
-            ValueRef::Deferred => return ValueRef::Deferred,
-            _ => return ValueRef::Empty,
-        };
-
-        resolver.resolve_list_lookup(self, index)
-    }
-
-    fn eval_map_lookup<'expr>(
-        &'expr self,
-        resolver: &mut impl Resolver<'expr>,
-        ident: &'expr ValueExpr,
-    ) -> ValueRef<'expr> {
-        let ident = match ident {
-            ValueExpr::Ident(ident) => ident,
-            _ => return ValueRef::Empty,
-        };
-
-        resolver.resolve_map_lookup(self, ident)
-    }
-
     pub fn eval_string<'expr>(&'expr self, resolver: &mut impl Resolver<'expr>) -> Option<String> {
         match self.eval(resolver) {
             ValueRef::Str(s) => Some(s.into()),
@@ -338,7 +270,11 @@ impl ValueExpr {
                 }
                 Some(s)
             }
-            _ => None,
+            ValueRef::Map(_) => Some("<map>".to_string()),
+            ValueRef::List(_) => Some("<list>".to_string()),
+            ValueRef::ExpressionMap(_) => Some("<expr map>".to_string()),
+            ValueRef::Deferred => None,
+            ValueRef::Empty => None,
         }
     }
 
@@ -436,9 +372,47 @@ impl ValueExpr {
             // -----------------------------------------------------------------------------
             //   - Paths -
             // -----------------------------------------------------------------------------
-            Self::Ident(ident) => resolver.lookup(ident),
-            Self::Index(lhs, index) => lhs.eval_list_lookup(resolver, index),
-            Self::Dot(lhs, rhs) => lhs.eval_map_lookup(resolver, rhs),
+            Self::Ident(ident) => {
+                let path = Path::from(&**ident);
+                resolver.resolve(&path)
+            }
+            Self::Index(lhs, index) => match lhs.eval(resolver) {
+                ValueRef::Expressions(list) => {
+                    let index = eval_num!(index, resolver).to_usize();
+                    return list.0[index].eval(resolver);
+                }
+                ValueRef::ExpressionMap(map) => {
+                    let key = index.eval_string(resolver).unwrap_or(String::new());
+                    let expr = &map.0[&key];
+                    expr.eval(resolver)
+                }
+                ValueRef::List(list) => {
+                    let index = eval_num!(index, resolver).to_usize();
+                    resolver.resolve_list(list, index)
+                }
+                ValueRef::Map(map) => {
+                    let key = index.eval_string(resolver).unwrap_or(String::new());
+                    resolver.resolve_map(map, &key)
+                }
+                _ => ValueRef::Empty,
+            },
+            Self::Dot(lhs, rhs) => match lhs.eval(resolver) {
+                ValueRef::ExpressionMap(map) => {
+                    let key = match &**rhs {
+                        ValueExpr::Ident(key) => key,
+                        _ => return ValueRef::Empty,
+                    };
+                    return map.0[&**key].eval(resolver);
+                }
+                ValueRef::Map(map) => {
+                    let key = match &**rhs {
+                        ValueExpr::Ident(key) => key,
+                        _ => return ValueRef::Empty,
+                    };
+                    resolver.resolve_map(map, key)
+                }
+                _ => ValueRef::Empty,
+            },
 
             // -----------------------------------------------------------------------------
             //   - Collection -
@@ -483,7 +457,6 @@ mod test {
         add, and, div, dot, eq, greater_than, greater_than_equal, ident, inum, less_than,
         less_than_equal, list, modulo, mul, neg, not, or, strlit, sub, unum,
     };
-    use crate::ValueRef;
 
     #[test]
     fn add_dyn() {
@@ -607,19 +580,15 @@ mod test {
 
     #[test]
     fn path() {
-        let test = dot(ident("inner"), ident("name"))
-            .with_data([("inner", Map::new([("name", "Fiddle McStick".to_string())]))]);
-        let name = test.eval();
-        assert!(matches!(name, ValueRef::Str("Fiddle McStick")));
+        let test = dot(ident("inner"), ident("name"));
+        test.with_data([("inner", Map::new([("name", "Fiddle McStick".to_string())]))])
+            .expect_string("Fiddle McStick");
     }
 
     #[test]
     fn string() {
         let expr = list(vec![strlit("Mr. "), dot(ident("inner"), ident("name"))]);
-        let string = expr
-            .with_data([("inner", Map::new([("name", "Fiddle McStick".to_string())]))])
-            .eval_string()
-            .unwrap();
-        assert_eq!(string, "Mr. Fiddle McStick");
+        expr.with_data([("inner", Map::new([("name", "Fiddle McStick".to_string())]))])
+            .expect_string("Mr. Fiddle McStick");
     }
 }

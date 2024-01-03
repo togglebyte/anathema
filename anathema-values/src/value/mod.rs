@@ -33,10 +33,6 @@ impl<'a> ExpressionMap<'a> {
     pub fn new(inner: &'a HashMap<String, ValueExpr>) -> Self {
         Self(inner)
     }
-
-    pub(crate) fn get(&self, ident: &str) -> Option<&'a ValueExpr> {
-        self.0.get(ident)
-    }
 }
 
 // -----------------------------------------------------------------------------

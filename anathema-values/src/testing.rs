@@ -1,5 +1,4 @@
 use crate::map::Map;
-use crate::scope::Scope;
 use crate::{Context, Immediate, List, NodeId, Owned, StateValue, ValueExpr, ValueRef};
 
 #[derive(Debug, crate::State)]
@@ -46,37 +45,41 @@ impl TestState {
 //   - Extend value expression -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub struct TestExpression<T> {
+pub struct TestExpression<'expr, T> {
     pub state: Map<T>,
-    scope: Scope<'static>,
-    pub expr: Box<ValueExpr>,
+    pub expr: &'expr ValueExpr,
     node_id: NodeId,
 }
 
-impl<T: std::fmt::Debug> TestExpression<T>
+impl<'expr, T: std::fmt::Debug> TestExpression<'expr, T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    pub fn eval(&self) -> ValueRef<'_> {
-        let context = Context::root(&self.state, &self.scope);
-        let mut resolver = Immediate::new(&context, &self.node_id);
-        self.expr.eval(&mut resolver)
+    pub fn cmp(&self, other: ValueRef<'_>) {
+        let context = Context::root(&self.state);
+        let mut resolver = Immediate::new(context.lookup(), &self.node_id);
+        let val = self.expr.eval(&mut resolver);
+        assert_eq!(val, other)
     }
 
-    pub fn eval_string(&self) -> Option<String> {
-        let context = Context::root(&self.state, &self.scope);
-        let mut resolver = Immediate::new(&context, &self.node_id);
-        self.expr.eval_string(&mut resolver)
+    pub fn expect_string(&self, cmp: &str) {
+        let context = Context::root(&self.state);
+        let mut resolver = Immediate::new(context.lookup(), &self.node_id);
+        let s = self.expr.eval_string(&mut resolver).unwrap();
+        assert_eq!(s, cmp);
     }
 
     pub fn eval_bool(&self, b: bool) -> bool {
-        let context = Context::root(&self.state, &self.scope);
-        let mut resolver = Immediate::new(&context, &self.node_id);
+        let context = Context::root(&self.state);
+        let mut resolver = Immediate::new(context.lookup(), &self.node_id);
         self.expr.eval(&mut resolver).is_true() == b
     }
 
-    pub fn expect_owned(self, expected: impl Into<Owned>) {
-        let ValueRef::Owned(owned) = self.eval() else {
+    pub fn expect_owned(&self, expected: impl Into<Owned>) {
+        let context = Context::root(&self.state);
+        let mut resolver = Immediate::new(context.lookup(), &self.node_id);
+        let val = self.expr.eval(&mut resolver);
+        let ValueRef::Owned(owned) = val else {
             panic!("not an owned value")
         };
         assert_eq!(owned, expected.into())
@@ -85,22 +88,20 @@ where
 
 impl ValueExpr {
     pub fn with_data<T, K: Into<String>>(
-        self,
+        &self,
         inner: impl IntoIterator<Item = (K, T)>,
-    ) -> TestExpression<T> {
+    ) -> TestExpression<'_, T> {
         TestExpression {
             state: Map::new(inner),
-            expr: Box::new(self),
-            scope: Scope::new(),
+            expr: self,
             node_id: 0.into(),
         }
     }
 
-    pub fn test(self) -> TestExpression<usize> {
+    pub fn test(&self) -> TestExpression<'_, usize> {
         TestExpression {
             state: Map::empty(),
-            expr: Box::new(self),
-            scope: Scope::new(),
+            expr: self,
             node_id: 0.into(),
         }
     }

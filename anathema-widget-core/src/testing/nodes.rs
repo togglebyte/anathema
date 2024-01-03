@@ -1,6 +1,6 @@
 use anathema_render::Size;
 use anathema_values::testing::TestState;
-use anathema_values::{Context, Scope, State, Value};
+use anathema_values::{Context, State, Value};
 
 use crate::contexts::{LayoutCtx, PositionCtx};
 use crate::error::Result;
@@ -98,12 +98,11 @@ pub struct TestExpression<S> {
     pub state: S,
     pub expr: Box<Expression>,
     pub layout: LayoutCtx,
-    pub scope: Scope<'static>,
 }
 
 impl<S: State> TestExpression<S> {
     pub fn ctx(&self) -> Context<'_, '_> {
-        Context::root(&self.state, &self.scope)
+        Context::root(&self.state)
     }
 
     pub fn eval(&self) -> Result<Node<'_>> {
@@ -124,8 +123,7 @@ pub struct TestRuntime<'e> {
 impl TestRuntime<'_> {
     pub fn layout(&mut self) -> Result<Size> {
         self.nodes.reset_cache();
-        let scope = Scope::new();
-        let context = Context::root(&self.state, &scope);
+        let context = Context::root(&self.state);
         let mut nodes =
             LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
 

@@ -1,6 +1,10 @@
 use crate::hashmap::HashMap;
 use crate::state::State;
-use crate::{Path, ValueExpr, ValueRef};
+use crate::{NodeId, Path, ValueExpr, ValueRef};
+
+// TODO: technically the `InnerContext` is acting more as a scope
+//       and the `Scope` is just a wrapper around the storage.
+//       This could perhaps benefit from being renamed.
 
 // Scopes can only borrow values with the same lifetime as an expressions.
 // Any scoped value that belongs to or contains state can only be scoped as deferred expressions.
@@ -12,57 +16,54 @@ pub enum ScopeValue<'expr> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Scope<'expr>(HashMap<Path, ScopeValue<'expr>>);
+pub struct ScopeStorage<'expr>(HashMap<Path, ScopeValue<'expr>>);
 
-impl<'expr> Scope<'expr> {
+impl<'expr> ScopeStorage<'expr> {
     pub fn new() -> Self {
         Self(HashMap::default())
     }
 
-    fn lookup(&self, lookup_path: &Path) -> Option<&ScopeValue<'expr>> {
-        self.0.get(lookup_path)
+    fn get(&self, lookup_path: &Path) -> Option<ScopeValue<'expr>> {
+        self.0.get(lookup_path).copied()
     }
 
-    pub fn scope(&mut self, path: impl Into<Path>, value: ScopeValue<'expr>) {
+    pub fn insert(&mut self, path: impl Into<Path>, value: ScopeValue<'expr>) {
         self.0.insert(path.into(), value);
     }
 
     pub fn value(&mut self, path: impl Into<Path>, value: ValueRef<'expr>) {
-        self.0.insert(path.into(), ScopeValue::Value(value));
+        self.insert(path, ScopeValue::Value(value));
     }
 
     pub fn deferred(&mut self, path: impl Into<Path>, expr: &'expr ValueExpr) {
-        self.0.insert(path.into(), ScopeValue::Deferred(expr));
+        self.insert(path, ScopeValue::Deferred(expr));
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Scopes<'a, 'expr> {
-    parent: Option<&'a Scopes<'a, 'expr>>,
-    scope: &'a Scope<'expr>,
+pub struct Scope<'frame, 'expr> {
+    store: &'frame ScopeStorage<'expr>,
+    parent: Option<&'frame Scope<'frame, 'expr>>,
 }
 
-impl<'a, 'expr> Scopes<'a, 'expr> {
-    fn new(scope: &'a Scope<'expr>) -> Self {
-        Self {
-            scope,
-            parent: None,
-        }
+impl<'frame, 'expr> Scope<'frame, 'expr> {
+    fn get(&self, lookup_path: &Path) -> Option<ScopeValue<'expr>> {
+        self.store
+            .get(lookup_path)
+            .or_else(|| self.parent.and_then(|p| p.get(lookup_path)))
     }
+}
 
-    /// Make the current scope the parent scope, and assign a new scope
-    /// as the top most scope.
-    pub fn reparent(&self, scope: &'a Scope<'expr>) -> Scopes<'_, 'expr> {
-        Scopes {
-            scope,
-            parent: Some(self),
-        }
-    }
+#[derive(Debug, Copy, Clone)]
+struct InnerContext<'frame, 'expr> {
+    state: &'frame dyn State,
+    scope: Option<&'frame Scope<'frame, 'expr>>,
+    parent: Option<&'frame InnerContext<'frame, 'expr>>,
+}
 
-    pub(crate) fn lookup(&self, lookup_path: &Path) -> Option<&ScopeValue<'expr>> {
-        self.scope
-            .lookup(lookup_path)
-            .or_else(|| self.parent.and_then(|p| p.lookup(lookup_path)))
+impl<'frame, 'expr> InnerContext<'frame, 'expr> {
+    fn pop(&self) -> Option<&Self> {
+        self.parent
     }
 }
 
@@ -71,44 +72,78 @@ impl<'a, 'expr> Scopes<'a, 'expr> {
 //
 // For a deferred resolver everything has the same lifetime as the expressions,
 // for an immediate resolver the lifetime can only be that of the frame, during the layout step
-#[derive(Debug)]
-pub struct Context<'state, 'expr> {
-    pub state: &'state dyn State,
-    pub internal_state: Option<&'state dyn State>,
-    pub meta: Option<&'state dyn State>,
-    pub scopes: Scopes<'state, 'expr>,
+#[derive(Debug, Copy, Clone)]
+pub struct Context<'frame, 'expr> {
+    inner: InnerContext<'frame, 'expr>,
 }
 
-impl<'state, 'expr> Context<'state, 'expr> {
-    pub fn root(state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
+impl<'frame, 'expr> Context<'frame, 'expr> {
+    pub fn root(state: &'frame dyn State) -> Self {
         Self {
+            inner: InnerContext {
+                state,
+                scope: None,
+                parent: None,
+            },
+        }
+    }
+
+    pub fn with_scope(&self, scope: &'frame Scope<'frame, 'expr>) -> Self {
+        let inner = InnerContext {
+            state: self.inner.state,
+            parent: self.inner.parent,
+            scope: Some(scope),
+        };
+
+        Self { inner }
+    }
+
+    pub fn with_state(&'frame self, state: &'frame dyn State) -> Self {
+        let inner = InnerContext {
             state,
-            scopes: Scopes::new(scope),
-            meta: None,
-            internal_state: None,
+            parent: Some(&self.inner),
+            scope: None,
+        };
+
+        Self { inner }
+    }
+
+    pub fn new_scope(&self, store: &'frame ScopeStorage<'expr>) -> Scope<'frame, 'expr> {
+        Scope {
+            store,
+            parent: self.inner.scope,
         }
     }
 
-    pub fn new(&self, state: &'state dyn State, scope: &'state Scope<'expr>) -> Self {
-        Self {
-            state,
-            scopes: Scopes::new(scope),
-            internal_state: self.internal_state,
-            meta: self.meta,
-        }
+    pub fn lookup(&'frame self) -> ContextRef<'frame, 'expr> {
+        ContextRef { inner: &self.inner }
     }
 
-    pub fn reparent(&'state self, scope: &'state Scope<'expr>) -> Context<'state, 'expr> {
-        Self {
-            state: self.state,
-            internal_state: self.internal_state,
-            meta: self.meta,
-            scopes: self.scopes.reparent(scope),
+    pub fn clone_scope(&self) -> ScopeStorage<'expr> {
+        match self.inner.scope {
+            None => ScopeStorage::new(),
+            Some(scope) => scope.store.clone(),
         }
     }
+}
 
-    pub fn clone_scope(&self) -> Scope<'expr> {
-        self.scopes.scope.clone()
+pub struct ContextRef<'frame, 'expr> {
+    inner: &'frame InnerContext<'frame, 'expr>,
+}
+
+impl<'frame, 'expr> ContextRef<'frame, 'expr> {
+    pub fn pop(&self) -> Option<Self> {
+        Some(Self {
+            inner: self.inner.pop()?,
+        })
+    }
+
+    pub fn lookup_state(&self, path: &Path, node_id: &NodeId) -> ValueRef<'frame> {
+        self.inner.state.state_get(path, node_id)
+    }
+
+    pub fn lookup_scope(&self, path: &Path) -> Option<ScopeValue<'expr>> {
+        self.inner.scope?.get(path)
     }
 }
 
@@ -118,26 +153,31 @@ mod test {
 
     #[test]
     fn scope_value() {
-        let mut scope = Scope::new();
-        scope.value("value", ValueRef::Str("hello world"));
-        let scopes = Scopes::new(&scope);
-
-        let mut inner_scope = Scope::new();
-        inner_scope.value("value", ValueRef::Str("inner hello"));
+        let mut store = ScopeStorage::new();
+        store.value("value", ValueRef::Str("hello world"));
+        let scope = Scope {
+            store: &store,
+            parent: None,
+        };
 
         {
-            let scopes = scopes.reparent(&inner_scope);
+            let mut store = ScopeStorage::new();
+            store.value("value", ValueRef::Str("inner hello"));
+            let scope = Scope {
+                store: &store,
+                parent: Some(&scope),
+            };
 
-            let &ScopeValue::Value(ValueRef::Str(lhs)) = scopes.lookup(&"value".into()).unwrap()
-            else {
+            let ScopeValue::Value(ValueRef::Str(lhs)) = scope.get(&"value".into()).unwrap() else {
                 panic!()
             };
             assert_eq!(lhs, "inner hello");
         }
 
-        let &ScopeValue::Value(ValueRef::Str(lhs)) = scopes.lookup(&"value".into()).unwrap() else {
+        let ScopeValue::Value(ValueRef::Str(lhs)) = scope.get(&"value".into()).unwrap() else {
             panic!()
         };
+
         assert_eq!(lhs, "hello world");
     }
 }

@@ -2,7 +2,7 @@ use std::io::{stdout, Stdout};
 use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context, Scope};
+use anathema_values::{drain_dirty_nodes, Context};
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
 use anathema_widget_core::expressions::Expression;
@@ -90,11 +90,7 @@ impl<'e> Runtime<'e> {
 
     fn layout(&mut self) -> Result<()> {
         self.nodes.reset_cache();
-        let scope = Scope::new();
-        let mut context = Context::root(&(), &scope);
-        if self.enable_meta {
-            context.meta = Some(&self.meta);
-        }
+        let context = Context::root(&self.meta);
 
         let mut nodes =
             LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
@@ -126,11 +122,9 @@ impl<'e> Runtime<'e> {
         }
 
         self.needs_layout = true;
-        let scope = Scope::new();
-        let mut context = Context::root(&(), &scope);
-        if self.enable_meta {
-            context.meta = Some(&self.meta);
-        }
+
+        let state = &self.meta;
+        let context = Context::root(state);
 
         for (node_id, change) in dirty_nodes {
             self.nodes.update(node_id.as_slice(), &change, &context);

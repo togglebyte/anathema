@@ -17,7 +17,6 @@ pub mod prec {
     pub const PRODUCT: u8 = 5;
     pub const PREFIX: u8 = 7;
     pub const CALL: u8 = 9;
-    pub const SELECTION: u8 = 9;
     pub const SUBCRIPT: u8 = 10;
 }
 
@@ -32,7 +31,7 @@ fn get_precedence(op: Operator) -> u8 {
         Operator::Plus | Operator::Minus => prec::SUM,
         Operator::Mul | Operator::Div | Operator::Mod => prec::PRODUCT,
         Operator::LParen => prec::CALL,
-        Operator::Dot => prec::SELECTION,
+        Operator::Dot => prec::SUBCRIPT,
         Operator::LBracket => prec::SUBCRIPT,
         _ => 0,
     }
@@ -273,13 +272,17 @@ mod test {
     use crate::lexer::Lexer;
     use crate::Constants;
 
-    fn parse(input: &str) -> String {
+    fn parse_expr(input: &str) -> Expr {
         let mut consts = Constants::new();
         let lexer = Lexer::new(input, &mut consts);
         let tokens = lexer.collect::<Result<_>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());
 
-        let expression = expr(&mut tokens);
+        expr(&mut tokens)
+    }
+
+    fn parse(input: &str) -> String {
+        let expression = parse_expr(input);
         expression.to_string()
     }
 
@@ -323,6 +326,12 @@ mod test {
     fn array_index() {
         let input = "array[0][1]";
         assert_eq!(parse(input), "<sid 0>[0][1]");
+    }
+
+    #[test]
+    fn map_lookup() {
+        let input = "map['key']";
+        assert_eq!(parse(input), "<sid 0>[\"<sid 1>\"]");
     }
 
     #[test]

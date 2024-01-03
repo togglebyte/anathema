@@ -2,7 +2,9 @@ use std::fmt;
 use std::iter::once;
 use std::ops::ControlFlow;
 
-use anathema_values::{Change, Context, Immediate, NextNodeId, NodeId, Scope, Value, ValueRef};
+use anathema_values::{
+    Change, Context, Deferred, Immediate, NextNodeId, NodeId, ScopeStorage, Value, ValueRef,
+};
 
 pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
@@ -22,13 +24,13 @@ pub fn make_it_so(expressions: &[crate::expressions::Expression]) -> Nodes<'_> {
 }
 
 // TODO: good grief rename this function!
-fn c_and_b<'e, F>(
-    nodes: &mut Nodes<'e>,
-    context: &Context<'_, 'e>,
+fn c_and_b<'expr, F>(
+    nodes: &mut Nodes<'expr>,
+    context: &Context<'_, 'expr>,
     f: &mut F,
 ) -> Result<ControlFlow<(), ()>>
 where
-    F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
+    F: FnMut(&mut WidgetContainer<'expr>, &mut Nodes<'expr>, &Context<'_, 'expr>) -> Result<()>,
 {
     while let Ok(res) = nodes.next(context, f) {
         match res {
@@ -44,7 +46,7 @@ where
 pub struct Node<'e> {
     pub node_id: NodeId,
     pub kind: NodeKind<'e>,
-    pub(crate) scope: Scope<'e>,
+    pub(crate) scope: ScopeStorage<'e>,
 }
 
 impl<'e> Node<'e> {
@@ -59,7 +61,7 @@ impl<'e> Node<'e> {
                 f(widget, children, context)?;
                 Ok(ControlFlow::Continue(()))
             }
-            NodeKind::Loop(loop_state) => loop_state.next(context, f),
+            NodeKind::Loop(loop_state) => loop_state.next(&mut self.scope, context, f),
             NodeKind::ControlFlow(if_else) => {
                 let Some(body) = if_else.body_mut() else {
                     return Ok(ControlFlow::Break(()));
@@ -68,48 +70,53 @@ impl<'e> Node<'e> {
             }
             NodeKind::View(View {
                 nodes, state, view, ..
-            }) => {
-                let context = match state {
-                    ViewState::Dynamic(state) => {
-                        let mut context = context.new(*state, &self.scope);
-                        context.internal_state = Some(view.get_any_state());
-                        context
-                    }
-                    ViewState::External { expr, .. } => {
-                        let mut resolver = Immediate::new(context, &self.node_id);
+            }) => match state {
+                ViewState::Dynamic(state) => {
+                    let scope = context.new_scope(&self.scope);
+                    let context = context.with_state(*state);
+                    let context = context.with_scope(&scope);
+                    let context = context.with_state(view.get_any_state());
+                    c_and_b(nodes, &context, f)
+                }
+                ViewState::External { expr, .. } => {
+                    let mut resolver = Immediate::new(context.lookup(), &self.node_id);
 
+                    match expr.eval(&mut resolver) {
+                        ValueRef::Map(state) => {
+                            let scope = context.new_scope(&self.scope);
+                            let context = context.with_state(state);
+                            let context = context.with_scope(&scope);
+                            let context = context.with_state(view.get_any_state());
+                            c_and_b(nodes, &context, f)
+                        }
+                        _ => {
+                            let scope = context.new_scope(&self.scope);
+                            let context = context.with_scope(&scope);
+                            c_and_b(nodes, &context, f)
+                        }
+                    }
+                }
+                ViewState::Map(map) => {
+                    let mut resolver = Deferred::new(context.lookup());
+                    for (k, expr) in map.0 {
                         match expr.eval(&mut resolver) {
-                            ValueRef::Map(state) => {
-                                let mut context = context.new(state, &self.scope);
-                                context.internal_state = Some(view.get_any_state());
-                                context
-                            }
-                            _ => context.new(&(), &self.scope),
+                            ValueRef::Deferred => self.scope.deferred(k, expr),
+                            val => self.scope.value(k, val),
                         }
                     }
-                    ViewState::Map(map) => {
-                        // This and the update function:
-                        // Scopes should be improved upon
-                        // so more than one value can be scoped.
-                        //
-                        // Then it would be possible to scope
-                        // all the external expressions and resolve them when needed.
-                        //
-                        // This needs to be tested with nested states
 
-                        for (k, expr) in map.0 {
-                            self.scope.deferred(k, expr);
-                        }
-
-                        let mut context = context.reparent(&self.scope);
-                        context.internal_state = Some(view.get_any_state());
-
-                        return c_and_b(nodes, &context, f);
-                    }
-                    ViewState::Internal => context.new(view.get_any_state(), &self.scope),
-                };
-                c_and_b(nodes, &context, f)
-            }
+                    let scope = context.new_scope(&self.scope);
+                    let context = context.with_scope(&scope);
+                    let context = context.with_state(view.get_any_state());
+                    c_and_b(nodes, &context, f)
+                }
+                ViewState::Internal => {
+                    let scope = context.new_scope(&self.scope);
+                    let context = context.with_state(view.get_any_state());
+                    let context = context.with_scope(&scope);
+                    c_and_b(nodes, &context, f)
+                }
+            },
         }
     }
 
@@ -126,8 +133,8 @@ impl<'e> Node<'e> {
     // This means that the update was specifically for this node,
     // and not one of its children
     fn update(&mut self, change: &Change, context: &Context<'_, '_>) {
-        let scope = &self.scope;
-        let context = context.reparent(scope);
+        let scope = context.new_scope(&self.scope);
+        let context = context.with_scope(&scope);
 
         match &mut self.kind {
             NodeKind::Single(Single { widget, .. }) => widget.update(&context, &self.node_id),
@@ -360,32 +367,42 @@ fn update(nodes: &mut [Node<'_>], node_id: &[usize], change: &Change, context: &
             return node.update(change, context);
         }
 
-        let scope = &node.scope;
-        let context = context.reparent(scope);
+        let scope = context.new_scope(&node.scope);
+        let context = context.with_scope(&scope);
 
         match &mut node.kind {
             NodeKind::Single(Single { children, .. }) => {
                 return children.update(node_id, change, &context)
             }
-            NodeKind::Loop(loop_node) => return loop_node.update(node_id, change, &context),
+            NodeKind::Loop(loop_node) => {
+                return loop_node.update(node_id, change, &context);
+            }
             NodeKind::ControlFlow(if_else) => return if_else.update(node_id, change, &context),
             NodeKind::View(view) => {
-                // TODO: make this into its own function
+                // TODO: make this into its own function.
+                //       also note: it's strange to return a unit here for a bogus state
+                //       it's also strange to return the state of the view as it's also
+                //       set on the match arm of Internal
+
+                // Don't return a state here
                 let state = match view.state {
                     ViewState::Dynamic(state) => state,
                     ViewState::External { expr, .. } => {
-                        let mut resolver = Immediate::new(&context, &node.node_id);
+                        let mut resolver = Immediate::new(context.lookup(), &node.node_id);
                         match expr.eval(&mut resolver) {
                             ValueRef::Map(state) => state,
                             _ => &(),
                         }
                     }
-                    ViewState::Map(_map) => context.state,
+                    ViewState::Map(_map) => &(),
                     ViewState::Internal => view.view.get_any_state(),
                 };
 
-                let mut context = context.new(state, &node.scope);
-                context.internal_state = Some(view.view.get_any_state());
+                let context = context.with_state(state);
+                // TODO: this is silly. see above TODO
+                // let context = context.with_state(view.view.get_any_state());
+                // let scope = context.new_scope(&node.scope);
+                // let context = context.with_scope(&scope);
 
                 return view.nodes.update(node_id, change, &context);
             }

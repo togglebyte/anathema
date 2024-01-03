@@ -110,6 +110,8 @@ impl Views {
 pub trait View {
     fn on_event(&mut self, _event: Event, _nodes: &mut Nodes<'_>) {}
 
+    /// Internal state will always take precedence over external state.
+    /// It is not possible to shadow internal state.
     fn state(&self) -> &dyn State {
         &()
     }
