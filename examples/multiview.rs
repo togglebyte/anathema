@@ -16,7 +16,7 @@ use anathema::vm::Templates;
 //   - Root -
 //   Root view and state(s)
 //
-//   The `Item` is part of the `RootState` as well as the 
+//   The `Item` is part of the `RootState` as well as the
 //   state for the `ItemView`
 // -----------------------------------------------------------------------------
 #[derive(Debug, State)]
@@ -78,7 +78,7 @@ fn main() {
     let mut templates = Templates::new(root, RootView::new());
 
     // Add a single view at setup time for the items.
-    // Since this view contains no internal state nor does it do 
+    // Since this view contains no internal state nor does it do
     // any event handling, it's possible to pass a unit as the view.
     templates.add_view("itemlist", items, ());
 
