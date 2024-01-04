@@ -33,7 +33,7 @@ impl<T> Map<T> {
 
     pub fn remove(&mut self, key: String) -> Option<StateValue<T>> {
         let ret = self.inner.remove(&key);
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| {
                 nodes
                     .borrow_mut()
@@ -45,7 +45,7 @@ impl<T> Map<T> {
 
     pub fn insert(&mut self, key: String, value: T) {
         self.inner.insert(key.clone(), StateValue::new(value));
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| {
                 nodes
                     .borrow_mut()

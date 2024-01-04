@@ -1,12 +1,12 @@
 use anathema_render::Size;
 use anathema_values::{Context, NodeId, Value};
 use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
-use anathema_widget_core::error::Result;
+use anathema_widget_core::error::{Result, Error};
 use anathema_widget_core::{
     AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetFactory, WidgetStyle,
 };
 
-use crate::layout::text::{Line, TextAlignment, TextLayout, Wrap};
+use crate::layout::text::{Line, TextAlignment, TextLayout, Wrap, ProcessOutput};
 
 // -----------------------------------------------------------------------------
 //     - Text -
@@ -103,7 +103,7 @@ impl Widget for Text {
 
         self.layout.process(self.text.str());
 
-        nodes.for_each(|mut span| {
+        let _ = nodes.for_each(|mut span| {
             // Ignore any widget that isn't a span
             if span.kind() != TextSpan::KIND {
                 return Ok(());
@@ -111,9 +111,11 @@ impl Widget for Text {
 
             let inner_span = span.to_mut::<TextSpan>();
 
-            self.layout.process(inner_span.text.str());
-            Ok(())
-        })?;
+            match self.layout.process(inner_span.text.str()) {
+                ProcessOutput::Done => Ok(()),
+                ProcessOutput::InsufficientSpaceAvailble => Err(Error::InsufficientSpaceAvailble),
+            }
+        });
 
         self.layout.finish();
 
@@ -188,7 +190,6 @@ impl WidgetFactory for TextFactory {
             text: ctx.text.take(),
             word_wrap,
         };
-        widget.text.resolve(ctx.ctx, &ctx.node_id);
 
         Ok(Box::new(widget))
     }
@@ -202,7 +203,6 @@ impl WidgetFactory for SpanFactory {
             text: ctx.text.take(),
             style: ctx.style(),
         };
-        widget.text.resolve(ctx.ctx, &ctx.node_id);
 
         Ok(Box::new(widget))
     }

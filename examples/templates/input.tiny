@@ -6,12 +6,12 @@ vstack
                 vstack
                     // Iterate over the output
                     // and output the text
-                    for s in output
-                        text s
+                    for msg in output
+                        text msg
 
     // Input
     border
         expand [axis: "horz"]
-            text [foreground: #00aaaa] input
+            text [foreground: #0aa] input
                 // using a span to add a cursor at the end
                 span "█"

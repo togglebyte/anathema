@@ -115,6 +115,7 @@ impl<'frame, 'expr> Context<'frame, 'expr> {
         }
     }
 
+    // TODO: rename this
     pub fn lookup(&'frame self) -> ContextRef<'frame, 'expr> {
         ContextRef { inner: &self.inner }
     }

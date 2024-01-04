@@ -10,7 +10,7 @@ pub(crate) use self::controlflow::IfElse;
 pub(crate) use self::loops::LoopNode;
 use self::query::Query;
 use crate::error::Result;
-use crate::expressions::{Expression, ViewState};
+use crate::expressions::{Collection, Expression, ViewState};
 use crate::views::{AnyView, Views};
 use crate::{Event, WidgetContainer};
 
@@ -138,12 +138,22 @@ impl<'e> Node<'e> {
 
         match &mut self.kind {
             NodeKind::Single(Single { widget, .. }) => widget.update(&context, &self.node_id),
-            NodeKind::Loop(loop_node) => match change {
-                Change::InsertIndex(index) => loop_node.insert(*index),
-                Change::RemoveIndex(index) => loop_node.remove(*index),
-                Change::Push => loop_node.push(),
-                _ => (),
-            },
+            NodeKind::Loop(loop_node) => {
+                // if the collection is bound to a state
+                // we need to resub to the state
+
+                if let Collection::State { expr, .. } = loop_node.collection {
+                    let mut immediate = Immediate::new(context.lookup(), &self.node_id);
+                    let _ = expr.eval(&mut immediate);
+                }
+
+                match change {
+                    Change::InsertIndex(index) => loop_node.insert(*index),
+                    Change::RemoveIndex(index) => loop_node.remove(*index),
+                    Change::Push => loop_node.push(),
+                    _ => (),
+                }
+            }
             NodeKind::View(View {
                 tabindex, state: _, ..
             }) => {

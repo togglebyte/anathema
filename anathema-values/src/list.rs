@@ -39,7 +39,7 @@ impl<T> List<T> {
     pub fn pop_front(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop_front()?;
         let index = self.inner.len();
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| {
                 nodes
                     .borrow_mut()
@@ -52,7 +52,7 @@ impl<T> List<T> {
     pub fn pop_back(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop_back()?;
         let index = self.inner.len();
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| {
                 nodes
                     .borrow_mut()
@@ -64,7 +64,7 @@ impl<T> List<T> {
 
     pub fn remove(&mut self, index: usize) -> Option<StateValue<T>> {
         let ret = self.inner.remove(index);
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| {
                 nodes
                     .borrow_mut()
@@ -76,21 +76,22 @@ impl<T> List<T> {
 
     pub fn push_front(&mut self, value: T) {
         self.inner.push_front(StateValue::new(value));
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::InsertIndex(0))));
         }
     }
 
     pub fn push_back(&mut self, value: T) {
         self.inner.push_back(StateValue::new(value));
-        for s in self.subscribers.borrow().iter() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Push)));
         }
     }
 
     pub fn insert(&mut self, index: usize, value: T) {
         self.inner.insert(index, StateValue::new(value));
-        for s in self.subscribers.borrow().iter() {
+
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| {
                 nodes
                     .borrow_mut()

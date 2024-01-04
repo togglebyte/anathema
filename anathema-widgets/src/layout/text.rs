@@ -241,7 +241,7 @@ impl TextLayout {
         self.squash = squash;
     }
 
-    fn process_word_wrap(&mut self, s: &str) {
+    fn process_word_wrap(&mut self, s: &str) -> ProcessOutput {
         for (i, c) in s.char_indices() {
             let width = c.width().unwrap_or(0);
 
@@ -259,7 +259,7 @@ impl TextLayout {
 
                 self.lines.push(line);
                 if self.lines.len() == self.max_size.height {
-                    return;
+                    return ProcessOutput::InsufficientSpaceAvailble;
                 }
 
                 if c.is_whitespace() && self.squash {
@@ -287,9 +287,11 @@ impl TextLayout {
         }
 
         self.slice_index += 1;
+
+        ProcessOutput::Done
     }
 
-    fn process_word_break(&mut self, s: &str) {
+    fn process_word_break(&mut self, s: &str) -> ProcessOutput {
         for (i, c) in s.char_indices() {
             let width = c.width().unwrap_or(0);
             if width + self.current_width > self.max_size.width {
@@ -300,13 +302,15 @@ impl TextLayout {
             self.current_width += width;
             self.tree.push(i, c.len_utf8(), self.slice_index, width);
         }
+        panic!()
     }
 
-    fn process_overflow(&mut self, s: &str) {
+    fn process_overflow(&mut self, s: &str) -> ProcessOutput {
         for (i, c) in s.char_indices() {
             let width = c.width().unwrap_or(0);
             self.tree.push(i, c.len_utf8(), self.slice_index, width);
         }
+        panic!()
     }
 
     pub fn size(&self) -> Size {
@@ -323,13 +327,19 @@ impl TextLayout {
         }
     }
 
-    pub fn process(&mut self, s: &str) {
+    pub fn process(&mut self, s: &str) -> ProcessOutput {
         match self.wrap {
             Wrap::Normal => self.process_word_wrap(s),
-            Wrap::WordBreak => self.process_word_break(s),
-            Wrap::Overflow => self.process_overflow(s),
+            _ => panic!("fix it fix it"),
+            // Wrap::WordBreak => self.process_word_break(s),
+            // Wrap::Overflow => self.process_overflow(s),
         }
     }
+}
+
+pub enum ProcessOutput {
+    Done,
+    InsufficientSpaceAvailble
 }
 
 /// Word wrapping strategy
