@@ -1,0 +1,12 @@
+[package]
+name = "anathema-render"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitflags = { workspace = true }
+crossterm = { workspace = true }
+unicode-width = { workspace = true }
+
+[lints]
+workspace = true

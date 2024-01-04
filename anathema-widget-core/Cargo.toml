@@ -1,0 +1,21 @@
+[package]
+name = "anathema-widget-core"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["testing"]
+testing = ["anathema-values/testing"]
+
+[dependencies]
+anathema-render = { path = "../anathema-render" }
+anathema-values = { path = "../anathema-values" }
+bitflags = { workspace = true }
+unicode-width = { workspace = true }
+thiserror = { workspace = true }
+crossterm = { workspace = true }
+parking_lot = { workspace = true }
+kempt = { workspace = true }
+
+[lints]
+workspace = true

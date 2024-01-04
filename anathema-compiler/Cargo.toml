@@ -1,0 +1,18 @@
+[package]
+name = "anathema-compiler"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+testing = ["anathema-widget-core/testing"]
+
+[dependencies]
+anathema-render = { path = "../anathema-render" }
+anathema-values = { path = "../anathema-values" }
+anathema-widget-core = { path = "../anathema-widget-core" }
+
+[lints]
+workspace = true

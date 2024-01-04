@@ -1,4 +1,5 @@
 * 0.2.0
+    * Markup no longer requires that a widget has a `:` char.
     * `ScrollView` widget was removed
     * `Viewport` widget was added
     * `DataCtx` now has `get_ref` counter part to `get_mut`.

@@ -1,0 +1,23 @@
+[package]
+name = "anathema-runtime"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+testing = ["anathema-widget-core/testing"]
+
+[dependencies]
+anathema-render = { path = "../anathema-render" }
+anathema-values = { path = "../anathema-values" }
+anathema-vm = { path = "../anathema-vm" }
+anathema-widget-core = { path = "../anathema-widget-core" }
+anathema-widgets = { path = "../anathema-widgets" }
+crossterm = { workspace = true }
+flume = { workspace = true }
+kempt = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "anathema-widgets"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+testing = ["anathema-widget-core/testing"]
+
+[dependencies]
+anathema-render = { path = "../anathema-render" }
+anathema-widget-core = { path = "../anathema-widget-core" }
+anathema-values = { path = "../anathema-values" }
+bitflags = { workspace = true }
+unicode-width = { workspace = true }
+
+[lints]
+workspace = true

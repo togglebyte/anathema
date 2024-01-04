@@ -1,0 +1,16 @@
+[package]
+name = "anathema-value-derive"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+manyhow = "0.10.0"
+quote = "1.0.33"
+quote-use = "0.7.2"
+syn = "2.0.29"
+
+[lints]
+workspace = true

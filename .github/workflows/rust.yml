@@ -2,23 +2,43 @@ name: Rust
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-C debuginfo=0 -D warnings"
+
 
 jobs:
-  build:
 
+  test:
     runs-on: ubuntu-latest
-
+    name: Test
     steps:
-    - uses: actions/checkout@v2
-    - name: Run tests
-      run: cargo test --verbose --features=serde-json,runtime
-    - name: Rust fmt
-      run: cargo fmt -- --check
-    - name: Clippy
-      run: cargo clippy -- -A clippy::option_map_unit_fn
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --verbose --all --all-features
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - name: Rust fmt
+        run: cargo +nightly fmt -- --check
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Clippy
+        run: cargo clippy --all-features --all

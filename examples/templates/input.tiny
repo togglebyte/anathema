@@ -1,0 +1,17 @@
+vstack
+    // Output
+    expand
+        border
+            expand
+                vstack
+                    // Iterate over the output
+                    // and output the text
+                    for msg in output
+                        text msg
+
+    // Input
+    border
+        expand [axis: "horz"]
+            text [foreground: #0aa] input
+                // using a span to add a cursor at the end
+                span "█"
