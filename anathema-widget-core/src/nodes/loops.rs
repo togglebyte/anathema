@@ -138,33 +138,12 @@ impl<'e> LoopNode<'e> {
         }
     }
 
-    pub(super) fn remove(&mut self, index: usize) {
-        self.collection.remove();
-        if index >= self.iterations.len() {
-            return;
-        }
-        self.value_index -= 1;
-        self.current_iteration = self.iterations.len() - 1;
-        // Remove the iteration
-        // TODO:
-        // Remove all the views inside the iteration
-        // that are currently in:
-        // * Views
-        self.iterations.remove(index);
-    }
-
-    pub(super) fn push(&mut self) {
-        self.value_index = self.iterations.len();
-        self.collection.push();
-    }
-
-    pub(super) fn insert(&mut self, index: usize) {
-        self.collection.insert(index);
-        self.current_iteration = index;
-        self.iterations.insert(
-            index,
-            Iteration::new(self.expressions, self.next_node_id.next(&self.node_id)),
-        );
+    // TODO: this is not the most optimal solution.
+    //       and it's leaving a bit of performance on the tabel.
+    //       Review this at some stage
+    pub(super) fn smush(&mut self) {
+        self.iterations.clear();
+        self.reset_cache();
     }
 
     pub(super) fn iter_mut(

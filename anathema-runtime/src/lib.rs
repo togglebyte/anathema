@@ -273,6 +273,7 @@ impl<'e> Runtime<'e> {
             if sleep > 0 {
                 std::thread::sleep(Duration::from_micros(sleep));
             }
+
             fps_now = Instant::now();
         }
     }
