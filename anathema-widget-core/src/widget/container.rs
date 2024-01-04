@@ -10,7 +10,7 @@ use crate::error::Result;
 use crate::expressions::Expression;
 use crate::layout::Constraints;
 use crate::nodes::Nodes;
-use crate::{Display, LayoutNodes, LocalPos, Padding, Pos, Region};
+use crate::{Display, LayoutNodes, LocalPos, Pos, Region};
 
 /// The `WidgetContainer` has to go through three steps before it can be displayed:
 /// * [`layout`](Self::layout)
@@ -20,7 +20,6 @@ use crate::{Display, LayoutNodes, LocalPos, Padding, Pos, Region};
 pub struct WidgetContainer<'e> {
     pub(crate) background: Value<Color>,
     pub(crate) display: Value<Display>,
-    pub(crate) padding: Value<Padding>,
     pub(crate) inner: Box<dyn AnyWidget>,
     pub pos: Pos,
     pub size: Size,
@@ -90,15 +89,6 @@ impl WidgetContainer<'_> {
         Some(res)
     }
 
-    pub fn outer_size(&self) -> Size {
-        self.size
-    }
-
-    pub fn inner_size(&self) -> Size {
-        let padding_size = self.padding.value_or_default().size();
-        self.size - padding_size
-    }
-
     pub fn region(&self) -> Region {
         Region::new(
             self.pos,
@@ -118,15 +108,14 @@ impl WidgetContainer<'_> {
         match self.display.value_or_default() {
             Display::Exclude => self.size = Size::ZERO,
             _ => {
-                let padding = self.padding.value_or_default();
-                let mut nodes = LayoutNodes::new(children, constraints, padding, data);
+                let mut nodes = LayoutNodes::new(children, constraints, data);
                 let size = self.inner.layout(&mut nodes)?;
 
                 // TODO: we should compare the new size with the old size
                 //       to determine if the layout needs to propagate outwards
                 //       or stop reflow (which ever we decide to do)
 
-                self.size = size + padding.size();
+                self.size = size;
             }
         }
 
@@ -138,7 +127,7 @@ impl WidgetContainer<'_> {
 
         let pos = Pos::new(self.pos.x, self.pos.y);
 
-        let ctx = PositionCtx::new(pos, self.inner_size(), self.padding.value_or_default());
+        let ctx = PositionCtx::new(pos, self.size);
         self.inner.position(children, ctx);
     }
 
@@ -149,11 +138,11 @@ impl WidgetContainer<'_> {
 
         // Paint the background without the padding,
         // using the outer size and current pos.
-        let mut ctx = ctx.into_sized(self.outer_size(), self.pos);
+        let mut ctx = ctx.into_sized(self.size, self.pos);
         self.paint_background(&mut ctx);
 
         let pos = Pos::new(self.pos.x, self.pos.y);
-        ctx.update(self.inner_size(), pos);
+        ctx.update(self.size, pos);
         self.inner.paint(children, ctx);
     }
 
@@ -176,7 +165,6 @@ impl WidgetContainer<'_> {
     pub fn update(&mut self, context: &Context<'_, '_>, node_id: &NodeId) {
         self.background.resolve(context, node_id);
         self.display.resolve(context, node_id);
-        self.padding.resolve(context, node_id);
         self.inner.update(context, node_id);
     }
 }

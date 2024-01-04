@@ -9,7 +9,7 @@ use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Nodes};
 use anathema_widget_core::views::Views;
-use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Padding, Pos};
+use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Pos};
 use anathema_widgets::register_default_widgets;
 use crossterm::terminal::enable_raw_mode;
 use tabindex::Direction;
@@ -92,8 +92,7 @@ impl<'e> Runtime<'e> {
         self.nodes.reset_cache();
         let context = Context::root(&self.meta);
 
-        let mut nodes =
-            LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
+        let mut nodes = LayoutNodes::new(&mut self.nodes, self.constraints, &context);
 
         nodes.for_each(|mut node| {
             node.layout(self.constraints)?;

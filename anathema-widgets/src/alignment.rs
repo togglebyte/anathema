@@ -55,8 +55,8 @@ impl Widget for Alignment {
         if let Some((child, children)) = children.first_mut() {
             let width = ctx.inner_size.width as i32;
             let height = ctx.inner_size.height as i32;
-            let child_width = child.outer_size().width as i32;
-            let child_height = child.outer_size().height as i32;
+            let child_width = child.size.width as i32;
+            let child_height = child.size.height as i32;
 
             let child_offset = match self.alignment.value_or_default() {
                 Align::TopLeft => Pos::ZERO,

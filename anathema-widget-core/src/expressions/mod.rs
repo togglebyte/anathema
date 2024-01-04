@@ -57,7 +57,6 @@ impl SingleNodeExpr {
         let widget = WidgetContainer {
             display: context.get("display"),
             background: context.get("background"),
-            padding: context.get("padding"),
             pos: Pos::ZERO,
             size: Size::ZERO,
             inner: Factory::exec(context)?,
@@ -262,7 +261,6 @@ mod test {
     use crate::layout::Constraints;
     use crate::testing::expressions::{expression, for_expression, if_expression, view_expression};
     use crate::testing::nodes::*;
-    use crate::Padding;
 
     impl Expression {
         pub fn test(self) -> TestExpression<TestState> {
@@ -273,7 +271,7 @@ mod test {
             TestExpression {
                 state: TestState::new(),
                 expr: Box::new(self),
-                layout: LayoutCtx::new(constraint, Padding::ZERO),
+                layout: LayoutCtx::new(constraint),
             }
         }
     }

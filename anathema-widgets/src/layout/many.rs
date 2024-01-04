@@ -114,8 +114,7 @@ impl Many {
 
 impl Layout for Many {
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
-        let mut max_constraints = nodes.constraints;
-        max_constraints.apply_padding(nodes.padding);
+        let max_constraints = nodes.constraints;
 
         let mut used_size = SizeMod::new(
             Size::new(max_constraints.max_width, max_constraints.max_height),

@@ -382,9 +382,6 @@ impl Widget for Border {
             ctx.pos.y += 1;
         }
 
-        ctx.pos.x += ctx.padding.left as i32;
-        ctx.pos.y += ctx.padding.top as i32;
-
         if self.sides.value_or_default().contains(Sides::LEFT) {
             ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as i32;
         }

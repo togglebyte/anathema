@@ -371,44 +371,6 @@ mod test {
     }
 
     #[test]
-    fn expand_with_padding() {
-        let border = expression(
-            "border",
-            None,
-            [("padding".to_string(), 1.into())],
-            [expression(
-                "expand",
-                None,
-                [],
-                [expression(
-                    "text",
-                    Some("A cup of tea please".into()),
-                    [],
-                    [],
-                )],
-            )],
-        );
-
-        test_widget(
-            border,
-            FakeTerm::from_str(
-                r#"
-            ╔═] Fake term [════════════════╗
-            ║┌────────────────────────────┐║
-            ║│                            │║
-            ║│ A cup of tea please        │║
-            ║│                            │║
-            ║│                            │║
-            ║│                            │║
-            ║│                            │║
-            ║└────────────────────────────┘║
-            ╚══════════════════════════════╝
-            "#,
-            ),
-        );
-    }
-
-    #[test]
     fn expanding_inside_vstack() {
         let vstack = expression(
             "vstack",
