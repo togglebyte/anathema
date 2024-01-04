@@ -27,6 +27,16 @@ pub enum Event {
     Resize(u16, u16),
 }
 
+impl Event {
+    pub fn get_char(&self) -> Option<char> {
+        if let Self::KeyPress(KeyCode::Char(c), ..) = self {
+            Some(*c)
+        } else {
+            None
+        }
+    }
+}
+
 impl From<CTEvent> for Event {
     fn from(ct_event: CTEvent) -> Self {
         match ct_event {

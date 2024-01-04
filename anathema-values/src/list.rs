@@ -24,10 +24,6 @@ impl<T> List<T> {
         }
     }
 
-    pub fn subscribe(&self, node_id: NodeId) {
-        self.subscribers.borrow_mut().push(node_id);
-    }
-
     pub fn len(&self) -> usize {
         self.inner.len()
     }
@@ -105,8 +101,7 @@ impl<T: Debug> List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
-    pub fn get_value(&self, node_id: &NodeId) -> ValueRef<'_> {
-        self.subscribe(node_id.clone());
+    pub fn get_value(&self, _node_id: &NodeId) -> ValueRef<'_> {
         ValueRef::List(self)
     }
 }
@@ -117,6 +112,10 @@ where
 {
     fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    fn subscribe(&self, node_id: NodeId) {
+        self.subscribers.borrow_mut().push(node_id);
     }
 }
 

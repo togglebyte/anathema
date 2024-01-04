@@ -1,12 +1,12 @@
 use anathema_render::Size;
 use anathema_values::{Context, NodeId, Value};
 use anathema_widget_core::contexts::{PaintCtx, PositionCtx, WithSize};
-use anathema_widget_core::error::{Result, Error};
+use anathema_widget_core::error::{Error, Result};
 use anathema_widget_core::{
     AnyWidget, FactoryContext, LayoutNodes, LocalPos, Nodes, Widget, WidgetFactory, WidgetStyle,
 };
 
-use crate::layout::text::{Line, TextAlignment, TextLayout, Wrap, ProcessOutput};
+use crate::layout::text::{Line, ProcessOutput, TextAlignment, TextLayout, Wrap};
 
 // -----------------------------------------------------------------------------
 //     - Text -
@@ -182,7 +182,7 @@ pub(crate) struct TextFactory;
 impl WidgetFactory for TextFactory {
     fn make(&self, mut ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let word_wrap = ctx.get("wrap");
-        let mut widget = Text {
+        let widget = Text {
             text_alignment: ctx.get("text-align"),
             squash: ctx.get("squash"),
             style: ctx.style(),
@@ -199,7 +199,7 @@ pub(crate) struct SpanFactory;
 
 impl WidgetFactory for SpanFactory {
     fn make(&self, mut ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
-        let mut widget = TextSpan {
+        let widget = TextSpan {
             text: ctx.text.take(),
             style: ctx.style(),
         };

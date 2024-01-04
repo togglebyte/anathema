@@ -89,30 +89,6 @@ pub(crate) enum Collection<'e> {
     Empty,
 }
 
-impl<'e> Collection<'e> {
-    pub(super) fn push(&mut self) {
-        if let Collection::State { len, .. } = self {
-            *len += 1;
-        }
-    }
-
-    pub(super) fn insert(&mut self, index: usize) {
-        if let Collection::State { len, .. } = self {
-            if index <= *len {
-                *len += 1;
-            }
-        }
-    }
-
-    pub(super) fn remove(&mut self) {
-        if let Collection::State { len, .. } = self {
-            if *len > 0 {
-                *len -= 1;
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct LoopExpr {
     pub body: Vec<Expression>,
@@ -134,7 +110,13 @@ impl LoopExpr {
                         let mut resolver = Immediate::new(context.lookup(), &node_id);
                         let val = col.eval(&mut resolver);
                         let len = match val {
-                            ValueRef::List(list) => list.len(),
+                            ValueRef::List(list) => {
+                                // TODO: Review if this makes sense in the long run.
+                                //       Right now this is also happening on the update
+                                //       for a loop
+                                list.subscribe(node_id.clone());
+                                list.len()
+                            }
                             _ => 0,
                         };
 

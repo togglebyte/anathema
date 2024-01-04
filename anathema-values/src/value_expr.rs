@@ -396,26 +396,23 @@ impl ValueExpr {
                 }
                 _ => ValueRef::Empty,
             },
-            Self::Dot(lhs, rhs) => {
-                // TODO: don't want node_id here...
-                match lhs.eval(resolver) {
-                    ValueRef::ExpressionMap(map) => {
-                        let key = match &**rhs {
-                            ValueExpr::Ident(key) => key,
-                            _ => return ValueRef::Empty,
-                        };
-                        return map.0[&**key].eval(resolver);
-                    }
-                    ValueRef::Map(map) => {
-                        let key = match &**rhs {
-                            ValueExpr::Ident(key) => key,
-                            _ => return ValueRef::Empty,
-                        };
-                        resolver.resolve_map(map, key)
-                    }
-                    _ => ValueRef::Empty,
+            Self::Dot(lhs, rhs) => match lhs.eval(resolver) {
+                ValueRef::ExpressionMap(map) => {
+                    let key = match &**rhs {
+                        ValueExpr::Ident(key) => key,
+                        _ => return ValueRef::Empty,
+                    };
+                    return map.0[&**key].eval(resolver);
                 }
-            }
+                ValueRef::Map(map) => {
+                    let key = match &**rhs {
+                        ValueExpr::Ident(key) => key,
+                        _ => return ValueRef::Empty,
+                    };
+                    resolver.resolve_map(map, key)
+                }
+                _ => ValueRef::Empty,
+            },
 
             // -----------------------------------------------------------------------------
             //   - Collection -

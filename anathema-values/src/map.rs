@@ -80,6 +80,10 @@ where
     fn len(&self) -> usize {
         self.inner.len()
     }
+
+    fn subscribe(&self, _node_id: NodeId) {
+        todo!()
+    }
 }
 
 impl<T: Debug> State for Map<T>

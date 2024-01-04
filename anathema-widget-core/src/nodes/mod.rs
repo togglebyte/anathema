@@ -141,16 +141,18 @@ impl<'e> Node<'e> {
             NodeKind::Loop(loop_node) => {
                 // if the collection is bound to a state
                 // we need to resub to the state
-
-                if let Collection::State { expr, .. } = loop_node.collection {
+                if let Collection::State { expr, len } = &mut loop_node.collection {
                     let mut immediate = Immediate::new(context.lookup(), &self.node_id);
-                    let _ = expr.eval(&mut immediate);
+                    if let ValueRef::List(list) = expr.eval(&mut immediate) {
+                        list.subscribe(self.node_id.clone());
+                        *len = list.len();
+                    }
                 }
 
                 match change {
-                    Change::InsertIndex(index) => loop_node.insert(*index),
-                    Change::RemoveIndex(index) => loop_node.remove(*index),
-                    Change::Push => loop_node.push(),
+                    Change::InsertIndex(_index) => loop_node.smush(),
+                    Change::RemoveIndex(_index) => loop_node.smush(),
+                    Change::Push => loop_node.smush(),
                     _ => (),
                 }
             }
