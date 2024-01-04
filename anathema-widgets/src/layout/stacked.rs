@@ -10,8 +10,7 @@ impl Layout for Stacked {
         let mut width = 0;
         let mut height = 0;
 
-        let mut constraints = nodes.constraints;
-        constraints.apply_padding(nodes.padding);
+        let constraints = nodes.constraints;
 
         nodes.for_each(|mut node| {
             let widget_size = match node.layout(constraints) {

@@ -8,14 +8,13 @@ use anathema_values::{
 pub use layoutnodes::{LayoutNode, LayoutNodes};
 
 pub use self::constraints::Constraints;
-pub use self::padding::Padding;
 use crate::contexts::LayoutCtx;
 use crate::error::Result;
 use crate::nodes::Nodes;
 
 mod constraints;
 mod layoutnodes;
-mod padding;
+// mod padding;
 
 pub trait Layout {
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size>;

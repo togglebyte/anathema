@@ -5,12 +5,11 @@ use anathema_values::Context;
 
 use super::Constraints;
 use crate::error::Result;
-use crate::{Nodes, Padding, WidgetContainer};
+use crate::{Nodes, WidgetContainer};
 
 pub struct LayoutNodes<'nodes, 'state, 'expr> {
     nodes: &'nodes mut Nodes<'expr>,
     pub constraints: Constraints,
-    pub padding: Padding,
     context: &'state Context<'state, 'expr>,
 }
 
@@ -18,28 +17,17 @@ impl<'nodes, 'state, 'expr> LayoutNodes<'nodes, 'state, 'expr> {
     pub fn new(
         nodes: &'nodes mut Nodes<'expr>,
         constraints: Constraints,
-        padding: Padding,
         context: &'state Context<'state, 'expr>,
     ) -> Self {
         Self {
             nodes,
             constraints,
-            padding,
             context,
         }
     }
 
     pub fn set_constraints(&mut self, constraints: Constraints) {
         self.constraints = constraints;
-    }
-
-    // pub fn padded_constraints(&self) -> Constraints {
-    //     panic!()
-    //     // self.layout.padded_constraints()
-    // }
-
-    pub fn padding_size(&self) -> Size {
-        self.padding.size()
     }
 
     pub fn next<F>(&mut self, mut f: F) -> Result<()>

@@ -1,7 +1,5 @@
 use anathema_render::Size;
 
-use crate::Padding;
-
 /// `Constraints` are used to ensure that a widget doesn't size it self outside of a set of given bounds.
 /// A constraint can be tight, meaning then minimum and maximum width / height are the same.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -124,26 +122,6 @@ impl Constraints {
     pub fn expand_all(&mut self, mut size: Size) -> Size {
         size = self.expand_horz(size);
         self.expand_vert(size)
-    }
-
-    pub fn apply_padding(&mut self, padding: Padding) {
-        if padding == Padding::ZERO {
-            return;
-        }
-
-        if !self.is_width_unbounded() {
-            self.max_width = self
-                .max_width
-                .saturating_sub((padding.left + padding.right) as usize);
-            self.min_width = self.min_width.min(self.max_width);
-        }
-
-        if !self.is_height_unbounded() {
-            self.max_height = self
-                .max_height
-                .saturating_sub((padding.top + padding.bottom) as usize);
-            self.min_height = self.min_height.min(self.max_height);
-        }
     }
 }
 

@@ -99,8 +99,8 @@ impl Stack {
         for (widget, children) in children.iter_mut() {
             widget.position(children, pos);
             match self.axis {
-                Axis::Vertical => pos.y += widget.outer_size().height as i32,
-                Axis::Horizontal => pos.x += widget.outer_size().width as i32,
+                Axis::Vertical => pos.y += widget.size.height as i32,
+                Axis::Horizontal => pos.x += widget.size.width as i32,
             }
         }
     }

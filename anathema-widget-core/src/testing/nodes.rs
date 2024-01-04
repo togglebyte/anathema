@@ -7,9 +7,7 @@ use crate::error::Result;
 use crate::expressions::Expression;
 use crate::layout::{Constraints, Layout};
 use crate::nodes::{make_it_so, Node};
-use crate::{
-    AnyWidget, Factory, FactoryContext, LayoutNodes, Nodes, Padding, Widget, WidgetFactory,
-};
+use crate::{AnyWidget, Factory, FactoryContext, LayoutNodes, Nodes, Widget, WidgetFactory};
 
 // -----------------------------------------------------------------------------
 //   - Layouts -
@@ -124,8 +122,7 @@ impl TestRuntime<'_> {
     pub fn layout(&mut self) -> Result<Size> {
         self.nodes.reset_cache();
         let context = Context::root(&self.state);
-        let mut nodes =
-            LayoutNodes::new(&mut self.nodes, self.constraints, Padding::ZERO, &context);
+        let mut nodes = LayoutNodes::new(&mut self.nodes, self.constraints, &context);
 
         let mut size = Size::ZERO;
         nodes.for_each(|mut node| {

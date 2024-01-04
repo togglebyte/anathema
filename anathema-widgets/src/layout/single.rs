@@ -7,8 +7,7 @@ pub struct Single;
 
 impl Layout for Single {
     fn layout(&mut self, nodes: &mut LayoutNodes<'_, '_, '_>) -> Result<Size> {
-        let mut constraints = nodes.constraints;
-        constraints.apply_padding(nodes.padding);
+        let constraints = nodes.constraints;
         let mut size = Size::ZERO;
 
         nodes.next(|mut node| {

@@ -18,7 +18,7 @@ pub use nodes::{Node, Nodes};
 pub use crate::event::{Event, Events, KeyCode, KeyModifiers};
 pub use crate::factory::{Factory, FactoryContext, WidgetFactory};
 pub use crate::layout::{
-    Align, Axis, Direction, Display, LayoutNode, LayoutNodes, LocalPos, Padding, Pos, Region,
+    Align, Axis, Direction, Display, LayoutNode, LayoutNodes, LocalPos, Pos, Region,
 };
 pub use crate::style::WidgetStyle;
 pub use crate::views::View;

@@ -42,9 +42,6 @@ impl Layout for BorderLayout {
 
         let border_size = self.border_size;
 
-        constraints.apply_padding(nodes.padding);
-        let padding_size = nodes.padding_size();
-
         let mut size = Size::ZERO;
 
         nodes.next(|mut node| {
@@ -74,7 +71,7 @@ impl Layout for BorderLayout {
 
             let inner_size = node.layout(constraints)?;
 
-            size = inner_size + border_size + padding_size;
+            size = inner_size + border_size;
 
             if let Some(min_width) = self.min_width {
                 size.width = size.width.max(min_width);

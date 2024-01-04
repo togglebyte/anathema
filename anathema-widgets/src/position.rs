@@ -101,14 +101,14 @@ impl Widget for Position {
         let x = match &self.horz_edge {
             HorzEdge::Left(x) => x.value_or(0),
             HorzEdge::Right(x) => {
-                ctx.inner_size.width as i32 - x.value_or(0) - child.outer_size().width as i32
+                ctx.inner_size.width as i32 - x.value_or(0) - child.size.width as i32
             }
         };
 
         let y = match &self.vert_edge {
             VertEdge::Top(y) => y.value_or(0),
             VertEdge::Bottom(y) => {
-                ctx.inner_size.height as i32 - y.value_or(0) - child.outer_size().height as i32
+                ctx.inner_size.height as i32 - y.value_or(0) - child.size.height as i32
             }
         };
 

@@ -4,7 +4,7 @@ use anathema_render::{Screen, ScreenPos, Size, Style};
 use unicode_width::UnicodeWidthChar;
 
 use crate::layout::Constraints;
-use crate::{Align, LocalPos, Padding, Pos, Region};
+use crate::{Align, LocalPos, Pos, Region};
 
 mod data;
 
@@ -14,44 +14,11 @@ mod data;
 #[derive(Copy, Clone)]
 pub struct LayoutCtx {
     pub constraints: Constraints,
-    pub padding: Padding,
 }
 
 impl LayoutCtx {
-    pub fn new(constraints: Constraints, padding: Padding) -> Self {
-        Self {
-            constraints,
-            padding,
-        }
-    }
-
-    pub fn padded_constraints(&self) -> Constraints {
-        if self.padding == Padding::ZERO {
-            return self.constraints;
-        }
-
-        let padding = self.padding;
-        let mut constraints = self.constraints;
-
-        if !constraints.is_width_unbounded() {
-            constraints.max_width = constraints
-                .max_width
-                .saturating_sub(padding.left as usize + padding.right as usize);
-            constraints.min_width = constraints.min_width.min(constraints.max_width);
-        }
-
-        if !constraints.is_height_unbounded() {
-            constraints.max_height = constraints
-                .max_height
-                .saturating_sub(padding.top as usize + padding.bottom as usize);
-            constraints.min_height = constraints.min_height.min(constraints.max_height);
-        }
-
-        constraints
-    }
-
-    pub fn padding_size(&self) -> Size {
-        self.padding.size()
+    pub fn new(constraints: Constraints) -> Self {
+        Self { constraints }
     }
 }
 
@@ -248,16 +215,14 @@ pub struct PositionCtx {
     pub pos: Pos,
     pub inner_size: Size,
     pub alignment: Option<Align>,
-    pub padding: Padding,
 }
 
 impl PositionCtx {
-    pub fn new(pos: Pos, inner_size: Size, padding: Padding) -> Self {
+    pub fn new(pos: Pos, inner_size: Size) -> Self {
         Self {
             pos,
             inner_size,
             alignment: None,
-            padding,
         }
     }
 }
