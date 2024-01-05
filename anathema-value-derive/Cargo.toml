@@ -7,10 +7,10 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-manyhow = "0.10.0"
-quote = "1.0.33"
-quote-use = "0.7.2"
-syn = "2.0.29"
+manyhow = "0.10.4"
+quote = "1.0.35"
+quote-use = "0.8.0"
+syn = "2.0.48"
 
 [lints]
 workspace = true
