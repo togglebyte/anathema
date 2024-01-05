@@ -18,7 +18,7 @@ impl VirtualMachine {
         }
     }
 
-    pub fn exec(self, views: &mut ViewTemplates) -> Result<Vec<Expression>> {
+    pub(super) fn exec(self, views: &mut ViewTemplates) -> Result<Vec<Expression>> {
         let mut root_scope = Scope::new(self.instructions, &self.consts);
         root_scope.exec(views)
     }

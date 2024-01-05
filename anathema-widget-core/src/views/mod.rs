@@ -65,6 +65,8 @@ impl RegisteredViews {
 pub struct Views;
 
 impl Views {
+    /// Pass a closure that will be called with every node id that belongs
+    /// to a view.
     pub fn all<F>(mut f: F) -> Option<NodeId>
     where
         F: FnMut(&mut Map<NodeId, Option<u32>>) -> Option<NodeId>,
@@ -72,6 +74,7 @@ impl Views {
         VIEWS.with_borrow_mut(|views| f(views))
     }
 
+    #[doc(hidden)]
     pub fn for_each<F>(mut f: F)
     where
         F: FnMut(&NodeId, Option<u32>),
@@ -97,29 +100,41 @@ impl Views {
     }
 
     #[cfg(feature = "testing")]
+    #[doc(hidden)]
     pub fn test_insert(node_id: impl Into<NodeId>, tab_index: Option<u32>) {
         Self::insert(node_id.into(), tab_index)
     }
 
     #[cfg(feature = "testing")]
+    #[doc(hidden)]
     pub fn test_clear() {
         VIEWS.with_borrow_mut(|views| views.clear());
     }
 }
 
 pub trait View {
+    /// Called once a view receives an event.
+    /// `nodes` represents all the nodes inside the view.
     fn on_event(&mut self, _event: Event, _nodes: &mut Nodes<'_>) {}
 
     /// Internal state will always take precedence over external state.
     /// It is not possible to shadow internal state.
+    /// This is required to pass internal state to the templates.
+    /// Without this no internal state will accessible in the templates.
     fn state(&self) -> &dyn State {
         &()
     }
 
+    /// This function is called every frame
     fn tick(&mut self) {}
 
+    /// This function is called once the view receives focus.
+    /// This requires that the view is either the root view, which means it
+    /// will receive this call exactly once,
+    /// or it is a view with a tab index.
     fn focus(&mut self) {}
 
+    /// This is called when the tab index changes and this view loses focus.
     fn blur(&mut self) {}
 }
 

@@ -188,7 +188,7 @@ impl fmt::Debug for View<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("View")
             .field("nodes", &self.nodes)
-            .field("state", &self.state)
+            .field("state", &"<State>")
             .finish()
     }
 }

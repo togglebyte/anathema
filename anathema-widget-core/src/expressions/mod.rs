@@ -172,7 +172,6 @@ impl ControlFlow {
     }
 }
 
-#[derive(Debug)]
 pub(crate) enum ViewState<'e> {
     Dynamic(&'e dyn State),
     External { expr: &'e ValueExpr },

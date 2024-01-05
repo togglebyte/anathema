@@ -8,16 +8,16 @@ use anathema_widget_core::expressions::{root_view, Expression};
 use anathema_widget_core::views::{AnyView, RegisteredViews, View};
 pub use vm::VirtualMachine;
 
-use self::error::Result;
+use self::error::{Error, Result};
 
-pub struct ViewTemplates {
+struct ViewTemplates {
     view_ids: ViewIds,
     inner: HashMap<ViewId, Template>,
     dep_list: Vec<ViewId>,
 }
 
 impl ViewTemplates {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             view_ids: ViewIds::new(),
             inner: HashMap::new(),
@@ -25,7 +25,7 @@ impl ViewTemplates {
         }
     }
 
-    pub fn get(&mut self, view: ViewId) -> Result<Vec<Expression>> {
+    fn get(&mut self, view: ViewId) -> Result<Vec<Expression>> {
         if self.dep_list.iter().any(|v| view.eq(v)) {
             panic!("circular dependencies");
         }
@@ -33,8 +33,7 @@ impl ViewTemplates {
         self.dep_list.push(view);
 
         let ret = match self.inner.remove(&view) {
-            // TODO: make this panic into an error
-            None => panic!("no template, make this an error instead: {view}"),
+            None => return Err(Error::TemplateMissing),
             Some(Template::Pending(src)) => {
                 let expressions = templates(&src, self)?;
                 self.inner
@@ -62,7 +61,6 @@ impl ViewTemplates {
 
 pub struct Templates {
     root: String,
-    root_expressons: Vec<Expression>,
     view_templates: ViewTemplates,
 }
 
@@ -72,16 +70,14 @@ impl Templates {
         RegisteredViews::add_view(view_templates.view_ids.root_id(), view);
         Self {
             root,
-            root_expressons: vec![],
             view_templates,
         }
     }
 
-    pub fn compile(&mut self) -> Result<()> {
+    pub fn compile(&mut self) -> Result<CompiledTemplates> {
         let expressions = templates(&self.root, &mut self.view_templates)?;
         let root = root_view(expressions, self.view_templates.view_ids.root_id());
-        self.root_expressons = vec![root];
-        Ok(())
+        Ok(CompiledTemplates { root: vec![root] })
     }
 
     pub fn add_view(
@@ -104,9 +100,15 @@ impl Templates {
         let view_id = self.view_templates.insert(ident.clone(), template);
         RegisteredViews::add_prototype(view_id.0, f)
     }
+}
 
+pub struct CompiledTemplates {
+    root: Vec<Expression>,
+}
+
+impl CompiledTemplates {
     pub fn expressions(&self) -> &[Expression] {
-        &self.root_expressons
+        &self.root
     }
 }
 

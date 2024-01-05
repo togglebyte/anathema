@@ -3,9 +3,9 @@ use std::time::{Duration, Instant};
 
 use anathema_render::{size, Screen, Size};
 use anathema_values::{drain_dirty_nodes, Context};
+use anathema_vm::CompiledTemplates;
 use anathema_widget_core::contexts::PaintCtx;
 use anathema_widget_core::error::Result;
-use anathema_widget_core::expressions::Expression;
 use anathema_widget_core::layout::Constraints;
 use anathema_widget_core::nodes::{make_it_so, Nodes};
 use anathema_widget_core::views::Views;
@@ -26,9 +26,10 @@ mod tabindex;
 ///
 /// ```
 /// # use anathema_runtime::Runtime;
-/// # fn run() {
-/// # let expressions = vec![];
-/// let mut runtime = Runtime::new(&expressions).unwrap();
+/// # use anathema_vm::CompiledTemplates;
+/// # fn run(templates: &CompiledTemplates) {
+/// # let expressions = panic![];
+/// let mut runtime = Runtime::new(templates).unwrap();
 /// runtime.enable_mouse = true;
 /// runtime.enable_alt_screen = false;
 /// runtime.fps = 120;
@@ -36,11 +37,36 @@ mod tabindex;
 /// # }
 /// ```
 pub struct Runtime<'e> {
+    /// Enable meta information such as frame timing, screen size and widget count.
+    /// ```text
+    /// // Meta information available in the template:
+    /// _size.width
+    /// _size.height
+    /// _timings: Timings
+    /// _timings.layout
+    /// _timings.position
+    /// _timings.paint
+    /// _timings.render
+    /// _timings.total
+    /// _count
+    /// ```
     pub enable_meta: bool,
+    /// Enable mouse support on terminals that supports it
     pub enable_mouse: bool,
+    /// This captures the ctrl+c command and terminates the runtime.
     pub enable_ctrlc: bool,
+    /// Enable tab indices.
+    /// If this is set to false, the root view will receive all events,
+    /// if this is set to true, only views with a given tab index will receive
+    /// events.
+    ///
+    /// The root view will never have a tab index
     pub enable_tabindex: bool,
+    /// This will create an alternate screen and render to this screen.
+    /// This retains the old content of the terminal and restores it once the
+    /// runtime terminates.
     pub enable_alt_screen: bool,
+    /// Set the target number of frames to render per second.
     pub fps: u8,
     screen: Screen,
     output: Stdout,
@@ -59,7 +85,9 @@ impl<'e> Drop for Runtime<'e> {
 }
 
 impl<'e> Runtime<'e> {
-    pub fn new(expressions: &'e [Expression]) -> Result<Self> {
+    /// Create a new runtime.
+    pub fn new(templates: &'e CompiledTemplates) -> Result<Self> {
+        let expressions = templates.expressions();
         register_default_widgets()?;
 
         let nodes = make_it_so(expressions);
@@ -82,7 +110,7 @@ impl<'e> Runtime<'e> {
             meta: meta::Meta::new(size.width, size.height),
             tabindex: TabIndexing::new(),
             enable_ctrlc: true,
-            enable_tabindex: true,
+            enable_tabindex: false,
         };
 
         Ok(inst)
@@ -172,6 +200,8 @@ impl<'e> Runtime<'e> {
         event
     }
 
+    /// Consumes the runtime and loops until
+    /// either the runtime receives an error or the `Quit` event is triggered.
     pub fn run(mut self) -> Result<()> {
         if self.enable_alt_screen {
             self.screen.enter_alt_screen(&mut self.output)?;
