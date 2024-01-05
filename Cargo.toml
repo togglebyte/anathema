@@ -1,7 +1,15 @@
 [package]
 name = "anathema"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
+license = "MIT"
+description = "Create beautiful, easily customisable terminal applications"
+keywords = ["tui", "terminal", "widgets", "ui"]
+categories = ["command-line-interface", "tui", "terminal", "template", "markup"]
+readme = "./README.md"
+documentation = "https://docs.rs/anathema"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
 anathema-compiler = { path = "./anathema-compiler" }

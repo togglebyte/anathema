@@ -1,3 +1,5 @@
+* 0.3.0
+    * Everything: this is a complete rewrite
 * 0.2.0
     * Markup no longer requires that a widget has a `:` char.
     * `ScrollView` widget was removed

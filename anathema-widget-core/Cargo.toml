@@ -2,6 +2,11 @@
 name = "anathema-widget-core"
 version = "0.1.0"
 edition = "2021"
+description = "Anathema widget core"
+license = "MIT"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
+documentation = "https://docs.rs/anathema-widget-core"
 
 [features]
 default = ["testing"]
