@@ -88,6 +88,17 @@ impl<'a> TryFrom<&'a Owned> for &'a u64 {
     }
 }
 
+impl<'a> TryFrom<&'a Owned> for &'a f64 {
+    type Error = ();
+
+    fn try_from(value: &'a Owned) -> Result<Self, Self::Error> {
+        match value {
+            Owned::Num(Num::Float(num)) => Ok(num),
+            _ => Err(()),
+        }
+    }
+}
+
 // TODO: add the rest of the types to TryFrom
 
 impl Display for Owned {

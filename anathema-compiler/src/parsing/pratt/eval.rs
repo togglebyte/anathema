@@ -20,6 +20,7 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
             ValueExpr::String(Rc::from(string))
         }
         Expr::Num(num) => ValueExpr::Owned(Owned::Num(num.into())),
+        Expr::Float(num) => ValueExpr::Owned(Owned::Num(Num::Float(num))),
         Expr::Array { lhs, index } => {
             let lhs = eval(*lhs, consts);
             let index = eval(*index, consts);
