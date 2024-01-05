@@ -10,21 +10,17 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
-
 jobs:
-
   test:
     runs-on: ubuntu-latest
     name: Test
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-
       - name: Configure cache
         uses: Swatinem/rust-cache@v2
-
       - name: Run tests
-        run: cargo test --verbose --all --all-features
+        run: cargo test --workspace --all-features --verbose
 
   lint:
     runs-on: ubuntu-latest
@@ -40,5 +36,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+      - name: Configure cache
+        uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --all-features --all
+        run: cargo clippy --workspace --all-features --all-targets

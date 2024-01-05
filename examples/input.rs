@@ -62,5 +62,5 @@ fn main() {
     // runtime.enable_alt_screen = false;
 
     // Step four: start the runtime
-    let _ = runtime.run().unwrap();
+    runtime.run().unwrap();
 }
