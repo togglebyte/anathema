@@ -21,7 +21,6 @@ bitflags = "2.4.1"
 crossterm = "0.27.0"
 unicode-width = "0.1.11"
 thiserror = "1.0.56"
-flume = "0.11.0"
 parking_lot = "0.12.1"
 kempt = "0.2.3"
 

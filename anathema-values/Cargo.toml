@@ -11,7 +11,6 @@ testing = []
 anathema-render = { path = "../anathema-render" }
 anathema-value-derive = { path = "../anathema-value-derive" }
 parking_lot = { workspace = true }
-flume = { workspace = true }
 integer-hasher = "0.1.1"
 
 [lints]
