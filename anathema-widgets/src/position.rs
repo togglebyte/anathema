@@ -123,7 +123,7 @@ impl WidgetFactory for PositionFactory {
     fn make(&self, ctx: FactoryContext<'_>) -> Result<Box<dyn AnyWidget>> {
         let horz_edge = match ctx.get("left") {
             Value::Empty => match ctx.get("right") {
-                Value::Empty => HorzEdge::Right(Value::Static(0)),
+                Value::Empty => HorzEdge::Left(Value::Static(0)),
                 val => HorzEdge::Right(val),
             },
             val => HorzEdge::Left(val),
