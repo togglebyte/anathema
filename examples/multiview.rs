@@ -87,12 +87,12 @@ fn main() {
     // some condition or loop
     templates.add_prototype("item", item, ItemView::new);
 
-    templates.compile().unwrap();
+    let templates = templates.compile().unwrap();
 
     // -----------------------------------------------------------------------------
     //   - Runtime -
     // -----------------------------------------------------------------------------
-    let runtime = Runtime::new(templates.expressions()).unwrap();
+    let runtime = Runtime::new(&templates).unwrap();
 
     // -----------------------------------------------------------------------------
     //   - Start -

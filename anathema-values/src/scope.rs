@@ -15,7 +15,7 @@ pub enum ScopeValue<'expr> {
     DeferredList(usize, &'expr ValueExpr),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct ScopeStorage<'expr>(HashMap<Path, ScopeValue<'expr>>);
 
 impl<'expr> ScopeStorage<'expr> {
@@ -40,7 +40,7 @@ impl<'expr> ScopeStorage<'expr> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Scope<'frame, 'expr> {
     store: &'frame ScopeStorage<'expr>,
     parent: Option<&'frame Scope<'frame, 'expr>>,
@@ -54,7 +54,7 @@ impl<'frame, 'expr> Scope<'frame, 'expr> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 struct InnerContext<'frame, 'expr> {
     state: &'frame dyn State,
     scope: Option<&'frame Scope<'frame, 'expr>>,
@@ -72,7 +72,7 @@ impl<'frame, 'expr> InnerContext<'frame, 'expr> {
 //
 // For a deferred resolver everything has the same lifetime as the expressions,
 // for an immediate resolver the lifetime can only be that of the frame, during the layout step
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct Context<'frame, 'expr> {
     inner: InnerContext<'frame, 'expr>,
 }

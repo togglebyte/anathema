@@ -2,6 +2,11 @@
 name = "anathema-values"
 version = "0.1.0"
 edition = "2021"
+description = "Anathema value types"
+license = "MIT"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
+documentation = "https://docs.rs/anathema-values"
 
 [features]
 default = []

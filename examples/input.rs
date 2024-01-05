@@ -51,10 +51,10 @@ fn main() {
     // Step two: load templates
     let tpl = read_to_string("examples/templates/input.tiny").unwrap();
     let mut templates = Templates::new(tpl, root_view);
-    templates.compile().unwrap();
+    let templates = templates.compile().unwrap();
 
     // Step three: setup runtime
-    let mut runtime = Runtime::new(templates.expressions()).unwrap();
+    let mut runtime = Runtime::new(&templates).unwrap();
     runtime.enable_tabindex = false;
 
     // Disable the alt screen if the application panics

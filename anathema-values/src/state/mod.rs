@@ -12,8 +12,17 @@ use crate::{NodeId, Path, ValueRef};
 
 mod value;
 
-pub trait State: std::fmt::Debug {
-    /// Get a value reference from the state
+/// Represents the internal state of a view
+/// ```ignore
+/// use anathema::values::State;
+///
+/// #[derive(State)]
+/// struct MyState {
+///     value: StateValue<String>,
+/// }
+/// ```
+pub trait State {
+    #[doc(hidden)]
     fn state_get(&self, key: &Path, node_id: &NodeId) -> ValueRef<'_>;
 
     #[doc(hidden)]

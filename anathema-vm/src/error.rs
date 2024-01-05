@@ -5,4 +5,8 @@ pub enum Error {
     /// Compiler error
     #[error("compiler error: {0}")]
     CompilerError(#[from] anathema_compiler::error::Error),
+
+    /// Missing template error
+    #[error("template missing")]
+    TemplateMissing,
 }

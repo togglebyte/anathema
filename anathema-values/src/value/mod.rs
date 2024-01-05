@@ -1,6 +1,6 @@
 #![allow(clippy::from_over_into)]
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 
 use anathema_render::Color;
 
@@ -45,7 +45,7 @@ impl<'a> ExpressionMap<'a> {
 // -----------------------------------------------------------------------------
 /// A value reference is either owned or referencing something
 /// inside an expression.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Clone, Copy, Default)]
 pub enum ValueRef<'a> {
     Str(&'a str),
     Map(&'a dyn State),
@@ -68,6 +68,21 @@ impl<'a> ValueRef<'a> {
             Self::Owned(Owned::Num(Num::Unsigned(n))) => *n > 0,
             Self::Owned(Owned::Num(Num::Signed(n))) => *n > 0,
             _ => false,
+        }
+    }
+}
+
+impl Debug for ValueRef<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => write!(f, "Empty"),
+            Self::Deferred => write!(f, "Deferred"),
+            Self::Str(s) => write!(f, "{s}"),
+            Self::List(col) => write!(f, "<dyn Collection({})>", col.len()),
+            Self::Map(_) => write!(f, "<dyn Map>"),
+            Self::Expressions(expressions) => write!(f, "{expressions:?}"),
+            Self::ExpressionMap(map) => write!(f, "{map:?}"),
+            Self::Owned(owned) => write!(f, "{owned:?}"),
         }
     }
 }

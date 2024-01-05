@@ -147,9 +147,12 @@ impl<'src, 'consts, 'view> Parser<'src, 'consts, 'view> {
     fn enter_scope(&mut self) -> Result<Option<Expression>> {
         let indent = self.tokens.read_indent();
 
-        if Kind::Eof == self.tokens.peek() {
-            self.next_state();
-            return Ok(None);
+        match self.tokens.peek() {
+            Kind::Eof | Kind::Newline => {
+                self.next_state();
+                return Ok(None);
+            }
+            _ => {}
         }
 
         let indent = match indent {
