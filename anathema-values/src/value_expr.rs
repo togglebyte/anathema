@@ -327,15 +327,13 @@ impl ValueExpr {
                     Self::Mod(..) => ValueRef::Owned(Owned::Num(lhs % rhs)),
                     Self::Div(..) if !rhs.is_zero() => ValueRef::Owned(Owned::Num(lhs / rhs)),
                     Self::Div(..) => ValueRef::Empty,
-                    Self::Greater(..) => {
-                        ValueRef::Owned(Owned::Bool(lhs.to_u128() > rhs.to_u128()))
-                    }
+                    Self::Greater(..) => ValueRef::Owned(Owned::Bool(lhs.to_f64() > rhs.to_f64())),
                     Self::GreaterEqual(..) => {
-                        ValueRef::Owned(Owned::Bool(lhs.to_u128() >= rhs.to_u128()))
+                        ValueRef::Owned(Owned::Bool(lhs.to_f64() >= rhs.to_f64()))
                     }
-                    Self::Less(..) => ValueRef::Owned(Owned::Bool(lhs.to_u128() < rhs.to_u128())),
+                    Self::Less(..) => ValueRef::Owned(Owned::Bool(lhs.to_f64() < rhs.to_f64())),
                     Self::LessEqual(..) => {
-                        ValueRef::Owned(Owned::Bool(lhs.to_u128() <= rhs.to_u128()))
+                        ValueRef::Owned(Owned::Bool(lhs.to_f64() <= rhs.to_f64()))
                     }
                     _ => unreachable!(),
                 }
