@@ -85,7 +85,7 @@ fn main() {
     // A prototype describes how to create a view when it's needed.
     // Use this when one or more views are created as a result of
     // some condition or loop
-    templates.add_prototype("item", item, || ItemView::new());
+    templates.add_prototype("item", item, ItemView::new);
 
     templates.compile().unwrap();
 
