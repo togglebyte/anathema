@@ -94,7 +94,7 @@ impl Templates {
     pub fn add_prototype<F, T>(&mut self, ident: impl Into<String>, template: String, f: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View + std::fmt::Debug + Send,
+        T: 'static + View + Send,
     {
         let ident = ident.into();
         let view_id = self.view_templates.insert(ident.clone(), template);

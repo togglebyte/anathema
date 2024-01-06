@@ -1,14 +1,13 @@
 use std::time::Duration;
 
-use crossterm::event::{read, Event as CTEvent};
-pub use crossterm::event::{
-    KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers, MouseButton, MouseEventKind,
-};
+use crossterm::event::{read, Event as CTEvent, KeyEventKind, MouseEventKind};
+pub use crossterm::event::{KeyCode, KeyEvent, KeyEventState, KeyModifiers, MouseButton};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Event {
     Noop,
-    Quit,
+    /// Stop the runtime
+    Stop,
     Blur,
     Focus,
     CtrlC,
