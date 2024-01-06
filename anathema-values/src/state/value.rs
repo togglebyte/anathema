@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
 use crate::{NodeId, Owned, Path, State, ValueRef, DIRTY_NODES};
@@ -28,19 +27,19 @@ pub enum Change {
 #[derive(Debug)]
 pub struct StateValue<T> {
     pub(crate) inner: T,
-    subscribers: RefCell<HashSet<NodeId>>,
+    subscribers: RefCell<Vec<NodeId>>,
 }
 
 impl<T> StateValue<T> {
     pub fn new(inner: T) -> Self {
         Self {
             inner,
-            subscribers: RefCell::new(HashSet::new()),
+            subscribers: RefCell::new(Vec::new()),
         }
     }
 
     fn notify(&self) {
-        for s in self.subscribers.borrow_mut().drain() {
+        for s in self.subscribers.borrow_mut().drain(..) {
             DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Update)));
         }
     }
@@ -51,7 +50,7 @@ impl<T> StateValue<T> {
     }
 
     pub fn subscribe(&self, subscriber: NodeId) {
-        self.subscribers.borrow_mut().insert(subscriber);
+        self.subscribers.borrow_mut().push(subscriber);
     }
 }
 

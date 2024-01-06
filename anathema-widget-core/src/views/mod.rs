@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::fmt::Debug;
 use std::sync::OnceLock;
 
 use anathema_values::hashmap::HashMap;
@@ -33,7 +32,7 @@ impl RegisteredViews {
     pub fn add_prototype<T, F>(key: usize, f: F)
     where
         F: Send + 'static + Fn() -> T,
-        T: 'static + View + Debug + Send,
+        T: 'static + View + Send,
     {
         Self::add(key, ViewFactory::Prototype(Box::new(move || Box::new(f()))));
     }
@@ -115,7 +114,9 @@ impl Views {
 pub trait View {
     /// Called once a view receives an event.
     /// `nodes` represents all the nodes inside the view.
-    fn on_event(&mut self, _event: Event, _nodes: &mut Nodes<'_>) {}
+    fn on_event(&mut self, event: Event, _nodes: &mut Nodes<'_>) -> Event {
+        event
+    }
 
     /// Internal state will always take precedence over external state.
     /// It is not possible to shadow internal state.
@@ -141,7 +142,7 @@ pub trait View {
 impl View for () {}
 
 pub trait AnyView: Send {
-    fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>);
+    fn on_any_event(&mut self, ev: Event, nodes: &mut Nodes<'_>) -> Event;
 
     fn get_any_state(&self) -> &dyn State;
 
@@ -156,8 +157,8 @@ impl<T> AnyView for T
 where
     T: View + Send,
 {
-    fn on_any_event(&mut self, event: Event, nodes: &mut Nodes<'_>) {
-        self.on_event(event, nodes);
+    fn on_any_event(&mut self, event: Event, nodes: &mut Nodes<'_>) -> Event {
+        self.on_event(event, nodes)
     }
 
     fn get_any_state(&self) -> &dyn State {

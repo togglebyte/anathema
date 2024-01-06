@@ -172,7 +172,7 @@ impl<'e> Runtime<'e> {
         // -----------------------------------------------------------------------------
         if self.enable_ctrlc {
             if let Event::CtrlC = event {
-                return Event::Quit;
+                return Event::Stop;
             }
         }
 
@@ -253,18 +253,24 @@ impl<'e> Runtime<'e> {
                     }
                     Event::Blur => *self.meta._focus = false,
                     Event::Focus => *self.meta._focus = true,
-                    Event::Quit => break 'run Ok(()),
+                    Event::Stop => break 'run Ok(()),
                     _ => {}
                 }
 
-                if self.enable_tabindex {
+                let event = if self.enable_tabindex {
                     if let Some(view_id) = self.tabindex.current_node() {
-                        self.nodes.with_view(view_id, |view| view.on_event(event));
+                        self.nodes.with_view(view_id, |view| view.on_event(event))
+                    } else {
+                        None
                     }
                 } else {
                     // TODO: this is a bit sketchy
                     let root = 0.into(); // TODO: this should be a `const`
-                    self.nodes.with_view(&root, |view| view.on_event(event));
+                    self.nodes.with_view(&root, |view| view.on_event(event))
+                };
+
+                if let Some(Event::Stop) = event {
+                    break 'run Ok(());
                 }
             }
 
