@@ -97,6 +97,12 @@ impl<T> List<T> {
     }
 }
 
+impl<T> Default for List<T> {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl<T: Debug> List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,

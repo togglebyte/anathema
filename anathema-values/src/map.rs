@@ -63,6 +63,12 @@ impl<T> Map<T> {
     }
 }
 
+impl<T> Default for Map<T> {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl<T: Debug> Map<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,

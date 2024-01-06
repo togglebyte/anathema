@@ -25,7 +25,7 @@ pub enum Change {
     RemoveKey(String),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct StateValue<T> {
     pub(crate) inner: T,
     subscribers: RefCell<HashSet<NodeId>>,
@@ -39,6 +39,12 @@ impl<T> StateValue<T> {
         }
     }
 
+    fn notify(&self) {
+        for s in self.subscribers.borrow_mut().drain() {
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Update)));
+        }
+    }
+
     #[doc(hidden)]
     pub fn state_get(&self, _: &Path, _: &NodeId) -> ValueRef<'_> {
         ValueRef::Empty
@@ -46,6 +52,25 @@ impl<T> StateValue<T> {
 
     pub fn subscribe(&self, subscriber: NodeId) {
         self.subscribers.borrow_mut().insert(subscriber);
+    }
+}
+
+impl<T: Default> StateValue<T> {
+    pub fn take(&mut self) -> T {
+        self.notify();
+        std::mem::take(&mut self.inner)
+    }
+}
+
+impl<T> Default for StateValue<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            inner: T::default(),
+            subscribers: Default::default(),
+        }
     }
 }
 
@@ -69,10 +94,7 @@ impl<T> Deref for StateValue<T> {
 
 impl<T> DerefMut for StateValue<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        for s in self.subscribers.borrow_mut().drain() {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Update)));
-        }
-
+        self.notify();
         &mut self.inner
     }
 }
