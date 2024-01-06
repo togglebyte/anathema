@@ -372,6 +372,17 @@ mod test {
     }
 
     #[test]
+    fn floats() {
+        let inputs = [("1.0", 1f64), ("0.555", 0.555f64)];
+
+        for (input, number) in inputs {
+            let actual = token_kind(input);
+            let expected = Kind::Value(Value::Float(number));
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
     fn strings() {
         let inputs = [
             ("'single quote string'", "single quote string"),

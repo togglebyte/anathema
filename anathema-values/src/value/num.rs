@@ -7,7 +7,7 @@ macro_rules! to_num {
             match self {
                 Self::Signed(num) => num as $num_type,
                 Self::Unsigned(num) => num as $num_type,
-                Self::Float(_num) => panic!("nah, not this one"),
+                Self::Float(num) => num as $num_type,
             }
         }
     };
@@ -21,6 +21,10 @@ pub enum Num {
 }
 
 impl Num {
+    to_num!(to_f64, f64);
+
+    to_num!(to_f32, f32);
+
     to_num!(to_i128, i128);
 
     to_num!(to_u128, u128);
@@ -75,6 +79,7 @@ impl Mul for Num {
         match (self, rhs) {
             (Self::Signed(lhs), Self::Signed(rhs)) => Self::Signed(lhs * rhs),
             (Self::Unsigned(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs * rhs),
+            (Self::Float(lhs), Self::Float(rhs)) => Self::Float(lhs * rhs),
             _ => panic!(),
         }
     }
@@ -106,6 +111,7 @@ impl Add for Num {
 
             (Self::Signed(lhs), Self::Unsigned(rhs)) => Self::Unsigned(lhs as u64 + rhs),
             (Self::Unsigned(lhs), Self::Signed(rhs)) => Self::Unsigned(rhs as u64 + lhs),
+            (Self::Float(lhs), Self::Float(rhs)) => Self::Float(lhs + rhs),
             _ => panic!(),
         }
     }
@@ -139,6 +145,7 @@ impl Sub for Num {
                     Self::Unsigned(res as u64)
                 }
             }
+            (Self::Float(lhs), Self::Float(rhs)) => Self::Float(lhs - rhs),
             _ => panic!(),
         }
     }
@@ -172,7 +179,8 @@ impl Div for Num {
                     Self::Unsigned(res as u64)
                 }
             }
-            _ => panic!(),
+            (Self::Float(lhs), Self::Float(rhs)) => Self::Float(lhs / rhs),
+            _ => todo!(),
         }
     }
 }
@@ -205,6 +213,7 @@ impl Rem for Num {
                     Self::Unsigned(res as u64)
                 }
             }
+            (Self::Float(lhs), Self::Float(rhs)) => Self::Float(lhs % rhs),
             _ => panic!(),
         }
     }
@@ -242,6 +251,22 @@ macro_rules! into_signed_num {
     };
 }
 
+macro_rules! into_float_num {
+    ($t:ty) => {
+        impl From<$t> for Num {
+            fn from(n: $t) -> Self {
+                Self::Float(n as f64)
+            }
+        }
+
+        impl From<&$t> for Num {
+            fn from(n: &$t) -> Self {
+                Self::Float(*n as f64)
+            }
+        }
+    };
+}
+
 into_unsigned_num!(u8);
 into_unsigned_num!(u16);
 into_unsigned_num!(u32);
@@ -253,3 +278,6 @@ into_signed_num!(i16);
 into_signed_num!(i32);
 into_signed_num!(i64);
 into_signed_num!(isize);
+
+into_float_num!(f32);
+into_float_num!(f64);

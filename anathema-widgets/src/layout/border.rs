@@ -17,13 +17,13 @@ impl Layout for BorderLayout {
         // are matching these
         let mut constraints = nodes.constraints;
 
-        if let Some(min_width) = self.min_width {
-            constraints.min_width = constraints.min_width.max(min_width);
-        }
+        // if let Some(min_width) = self.min_width {
+        //     constraints.min_width = constraints.min_width.max(min_width);
+        // }
 
-        if let Some(min_height) = self.min_height {
-            constraints.min_height = constraints.min_height.max(min_height);
-        }
+        // if let Some(min_height) = self.min_height {
+        //     constraints.min_height = constraints.min_height.max(min_height);
+        // }
 
         // If there is a width / height then make the constraints tight
         // around the size. This will modify the size to fit within the

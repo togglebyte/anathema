@@ -499,8 +499,8 @@ impl WidgetFactory for BorderFactory {
             sides: ctx.get("sides"),
             width: ctx.get("width"),
             height: ctx.get("height"),
-            min_width: ctx.get("min_width"),
-            min_height: ctx.get("min_height"),
+            min_width: ctx.get("min-width"),
+            min_height: ctx.get("min-height"),
             style: ctx.style(),
         };
 

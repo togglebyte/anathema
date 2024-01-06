@@ -50,6 +50,7 @@ pub enum Expr {
     },
     Bool(bool),
     Num(u64),
+    Float(f64),
     Color(Color),
     Ident(StringId),
     Str(StringId),
@@ -72,6 +73,7 @@ impl Display for Expr {
             Expr::Binary { op, lhs, rhs } => write!(f, "({op} {lhs} {rhs})"),
             Expr::Bool(b) => write!(f, "{b}"),
             Expr::Num(b) => write!(f, "{b}"),
+            Expr::Float(b) => write!(f, "{b}"),
             Expr::Color(color) => write!(f, "{color:?}"),
             Expr::Ident(sid) => write!(f, "{sid}"),
             Expr::Str(sid) => write!(f, "\"{sid}\""),
@@ -127,12 +129,11 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Expr {
         },
         Kind::Value(value) => match value {
             Value::Number(n) => Expr::Num(n),
+            Value::Float(n) => Expr::Float(n),
             Value::Ident(ident) => Expr::Ident(ident),
             Value::String(sid) => Expr::Str(sid),
             Value::Bool(b) => Expr::Bool(b),
             Value::Color(color) => Expr::Color(color),
-            // TODO: see panic
-            _ => panic!("need to cover the rest of the values"),
         },
         Kind::Eof => panic!("unexpected eof"),
         // TODO: see panic
