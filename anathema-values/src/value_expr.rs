@@ -197,6 +197,11 @@ pub enum ValueExpr {
     Div(Box<ValueExpr>, Box<ValueExpr>),
     Mul(Box<ValueExpr>, Box<ValueExpr>),
     Mod(Box<ValueExpr>, Box<ValueExpr>),
+
+    Call {
+        fun: Box<ValueExpr>,
+        args: Vec<ValueExpr>,
+    },
 }
 
 impl Display for ValueExpr {
@@ -241,6 +246,16 @@ impl Display for ValueExpr {
             Self::GreaterEqual(lhs, rhs) => write!(f, "{lhs} >= {rhs}"),
             Self::Less(lhs, rhs) => write!(f, "{lhs} < {rhs}"),
             Self::LessEqual(lhs, rhs) => write!(f, "{lhs} <= {rhs}"),
+            Self::Call { fun, args } => {
+                write!(
+                    f,
+                    "{fun}({})",
+                    args.iter()
+                        .map(|val| val.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
         }
     }
 }
@@ -417,6 +432,18 @@ impl ValueExpr {
             // -----------------------------------------------------------------------------
             Self::List(list) => ValueRef::Expressions(Expressions::new(list)),
             Self::Map(map) => ValueRef::ExpressionMap(ExpressionMap::new(map)),
+
+            // -----------------------------------------------------------------------------
+            //   - Function call -
+            // -----------------------------------------------------------------------------
+            Self::Call { fun, args } => {
+                let _fun_name = match &**fun {
+                    ValueExpr::Ident(name) => name,
+                    _ => return ValueRef::Empty,
+                };
+                let _args = args.iter().map(|expr| expr.eval(resolver));
+                panic!()
+            }
         }
     }
 }
