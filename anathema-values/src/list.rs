@@ -103,7 +103,7 @@ impl<T> Default for List<T> {
     }
 }
 
-impl<T: Debug> List<T>
+impl<T> List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
@@ -112,7 +112,7 @@ where
     }
 }
 
-impl<T: Debug> Collection for List<T>
+impl<T> Collection for List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
@@ -125,7 +125,7 @@ where
     }
 }
 
-impl<T: Debug> State for List<T>
+impl<T> State for List<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {

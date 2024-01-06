@@ -69,7 +69,7 @@ impl<T> Default for Map<T> {
     }
 }
 
-impl<T: Debug> Map<T>
+impl<T> Map<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
@@ -79,7 +79,7 @@ where
     }
 }
 
-impl<T: Debug> Collection for Map<T>
+impl<T> Collection for Map<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {
@@ -92,7 +92,7 @@ where
     }
 }
 
-impl<T: Debug> State for Map<T>
+impl<T> State for Map<T>
 where
     for<'a> &'a T: Into<ValueRef<'a>>,
 {

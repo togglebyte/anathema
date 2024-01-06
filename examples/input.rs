@@ -20,7 +20,7 @@ struct RootView {
 }
 
 impl View for RootView {
-    fn on_event(&mut self, event: Event, _nodes: &mut Nodes<'_>) {
+    fn on_event(&mut self, event: Event, _nodes: &mut Nodes<'_>) -> Event {
         if let Event::KeyPress(code, ..) = event {
             match code {
                 KeyCode::Char(c) => self.state.input.push(c),
@@ -32,6 +32,8 @@ impl View for RootView {
                 _ => {}
             }
         }
+
+        event
     }
 
     fn state(&self) -> &dyn State {

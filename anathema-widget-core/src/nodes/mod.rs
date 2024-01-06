@@ -194,8 +194,8 @@ impl fmt::Debug for View<'_> {
 }
 
 impl View<'_> {
-    pub fn on_event(&mut self, event: Event) {
-        self.view.on_any_event(event, &mut self.nodes);
+    pub fn on_event(&mut self, event: Event) -> Event {
+        self.view.on_any_event(event, &mut self.nodes)
     }
 
     pub fn tick(&mut self) {
@@ -230,16 +230,18 @@ pub struct Nodes<'expr> {
 }
 
 impl<'expr> Nodes<'expr> {
-    pub fn with_view<F>(&mut self, node_id: &NodeId, mut f: F)
+    pub fn with_view<T, F>(&mut self, node_id: &NodeId, mut f: F) -> Option<T>
     where
-        F: FnMut(&mut View<'_>),
+        F: FnMut(&mut View<'_>) -> T,
     {
         if let Some(Node {
             kind: NodeKind::View(view),
             ..
         }) = self.query().get(node_id)
         {
-            f(view);
+            Some(f(view))
+        } else {
+            None
         }
     }
 

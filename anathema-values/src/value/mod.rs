@@ -130,7 +130,6 @@ where
 
 impl<'a, T> Into<ValueRef<'a>> for &'a List<T>
 where
-    T: Debug,
     for<'b> &'b T: Into<ValueRef<'b>>,
 {
     fn into(self) -> ValueRef<'a> {
@@ -140,7 +139,6 @@ where
 
 impl<'a, T> Into<ValueRef<'a>> for &'a Map<T>
 where
-    T: Debug,
     for<'b> &'b T: Into<ValueRef<'b>>,
 {
     fn into(self) -> ValueRef<'a> {
