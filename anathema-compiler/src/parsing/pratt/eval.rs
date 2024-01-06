@@ -104,7 +104,13 @@ pub fn eval(expr: Expr, consts: &Constants) -> ValueExpr {
                 .collect::<HashMap<_, _>>()
                 .into(),
         ),
-        Expr::Call { .. } => unimplemented!(),
+        Expr::Call { fun, args } => {
+            let args = args.into_iter().map(|expr| eval(expr, consts)).collect();
+            ValueExpr::Call {
+                fun: eval(*fun, consts).into(),
+                args,
+            }
+        }
     }
 }
 
@@ -253,5 +259,11 @@ mod test {
 
         let expr = eval_str("a % 4");
         assert_eq!(expr.to_string(), "a % 4");
+    }
+
+    #[test]
+    fn function_call() {
+        let expr = eval_str("fun(5, 4)");
+        assert_eq!(expr.to_string(), "fun(5, 4)");
     }
 }
