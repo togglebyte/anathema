@@ -35,65 +35,57 @@ impl<T> List<T> {
     pub fn pop_front(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop_front()?;
         let index = self.inner.len();
-        for s in self.subscribers.borrow_mut().drain(..) {
-            DIRTY_NODES.with(|nodes| {
-                nodes
-                    .borrow_mut()
-                    .push((s.clone(), Change::RemoveIndex(index)))
-            });
-        }
+        self.notify(Change::RemoveIndex(index));
         Some(ret)
     }
 
     pub fn pop_back(&mut self) -> Option<StateValue<T>> {
         let ret = self.inner.pop_back()?;
         let index = self.inner.len();
-        for s in self.subscribers.borrow_mut().drain(..) {
-            DIRTY_NODES.with(|nodes| {
-                nodes
-                    .borrow_mut()
-                    .push((s.clone(), Change::RemoveIndex(index)))
-            });
-        }
+        self.notify(Change::RemoveIndex(index));
         Some(ret)
     }
 
     pub fn remove(&mut self, index: usize) -> Option<StateValue<T>> {
         let ret = self.inner.remove(index);
-        for s in self.subscribers.borrow_mut().drain(..) {
-            DIRTY_NODES.with(|nodes| {
-                nodes
-                    .borrow_mut()
-                    .push((s.clone(), Change::RemoveIndex(index)))
-            });
-        }
+        self.notify(Change::RemoveIndex(index));
         ret
     }
 
     pub fn push_front(&mut self, value: T) {
         self.inner.push_front(StateValue::new(value));
-        for s in self.subscribers.borrow_mut().drain(..) {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::InsertIndex(0))));
-        }
+        self.notify(Change::InsertIndex(0));
     }
 
     pub fn push_back(&mut self, value: T) {
         self.inner.push_back(StateValue::new(value));
-        for s in self.subscribers.borrow_mut().drain(..) {
-            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), Change::Push)));
-        }
+        self.notify(Change::Push);
     }
 
     pub fn insert(&mut self, index: usize, value: T) {
         self.inner.insert(index, StateValue::new(value));
+        self.notify(Change::InsertIndex(index));
+    }
 
+    pub fn iter(&self) -> impl Iterator<Item = &T> + ExactSizeIterator {
+        self.inner.iter().map(|state_val| &**state_val)
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + ExactSizeIterator {
+        self.inner.iter_mut().map(|state_val| &mut **state_val)
+    }
+
+    fn notify(&self, change: Change) {
         for s in self.subscribers.borrow_mut().drain(..) {
-            DIRTY_NODES.with(|nodes| {
-                nodes
-                    .borrow_mut()
-                    .push((s.clone(), Change::InsertIndex(index)))
-            });
+            DIRTY_NODES.with(|nodes| nodes.borrow_mut().push((s.clone(), change.clone())));
         }
+    }
+}
+
+impl<T> Extend<T> for List<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        self.inner.extend(iter.into_iter().map(|val| val.into()));
+        self.notify(Change::Push);
     }
 }
 
@@ -148,6 +140,21 @@ where
     }
 }
 
+impl<T> FromIterator<T> for List<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Self::new(iter)
+    }
+}
+
+impl<I, T> From<I> for List<T>
+where
+    I: IntoIterator<Item = T>,
+{
+    fn from(value: I) -> Self {
+        Self::new(value)
+    }
+}
+
 impl<T> Index<usize> for List<T> {
     type Output = T;
 
@@ -166,7 +173,7 @@ impl<T> IndexMut<usize> for List<T> {
 mod test {
     use super::*;
     use crate::testing::TestState;
-    use crate::Owned;
+    use crate::{drain_dirty_nodes, Owned};
 
     #[test]
     fn access_list() {
@@ -182,5 +189,28 @@ mod test {
     #[test]
     fn create_list() {
         let _list = List::new(vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn iter_mut_marks_values_as_updated() {
+        let mut list = List::empty();
+        for i in 0..100 {
+            list.push_back(i);
+            list.inner[i].subscribe(0.into());
+        }
+
+        list.iter_mut().next();
+
+        let nodes = drain_dirty_nodes();
+        assert_eq!(nodes.len(), 1);
+    }
+
+    #[test]
+    fn extend_marks_as_pushed() {
+        let mut list: List<usize> = List::empty();
+        list.subscribe(0.into());
+        list.extend(0..100);
+        let nodes = drain_dirty_nodes();
+        assert_eq!(nodes.len(), 1);
     }
 }
