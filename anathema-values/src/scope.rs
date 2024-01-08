@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::hashmap::HashMap;
 use crate::state::State;
 use crate::{NodeId, Path, ValueExpr, ValueRef};
@@ -40,7 +42,7 @@ impl<'expr> ScopeStorage<'expr> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Scope<'frame, 'expr> {
     store: &'frame ScopeStorage<'expr>,
     parent: Option<&'frame Scope<'frame, 'expr>>,
@@ -67,12 +69,22 @@ impl<'frame, 'expr> InnerContext<'frame, 'expr> {
     }
 }
 
+impl Debug for InnerContext<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InnterContext")
+            .field("state", &"<state>")
+            .field("scope", &self.scope)
+            .field("parent", &self.parent)
+            .finish()
+    }
+}
+
 // Lookup is done elsewhere as the resolver affects the lifetime, therefore there
 // is no lookup function on the scope.
 //
 // For a deferred resolver everything has the same lifetime as the expressions,
 // for an immediate resolver the lifetime can only be that of the frame, during the layout step
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Context<'frame, 'expr> {
     inner: InnerContext<'frame, 'expr>,
 }
@@ -139,12 +151,13 @@ impl<'frame, 'expr> ContextRef<'frame, 'expr> {
         })
     }
 
-    pub fn lookup_state(&self, path: &Path, node_id: &NodeId) -> ValueRef<'frame> {
+    pub fn state(&self, path: &Path, node_id: &NodeId) -> ValueRef<'frame> {
         self.inner.state.state_get(path, node_id)
     }
 
-    pub fn lookup_scope(&self, path: &Path) -> Option<ScopeValue<'expr>> {
-        self.inner.scope?.get(path)
+    pub fn scope(&self, path: &Path) -> Option<ScopeValue<'expr>> {
+        let scope = self.inner.scope?;
+        scope.get(path)
     }
 }
 

@@ -41,12 +41,10 @@ impl<'e> IfElse<'e> {
             })
             .collect::<Vec<_>>();
 
-        if_node.resolve(context);
         if_node.previous = if_node.cond.value_or_default();
 
         if !if_node.is_true() {
             for el in &mut elses {
-                el.resolve(context);
                 if el.is_true() {
                     break;
                 }
@@ -105,7 +103,7 @@ impl<'e> IfElse<'e> {
         // If
         if self.if_node.node_id.contains(node_id) {
             if self.if_node.node_id.eq(node_id) {
-                self.if_node.resolve(context);
+                self.if_node.cond.resolve(context, &self.if_node.node_id);
                 let current = self.if_node.cond.value_or_default();
                 self.if_node.previous = current;
             } else {
@@ -117,7 +115,9 @@ impl<'e> IfElse<'e> {
         for e in &mut self.elses {
             if e.node_id.contains(node_id) {
                 if e.node_id.eq(node_id) {
-                    e.resolve(context);
+                    if let Some(cond) = e.cond.as_mut() {
+                        cond.resolve(context, &e.node_id);
+                    }
                     let current = self.if_node.cond.value_or_default();
                     e.previous = current;
                 } else {
@@ -144,10 +144,6 @@ impl If<'_> {
     pub(super) fn is_true(&self) -> bool {
         self.cond.is_true()
     }
-
-    fn resolve(&mut self, context: &Context<'_, '_>) {
-        self.cond.resolve(context, &self.node_id);
-    }
 }
 
 #[derive(Debug)]
@@ -164,12 +160,6 @@ impl Else<'_> {
         match &self.cond {
             None => true,
             Some(cond) => cond.is_true(),
-        }
-    }
-
-    fn resolve(&mut self, context: &Context<'_, '_>) {
-        if let Some(c) = self.cond.as_mut() {
-            c.resolve(context, &self.node_id)
         }
     }
 }

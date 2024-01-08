@@ -34,7 +34,7 @@ impl<'a, 'expr> Deferred<'a, 'expr> {
 
 impl<'a, 'expr> Resolver<'expr> for Deferred<'a, 'expr> {
     fn resolve(&mut self, path: &Path) -> ValueRef<'expr> {
-        match self.context.lookup_scope(path) {
+        match self.context.scope(path) {
             None => {
                 if let Some(context) = self.context.pop() {
                     let mut resolver = Self::new(context);
@@ -110,8 +110,8 @@ impl<'frame> Resolver<'frame> for Immediate<'frame> {
         //         self.is_deferred = true;
         //     }
 
-        match self.context.lookup_state(path, self.node_id) {
-            ValueRef::Empty => match self.context.lookup_scope(path) {
+        match self.context.state(path, self.node_id) {
+            ValueRef::Empty => match self.context.scope(path) {
                 None => {
                     if let Some(context) = self.context.pop() {
                         let mut resolver = Self::new(context, self.node_id);
@@ -407,6 +407,7 @@ impl ValueExpr {
                     let key = index.eval_string(resolver).unwrap_or(String::new());
                     resolver.resolve_map(map, &key)
                 }
+                deferred @ ValueRef::Deferred => deferred,
                 _ => ValueRef::Empty,
             },
             Self::Dot(lhs, rhs) => match lhs.eval(resolver) {
@@ -424,6 +425,7 @@ impl ValueExpr {
                     };
                     resolver.resolve_map(map, key)
                 }
+                deferred @ ValueRef::Deferred => deferred,
                 _ => ValueRef::Empty,
             },
 

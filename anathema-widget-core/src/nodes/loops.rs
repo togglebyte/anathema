@@ -69,15 +69,16 @@ impl<'e> LoopNode<'e> {
         F: FnMut(&mut WidgetContainer<'e>, &mut Nodes<'e>, &Context<'_, 'e>) -> Result<()>,
     {
         loop {
+            let Some(scope_val) = self.scope_next_value(context) else {
+                return Ok(ControlFlow::Continue(()));
+            };
+
             scope.value(
                 // TODO: make this into a constant
                 "loop",
                 ValueRef::Owned(self.value_index.into()),
             );
 
-            let Some(scope_val) = self.scope_next_value(context) else {
-                return Ok(ControlFlow::Continue(()));
-            };
             self.value_index += 1;
 
             scope.insert(self.binding.clone(), scope_val);
