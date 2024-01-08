@@ -17,7 +17,6 @@ use crate::{Event, WidgetContainer};
 mod controlflow;
 mod loops;
 mod query;
-pub mod visitor;
 
 pub fn make_it_so(expressions: &[crate::expressions::Expression]) -> Nodes<'_> {
     Nodes::new(expressions, 0.into())
@@ -64,7 +63,7 @@ impl<'e> Node<'e> {
             NodeKind::Loop(loop_state) => loop_state.next(&mut self.scope, context, f),
             NodeKind::ControlFlow(if_else) => {
                 let Some(body) = if_else.body_mut() else {
-                    return Ok(ControlFlow::Break(()));
+                    return Ok(ControlFlow::Continue(()));
                 };
                 c_and_b(body, context, f)
             }

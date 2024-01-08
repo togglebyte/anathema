@@ -117,7 +117,6 @@ impl<'e> Runtime<'e> {
     }
 
     fn layout(&mut self) -> Result<()> {
-        self.nodes.reset_cache();
         let context = Context::root(&self.meta);
 
         let mut nodes = LayoutNodes::new(&mut self.nodes, self.constraints, &context);
@@ -148,6 +147,7 @@ impl<'e> Runtime<'e> {
             return;
         }
 
+        self.nodes.reset_cache();
         self.needs_layout = true;
 
         let state = &self.meta;
