@@ -1,0 +1,10 @@
+[package]
+name = "anathema-store"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anathema-debug = { path = "../anathema-debug" }
+
+[lints]
+workspace = true

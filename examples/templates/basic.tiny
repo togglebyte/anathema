@@ -1,8 +1,0 @@
-vstack
-    text "How many times do I love you, tea!"
-    for i in [0, 1, 2, 3]
-        border
-            if i == 1
-                text [foreground: "yellow"] i " time 💗"
-            else
-                text [foreground: "green"] i " times 💗"

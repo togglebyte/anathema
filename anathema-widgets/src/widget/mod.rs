@@ -1,0 +1,229 @@
+use std::any::Any;
+use std::fmt::{self, Debug};
+use std::ops::ControlFlow;
+
+pub type WidgetId = anathema_store::slab::Key;
+
+use anathema_geometry::{Pos, Size};
+use anathema_store::slab::SecondaryMap;
+use anathema_store::tree::{Tree, TreeForEach};
+
+pub use self::attributes::{AttributeStorage, Attributes};
+pub use self::factory::{Factory, WidgetFactory};
+pub use self::query::{Elements, Query};
+use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, TextBuffer};
+use crate::paint::{PaintCtx, PaintFilter, SizePos};
+use crate::WidgetKind;
+
+mod attributes;
+mod factory;
+mod query;
+
+pub struct FloatingWidgets(SecondaryMap<WidgetId>);
+
+impl FloatingWidgets {
+    pub fn empty() -> Self {
+        Self(SecondaryMap::empty())
+    }
+
+    pub fn remove(&mut self, key: WidgetId) {
+        self.0.remove(key);
+    }
+
+    pub(crate) fn insert(&mut self, widget_id: WidgetId) {
+        self.0.insert(widget_id, widget_id);
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &WidgetId> {
+        self.0.iter()
+    }
+}
+
+pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
+pub type LayoutChildren<'a, 'filter, 'bp> = TreeForEach<'a, 'filter, WidgetKind<'bp>, LayoutFilter<'bp>>;
+pub type PositionChildren<'a, 'filter, 'bp> = TreeForEach<'a, 'filter, WidgetKind<'bp>, LayoutFilter<'bp>>;
+pub type PaintChildren<'a, 'filter, 'bp> = TreeForEach<'a, 'filter, WidgetKind<'bp>, PaintFilter<'bp>>;
+
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
+pub enum ValueKey<'bp> {
+    #[default]
+    Value,
+    Attribute(&'bp str),
+}
+
+pub trait AnyWidget {
+    fn to_any_ref(&self) -> &dyn Any;
+    fn to_any_mut(&mut self) -> &mut dyn Any;
+
+    fn any_layout<'bp>(
+        &mut self,
+        children: LayoutChildren<'_, '_, 'bp>,
+        constraints: Constraints,
+        id: WidgetId,
+        // attribute_storage: &AttributeStorage<'bp>,
+        // text_buffer: &mut TextBuffer,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> Size;
+
+    fn any_position<'bp>(
+        &mut self,
+        children: PositionChildren<'_, '_, 'bp>,
+        id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: PositionCtx,
+    );
+
+    fn any_paint<'bp>(
+        &mut self,
+        children: PaintChildren<'_, '_, 'bp>,
+        id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: PaintCtx<'_, SizePos>,
+        text_buffer: &mut TextBuffer,
+    );
+
+    fn any_floats(&self) -> bool;
+}
+
+impl<T: 'static + Widget> AnyWidget for T {
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn any_layout<'bp>(
+        &mut self,
+        children: LayoutChildren<'_, '_, 'bp>,
+        constraints: Constraints,
+        id: WidgetId,
+        // attribute_storage: &AttributeStorage<'bp>,
+        // text_buffer: &mut TextBuffer,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> Size {
+        self.layout(children, constraints, id, ctx)
+    }
+
+    fn any_position<'bp>(
+        &mut self,
+        children: PositionChildren<'_, '_, 'bp>,
+        id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: PositionCtx,
+    ) {
+        self.position(children, id, attribute_storage, ctx)
+    }
+
+    fn any_paint<'bp>(
+        &mut self,
+        children: PaintChildren<'_, '_, 'bp>,
+        id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: PaintCtx<'_, SizePos>,
+        text_buffer: &mut TextBuffer,
+    ) {
+        self.paint(children, id, attribute_storage, ctx, text_buffer)
+    }
+
+    fn any_floats(&self) -> bool {
+        self.floats()
+    }
+}
+
+pub trait Widget {
+    fn layout<'bp>(
+        &mut self,
+        children: LayoutChildren<'_, '_, 'bp>,
+        constraints: Constraints,
+        id: WidgetId,
+        // attribute_storage: &AttributeStorage<'bp>,
+        // text: &mut TextBuffer,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> Size;
+
+    fn paint<'bp>(
+        &mut self,
+        mut children: PaintChildren<'_, '_, 'bp>,
+        _id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        mut ctx: PaintCtx<'_, SizePos>,
+        // TODO make a read-only version of the buffer as it shouldn't change on paint
+        text_buffer: &mut TextBuffer,
+    ) {
+        children.for_each(|child, children| {
+            let ctx = ctx.to_unsized();
+            child.paint(children, ctx, text_buffer, attribute_storage);
+            ControlFlow::Continue(())
+        });
+    }
+
+    fn position<'bp>(
+        &mut self,
+        children: PositionChildren<'_, '_, 'bp>,
+        id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: PositionCtx,
+    );
+
+    fn floats(&self) -> bool {
+        false
+    }
+}
+
+impl Debug for dyn Widget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<dyn Widget>")
+    }
+}
+
+pub trait WidgetRenderer {
+    fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, local_pos: Pos);
+
+    fn size(&self) -> Size;
+}
+
+// -----------------------------------------------------------------------------
+//   - Testing -
+// -----------------------------------------------------------------------------
+struct TestWidget;
+
+impl Widget for TestWidget {
+    fn layout(
+        &mut self,
+        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_>>,
+        _: Constraints,
+        _: WidgetId,
+        // _: &AttributeStorage<'_>,
+        // _: &mut TextBuffer,
+        _: &mut LayoutCtx<'_, '_>,
+    ) -> Size {
+        todo!()
+    }
+
+    fn position<'bp>(
+        &mut self,
+        _children: PositionChildren<'_, '_, 'bp>,
+        _: WidgetId,
+        _: &AttributeStorage<'bp>,
+        _ctx: PositionCtx,
+    ) {
+        todo!()
+    }
+}
+
+struct TestWidgetFactory;
+
+impl WidgetFactory for TestWidgetFactory {
+    fn make(&self, _attribs: &Attributes<'_>) -> Box<dyn AnyWidget> {
+        Box::new(TestWidget)
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn setup_test_factory() -> Factory {
+    let mut fac = Factory::new();
+    fac.register_widget("test", TestWidgetFactory);
+    fac
+}

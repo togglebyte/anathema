@@ -1,0 +1,6 @@
+if does.not.exist
+    test "a"
+else if !is_true
+    test "b"
+else
+    test "c"

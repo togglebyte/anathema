@@ -1,0 +1,207 @@
+use std::any::Any;
+use std::collections::VecDeque;
+
+use super::Value;
+use crate::store::changed;
+use crate::{Change, CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
+
+#[derive(Debug)]
+pub struct List<T> {
+    inner: VecDeque<Value<T>>,
+}
+
+impl<T: 'static + State> List<T> {
+    pub fn empty() -> Value<Self> {
+        Value::<Self>::empty()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&Value<T>> {
+        self.inner.get(index)
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Value<T>> {
+        self.inner.get_mut(index)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Value<T>> {
+        self.inner.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Value<T>> {
+        self.inner.iter_mut()
+    }
+}
+
+impl<T: 'static + State> Value<List<T>> {
+    pub fn empty() -> Self {
+        let list = List { inner: VecDeque::new() };
+        Value::new(list)
+    }
+
+    pub fn push_back(&mut self, value: impl Into<Value<T>>) {
+        let key = self.key;
+        let list = &mut *self.to_mut();
+        let index = list.inner.len();
+        let value = value.into();
+        changed(key.sub(), Change::Inserted(index, value.to_pending()));
+        list.inner.push_back(value);
+    }
+
+    pub fn push_front(&mut self, value: impl Into<Value<T>>) {
+        let key = self.key;
+        let list = &mut *self.to_mut();
+        let value = value.into();
+        changed(key.sub(), Change::Inserted(0, value.to_pending()));
+        list.inner.push_front(value);
+    }
+
+    pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
+        let key = self.key;
+        let list = &mut *self.to_mut();
+        let value = value.into();
+        changed(key.sub(), Change::Inserted(index, value.to_pending()));
+        list.inner.insert(index, value);
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
+        let key = self.key;
+        let list = &mut *self.to_mut();
+        let value = list.inner.remove(index);
+        changed(key.sub(), Change::Removed(index));
+        value
+    }
+
+    pub fn pop_front(&mut self) -> Option<Value<T>> {
+        let key = self.key;
+        let list = &mut *self.to_mut();
+        let value = list.inner.pop_front();
+        changed(key.sub(), Change::Removed(0));
+        value
+    }
+
+    // pub fn pop_back(&mut self) -> Option<Value<T>> {
+    //     panic!("this is not done, needs to be reviewed");
+    //     if self.is_empty() {
+    //         return None;
+    //     }
+    //     // let key = self.key;
+    //     // let list = &mut *self.to_mut();
+    //     // let value = list.inner.pop_back();
+    //     let index = self.len() - 1;
+    //     // changed(key.sub(), Change::Removed(index));
+    //     self.remove(index)
+    //     // value
+    // }
+
+    pub fn for_each<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T),
+    {
+        let list = &mut *self.to_mut();
+
+        list.iter_mut().for_each(|el| f(&mut *el.to_mut()));
+    }
+
+    // fn is_empty(&self) -> bool {
+    //     self.len() == 0
+    // }
+}
+
+impl<T: 'static + State> State for List<T> {
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
+        let Path::Index(idx) = path else { return None };
+
+        let value = self.inner.get(idx)?;
+        Some(value.value_ref(sub))
+    }
+
+    fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
+        let Path::Index(idx) = path else { return None };
+        let value = self.inner.get(idx)?;
+        Some(value.to_pending())
+    }
+
+    fn to_common(&self) -> Option<CommonVal<'_>> {
+        None
+    }
+
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<T> FromIterator<T> for Value<List<T>>
+where
+    T: 'static + State,
+    Value<T>: From<T>,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
+        let list = List { inner };
+        Value::new(list)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::store::testing::drain_changes;
+    use crate::Map;
+
+    #[test]
+    fn insert() {
+        let mut list = List::empty();
+        list.push_back(1usize);
+        list.push_front(0usize);
+
+        let r = list.to_ref();
+
+        let val = *r.get(0).unwrap().to_ref();
+        assert_eq!(val, 0);
+
+        let val = *r.get(1).unwrap().to_ref();
+        assert_eq!(val, 1);
+    }
+
+    fn setup_map<T: 'static + State>(key: &str, value: T) -> Value<Map<List<T>>> {
+        let mut map = Map::<List<T>>::empty();
+        let mut list = List::empty();
+        list.push_back(value);
+        map.insert(key, list);
+        map
+    }
+
+    #[test]
+    fn notify_insert() {
+        let mut map = setup_map("a", 123);
+
+        let mut list = map.to_mut();
+        let list = list.get_mut("a").unwrap();
+        let _vr = list.value_ref(Subscriber::ZERO);
+        list.push_back(1);
+
+        let (_, change) = drain_changes().remove(0);
+        assert!(matches!(change, Change::Inserted(_, _)));
+    }
+
+    #[test]
+    fn notify_remove() {
+        let mut map = setup_map("a", 123);
+
+        let mut list = map.to_mut();
+        let list = list.get_mut("a").unwrap();
+        let _vr = list.value_ref(Subscriber::ZERO);
+        list.remove(0);
+
+        let change = drain_changes().remove(0);
+        assert!(matches!(change, (_, Change::Removed(_))));
+    }
+}

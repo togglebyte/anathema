@@ -1,0 +1,17 @@
+[package]
+name = "anathema-backend"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anathema-geometry = { path = "../anathema-geometry" }
+anathema-state = { path = "../anathema-state" }
+anathema-store = { path = "../anathema-store" }
+anathema-widgets = { path = "../anathema-widgets" }
+anathema-templates = { path = "../anathema-templates" }
+crossterm = { workspace = true }
+unicode-width = { workspace = true }
+bitflags = { workspace = true }
+
+[lints]
+workspace = true

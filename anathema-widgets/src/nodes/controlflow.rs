@@ -1,0 +1,141 @@
+use anathema_store::tree::NodePath;
+use anathema_templates::blueprints::Blueprint;
+
+use crate::expressions::EvalValue;
+use crate::{Value, WidgetKind, WidgetTree};
+
+#[derive(Debug)]
+pub struct ControlFlow;
+
+impl ControlFlow {
+    // pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetKind<'_>>) {
+    pub(crate) fn update(&self, path: &NodePath, tree: &mut WidgetTree<'_>) {
+        // Once a if / else is set to true, everything else
+        // should be set to false.
+        let mut was_set = false;
+
+        tree.children_of(path, |node, values| {
+            let Some((_, widget)) = values.get_mut(node.value()) else { return };
+            match widget {
+                WidgetKind::If(widget) => {
+                    if widget.is_true() {
+                        widget.show = true;
+                        was_set = true;
+                    }
+                }
+                WidgetKind::Else(widget) => {
+                    if was_set {
+                        return;
+                    }
+                    if widget.is_true() {
+                        widget.show = true;
+                        was_set = true;
+                    }
+                }
+                _ => unreachable!(),
+            }
+        });
+    }
+}
+
+#[derive(Debug)]
+pub struct If<'bp> {
+    pub cond: Value<'bp, EvalValue<'bp>>,
+    pub show: bool,
+}
+
+impl If<'_> {
+    pub(crate) fn is_true(&self) -> bool {
+        self.cond.load_common_val().map(|v| v.load_bool()).unwrap_or(false)
+    }
+}
+
+#[derive(Debug)]
+pub struct Else<'bp> {
+    pub cond: Option<Value<'bp, EvalValue<'bp>>>,
+    pub body: &'bp [Blueprint],
+    pub show: bool,
+}
+
+impl Else<'_> {
+    pub(crate) fn is_true(&self) -> bool {
+        match self.cond.as_ref() {
+            Some(cond) => cond.load_common_val().map(|v| v.load_bool()).unwrap_or(false),
+            None => true,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use anathema_state::{Map, States};
+    use anathema_store::tree::{NodePath, Tree};
+    use anathema_templates::Document;
+
+    use crate::components::ComponentRegistry;
+    use crate::nodes::stringify::Stringify;
+    use crate::scope::Scope;
+    use crate::values::ValueStack;
+    use crate::widget::setup_test_factory;
+    use crate::{eval_blueprint, AttributeStorage, EvalContext, FloatingWidgets};
+
+    #[test]
+    fn if_stmt() {
+        let tpl = "
+        if a
+            test a
+            test a
+            test a
+            test a
+        else
+            test
+            test !a
+        ";
+        let mut map = Map::empty();
+        map.insert("a", true);
+
+        let doc = Document::new(tpl);
+        let blueprints = doc.compile().unwrap();
+        let mut widget_tree = Tree::<_>::empty();
+        let mut attribute_storage = AttributeStorage::empty();
+        let mut floating_widgets = FloatingWidgets::empty();
+        let factory = setup_test_factory();
+        let mut components = ComponentRegistry::new();
+        let mut states = States::new();
+        let state_id = states.insert(Box::new(map));
+        let mut scope = Scope::new();
+        scope.insert_state(state_id);
+        let blueprint = &blueprints[0];
+        let mut value_store = ValueStack::empty();
+
+        let mut ctx = EvalContext::new(
+            &factory,
+            &mut scope,
+            &mut states,
+            &mut components,
+            &mut value_store,
+            &mut attribute_storage,
+            &mut floating_widgets,
+        );
+
+        eval_blueprint(blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
+
+        let mut stringify = Stringify::new(&attribute_storage);
+        widget_tree.apply_visitor(&mut stringify);
+        let output = stringify.finish();
+
+        let expected = "
+<control flow>
+    <if cond = true>
+        test Bool(true)
+        test Bool(true)
+        test Bool(true)
+        test Bool(true)
+    <else>
+        test
+        test Bool(false)
+    ";
+
+        assert_eq!(expected.trim(), output.trim());
+    }
+}

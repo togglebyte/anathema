@@ -1,203 +1,77 @@
-use anathema_values::NodeId;
-use anathema_widget_core::views::Views;
+use std::ops::ControlFlow;
 
-#[derive(Debug, Clone)]
-struct TabIndex {
-    node_id: NodeId,
-    index: u32,
+use anathema_state::StateId;
+use anathema_store::stack::Stack;
+use anathema_store::tree::visitor::NodeVisitor;
+use anathema_store::tree::NodePath;
+use anathema_widgets::components::ComponentId;
+use anathema_widgets::{WidgetId, WidgetKind};
+
+pub struct IndexEntry {
+    pub(super) widget_id: WidgetId,
+    pub(super) state_id: Option<StateId>,
+    pub(super) component_id: ComponentId,
 }
 
-#[derive(Debug, Clone)]
-struct TabIndexRef<'a> {
-    node_id: &'a NodeId,
-    index: u32,
+pub struct TabIndex {
+    components: Stack<IndexEntry>,
+    current: usize,
 }
 
-impl From<&TabIndexRef<'_>> for TabIndex {
-    fn from(value: &TabIndexRef<'_>) -> Self {
-        TabIndex {
-            index: value.index,
-            node_id: value.node_id.to_owned(),
-        }
-    }
-}
-
-pub(super) enum Direction {
-    Forwards,
-    Backwards,
-}
-
-impl Direction {
-    fn default(&self, max: usize) -> usize {
-        match self {
-            Self::Forwards => 0,
-            Self::Backwards => max,
-        }
-    }
-
-    fn next(&self, old: usize, max: usize) -> usize {
-        match self {
-            Self::Forwards if old == max => 0,
-            Self::Backwards if old == 0 => max,
-            Self::Forwards => old + 1,
-            Self::Backwards => old - 1,
-        }
-    }
-}
-
-pub(super) struct TabIndexing {
-    current_focus: Option<TabIndex>,
-}
-
-impl TabIndexing {
-    pub(super) fn current_node(&self) -> Option<&NodeId> {
-        self.current_focus.as_ref().map(|ti| &ti.node_id)
-    }
-
-    pub(super) fn new() -> Self {
+impl TabIndex {
+    pub fn new() -> Self {
         Self {
-            current_focus: None,
+            components: Stack::empty(),
+            current: 0,
         }
+    }
+
+    pub fn next(&mut self) -> Option<&IndexEntry> {
+        if self.components.is_empty() {
+            return None;
+        }
+
+        let prev = self.components.get(self.current);
+        self.current += 1;
+        if self.current == self.components.len() {
+            self.current = 0;
+        }
+        prev
+    }
+
+    pub fn prev(&mut self) -> Option<&IndexEntry> {
+        if self.components.is_empty() {
+            return None;
+        }
+
+        let prev = self.components.get(self.current);
+        if self.current == 0 {
+            self.current = self.components.len();
+        }
+        self.current -= 1;
+
+        prev
+    }
+
+    pub fn current(&mut self) -> Option<&IndexEntry> {
+        self.components.get(self.current)
+    }
+
+    pub fn dumb_fetch(&self, component_id: ComponentId) -> Option<&IndexEntry> {
+        self.components.iter().find(|entry| entry.component_id == component_id)
     }
 }
 
-impl TabIndexing {
-    // Return the previously focused node so it can be "blurred".
-    pub(super) fn next(&mut self, direction: Direction) -> Option<NodeId> {
-        Views::all(|views| {
-            let mut views = views
-                .iter()
-                .filter_map(|f| {
-                    Some(TabIndexRef {
-                        node_id: f.key(),
-                        index: f.value?,
-                    })
-                })
-                .collect::<Vec<_>>();
-
-            if views.is_empty() {
-                return None;
-            }
-
-            views.sort_by(|a, b| a.index.partial_cmp(&b.index).unwrap());
-
-            let default = direction.default(views.len() - 1);
-
-            match self.current_focus.take() {
-                None => {
-                    self.current_focus = Some(TabIndex::from(&views[default]));
-                    None
-                }
-                Some(old) => {
-                    let old_index = match views.binary_search_by(|idx| idx.index.cmp(&old.index)) {
-                        Ok(i) => i,
-                        Err(i) if i < views.len() => i,
-                        Err(_) => default,
-                    };
-
-                    let next = direction.next(old_index, views.len() - 1);
-
-                    self.current_focus = Some(TabIndex::from(&views[next]));
-
-                    Some(old.node_id)
-                }
-            }
-        })
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn ids() -> Vec<(NodeId, u32)> {
-        vec![
-            (NodeId::from(10), 100u32),
-            (NodeId::from(11), 101),
-            (NodeId::from(2), 102),
-        ]
-    }
-
-    fn insert_ids() {
-        Views::test_clear();
-        let node_ids = ids();
-
-        for (id, index) in &node_ids {
-            Views::test_insert(id.clone(), Some(*index));
+impl NodeVisitor<WidgetKind<'_>> for TabIndex {
+    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &NodePath, widget_id: WidgetId) -> ControlFlow<()> {
+        if let WidgetKind::Component(component) = value {
+            self.components.push(IndexEntry {
+                widget_id,
+                state_id: component.state_id,
+                component_id: component.component_id,
+            })
         }
-    }
 
-    fn comp_index(index: &(NodeId, u32), tabs: &TabIndexing) {
-        let current = tabs.current_node().unwrap();
-        let current_index = tabs.current_focus.as_ref().unwrap().index;
-        assert_eq!(current, &index.0);
-        assert_eq!(current_index, index.1);
-    }
-
-    #[test]
-    fn next_index() {
-        let node_ids = ids();
-        insert_ids();
-
-        let mut tabs = TabIndexing::new();
-
-        for index in &node_ids {
-            tabs.next(Direction::Forwards);
-            comp_index(index, &tabs);
-        }
-    }
-
-    #[test]
-    fn prev_index() {
-        let mut node_ids = ids();
-        insert_ids();
-
-        let mut tabs = TabIndexing::new();
-        node_ids.reverse();
-
-        for index in &node_ids {
-            tabs.next(Direction::Backwards);
-            comp_index(index, &tabs);
-        }
-    }
-
-    #[test]
-    fn next_index_wrapping() {
-        let node_ids = ids();
-        insert_ids();
-
-        let mut tabs = TabIndexing::new();
-
-        node_ids
-            .iter()
-            .for_each(|_| drop(tabs.next(Direction::Forwards)));
-
-        let last = tabs.next(Direction::Forwards).unwrap();
-        assert_eq!(last, node_ids.last().unwrap().0);
-
-        let current = tabs.current_node().unwrap();
-        assert_eq!(current, &node_ids.first().unwrap().0);
-    }
-
-    #[test]
-    fn insert_view() {
-        insert_ids();
-
-        let node_ids = ids();
-        let mut tabs = TabIndexing::new();
-
-        node_ids
-            .iter()
-            .for_each(|_| drop(tabs.next(Direction::Forwards)));
-
-        let current = tabs.current_node().unwrap();
-        assert_eq!(current, &node_ids.last().unwrap().0);
-
-        Views::test_insert(NodeId::from(usize::MAX), Some(u32::MAX));
-        let penultimate = tabs.next(Direction::Forwards).unwrap();
-        assert_eq!(penultimate, node_ids.last().unwrap().0);
-
-        let last = tabs.current_node().unwrap();
-        assert_eq!(last, &NodeId::from(usize::MAX));
+        ControlFlow::Continue(())
     }
 }

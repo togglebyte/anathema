@@ -1,0 +1,12 @@
+[package]
+name = "anathema-templates"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anathema-debug = { path = "../anathema-debug" }
+anathema-state = { path = "../anathema-state" }
+anathema-store = { path = "../anathema-store" }
+
+[lints]
+workspace = true
