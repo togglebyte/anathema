@@ -179,7 +179,7 @@ impl TestInstance<'_> {
 
         let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
         let Some(state) = self.states.get_mut(StateId::ZERO) else { return self };
-        let state = state.to_any_mut().downcast_mut::<TestState>().unwrap();
+        let state = state.to_any_mut().downcast_mut::<TestState>();
         let mut widgets = Elements::new(node.children(), values, &mut self.attribute_storage);
         let query = widgets.query(state);
         f(query);

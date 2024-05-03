@@ -163,13 +163,3 @@ impl<O: std::fmt::Write> NodeVisitor<WidgetKind<'_>> for DebugWidgetsVisitor<'_,
         self.level -= 1;
     }
 }
-
-pub(crate) struct DebugValue<'a, T>(pub(crate) &'a crate::Value<'a, T>);
-
-impl DebugWriter for DebugValue<'_, EvalValue<'_>> {
-    fn write(&mut self, output: &mut impl Write) -> std::fmt::Result {
-        write!(output, "<value {:?} | ", self.0.index)?;
-        EvalValueDebug(self.0.inner()).write(output)?;
-        writeln!(output)
-    }
-}

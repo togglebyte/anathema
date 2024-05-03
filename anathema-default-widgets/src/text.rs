@@ -51,7 +51,7 @@ impl Widget for Text {
 
         // Layout text of all the sub-nodes
         children.for_each(|child, _| {
-            let Some((_span, widget_id)) = child.to_inner_mut::<Span>() else {
+            let Some((_span, widget_id)) = child.to_mut::<Span>() else {
                 return ControlFlow::Continue(());
             };
             layout.set_style(widget_id);
@@ -70,6 +70,7 @@ impl Widget for Text {
         });
 
         layout.finish();
+
         layout.size()
     }
 
@@ -105,7 +106,9 @@ impl Widget for Text {
                             pos = new_pos;
                         }
                     }
-                    IterEntry::Style(attribute_id) => style = attribute_storage.get(attribute_id),
+                    IterEntry::Style(attribute_id) => {
+                        style = attribute_storage.get(attribute_id)
+                    }
                 }
             }
             pos.y += 1;

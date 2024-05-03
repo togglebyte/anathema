@@ -28,7 +28,7 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         }
     }
 
-    pub fn query<'state, S: State>(&mut self, state: &'state mut S) -> Query<'_, 'tree, 'state, 'bp, S> {
+    pub fn query<'state, S: State>(&mut self, state: Option<&'state mut S>) -> Query<'_, 'tree, 'state, 'bp, S> {
         Query { state, widgets: self }
     }
 }
@@ -40,7 +40,7 @@ enum QueryArg<'a> {
 }
 
 pub struct Query<'widgets, 'tree, 'state, 'bp, S> {
-    state: &'state mut S,
+    state: Option<&'state mut S>,
     widgets: &'widgets mut Elements<'tree, 'bp>,
 }
 
@@ -133,7 +133,7 @@ where
 }
 
 pub struct QueryResult<'widgets, 'tree, 'state, 'bp, S> {
-    _s: &'state mut S,
+    _s: Option<&'state mut S>,
     widgets: &'widgets mut Elements<'tree, 'bp>,
     arg: QueryArg<'widgets>,
 }

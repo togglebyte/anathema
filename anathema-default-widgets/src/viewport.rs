@@ -235,7 +235,7 @@ mod test {
             .render_assert(expected_first)
             .with_widget(|query| {
                 query.by_tag("viewport").first(|el| {
-                    let viewport = el.to_inner_mut::<Viewport>().unwrap().0;
+                    let viewport = el.to_mut::<Viewport>().unwrap().0;
                     viewport.scroll_down();
                 });
             })

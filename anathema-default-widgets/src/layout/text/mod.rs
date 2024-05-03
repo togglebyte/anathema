@@ -49,6 +49,7 @@ impl<'a> Lines<'a> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum TextLayout<'a> {
     WordWrap(wordwrap::WordWrapLayout<'a>),
     WordBreak(wordbreak::WordBreakLayout<'a>),

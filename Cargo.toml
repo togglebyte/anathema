@@ -1,6 +1,7 @@
 [package]
 name = "anathema"
 edition = "2021"
+version = "0.3.0"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
 keywords = ["tui", "terminal", "widgets", "ui"]

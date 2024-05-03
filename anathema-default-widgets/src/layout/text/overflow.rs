@@ -5,6 +5,7 @@ use unicode_width::UnicodeWidthStr;
 
 use super::ProcessResult;
 
+#[derive(Debug)]
 pub struct OverflowLayout<'a> {
     session: TextSession<'a>,
     index: TextIndex,
