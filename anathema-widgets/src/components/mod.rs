@@ -171,6 +171,8 @@ where
     }
 }
 
-// pub fn get_component(id: ComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>) {
-//     ComponentRegistry::get(id)
-// }
+impl std::fmt::Debug for dyn AnyComponent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<dyn AnyComponent>")
+    }
+}

@@ -1,4 +1,4 @@
-use anathema_store::tree::NodePath;
+use anathema_store::tree::{Node, NodePath, TreeValues};
 use anathema_templates::blueprints::Blueprint;
 
 use crate::expressions::EvalValue;
@@ -8,33 +8,32 @@ use crate::{Value, WidgetKind, WidgetTree};
 pub struct ControlFlow;
 
 impl ControlFlow {
-    // pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetKind<'_>>) {
-    pub(crate) fn update(&self, path: &NodePath, tree: &mut WidgetTree<'_>) {
-        // Once a if / else is set to true, everything else
-        // should be set to false.
+    pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetKind<'_>>) {
+        // Once an if / else is set to true, everything else should be set to false.
         let mut was_set = false;
 
-        tree.children_of(path, |node, values| {
-            let Some((_, widget)) = values.get_mut(node.value()) else { return };
+        for node in children {
+            let Some((_, widget)) = values.get_mut(node.value()) else { continue };
             match widget {
                 WidgetKind::If(widget) => {
                     if widget.is_true() {
                         widget.show = true;
                         was_set = true;
+                    } else {
+                        widget.show = false;
                     }
                 }
                 WidgetKind::Else(widget) => {
                     if was_set {
-                        return;
-                    }
-                    if widget.is_true() {
+                        widget.show = false;
+                    } else if widget.is_true() {
                         widget.show = true;
                         was_set = true;
                     }
                 }
                 _ => unreachable!(),
             }
-        });
+        }
     }
 }
 

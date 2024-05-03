@@ -5,6 +5,7 @@ use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
+#[derive(Debug)]
 pub struct Container {
     pub inner: Box<dyn AnyWidget>,
     pub id: WidgetId,

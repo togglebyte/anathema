@@ -9,6 +9,7 @@ use crate::{Value, ValueIndex};
 
 type ExternalState<'bp> = HashMap<(&'bp str, ValueIndex), Value<'bp, EvalValue<'bp>>>;
 
+#[derive(Debug)]
 pub struct Component<'bp> {
     pub body: &'bp [Blueprint],
     pub component: Box<dyn AnyComponent>,

@@ -1,5 +1,25 @@
 use std::ops::{Add, Deref};
 
+pub trait AsNodePath {
+    fn split_parent(&self) -> Option<(&[u16], usize)>;
+}
+
+impl AsNodePath for [u16] {
+    fn split_parent(&self) -> Option<(&[u16], usize)> {
+        match self {
+            [] => None,
+            [i] => Some((&[], *i as usize)),
+            [parent @ .., i] => Some((parent, *i as usize)),
+        }
+    }
+}
+
+impl AsNodePath for NodePath {
+    fn split_parent(&self) -> Option<(&[u16], usize)> {
+        self.split()
+    }
+}
+
 /// Node path indicates where in the tree a node is.
 /// The node path can change through a values life time,
 /// unlike the value key it self.

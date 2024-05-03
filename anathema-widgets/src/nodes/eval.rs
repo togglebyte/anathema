@@ -226,7 +226,7 @@ impl Evaluator for ControlFlowEval {
         });
 
         // TODO come back and fix this you sausage!
-        let mut thing = false;
+        let mut was_set = false;
 
         tree.children_of(&parent, |node, values| {
             let Some((_, widget)) = values.get_mut(node.value()) else { return };
@@ -234,16 +234,17 @@ impl Evaluator for ControlFlowEval {
                 WidgetKind::If(widget) => {
                     if widget.is_true() {
                         widget.show = true;
-                        thing = true;
+                        was_set = true;
+                    } else {
+                        widget.show = false;
                     }
                 }
                 WidgetKind::Else(widget) => {
-                    if thing {
-                        return;
-                    }
-                    if widget.is_true() {
+                    if was_set {
+                        widget.show = false;
+                    } else if widget.is_true() {
                         widget.show = true;
-                        thing = true;
+                        was_set = true;
                     }
                 }
                 _ => unreachable!(),
@@ -272,7 +273,7 @@ impl Evaluator for IfEval {
 
         let if_widget = controlflow::If { cond, show: false };
 
-        let if_widget_id = transaction.commit_child(WidgetKind::If(if_widget)).unwrap();
+        let if_widget_id = transaction.commit_child(WidgetKind::If(if_widget)).unwrap(); // TODO: unwrap..
 
         let parent = &tree.path(if_widget_id).clone();
         for bp in &input.body {

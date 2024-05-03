@@ -62,8 +62,8 @@ impl<'a> TreeFilter for LayoutFilter<'a> {
         &self,
         _value_id: WidgetId,
         input: &'val mut Self::Input,
-        _children: &[Node],
-        _widgets: &mut TreeValues<WidgetKind<'a>>,
+        children: &[Node],
+        widgets: &mut TreeValues<WidgetKind<'a>>,
     ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
         match input {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
@@ -71,7 +71,16 @@ impl<'a> TreeFilter for LayoutFilter<'a> {
                 Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
                 Display::Exclude => ControlFlow::Continue(None),
             },
-            WidgetKind::ControlFlow(_widget) => ControlFlow::Continue(None),
+            WidgetKind::ControlFlow(widget) => {
+                // TODO `update` should probably be called `layout`
+                //       as it does not update during an update step.
+                //
+                //       That is not possible since the child widget is
+                //       checked out already, so iterating over the children
+                //       of ControlFlow does not work
+                widget.update(children, widgets);
+                ControlFlow::Continue(None)
+            }
             WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
             WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
             _ => ControlFlow::Continue(None),

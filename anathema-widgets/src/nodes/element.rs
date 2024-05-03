@@ -6,6 +6,7 @@ use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{PaintChildren, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, WidgetId};
 
+#[derive(Debug)]
 pub struct Element<'bp> {
     pub ident: &'bp str,
     pub container: Container,

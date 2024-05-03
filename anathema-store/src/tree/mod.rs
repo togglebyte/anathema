@@ -1,6 +1,7 @@
 use std::ops::{ControlFlow, Deref};
 
 pub use self::iter::{TreeFilter, TreeForEach};
+pub use self::nodepath::AsNodePath;
 pub use self::pathfinder::PathFinder;
 pub use self::transactions::InsertTransaction;
 use self::visitor::NodeVisitor;
@@ -80,14 +81,8 @@ impl<T> Tree<T> {
 
     /// Find the value id by the path
     pub fn id(&self, path: &[u16]) -> Option<ValueId> {
-        let (_, index): (&[u16], usize) = match path {
-            [] => return None,
-            [i] => (&[], *i as usize),
-            [parent @ .., i] => (parent, *i as usize),
-        };
-
-        let node = self.layout.with(path, |nodes| nodes.get(index))??;
-        Some(node.value())
+        let (_, index) = path.split_parent()?;
+        self.layout.with(path, |nodes| nodes.value())
     }
 
     /// Try to get a path for a given value id.
@@ -128,26 +123,23 @@ impl<T> Tree<T> {
     /// This has an additional cost since the value id has to
     /// be found first.
     pub fn get_ref_by_path(&self, path: &NodePath) -> Option<&T> {
-        let (path, index) = path.split()?;
-        let node = self.layout.with(path, |nodes| nodes.get(index))??;
-        self.values.get(node.value).map(|(_, val)| val)
+        let id = self.id(path)?;
+        self.values.get(id).map(|(_, val)| val)
     }
 
     /// Get a reference to a `Node` via a path.
     pub fn get_node_by_path(&mut self, path: &NodePath) -> Option<(&Node, &mut TreeValues<T>)> {
         let (path, index) = path.split()?;
-        self.layout
-            .with(path, |nodes| nodes.get(index))?
-            .map(|node| (node, &mut self.values))
+        self.layout.with(path, |node| node).map(|node| (node, &mut self.values))
     }
 
     /// Get a mutable reference by path.
     /// This has an additional cost since the value id has to
     /// be found first.
-    pub fn get_mut_by_path(&mut self, path: &NodePath) -> Option<&mut T> {
-        let (path, index) = path.split()?;
-        let node = self.layout.with(path, |nodes| nodes.get(index))??;
-        self.values.get_mut(node.value).map(|(_, val)| val)
+    pub fn get_mut_by_path(&mut self, path: &[u16]) -> Option<&mut T> {
+        let (path, index) = path.split_parent()?;
+        let id = self.id(path)?;
+        self.values.get_mut(id).map(|(_, val)| val)
     }
 
     /// Remove a `Node` and value from the tree.
@@ -253,8 +245,14 @@ impl<T> Tree<T> {
     where
         F: FnMut(&Node, &mut TreeValues<T>),
     {
-        self.layout.with(parent, |nodes| {
-            nodes.iter().for_each(|node| f(node, &mut self.values));
+        // Special case if the `parent` is the tree itself.
+        if parent.is_empty() {
+            self.layout.iter().for_each(|node| f(node, &mut self.values));
+            return Some(());
+        }
+
+        self.layout.with(parent, |node| {
+            node.children().iter().for_each(|node| f(node, &mut self.values));
         });
         Some(())
     }
@@ -265,8 +263,12 @@ impl<T> Tree<T> {
         F: FnMut(&Node, &mut TreeValues<T>),
     {
         let (parent, index) = path.split()?;
-        self.layout.with(parent, |nodes| {
-            nodes.iter().skip(index + 1).for_each(|node| f(node, &mut self.values));
+        self.layout.with(parent, |parent| {
+            parent
+                .children()
+                .iter()
+                .skip(index + 1)
+                .for_each(|node| f(node, &mut self.values));
         });
         Some(())
     }
@@ -303,7 +305,9 @@ fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &NodePath, mut path_finde
                 }
                 path = sub_path;
                 let node = &nodes[index];
-                let parent = tree.get_ref_by_id(node.value()).unwrap();
+                let parent = tree
+                    .get_ref_by_id(node.value())
+                    .expect("a node always has a matching value");
                 path_finder.parent(parent, sub_path);
                 nodes = node.children();
             }
@@ -421,14 +425,14 @@ impl Nodes {
 
     fn with<'a, F, U: 'a>(&'a self, parent: &[u16], f: F) -> Option<U>
     where
-        F: FnOnce(&'a Nodes) -> U,
+        F: FnOnce(&'a Node) -> U,
     {
         let mut path = parent;
         let mut nodes = self;
         loop {
             match path {
-                [] => break Some(f(nodes)),
-                [i] if (*i as usize) < nodes.len() => break Some(f(&nodes.inner[*i as usize].children)),
+                [] => break None,
+                [i] if (*i as usize) < nodes.len() => break Some(f(&nodes.inner[*i as usize])),
                 [_] => break None,
                 [i, p @ ..] => {
                     let index = *i as usize;

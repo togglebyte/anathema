@@ -17,6 +17,7 @@ pub(crate) mod loops;
 mod stringify;
 mod update;
 
+#[derive(Debug)]
 pub enum WidgetKind<'bp> {
     Element(Element<'bp>),
     For(loops::For<'bp>),

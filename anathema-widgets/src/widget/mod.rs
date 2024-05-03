@@ -132,6 +132,12 @@ impl<T: 'static + Widget> AnyWidget for T {
     }
 }
 
+impl Debug for dyn AnyWidget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<dyn AnyWidget>")
+    }
+}
+
 pub trait Widget {
     fn layout<'bp>(
         &mut self,

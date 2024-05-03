@@ -106,9 +106,7 @@ impl Widget for Text {
                             pos = new_pos;
                         }
                     }
-                    IterEntry::Style(attribute_id) => {
-                        style = attribute_storage.get(attribute_id)
-                    }
+                    IterEntry::Style(attribute_id) => style = attribute_storage.get(attribute_id),
                 }
             }
             pos.y += 1;
