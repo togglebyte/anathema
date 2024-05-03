@@ -35,7 +35,7 @@ impl Widget for Text {
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let wrap = attributes.get_c("wrap").unwrap_or_default();
-        let mut session = ctx.text.new_session();
+        let mut session = ctx.text.session();
         self.text_key = session.new_key();
 
         let mut layout = TextLayout::new(constraints.max_size(), wrap, session, self.text_key);
@@ -51,12 +51,12 @@ impl Widget for Text {
 
         // Layout text of all the sub-nodes
         children.for_each(|child, _| {
-            let Some((_span, widget_id)) = child.to_mut::<Span>() else {
+            let Some(_span) = child.to_ref::<Span>() else {
                 return ControlFlow::Continue(());
             };
-            layout.set_style(widget_id);
+            layout.set_style(child.id());
 
-            let attributes = ctx.attribs.get(widget_id);
+            let attributes = ctx.attribs.get(child.id());
             if let Some(text) = attributes.value() {
                 text.str_iter(|s| match layout.process(s) {
                     Done => ControlFlow::Break(()),
@@ -82,7 +82,7 @@ impl Widget for Text {
         mut ctx: PaintCtx<'_, SizePos>,
         text_buffer: &mut TextBuffer,
     ) {
-        let session = text_buffer.new_session();
+        let session = text_buffer.session();
         let lines = Lines::new(self.text_key, session);
         let alignment: TextAlignment = attribute_storage.get(id).get_c("text-align").unwrap_or_default();
 

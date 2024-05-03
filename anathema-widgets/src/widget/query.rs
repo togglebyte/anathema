@@ -7,7 +7,7 @@ use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{apply_visitor, Node, NodePath, TreeValues};
 
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, WidgetId, WidgetKind};
+use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
 
 pub struct Elements<'tree, 'bp> {
     nodes: &'tree [Node],
@@ -85,13 +85,14 @@ struct QueryRun<'tag, 'bp, F> {
 
 impl<'tag, 'bp, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'tag, 'bp, F>
 where
-    F: FnMut(&mut Element<'bp>),
+    F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
     fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &NodePath, _widget_id: WidgetId) -> ControlFlow<()> {
         if let WidgetKind::Element(el) = value {
             match self.arg {
                 QueryArg::ByTag(tag) if el.ident == tag => {
-                    (self.f)(el);
+                    let attributes = self.attributes.get_mut(el.id());
+                    (self.f)(el, attributes);
                     if !self.continuous {
                         return ControlFlow::Break(());
                     }
@@ -109,7 +110,8 @@ where
                         .unwrap_or(false);
 
                     if query_result {
-                        (self.f)(el);
+                        let attributes = self.attributes.get_mut(el.id());
+                        (self.f)(el, attributes);
                         if !self.continuous {
                             return ControlFlow::Break(());
                         }
@@ -119,7 +121,8 @@ where
                     let region = Region::from((el.container.pos, el.container.size));
 
                     if region.contains(pos) {
-                        (self.f)(el);
+                        let attributes = self.attributes.get_mut(el.id());
+                        (self.f)(el, attributes);
                         if !self.continuous {
                             return ControlFlow::Break(());
                         }
@@ -141,7 +144,7 @@ pub struct QueryResult<'widgets, 'tree, 'state, 'bp, S> {
 impl<'widgets, 'tree, 'state, 'bp, S> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
     pub fn each<F>(self, f: F)
     where
-        F: FnMut(&mut Element<'_>),
+        F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
     {
         let mut run = QueryRun {
             arg: self.arg,
@@ -154,7 +157,7 @@ impl<'widgets, 'tree, 'state, 'bp, S> QueryResult<'widgets, 'tree, 'state, 'bp, 
         apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
     }
 
-    pub fn first(self, f: impl FnMut(&mut Element<'_>)) {
+    pub fn first(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>)) {
         let mut run = QueryRun {
             arg: self.arg,
             p: PhantomData,

@@ -234,8 +234,8 @@ mod test {
             .instance()
             .render_assert(expected_first)
             .with_widget(|query| {
-                query.by_tag("viewport").first(|el| {
-                    let viewport = el.to_mut::<Viewport>().unwrap().0;
+                query.by_tag("viewport").first(|el, _| {
+                    let viewport = el.to_mut::<Viewport>().unwrap();
                     viewport.scroll_down();
                 });
             })

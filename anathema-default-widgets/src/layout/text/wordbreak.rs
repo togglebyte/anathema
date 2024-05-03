@@ -120,7 +120,7 @@ mod test {
         for input in inputs {
             let size = (5, 10);
 
-            let mut session = text_buffer.new_session();
+            let mut session = text_buffer.session();
             let key = session.new_key();
             let mut layout = TextLayout::new(size, Wrap::WordBreak, session, key);
 
@@ -133,7 +133,7 @@ mod test {
             layout.size();
 
             // Read
-            let session = text_buffer.new_session();
+            let session = text_buffer.session();
             let lines = Lines::new(key, session);
 
             let expected = input.1;

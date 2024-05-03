@@ -47,7 +47,7 @@ impl<'a, T: Copy> Session<'a, T> {
     /// This will panic if there is no slice keys in the buffer.
     /// One can be created with `self.next_slice()`
     pub fn push(&mut self, value: T) {
-        self.buffer.push(value);
+        self.buffer.push(value)
     }
 
     /// Pop a value from the buffer.

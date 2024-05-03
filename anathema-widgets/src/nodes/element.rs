@@ -56,15 +56,11 @@ impl<'bp> Element<'bp> {
         self.container.display
     }
 
-    pub fn to_ref<T: 'static>(&self) -> Option<(&T, WidgetId)> {
-        let widget = self.container.inner.to_any_ref().downcast_ref()?;
-        let id = self.container.id;
-        Some((widget, id))
+    pub fn to_ref<T: 'static>(&self) -> Option<&T> {
+        self.container.inner.to_any_ref().downcast_ref()
     }
 
-    pub fn to_mut<T: 'static>(&mut self) -> Option<(&mut T, WidgetId)> {
-        let widget = self.container.inner.to_any_mut().downcast_mut()?;
-        let id = self.container.id;
-        Some((widget, id))
+    pub fn to_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.container.inner.to_any_mut().downcast_mut()
     }
 }

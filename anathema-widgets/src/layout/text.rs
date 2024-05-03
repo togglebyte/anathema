@@ -27,7 +27,7 @@ impl TextBuffer {
         }
     }
 
-    pub fn new_session(&mut self) -> TextSession<'_> {
+    pub fn session(&mut self) -> TextSession<'_> {
         let bytes = Bytes(self.bytes.new_session());
         let layout = self.layout.new_session();
 
