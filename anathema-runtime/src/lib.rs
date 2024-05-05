@@ -285,7 +285,7 @@ where
 
             // Paint floating widgets
             for widget_id in floating_widgets.iter() {
-                tree.name_this(*widget_id, |widget, children, values| {
+                tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                     let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
                     let mut layout_ctx = LayoutCtx::new(&mut text_buffer, &attribute_storage, &viewport);
 

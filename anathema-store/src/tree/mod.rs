@@ -215,7 +215,7 @@ impl<T> Tree<T> {
     }
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
-    /// while still haveing mutable access to the tree.
+    /// while still having mutable access to the tree.
     pub fn with_value_mut<F>(&mut self, value_id: ValueId, mut f: F)
     where
         F: FnMut(&NodePath, &mut T, &mut Self),
@@ -225,9 +225,9 @@ impl<T> Tree<T> {
         self.values.restore(ticket);
     }
 
-    /// Perform a given operation (`F`) on a mutable reference to a value in the tree
-    /// while still haveing mutable access to the tree.
-    pub fn name_this<F>(&mut self, value_id: ValueId, mut f: F)
+    /// Get mutable access to a node value along with the children
+    /// of that value, while still having mutable access to the values.
+    pub fn with_nodes_and_values<F>(&mut self, value_id: ValueId, mut f: F)
     where
         F: FnMut(&mut T, &[Node], &mut TreeValues<T>),
     {

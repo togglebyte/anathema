@@ -139,7 +139,7 @@ impl TestInstance<'_> {
 
         // Paint floating widgets
         for widget_id in self.floating_widgets.iter() {
-            self.tree.name_this(*widget_id, |widget, children, values| {
+            self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
                 let mut layout_ctx = LayoutCtx::new(text_buffer, attribute_storage, &viewport);
 
