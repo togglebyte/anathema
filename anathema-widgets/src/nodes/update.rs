@@ -1,7 +1,5 @@
-use anathema_state::debug::{DebugOwnedStore, DebugSharedStore};
 use anathema_state::{Change, States};
-use anathema_store::tree::visitor::DebugPrintTree;
-use anathema_store::tree::{AsNodePath, NodePath, PathFinder};
+use anathema_store::tree::{NodePath, PathFinder};
 
 use super::element::Element;
 use super::eval::EvalContext;
@@ -86,7 +84,7 @@ fn update_widget<'bp>(
         }
         WidgetKind::For(for_loop) => for_loop.update(ctx, change, value_id, path, tree),
         WidgetKind::Iteration(_) => todo!(),
-        WidgetKind::ControlFlow(widget) => unreachable!("update is never called on ControlFlow, only the children"),
+        WidgetKind::ControlFlow(_) => unreachable!("update is never called on ControlFlow, only the children"),
         WidgetKind::If(_) | WidgetKind::Else(_) => (), // If / Else are not updated by themselves
         // but rather the ControlFlow is managing
         // these in the layout process instead, as

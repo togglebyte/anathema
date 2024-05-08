@@ -1,12 +1,15 @@
 use std::marker::PhantomData;
 
+use anathema_geometry::Size;
 use anathema_state::{Map, State, StateId, States};
+use anathema_store::tree::TreeForEach;
 use anathema_templates::Expression;
 
 use crate::expressions::{eval, EvalValue};
+use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::scope::{Scope, ScopeLookup};
 use crate::values::{ValueId, ValueIndex};
-use crate::{Value, WidgetId};
+use crate::{AttributeStorage, Factory, PositionChildren, Value, Widget, WidgetId, WidgetKind};
 
 pub struct NoExpr;
 pub struct WithExpr(Expression);
@@ -78,4 +81,37 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let value = eval(&self.test_state.0, &scope, &self.states, value_id);
         f(value)
     }
+}
+
+#[derive(Debug, Default)]
+struct TestWidget;
+
+impl Widget for TestWidget {
+    fn layout(
+        &mut self,
+        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_>>,
+        _: Constraints,
+        _: WidgetId,
+        // _: &AttributeStorage<'_>,
+        // _: &mut TextBuffer,
+        _: &mut LayoutCtx<'_, '_>,
+    ) -> Size {
+        todo!()
+    }
+
+    fn position<'bp>(
+        &mut self,
+        _children: PositionChildren<'_, '_, 'bp>,
+        _: WidgetId,
+        _: &AttributeStorage<'bp>,
+        _ctx: PositionCtx,
+    ) {
+        todo!()
+    }
+}
+
+pub(crate) fn setup_test_factory() -> Factory {
+    let mut fac = Factory::new();
+    fac.register_default::<TestWidget>("test");
+    fac
 }

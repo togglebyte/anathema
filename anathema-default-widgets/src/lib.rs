@@ -18,7 +18,6 @@ mod testing;
 pub use alignment::Align;
 pub use border::Border;
 pub use expand::Expand;
-pub use layout::text::Wrap;
 pub use position::Position;
 pub use stacks::{HStack, VStack};
 pub use text::Text;

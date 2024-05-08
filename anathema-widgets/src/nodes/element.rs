@@ -1,7 +1,8 @@
 use anathema_geometry::{Pos, Size};
 
 use crate::container::Container;
-use crate::layout::{Constraints, Display, LayoutCtx, TextBuffer};
+use crate::layout::text::StringSession;
+use crate::layout::{Constraints, Display, LayoutCtx};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{PaintChildren, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, WidgetId};
@@ -34,10 +35,10 @@ impl<'bp> Element<'bp> {
         &mut self,
         children: PaintChildren<'_, '_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        self.container.paint(children, ctx, text_buffer, attribute_storage)
+        self.container.paint(children, ctx, text, attribute_storage)
     }
 
     pub fn position(

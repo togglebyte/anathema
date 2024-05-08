@@ -6,7 +6,8 @@ use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::Document;
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, TextBuffer, Viewport};
+use anathema_widgets::layout::text::StringStorage;
+use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, EvalContext, Factory, FloatingWidgets,
     LayoutChildren, Scope, Stringify, ValueStack, Widget, WidgetTree,
@@ -33,7 +34,7 @@ pub struct TestCaseRunner<'bp, S> {
     tree: WidgetTree<'bp>,
     attribute_storage: AttributeStorage<'bp>,
     floating_widgets: FloatingWidgets,
-    text_buffer: TextBuffer,
+    text: StringStorage,
     states: States,
     components: ComponentRegistry,
     future_values: FutureValues,
@@ -64,7 +65,7 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&mut self.text_buffer, &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -78,7 +79,7 @@ where
         // Floating widgets
         let mut filter = LayoutFilter::new(false);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&mut self.text_buffer, &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -166,7 +167,7 @@ where
 
         let mut filter = LayoutFilter::new(false);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&mut self.text_buffer, &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -214,7 +215,7 @@ impl TestCase {
             _p: PhantomData,
             blueprint: &self.blueprint,
             tree,
-            text_buffer: TextBuffer::empty(),
+            text: StringStorage::new(),
             states,
             components,
             factory,

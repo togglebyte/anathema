@@ -11,7 +11,8 @@ use anathema_store::tree::{Tree, TreeForEach};
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::{Factory, WidgetFactory};
 pub use self::query::{Elements, Query};
-use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, TextBuffer};
+use crate::layout::text::StringSession;
+use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::paint::{PaintCtx, PaintFilter, SizePos};
 use crate::WidgetKind;
 
@@ -79,7 +80,7 @@ pub trait AnyWidget {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     );
 
     fn any_floats(&self) -> bool;
@@ -122,9 +123,9 @@ impl<T: 'static + Widget> AnyWidget for T {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     ) {
-        self.paint(children, id, attribute_storage, ctx, text_buffer)
+        self.paint(children, id, attribute_storage, ctx, text)
     }
 
     fn any_floats(&self) -> bool {
@@ -156,11 +157,11 @@ pub trait Widget {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
         // TODO make a read-only version of the buffer as it shouldn't change on paint
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     ) {
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
-            child.paint(children, ctx, text_buffer, attribute_storage);
+            child.paint(children, ctx, text, attribute_storage);
             ControlFlow::Continue(())
         });
     }
@@ -188,48 +189,4 @@ pub trait WidgetRenderer {
     fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, local_pos: Pos);
 
     fn size(&self) -> Size;
-}
-
-// -----------------------------------------------------------------------------
-//   - Testing -
-// -----------------------------------------------------------------------------
-struct TestWidget;
-
-impl Widget for TestWidget {
-    fn layout(
-        &mut self,
-        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_>>,
-        _: Constraints,
-        _: WidgetId,
-        // _: &AttributeStorage<'_>,
-        // _: &mut TextBuffer,
-        _: &mut LayoutCtx<'_, '_>,
-    ) -> Size {
-        todo!()
-    }
-
-    fn position<'bp>(
-        &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
-        _: WidgetId,
-        _: &AttributeStorage<'bp>,
-        _ctx: PositionCtx,
-    ) {
-        todo!()
-    }
-}
-
-struct TestWidgetFactory;
-
-impl WidgetFactory for TestWidgetFactory {
-    fn make(&self, _attribs: &Attributes<'_>) -> Box<dyn AnyWidget> {
-        Box::new(TestWidget)
-    }
-}
-
-#[cfg(test)]
-pub(crate) fn setup_test_factory() -> Factory {
-    let mut fac = Factory::new();
-    fac.register_widget("test", TestWidgetFactory);
-    fac
 }

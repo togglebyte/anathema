@@ -28,9 +28,8 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::Document;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
-use anathema_widgets::layout::{
-    layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, TextBuffer, Viewport,
-};
+use anathema_widgets::layout::text::StringStorage;
+use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
     FloatingWidgets, Scope, ValueStack, Widget, WidgetKind, WidgetTree,
@@ -161,7 +160,7 @@ where
             ..
         } = self;
 
-        let mut text_buffer = TextBuffer::empty();
+        let mut string_storage = StringStorage::new();
 
         let size = backend.size();
         let mut viewport = Viewport::new(size);
@@ -191,7 +190,7 @@ where
             );
 
             // Clear the text buffer
-            text_buffer.clear();
+            string_storage.clear();
 
             apply_futures(
                 &mut future_values,
@@ -273,21 +272,22 @@ where
                 //
                 //       That doesn't have as much of an impact here
                 //       as it will do when dealing with the floating widgets
-                let mut layout_ctx = LayoutCtx::new(&mut text_buffer, &attribute_storage, &viewport);
+                let mut layout_ctx = LayoutCtx::new(string_storage.new_session(), &attribute_storage, &viewport);
                 layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
                 // Position
                 position_widget(widget, children, values, &attribute_storage, true);
 
                 // Paint
-                backend.paint(widget, children, values, &mut text_buffer, &attribute_storage, true);
+                let mut string_session = string_storage.new_session();
+                backend.paint(widget, children, values, &mut string_session, &attribute_storage, true);
             });
 
             // Paint floating widgets
             for widget_id in floating_widgets.iter() {
                 tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                     let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                    let mut layout_ctx = LayoutCtx::new(&mut text_buffer, &attribute_storage, &viewport);
+                    let mut layout_ctx = LayoutCtx::new(string_storage.new_session(), &attribute_storage, &viewport);
 
                     layout_widget(el, children, values, self.constraints, &mut layout_ctx, true);
 
@@ -295,7 +295,8 @@ where
                     position_widget(el, children, values, &attribute_storage, true);
 
                     // Paint
-                    backend.paint(el, children, values, &mut text_buffer, &attribute_storage, true);
+                    let mut string_session = string_storage.new_session();
+                    backend.paint(el, children, values, &mut string_session, &attribute_storage, true);
                 });
             }
 

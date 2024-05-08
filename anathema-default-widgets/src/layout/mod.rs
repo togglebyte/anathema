@@ -13,7 +13,6 @@ pub(crate) mod border;
 pub(crate) mod expand;
 pub(crate) mod many;
 mod spacers;
-pub(crate) mod text;
 
 pub(crate) fn single_layout<'bp>(
     mut children: LayoutChildren<'_, '_, 'bp>,

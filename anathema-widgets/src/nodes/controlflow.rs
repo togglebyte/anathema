@@ -1,8 +1,8 @@
-use anathema_store::tree::{Node, NodePath, TreeValues};
+use anathema_store::tree::{Node, TreeValues};
 use anathema_templates::blueprints::Blueprint;
 
 use crate::expressions::EvalValue;
-use crate::{Value, WidgetKind, WidgetTree};
+use crate::{Value, WidgetKind};
 
 #[derive(Debug)]
 pub struct ControlFlow;
@@ -74,8 +74,8 @@ mod test {
     use crate::components::ComponentRegistry;
     use crate::nodes::stringify::Stringify;
     use crate::scope::Scope;
+    use crate::testing::setup_test_factory;
     use crate::values::ValueStack;
-    use crate::widget::setup_test_factory;
     use crate::{eval_blueprint, AttributeStorage, EvalContext, FloatingWidgets};
 
     #[test]

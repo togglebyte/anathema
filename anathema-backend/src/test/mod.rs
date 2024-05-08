@@ -3,7 +3,7 @@ use std::fmt::Display;
 use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::TextBuffer;
+use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::{AttributeStorage, Attributes, Element, WidgetKind, WidgetRenderer};
 
 use crate::Backend;
@@ -45,7 +45,7 @@ impl Backend for TestBackend {
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     ) {
@@ -55,7 +55,7 @@ impl Backend for TestBackend {
             children,
             values,
             attribute_storage,
-            text_buffer,
+            text,
             ignore_floats,
         );
     }

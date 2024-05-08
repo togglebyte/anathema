@@ -3,7 +3,7 @@ use std::time::Duration;
 use anathema_geometry::Size;
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::TextBuffer;
+use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::{AttributeStorage, Element, WidgetKind};
 
 pub mod test;
@@ -23,7 +23,7 @@ pub trait Backend {
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     );

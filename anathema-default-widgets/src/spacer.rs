@@ -1,5 +1,6 @@
 use anathema_geometry::Size;
-use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx, TextBuffer};
+use anathema_widgets::layout::text::StringSession;
+use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
@@ -23,7 +24,7 @@ impl Widget for Spacer {
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PaintCtx<'_, SizePos>,
-        _: &mut TextBuffer,
+        _: &mut StringSession<'_>,
     ) {
         // The spacer widget has no children
     }

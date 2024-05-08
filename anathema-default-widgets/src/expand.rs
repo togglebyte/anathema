@@ -1,7 +1,8 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
-use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx, TextBuffer};
+use anathema_widgets::layout::text::StringSession;
+use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
@@ -54,7 +55,7 @@ impl Widget for Expand {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     ) {
         let attributes = attribute_storage.get(id);
         if let Some(fill) = attributes.get("fill") {
@@ -79,7 +80,7 @@ impl Widget for Expand {
 
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
-            child.paint(children, ctx, text_buffer, attribute_storage);
+            child.paint(children, ctx, text, attribute_storage);
             ControlFlow::Break(())
         });
     }

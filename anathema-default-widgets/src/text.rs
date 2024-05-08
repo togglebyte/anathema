@@ -1,12 +1,53 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
-use anathema_widgets::layout::{Constraints, IterEntry, LayoutCtx, PositionCtx, TextBuffer, TextIndex};
+use anathema_state::CommonVal;
+use anathema_widgets::layout::text::{LayoutKey, ProcessResult, Segment, StringSession};
+use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
-use crate::layout::text::ProcessResult::{Continue, Done};
-use crate::layout::text::{Lines, TextAlignment, TextLayout};
+/// Text alignment aligns the text inside its parent.
+///
+/// Given a border with a width of nine and text alignment set to [`TextAlignment::Right`]:
+/// ```text
+/// ┌───────┐
+/// │I would│
+/// │ like a│
+/// │ lovely│
+/// │ cup of│
+/// │    tea│
+/// │ please│
+/// └───────┘
+/// ```
+///
+/// The text will only align it self within the parent widget.
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Default)]
+pub enum TextAlignment {
+    /// Align the to the left inside the parent
+    #[default]
+    Left,
+    /// Align the text in the centre of the parent
+    Centre,
+    /// Align the to the right inside the parent
+    Right,
+}
+
+impl TryFrom<CommonVal<'_>> for TextAlignment {
+    type Error = ();
+
+    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+        match value {
+            CommonVal::Str(wrap) => match wrap {
+                "left" => Ok(TextAlignment::Left),
+                "right" => Ok(TextAlignment::Right),
+                "centre" | "center" => Ok(TextAlignment::Centre),
+                _ => Err(()),
+            },
+            _ => Err(()),
+        }
+    }
+}
 
 /// Text widget
 /// ```ignore
@@ -22,7 +63,7 @@ use crate::layout::text::{Lines, TextAlignment, TextLayout};
 /// A `Text` widget will be as wide as its text.
 #[derive(Debug, Default)]
 pub struct Text {
-    text_key: TextIndex,
+    text_key: LayoutKey,
 }
 
 impl Widget for Text {
@@ -35,17 +76,15 @@ impl Widget for Text {
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let wrap = attributes.get_c("wrap").unwrap_or_default();
-        let mut session = ctx.text.session();
-        self.text_key = session.new_key();
 
-        let mut layout = TextLayout::new(constraints.max_size(), wrap, session, self.text_key);
+        let mut layout = ctx.text.new_layout(constraints.max_size(), wrap);
         layout.set_style(id);
 
         // Layout text
         attributes.value().map(|value| {
-            value.str_iter(|s| match layout.process(s) {
-                Done => ControlFlow::Break(()),
-                Continue => ControlFlow::Continue(()),
+            value.str_iter(|s| match layout.add_str(s) {
+                ProcessResult::Break => ControlFlow::Break(()),
+                ProcessResult::Continue => ControlFlow::Continue(()),
             })
         });
 
@@ -58,9 +97,9 @@ impl Widget for Text {
 
             let attributes = ctx.attribs.get(child.id());
             if let Some(text) = attributes.value() {
-                text.str_iter(|s| match layout.process(s) {
-                    Done => ControlFlow::Break(()),
-                    Continue => ControlFlow::Continue(()),
+                text.str_iter(|s| match layout.add_str(s) {
+                    ProcessResult::Break => ControlFlow::Break(()),
+                    ProcessResult::Continue => ControlFlow::Continue(()),
                 })?;
 
                 ControlFlow::Continue(())
@@ -69,9 +108,11 @@ impl Widget for Text {
             }
         });
 
-        layout.finish();
+        let (key, size) = layout.finish();
 
-        layout.size()
+        self.text_key = key;
+
+        size
     }
 
     fn paint<'bp>(
@@ -80,33 +121,31 @@ impl Widget for Text {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     ) {
-        let session = text_buffer.session();
-        let lines = Lines::new(self.text_key, session);
-        let alignment: TextAlignment = attribute_storage.get(id).get_c("text-align").unwrap_or_default();
+        let lines = text.lines(self.text_key);
+        let alignment = attribute_storage.get(id).get_c("text-align").unwrap_or_default();
 
         let mut pos = LocalPos::ZERO;
         let mut style = attribute_storage.get(id);
 
-        for line in lines.iter() {
-            let width = line.width as u16;
+        for line in lines {
             let x = match alignment {
                 TextAlignment::Left => 0,
-                TextAlignment::Centre => ctx.local_size.width as u16 / 2 - width / 2,
-                TextAlignment::Right => ctx.local_size.width as u16 - width,
+                TextAlignment::Centre => ctx.local_size.width as u16 / 2 - line.width / 2,
+                TextAlignment::Right => ctx.local_size.width as u16 - line.width,
             };
 
             pos.x = x;
 
-            for entry in line.iter {
+            for entry in line.entries {
                 match entry {
-                    IterEntry::Str(s) => {
+                    Segment::Str(s) => {
                         if let Some(new_pos) = ctx.place_glyphs(s, style, pos) {
                             pos = new_pos;
                         }
                     }
-                    IterEntry::Style(attribute_id) => style = attribute_storage.get(attribute_id),
+                    Segment::SetStyle(attribute_id) => style = attribute_storage.get(attribute_id),
                 }
             }
             pos.y += 1;
@@ -180,20 +219,6 @@ mod test {
            ╔════════════════╗
            ║hello how are   ║
            ║you             ║
-           ║                ║
-           ╚════════════════╝
-           "#;
-
-        TestRunner::new(src, (16, 3)).instance().render_assert(expected);
-    }
-
-    #[test]
-    fn no_word_wrap() {
-        let src = "text [wrap: 'overflow'] 'hello how are you'";
-        let expected = r#"
-           ╔════════════════╗
-           ║hello how are yo║
-           ║                ║
            ║                ║
            ╚════════════════╝
            "#;

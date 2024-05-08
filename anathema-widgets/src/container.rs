@@ -1,6 +1,7 @@
 use anathema_geometry::{LocalPos, Pos, Size};
 
-use crate::layout::{Constraints, Display, LayoutCtx, PositionCtx, TextBuffer};
+use crate::layout::text::StringSession;
+use crate::layout::{Constraints, Display, LayoutCtx, PositionCtx};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
@@ -48,7 +49,7 @@ impl Container {
         &mut self,
         children: PaintChildren<'_, '_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
         let mut ctx = ctx.into_sized(self.size, self.pos);
@@ -65,8 +66,7 @@ impl Container {
             }
         }
 
-        self.inner
-            .any_paint(children, self.id, attribute_storage, ctx, text_buffer)
+        self.inner.any_paint(children, self.id, attribute_storage, ctx, text)
     }
 
     /// Get a mutable reference to the underlying widget of the given type

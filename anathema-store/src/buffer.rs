@@ -89,7 +89,7 @@ impl<'a, T: Copy> Session<'a, T> {
 
     /// See [`Buffer::truncate`]
     pub fn truncate(&mut self, key: SliceIndex, index: usize) {
-        self.buffer.truncate(key, index); 
+        self.buffer.truncate(key, index);
     }
 }
 
@@ -264,7 +264,10 @@ impl<T: Copy> Buffer<T> {
     /// This can only run on the last key, or else it would
     /// damage the indices for the following keys.
     fn truncate(&mut self, key: SliceIndex, index: usize) {
-        assert!(!self.keys.is_empty(), "tried to truncate from a buffer that contains zero slice keys");
+        assert!(
+            !self.keys.is_empty(),
+            "tried to truncate from a buffer that contains zero slice keys"
+        );
         let last_key_index = self.keys.len() - 1;
         assert_eq!(key.0 as usize, last_key_index, "trying to truncate before the last key");
 
@@ -371,7 +374,7 @@ mod test {
         let mut session = buffer.new_session();
 
         let k1 = session.next_slice();
-        let k2 = session.next_slice();
+        let _k2 = session.next_slice();
         buffer.truncate(k1, 0);
     }
 

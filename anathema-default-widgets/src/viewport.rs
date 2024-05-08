@@ -1,7 +1,8 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
-use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx, TextBuffer};
+use anathema_widgets::layout::text::StringSession;
+use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
 
@@ -181,13 +182,13 @@ impl Widget for Viewport {
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     ) {
         let region = ctx.create_region();
         children.for_each(|widget, children| {
             let mut ctx = ctx.to_unsized();
             ctx.set_clip_region(region);
-            widget.paint(children, ctx, text_buffer, attribute_storage);
+            widget.paint(children, ctx, text, attribute_storage);
             ControlFlow::Continue(())
         });
     }

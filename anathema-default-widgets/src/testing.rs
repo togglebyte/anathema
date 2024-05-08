@@ -5,9 +5,8 @@ use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::Document;
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::layout::{
-    layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, TextBuffer, Viewport,
-};
+use anathema_widgets::layout::text::StringStorage;
+use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, AttributeStorage, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope, ValueStack,
     WidgetKind, WidgetRenderer as _, WidgetTree,
@@ -86,7 +85,7 @@ impl TestRunner {
             floating_widgets,
             tree,
             attribute_storage,
-            text_buffer: TextBuffer::empty(),
+            text: StringStorage::new(),
             viewport,
         }
     }
@@ -96,7 +95,7 @@ pub struct TestInstance<'bp> {
     tree: WidgetTree<'bp>,
     attribute_storage: AttributeStorage<'bp>,
     floating_widgets: FloatingWidgets,
-    text_buffer: TextBuffer,
+    text: StringStorage,
     states: &'bp mut States,
     backend: &'bp mut TestBackend,
     viewport: Viewport,
@@ -119,29 +118,33 @@ impl TestInstance<'_> {
         let (width, height) = self.backend.surface.size().into();
         let viewport = Viewport::new((width, height));
         let constraints = Constraints::new(width as usize, height as usize);
-        let _ctx = LayoutCtx::new(&mut self.text_buffer, &self.attribute_storage, &self.viewport);
 
-        let text_buffer = &mut self.text_buffer;
         let attribute_storage = &self.attribute_storage;
 
         let mut filter = LayoutFilter::new(true);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(text_buffer, attribute_storage, &viewport);
+            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(widget, children, values, constraints, &mut layout_ctx, true);
 
             // Position
             position_widget(widget, children, values, attribute_storage, true);
 
             // Paint
-            self.backend
-                .paint(widget, children, values, text_buffer, attribute_storage, true);
+            self.backend.paint(
+                widget,
+                children,
+                values,
+                &mut self.text.new_session(),
+                attribute_storage,
+                true,
+            );
         });
 
         // Paint floating widgets
         for widget_id in self.floating_widgets.iter() {
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(text_buffer, attribute_storage, &viewport);
+                let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
@@ -149,8 +152,14 @@ impl TestInstance<'_> {
                 position_widget(el, children, values, attribute_storage, true);
 
                 // Paint
-                self.backend
-                    .paint(el, children, values, text_buffer, attribute_storage, true);
+                self.backend.paint(
+                    el,
+                    children,
+                    values,
+                    &mut self.text.new_session(),
+                    attribute_storage,
+                    true,
+                );
             });
         }
 
@@ -159,7 +168,7 @@ impl TestInstance<'_> {
         let actual = std::mem::take(&mut self.backend.output);
         let actual = actual.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");
 
-        self.text_buffer.clear();
+        self.text.clear();
 
         eprintln!("{actual}");
 

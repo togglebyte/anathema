@@ -4,7 +4,8 @@ use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Size};
 use anathema_widgets::expressions::EvalValue;
-use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx, TextBuffer};
+use anathema_widgets::layout::text::StringSession;
+use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{
     AnyWidget, AttributeStorage, Attributes, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetFactory,
@@ -455,11 +456,11 @@ impl Widget for Border {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text_buffer: &mut TextBuffer,
+        text: &mut StringSession<'_>,
     ) {
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
-            child.paint(children, ctx, text_buffer, attribute_storage);
+            child.paint(children, ctx, text, attribute_storage);
             ControlFlow::Break(())
         });
 

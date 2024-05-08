@@ -176,7 +176,7 @@ mod test {
     use crate::components::ComponentRegistry;
     use crate::nodes::stringify::Stringify;
     use crate::nodes::{eval_blueprint, update_tree};
-    use crate::widget::setup_test_factory;
+    use crate::testing::setup_test_factory;
     use crate::{AttributeStorage, FloatingWidgets, ValueStack};
 
     #[test]

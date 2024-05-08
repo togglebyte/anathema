@@ -81,7 +81,6 @@ impl<T> Tree<T> {
 
     /// Find the value id by the path
     pub fn id(&self, path: &[u16]) -> Option<ValueId> {
-        let (_, index) = path.split_parent()?;
         self.layout.with(path, |nodes| nodes.value())
     }
 
@@ -129,7 +128,6 @@ impl<T> Tree<T> {
 
     /// Get a reference to a `Node` via a path.
     pub fn get_node_by_path(&mut self, path: &NodePath) -> Option<(&Node, &mut TreeValues<T>)> {
-        let (path, index) = path.split()?;
         self.layout.with(path, |node| node).map(|node| (node, &mut self.values))
     }
 
@@ -137,7 +135,6 @@ impl<T> Tree<T> {
     /// This has an additional cost since the value id has to
     /// be found first.
     pub fn get_mut_by_path(&mut self, path: &[u16]) -> Option<&mut T> {
-        let (path, index) = path.split_parent()?;
         let id = self.id(path)?;
         self.values.get_mut(id).map(|(_, val)| val)
     }
@@ -389,10 +386,6 @@ impl Nodes {
                 }
             }
         }
-    }
-
-    fn get(&self, index: usize) -> Option<&Node> {
-        self.inner.get(index)
     }
 
     fn get_mut(&mut self, index: usize) -> Option<&mut Node> {

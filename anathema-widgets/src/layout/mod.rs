@@ -6,13 +6,13 @@ use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
-pub use self::text::{Bytes, Entry, IterEntry, TextBuffer, TextIndex, TextSession};
+use self::text::StringSession;
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, WidgetId, WidgetKind};
 
 mod constraints;
 mod display;
-mod text;
+pub mod text;
 
 #[derive(Debug)]
 /// A viewport represents the available space in the root
@@ -89,13 +89,13 @@ impl<'a> TreeFilter for LayoutFilter<'a> {
 }
 
 pub struct LayoutCtx<'a, 'bp> {
-    pub text: &'a mut TextBuffer,
+    pub text: StringSession<'a>,
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
 }
 
 impl<'a, 'bp> LayoutCtx<'a, 'bp> {
-    pub fn new(text: &'a mut TextBuffer, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
+    pub fn new(text: StringSession<'a>, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
         Self {
             text,
             attribs,
