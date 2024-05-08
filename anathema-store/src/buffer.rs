@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut, Range};
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct SliceIndex(u32);
 
 #[derive(Debug, Default, Copy, Clone)]
@@ -63,7 +63,7 @@ impl<'a, T: Copy> Session<'a, T> {
     }
 
     /// Remove N elements from the end of the buffer
-    pub fn tail_drain(&mut self, size: usize) {
+    pub fn tail_drain(&mut self, size: u32) {
         self.buffer.tail_drain(size);
     }
 
@@ -78,13 +78,18 @@ impl<'a, T: Copy> Session<'a, T> {
     }
 
     /// Length of the session buffer, not the total buffer
-    pub fn len(&self) -> usize {
-        self.buffer.buf.len()
+    pub fn len(&self) -> u32 {
+        self.buffer.len()
     }
 
     /// It's empty?
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// See [`Buffer::truncate`]
+    pub fn truncate(&mut self, key: SliceIndex, index: usize) {
+        self.buffer.truncate(key, index); 
     }
 }
 
@@ -102,7 +107,7 @@ impl<'a, T: Copy> IndexMut<usize> for Session<'a, T> {
     }
 }
 
-/// A buffer of copy values.
+/// A buffer of copy values with a max size of `u32::MAX`.
 /// Make sure to interreact with the buffer through a session
 /// when writing and reading from the buffer:
 /// ```
@@ -153,6 +158,13 @@ impl<T: Copy> Buffer<T> {
     /// Insert a value into the buffer.
     /// This will cause all the keys update after the
     fn insert(&mut self, index: usize, value: T) {
+        assert!(index < u32::MAX as usize);
+
+        if self.buf.len() == index {
+            self.push(value);
+            return;
+        }
+
         self.buf.insert(index, value);
 
         // Find the slice key where the insert happens.
@@ -225,12 +237,12 @@ impl<T: Copy> Buffer<T> {
     /// # Panics
     ///
     /// Panics if there are no keys in the buffer
-    pub fn tail_drain(&mut self, size: usize) {
+    pub fn tail_drain(&mut self, size: u32) {
         assert!(!self.keys.is_empty());
         let key_index = self.keys.len() - 1;
-        self.keys[key_index].end -= size as u32;
-        let pos = self.buf.len() - size;
-        let _ = self.buf.drain(pos..);
+        self.keys[key_index].end -= size;
+        let pos = self.len() - size;
+        let _ = self.buf.drain(pos as usize..);
     }
 
     /// Clear the entire buffer
@@ -242,6 +254,24 @@ impl<T: Copy> Buffer<T> {
     /// Get a reference to the last value in the buffer
     fn last(&self) -> Option<&T> {
         self.buf.last()
+    }
+
+    fn len(&self) -> u32 {
+        self.buf.len() as u32
+    }
+
+    /// Truncate the storage.
+    /// This can only run on the last key, or else it would
+    /// damage the indices for the following keys.
+    fn truncate(&mut self, key: SliceIndex, index: usize) {
+        assert!(!self.keys.is_empty(), "tried to truncate from a buffer that contains zero slice keys");
+        let last_key_index = self.keys.len() - 1;
+        assert_eq!(key.0 as usize, last_key_index, "trying to truncate before the last key");
+
+        let slice = &mut self.keys[key.0 as usize];
+        let index = index + slice.start as usize;
+        self.buf.truncate(index);
+        slice.end = self.buf.len() as u32;
     }
 }
 
@@ -325,5 +355,33 @@ mod test {
         let key = buffer.keys[0];
         assert_eq!(key.start, 0);
         assert_eq!(key.end, 7);
+    }
+
+    #[test]
+    #[should_panic(expected = "tried to truncate from a buffer that contains zero slice keys")]
+    fn truncate_empty_buffer() {
+        let mut buffer = Buffer::<u8>::empty();
+        buffer.truncate(SliceIndex(0), 123);
+    }
+
+    #[test]
+    #[should_panic(expected = "trying to truncate before the last key")]
+    fn truncate_before_last_key() {
+        let mut buffer = Buffer::<u8>::empty();
+        let mut session = buffer.new_session();
+
+        let k1 = session.next_slice();
+        let k2 = session.next_slice();
+        buffer.truncate(k1, 0);
+    }
+
+    #[test]
+    fn truncate() {
+        let mut buffer = Buffer::<u8>::empty();
+        let mut session = buffer.new_session();
+        let k1 = session.next_slice();
+        session.extend([1, 2, 3]);
+        session.truncate(k1, 2);
+        assert_eq!(&[1, 2], session.slice(k1));
     }
 }
