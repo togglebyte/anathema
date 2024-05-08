@@ -116,7 +116,6 @@ impl TestInstance<'_> {
         let expected = expected.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");
 
         let (width, height) = self.backend.surface.size().into();
-        let viewport = Viewport::new((width, height));
         let constraints = Constraints::new(width as usize, height as usize);
 
         let attribute_storage = &self.attribute_storage;

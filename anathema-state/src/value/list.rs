@@ -75,23 +75,27 @@ impl<T: 'static + State> Value<List<T>> {
         let key = self.key;
         let list = &mut *self.to_mut();
         let value = list.inner.pop_front();
-        changed(key.sub(), Change::Removed(0));
+        if value.is_some() {
+            changed(key.sub(), Change::Removed(0));
+        }
         value
     }
 
-    // pub fn pop_back(&mut self) -> Option<Value<T>> {
-    //     panic!("this is not done, needs to be reviewed");
-    //     if self.is_empty() {
-    //         return None;
-    //     }
-    //     // let key = self.key;
-    //     // let list = &mut *self.to_mut();
-    //     // let value = list.inner.pop_back();
-    //     let index = self.len() - 1;
-    //     // changed(key.sub(), Change::Removed(index));
-    //     self.remove(index)
-    //     // value
-    // }
+    pub fn pop_back(&mut self) -> Option<Value<T>> {
+        let key = self.key;
+        let list = &mut *self.to_mut();
+
+        if list.inner.is_empty() {
+            return None;
+        }
+
+        let value = list.inner.pop_back();
+        if value.is_some() {
+            let index = list.inner.len();
+            changed(key.sub(), Change::Removed(index));
+        }
+        value
+    }
 
     pub fn for_each<F>(&mut self, mut f: F)
     where
@@ -171,17 +175,18 @@ mod test {
         assert_eq!(val, 1);
     }
 
-    fn setup_map<T: 'static + State>(key: &str, value: T) -> Value<Map<List<T>>> {
+    fn setup_map<T: 'static + State>(key: &str, a: T, b: T) -> Value<Map<List<T>>> {
         let mut map = Map::<List<T>>::empty();
         let mut list = List::empty();
-        list.push_back(value);
+        list.push_back(a);
+        list.push_back(b);
         map.insert(key, list);
         map
     }
 
     #[test]
     fn notify_insert() {
-        let mut map = setup_map("a", 123);
+        let mut map = setup_map("a", 1, 2);
 
         let mut list = map.to_mut();
         let list = list.get_mut("a").unwrap();
@@ -194,7 +199,7 @@ mod test {
 
     #[test]
     fn notify_remove() {
-        let mut map = setup_map("a", 123);
+        let mut map = setup_map("a", 1, 2);
 
         let mut list = map.to_mut();
         let list = list.get_mut("a").unwrap();
@@ -203,5 +208,33 @@ mod test {
 
         let change = drain_changes().remove(0);
         assert!(matches!(change, (_, Change::Removed(_))));
+    }
+
+    #[test]
+    fn notify_pop_front() {
+        let mut map = setup_map("a", 1, 2);
+
+        let mut list = map.to_mut();
+        let list = list.get_mut("a").unwrap();
+
+        let _vr = list.value_ref(Subscriber::ZERO);
+        list.pop_front();
+
+        let change = drain_changes().remove(0);
+        assert!(matches!(change, (_, Change::Removed(0))));
+    }
+
+    #[test]
+    fn notify_pop_back() {
+        let mut map = setup_map("a", 1, 2);
+
+        let mut list = map.to_mut();
+        let list = list.get_mut("a").unwrap();
+
+        let _vr = list.value_ref(Subscriber::ZERO);
+        list.pop_back();
+
+        let change = drain_changes().remove(0);
+        assert!(matches!(change, (_, Change::Removed(1))));
     }
 }

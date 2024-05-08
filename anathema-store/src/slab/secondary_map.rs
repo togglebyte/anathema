@@ -43,6 +43,11 @@ impl<T> SecondaryMap<T> {
         self.0.remove(key)
     }
 
+    /// Try to remove a value from the map
+    pub fn try_remove(&mut self, key: Key) -> Option<T> {
+        self.0.try_remove(key)
+    }
+
     /// Produce an iterator over the values in the secondary map
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.0.iter()

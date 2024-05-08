@@ -28,7 +28,7 @@ impl FloatingWidgets {
     }
 
     pub fn remove(&mut self, key: WidgetId) {
-        self.0.remove(key);
+        self.0.try_remove(key);
     }
 
     pub(crate) fn insert(&mut self, widget_id: WidgetId) {

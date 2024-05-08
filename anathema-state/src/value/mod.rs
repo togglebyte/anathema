@@ -20,12 +20,7 @@ mod map;
 
 /// A value that reacts to change.
 ///
-/// The `Value` has two generic args:
-/// * T = The type
-/// * S = The subscriber type
-///
-/// In this example the `()` is used as a default
-/// subscriber as it's a noop
+/// The value is stored in a global store and accessed via the `Value`.
 /// ```
 /// # use anathema_state::*;
 /// let mut value = Value::<usize>::new(1);

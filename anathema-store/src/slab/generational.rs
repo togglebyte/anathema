@@ -345,6 +345,26 @@ impl<T> GenSlab<T> {
         Some(ret)
     }
 
+    /// Try to remove a value from the slab, where the index and generation matches
+    pub fn try_remove(&mut self, mut key: Key) -> Option<T> {
+        if self.inner.len() <= *key.index as usize {
+            return None;
+        }
+        let mut entry = Entry::Vacant(self.next_id.take());
+        // Increment the generation
+        std::mem::swap(&mut self.inner[*key.index as usize], &mut entry);
+
+        let ret = match entry {
+            Entry::Occupied(val, gen) if gen == key.gen => val,
+            Entry::Vacant(..) | Entry::Occupied(..) | Entry::CheckedOut(_) => return None,
+        };
+
+        key.bump();
+        self.next_id = Some(key);
+
+        Some(ret)
+    }
+
     /// Get a reference to a value in the slab
     pub fn get(&self, key: Key) -> Option<&T> {
         match self.inner.get(*key.index as usize)? {
