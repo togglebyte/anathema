@@ -108,12 +108,11 @@ pub fn layout_widget<'bp>(
     element: &mut Element<'bp>,
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
-    _constraints: Constraints,
+    constraints: Constraints,
     ctx: &mut LayoutCtx<'_, 'bp>,
     ignore_floats: bool,
 ) {
     let filter = LayoutFilter::new(ignore_floats);
-    let constraints = ctx.viewport.constraints();
     let children = TreeForEach::new(children, values, &filter);
     element.layout(children, constraints, ctx);
 }

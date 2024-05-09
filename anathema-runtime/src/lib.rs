@@ -286,11 +286,11 @@ where
                 // Find the parent widget and get the position
                 // If no parent element is found assume Pos::ZERO
                 let mut parent = tree.path(*widget_id).pop();
-                let pos = loop {
+                let (pos, constraints) = loop {
                     match parent {
-                        None => break Pos::ZERO,
+                        None => break (Pos::ZERO, self.constraints),
                         Some(p) => match tree.get_ref_by_path(p) {
-                            Some(WidgetKind::Element(el)) => break el.container.pos,
+                            Some(WidgetKind::Element(el)) => break (el.container.pos, Constraints::from(el.size())),
                             _ => parent = p.pop(),
                         },
                     }
@@ -300,7 +300,7 @@ where
                     let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
                     let mut layout_ctx = LayoutCtx::new(string_storage.new_session(), &attribute_storage, &viewport);
 
-                    layout_widget(el, children, values, self.constraints, &mut layout_ctx, true);
+                    layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
                     // Position
                     position_widget(pos, el, children, values, &attribute_storage, true);

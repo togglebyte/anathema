@@ -184,3 +184,9 @@ impl Constraints {
         (self.max_width, self.max_height).into()
     }
 }
+
+impl From<Size> for Constraints {
+    fn from(value: Size) -> Self {
+        Self::new(value.width, value.height)
+    }
+}
