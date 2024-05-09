@@ -113,6 +113,15 @@ where
         })
     }
 
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: PartialEq + ?Sized,
+    {
+        let idx = self.get_index(key)?;
+        self.0.try_remove(idx).map(|(_, v)| v)
+    }
+
     /// Iterate over the key-value pairs of the map.
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> + '_ {
         self.0.iter().map(|(_, (k, v))| (k, v))

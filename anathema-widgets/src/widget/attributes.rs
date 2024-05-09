@@ -86,6 +86,11 @@ impl<'bp> Attributes<'bp> {
         self.values.insert_with(key, f)
     }
 
+    pub fn remove(&mut self, key: &'bp str) -> Option<Value<'_, EvalValue<'_>>> {
+        let key = ValueKey::Attribute(key);
+        self.values.remove(&key)
+    }
+
     /// Get the `Value` out of attributes.
     /// This is always the first item
     pub fn value(&self) -> Option<&Value<'_, EvalValue<'_>>> {
