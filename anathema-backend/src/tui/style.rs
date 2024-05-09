@@ -135,6 +135,34 @@ impl TryFrom<CommonVal<'_>> for Color {
     }
 }
 
+impl TryFrom<Color> for CommonVal<'_> {
+    type Error = ();
+
+    fn try_from(value: Color) -> std::prelude::v1::Result<Self, Self::Error> {
+        match value {
+            Color(CTColor::Rgb { r, g, b }) => Ok(CommonVal::Hex(Hex::from((r, g, b)))),
+            Color(CTColor::Reset) => Ok(CommonVal::Str("reset")),
+            Color(CTColor::Black) => Ok(CommonVal::Str("black")),
+            Color(CTColor::DarkGrey) => Ok(CommonVal::Str("dark_grey")),
+            Color(CTColor::Red) => Ok(CommonVal::Str("red")),
+            Color(CTColor::DarkRed) => Ok(CommonVal::Str("dark_red")),
+            Color(CTColor::Green) => Ok(CommonVal::Str("green")),
+            Color(CTColor::DarkGreen) => Ok(CommonVal::Str("dark_green")),
+            Color(CTColor::Yellow) => Ok(CommonVal::Str("yellow")),
+            Color(CTColor::DarkYellow) => Ok(CommonVal::Str("dark_yellow")),
+            Color(CTColor::Blue) => Ok(CommonVal::Str("blue")),
+            Color(CTColor::DarkBlue) => Ok(CommonVal::Str("dark_blue")),
+            Color(CTColor::Magenta) => Ok(CommonVal::Str("magenta")),
+            Color(CTColor::DarkMagenta) => Ok(CommonVal::Str("dark_magenta")),
+            Color(CTColor::Cyan) => Ok(CommonVal::Str("cyan")),
+            Color(CTColor::DarkCyan) => Ok(CommonVal::Str("dark_cyan")),
+            Color(CTColor::White) => Ok(CommonVal::Str("white")),
+            Color(CTColor::Grey) => Ok(CommonVal::Str("grey")),
+            _ => Err(()),
+        }
+    }
+}
+
 /// The style for a cell in a [`crate::Buffer`]
 /// A style is applied to ever single cell in a [`crate::Buffer`].
 ///

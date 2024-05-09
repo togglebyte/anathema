@@ -47,3 +47,9 @@ pub struct Hex {
     pub g: u8,
     pub b: u8,
 }
+
+impl From<(u8, u8, u8)> for Hex {
+    fn from((r, g, b): (u8, u8, u8)) -> Self {
+        Self { r, g, b }
+    }
+}
