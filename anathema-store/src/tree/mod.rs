@@ -121,7 +121,7 @@ impl<T> Tree<T> {
     /// Get a reference by path.
     /// This has an additional cost since the value id has to
     /// be found first.
-    pub fn get_ref_by_path(&self, path: &NodePath) -> Option<&T> {
+    pub fn get_ref_by_path(&self, path: &[u16]) -> Option<&T> {
         let id = self.id(path)?;
         self.values.get(id).map(|(_, val)| val)
     }

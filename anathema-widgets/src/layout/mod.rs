@@ -119,6 +119,7 @@ pub fn layout_widget<'bp>(
 }
 
 pub fn position_widget<'bp>(
+    pos: Pos,
     element: &mut Element<'bp>,
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
@@ -127,7 +128,7 @@ pub fn position_widget<'bp>(
 ) {
     let filter = LayoutFilter::new(ignore_floats);
     let children = TreeForEach::new(children, values, &filter);
-    element.position(children, Pos::ZERO, attribute_storage);
+    element.position(children, pos, attribute_storage);
 }
 
 pub struct PositionCtx {

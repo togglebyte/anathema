@@ -21,9 +21,9 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
-use anathema_geometry::Size;
+use anathema_geometry::{Pos, Size};
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, States};
-use anathema_store::tree::NodePath;
+use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::Document;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
@@ -274,15 +274,28 @@ where
                 layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
                 // Position
-                position_widget(widget, children, values, &attribute_storage, true);
+                position_widget(Pos::ZERO, widget, children, values, &attribute_storage, true);
 
                 // Paint
                 let mut string_session = string_storage.new_session();
                 backend.paint(widget, children, values, &mut string_session, &attribute_storage, true);
             });
 
-            // Paint floating widgets
+            // Floating widgets
             for widget_id in floating_widgets.iter() {
+                // Find the parent widget and get the position
+                // If no parent element is found assume Pos::ZERO
+                let mut parent = tree.path(*widget_id).pop();
+                let pos = loop {
+                    match parent {
+                        None => break Pos::ZERO,
+                        Some(p) => match tree.get_ref_by_path(p) {
+                            Some(WidgetKind::Element(el)) => break el.container.pos,
+                            _ => parent = p.pop(),
+                        },
+                    }
+                };
+
                 tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                     let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
                     let mut layout_ctx = LayoutCtx::new(string_storage.new_session(), &attribute_storage, &viewport);
@@ -290,7 +303,7 @@ where
                     layout_widget(el, children, values, self.constraints, &mut layout_ctx, true);
 
                     // Position
-                    position_widget(el, children, values, &attribute_storage, true);
+                    position_widget(pos, el, children, values, &attribute_storage, true);
 
                     // Paint
                     let mut string_session = string_storage.new_session();

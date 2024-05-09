@@ -2,6 +2,8 @@ use std::ops::{Add, Deref};
 
 pub trait AsNodePath {
     fn split_parent(&self) -> Option<(&[u16], usize)>;
+
+    fn pop(&self) -> Option<&[u16]>;
 }
 
 impl AsNodePath for [u16] {
@@ -12,11 +14,23 @@ impl AsNodePath for [u16] {
             [parent @ .., i] => Some((parent, *i as usize)),
         }
     }
+
+    fn pop(&self) -> Option<&[u16]> {
+        match self {
+            [] => None,
+            [_] => None,
+            [parent @ .., _] => Some(parent),
+        }
+    }
 }
 
 impl AsNodePath for NodePath {
     fn split_parent(&self) -> Option<(&[u16], usize)> {
         self.split()
+    }
+
+    fn pop(&self) -> Option<&[u16]> {
+        self.as_slice().pop()
     }
 }
 
@@ -55,11 +69,6 @@ impl NodePath {
 
     pub fn as_slice_mut(&mut self) -> &mut [u16] {
         &mut self.0
-    }
-
-    pub fn pop(&mut self) {
-        let len = self.0.len();
-        self.0 = self.0[..len - 1].to_vec().into_boxed_slice();
     }
 }
 

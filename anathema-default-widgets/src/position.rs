@@ -20,9 +20,9 @@ pub enum VertEdge {
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub enum Placement {
     /// Widget is positioned relative to its parent
+    #[default]
     Relative,
     /// Absolute position of a widget
-    #[default]
     Absolute,
 }
 
@@ -71,11 +71,7 @@ impl Widget for Position {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribs.get(id);
-        // TODO after the merge enable relative floats.
-        //      This requires that we have the parent position
-        //      when we do the layout.
-        //      - TB 2024-05-02
-        self.placement = Placement::Absolute; //attribs.get_c("placement").unwrap_or_default();
+        self.placement = attribs.get("placement").unwrap_or_default();
 
         self.horz_edge = match attribs.get("left") {
             Some(left) => HorzEdge::Left(left),
