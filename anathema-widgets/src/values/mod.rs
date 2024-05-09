@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use anathema_state::ValueRef;
-use anathema_store::smallmap::{MapStack, SmallIndex, SmallMap, SmallMapBuilder};
+use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::Expression;
 
 use crate::expressions::{Either, EvalValue};
@@ -11,8 +11,6 @@ use crate::Scope;
 pub(crate) type ValueId = anathema_state::Subscriber;
 pub type ValueIndex = SmallIndex;
 pub type Values<'bp> = SmallMap<ValueKey<'bp>, Value<'bp, EvalValue<'bp>>>;
-pub(crate) type ValuesBuilder<'stack, 'bp> = SmallMapBuilder<'stack, ValueKey<'bp>, Value<'bp, EvalValue<'bp>>>;
-pub type ValueStack<'bp> = MapStack<ValueKey<'bp>, Value<'bp, EvalValue<'bp>>>;
 
 /// A value that can be re-evaluated in the future.
 ///
@@ -39,13 +37,12 @@ pub type ValueStack<'bp> = MapStack<ValueKey<'bp>, Value<'bp, EvalValue<'bp>>>;
 #[derive(Debug)]
 pub struct Value<'bp, T> {
     inner: T,
-    pub(crate) index: ValueIndex,
-    pub(crate) expr: &'bp Expression,
+    pub(crate) expr: Option<&'bp Expression>,
 }
 
 impl<'bp, T> Value<'bp, T> {
-    pub fn new(index: ValueIndex, inner: T, expr: &'bp Expression) -> Self {
-        Self { index, inner, expr }
+    pub fn new(inner: T, expr: Option<&'bp Expression>) -> Self {
+        Self { inner, expr }
     }
 
     pub(crate) fn inner(&self) -> &T {
@@ -70,6 +67,19 @@ impl<'bp, T> Deref for Value<'bp, T> {
 impl<'bp, T> DerefMut for Value<'bp, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
+    }
+}
+
+impl<'bp, T> From<T> for Value<'bp, EvalValue<'bp>>
+where
+    EvalValue<'bp>: From<T>,
+{
+    fn from(value: T) -> Self {
+        let value: EvalValue<'_> = value.into();
+        Self {
+            inner: value,
+            expr: None,
+        }
     }
 }
 

@@ -10,7 +10,7 @@ use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, EvalContext, Factory, FloatingWidgets,
-    LayoutChildren, Scope, Stringify, ValueStack, Widget, WidgetTree,
+    LayoutChildren, Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]
@@ -49,13 +49,11 @@ where
     fn exec(&mut self) {
         let mut scope = Scope::new();
         scope.insert_state(StateId::ZERO);
-        let mut value_store = ValueStack::empty();
         let mut ctx = EvalContext::new(
             &self.factory,
             &mut scope,
             &mut self.states,
             &mut self.components,
-            &mut value_store,
             &mut self.attribute_storage,
             &mut self.floating_widgets,
         );
@@ -109,14 +107,12 @@ where
             scope.clear();
             scope.insert_state(StateId::ZERO);
             let path = self.tree.path(sub).clone();
-            let mut value_store = ValueStack::empty();
 
             try_resolve_future_values(
                 &self.factory,
                 &mut scope,
                 &mut self.states,
                 &mut self.components,
-                &mut value_store,
                 sub,
                 &path,
                 &mut self.tree,
@@ -134,7 +130,6 @@ where
                 scope.clear();
                 scope.insert_state(StateId::ZERO);
                 let Some(path) = self.tree.try_path(sub).cloned() else { return };
-                let mut value_store = ValueStack::empty();
 
                 update_tree(
                     &self.factory,
@@ -142,7 +137,6 @@ where
                     &mut self.states,
                     &mut self.components,
                     &change,
-                    &mut value_store,
                     sub,
                     &path,
                     &mut self.tree,

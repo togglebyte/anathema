@@ -75,7 +75,6 @@ mod test {
     use crate::nodes::stringify::Stringify;
     use crate::scope::Scope;
     use crate::testing::setup_test_factory;
-    use crate::values::ValueStack;
     use crate::{eval_blueprint, AttributeStorage, EvalContext, FloatingWidgets};
 
     #[test]
@@ -105,14 +104,12 @@ mod test {
         let mut scope = Scope::new();
         scope.insert_state(state_id);
         let blueprint = &blueprints[0];
-        let mut value_store = ValueStack::empty();
 
         let mut ctx = EvalContext::new(
             &factory,
             &mut scope,
             &mut states,
             &mut components,
-            &mut value_store,
             &mut attribute_storage,
             &mut floating_widgets,
         );

@@ -296,12 +296,15 @@ impl<'bp> EvalValue<'bp> {
     pub fn load<T>(&self) -> Option<T>
     where
         T: 'static,
-        T: TryFrom<CommonVal<'bp>>,
+        T: for<'a> TryFrom<CommonVal<'a>>,
         T: Copy + PartialEq,
     {
         match self {
             EvalValue::Static(p) => (*p).try_into().ok(),
-            EvalValue::Dyn(val) => Some(*val.value::<T>()?),
+            EvalValue::Dyn(val) => match val.value::<T>() {
+                Some(value) => Some(*value),
+                None => val.as_state()?.to_common()?.try_into().ok(),
+            },
             EvalValue::Op(lhs, rhs, op) => {
                 let lhs = lhs.load_number()?;
                 let rhs = rhs.load_number()?;
@@ -330,6 +333,24 @@ impl<'bp> EvalValue<'bp> {
             EvalValue::Empty => None,
             e => panic!("{e:?}"),
         }
+    }
+}
+
+impl From<PendingValue> for EvalValue<'_> {
+    fn from(value: PendingValue) -> Self {
+        Self::Pending(value)
+    }
+}
+
+impl<'bp> From<CommonVal<'bp>> for EvalValue<'bp> {
+    fn from(value: CommonVal<'bp>) -> Self {
+        Self::Static(value)
+    }
+}
+
+impl From<ValueRef> for EvalValue<'_> {
+    fn from(value: ValueRef) -> Self {
+        Self::Dyn(value)
     }
 }
 
@@ -543,7 +564,7 @@ pub(crate) fn eval<'bp>(
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
     let value = ValueResolver::new().resolve(expr, scope, states, Some(value_id));
-    Value::new(value_id.index(), value, expr)
+    Value::new(value, Some(expr))
 }
 
 pub(crate) fn eval_collection<'bp>(
@@ -559,7 +580,7 @@ pub(crate) fn eval_collection<'bp>(
         _ => Collection::Future,
     };
 
-    Value::new(value_id.index(), collection, expr)
+    Value::new(collection, Some(expr))
 }
 
 #[cfg(test)]

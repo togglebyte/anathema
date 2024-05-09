@@ -412,17 +412,17 @@ impl Widget for Border {
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         self.sides = attributes
-            .get("sides")
+            .get_val("sides")
             .and_then(|s| Sides::try_from(s.deref()).ok())
             .unwrap_or_default();
 
-        self.border_style = attributes.get_r("border-style").unwrap_or_default();
+        self.border_style = attributes.get_ref("border-style").unwrap_or_default();
 
         let mut layout = BorderLayout {
-            min_width: attributes.get_c("min-width"),
-            min_height: attributes.get_c("min-height"),
-            height: attributes.get_c("height"),
-            width: attributes.get_c("width"),
+            min_width: attributes.get("min-width"),
+            min_height: attributes.get("min-height"),
+            height: attributes.get("height"),
+            width: attributes.get("width"),
             border_size: self.border_size(self.sides),
         };
 
@@ -492,10 +492,10 @@ pub(crate) struct BorderFactory;
 
 impl WidgetFactory for BorderFactory {
     fn make(&self, attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-        let border_style: BorderStyle = attributes.get_r("border-style").unwrap_or_default();
+        let border_style: BorderStyle = attributes.get_ref("border-style").unwrap_or_default();
 
         let sides = attributes
-            .get("sides")
+            .get_val("sides")
             .and_then(|s| Sides::try_from(s.deref()).ok())
             .unwrap_or_default();
 

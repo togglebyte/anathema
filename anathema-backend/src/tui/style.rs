@@ -366,16 +366,12 @@ impl<'bp> From<&Attribs<'bp>> for Style {
     fn from(attributes: &Attribs<'bp>) -> Self {
         let mut style = Self::new();
 
-        if let Some(fg) = attributes.get("foreground").and_then(|val| val.load::<Color>()) {
+        if let Some(fg) = attributes.get::<Color>("foreground") {
             style.fg = fg.into();
         }
-        if let Some(bg) = attributes.get("background").and_then(|val| val.load::<Color>()) {
+        if let Some(bg) = attributes.get::<Color>("background") {
             style.bg = bg.into();
         }
-
-        // panic!("need to figure out how to translate colours");
-        // style.fg = self.color("foreground");
-        // style.bg = self.color("background");
 
         if attributes.get_bool("bold") {
             style.attributes |= Attributes::BOLD;

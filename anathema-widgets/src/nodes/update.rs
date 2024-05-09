@@ -7,14 +7,13 @@ use super::loops::LOOP_INDEX;
 use crate::components::ComponentRegistry;
 use crate::values::ValueId;
 use crate::widget::FloatingWidgets;
-use crate::{AttributeStorage, Factory, Scope, ValueStack, WidgetKind, WidgetTree};
+use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
 
 struct UpdateTree<'a, 'b, 'bp> {
     value_id: ValueId,
     change: &'a Change,
     factory: &'a Factory,
     scope: &'b mut Scope<'bp>,
-    value_store: &'b mut ValueStack<'bp>,
     states: &'b mut States,
     components: &'b mut ComponentRegistry,
     attribute_storage: &'b mut AttributeStorage<'bp>,
@@ -27,7 +26,6 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
         let mut ctx = EvalContext {
             factory: self.factory,
             scope: self.scope,
-            value_store: self.value_store,
             states: self.states,
             components: self.components,
             attribute_storage: self.attribute_storage,
@@ -49,7 +47,6 @@ pub fn update_tree<'bp>(
     states: &mut States,
     components: &mut ComponentRegistry,
     change: &Change,
-    value_store: &mut ValueStack<'bp>,
     value_id: ValueId,
     path: &NodePath,
     tree: &mut WidgetTree<'bp>,
@@ -61,7 +58,6 @@ pub fn update_tree<'bp>(
         change,
         factory,
         scope,
-        value_store,
         states,
         components,
         attribute_storage,

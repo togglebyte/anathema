@@ -8,8 +8,8 @@ use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, AttributeStorage, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope, ValueStack,
-    WidgetKind, WidgetRenderer as _, WidgetTree,
+    eval_blueprint, AttributeStorage, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope, WidgetKind,
+    WidgetRenderer as _, WidgetTree,
 };
 
 use crate::register_default_widgets;
@@ -65,13 +65,11 @@ impl TestRunner {
 
         let mut scope = Scope::new();
         scope.insert_state(StateId::ZERO);
-        let mut value_store = ValueStack::empty();
         let mut ctx = EvalContext::new(
             &self.factory,
             &mut scope,
             &mut self.states,
             &mut self.components,
-            &mut value_store,
             &mut attribute_storage,
             &mut floating_widgets,
         );

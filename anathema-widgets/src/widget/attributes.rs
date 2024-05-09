@@ -42,46 +42,90 @@ impl<'bp> AttributeStorage<'bp> {
 // Therefore we don't need the index anymore and the entire underlying storage
 // should be replaced with something that can have new values added, old values removed.
 #[derive(Debug)]
-pub struct Attributes<'bp>(pub(crate) Values<'bp>);
+pub struct Attributes<'bp> {
+    pub(crate) values: Values<'bp>,
+    widget_id: WidgetId,
+}
 
 impl<'bp> Attributes<'bp> {
+    /// Create an empty set of attributes
+    pub fn empty(widget_id: WidgetId) -> Self {
+        Self {
+            values: Values::empty(),
+            widget_id,
+        }
+    }
+
+    pub fn set(&mut self, key: &'bp str, value: impl Into<Value<'bp, EvalValue<'bp>>>) {
+        let value = value.into();
+        // If the value is a `PendingValue` it has to be resolved before
+        // it can be added to attributes
+        if let EvalValue::Pending(p) = &*value {
+            let key = ValueKey::Attribute(key);
+            match self.values.get_index(&key) {
+                Some(idx) => {
+                    let valueref = p.to_value((self.widget_id, idx).into());
+                    self.values.set(key, valueref.into());
+                }
+                None => {
+                    self.values.insert_with(key, |idx| {
+                        let valueref = p.to_value((self.widget_id, idx).into());
+                        valueref.into()
+                    });
+                }
+            }
+        } else {
+            self.values.set(ValueKey::Attribute(key), value);
+        }
+    }
+
+    pub(crate) fn insert_with<F>(&mut self, key: ValueKey<'bp>, f: F)
+    where
+        F: Fn(SmallIndex) -> Value<'bp, EvalValue<'bp>>,
+    {
+        self.values.insert_with(key, f)
+    }
+
     /// Get the `Value` out of attributes.
     /// This is always the first item
     pub fn value(&self) -> Option<&Value<'_, EvalValue<'_>>> {
-        self.0.get(ValueIndex::ZERO)
+        self.values.get_with_index(ValueIndex::ZERO)
     }
 
-    // TODO this is get_copy, rename this
-    pub fn get_c<T: 'static + Copy + PartialEq + TryFrom<CommonVal<'bp>>>(&self, key: &str) -> Option<T> {
-        let value = self.get(key)?;
+    pub fn get<T>(&self, key: &'bp str) -> Option<T>
+    where
+        T: 'static,
+        T: Copy + PartialEq,
+        for<'a> T: TryFrom<CommonVal<'a>>,
+    {
+        let value = self.get_val(key)?;
         value.load::<T>()
     }
 
-    // TODO this is get_reference, rename this
-    pub fn get_r<'a, T: TryFrom<&'a EvalValue<'bp>>>(&'a self, key: &str) -> Option<T> {
-        self.get(key).and_then(|s| T::try_from(s.deref()).ok())
+    pub fn get_ref<'a, T: TryFrom<&'a EvalValue<'bp>>>(&'a self, key: &'bp str) -> Option<T> {
+        self.get_val(key).and_then(|s| T::try_from(s.deref()).ok())
     }
 
-    pub fn get(&self, key: &str) -> Option<&Value<'_, EvalValue<'bp>>> {
-        let index = self.0.get_index(&ValueKey::Attribute(key))?;
-        self.0.get(index)
+    pub fn get_val(&self, key: &'bp str) -> Option<&Value<'_, EvalValue<'bp>>> {
+        let key = ValueKey::Attribute(key);
+        self.values.get(&key)
     }
 
-    pub fn get_index(&self, key: &str) -> Option<SmallIndex> {
-        self.0.get_index(&ValueKey::Attribute(key))
+    pub(crate) fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp, EvalValue<'bp>>> {
+        self.values.get_mut_with_index(index)
     }
 
-    pub fn get_bool(&self, key: &str) -> bool {
-        self.get(key).map(|val| val.load_bool()).unwrap_or(false)
-    }
-
-    pub(crate) fn get_mut(&mut self, index: ValueIndex) -> Option<&mut Value<'bp, EvalValue<'bp>>> {
-        self.0.get_mut(index)
+    pub fn get_bool(&self, key: &'bp str) -> bool {
+        self.get_val(key).map(|val| val.load_bool()).unwrap_or(false)
     }
 
     /// Iterate over attributes, skipping the first one
     /// as that is the `Value`.
     pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &Value<'_, EvalValue<'_>>)> {
-        self.0.iter().skip(1)
+        self.values.iter().skip(1)
+    }
+
+    pub(crate) fn contains(&self, key: &ValueKey<'bp>) -> bool {
+        self.values.get(key).is_some()
     }
 }

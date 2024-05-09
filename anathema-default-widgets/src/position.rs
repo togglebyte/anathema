@@ -77,17 +77,17 @@ impl Widget for Position {
         //      - TB 2024-05-02
         self.placement = Placement::Absolute; //attribs.get_c("placement").unwrap_or_default();
 
-        self.horz_edge = match attribs.get_c("left") {
+        self.horz_edge = match attribs.get("left") {
             Some(left) => HorzEdge::Left(left),
-            None => match attribs.get_c("right") {
+            None => match attribs.get("right") {
                 Some(right) => HorzEdge::Right(right),
                 None => HorzEdge::Left(0),
             },
         };
 
-        self.vert_edge = match attribs.get_c("top") {
+        self.vert_edge = match attribs.get("top") {
             Some(top) => VertEdge::Top(top),
-            None => match attribs.get_c("bottom") {
+            None => match attribs.get("bottom") {
                 Some(bottom) => VertEdge::Bottom(bottom),
                 None => VertEdge::Top(0),
             },

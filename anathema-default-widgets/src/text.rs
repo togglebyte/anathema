@@ -75,7 +75,7 @@ impl Widget for Text {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
-        let wrap = attributes.get_c("wrap").unwrap_or_default();
+        let wrap = attributes.get("wrap").unwrap_or_default();
 
         let mut layout = ctx.text.new_layout(constraints.max_size(), wrap);
         layout.set_style(id);
@@ -124,7 +124,7 @@ impl Widget for Text {
         text: &mut StringSession<'_>,
     ) {
         let lines = text.lines(self.text_key);
-        let alignment = attribute_storage.get(id).get_c("text-align").unwrap_or_default();
+        let alignment = attribute_storage.get(id).get("text-align").unwrap_or_default();
 
         let mut pos = LocalPos::ZERO;
         let mut style = attribute_storage.get(id);

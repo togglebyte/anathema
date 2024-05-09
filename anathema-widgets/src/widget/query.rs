@@ -101,7 +101,7 @@ where
                 QueryArg::ByAttribute(key, val) => {
                     let attribs = self.attributes.get(el.container.id);
                     let query_result = attribs
-                        .get(key)
+                        .get_val(key)
                         .and_then(|attribute| {
                             attribute
                                 .load_common_val()

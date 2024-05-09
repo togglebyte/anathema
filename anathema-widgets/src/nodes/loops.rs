@@ -122,7 +122,8 @@ impl<'bp> For<'bp> {
             Change::Dropped => {
                 tree.remove_children(path);
 
-                self.collection = eval_collection(self.collection.expr, ctx.scope, ctx.states, value_id);
+                // TODO unwrap, ewww
+                self.collection = eval_collection(self.collection.expr.unwrap(), ctx.scope, ctx.states, value_id);
 
                 for index in 0..self.collection.len() {
                     self.scope_value(ctx.scope, index);
@@ -177,7 +178,7 @@ mod test {
     use crate::nodes::stringify::Stringify;
     use crate::nodes::{eval_blueprint, update_tree};
     use crate::testing::setup_test_factory;
-    use crate::{AttributeStorage, FloatingWidgets, ValueStack};
+    use crate::{AttributeStorage, FloatingWidgets};
 
     #[test]
     fn loop_remove() {
@@ -206,13 +207,11 @@ mod test {
         let mut scope = Scope::new();
         scope.insert_state(state_id);
         let blueprint = &blueprints[0];
-        let mut value_store = ValueStack::empty();
         let mut ctx = EvalContext::new(
             &factory,
             &mut scope,
             &mut states,
             &mut components,
-            &mut value_store,
             &mut attribute_storage,
             &mut floating_widgets,
         );
@@ -251,14 +250,12 @@ mod test {
                 eprintln!("- apply change: {change:?}");
                 let mut scope = Scope::with_capacity(10);
                 let widget_path = &widget_tree.path(sub).clone();
-                let mut value_store = ValueStack::empty();
                 update_tree(
                     &factory,
                     &mut scope,
                     &mut states,
                     &mut components,
                     &change,
-                    &mut value_store,
                     sub,
                     widget_path,
                     &mut widget_tree,
@@ -322,13 +319,11 @@ mod test {
         let mut scope = Scope::new();
         scope.insert_state(state_id);
         let blueprint = &blueprints[0];
-        let mut value_store = ValueStack::empty();
         let mut ctx = EvalContext::new(
             &factory,
             &mut scope,
             &mut states,
             &mut components,
-            &mut value_store,
             &mut attribute_storage,
             &mut floating_widgets,
         );

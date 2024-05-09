@@ -3,7 +3,7 @@ use anathema_geometry::{LocalPos, Pos, Size};
 use crate::layout::text::StringSession;
 use crate::layout::{Constraints, Display, LayoutCtx, PositionCtx};
 use crate::paint::{PaintCtx, Unsized};
-use crate::widget::{AnyWidget, PositionChildren};
+use crate::widget::{AnyWidget, PositionChildren, ValueKey};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
 #[derive(Debug)]
@@ -56,8 +56,7 @@ impl Container {
 
         let attrs = attribute_storage.get(self.id);
         // Draw background
-        let background = attrs.get("background");
-        if let Some(_background) = background {
+        if attrs.contains(&ValueKey::Attribute("background")) {
             for y in 0..self.size.height as u16 {
                 for x in 0..self.size.width as u16 {
                     let pos = LocalPos::new(x, y);

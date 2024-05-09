@@ -81,13 +81,13 @@ impl Widget for Viewport {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
-        let axis = attributes.get_c(AXIS).unwrap_or(Axis::Vertical);
+        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
 
-        if let Some(width) = attributes.get_c("width") {
+        if let Some(width) = attributes.get("width") {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get_c("height") {
+        if let Some(height) = attributes.get("height") {
             constraints.make_height_tight(height);
         }
 
@@ -98,7 +98,7 @@ impl Widget for Viewport {
             Axis::Vertical => constraints.unbound_height(),
         }
 
-        self.direction = attributes.get_c(DIRECTION).unwrap_or_default();
+        self.direction = attributes.get(DIRECTION).unwrap_or_default();
 
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = true;
@@ -123,8 +123,8 @@ impl Widget for Viewport {
         ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let direction = attributes.get_c(DIRECTION).unwrap_or_default();
-        let axis = attributes.get_c(AXIS).unwrap_or(Axis::Vertical);
+        let direction = attributes.get(DIRECTION).unwrap_or_default();
+        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
         let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset

@@ -12,15 +12,14 @@ use super::{component, controlflow};
 use crate::components::{AnyComponent, ComponentId, ComponentRegistry};
 use crate::container::Container;
 use crate::expressions::{eval, eval_collection};
-use crate::values::{ValueId, ValueIndex, ValuesBuilder};
+use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, FloatingWidgets, ValueKey};
-use crate::{eval_blueprint, AttributeStorage, Factory, Scope, ValueStack, WidgetKind, WidgetTree};
+use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) factory: &'a Factory,
     pub(super) scope: &'b mut Scope<'bp>,
-    pub(super) value_store: &'b mut ValueStack<'bp>,
     pub(super) states: &'b mut States,
     pub(super) components: &'b mut ComponentRegistry,
     pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
@@ -33,14 +32,12 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         scope: &'b mut Scope<'bp>,
         states: &'b mut States,
         components: &'b mut ComponentRegistry,
-        value_store: &'b mut ValueStack<'bp>,
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
     ) -> Self {
         Self {
             factory,
             scope,
-            value_store,
             states,
             components,
             attribute_storage,
@@ -81,29 +78,24 @@ impl Evaluator for SingleEval {
         let transaction = tree.insert(parent);
         let widget_id = transaction.node_id();
 
-        let mut values_builder = ValuesBuilder::new(ctx.value_store);
+        // -----------------------------------------------------------------------------
+        //   - New api -
+        // -----------------------------------------------------------------------------
+        let mut attributes = Attributes::empty(widget_id);
 
-        // Value
         if let Some(expr) = single.value.as_ref() {
-            values_builder.insert(|value_index| {
-                (
-                    ValueKey::Value,
-                    eval(expr, ctx.scope, ctx.states, (widget_id, value_index)),
-                )
+            attributes.insert_with(ValueKey::Value, |value_index| {
+                eval(expr, ctx.scope, ctx.states, (widget_id, value_index))
             });
         }
 
-        // Attributes
         for (key, expr) in &single.attributes {
-            values_builder.insert(|value_index| {
-                (
-                    ValueKey::Attribute(key),
-                    eval(expr, ctx.scope, ctx.states, (widget_id, value_index)),
-                )
+            attributes.insert_with(ValueKey::Attribute(key), |value_index| {
+                eval(expr, ctx.scope, ctx.states, (widget_id, value_index))
             });
         }
-        let attributes = Attributes(values_builder.finish());
-        let display = attributes.get_c("display").unwrap_or_default();
+
+        let display = attributes.get("display").unwrap_or_default();
         let widget = ctx.factory.make(&single.ident, &attributes);
 
         // Is the widget a floating widget?
@@ -225,7 +217,6 @@ impl Evaluator for ControlFlowEval {
                 .for_each(|e| ElseEval.eval(e, ctx, parent, tree));
         });
 
-        // TODO come back and fix this you sausage!
         let mut was_set = false;
 
         tree.children_of(&parent, |node, values| {

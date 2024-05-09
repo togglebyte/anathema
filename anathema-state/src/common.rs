@@ -111,6 +111,7 @@ impl_static!(bool, Bool);
 impl_static!(char, Char);
 impl_static!(f64, Float);
 impl_static!(f32, Float, f64);
+impl_static!(&'static str, Str);
 
 impl_static!(usize, Int, i64);
 impl_static!(isize, Int, i64);

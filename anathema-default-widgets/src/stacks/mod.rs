@@ -25,15 +25,15 @@ impl Stack {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
-        if let Some(width) = attributes.get_c("width") {
+        if let Some(width) = attributes.get("width") {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get_c("height") {
+        if let Some(height) = attributes.get("height") {
             constraints.make_height_tight(height);
         }
 
-        let dir = attributes.get_c(DIRECTION).unwrap_or_default();
+        let dir = attributes.get(DIRECTION).unwrap_or_default();
         let offset = 0;
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = false;
@@ -49,7 +49,7 @@ impl Stack {
         ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let direction = attributes.get_c(DIRECTION).unwrap_or_default();
+        let direction = attributes.get(DIRECTION).unwrap_or_default();
         let mut pos = ctx.pos;
 
         if let Direction::Backward = direction {

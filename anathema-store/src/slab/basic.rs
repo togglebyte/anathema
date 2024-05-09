@@ -82,6 +82,20 @@ where
         }
     }
 
+    /// Get the next id.
+    ///
+    /// # Warning
+    ///
+    /// There is no guarantee that this value will be the same
+    /// value produced when doing an insert if another insert has happened
+    /// since this value was returned.
+    pub fn next_id(&self) -> I {
+        match self.next_id {
+            Some(id) => id,
+            None => I::from(self.inner.len()),
+        }
+    }
+
     /// Removes a value out of the slab.
     /// This assumes the value exists
     ///

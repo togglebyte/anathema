@@ -24,7 +24,7 @@ impl Widget for Expand {
         let mut size = single_layout(children, constraints, ctx);
 
         let attributes = ctx.attribs.get(id);
-        match attributes.get_c("axis") {
+        match attributes.get("axis") {
             Some(Axis::Horizontal) => size.width = constraints.max_width(),
             Some(Axis::Vertical) => size.height = constraints.max_height(),
             None => {
@@ -58,7 +58,7 @@ impl Widget for Expand {
         text: &mut StringSession<'_>,
     ) {
         let attributes = attribute_storage.get(id);
-        if let Some(fill) = attributes.get("fill") {
+        if let Some(fill) = attributes.get_val("fill") {
             for y in 0..ctx.local_size.height as u16 {
                 let mut used_width = 0;
                 loop {

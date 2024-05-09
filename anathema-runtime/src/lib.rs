@@ -32,7 +32,7 @@ use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
-    FloatingWidgets, Scope, ValueStack, Widget, WidgetKind, WidgetTree,
+    FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use tabindex::TabIndex;
@@ -134,13 +134,11 @@ where
         let components = &mut self.components;
         let mut states = States::new();
         let mut scope = Scope::new();
-        let mut value_store = ValueStack::empty();
         let mut ctx = EvalContext::new(
             &self.factory,
             &mut scope,
             &mut states,
             components,
-            &mut value_store,
             &mut attribute_storage,
             &mut floating_widgets,
         );
@@ -406,14 +404,12 @@ fn apply_futures<'bp>(
     future_values.drain().rev().for_each(|sub| {
         scope.clear();
         let path = tree.path(sub).clone();
-        let mut value_store = ValueStack::empty();
 
         try_resolve_future_values(
             factory,
             &mut scope,
             states,
             components,
-            &mut value_store,
             sub,
             &path,
             tree,
@@ -439,7 +435,6 @@ fn apply_changes<'bp>(
         sub.iter().for_each(|sub| {
             scope.clear();
             let Some(path) = tree.try_path(sub).cloned() else { return };
-            let mut value_store = ValueStack::empty();
 
             update_tree(
                 factory,
@@ -447,7 +442,6 @@ fn apply_changes<'bp>(
                 states,
                 components,
                 &change,
-                &mut value_store,
                 sub,
                 &path,
                 tree,
