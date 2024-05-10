@@ -85,15 +85,20 @@ pub trait Component {
     type State: State;
     type Message;
 
-    fn on_blur(&mut self, _state: Option<&mut Self::State>) {}
+    #[allow(unused_variables)]
+    fn on_blur(&mut self, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
 
-    fn on_focus(&mut self, _state: Option<&mut Self::State>) {}
+    #[allow(unused_variables)]
+    fn on_focus(&mut self, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
 
-    fn on_key(&mut self, _key: KeyEvent, _state: Option<&mut Self::State>, _elements: Elements<'_, '_>) {}
+    #[allow(unused_variables)]
+    fn on_key(&mut self, key: KeyEvent, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
 
-    fn on_mouse(&mut self, _mouse: MouseEvent, _state: Option<&mut Self::State>, _elements: Elements<'_, '_>) {}
+    #[allow(unused_variables)]
+    fn on_mouse(&mut self, mouse: MouseEvent, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
 
-    fn message(&mut self, _message: Self::Message, _state: Option<&mut Self::State>) {}
+    #[allow(unused_variables)]
+    fn message(&mut self, message: Self::Message, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
 
     fn accept_focus(&self) -> bool {
         true
@@ -104,15 +109,15 @@ impl Component for () {
     type Message = ();
     type State = ();
 
-    fn on_blur(&mut self, _state: Option<&mut Self::State>) {}
+    fn on_blur(&mut self, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
 
-    fn on_focus(&mut self, _state: Option<&mut Self::State>) {}
+    fn on_focus(&mut self, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
 
     fn on_key(&mut self, _key: KeyEvent, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
 
-    fn on_mouse(&mut self, _mouse: MouseEvent, _state: Option<&mut Self::State>, _widgets: Elements<'_, '_>) {}
+    fn on_mouse(&mut self, _mouse: MouseEvent, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
 
-    fn message(&mut self, _message: Self::Message, _state: Option<&mut Self::State>) {}
+    fn message(&mut self, _message: Self::Message, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
 
     fn accept_focus(&self) -> bool {
         false
@@ -120,13 +125,13 @@ impl Component for () {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, ev: Event, state: Option<&mut dyn State>, widgets: Elements<'_, '_>) -> Event;
+    fn any_event(&mut self, ev: Event, state: Option<&mut dyn State>, elements: Elements<'_, '_>) -> Event;
 
-    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn State>);
+    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn State>, elements: Elements<'_, '_>);
 
-    fn any_focus(&mut self, state: Option<&mut dyn State>);
+    fn any_focus(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>);
 
-    fn any_blur(&mut self, state: Option<&mut dyn State>);
+    fn any_blur(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>);
 
     fn accept_focus_any(&self) -> bool;
 }
@@ -154,20 +159,20 @@ where
         self.accept_focus()
     }
 
-    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn State>) {
+    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn State>, elements: Elements<'_, '_>) {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
         let Ok(message) = message.downcast::<T::Message>() else { return };
-        self.message(*message, state);
+        self.message(*message, state, elements);
     }
 
-    fn any_focus(&mut self, state: Option<&mut dyn State>) {
+    fn any_focus(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>) {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
-        self.on_focus(state);
+        self.on_focus(state, elements);
     }
 
-    fn any_blur(&mut self, state: Option<&mut dyn State>) {
+    fn any_blur(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>) {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
-        self.on_blur(state);
+        self.on_blur(state, elements);
     }
 }
 

@@ -213,9 +213,9 @@ impl<T> Tree<T> {
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the tree.
-    pub fn with_value_mut<F>(&mut self, value_id: ValueId, mut f: F)
+    pub fn with_value_mut<F>(&mut self, value_id: ValueId, f: F)
     where
-        F: FnMut(&NodePath, &mut T, &mut Self),
+        F: FnOnce(&NodePath, &mut T, &mut Self),
     {
         let mut ticket = self.values.checkout(value_id);
         f(&ticket.value.0, &mut ticket.value.1, self);
@@ -537,10 +537,8 @@ mod test {
         let path = tree.path(node_id).clone();
         tree.insert(&path).commit_child(2);
 
-        let path = [0].into();
-        let one = tree.get_ref_by_path(&path).unwrap();
-        let path = [0, 0].into();
-        let two = tree.get_ref_by_path(&path).unwrap();
+        let one = tree.get_ref_by_path(&[0]).unwrap();
+        let two = tree.get_ref_by_path(&[0, 0]).unwrap();
 
         assert_eq!(*one, 1);
         assert_eq!(*two, 2);

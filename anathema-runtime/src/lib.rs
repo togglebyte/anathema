@@ -168,10 +168,13 @@ where
 
         // Select the first widget
         if let Some(entry) = tab_indices.current() {
-            if let Some(WidgetKind::Component(component)) = tree.get_mut_by_id(entry.widget_id) {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_focus(state);
-            }
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, &mut attribute_storage);
+                component.component.any_focus(state, elements);
+            });
         }
 
         'run: loop {
@@ -185,6 +188,7 @@ where
                 sleep_micros,
                 &mut tree,
                 &mut states,
+                &mut attribute_storage,
             );
 
             // Clear the text buffer
@@ -226,15 +230,22 @@ where
             );
 
             while let Some(event) = backend.next_event(poll_duration) {
-                let event = global_event(&mut backend, &mut tab_indices, event, &mut tree, &mut states);
+                let event = global_event(
+                    &mut backend,
+                    &mut tab_indices,
+                    event,
+                    &mut tree,
+                    &mut states,
+                    &mut attribute_storage,
+                );
 
                 if let Some(entry) = tab_indices.current() {
                     tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                         let WidgetKind::Component(component) = widget else { return };
-                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let state = entry.state_id.and_then(|id| states.get_mut(id));
-                        let widgets = Elements::new(node.children(), values, &mut attribute_storage);
-                        component.component.any_event(event, state, widgets);
+                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                        let elements = Elements::new(node.children(), values, &mut attribute_storage);
+                        component.component.any_event(event, state, elements);
                     });
                 }
 
@@ -334,12 +345,13 @@ where
     }
 }
 
-fn global_event<T: Backend>(
+fn global_event<'bp, T: Backend>(
     backend: &mut T,
     tab_indices: &mut TabIndex,
     event: Event,
-    tree: &mut WidgetTree<'_>,
+    tree: &mut WidgetTree<'bp>,
     states: &mut States,
+    attribute_storage: &mut AttributeStorage<'bp>,
 ) -> Event {
     // -----------------------------------------------------------------------------
     //   - Ctrl-c to quite -
@@ -361,36 +373,46 @@ fn global_event<T: Backend>(
         };
 
         if let Some(entry) = prev {
-            if let Some(WidgetKind::Component(component)) = tree.get_mut_by_id(entry.widget_id) {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_blur(state);
-            }
+                component.component.any_blur(state, elements);
+            });
         }
 
         if let Some(entry) = tab_indices.current() {
-            if let Some(WidgetKind::Component(component)) = tree.get_mut_by_id(entry.widget_id) {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_focus(state);
-            }
+                component.component.any_focus(state, elements);
+            });
         }
     }
     event
 }
 
-fn handle_messages(
+fn handle_messages<'bp>(
     message_receiver: &Receiver<ViewMessage>,
     tab_indices: &TabIndex,
     fps_now: Instant,
     sleep_micros: u128,
-    tree: &mut WidgetTree<'_>,
+    tree: &mut WidgetTree<'bp>,
     states: &mut States,
+    attribute_storage: &mut AttributeStorage<'bp>,
 ) -> Duration {
     while let Ok(msg) = message_receiver.try_recv() {
         if let Some(entry) = tab_indices.dumb_fetch(msg.recipient) {
-            if let Some(WidgetKind::Component(component)) = tree.get_mut_by_id(entry.widget_id) {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_message(msg.payload, state);
-            }
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, attribute_storage);
+                component.component.any_message(msg.payload, state, elements);
+            });
         }
 
         // Make sure event handling isn't holding up the rest of the event loop.

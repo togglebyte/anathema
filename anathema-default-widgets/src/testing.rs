@@ -1,6 +1,6 @@
 use anathema_backend::test::TestBackend;
 use anathema_backend::Backend;
-use anathema_geometry::Size;
+use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::Document;
@@ -124,7 +124,7 @@ impl TestInstance<'_> {
             layout_widget(widget, children, values, constraints, &mut layout_ctx, true);
 
             // Position
-            position_widget(widget, children, values, attribute_storage, true);
+            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
 
             // Paint
             self.backend.paint(
@@ -146,7 +146,7 @@ impl TestInstance<'_> {
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
                 // Position
-                position_widget(el, children, values, attribute_storage, true);
+                position_widget(Pos::ZERO, el, children, values, attribute_storage, true);
 
                 // Paint
                 self.backend.paint(
@@ -187,7 +187,7 @@ impl TestInstance<'_> {
         let Some(state) = self.states.get_mut(StateId::ZERO) else { return self };
         let state = state.to_any_mut().downcast_mut::<TestState>();
         let mut widgets = Elements::new(node.children(), values, &mut self.attribute_storage);
-        let query = widgets.query(state);
+        let query = widgets.query(&state);
         f(query);
         self
     }
