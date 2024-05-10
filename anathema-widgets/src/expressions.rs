@@ -39,6 +39,13 @@ impl<'a> Either<'a> {
         }
     }
 
+    pub fn load_number(&self) -> Option<Number> {
+        match self {
+            Either::Static(val) => val.to_number(),
+            Either::Dyn(state) => state.to_common().and_then(|v| v.to_number())
+        }
+    }
+
     pub fn to_common<'b>(&'b self) -> Option<CommonRef<'a, 'b>> {
         match self {
             Either::Static(val) => Some(CommonRef::Borrowed(val)),

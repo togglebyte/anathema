@@ -117,6 +117,18 @@ impl<'bp> Attributes<'bp> {
         self.values.get(&key)
     }
 
+    /// Get an integer regardless of how the value was stored.
+    /// This will convert any state value of any numerical type 
+    /// into a `i64`.
+    pub fn get_int(&self, key: &'bp str) -> Option<i64> {
+        let key = ValueKey::Attribute(key);
+
+        let value = self.values.get(&key)?;
+        value
+            .load_common_val()
+            .and_then(|e| e.load_number().map(|n| n.as_int()))
+    }
+
     pub(crate) fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp, EvalValue<'bp>>> {
         self.values.get_mut_with_index(index)
     }
