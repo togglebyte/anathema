@@ -65,7 +65,7 @@ impl<'widgets, 'tree, 'state, 'bp, S> Query<'widgets, 'tree, 'state, 'bp, S> {
         }
     }
 
-    pub fn at_pos(self, pos: impl Into<Pos>) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
+    pub fn at_position(self, pos: impl Into<Pos>) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
         let pos = pos.into();
         QueryResult {
             _s: self.state,

@@ -15,8 +15,6 @@ impl Widget for Align {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _: WidgetId,
-        // attribute_storage: &AttributeStorage<'bp>,
-        // text_buffer: &mut TextBuffer,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         children.for_each(|widget, children| {

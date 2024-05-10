@@ -85,20 +85,20 @@ pub trait Component {
     type State: State;
     type Message;
 
-    #[allow(unused_variables)]
-    fn on_blur(&mut self, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
+    #[allow(unused_variables, unused_mut)]
+    fn on_blur(&mut self, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
 
-    #[allow(unused_variables)]
-    fn on_focus(&mut self, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
+    #[allow(unused_variables, unused_mut)]
+    fn on_focus(&mut self, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
 
-    #[allow(unused_variables)]
-    fn on_key(&mut self, key: KeyEvent, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
+    #[allow(unused_variables, unused_mut)]
+    fn on_key(&mut self, key: KeyEvent, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
 
-    #[allow(unused_variables)]
-    fn on_mouse(&mut self, mouse: MouseEvent, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
+    #[allow(unused_variables, unused_mut)]
+    fn on_mouse(&mut self, mouse: MouseEvent, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
 
-    #[allow(unused_variables)]
-    fn message(&mut self, message: Self::Message, state: Option<&mut Self::State>, elements: Elements<'_, '_>) {}
+    #[allow(unused_variables, unused_mut)]
+    fn message(&mut self, message: Self::Message, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
 
     fn accept_focus(&self) -> bool {
         true
