@@ -144,8 +144,7 @@ where
     fn any_event(&mut self, event: Event, state: Option<&mut dyn State>, widgets: Elements<'_, '_>) -> Event {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
         match event {
-            Event::Blur => todo!(),
-            Event::Focus => todo!(),
+            Event::Blur | Event::Focus => (), // Application focus, not component focus.
 
             Event::Key(ev) => self.on_key(ev, state, widgets),
             Event::Mouse(ev) => self.on_mouse(ev, state, widgets),

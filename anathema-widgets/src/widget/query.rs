@@ -28,7 +28,10 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         }
     }
 
-    pub fn query<'state, S: State>(&mut self, state: &'state Option<&'state mut S>) -> Query<'_, 'tree, 'state, 'bp, S> {
+    pub fn query<'state, S: State>(
+        &mut self,
+        state: &'state Option<&'state mut S>,
+    ) -> Query<'_, 'tree, 'state, 'bp, S> {
         Query { state, widgets: self }
     }
 }
