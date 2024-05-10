@@ -13,7 +13,7 @@ impl Widget for Spacer {
         _children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _id: WidgetId,
-        _ctx: &mut LayoutCtx<'_, 'bp>,
+        _ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         Size::new(constraints.min_width, constraints.min_height)
     }

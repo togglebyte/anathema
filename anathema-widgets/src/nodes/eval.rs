@@ -95,7 +95,6 @@ impl Evaluator for SingleEval {
             });
         }
 
-        let display = attributes.get("display").unwrap_or_default();
         let widget = ctx.factory.make(&single.ident, &attributes);
 
         // Is the widget a floating widget?
@@ -111,7 +110,6 @@ impl Evaluator for SingleEval {
             id: widget_id,
             pos: Pos::ZERO,
             size: Size::ZERO,
-            display,
         };
 
         // Widget

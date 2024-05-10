@@ -408,7 +408,7 @@ impl Widget for Border {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         self.sides = attributes

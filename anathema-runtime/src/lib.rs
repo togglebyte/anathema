@@ -273,7 +273,10 @@ where
                 }
             }
 
-            let mut filter = LayoutFilter::new(true);
+            // -----------------------------------------------------------------------------
+            //   - Layout, position and paint -
+            // -----------------------------------------------------------------------------
+            let mut filter = LayoutFilter::new(true, &attribute_storage);
             tree.for_each(&mut filter).first(&mut |widget, children, values| {
                 // Layout
                 // TODO: once the text buffer can be read-only for the paint

@@ -1,7 +1,7 @@
 use anathema_geometry::{LocalPos, Pos, Size};
 
 use crate::layout::text::StringSession;
-use crate::layout::{Constraints, Display, LayoutCtx, PositionCtx};
+use crate::layout::{Constraints, LayoutCtx, PositionCtx};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren, ValueKey};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
@@ -12,7 +12,6 @@ pub struct Container {
     pub id: WidgetId,
     pub size: Size,
     pub pos: Pos,
-    pub display: Display,
 }
 
 impl Container {
@@ -20,7 +19,7 @@ impl Container {
         &mut self,
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         self.size = self.inner.any_layout(children, constraints, self.id, ctx);
         // Floating widgets always report a zero size

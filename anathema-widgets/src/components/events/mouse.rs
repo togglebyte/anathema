@@ -8,6 +8,7 @@ pub struct MouseEvent {
 }
 
 impl MouseEvent {
+    /// Translate the x and y position into a `Position`
     pub fn pos(&self) -> Pos {
         (self.x, self.y).into()
     }

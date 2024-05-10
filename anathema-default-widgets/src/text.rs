@@ -72,7 +72,7 @@ impl Widget for Text {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let wrap = attributes.get("wrap").unwrap_or_default();
@@ -174,7 +174,7 @@ impl Widget for Span {
         _: LayoutChildren<'_, '_, 'bp>,
         _: Constraints,
         _: WidgetId,
-        _: &mut LayoutCtx<'_, 'bp>,
+        _: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         // Everything is handled by the parent text
         panic!("this should never be called");

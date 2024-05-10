@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
@@ -11,34 +10,39 @@ use crate::nodes::element::Element;
 use crate::widget::WidgetRenderer;
 use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
 
-pub struct PaintFilter<'a> {
-    _p: PhantomData<&'a ()>,
+pub struct PaintFilter<'frame, 'bp> {
+    attributes: &'frame AttributeStorage<'bp>,
     ignore_floats: bool,
 }
 
-impl<'a> PaintFilter<'a> {
-    pub fn new(ignore_floats: bool) -> Self {
+impl<'frame, 'bp> PaintFilter<'frame, 'bp> {
+    pub fn new(ignore_floats: bool, attributes: &'frame AttributeStorage<'bp>) -> Self {
         Self {
-            _p: PhantomData,
+            attributes,
             ignore_floats,
         }
     }
 }
 
-impl<'a> TreeFilter for PaintFilter<'a> {
-    type Input = WidgetKind<'a>;
-    type Output = Element<'a>;
+impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
+    type Input = WidgetKind<'bp>;
+    type Output = Element<'bp>;
 
     fn filter<'val>(
         &self,
         _widget_id: WidgetId,
         input: &'val mut Self::Input,
         _children: &[Node],
-        _widgets: &mut TreeValues<WidgetKind<'a>>,
+        _widgets: &mut TreeValues<WidgetKind<'bp>>,
     ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
         match input {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => match el.display() {
+            WidgetKind::Element(el) => match self
+                .attributes
+                .get(el.id())
+                .get::<Display>("display")
+                .unwrap_or_default()
+            {
                 Display::Show => ControlFlow::Continue(Some(el)),
                 Display::Hide | Display::Exclude => ControlFlow::Continue(None),
             },
@@ -58,7 +62,7 @@ pub fn paint<'bp>(
     text: &mut StringSession<'_>,
     ignore_floats: bool,
 ) {
-    let filter = PaintFilter::new(ignore_floats);
+    let filter = PaintFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
     let ctx = PaintCtx::new(surface, None);
     element.paint(children, ctx, text, attribute_storage);

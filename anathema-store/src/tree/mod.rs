@@ -186,20 +186,6 @@ impl<T> Tree<T> {
         }
     }
 
-    pub fn for_each_from<'filter, F: TreeFilter>(
-        &mut self,
-        path: &NodePath,
-        filter: &'filter F,
-    ) -> TreeForEach<'_, 'filter, T, F> {
-        let (node, values) = self.get_node_by_path(path).unwrap();
-
-        TreeForEach {
-            nodes: &node.children,
-            values,
-            filter,
-        }
-    }
-
     /// Perform a given operation (`F`) on a reference to a value in the tree
     /// while still haveing mutable access to the tree.
     pub fn with_value<F>(&mut self, value_id: ValueId, mut f: F)
@@ -275,8 +261,14 @@ impl<T> Tree<T> {
         apply_path_finder(self, node_path, path_finder);
     }
 
+    /// Apply a node visitor
     pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
         apply_visitor(&self.layout, &mut self.values, visitor);
+    }
+
+    /// Split the tree giving access to the layout and the values.
+    pub fn split_mut(&mut self) -> (&[Node], &mut TreeValues<T>) {
+        (&self.layout, &mut self.values)
     }
 }
 

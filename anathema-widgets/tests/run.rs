@@ -9,8 +9,8 @@ use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, EvalContext, Factory, FloatingWidgets,
-    LayoutChildren, Scope, Stringify, Widget, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
+    FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetId, WidgetTree,
 };
 
 #[macro_export]
@@ -61,7 +61,7 @@ where
         eval_blueprint(self.blueprint, &mut ctx, &NodePath::root(), &mut self.tree);
 
         // Non floating widgets
-        let mut filter = LayoutFilter::new(true);
+        let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(
@@ -75,7 +75,7 @@ where
         });
 
         // Floating widgets
-        let mut filter = LayoutFilter::new(false);
+        let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(
@@ -159,7 +159,7 @@ where
         self.apply_futures();
         self.update_tree();
 
-        let mut filter = LayoutFilter::new(false);
+        let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
             layout_widget(
@@ -182,6 +182,16 @@ where
         //     .print_tree::<anathema_widgets::DebugWidgets>(&mut self.tree)
         //     .footer();
 
+        self
+    }
+
+    pub fn query<F>(&mut self, f: F) -> &mut Self
+    where
+        F: FnOnce(Option<&mut dyn State>, Elements<'_, '_>),
+    {
+        let (nodes, values) = self.tree.split_mut();
+        let state = self.states.get_mut(0).unwrap();
+        f(Some(state), Elements::new(nodes, values, &mut self.attribute_storage));
         self
     }
 }
@@ -234,7 +244,7 @@ impl Widget for TestWidget {
         _children: LayoutChildren<'_, '_, 'bp>,
         _constraints: Constraints,
         _attributs: anathema_widgets::WidgetId,
-        _ctx: &mut LayoutCtx<'_, 'bp>,
+        _ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         Size::new(1, 1)
     }

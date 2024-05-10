@@ -118,9 +118,9 @@ impl TestInstance<'_> {
 
         let attribute_storage = &self.attribute_storage;
 
-        let mut filter = LayoutFilter::new(true);
+        let mut filter = LayoutFilter::new(true, attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), attribute_storage, &self.viewport);
             layout_widget(widget, children, values, constraints, &mut layout_ctx, true);
 
             // Position

@@ -89,12 +89,10 @@ struct TestWidget;
 impl Widget for TestWidget {
     fn layout(
         &mut self,
-        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_>>,
+        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_, '_>>,
         _: Constraints,
         _: WidgetId,
-        // _: &AttributeStorage<'_>,
-        // _: &mut TextBuffer,
-        _: &mut LayoutCtx<'_, '_>,
+        _: &mut LayoutCtx<'_, '_, '_>,
     ) -> Size {
         todo!()
     }

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use anathema_state::CommonVal;
+use anathema_state::{CommonVal, PendingValue};
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallIndex;
 
@@ -56,26 +56,27 @@ impl<'bp> Attributes<'bp> {
         }
     }
 
-    pub fn set(&mut self, key: &'bp str, value: impl Into<Value<'bp, EvalValue<'bp>>>) {
+    /// Set the value
+    pub fn set(&mut self, key: &'bp str, value: impl Into<CommonVal<'bp>>) {
         let value = value.into();
-        // If the value is a `PendingValue` it has to be resolved before
-        // it can be added to attributes
-        if let EvalValue::Pending(p) = &*value {
-            let key = ValueKey::Attribute(key);
-            match self.values.get_index(&key) {
-                Some(idx) => {
-                    let valueref = p.to_value((self.widget_id, idx).into());
-                    self.values.set(key, valueref.into());
-                }
-                None => {
-                    self.values.insert_with(key, |idx| {
-                        let valueref = p.to_value((self.widget_id, idx).into());
-                        valueref.into()
-                    });
-                }
+        self.values.set(ValueKey::Attribute(key), value.into());
+    }
+
+    /// Resolve the value from a state and track it from the attributes.
+    /// This means changes to the state value will update the attribute automatically
+    pub fn set_pending(&mut self, key: &'bp str, value: PendingValue) {
+        let key = ValueKey::Attribute(key);
+        match self.values.get_index(&key) {
+            Some(idx) => {
+                let valueref = value.to_value((self.widget_id, idx).into());
+                self.values.set(key, valueref.into());
             }
-        } else {
-            self.values.set(ValueKey::Attribute(key), value);
+            None => {
+                self.values.insert_with(key, |idx| {
+                    let valueref = value.to_value((self.widget_id, idx).into());
+                    valueref.into()
+                });
+            }
         }
     }
 

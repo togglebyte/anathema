@@ -68,7 +68,7 @@ impl Widget for Position {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribs.get(id);
         self.placement = attribs.get("placement").unwrap_or_default();

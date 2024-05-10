@@ -22,10 +22,3 @@ mod scope;
 mod testing;
 mod values;
 mod widget;
-
-// Drag'n'drop
-// It won't make sense to have built in drag'n'drop
-// given that widgets can be created as a result of a for-loop
-// Removing the widget from the for-loop makes no sense.
-//
-// It would make more sense to have an event that enables copy / move of data

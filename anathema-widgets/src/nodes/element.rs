@@ -2,7 +2,7 @@ use anathema_geometry::{Pos, Size};
 
 use crate::container::Container;
 use crate::layout::text::StringSession;
-use crate::layout::{Constraints, Display, LayoutCtx};
+use crate::layout::{Constraints, LayoutCtx};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{PaintChildren, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, WidgetId};
@@ -26,7 +26,7 @@ impl<'bp> Element<'bp> {
         &mut self,
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         self.container.layout(children, constraints, ctx)
     }
@@ -52,10 +52,6 @@ impl<'bp> Element<'bp> {
 
     pub fn size(&self) -> Size {
         self.container.size
-    }
-
-    pub(crate) fn display(&self) -> Display {
-        self.container.display
     }
 
     pub fn to_ref<T: 'static>(&self) -> Option<&T> {

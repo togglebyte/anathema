@@ -119,7 +119,7 @@ impl Many {
         &mut self,
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let max_constraints = constraints;
 

@@ -78,7 +78,7 @@ impl Widget for Viewport {
         children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);

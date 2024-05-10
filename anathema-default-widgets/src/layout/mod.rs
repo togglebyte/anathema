@@ -17,7 +17,7 @@ mod spacers;
 pub(crate) fn single_layout<'bp>(
     mut children: LayoutChildren<'_, '_, 'bp>,
     constraints: Constraints,
-    ctx: &mut LayoutCtx<'_, 'bp>,
+    ctx: &mut LayoutCtx<'_, '_, 'bp>,
 ) -> Size {
     let mut size = Size::ZERO;
 

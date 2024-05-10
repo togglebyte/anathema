@@ -13,7 +13,7 @@ impl Widget for ZStack {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
         children.for_each(|child, children| {

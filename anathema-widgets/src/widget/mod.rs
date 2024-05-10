@@ -41,9 +41,9 @@ impl FloatingWidgets {
 }
 
 pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
-pub type LayoutChildren<'a, 'filter, 'bp> = TreeForEach<'a, 'filter, WidgetKind<'bp>, LayoutFilter<'bp>>;
-pub type PositionChildren<'a, 'filter, 'bp> = TreeForEach<'a, 'filter, WidgetKind<'bp>, LayoutFilter<'bp>>;
-pub type PaintChildren<'a, 'filter, 'bp> = TreeForEach<'a, 'filter, WidgetKind<'bp>, PaintFilter<'bp>>;
+pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, PaintFilter<'frame, 'bp>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub enum ValueKey<'bp> {
@@ -61,9 +61,7 @@ pub trait AnyWidget {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        // attribute_storage: &AttributeStorage<'bp>,
-        // text_buffer: &mut TextBuffer,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size;
 
     fn any_position<'bp>(
@@ -100,9 +98,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        // attribute_storage: &AttributeStorage<'bp>,
-        // text_buffer: &mut TextBuffer,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         self.layout(children, constraints, id, ctx)
     }
@@ -145,9 +141,7 @@ pub trait Widget {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        // attribute_storage: &AttributeStorage<'bp>,
-        // text: &mut TextBuffer,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size;
 
     fn paint<'bp>(

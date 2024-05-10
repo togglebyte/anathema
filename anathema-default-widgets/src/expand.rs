@@ -17,9 +17,7 @@ impl Widget for Expand {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        // attribute_storage: &AttributeStorage<'bp>,
-        // text_buffer: &mut TextBuffer,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let mut size = single_layout(children, constraints, ctx);
 

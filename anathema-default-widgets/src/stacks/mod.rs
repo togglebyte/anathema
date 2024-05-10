@@ -22,7 +22,7 @@ impl Stack {
         children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         if let Some(width) = attributes.get("width") {

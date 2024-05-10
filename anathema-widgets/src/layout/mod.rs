@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
@@ -40,34 +39,39 @@ impl Viewport {
 
 /// Filter out widgets that are excluded.
 /// This includes both `Show` and `Hide` as part of the layout.
-pub struct LayoutFilter<'a> {
-    _p: PhantomData<&'a ()>,
+pub struct LayoutFilter<'frame, 'bp> {
+    attributes: &'frame AttributeStorage<'bp>,
     ignore_floats: bool,
 }
 
-impl<'a> LayoutFilter<'a> {
-    pub fn new(ignore_floats: bool) -> Self {
+impl<'frame, 'bp> LayoutFilter<'frame, 'bp> {
+    pub fn new(ignore_floats: bool, attributes: &'frame AttributeStorage<'bp>) -> Self {
         Self {
-            _p: PhantomData,
+            attributes,
             ignore_floats,
         }
     }
 }
 
-impl<'a> TreeFilter for LayoutFilter<'a> {
-    type Input = WidgetKind<'a>;
-    type Output = Element<'a>;
+impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
+    type Input = WidgetKind<'bp>;
+    type Output = Element<'bp>;
 
     fn filter<'val>(
         &self,
         _value_id: WidgetId,
         input: &'val mut Self::Input,
         children: &[Node],
-        widgets: &mut TreeValues<WidgetKind<'a>>,
+        widgets: &mut TreeValues<WidgetKind<'bp>>,
     ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
         match input {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => match el.display() {
+            WidgetKind::Element(el) => match self
+                .attributes
+                .get(el.id())
+                .get::<Display>("display")
+                .unwrap_or_default()
+            {
                 Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
                 Display::Exclude => ControlFlow::Continue(None),
             },
@@ -88,14 +92,14 @@ impl<'a> TreeFilter for LayoutFilter<'a> {
     }
 }
 
-pub struct LayoutCtx<'a, 'bp> {
-    pub text: StringSession<'a>,
+pub struct LayoutCtx<'a, 'buf, 'bp> {
+    pub text: StringSession<'buf>,
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
 }
 
-impl<'a, 'bp> LayoutCtx<'a, 'bp> {
-    pub fn new(text: StringSession<'a>, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
+impl<'a, 'buf, 'bp> LayoutCtx<'a, 'buf, 'bp> {
+    pub fn new(text: StringSession<'buf>, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
         Self {
             text,
             attribs,
@@ -109,10 +113,10 @@ pub fn layout_widget<'bp>(
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
     constraints: Constraints,
-    ctx: &mut LayoutCtx<'_, 'bp>,
+    ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ignore_floats: bool,
 ) {
-    let filter = LayoutFilter::new(ignore_floats);
+    let filter = LayoutFilter::new(ignore_floats, ctx.attribs);
     let children = TreeForEach::new(children, values, &filter);
     element.layout(children, constraints, ctx);
 }
@@ -125,7 +129,7 @@ pub fn position_widget<'bp>(
     attribute_storage: &AttributeStorage<'bp>,
     ignore_floats: bool,
 ) {
-    let filter = LayoutFilter::new(ignore_floats);
+    let filter = LayoutFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
     element.position(children, pos, attribute_storage);
 }
