@@ -4,164 +4,8 @@ use std::ops::{Deref, DerefMut};
 use anathema_state::{CommonVal, Hex};
 use anathema_widgets::Attributes as Attribs;
 pub use crossterm::style::Attribute as CrossAttrib;
-use crossterm::style::{Color as CTColor, SetAttribute, SetBackgroundColor, SetForegroundColor};
+use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
-
-/// A representation of a colour wrapping the crossterm `Color` type.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Color(CTColor);
-
-impl Color {
-    /// Resets the terminal color.
-    pub fn reset() -> Self {
-        CTColor::Reset.into()
-    }
-
-    /// Black color.
-    pub fn black() -> Self {
-        CTColor::Black.into()
-    }
-
-    /// Dark grey color.
-    pub fn dark_grey() -> Self {
-        CTColor::DarkGrey.into()
-    }
-
-    /// Light red color.
-    pub fn red() -> Self {
-        CTColor::Red.into()
-    }
-
-    /// Dark red color.
-    pub fn dark_red() -> Self {
-        CTColor::DarkRed.into()
-    }
-
-    /// Light green color.
-    pub fn green() -> Self {
-        CTColor::Green.into()
-    }
-
-    /// Dark green color.
-    pub fn dark_green() -> Self {
-        CTColor::DarkGreen.into()
-    }
-
-    /// Light yellow color.
-    pub fn yellow() -> Self {
-        CTColor::Yellow.into()
-    }
-
-    /// Dark yellow color.
-    pub fn dark_yellow() -> Self {
-        CTColor::DarkYellow.into()
-    }
-
-    /// Light blue color.
-    pub fn blue() -> Self {
-        CTColor::Blue.into()
-    }
-
-    /// Dark blue color.
-    pub fn dark_blue() -> Self {
-        CTColor::DarkBlue.into()
-    }
-
-    /// Light magenta color.
-    pub fn magenta() -> Self {
-        CTColor::Magenta.into()
-    }
-
-    /// Dark magenta color.
-    pub fn dark_magenta() -> Self {
-        CTColor::DarkMagenta.into()
-    }
-
-    /// Light cyan color.
-    pub fn cyan() -> Self {
-        CTColor::Cyan.into()
-    }
-
-    /// Dark cyan color.
-    pub fn dark_cyan() -> Self {
-        CTColor::DarkCyan.into()
-    }
-
-    /// White color.
-    pub fn white() -> Self {
-        CTColor::White.into()
-    }
-
-    /// Grey color.
-    pub fn grey() -> Self {
-        CTColor::Grey.into()
-    }
-
-    /// Grey color.
-    pub fn rgb(r: u8, g: u8, b: u8) -> Self {
-        CTColor::Rgb { r, g, b }.into()
-    }
-}
-
-impl Deref for Color {
-    type Target = CTColor;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Color {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl From<CTColor> for Color {
-    fn from(value: CTColor) -> Self {
-        Self(value)
-    }
-}
-
-impl TryFrom<CommonVal<'_>> for Color {
-    type Error = ();
-
-    fn try_from(value: CommonVal<'_>) -> std::prelude::v1::Result<Self, Self::Error> {
-        match value {
-            CommonVal::Hex(Hex { r, g, b }) => Ok(CTColor::Rgb { r, g, b }.into()),
-            CommonVal::Str(s) => CTColor::try_from(s).map(Into::into),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<Color> for CommonVal<'_> {
-    type Error = ();
-
-    fn try_from(value: Color) -> std::prelude::v1::Result<Self, Self::Error> {
-        match value {
-            Color(CTColor::Rgb { r, g, b }) => Ok(CommonVal::Hex(Hex::from((r, g, b)))),
-            Color(CTColor::Reset) => Ok(CommonVal::Str("reset")),
-            Color(CTColor::Black) => Ok(CommonVal::Str("black")),
-            Color(CTColor::DarkGrey) => Ok(CommonVal::Str("dark_grey")),
-            Color(CTColor::Red) => Ok(CommonVal::Str("red")),
-            Color(CTColor::DarkRed) => Ok(CommonVal::Str("dark_red")),
-            Color(CTColor::Green) => Ok(CommonVal::Str("green")),
-            Color(CTColor::DarkGreen) => Ok(CommonVal::Str("dark_green")),
-            Color(CTColor::Yellow) => Ok(CommonVal::Str("yellow")),
-            Color(CTColor::DarkYellow) => Ok(CommonVal::Str("dark_yellow")),
-            Color(CTColor::Blue) => Ok(CommonVal::Str("blue")),
-            Color(CTColor::DarkBlue) => Ok(CommonVal::Str("dark_blue")),
-            Color(CTColor::Magenta) => Ok(CommonVal::Str("magenta")),
-            Color(CTColor::DarkMagenta) => Ok(CommonVal::Str("dark_magenta")),
-            Color(CTColor::Cyan) => Ok(CommonVal::Str("cyan")),
-            Color(CTColor::DarkCyan) => Ok(CommonVal::Str("dark_cyan")),
-            Color(CTColor::White) => Ok(CommonVal::Str("white")),
-            Color(CTColor::Grey) => Ok(CommonVal::Str("grey")),
-            _ => Err(()),
-        }
-    }
-}
 
 /// The style for a cell in a [`crate::Buffer`]
 /// A style is applied to ever single cell in a [`crate::Buffer`].
@@ -209,11 +53,11 @@ impl Style {
 
     pub(crate) fn write(&self, w: &mut impl Write) -> Result<()> {
         if let Some(fg) = self.fg {
-            w.queue(SetForegroundColor(*fg))?;
+            w.queue(SetForegroundColor(fg))?;
         }
 
         if let Some(bg) = self.bg {
-            w.queue(SetBackgroundColor(*bg))?;
+            w.queue(SetBackgroundColor(bg))?;
         }
 
         // Dim and bold are a special case, as they are both
@@ -341,8 +185,8 @@ impl Style {
     /// Reset the style
     pub fn reset() -> Self {
         let mut style = Self::new();
-        style.fg = Some(CTColor::Reset.into());
-        style.bg = Some(CTColor::Reset.into());
+        style.fg = Some(Color::Reset.into());
+        style.bg = Some(Color::Reset.into());
         style
     }
 
@@ -370,24 +214,22 @@ impl<'bp> From<&Attribs<'bp>> for Style {
             if let Some(val) = fg.to_common() {
                 let val = *val;
                 let colour = match val.to_hex() {
-                    None => CTColor::try_from(val.to_common_str().as_ref()).ok(),
-                    Some(Hex { r, g, b }) => Some(CTColor::from((r, g, b))),
+                    None => Color::try_from(val.to_common_str().as_ref()).ok(),
+                    Some(Hex { r, g, b }) => Some(Color::from((r, g, b))),
                 };
                 style.fg = colour;
             }
-
         }
 
         if let Some(bg) = attributes.get_val("background").and_then(|val| val.load_common_val()) {
             if let Some(val) = bg.to_common() {
                 let val = *val;
                 let colour = match val.to_hex() {
-                    None => CTColor::try_from(val.to_common_str().as_ref()).ok(),
-                    Some(Hex { r, g, b }) => Some(CTColor::from((r, g, b))),
+                    None => Color::try_from(val.to_common_str().as_ref()).ok(),
+                    Some(Hex { r, g, b }) => Some(Color::from((r, g, b))),
                 };
                 style.bg = colour;
             }
-
         }
 
         if attributes.get_bool("bold") {
