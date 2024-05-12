@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use anathema_store::slab::Slab;
 
-use crate::{CommonVal, Number, Path, PendingValue, Subscriber, Value, ValueRef};
+use crate::{CommonVal, Hex, Number, Path, PendingValue, Subscriber, Value, ValueRef};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StateId(usize);
@@ -203,6 +203,20 @@ impl State for bool {
 
     fn to_common(&self) -> Option<CommonVal<'_>> {
         Some(CommonVal::Bool(*self))
+    }
+}
+
+impl State for Hex {
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn to_common(&self) -> Option<CommonVal<'_>> {
+        Some(CommonVal::Hex(*self))
     }
 }
 

@@ -366,11 +366,28 @@ impl<'bp> From<&Attribs<'bp>> for Style {
     fn from(attributes: &Attribs<'bp>) -> Self {
         let mut style = Self::new();
 
-        if let Some(fg) = attributes.get::<Color>("foreground") {
-            style.fg = fg.into();
+        if let Some(fg) = attributes.get_val("foreground").and_then(|val| val.load_common_val()) {
+            if let Some(val) = fg.to_common() {
+                let val = *val;
+                let colour = match val.to_hex() {
+                    None => CTColor::try_from(val.to_common_str().as_ref()).ok(),
+                    Some(Hex { r, g, b }) => Some(CTColor::from((r, g, b))),
+                };
+                style.fg = colour;
+            }
+
         }
-        if let Some(bg) = attributes.get::<Color>("background") {
-            style.bg = bg.into();
+
+        if let Some(bg) = attributes.get_val("background").and_then(|val| val.load_common_val()) {
+            if let Some(val) = bg.to_common() {
+                let val = *val;
+                let colour = match val.to_hex() {
+                    None => CTColor::try_from(val.to_common_str().as_ref()).ok(),
+                    Some(Hex { r, g, b }) => Some(CTColor::from((r, g, b))),
+                };
+                style.bg = colour;
+            }
+
         }
 
         if attributes.get_bool("bold") {

@@ -60,6 +60,10 @@ impl TabIndex {
     pub fn dumb_fetch(&self, component_id: ComponentId) -> Option<&IndexEntry> {
         self.components.iter().find(|entry| entry.component_id == component_id)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &IndexEntry> {
+        self.components.iter()
+    }
 }
 
 impl NodeVisitor<WidgetKind<'_>> for TabIndex {

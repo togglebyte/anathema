@@ -42,7 +42,7 @@ impl<'a> Either<'a> {
     pub fn load_number(&self) -> Option<Number> {
         match self {
             Either::Static(val) => val.to_number(),
-            Either::Dyn(state) => state.to_common().and_then(|v| v.to_number())
+            Either::Dyn(state) => state.to_common().and_then(|v| v.to_number()),
         }
     }
 
@@ -358,6 +358,20 @@ impl<'bp> From<CommonVal<'bp>> for EvalValue<'bp> {
 impl From<ValueRef> for EvalValue<'_> {
     fn from(value: ValueRef) -> Self {
         Self::Dyn(value)
+    }
+}
+
+impl<'a> TryFrom<&EvalValue<'a>> for &'a str {
+    type Error = ();
+
+    fn try_from(value: &EvalValue<'a>) -> Result<Self, Self::Error> {
+        match value {
+            EvalValue::Static(p) => match p {
+                CommonVal::Str(s) => Ok(s),
+                _ => Err(())
+            },
+            _ => Err(()),
+        }
     }
 }
 

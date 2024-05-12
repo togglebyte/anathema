@@ -11,7 +11,7 @@ pub mod events;
 pub const ROOT_VIEW: ComponentId = ComponentId(usize::MAX);
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
-pub type StateFn = dyn Fn() -> Box<dyn State>;
+pub type StateFn = dyn FnMut() -> Box<dyn State>;
 
 enum ComponentType {
     Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>),
@@ -38,10 +38,10 @@ impl ComponentRegistry {
         self.0.insert_at(id, comp_type);
     }
 
-    pub fn add_prototype<FC, FS, C, S>(&mut self, id: ComponentId, proto: FC, state: FS)
+    pub fn add_prototype<FC, FS, C, S>(&mut self, id: ComponentId, proto: FC, mut state: FS)
     where
         FC: 'static + Fn() -> C,
-        FS: 'static + Fn() -> S,
+        FS: 'static + FnMut() -> S,
         C: Component + 'static,
         S: State + 'static,
     {

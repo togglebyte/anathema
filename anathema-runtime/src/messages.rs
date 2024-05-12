@@ -8,6 +8,7 @@ pub struct ViewMessage {
     pub(super) recipient: ComponentId,
 }
 
+#[derive(Clone)]
 pub struct Emitter(pub(crate) flume::Sender<ViewMessage>);
 
 impl Emitter {

@@ -12,6 +12,22 @@ impl MouseEvent {
     pub fn pos(&self) -> Pos {
         (self.x, self.y).into()
     }
+
+    /// Returns true if the left mouse button is down
+    pub fn lsb_down(&self) -> bool {
+        match self.state {
+            MouseState::Down(MouseButton::Left) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if the left mouse button is released
+    pub fn lsb_up(&self) -> bool {
+        match self.state {
+            MouseState::Up(MouseButton::Left) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
