@@ -98,6 +98,7 @@ impl<'bp> Attributes<'bp> {
         self.values.get_with_index(ValueIndex::ZERO)
     }
 
+    /// Get a copy of a value
     pub fn get<T>(&self, key: &'bp str) -> Option<T>
     where
         T: 'static,
@@ -108,19 +109,43 @@ impl<'bp> Attributes<'bp> {
         value.load::<T>()
     }
 
+    /// Get a reference to value
+    /// ```
+    /// # use anathema_widgets::{Attributes, WidgetId};
+    /// let mut attributes = Attributes::empty(WidgetId::ZERO);
+    /// let s = String::from("hello");
+    /// attributes.set("str", s.as_ref());
+    /// attributes.set("num", 123u32);
+    /// assert_eq!("hello", attributes.get_ref::<&str>("str").unwrap());
+    /// assert_eq!(123, attributes.get::<u32>("num").unwrap());
+    /// ```
     pub fn get_ref<'a, T: TryFrom<&'a EvalValue<'bp>>>(&'a self, key: &'bp str) -> Option<T> {
         self.get_val(key).and_then(|s| T::try_from(s.deref()).ok())
     }
 
-    pub fn get_val(&self, key: &'bp str) -> Option<&Value<'_, EvalValue<'bp>>> {
+    pub fn get_val(&self, key: &'bp str) -> Option<&Value<'bp, EvalValue<'bp>>> {
         let key = ValueKey::Attribute(key);
         self.values.get(&key)
+    }
+
+    /// Get an integer regardless of how the value was stored.
+    /// This will convert any state value of any numerical type
+    /// into a `i64`.
+    pub fn get_int(&self, key: &'bp str) -> Option<i64> {
+        let key = ValueKey::Attribute(key);
+
+        let value = self.values.get(&key)?;
+        value
+            .load_common_val()
+            .and_then(|e| e.load_number().map(|n| n.as_int()))
     }
 
     pub(crate) fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp, EvalValue<'bp>>> {
         self.values.get_mut_with_index(index)
     }
 
+    /// Treat the underlying value as a boolean.
+    /// If it isn't it will default to false
     pub fn get_bool(&self, key: &'bp str) -> bool {
         self.get_val(key).map(|val| val.load_bool()).unwrap_or(false)
     }
@@ -131,7 +156,47 @@ impl<'bp> Attributes<'bp> {
         self.values.iter().skip(1)
     }
 
-    pub(crate) fn contains(&self, key: &ValueKey<'bp>) -> bool {
-        self.values.get(key).is_some()
+    pub fn contains(&self, key: &'bp str) -> bool {
+        let key = ValueKey::Attribute(key);
+        self.values.get(&key).is_some()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn read_attribute() {
+        let mut attributes = Attributes::empty(WidgetId::ZERO);
+        let s = String::from("hello");
+        attributes.set("str", s.as_ref());
+        attributes.set("num", 123u32);
+
+        assert_eq!("hello", attributes.get_ref::<&str>("str").unwrap());
+        assert_eq!(123, attributes.get::<u32>("num").unwrap());
+    }
+
+    #[test]
+    fn write_attribute() {
+        let mut attributes = Attributes::empty(WidgetId::ZERO);
+        attributes.set("num", 123u32);
+        attributes.set("num", 1u32);
+        assert_eq!(1, attributes.get::<u32>("num").unwrap());
+    }
+
+    #[test]
+    fn remove_attribute() {
+        let mut attributes = Attributes::empty(WidgetId::ZERO);
+        attributes.set("num", 123u32);
+        attributes.remove("num");
+        assert!(attributes.get::<u32>("num").is_none());
+    }
+
+    #[test]
+    fn contains_attribute() {
+        let mut attributes = Attributes::empty(WidgetId::ZERO);
+        attributes.set("num", 123u32);
+        assert!(attributes.contains("num"));
     }
 }

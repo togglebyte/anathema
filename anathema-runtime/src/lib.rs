@@ -113,7 +113,7 @@ where
     pub fn register_prototype<FC, FS, C, S>(&mut self, id: impl Into<ComponentId>, proto: FC, state: FS)
     where
         FC: 'static + Fn() -> C,
-        FS: 'static + Fn() -> S,
+        FS: 'static + FnMut() -> S,
         C: Component + 'static,
         S: State + 'static,
     {
@@ -239,14 +239,17 @@ where
                     &mut attribute_storage,
                 );
 
-                if let Some(entry) = tab_indices.current() {
-                    tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                        let WidgetKind::Component(component) = widget else { return };
-                        let state = entry.state_id.and_then(|id| states.get_mut(id));
-                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                        let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                        component.component.any_event(event, state, elements);
-                    });
+                // Ignore mouse events, as they are handled by global event
+                if event.is_mouse_event() {
+                    if let Some(entry) = tab_indices.current() {
+                        tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                            let WidgetKind::Component(component) = widget else { return };
+                            let state = entry.state_id.and_then(|id| states.get_mut(id));
+                            let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                            let elements = Elements::new(node.children(), values, &mut attribute_storage);
+                            component.component.any_event(event, state, elements);
+                        });
+                    }
                 }
 
                 // Make sure event handling isn't holding up the rest of the event loop.
@@ -304,7 +307,7 @@ where
                     match parent {
                         None => break (Pos::ZERO, self.constraints),
                         Some(p) => match tree.get_ref_by_path(p) {
-                            Some(WidgetKind::Element(el)) => break (el.container.pos, Constraints::from(el.size())),
+                            Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
                             _ => parent = p.pop(),
                         },
                     }
@@ -395,6 +398,19 @@ fn global_event<'bp, T: Backend>(
             });
         }
     }
+
+    if let Event::Mouse(mouse) = event {
+        for entry in tab_indices.iter() {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, attribute_storage);
+                let state = entry.state_id.and_then(|id| states.get_mut(id));
+                let _ = component.component.any_event(event, state, elements);
+            });
+        }
+    }
+
     event
 }
 

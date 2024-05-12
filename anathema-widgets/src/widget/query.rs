@@ -48,6 +48,8 @@ pub struct Query<'widgets, 'tree, 'state, 'bp, S> {
 }
 
 impl<'widgets, 'tree, 'state, 'bp, S> Query<'widgets, 'tree, 'state, 'bp, S> {
+    /// Find elements by its tag (this is the name of the element in the template, e.g `text`,
+    /// `vstack` etc.)
     pub fn by_tag(self, ident: &'widgets str) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
         QueryResult {
             _s: self.state,
@@ -56,6 +58,7 @@ impl<'widgets, 'tree, 'state, 'bp, S> Query<'widgets, 'tree, 'state, 'bp, S> {
         }
     }
 
+    /// Find elements based on their attribute values
     pub fn by_attribute(
         self,
         key: &'widgets str,
@@ -68,6 +71,7 @@ impl<'widgets, 'tree, 'state, 'bp, S> Query<'widgets, 'tree, 'state, 'bp, S> {
         }
     }
 
+    /// Find elements at a given position
     pub fn at_position(self, pos: impl Into<Pos>) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
         let pos = pos.into();
         QueryResult {

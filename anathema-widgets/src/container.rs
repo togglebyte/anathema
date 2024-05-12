@@ -55,7 +55,7 @@ impl Container {
 
         let attrs = attribute_storage.get(self.id);
         // Draw background
-        if attrs.contains(&ValueKey::Attribute("background")) {
+        if attrs.contains("background") {
             for y in 0..self.size.height as u16 {
                 for x in 0..self.size.width as u16 {
                     let pos = LocalPos::new(x, y);

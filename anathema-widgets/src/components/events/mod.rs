@@ -22,3 +22,13 @@ pub enum Event {
     /// Window was resized
     Resize(u16, u16),
 }
+
+impl Event {
+    pub fn is_mouse_event(&self) -> bool {
+        match self {
+            Self::Mouse(_) => true,
+            _ => false,
+        }
+    }
+}
+

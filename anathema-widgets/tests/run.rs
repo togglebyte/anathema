@@ -10,7 +10,7 @@ use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
-    FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetId, WidgetTree,
+    FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]

@@ -66,6 +66,13 @@ impl<'frame> CommonVal<'frame> {
             _ => false,
         }
     }
+
+    pub fn to_hex(&self) -> Option<Hex> {
+        match self {
+            Self::Hex(hex) => Some(*hex),
+            _ => None,
+        }
+    }
 }
 
 impl Display for CommonVal<'_> {
@@ -90,6 +97,12 @@ impl From<Number> for CommonVal<'_> {
     }
 }
 
+impl<'a> From<&'a str> for CommonVal<'a> {
+    fn from(value: &'a str) -> Self {
+        CommonVal::Str(value)
+    }
+}
+
 macro_rules! impl_static {
     ($ty:ty, $variant:ident) => {
         impl From<$ty> for CommonVal<'_> {
@@ -111,7 +124,6 @@ impl_static!(bool, Bool);
 impl_static!(char, Char);
 impl_static!(f64, Float);
 impl_static!(f32, Float, f64);
-impl_static!(&'static str, Str);
 
 impl_static!(usize, Int, i64);
 impl_static!(isize, Int, i64);

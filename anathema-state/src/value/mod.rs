@@ -100,6 +100,11 @@ impl<T: State + 'static> Value<T> {
     pub fn key(&self) -> ValueKey {
         self.key
     }
+
+    /// Convenience function for reassigning a value.
+    pub fn set(&mut self, new_value: T) {
+        *self.to_mut() = new_value;
+    }
 }
 
 impl<T: State + 'static + Copy> Value<T> {

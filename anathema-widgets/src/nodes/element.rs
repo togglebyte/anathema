@@ -10,7 +10,7 @@ use crate::{AttributeStorage, LayoutChildren, WidgetId};
 #[derive(Debug)]
 pub struct Element<'bp> {
     pub ident: &'bp str,
-    pub container: Container,
+    pub(crate) container: Container,
 }
 
 impl<'bp> Element<'bp> {
@@ -41,6 +41,7 @@ impl<'bp> Element<'bp> {
         self.container.paint(children, ctx, text, attribute_storage)
     }
 
+    /// Position the element
     pub fn position(
         &mut self,
         children: PositionChildren<'_, '_, 'bp>,
@@ -60,5 +61,10 @@ impl<'bp> Element<'bp> {
 
     pub fn to_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.container.inner.to_any_mut().downcast_mut()
+    }
+
+    /// Get the position of the container
+    pub fn get_pos(&self) -> Pos {
+        self.container.pos
     }
 }
