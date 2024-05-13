@@ -7,7 +7,7 @@ pub(crate) use self::change::changed;
 pub use self::change::{drain_changes, Change, Changes};
 pub use self::subscriber::{FutureValues, Subscriber};
 use self::subscriber::{SubKey, SubscriberMap};
-use super::State;
+use crate::states::AnyState;
 
 mod change;
 pub mod debug;
@@ -15,8 +15,8 @@ pub(crate) mod subscriber;
 pub(crate) mod values;
 
 thread_local! {
-    static OWNED: Owned<Box<dyn State>> = const { Owned::empty() };
-    static SHARED: Shared<Box<dyn State>> = const { Shared::empty() };
+    static OWNED: Owned<Box<dyn AnyState>> = const { Owned::empty() };
+    static SHARED: Shared<Box<dyn AnyState>> = const { Shared::empty() };
     static SUBSCRIBERS: RefCell<SubscriberMap> = const { RefCell::new(SubscriberMap::empty()) };
     static CHANGES: RefCell<Changes> = const { RefCell::new(Stack::empty()) };
     static FUTURE_VALUES: RefCell<FutureValues> = const { RefCell::new(Stack::empty()) };

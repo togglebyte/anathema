@@ -3,7 +3,7 @@ use anathema_geometry::{LocalPos, Pos, Size};
 use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx};
 use crate::paint::{PaintCtx, Unsized};
-use crate::widget::{AnyWidget, PositionChildren, ValueKey};
+use crate::widget::{AnyWidget, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
 #[derive(Debug)]
@@ -65,39 +65,5 @@ impl Container {
         }
 
         self.inner.any_paint(children, self.id, attribute_storage, ctx, text)
-    }
-
-    /// Get a mutable reference to the underlying widget of the given type
-    ///
-    /// # Panics
-    ///
-    /// Panics if the type is not matching the type of the widget
-    pub fn to<T: 'static>(&mut self) -> &mut T {
-        self.inner
-            .to_any_mut()
-            .downcast_mut::<T>()
-            .expect("the type did not match that of the widget")
-    }
-
-    /// Get a reference to the underlying widget of the given type
-    ///
-    /// # Panics
-    ///
-    /// Panics if the type is not matching the type of the widget
-    pub fn to_ref<T: 'static>(&self) -> &T {
-        self.inner
-            .to_any_ref()
-            .downcast_ref::<T>()
-            .expect("the type did not match that of the widget")
-    }
-
-    /// Get a mutable reference to the underlying widget of the given type
-    pub fn try_to<T: 'static>(&mut self) -> Option<&mut T> {
-        self.inner.to_any_mut().downcast_mut::<T>()
-    }
-
-    /// Get a reference to the underlying widget of the given type.
-    pub fn try_to_ref<T: 'static>(&self) -> Option<&T> {
-        self.inner.to_any_ref().downcast_ref::<T>()
     }
 }

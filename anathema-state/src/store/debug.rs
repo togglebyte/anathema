@@ -3,13 +3,14 @@ use anathema_store::store::{OwnedEntry, OwnedKey};
 
 use super::subscriber::Subscribers;
 use super::{CHANGES, FUTURE_VALUES, OWNED, SHARED};
+use crate::states::AnyState;
 use crate::store::subscriber::SubscriberDebug;
-use crate::{Change, State};
+use crate::Change;
 
 // -----------------------------------------------------------------------------
 //   - Owne value debug -
 // -----------------------------------------------------------------------------
-struct OwnedStateDebug<'a>(OwnedKey, &'a OwnedEntry<Box<dyn State>>);
+struct OwnedStateDebug<'a>(OwnedKey, &'a OwnedEntry<Box<dyn AnyState>>);
 
 impl DebugWriter for OwnedStateDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
@@ -28,7 +29,7 @@ impl DebugWriter for OwnedStateDebug<'_> {
 // -----------------------------------------------------------------------------
 //   - Shared value debug -
 // -----------------------------------------------------------------------------
-struct SharedStateDebug<'a>(usize, &'a dyn State);
+struct SharedStateDebug<'a>(usize, &'a dyn AnyState);
 
 impl DebugWriter for SharedStateDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {

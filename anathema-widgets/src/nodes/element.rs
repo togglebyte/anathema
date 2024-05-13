@@ -55,12 +55,14 @@ impl<'bp> Element<'bp> {
         self.container.size
     }
 
-    pub fn to_ref<T: 'static>(&self) -> Option<&T> {
-        self.container.inner.to_any_ref().downcast_ref()
+    /// Get a mutable reference to the underlying widget of the given type
+    pub fn to<T: 'static>(&mut self) -> Option<&mut T> {
+        self.container.inner.to_any_mut().downcast_mut::<T>()
     }
 
-    pub fn to_mut<T: 'static>(&mut self) -> Option<&mut T> {
-        self.container.inner.to_any_mut().downcast_mut()
+    /// Get a reference to the underlying widget of the given type
+    pub fn to_ref<T: 'static>(&self) -> Option<&T> {
+        self.container.inner.to_any_ref().downcast_ref::<T>()
     }
 
     /// Get the position of the container

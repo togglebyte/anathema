@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use anathema_state::State;
+use anathema_state::{AnyState, State};
 use anathema_store::slab::Slab;
 
 use self::events::{Event, KeyEvent, MouseEvent};
@@ -11,10 +11,10 @@ pub mod events;
 pub const ROOT_VIEW: ComponentId = ComponentId(usize::MAX);
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
-pub type StateFn = dyn FnMut() -> Box<dyn State>;
+pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
 
 enum ComponentType {
-    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>),
+    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>),
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
@@ -55,7 +55,7 @@ impl ComponentRegistry {
     ///
     /// Panics if the component isn't registered.
     /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(&mut self, id: ComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>) {
+    pub fn get(&mut self, id: ComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => (comp.take(), state.take()),
@@ -125,13 +125,13 @@ impl Component for () {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, ev: Event, state: Option<&mut dyn State>, elements: Elements<'_, '_>) -> Event;
+    fn any_event(&mut self, ev: Event, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) -> Event;
 
-    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn State>, elements: Elements<'_, '_>);
+    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>);
 
-    fn any_focus(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>);
+    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>);
 
-    fn any_blur(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>);
+    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>);
 
     fn accept_focus_any(&self) -> bool;
 }
@@ -141,7 +141,7 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, event: Event, state: Option<&mut dyn State>, widgets: Elements<'_, '_>) -> Event {
+    fn any_event(&mut self, event: Event, state: Option<&mut dyn AnyState>, widgets: Elements<'_, '_>) -> Event {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
@@ -158,18 +158,18 @@ where
         self.accept_focus()
     }
 
-    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn State>, elements: Elements<'_, '_>) {
+    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
         let Ok(message) = message.downcast::<T::Message>() else { return };
         self.message(*message, state, elements);
     }
 
-    fn any_focus(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>) {
+    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
         self.on_focus(state, elements);
     }
 
-    fn any_blur(&mut self, state: Option<&mut dyn State>, elements: Elements<'_, '_>) {
+    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
         let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
         self.on_blur(state, elements);
     }

@@ -7,14 +7,6 @@ struct TestState {
 }
 
 impl State for TestState {
-    fn to_any_ref(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
     fn to_common(&self) -> Option<CommonVal<'_>> {
         None
     }

@@ -2,11 +2,11 @@ use anathema_store::slab::Element;
 use anathema_store::store::{OwnedKey, SharedKey};
 
 use super::{ValueKey, OWNED, SHARED, SUBSCRIBERS};
-use crate::State;
+use crate::states::AnyState;
 
 // Write a new value into the `OWNED` store and associate
 // a subscriber key with the value.
-pub(crate) fn new_value(value: Box<dyn State>) -> ValueKey {
+pub(crate) fn new_value(value: Box<dyn AnyState>) -> ValueKey {
     let owned_key = OWNED.with(|owned| owned.push(value));
     let sub_key = SUBSCRIBERS.with_borrow_mut(|subscribers| subscribers.push_empty());
     ValueKey(owned_key, sub_key)
@@ -14,7 +14,7 @@ pub(crate) fn new_value(value: Box<dyn State>) -> ValueKey {
 
 pub(crate) fn with_owned<F, T>(key: OwnedKey, f: F) -> T
 where
-    F: Fn(&dyn State) -> T,
+    F: Fn(&dyn AnyState) -> T,
 {
     let val = get_unique(key);
     let ret = f(&val);
@@ -26,14 +26,14 @@ where
 //
 // This checks out the value, making impossible to call `get_unique` again
 // until the value has been returned (using `return_owned`).
-pub(crate) fn get_unique(key: OwnedKey) -> Box<dyn State> {
+pub(crate) fn get_unique(key: OwnedKey) -> Box<dyn AnyState> {
     OWNED.with(|owned| owned.unique(key))
 }
 
 // Try to make an owned value into a shared value, if it isn't already.
 // To get access to another shared instance of the value, call this function again.
-pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box<dyn State>>)> {
-    fn lookup_shared(key: SharedKey) -> Element<Box<dyn State>> {
+pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box<dyn AnyState>>)> {
+    fn lookup_shared(key: SharedKey) -> Element<Box<dyn AnyState>> {
         SHARED.with(|shared| shared.get(key))
     }
 
@@ -62,8 +62,8 @@ pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element
 //
 // This function assumes the value exists and should be limited to `Value<T>`.
 // If there is a chance the value is no longer present use `try_make_shared` instead.
-pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box<dyn State>>)> {
-    fn lookup_shared(key: SharedKey) -> Element<Box<dyn State>> {
+pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box<dyn AnyState>>)> {
+    fn lookup_shared(key: SharedKey) -> Element<Box<dyn AnyState>> {
         SHARED.with(|shared| shared.get(key))
     }
 
@@ -88,7 +88,7 @@ pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box
 }
 
 // Return an owned value back into `OWNED`.
-pub(crate) fn return_owned(key: OwnedKey, value: Box<dyn State>) {
+pub(crate) fn return_owned(key: OwnedKey, value: Box<dyn AnyState>) {
     OWNED.with(|owned| owned.return_unique_borrow(key, value));
 }
 

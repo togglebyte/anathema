@@ -399,7 +399,8 @@ fn global_event<'bp, T: Backend>(
         }
     }
 
-    if let Event::Mouse(mouse) = event {
+    // Mouse events are global
+    if let Event::Mouse(_) = event {
         for entry in tab_indices.iter() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };

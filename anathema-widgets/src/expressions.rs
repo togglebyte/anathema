@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::{ControlFlow, Deref};
 use std::rc::Rc;
 
-use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, SharedState, State, States, ValueRef};
+use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, SharedState, States, ValueRef};
 use anathema_templates::expressions::{Equality, Op};
 use anathema_templates::Expression;
 
@@ -366,10 +366,7 @@ impl<'a> TryFrom<&EvalValue<'a>> for &'a str {
 
     fn try_from(value: &EvalValue<'a>) -> Result<Self, Self::Error> {
         match value {
-            EvalValue::Static(p) => match p {
-                CommonVal::Str(s) => Ok(s),
-                _ => Err(())
-            },
+            EvalValue::Static(CommonVal::Str(s)) => Ok(s),
             _ => Err(()),
         }
     }

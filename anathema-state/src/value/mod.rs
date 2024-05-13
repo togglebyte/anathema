@@ -8,6 +8,7 @@ use anathema_store::store::{OwnedKey, SharedKey};
 pub use self::list::List;
 pub use self::map::Map;
 use super::State;
+use crate::states::AnyState;
 use crate::store::subscriber::{subscribe, unsubscribe};
 use crate::store::values::{
     copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, with_owned,
@@ -35,13 +36,13 @@ pub struct Value<T> {
     _p: PhantomData<*const T>,
 }
 
-impl<T: State + 'static> From<T> for Value<T> {
+impl<T: AnyState + 'static> From<T> for Value<T> {
     fn from(value: T) -> Self {
         Value::new(value)
     }
 }
 
-impl<T: State + 'static> Value<T> {
+impl<T: AnyState + 'static> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
         let key = new_value(Box::new(value));
@@ -123,7 +124,7 @@ impl<T> Drop for Value<T> {
 /// Unique access to the underlying value.
 /// This is the primary means to mutate the value.
 pub struct Unique<'a, T: 'static> {
-    value: Option<Box<dyn State>>,
+    value: Option<Box<dyn AnyState>>,
     key: ValueKey,
     _p: PhantomData<&'a mut T>,
 }
@@ -169,14 +170,14 @@ impl<'a, T: 'static> Drop for Unique<'a, T> {
 // -----------------------------------------------------------------------------
 #[derive(Default)]
 enum ElementState {
-    Alive(Element<Box<dyn State>>),
+    Alive(Element<Box<dyn AnyState>>),
     #[default]
     Dropped,
 }
 
 impl ElementState {
     #[allow(clippy::borrowed_box)]
-    fn as_state(&self) -> &Box<dyn State> {
+    fn as_state(&self) -> &Box<dyn AnyState> {
         match self {
             Self::Dropped => unreachable!(),
             Self::Alive(ref value) => value,
@@ -201,7 +202,7 @@ pub struct Shared<'a, T: 'static> {
 }
 
 impl<'a, T> Shared<'a, T> {
-    fn new(key: SharedKey, value: Element<Box<dyn State>>) -> Self {
+    fn new(key: SharedKey, value: Element<Box<dyn AnyState>>) -> Self {
         Self {
             state: SharedState::new(key, value),
             _p: PhantomData,
@@ -246,7 +247,7 @@ pub struct SharedState<'a> {
 }
 
 impl<'a> SharedState<'a> {
-    fn new(key: SharedKey, state: Element<Box<dyn State>>) -> Self {
+    fn new(key: SharedKey, state: Element<Box<dyn AnyState>>) -> Self {
         Self {
             key,
             inner: ElementState::Alive(state),
@@ -262,7 +263,7 @@ impl PartialEq for SharedState<'_> {
 }
 
 impl<'a> Deref for SharedState<'a> {
-    type Target = Box<dyn State>;
+    type Target = Box<dyn AnyState>;
 
     fn deref(&self) -> &Self::Target {
         self.inner.as_state()
@@ -312,7 +313,7 @@ impl ValueRef {
         Some(shared)
     }
 
-    /// Try to get access to the underlying value as a `dyn State`.
+    /// Try to get access to the underlying value as a `dyn AnyState`.
     /// This will return `None` if the `Value<T>` behind this `ValueRef` has
     /// been dropped.
     pub fn as_state(&self) -> Option<SharedState<'_>> {
@@ -352,7 +353,7 @@ impl PendingValue {
 
     pub fn as_state<F, T>(&self, f: F) -> T
     where
-        F: Fn(&dyn State) -> T,
+        F: Fn(&dyn AnyState) -> T,
     {
         with_owned(self.0.owned(), f)
     }

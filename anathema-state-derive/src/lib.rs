@@ -48,14 +48,6 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
                 }
             }
 
-            fn to_any_ref(&self) -> &dyn Any {
-                self
-            }
-
-            fn to_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-
             fn to_common(&self) -> Option<CommonVal<'_>> {
                 None
             }

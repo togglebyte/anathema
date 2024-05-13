@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -46,14 +45,6 @@ impl<T: 'static + State> Value<Map<T>> {
 }
 
 impl<T: 'static + State> State for Map<T> {
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
         let Path::Key(k) = path else { return None };
         let value = self.inner.get(k)?;

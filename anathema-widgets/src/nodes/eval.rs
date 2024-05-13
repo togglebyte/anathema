@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anathema_geometry::{Pos, Size};
-use anathema_state::{State, States, Value};
+use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::SmallIndex;
 use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
@@ -45,7 +45,10 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         }
     }
 
-    fn get_component(&mut self, component_id: ComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>) {
+    fn get_component(
+        &mut self,
+        component_id: ComponentId,
+    ) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
         self.components.get(component_id)
     }
 }

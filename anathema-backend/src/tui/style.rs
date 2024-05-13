@@ -1,7 +1,6 @@
 use std::io::{Result, Write};
-use std::ops::{Deref, DerefMut};
 
-use anathema_state::{CommonVal, Hex};
+use anathema_state::Hex;
 use anathema_widgets::Attributes as Attribs;
 pub use crossterm::style::Attribute as CrossAttrib;
 use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
@@ -185,8 +184,8 @@ impl Style {
     /// Reset the style
     pub fn reset() -> Self {
         let mut style = Self::new();
-        style.fg = Some(Color::Reset.into());
-        style.bg = Some(Color::Reset.into());
+        style.fg = Some(Color::Reset);
+        style.bg = Some(Color::Reset);
         style
     }
 

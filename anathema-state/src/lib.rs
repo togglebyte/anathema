@@ -3,7 +3,7 @@ use anathema_store::slab::Key;
 
 pub use crate::common::{CommonString, CommonVal};
 pub use crate::numbers::Number;
-pub use crate::states::{State, StateId, Stateless, States};
+pub use crate::states::{AnyState, State, StateId, Stateless, States};
 pub use crate::store::{
     debug, drain_changes, drain_futures, register_future, Change, Changes, FutureValues, Subscriber,
 };

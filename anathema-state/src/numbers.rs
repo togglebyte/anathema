@@ -5,7 +5,6 @@
 //!
 //! Note: If either the `lhs` or the `rhs` is a float then the entire
 //! number has to be treated as a float
-use std::any::Any;
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use crate::{CommonVal, State};
@@ -69,14 +68,6 @@ impl Number {
 }
 
 impl State for Number {
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
     fn to_number(&self) -> Option<Number> {
         Some(*self)
     }

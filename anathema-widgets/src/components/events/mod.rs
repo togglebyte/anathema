@@ -25,10 +25,6 @@ pub enum Event {
 
 impl Event {
     pub fn is_mouse_event(&self) -> bool {
-        match self {
-            Self::Mouse(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Mouse(_))
     }
 }
-

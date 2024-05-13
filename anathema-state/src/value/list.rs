@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::VecDeque;
 
 use super::Value;
@@ -105,21 +104,9 @@ impl<T: 'static + State> Value<List<T>> {
 
         list.iter_mut().for_each(|el| f(&mut *el.to_mut()));
     }
-
-    // fn is_empty(&self) -> bool {
-    //     self.len() == 0
-    // }
 }
 
 impl<T: 'static + State> State for List<T> {
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
         let Path::Index(idx) = path else { return None };
 
