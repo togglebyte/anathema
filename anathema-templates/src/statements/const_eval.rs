@@ -106,8 +106,8 @@ mod test {
     #[test]
     fn declare_twice_const_folding() {
         with_context(|ctx| {
-            ctx.locals.declare("a", num(1));
-            ctx.locals.declare("b", ident("a"));
+            ctx.globals.declare("a", num(1));
+            ctx.globals.declare("b", ident("a"));
             let output = const_eval(ident("b"), &ctx);
             assert_eq!(*num(1), output);
         });
@@ -116,8 +116,8 @@ mod test {
     #[test]
     fn eval_map() {
         with_context(|ctx| {
-            ctx.locals.declare("a", map([("b", ident("c"))]));
-            ctx.locals.declare("c", num(1));
+            ctx.globals.declare("a", map([("b", ident("c"))]));
+            ctx.globals.declare("c", num(1));
             let expr = dot(ident("a"), ident("b"));
             let output = const_eval(expr, &ctx);
             assert_eq!(*num(1), output);
@@ -129,8 +129,8 @@ mod test {
         // a.b = [1]
         // c = 0
         with_context(|ctx| {
-            ctx.locals.declare("a", map([("b", list([num(1)]))]));
-            ctx.locals.declare("c", num(0));
+            ctx.globals.declare("a", map([("b", list([num(1)]))]));
+            ctx.globals.declare("c", num(0));
             let expr = index(dot(ident("a"), ident("b")), ident("c"));
             let output = const_eval(expr, &ctx);
             assert_eq!(*num(1), output);
@@ -140,8 +140,8 @@ mod test {
     #[test]
     fn list_const_eval() {
         with_context(|ctx| {
-            ctx.locals.declare("a", list([strlit("red"), strlit("blue")]));
-            ctx.locals.declare("b", index(ident("a"), num(1)));
+            ctx.globals.declare("a", list([strlit("red"), strlit("blue")]));
+            ctx.globals.declare("b", index(ident("a"), num(1)));
             let output = const_eval(ident("b"), &ctx);
             assert_eq!(*strlit("blue"), output);
         });
@@ -150,8 +150,8 @@ mod test {
     #[test]
     fn list_dyn_eval() {
         with_context(|ctx| {
-            ctx.locals.declare("a", list([strlit("red"), strlit("blue")]));
-            ctx.locals.declare("b", num(1));
+            ctx.globals.declare("a", list([strlit("red"), strlit("blue")]));
+            ctx.globals.declare("b", num(1));
             let expr = index(ident("a"), add(ident("some_state"), ident("b")));
             let expected = *index(list([strlit("red"), strlit("blue")]), add(ident("some_state"), num(1)));
             let output = const_eval(expr, &ctx);
@@ -163,7 +163,7 @@ mod test {
     fn global_dec() {
         with_context(|ctx| {
             ctx.globals.declare("a", list([strlit("red"), strlit("blue")]));
-            ctx.locals.declare("b", num(1));
+            ctx.globals.declare("b", num(1));
             let expr = *index(ident("a"), ident("b"));
             let output = const_eval(expr, &ctx);
             assert_eq!(output, *strlit("blue"));

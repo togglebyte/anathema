@@ -184,16 +184,6 @@ where
 
         self
     }
-
-    // pub fn query<F>(&mut self, f: F) -> &mut Self
-    // where
-    //     F: FnOnce(Option<&mut dyn AnyState>, Elements<'_, '_>),
-    // {
-    //     let (nodes, values) = self.tree.split_mut();
-    //     let state = self.states.get_mut(0).unwrap();
-    //     f(Some(state), Elements::new(nodes, values, &mut self.attribute_storage));
-    //     self
-    // }
 }
 
 pub struct TestCase {

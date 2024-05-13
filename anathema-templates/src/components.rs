@@ -48,12 +48,7 @@ impl ComponentTemplates {
         self.components.insert(ident, Some(template.into()))
     }
 
-    pub(crate) fn load(
-        &mut self,
-        id: ComponentId,
-        locals: Variables,
-        globals: &mut Variables,
-    ) -> Result<Vec<Blueprint>> {
+    pub(crate) fn load(&mut self, id: ComponentId, globals: &mut Variables) -> Result<Vec<Blueprint>> {
         if self.dependencies.contains(&id) {
             return Err(Error::CircularDependency);
         }
@@ -62,7 +57,7 @@ impl ComponentTemplates {
 
         let ret = match self.components.remove(id) {
             Some((key, Some(template))) => {
-                let ret = self.compile(&template, locals, globals);
+                let ret = self.compile(&template, globals);
                 // This will re-insert the component in the same location
                 // as it was removed from since nothing else has
                 // written to the component storage since the component
@@ -79,7 +74,7 @@ impl ComponentTemplates {
         ret
     }
 
-    fn compile(&mut self, template: &str, mut locals: Variables, globals: &mut Variables) -> Result<Vec<Blueprint>> {
+    fn compile(&mut self, template: &str, globals: &mut Variables) -> Result<Vec<Blueprint>> {
         let mut strings = Strings::empty();
         let tokens = Lexer::new(template, &mut strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, template.len());
@@ -88,7 +83,6 @@ impl ComponentTemplates {
         let statements = parser.collect::<Result<Statements>>()?;
 
         let mut context = Context {
-            locals: &mut locals,
             globals,
             components: self,
             strings: &strings,

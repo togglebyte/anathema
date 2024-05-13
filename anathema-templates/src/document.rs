@@ -46,10 +46,7 @@ impl Document {
 
         let statements = parser.collect::<Result<Statements>>()?;
 
-        let mut locals = Variables::new();
-
         let mut context = Context {
-            locals: &mut locals,
             globals: &mut self.globals,
             strings: &mut self.strings,
             components: &mut self.components,

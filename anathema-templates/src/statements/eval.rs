@@ -9,7 +9,6 @@ use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, If, Single
 use crate::components::ComponentId;
 use crate::error::Result;
 use crate::expressions::Expression;
-use crate::variables::{Variables, Visibility};
 
 pub(crate) struct Scope {
     statements: Statements,
@@ -29,17 +28,10 @@ impl Scope {
                 Statement::Component(component_id) => output.push(self.eval_component(component_id, ctx)?),
                 Statement::For { binding, data } => output.push(self.eval_for(binding, data, ctx)?),
                 Statement::If(cond) => output.push(self.eval_if(cond, ctx)?),
-                Statement::Declaration {
-                    visibility,
-                    binding,
-                    value,
-                } => {
+                Statement::Declaration { binding, value } => {
                     let value = const_eval(value, ctx);
                     let binding = ctx.strings.get_unchecked(binding);
-                    match visibility {
-                        Visibility::Local => ctx.locals.declare(binding, value),
-                        Visibility::Global => ctx.globals.declare(binding, value),
-                    };
+                    ctx.globals.declare(binding, value);
                 }
 
                 // These statements can't be evaluated on their own,
@@ -85,11 +77,8 @@ impl Scope {
     }
 
     fn consume_scope(&mut self, ctx: &mut Context<'_, '_>) -> Result<Vec<Blueprint>> {
-        ctx.locals.push();
         let scope = Scope::new(self.statements.take_scope());
-        let ret = scope.eval(ctx);
-        ctx.locals.pop();
-        ret
+        scope.eval(ctx)
     }
 
     fn eval_attributes(&mut self, ctx: &mut Context<'_, '_>) -> Result<HashMap<Rc<str>, Expression>> {
@@ -120,7 +109,6 @@ impl Scope {
     fn eval_component(&mut self, component_id: ComponentId, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
         let attributes = self.eval_attributes(ctx)?;
         let state = self.statements.take_value().map(|v| const_eval(v, ctx));
-        let locals = Variables::new();
 
         let state = match state {
             Some(Expression::Map(map)) => Some(map),
@@ -128,7 +116,7 @@ impl Scope {
             None => None,
         };
 
-        let body = ctx.load_component(component_id, locals)?;
+        let body = ctx.load_component(component_id)?;
 
         let component = Component {
             id: component_id,

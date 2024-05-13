@@ -240,7 +240,7 @@ where
                 );
 
                 // Ignore mouse events, as they are handled by global event
-                if event.is_mouse_event() {
+                if !event.is_mouse_event() {
                     if let Some(entry) = tab_indices.current() {
                         tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                             let WidgetKind::Component(component) = widget else { return };

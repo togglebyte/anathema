@@ -6,7 +6,7 @@ use crate::error::{src_line_no, ParseError, ParseErrorKind, Result};
 use crate::expressions::parser::parse_expr;
 use crate::expressions::Expression;
 use crate::token::{Kind, Operator, Tokens, Value};
-use crate::variables::Visibility;
+// use crate::variables::Visibility;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum State {
@@ -281,9 +281,9 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     }
 
     fn parse_declaration(&mut self) -> Result<Option<Statement>, ParseError> {
-        let visibility = match self.tokens.peek_skip_indent() {
-            Kind::Local => Visibility::Local,
-            Kind::Global => Visibility::Global,
+        // Check if it's a declaration otherwise move on
+        match self.tokens.peek_skip_indent() {
+            Kind::Decl => (),
             _ => {
                 self.next_state();
                 return Ok(None);
@@ -297,11 +297,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             self.tokens.consume();
             let value = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
             self.next_state();
-            let statement = Statement::Declaration {
-                visibility,
-                binding,
-                value,
-            };
+            let statement = Statement::Declaration { binding, value };
             return Ok(Some(statement));
         }
 
@@ -472,8 +468,7 @@ mod test {
     use crate::expressions::{ident, list, map, num, strlit};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        else_stmt, eof, for_loop, global_decl, if_else, if_stmt, load_attrib, load_value, local_decl, node, scope_end,
-        scope_start, view,
+        decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node, scope_end, scope_start, view,
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
@@ -713,30 +708,23 @@ mod test {
     }
 
     #[test]
-    fn parse_local_declaration() {
-        let src = "local x = 1";
+    fn parse_declaration() {
+        let src = "let x = 1";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), local_decl(0, num(1)));
-    }
-
-    #[test]
-    fn parse_global_declaration() {
-        let src = "global x = 1";
-        let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), global_decl(0, num(1)));
+        assert_eq!(statements.remove(0), decl(0, num(1)));
     }
 
     #[test]
     fn parse_invalid_declaration() {
-        let src = "local x = global y = 1";
+        let src = "let x = let y = 1";
         let err = parse_err(src);
         let expected = ParseError {
             kind: ParseErrorKind::InvalidToken {
                 expected: "valid token, found statement",
             },
             line: 1,
-            col: 11,
-            src: "local x = global y = 1".to_string(),
+            col: 9,
+            src: "let x = let y = 1".to_string(),
         };
 
         assert_eq!(err, expected);
@@ -753,7 +741,7 @@ mod test {
     #[test]
     fn multi_line_declaration() {
         let src = "
-        local x = {
+        let x = {
             'a': 1,
             'b': {
                 'a': 2,
@@ -762,7 +750,7 @@ mod test {
         let mut statements = parse_ok(src);
         assert_eq!(
             statements.remove(0),
-            local_decl(0, map([("a", num(1)), ("b", map([("a", num(2))]))])),
+            decl(0, map([("a", num(1)), ("b", map([("a", num(2))]))])),
         );
     }
 }

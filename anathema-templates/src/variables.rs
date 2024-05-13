@@ -7,13 +7,11 @@ use anathema_store::slab::Slab;
 use crate::expressions::Expression;
 use crate::primitives::Primitive;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Visibility {
-    /// Variable is local to the view
-    Local,
-    /// Variable is global (but can be shadowed by local or another global)
-    Global,
-}
+// #[derive(Debug, Copy, Clone, PartialEq)]
+// pub enum Visibility {
+//     /// Variable is global (but can be shadowed by local or another global)
+//     Global,
+// }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct VarId(usize);
@@ -34,7 +32,6 @@ impl From<VarId> for usize {
 pub enum Variable {
     Static(Primitive),
     Str(Rc<str>),
-    // Deferred(Rc<str>),
 }
 
 impl From<&str> for Variable {
@@ -57,6 +54,7 @@ pub struct ScopeId(Rc<[u16]>);
 
 impl ScopeId {
     // Create the next child id.
+    #[cfg(test)]
     fn next(&self, index: u16) -> Self {
         let mut scope_id = Vec::with_capacity(self.0.len() + 1);
         scope_id.extend_from_slice(&self.0);
@@ -65,6 +63,7 @@ impl ScopeId {
     }
 
     // Get the parent id as a slice.
+    #[cfg(test)]
     fn parent(&self) -> &[u16] {
         // Can't get the parent of the root
         debug_assert!(self.0.len() > 1);
@@ -208,6 +207,7 @@ impl Scope {
     // let next = current.next_scope(); // scope 0,0
     // let next = current.next_scope(); // scope 0,1
     // ```
+    #[cfg(test)]
     fn create_child(&mut self) -> ScopeId {
         let index = self.children.len();
         let id = self.id.next(index as u16);
@@ -299,6 +299,7 @@ impl Variables {
 
     /// Create a new child and set the new childs id as the `current` id.
     /// Any operations done from here on out are acting upon the new child scope.
+    #[cfg(test)]
     pub(crate) fn push(&mut self) {
         let parent = self.root.get_scope_mut(&self.current);
         self.current = parent.create_child();
@@ -309,6 +310,7 @@ impl Variables {
     ///
     /// E.e if the current id is `[0, 1, 2]` `pop` would result in a new
     /// id of `[0, 1]`.
+    #[cfg(test)]
     pub(crate) fn pop(&mut self) {
         // panic!("drain and insert phi");
         self.current = self.current.parent().into();

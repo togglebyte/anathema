@@ -4,14 +4,13 @@ use crate::blueprints::Blueprint;
 use crate::components::{ComponentId, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
-use crate::variables::{Variables, Visibility};
+use crate::variables::Variables;
 
 mod const_eval;
 pub(crate) mod eval;
 pub(super) mod parser;
 
 pub(crate) struct Context<'vars, 'strings> {
-    pub(crate) locals: &'vars mut Variables,
     pub(crate) globals: &'vars mut Variables,
     pub(crate) components: &'strings mut ComponentTemplates,
     pub(crate) strings: &'strings Strings,
@@ -19,32 +18,22 @@ pub(crate) struct Context<'vars, 'strings> {
 
 impl Context<'_, '_> {
     fn fetch(&self, key: &str) -> Option<Expression> {
-        self.locals.fetch(key).or_else(|| self.globals.fetch(key))
+        self.globals.fetch(key)
     }
 
-    fn load_component(&mut self, component_id: ComponentId, locals: Variables) -> Result<Vec<Blueprint>> {
-        self.components.load(component_id, locals, self.globals)
+    fn load_component(&mut self, component_id: ComponentId) -> Result<Vec<Blueprint>> {
+        self.components.load(component_id, self.globals)
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Statement {
     LoadValue(Expression),
-    LoadAttribute {
-        key: StringId,
-        value: Expression,
-    },
+    LoadAttribute { key: StringId, value: Expression },
     Component(ComponentId),
     Node(StringId),
-    For {
-        binding: StringId,
-        data: Expression,
-    },
-    Declaration {
-        visibility: Visibility,
-        binding: StringId,
-        value: Expression,
-    },
+    For { binding: StringId, data: Expression },
+    Declaration { binding: StringId, value: Expression },
     If(Expression),
     Else(Option<Expression>),
     ScopeStart,
@@ -146,13 +135,11 @@ fn with_context<F>(mut f: F)
 where
     F: FnMut(Context<'_, '_>),
 {
-    let mut locals = Variables::new();
     let mut globals = Variables::new();
     let strings = Strings::empty();
     let mut components = ComponentTemplates::new();
 
     let context = Context {
-        locals: &mut locals,
         globals: &mut globals,
         strings: &strings,
         components: &mut components,
@@ -194,17 +181,8 @@ mod test {
         }
     }
 
-    pub(crate) fn global_decl(binding: impl Into<StringId>, value: impl Into<Expression>) -> Statement {
+    pub(crate) fn decl(binding: impl Into<StringId>, value: impl Into<Expression>) -> Statement {
         Statement::Declaration {
-            visibility: Visibility::Global,
-            binding: binding.into(),
-            value: value.into(),
-        }
-    }
-
-    pub(crate) fn local_decl(binding: impl Into<StringId>, value: impl Into<Expression>) -> Statement {
-        Statement::Declaration {
-            visibility: Visibility::Local,
             binding: binding.into(),
             value: value.into(),
         }
