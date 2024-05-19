@@ -7,11 +7,24 @@ use anathema_store::slab::Slab;
 use crate::expressions::Expression;
 use crate::primitives::Primitive;
 
-// #[derive(Debug, Copy, Clone, PartialEq)]
-// pub enum Visibility {
-//     /// Variable is global (but can be shadowed by local or another global)
-//     Global,
-// }
+#[derive(Debug, Default)]
+pub struct Globals(HashMap<Rc<str>, Expression>);
+
+impl Globals {
+    pub fn new(hm: HashMap<Rc<str>, Expression>) -> Self {
+        Self(hm)
+    }
+
+    pub fn get(&self, ident: &str) -> Option<&Expression> {
+        self.0.get(ident)
+    }
+}
+
+impl From<Variables> for Globals {
+    fn from(value: Variables) -> Self {
+        Self(value.into())
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct VarId(usize);
@@ -322,6 +335,22 @@ impl Variables {
             .get(var)
             .cloned()
             .expect("it would be an Anathema compilation error if this failed")
+    }
+}
+
+impl From<Variables> for HashMap<Rc<str>, Expression> {
+    fn from(mut vars: Variables) -> Self {
+        let mut hm = HashMap::new();
+
+        for (key, mut ids) in vars.declarations.0.into_iter() {
+            let (_, var_id) = ids
+                .pop()
+                .expect("there is always at least one var id associated with a key");
+            let val = vars.store.remove(var_id);
+            hm.insert(key, val);
+        }
+
+        hm
     }
 }
 

@@ -17,10 +17,7 @@ pub enum Change {
     Dropped,
 }
 
-/// Drain and iterate over changes with the associated subscribers,
-/// and applies `F` to each subscriber + &change.
-///
-/// NOTE: A singular `Subscriber` can contain multible keys.
+/// Drain the current changes into a local value.
 pub fn drain_changes(local_changes: &mut Changes) {
     CHANGES.with_borrow_mut(|changes| changes.drain_into(local_changes));
 }
@@ -30,5 +27,7 @@ pub(crate) fn changed(subkey: SubKey, change: Change) {
     if subscribers.is_empty() {
         return;
     }
-    CHANGES.with_borrow_mut(|changes| changes.push((subscribers, change)));
+    CHANGES.with_borrow_mut(|changes| {
+        changes.push((subscribers, change));
+    });
 }

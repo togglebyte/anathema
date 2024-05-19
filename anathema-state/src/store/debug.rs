@@ -2,7 +2,7 @@ use anathema_debug::DebugWriter;
 use anathema_store::store::{OwnedEntry, OwnedKey};
 
 use super::subscriber::Subscribers;
-use super::{CHANGES, FUTURE_VALUES, OWNED, SHARED};
+use super::{CHANGES, FUTURE_VALUES, OWNED, SHARED, SUBSCRIBERS};
 use crate::states::AnyState;
 use crate::store::subscriber::SubscriberDebug;
 use crate::Change;
@@ -96,6 +96,25 @@ impl DebugWriter for DebugSharedStore {
             storage.for_each(|k, v| {
                 SharedStateDebug(k, v).write(output).unwrap();
             });
+        });
+
+        Ok(())
+    }
+}
+
+/// Debug output of SUBSCRUBERS store value.
+pub struct DebugSubscribers;
+
+impl DebugWriter for DebugSubscribers {
+    fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
+        SUBSCRIBERS.with_borrow(|storage| {
+            for (k, v) in storage.inner.iter() {
+                writeln!(output, "key: {k:?}:").unwrap();
+                for sub in v.iter() {
+                    SubscriberDebug(sub).write(output).unwrap();
+                }
+                writeln!(output).unwrap();
+            }
         });
 
         Ok(())

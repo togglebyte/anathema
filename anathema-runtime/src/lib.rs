@@ -25,7 +25,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, States};
 use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::Document;
+use anathema_templates::{Document, Globals};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
 use anathema_widgets::layout::text::StringStorage;
@@ -67,6 +67,7 @@ pub struct Runtime<T> {
     future_values: FutureValues,
     changes: Changes,
     components: ComponentRegistry,
+    globals: Globals,
 }
 
 impl<T> Runtime<T>
@@ -77,7 +78,7 @@ where
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
 
-        let bp = doc.compile()?.remove(0);
+        let (bp, globals) = doc.compile()?;
 
         let (tx, rx) = flume::unbounded();
 
@@ -96,6 +97,7 @@ where
             changes: Changes::empty(),
             tab_indices: TabIndex::new(),
             components: ComponentRegistry::new(),
+            globals,
         };
 
         Ok(inst)
@@ -134,7 +136,9 @@ where
         let components = &mut self.components;
         let mut states = States::new();
         let mut scope = Scope::new();
+        let globals = &self.globals;
         let mut ctx = EvalContext::new(
+            globals,
             &self.factory,
             &mut scope,
             &mut states,
@@ -194,41 +198,6 @@ where
             // Clear the text buffer
             string_storage.clear();
 
-            apply_futures(
-                &mut future_values,
-                &factory,
-                &mut tree,
-                &mut states,
-                &mut components,
-                &mut attribute_storage,
-                &mut floating_widgets,
-            );
-
-            // TODO
-            // Instead of draining the changes when applying
-            // the changes, we can keep the changes and use them in the
-            // subsequent update / position / paint sequence
-            //
-            // Store the size and constraint on a widget
-            //
-            // * If the widget changes but the size remains the same then
-            //   there is no reason to perform a layout on the entire tree,
-            //   and only the widget it self needs to be re-painted
-            //
-            // Q) What about floating widgets?
-
-            // panic!("see this TODO and the one about updating widgets");
-
-            apply_changes(
-                &mut changes,
-                &factory,
-                &mut tree,
-                &mut states,
-                &mut components,
-                &mut attribute_storage,
-                &mut floating_widgets,
-            );
-
             while let Some(event) = backend.next_event(poll_duration) {
                 let event = global_event(
                     &mut backend,
@@ -275,6 +244,43 @@ where
                     break 'run Ok(());
                 }
             }
+
+            apply_futures(
+                globals,
+                &mut future_values,
+                &factory,
+                &mut tree,
+                &mut states,
+                &mut components,
+                &mut attribute_storage,
+                &mut floating_widgets,
+            );
+
+            // TODO
+            // Instead of draining the changes when applying
+            // the changes, we can keep the changes and use them in the
+            // subsequent update / position / paint sequence
+            //
+            // Store the size and constraint on a widget
+            //
+            // * If the widget changes but the size remains the same then
+            //   there is no reason to perform a layout on the entire tree,
+            //   and only the widget it self needs to be re-painted
+            //
+            // Q) What about floating widgets?
+
+            // panic!("see this TODO and the one about updating widgets");
+
+            apply_changes(
+                globals,
+                &mut changes,
+                &factory,
+                &mut tree,
+                &mut states,
+                &mut components,
+                &mut attribute_storage,
+                &mut floating_widgets,
+            );
 
             // -----------------------------------------------------------------------------
             //   - Layout, position and paint -
@@ -445,6 +451,7 @@ fn handle_messages<'bp>(
 }
 
 fn apply_futures<'bp>(
+    globals: &'bp Globals,
     future_values: &mut FutureValues,
     factory: &Factory,
     tree: &mut WidgetTree<'bp>,
@@ -461,6 +468,7 @@ fn apply_futures<'bp>(
         let path = tree.path(sub).clone();
 
         try_resolve_future_values(
+            globals,
             factory,
             &mut scope,
             states,
@@ -475,6 +483,7 @@ fn apply_futures<'bp>(
 }
 
 fn apply_changes<'bp>(
+    globals: &'bp Globals,
     changes: &mut Changes,
     factory: &Factory,
     tree: &mut WidgetTree<'bp>,
@@ -485,6 +494,10 @@ fn apply_changes<'bp>(
 ) {
     drain_changes(changes);
 
+    if changes.is_empty() {
+        return;
+    }
+
     let mut scope = Scope::new();
     changes.drain().rev().for_each(|(sub, change)| {
         sub.iter().for_each(|sub| {
@@ -492,6 +505,7 @@ fn apply_changes<'bp>(
             let Some(path) = tree.try_path(sub).cloned() else { return };
 
             update_tree(
+                globals,
                 factory,
                 &mut scope,
                 states,

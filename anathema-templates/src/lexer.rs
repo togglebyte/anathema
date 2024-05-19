@@ -307,6 +307,7 @@ mod test {
             crate::error::Error::ParseError(err) => err.kind,
             crate::error::Error::CircularDependency => panic!("invalid error"),
             crate::error::Error::MissingComponent => panic!("invalid error"),
+            crate::error::Error::EmptyTemplate => panic!("invalid error"),
         }
     }
 

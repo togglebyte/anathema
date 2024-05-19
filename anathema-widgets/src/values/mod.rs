@@ -54,6 +54,21 @@ impl<'bp> Value<'bp, EvalValue<'bp>> {
     pub(crate) fn load_common_val(&self) -> Option<Either<'_>> {
         self.inner.load_common_val()
     }
+
+    /// Re-evaluate the value if it has been removed.
+    /// This will replace the inner value with an empty EvalValue
+    /// and register the value for future changes
+    pub(crate) fn reload_val(
+        &mut self,
+        id: ValueId,
+        globals: &'bp anathema_templates::Globals,
+        scope: &Scope<'bp>,
+        states: &anathema_state::States,
+    ) {
+        let Some(expr) = self.expr else { return };
+        let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, id);
+        self.inner = inner;
+    }
 }
 
 impl<'bp, T> Deref for Value<'bp, T> {

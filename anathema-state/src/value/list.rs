@@ -31,12 +31,24 @@ impl<T: 'static + State> List<T> {
     }
 }
 
+/// A `List` of values.
+/// ```
+/// # use anathema_state::List;
+/// let mut list = List::empty();
+/// list.push(123);
+/// ```
 impl<T: 'static + State> Value<List<T>> {
     pub fn empty() -> Self {
         let list = List { inner: VecDeque::new() };
         Value::new(list)
     }
 
+    /// Push a value to the list
+    pub fn push(&mut self, value: impl Into<Value<T>>) {
+        self.push_back(value)
+    }
+
+    /// Push a value to the back of the list
     pub fn push_back(&mut self, value: impl Into<Value<T>>) {
         let key = self.key;
         let list = &mut *self.to_mut();
@@ -46,6 +58,7 @@ impl<T: 'static + State> Value<List<T>> {
         list.inner.push_back(value);
     }
 
+    /// Push a value to the front of the list
     pub fn push_front(&mut self, value: impl Into<Value<T>>) {
         let key = self.key;
         let list = &mut *self.to_mut();
@@ -54,6 +67,11 @@ impl<T: 'static + State> Value<List<T>> {
         list.inner.push_front(value);
     }
 
+    /// Insert a value at a given index.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the index is out of bounds
     pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
         let key = self.key;
         let list = &mut *self.to_mut();
@@ -62,6 +80,8 @@ impl<T: 'static + State> Value<List<T>> {
         list.inner.insert(index, value);
     }
 
+    /// Remove a value from the list.
+    /// If the value isn't in the list `None` is returned.
     pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
         let key = self.key;
         let list = &mut *self.to_mut();
@@ -70,6 +90,7 @@ impl<T: 'static + State> Value<List<T>> {
         value
     }
 
+    /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
         let key = self.key;
         let list = &mut *self.to_mut();
@@ -80,6 +101,7 @@ impl<T: 'static + State> Value<List<T>> {
         value
     }
 
+    /// Pop a value from the back of the list
     pub fn pop_back(&mut self) -> Option<Value<T>> {
         let key = self.key;
         let list = &mut *self.to_mut();

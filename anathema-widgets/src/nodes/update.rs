@@ -1,5 +1,6 @@
 use anathema_state::{Change, States};
 use anathema_store::tree::{NodePath, PathFinder};
+use anathema_templates::Globals;
 
 use super::element::Element;
 use super::eval::EvalContext;
@@ -10,6 +11,7 @@ use crate::widget::FloatingWidgets;
 use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
 
 struct UpdateTree<'a, 'b, 'bp> {
+    globals: &'bp Globals,
     value_id: ValueId,
     change: &'a Change,
     factory: &'a Factory,
@@ -24,6 +26,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) {
         scope_value(node, self.scope, &[]);
         let mut ctx = EvalContext {
+            globals: self.globals,
             factory: self.factory,
             scope: self.scope,
             states: self.states,
@@ -31,7 +34,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
             attribute_storage: self.attribute_storage,
             floating_widgets: self.floating_widgets,
         };
-        update_widget(node, self.change, self.value_id, &mut ctx, path, tree);
+        update_widget(node, &mut ctx, self.value_id, self.change, path, tree);
     }
 
     fn parent(&mut self, parent: &WidgetKind<'bp>, children: &[u16]) {
@@ -42,6 +45,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
 /// Scan the widget tree using the node path.
 /// Build up the scope from the parent nodes.
 pub fn update_tree<'bp>(
+    globals: &'bp Globals,
     factory: &Factory,
     scope: &mut Scope<'bp>,
     states: &mut States,
@@ -54,6 +58,7 @@ pub fn update_tree<'bp>(
     floating_widgets: &mut FloatingWidgets,
 ) {
     let update = UpdateTree {
+        globals,
         value_id,
         change,
         factory,
@@ -68,12 +73,21 @@ pub fn update_tree<'bp>(
 
 fn update_widget<'bp>(
     widget: &mut WidgetKind<'bp>,
-    change: &Change,
-    value_id: ValueId,
     ctx: &mut EvalContext<'_, '_, 'bp>,
+    value_id: ValueId,
+    change: &Change,
     path: &NodePath,
     tree: &mut WidgetTree<'bp>,
 ) {
+    // Any dropped dyn value should register for future updates.
+    // This is done by reloading the value, making it empty
+    if let Change::Dropped = change {
+        let attributes = ctx.attribute_storage.get_mut(value_id.key());
+        if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
+            value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states);
+        }
+    }
+
     match widget {
         WidgetKind::Element(..) => {
             // Reflow of the layout will be triggered by the runtime and not in this step
@@ -108,6 +122,10 @@ pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>,
                     let v = v.downgrade();
                     scope.scope_downgrade(k, v);
                 }
+            }
+            // Insert internal state
+            if let Some(state_id) = component.state_id() {
+                scope.insert_state(state_id);
             }
         }
         WidgetKind::ControlFlow(_) | WidgetKind::Element(Element { .. }) | WidgetKind::If(_) | WidgetKind::Else(_) => {}

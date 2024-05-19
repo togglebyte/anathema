@@ -5,6 +5,7 @@ use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::SmallIndex;
 use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
+use anathema_templates::Globals;
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
@@ -18,6 +19,7 @@ use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetKind, Widget
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
+    pub(super) globals: &'bp Globals,
     pub(super) factory: &'a Factory,
     pub(super) scope: &'b mut Scope<'bp>,
     pub(super) states: &'b mut States,
@@ -28,6 +30,7 @@ pub struct EvalContext<'a, 'b, 'bp> {
 
 impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
     pub fn new(
+        globals: &'bp Globals,
         factory: &'a Factory,
         scope: &'b mut Scope<'bp>,
         states: &'b mut States,
@@ -36,6 +39,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         floating_widgets: &'b mut FloatingWidgets,
     ) -> Self {
         Self {
+            globals,
             factory,
             scope,
             states,
@@ -88,13 +92,13 @@ impl Evaluator for SingleEval {
 
         if let Some(expr) = single.value.as_ref() {
             attributes.insert_with(ValueKey::Value, |value_index| {
-                eval(expr, ctx.scope, ctx.states, (widget_id, value_index))
+                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
             });
         }
 
         for (key, expr) in &single.attributes {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(expr, ctx.scope, ctx.states, (widget_id, value_index))
+                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
             });
         }
 
@@ -180,7 +184,7 @@ impl Evaluator for ForLoopEval {
 
         let widget = WidgetKind::For(super::loops::For {
             binding: &for_loop.binding,
-            collection: eval_collection(&for_loop.data, ctx.scope, ctx.states, value_id),
+            collection: eval_collection(&for_loop.data, ctx.globals, ctx.scope, ctx.states, value_id),
             body: &for_loop.body,
         });
 
@@ -261,7 +265,7 @@ impl Evaluator for IfEval {
         let node_id = transaction.node_id();
 
         let value_id = (node_id, ValueIndex::ZERO);
-        let cond = eval(&input.cond, ctx.scope, ctx.states, value_id);
+        let cond = eval(&input.cond, ctx.globals, ctx.scope, ctx.states, value_id);
 
         let if_widget = controlflow::If { cond, show: false };
 
@@ -293,7 +297,7 @@ impl Evaluator for ElseEval {
         let cond = input
             .cond
             .as_ref()
-            .map(|cond| eval(cond, ctx.scope, ctx.states, value_id));
+            .map(|cond| eval(cond, ctx.globals, ctx.scope, ctx.states, value_id));
 
         let else_widget = controlflow::Else {
             cond,
@@ -328,7 +332,7 @@ impl Evaluator for ComponentEval {
                 let mut state_map = HashMap::new();
                 for (i, (k, v)) in map.iter().enumerate() {
                     let idx: SmallIndex = (i as u8).into();
-                    let val = eval(v, ctx.scope, ctx.states, (transaction.node_id(), idx));
+                    let val = eval(v, ctx.globals, ctx.scope, ctx.states, (transaction.node_id(), idx));
                     state_map.insert((&**k, idx), val);
                 }
                 Some(state_map)

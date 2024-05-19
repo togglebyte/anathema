@@ -123,7 +123,13 @@ impl<'bp> For<'bp> {
                 tree.remove_children(path);
 
                 // TODO unwrap, ewww
-                self.collection = eval_collection(self.collection.expr.unwrap(), ctx.scope, ctx.states, value_id);
+                self.collection = eval_collection(
+                    self.collection.expr.unwrap(),
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    value_id,
+                );
 
                 for index in 0..self.collection.len() {
                     self.scope_value(ctx.scope, index);
@@ -196,7 +202,7 @@ mod test {
             // test loop
         ";
 
-        let blueprints = Document::new(tpl).compile().unwrap();
+        let (blueprint, globals) = Document::new(tpl).compile().unwrap();
         let mut widget_tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
@@ -206,8 +212,8 @@ mod test {
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
-        let blueprint = &blueprints[0];
         let mut ctx = EvalContext::new(
+            &globals,
             &factory,
             &mut scope,
             &mut states,
@@ -216,7 +222,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);
@@ -251,6 +257,7 @@ mod test {
                 let mut scope = Scope::with_capacity(10);
                 let widget_path = &widget_tree.path(sub).clone();
                 update_tree(
+                    &globals,
                     &factory,
                     &mut scope,
                     &mut states,
@@ -308,7 +315,7 @@ mod test {
             test x
                 test x
         ";
-        let blueprints = Document::new(tpl).compile().unwrap();
+        let (blueprint, globals) = Document::new(tpl).compile().unwrap();
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
@@ -318,8 +325,8 @@ mod test {
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
-        let blueprint = &blueprints[0];
         let mut ctx = EvalContext::new(
+            &globals,
             &factory,
             &mut scope,
             &mut states,
@@ -327,7 +334,7 @@ mod test {
             &mut attribute_storage,
             &mut floating_widgets,
         );
-        eval_blueprint(blueprint, &mut ctx, &NodePath::root(), &mut tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree);
 
         let mut stringify = Stringify::new(&attribute_storage);
         tree.apply_visitor(&mut stringify);

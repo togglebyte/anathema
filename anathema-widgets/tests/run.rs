@@ -4,7 +4,7 @@ use anathema_geometry::Size;
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, StateId, States};
 use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::Document;
+use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
@@ -29,6 +29,8 @@ macro_rules! out {
 
 pub struct TestCaseRunner<'bp, S> {
     _p: PhantomData<S>,
+
+    globals: &'bp Globals,
     blueprint: &'bp Blueprint,
     factory: Factory,
     tree: WidgetTree<'bp>,
@@ -50,6 +52,7 @@ where
         let mut scope = Scope::new();
         scope.insert_state(StateId::ZERO);
         let mut ctx = EvalContext::new(
+            &self.globals,
             &self.factory,
             &mut scope,
             &mut self.states,
@@ -109,6 +112,7 @@ where
             let path = self.tree.path(sub).clone();
 
             try_resolve_future_values(
+                &self.globals,
                 &self.factory,
                 &mut scope,
                 &mut self.states,
@@ -132,6 +136,7 @@ where
                 let Some(path) = self.tree.try_path(sub).cloned() else { return };
 
                 update_tree(
+                    &self.globals,
                     &self.factory,
                     &mut scope,
                     &mut self.states,
@@ -188,13 +193,13 @@ where
 
 pub struct TestCase {
     blueprint: Blueprint,
+    globals: Globals,
 }
 
 impl TestCase {
     pub fn setup(src: &str) -> Self {
-        let mut blueprints = Document::new(src).compile().unwrap();
-        let blueprint = blueprints.remove(0);
-        Self { blueprint }
+        let (blueprint, globals) = Document::new(src).compile().unwrap();
+        Self { blueprint, globals }
     }
 
     pub fn build<S: 'static + State>(&self, state: S) -> TestCaseRunner<'_, S> {
@@ -207,6 +212,7 @@ impl TestCase {
 
         let mut runner = TestCaseRunner {
             _p: PhantomData,
+            globals: &self.globals,
             blueprint: &self.blueprint,
             tree,
             text: StringStorage::new(),

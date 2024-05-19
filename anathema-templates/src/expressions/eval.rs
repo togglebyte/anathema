@@ -26,7 +26,19 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
             Expression::Index(lhs.into(), index.into())
         }
         Expr::Binary { op, lhs, rhs } => match op {
-            Operator::Dot => Expression::Dot(eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into()),
+            Operator::Dot => {
+                let lhs = eval(*lhs, strings)?.into();
+                let string_id = match *rhs {
+                    Expr::Ident(s) => s,
+                    _ => {
+                        return Err(ParseErrorKind::InvalidToken {
+                            expected: "this can only be an ident",
+                        })
+                    }
+                };
+                let rhs = strings.get_unchecked(string_id);
+                Expression::Index(lhs, Expression::Str(rhs.into()).into())
+            }
             Operator::Mul | Operator::Plus | Operator::Minus | Operator::Div | Operator::Mod => {
                 let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());
                 let op = match op {
@@ -137,6 +149,12 @@ mod test {
     }
 
     #[test]
+    fn dot() {
+        let expr = eval_src("a.x.y");
+        assert_eq!(expr.to_string(), "a[x][y]");
+    }
+
+    #[test]
     fn number() {
         let expr = eval_src("123");
         assert_eq!(expr.to_string(), "123");
@@ -151,7 +169,7 @@ mod test {
     #[test]
     fn lookup() {
         let expr = eval_src("a.b.c");
-        assert_eq!(expr.to_string(), "a.b.c");
+        assert_eq!(expr.to_string(), "a[b][c]");
     }
 
     #[test]

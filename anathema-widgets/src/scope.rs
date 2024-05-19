@@ -41,7 +41,7 @@ impl<'bp> ScopeLookup<'bp> {
 
 #[derive(Default)]
 enum Entry<'bp> {
-    /// Scope( size of previous scope )
+    /// Scope(size of previous scope)
     Scope(usize),
     Downgraded(Path<'bp>, Downgraded<'bp>),
     Pending(Path<'bp>, PendingValue),
@@ -168,8 +168,9 @@ impl<'bp> Scope<'bp> {
                     }
                     None => {
                         let state = states.get(state_id)?;
-                        let value = state.state_lookup(lookup.path)?;
-                        break Some(EvalValue::Pending(value));
+                        if let Some(value) = state.state_lookup(lookup.path) {
+                            break Some(EvalValue::Pending(value));
+                        }
                     }
                 },
                 _ => continue,
@@ -254,7 +255,7 @@ impl<'bp> Scope<'bp> {
 #[cfg(test)]
 mod test {
     use anathema_state::{List, Map, Subscriber, Value};
-    use anathema_templates::Expression;
+    use anathema_templates::{Expression, Globals};
 
     use super::*;
     use crate::expressions::eval_collection;
@@ -278,7 +279,8 @@ mod test {
         let states = States::new();
         let scope = Scope::new();
         let expr = Expression::Ident("list".into());
-        eval_collection(&expr, &scope, &states, ValueId::ZERO);
+        let globals = Globals::new(Default::default());
+        eval_collection(&expr, &globals, &scope, &states, ValueId::ZERO);
 
         //         let one = [Expression::Primitive(1i64.into())];
 

@@ -45,7 +45,7 @@ pub fn eval_blueprint<'bp>(
 #[cfg(test)]
 mod test {
     use anathema_state::{List, Map, States, Subscriber, Value};
-    use anathema_templates::Expression;
+    use anathema_templates::{Expression, Globals};
 
     use crate::expressions::eval_collection;
     use crate::scope::ScopeLookup;
@@ -59,6 +59,7 @@ mod test {
 
         let mut states = States::new();
         let mut scope = Scope::new();
+        let globals = Globals::new(Default::default());
 
         // Setup state to contain a list mapped to the key "list"
         let mut state = Map::<List<_>>::empty();
@@ -77,7 +78,7 @@ mod test {
 
         // Here we are associating the `val` path with the collection, which
         // is either a slice of expressions or a `PendingValue`.
-        let collection = eval_collection(&list_expr, &scope, &states, for_key);
+        let collection = eval_collection(&list_expr, &globals, &scope, &states, for_key);
 
         // Next up the value would be scoped per iteraton, so `val` is pulled out
         // of the collection by an index, and the resulting value
@@ -109,6 +110,7 @@ mod test {
 
         let mut states = States::new();
         let mut scope = Scope::new();
+        let globals = Globals::new(Default::default());
 
         // Setup state to contain a list mapped to the key "list"
         let mut state = Map::<List<_>>::empty();
@@ -126,7 +128,7 @@ mod test {
         let list_expr = Expression::Ident("list".into());
         let for_key = Subscriber::ZERO;
 
-        let collection = eval_collection(&lists_expr, &scope, &states, for_key);
+        let collection = eval_collection(&lists_expr, &globals, &scope, &states, for_key);
 
         for index in 0..1 {
             scope.push();
@@ -138,7 +140,7 @@ mod test {
 
             // Next up the value would be scoped per iteraton, so `val` is scoped to `(list, index)`
             for index in 0..2 {
-                let collection = eval_collection(&list_expr, &scope, &states, for_key);
+                let collection = eval_collection(&list_expr, &globals, &scope, &states, for_key);
                 scope.push();
                 collection.scope(&mut scope, "val", index);
 

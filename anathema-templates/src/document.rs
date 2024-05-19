@@ -2,13 +2,13 @@ use anathema_store::storage::strings::Strings;
 
 use crate::blueprints::Blueprint;
 use crate::components::ComponentTemplates;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
 use crate::token::Tokens;
 use crate::variables::Variables;
-use crate::Lexer;
+use crate::{Globals, Lexer};
 
 /// A document containing templates and components
 /// ```
@@ -39,7 +39,7 @@ impl Document {
         id.into()
     }
 
-    pub fn compile(mut self) -> Result<Vec<Blueprint>> {
+    pub fn compile(mut self) -> Result<(Blueprint, Globals)> {
         let tokens = Lexer::new(&self.template, &mut self.strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, self.template.len());
         let parser = Parser::new(tokens, &mut self.strings, &self.template, &mut self.components);
@@ -52,6 +52,10 @@ impl Document {
             components: &mut self.components,
         };
 
-        Scope::new(statements).eval(&mut context)
+        let mut blueprints = Scope::new(statements).eval(&mut context)?;
+        match blueprints.is_empty() {
+            true => Err(Error::EmptyTemplate),
+            false => Ok((blueprints.remove(0), self.globals.into())),
+        }
     }
 }

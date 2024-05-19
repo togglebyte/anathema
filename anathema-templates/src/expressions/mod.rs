@@ -44,7 +44,6 @@ pub enum Expression {
 
     // Lookup
     Ident(Rc<str>),
-    Dot(Box<Self>, Box<Self>),
     Index(Box<Self>, Box<Self>),
 
     // Operations
@@ -79,7 +78,6 @@ impl Display for Expression {
             Self::Str(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
             Self::Index(lhs, idx) => write!(f, "{lhs}[{idx}]"),
-            Self::Dot(lhs, rhs) => write!(f, "{lhs}.{rhs}"),
             Self::Not(expr) => write!(f, "!{expr}"),
             Self::Negative(expr) => write!(f, "-{expr}"),
             Self::Op(lhs, rhs, op) => {
@@ -141,10 +139,6 @@ pub fn ident(p: &str) -> Box<Expression> {
 
 pub fn index(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
     Expression::Index(lhs, rhs).into()
-}
-
-pub fn dot(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
-    Expression::Dot(lhs, rhs).into()
 }
 
 // -----------------------------------------------------------------------------

@@ -16,10 +16,8 @@ fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
     use {Expression as E, Primitive as P};
 
     match expr {
-        E::Ident(ident) => {
-            let ident: &str = ident;
-            ctx.fetch(ident)
-        }
+        E::Ident(ident) => ctx.fetch(ident),
+        E::Str(strlit) => ctx.fetch(strlit),
         E::Index(lhs, index) => match eval_path(lhs, ctx)? {
             E::List(list) => match const_eval(index.clone(), ctx) {
                 E::Primitive(P::Int(num)) => list.get(num as usize).cloned(),
@@ -34,13 +32,6 @@ fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
                     E::Str(key) => map.get(&*key).cloned().map(|e| const_eval(e, ctx)),
                     _ => None,
                 },
-                _ => None,
-            },
-            _ => None,
-        },
-        E::Dot(lhs, rhs) => match eval_path(lhs, ctx)? {
-            E::Map(map) => match &**rhs {
-                E::Ident(key) => map.get(&**key).cloned().map(|e| const_eval(e, ctx)),
                 _ => None,
             },
             _ => None,
@@ -66,7 +57,6 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_, '_>) -> 
         E::Equality(lhs, rhs, eq) => E::Equality(ce!(*lhs), ce!(*rhs), eq),
 
         E::Ident(_) => eval_path(&expr, ctx).map(|e| ce!(e)).unwrap_or(expr),
-        E::Dot(..) => eval_path(&expr, ctx).map(|e| ce!(e)).unwrap_or(expr),
         E::Index(..) => eval_path(&expr, ctx).map(|e| ce!(e)).unwrap_or(expr),
 
         E::List(list) => {
@@ -100,7 +90,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_, '_>) -> 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::expressions::{add, dot, ident, index, list, map, num, strlit};
+    use crate::expressions::{add, ident, index, list, map, num, strlit};
     use crate::statements::with_context;
 
     #[test]
@@ -118,7 +108,7 @@ mod test {
         with_context(|ctx| {
             ctx.globals.declare("a", map([("b", ident("c"))]));
             ctx.globals.declare("c", num(1));
-            let expr = dot(ident("a"), ident("b"));
+            let expr = index(ident("a"), strlit("b"));
             let output = const_eval(expr, &ctx);
             assert_eq!(*num(1), output);
         });
@@ -131,7 +121,7 @@ mod test {
         with_context(|ctx| {
             ctx.globals.declare("a", map([("b", list([num(1)]))]));
             ctx.globals.declare("c", num(0));
-            let expr = index(dot(ident("a"), ident("b")), ident("c"));
+            let expr = index(index(ident("a"), strlit("b")), ident("c"));
             let output = const_eval(expr, &ctx);
             assert_eq!(*num(1), output);
         });

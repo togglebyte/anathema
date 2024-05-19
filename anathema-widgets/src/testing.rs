@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use anathema_geometry::Size;
 use anathema_state::{Map, State, StateId, States};
 use anathema_store::tree::TreeForEach;
-use anathema_templates::Expression;
+use anathema_templates::{Expression, Globals};
 
 use crate::expressions::{eval, EvalValue};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
@@ -77,8 +77,9 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let index = ValueIndex::ZERO;
         let value_id = ValueId::from((key, index));
         let mut scope = Scope::new();
+        let globals = Globals::new(Default::default());
         scope.insert_state(StateId::ZERO);
-        let value = eval(&self.test_state.0, &scope, &self.states, value_id);
+        let value = eval(&self.test_state.0, &globals, &scope, &self.states, value_id);
         f(value)
     }
 }

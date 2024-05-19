@@ -12,6 +12,7 @@ pub enum Error {
     ParseError(ParseError),
     CircularDependency,
     MissingComponent,
+    EmptyTemplate,
 }
 
 impl Display for Error {
@@ -20,6 +21,7 @@ impl Display for Error {
             Error::ParseError(err) => write!(f, "{err}"),
             Error::CircularDependency => write!(f, "circular dependency"),
             Error::MissingComponent => write!(f, "missing component"),
+            Error::EmptyTemplate => write!(f, "empty template"),
         }
     }
 }

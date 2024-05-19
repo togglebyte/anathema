@@ -139,7 +139,7 @@ mod test {
     #[test]
     fn eval_node() {
         let doc = Document::new("node");
-        let bp = doc.compile().unwrap().remove(0);
+        let (bp, _) = doc.compile().unwrap();
         assert_eq!(bp, single!("node"));
     }
 
@@ -150,7 +150,7 @@ mod test {
             b
         ";
         let doc = Document::new(src);
-        let blueprint = doc.compile().unwrap().remove(0);
+        let (blueprint, _) = doc.compile().unwrap();
         assert_eq!(blueprint, single!("a", vec![single!("b")]));
     }
 
@@ -162,7 +162,7 @@ mod test {
         ";
 
         let doc = Document::new(src);
-        let blueprint = doc.compile().unwrap().remove(0);
+        let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Single(Single { value: Some(_), .. })));
     }
 
@@ -173,7 +173,7 @@ mod test {
                 node
         ";
         let doc = Document::new(src);
-        let blueprint = doc.compile().unwrap().remove(0);
+        let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::For(For { .. })));
     }
 
@@ -184,7 +184,7 @@ mod test {
 
         let mut doc = Document::new(src);
         doc.add_component("comp", comp_src);
-        let blueprint = doc.compile().unwrap().remove(0);
+        let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
 }

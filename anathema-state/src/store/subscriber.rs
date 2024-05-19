@@ -62,6 +62,10 @@ impl Subscriber {
     pub fn index(&self) -> SmallIndex {
         self.1
     }
+
+    pub fn key(&self) -> Key {
+        self.0
+    }
 }
 
 impl From<(Key, SmallIndex)> for Subscriber {
@@ -179,7 +183,7 @@ impl Subscribers {
 }
 
 pub(super) struct SubscriberMap {
-    inner: Slab<SubKey, Subscribers>,
+    pub(crate) inner: Slab<SubKey, Subscribers>,
 }
 
 impl SubscriberMap {

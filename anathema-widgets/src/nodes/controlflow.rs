@@ -93,7 +93,7 @@ mod test {
         map.insert("a", true);
 
         let doc = Document::new(tpl);
-        let blueprints = doc.compile().unwrap();
+        let (blueprint, globals) = doc.compile().unwrap();
         let mut widget_tree = Tree::<_>::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
@@ -103,9 +103,9 @@ mod test {
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
-        let blueprint = &blueprints[0];
 
         let mut ctx = EvalContext::new(
+            &globals,
             &factory,
             &mut scope,
             &mut states,
@@ -114,7 +114,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);

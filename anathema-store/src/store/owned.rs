@@ -99,13 +99,15 @@ impl<T> Owned<T> {
         })
     }
 
+    /// Get unique access to the value at a given key.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the value is currently shared, or was removed
     pub fn unique(&self, key: OwnedKey) -> T {
-        let mut inner = self.inner.borrow_mut();
-        let output = inner.replace(key, OwnedEntry::Unique);
-        match output {
-            OwnedEntry::Occupied(value) => value,
-            OwnedEntry::Unique => panic!("value is already checked out"),
-            OwnedEntry::Shared(_) => panic!("value is currently shared: {key:?}"),
+        match self.try_unique(key) {
+            Some(value) => value,
+            None => panic!("value unavailable"),
         }
     }
 

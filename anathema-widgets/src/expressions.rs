@@ -4,11 +4,18 @@ use std::rc::Rc;
 
 use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, SharedState, States, ValueRef};
 use anathema_templates::expressions::{Equality, Op};
-use anathema_templates::Expression;
+use anathema_templates::{Expression, Globals};
 
 use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
 use crate::Value;
+
+pub(crate) fn future_value<'a>(id: Option<ValueId>) -> EvalValue<'a> {
+    if let Some(id) = id {
+        register_future(id);
+    }
+    EvalValue::Empty
+}
 
 pub enum CommonRef<'a, 'b> {
     Owned(CommonVal<'b>),
@@ -46,6 +53,19 @@ impl<'a> Either<'a> {
         }
     }
 
+    pub(crate) fn load_path(&self) -> Option<Path<'_>> {
+        match self {
+            Either::Static(CommonVal::Int(n)) => Some(Path::Index(*n as usize)),
+            Either::Static(CommonVal::Str(s)) => Some(Path::Key(s)),
+            Either::Static(_) => None,
+            Either::Dyn(state) => match state.to_common()? {
+                CommonVal::Int(n) => Some(Path::Index(n as usize)),
+                CommonVal::Str(s) => Some(Path::Key(s)),
+                _ => None,
+            },
+        }
+    }
+
     pub fn to_common<'b>(&'b self) -> Option<CommonRef<'a, 'b>> {
         match self {
             Either::Static(val) => Some(CommonRef::Borrowed(val)),
@@ -75,7 +95,7 @@ impl<'bp> Downgraded<'bp> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EvalValue<'bp> {
     Static(CommonVal<'bp>),
     Dyn(ValueRef),
@@ -134,7 +154,7 @@ impl<'bp> EvalValue<'bp> {
                 Some(value_id) => Self::Dyn(val.to_value(value_id)),
                 None => Self::Pending(*val),
             },
-            Self::Dyn(_val) => unreachable!("the value was downgraded"),
+            Self::Dyn(_) => unreachable!("the value was downgraded"),
             Self::ExprMap(map) => {
                 let map = map
                     .iter()
@@ -158,12 +178,7 @@ impl<'bp> EvalValue<'bp> {
                 let rhs = rhs.inner_upgrade(value_id).into();
                 Self::Equality(lhs, rhs, *eq)
             }
-            Self::Empty => {
-                if let Some(value_id) = value_id {
-                    register_future(value_id);
-                }
-                Self::Empty
-            }
+            Self::Empty => future_value(value_id),
         }
     }
 
@@ -229,13 +244,13 @@ impl<'bp> EvalValue<'bp> {
         Some(val)
     }
 
-    /// Load a common value OR a shared state... that can become
-    /// a common value...
-    /// This is only used by template
+    /// Load a common value OR a shared state that can become a common value.
+    /// This is only used by templates and not widgets / elements.
     pub fn load_common_val(&self) -> Option<Either<'_>> {
         match self {
             EvalValue::Static(val) => Some(Either::Static(*val)),
             EvalValue::Dyn(val) => Some(Either::Dyn(val.as_state()?)),
+
             EvalValue::Pending(_) => None,
             EvalValue::ExprMap(_) => None,
             EvalValue::ExprList(_) => None,
@@ -263,7 +278,6 @@ impl<'bp> EvalValue<'bp> {
                         let lhs = lhs.load_common_val()?;
                         let rhs = rhs.load_common_val()?;
                         *lhs.to_common()? == *rhs.to_common()?
-                        // lhs.load_common_val()? == rhs.load_common_val()?
                     }
                     Equality::And => lhs.load_bool() && rhs.load_bool(),
                     Equality::Or => lhs.load_bool() || rhs.load_bool(),
@@ -372,151 +386,96 @@ impl<'a> TryFrom<&EvalValue<'a>> for &'a str {
     }
 }
 
-trait Resolver {
-    type Output<'bp>;
-
-    fn resolve<'bp>(
-        &mut self,
-        expr: &'bp Expression,
-        scope: &Scope<'bp>,
-        states: &States,
-        value_id: Option<ValueId>,
-    ) -> Self::Output<'bp>;
-
-    fn lookup<'bp>(
-        &mut self,
-        expr: &'bp Expression,
-        scope: &Scope<'bp>,
-        states: &States,
-        value_id: Option<ValueId>,
-    ) -> Self::Output<'bp>;
-}
-
-pub struct ValueResolver {
+struct ValueResolver<'bp> {
+    globals: &'bp Globals,
     scope_offset: Option<usize>,
 }
 
-impl ValueResolver {
-    pub fn new() -> Self {
-        Self { scope_offset: None }
+impl<'bp> ValueResolver<'bp> {
+    fn new(globals: &'bp Globals) -> Self {
+        Self {
+            scope_offset: None,
+            globals,
+        }
     }
-}
 
-impl Resolver for ValueResolver {
-    type Output<'bp> = EvalValue<'bp>;
-
-    fn lookup<'bp>(
+    fn lookup(
         &mut self,
         expr: &'bp Expression,
         scope: &Scope<'bp>,
         states: &States,
         value_id: Option<ValueId>,
-    ) -> Self::Output<'bp> {
+    ) -> EvalValue<'bp> {
         match expr {
             Expression::Ident(ident) => {
                 let lookup = ScopeLookup::new(&**ident, value_id);
 
                 let Some(val) = scope.get(lookup, &mut self.scope_offset, states) else {
-                    if let Some(id) = value_id {
-                        register_future(id);
+                    match self.globals.get(ident) {
+                        Some(expr) => return Self::new(self.globals).resolve(expr, scope, states, value_id),
+                        None => return future_value(value_id),
                     }
-                    return EvalValue::Empty;
                 };
                 val
             }
-            Expression::Dot(lhs, rhs) => {
-                // The `lhs` can never resolve to anything but a Pending value
-                // as there should be no subscription to changes on anything but the rhs
-                let lhs = self.resolve(lhs, scope, states, None);
-                match lhs {
-                    EvalValue::Pending(pending_val) => {
-                        let Expression::Ident(key) = &**rhs else {
-                            if let Some(id) = value_id {
-                                register_future(id);
-                            }
-                            return EvalValue::Empty;
-                        };
+            Expression::Index(lhs, rhs) => {
+                // if let Expression::List(list) = lhs.as_ref() {
+                //     match self.resolve(index, scope, states, value_id) {
+                //         EvalValue::Dyn(val) => {
+                //             match val.as_state().and_then(|s| s.to_number()) {
+                //                 Some(index) if (index.as_int() as usize) < list.len() => {
+                //                     return Self::new(self.globals).resolve(&list[index.as_int() as usize], scope, states, value_id)
+                //                 }
+                //                 _ => {
+                //                     if let Some(id) = value_id {
+                //                         register_future(id);
+                //                     }
+                //                     return EvalValue::Empty;
+                //                 }
+                //             }
 
-                        match value_id {
-                            Some(id) => match pending_val.as_state(|state| state.state_get(Path::Key(key), id)) {
-                                Some(val) => EvalValue::Dyn(val),
-                                None => {
-                                    if let Some(id) = value_id {
-                                        register_future(id);
-                                    }
-                                    EvalValue::Empty
-                                }
-                            },
-                            None => match pending_val.as_state(|state| state.state_lookup(Path::Key(key))) {
-                                Some(val) => EvalValue::Pending(val),
-                                None => {
-                                    if let Some(id) = value_id {
-                                        register_future(id);
-                                    }
-                                    EvalValue::Empty
-                                }
-                            },
-                        }
-                    }
-                    _ => {
-                        if let Some(id) = value_id {
-                            register_future(id);
-                        }
-                        EvalValue::Empty
-                    }
-                }
-            }
-            Expression::Index(lhs, index) => {
-                let lhs = self.resolve(lhs, scope, states, None);
-                match lhs {
-                    EvalValue::Pending(pending_val) => {
-                        let key = match &**index {
-                            Expression::Str(key) => Path::Key(key),
-                            _ => match self.resolve(index, scope, states, value_id) {
-                                EvalValue::Static(CommonVal::Int(index)) => Path::Index(index as usize),
-                                _ => return EvalValue::Empty,
-                            },
-                        };
-                        match value_id {
-                            Some(id) => match pending_val.as_state(|state| state.state_get(key, id)) {
-                                Some(val) => EvalValue::Dyn(val),
-                                None => {
-                                    if let Some(id) = value_id {
-                                        register_future(id);
-                                    }
-                                    EvalValue::Empty
-                                }
-                            },
-                            None => match pending_val.as_state(|state| state.state_lookup(key)) {
-                                Some(val) => EvalValue::Pending(val),
-                                None => {
-                                    if let Some(id) = value_id {
-                                        register_future(id);
-                                    }
-                                    EvalValue::Empty
-                                }
-                            },
-                        }
-                    }
-                    _ => {
-                        if let Some(id) = value_id {
-                            register_future(id);
-                        }
-                        EvalValue::Empty
-                    }
+                //         }
+                //         value @ EvalValue::Op(..) => {
+                //             return match value.load_common_val().and_then(|common| common.load_number()) {
+                //                 None => EvalValue::Empty,
+                //                 Some(index) => return Self::new(self.globals).resolve(&list[index.as_int() as usize], scope, states, value_id)
+                //             }
+                //         }
+                //         EvalValue::Empty => return EvalValue::Empty,
+                //         val => unreachable!("{val:?} | the index can only be a dyn value at this point, anything else would've been resolved by constant folding"),
+                //     }
+                // }
+
+                let EvalValue::Pending(pending_val) = self.resolve(lhs, scope, states, None) else {
+                    return future_value(value_id);
+                };
+
+                let rhs = Self::new(self.globals).resolve(rhs, scope, states, value_id);
+                let Some(com) = rhs.load_common_val() else { return future_value(value_id) };
+                let Some(path) = com.load_path() else { return future_value(value_id) };
+
+                match value_id {
+                    Some(id) => match pending_val.as_state(|state| state.state_get(path, id)) {
+                        Some(val) => EvalValue::Dyn(val),
+                        None => future_value(value_id),
+                    },
+                    None => match pending_val.as_state(|state| state.state_lookup(path)) {
+                        Some(val) => EvalValue::Pending(val),
+                        None => future_value(value_id),
+                    },
                 }
             }
             _ => EvalValue::Empty,
         }
     }
 
-    fn resolve<'bp>(
+    fn resolve(
         &mut self,
         expr: &'bp Expression,
         scope: &Scope<'bp>,
         states: &States,
         value_id: Option<ValueId>,
-    ) -> Self::Output<'bp> {
+    ) -> EvalValue<'bp> {
         use {EvalValue as V, Expression as E};
 
         match expr {
@@ -528,14 +487,19 @@ impl Resolver for ValueResolver {
             E::Map(map) => {
                 let inner = map
                     .iter()
-                    .map(|(key, expr)| (key.clone(), Self::new().resolve(expr, scope, states, value_id)))
+                    .map(|(key, expr)| {
+                        (
+                            key.clone(),
+                            Self::new(self.globals).resolve(expr, scope, states, value_id),
+                        )
+                    })
                     .collect();
                 V::ExprMap(inner)
             }
             E::List(list) => {
                 let inner = list
                     .iter()
-                    .map(|expr| Self::new().resolve(expr, scope, states, value_id))
+                    .map(|expr| Self::new(self.globals).resolve(expr, scope, states, value_id))
                     .collect();
                 V::ExprList(inner)
             }
@@ -543,15 +507,15 @@ impl Resolver for ValueResolver {
             // -----------------------------------------------------------------------------
             //   - Lookups -
             // -----------------------------------------------------------------------------
-            E::Ident(_) | E::Dot(..) | E::Index(..) => self.lookup(expr, scope, states, value_id),
+            E::Ident(_) | E::Index(..) => self.lookup(expr, scope, states, value_id),
 
             // -----------------------------------------------------------------------------
             //   - Conditionals -
             // -----------------------------------------------------------------------------
             E::Not(expr) => V::Not(self.resolve(expr, scope, states, value_id).into()),
             E::Equality(lhs, rhs, eq) => V::Equality(
-                Self::new().resolve(lhs, scope, states, value_id).into(),
-                Self::new().resolve(rhs, scope, states, value_id).into(),
+                Self::new(self.globals).resolve(lhs, scope, states, value_id).into(),
+                Self::new(self.globals).resolve(rhs, scope, states, value_id).into(),
                 *eq,
             ),
 
@@ -561,8 +525,8 @@ impl Resolver for ValueResolver {
             E::Negative(expr) => V::Negative(self.resolve(expr, scope, states, value_id).into()),
 
             E::Op(lhs, rhs, op) => {
-                let lhs = Self::new().resolve(lhs, scope, states, value_id);
-                let rhs = Self::new().resolve(rhs, scope, states, value_id);
+                let lhs = Self::new(self.globals).resolve(lhs, scope, states, value_id);
+                let rhs = Self::new(self.globals).resolve(rhs, scope, states, value_id);
                 V::Op(lhs.into(), rhs.into(), *op)
             }
 
@@ -576,22 +540,24 @@ impl Resolver for ValueResolver {
 
 pub(crate) fn eval<'bp>(
     expr: &'bp Expression,
+    globals: &'bp Globals,
     scope: &Scope<'bp>,
     states: &States,
     value_id: impl Into<ValueId>,
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
-    let value = ValueResolver::new().resolve(expr, scope, states, Some(value_id));
+    let value = ValueResolver::new(globals).resolve(expr, scope, states, Some(value_id));
     Value::new(value, Some(expr))
 }
 
 pub(crate) fn eval_collection<'bp>(
     expr: &'bp Expression,
+    globals: &'bp Globals,
     scope: &Scope<'bp>,
     states: &States,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
-    let value = ValueResolver::new().resolve(expr, scope, states, Some(value_id));
+    let value = ValueResolver::new(globals).resolve(expr, scope, states, Some(value_id));
     let collection = match value {
         EvalValue::Dyn(val) => Collection::Dyn(val),
         EvalValue::ExprList(list) => Collection::Static(list),

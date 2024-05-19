@@ -29,9 +29,11 @@ impl<T: 'static + State> Value<Map<T>> {
         Value::new(map)
     }
 
+    /// Insert a value into the `Map`.
+    /// The value will be wrapped in a `Value<T>` so it's not advisable to insert pre-wrapped
+    /// value.
     pub fn insert(&mut self, map_key: impl Into<Rc<str>>, value: impl Into<Value<T>>) {
         let map_key = map_key.into();
-        let _key = self.key;
         let map = &mut *self.to_mut();
         let value = value.into();
         map.inner.insert(map_key, value);
