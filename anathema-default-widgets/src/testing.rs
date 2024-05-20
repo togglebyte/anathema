@@ -3,7 +3,7 @@ use anathema_backend::Backend;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::Document;
+use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
@@ -20,6 +20,7 @@ pub struct TestRunner {
     factory: Factory,
     backend: TestBackend,
     blueprint: Blueprint,
+    globals: Globals,
 }
 
 impl TestRunner {
@@ -46,7 +47,7 @@ impl TestRunner {
         let main = doc.add_component("main", src);
         components.add_component(main.into(), (), ());
 
-        let blueprint = doc.compile().unwrap().remove(0);
+        let (blueprint, globals) = doc.compile().unwrap();
 
         Self {
             factory,
@@ -54,6 +55,7 @@ impl TestRunner {
             states,
             components,
             blueprint,
+            globals,
         }
     }
 
@@ -66,6 +68,7 @@ impl TestRunner {
         let mut scope = Scope::new();
         scope.insert_state(StateId::ZERO);
         let mut ctx = EvalContext::new(
+            &self.globals,
             &self.factory,
             &mut scope,
             &mut self.states,

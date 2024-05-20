@@ -81,7 +81,7 @@ fn update_widget<'bp>(
 ) {
     // Any dropped dyn value should register for future updates.
     // This is done by reloading the value, making it empty
-    if let Change::Dropped = change {
+    if let Change::Dropped | Change::Changed = change {
         let attributes = ctx.attribute_storage.get_mut(value_id.key());
         if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
             value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states);

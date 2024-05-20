@@ -15,6 +15,12 @@ impl DebugWriter for EvalValueDebug<'_> {
     fn write(&mut self, output: &mut impl Write) -> std::fmt::Result {
         match self.0 {
             EvalValue::Dyn(value_ref) => write!(output, "{} ", usize::from(value_ref.owned_key())),
+            EvalValue::Index(value_ref, index_value_ref) => {
+                write!(output, "source: ")?;
+                Self(value_ref).write(output)?;
+                write!(output, "| index: ")?;
+                Self(index_value_ref).write(output)
+            }
             EvalValue::Empty => write!(output, "<empty>"),
             EvalValue::Static(val) => write!(output, "{val:?}"),
             EvalValue::Pending(pending) => write!(output, "<pending {}>", usize::from(pending.owned_key())),

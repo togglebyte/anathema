@@ -18,24 +18,31 @@ fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
     match expr {
         E::Ident(ident) => ctx.fetch(ident),
         E::Str(strlit) => ctx.fetch(strlit),
-        E::Index(lhs, index) => match eval_path(lhs, ctx)? {
-            E::List(list) => match const_eval(index.clone(), ctx) {
-                E::Primitive(P::Int(num)) => list.get(num as usize).cloned(),
-                _ => Some(E::Index(
-                    E::List(list.clone()).into(),
-                    const_eval(*index.clone(), ctx).into(),
-                )),
-            },
-            E::Map(map) => match const_eval(index.clone(), ctx) {
-                E::Str(key) => map.get(&*key).cloned(),
-                E::Ident(key) => match ctx.fetch(&key)? {
-                    E::Str(key) => map.get(&*key).cloned().map(|e| const_eval(e, ctx)),
-                    _ => None,
+        E::Index(lhs, index) => {
+            match eval_path(lhs, ctx)? {
+                E::List(list) => match const_eval(index.clone(), ctx) {
+                    E::Primitive(P::Int(num)) => list.get(num as usize).cloned(),
+                    _ => Some(E::Index(
+                        E::List(list.clone()).into(),
+                        const_eval(*index.clone(), ctx).into(),
+                    )),
                 },
+                E::Map(map) => {
+                    match const_eval(index.clone(), ctx) {
+                        E::Str(key) => map.get(&*key).cloned(),
+                        // E::Ident(key) => match ctx.fetch(&key) {
+                        //     Some(E::Str(key)) => map.get(&*key).cloned().map(|e| const_eval(e, ctx)),
+                        //     _ => None,
+                        // },
+                        _ => Some(E::Index(
+                            E::Map(map.clone()).into(),
+                            const_eval(*index.clone(), ctx).into(),
+                        )),
+                    }
+                }
                 _ => None,
-            },
-            _ => None,
-        },
+            }
+        }
         _ => None,
     }
 }
@@ -144,6 +151,27 @@ mod test {
             ctx.globals.declare("b", num(1));
             let expr = index(ident("a"), add(ident("some_state"), ident("b")));
             let expected = *index(list([strlit("red"), strlit("blue")]), add(ident("some_state"), num(1)));
+            let output = const_eval(expr, &ctx);
+            assert_eq!(expected, output);
+        });
+    }
+
+    #[test]
+    fn map_const_eval() {
+        with_context(|ctx| {
+            ctx.globals.declare("a", map([("key", num(1))]));
+            ctx.globals.declare("b", index(ident("a"), strlit("key")));
+            let output = const_eval(ident("b"), &ctx);
+            assert_eq!(*num(1), output);
+        });
+    }
+
+    #[test]
+    fn map_dyn_eval() {
+        with_context(|ctx| {
+            ctx.globals.declare("a", map([("key", num(1))]));
+            let expr = index(ident("a"), ident("b"));
+            let expected = *index(map([("key", num(1))]), ident("b"));
             let output = const_eval(expr, &ctx);
             assert_eq!(expected, output);
         });
