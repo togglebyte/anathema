@@ -99,6 +99,7 @@ impl<'bp> Downgraded<'bp> {
 pub enum EvalValue<'bp> {
     Static(CommonVal<'bp>),
     Dyn(ValueRef),
+    Index(Box<Self>, Box<Self>),
     /// Pending value is used for collections
     /// and traversing state, as a means
     /// to access state without subscribing to it
@@ -124,6 +125,7 @@ impl<'bp> EvalValue<'bp> {
             Self::Static(val) => Self::Static(*val),
             Self::Pending(val) => Self::Pending(*val),
             Self::Dyn(val) => Self::Pending(val.to_pending()),
+            Self::Index(val, index) => Self::Index(val.inner_downgrade().into(), index.inner_downgrade().into()),
             Self::ExprMap(map) => {
                 let map = map
                     .iter()
@@ -149,12 +151,16 @@ impl<'bp> EvalValue<'bp> {
 
     fn inner_upgrade(&self, value_id: Option<ValueId>) -> Self {
         match self {
+            Self::Dyn(_) => unreachable!("the value was downgraded"),
             Self::Static(val) => Self::Static(*val),
             Self::Pending(val) => match value_id {
                 Some(value_id) => Self::Dyn(val.to_value(value_id)),
                 None => Self::Pending(*val),
             },
-            Self::Dyn(_) => unreachable!("the value was downgraded"),
+            Self::Index(value, index) => Self::Index(
+                value.inner_upgrade(value_id).into(),
+                index.inner_upgrade(value_id).into(),
+            ),
             Self::ExprMap(map) => {
                 let map = map
                     .iter()
@@ -250,7 +256,7 @@ impl<'bp> EvalValue<'bp> {
         match self {
             EvalValue::Static(val) => Some(Either::Static(*val)),
             EvalValue::Dyn(val) => Some(Either::Dyn(val.as_state()?)),
-
+            EvalValue::Index(val, _) => val.load_common_val(),
             EvalValue::Pending(_) => None,
             EvalValue::ExprMap(_) => None,
             EvalValue::ExprList(_) => None,
@@ -355,6 +361,16 @@ impl<'bp> EvalValue<'bp> {
             e => panic!("{e:?}"),
         }
     }
+
+    /// If the eval value contains an index this value would
+    /// be subject to change if the index it self was updated
+    pub(crate) fn contains_index(&self) -> bool {
+        match self {
+            Self::Index(..) => true,
+            Self::ExprList(list) => list.iter().any(Self::contains_index),
+            _ => false,
+        }
+    }
 }
 
 impl From<PendingValue> for EvalValue<'_> {
@@ -416,47 +432,53 @@ impl<'bp> ValueResolver<'bp> {
                         None => return future_value(value_id),
                     }
                 };
+
                 val
             }
             Expression::Index(lhs, rhs) => {
-                // if let Expression::List(list) = lhs.as_ref() {
-                //     match self.resolve(index, scope, states, value_id) {
-                //         EvalValue::Dyn(val) => {
-                //             match val.as_state().and_then(|s| s.to_number()) {
-                //                 Some(index) if (index.as_int() as usize) < list.len() => {
-                //                     return Self::new(self.globals).resolve(&list[index.as_int() as usize], scope, states, value_id)
-                //                 }
-                //                 _ => {
-                //                     if let Some(id) = value_id {
-                //                         register_future(id);
-                //                     }
-                //                     return EvalValue::Empty;
-                //                 }
-                //             }
+                // -----------------------------------------------------------------------------
+                //   - Index -
+                // -----------------------------------------------------------------------------
+                let rhs = Self::new(self.globals).resolve(rhs, scope, states, value_id);
+                if rhs == EvalValue::Empty {
+                    return rhs;
+                }
+                let Some(common_val) = rhs.load_common_val() else { return future_value(value_id) };
+                let Some(path) = common_val.load_path() else { return future_value(value_id) };
 
-                //         }
-                //         value @ EvalValue::Op(..) => {
-                //             return match value.load_common_val().and_then(|common| common.load_number()) {
-                //                 None => EvalValue::Empty,
-                //                 Some(index) => return Self::new(self.globals).resolve(&list[index.as_int() as usize], scope, states, value_id)
-                //             }
-                //         }
-                //         EvalValue::Empty => return EvalValue::Empty,
-                //         val => unreachable!("{val:?} | the index can only be a dyn value at this point, anything else would've been resolved by constant folding"),
-                //     }
-                // }
+                // -----------------------------------------------------------------------------
+                //   - Static list -
+                // -----------------------------------------------------------------------------
+                if let (Expression::List(list), Path::Index(i)) = (lhs.as_ref(), path) {
+                    let Some(expr) = list.get(i) else { return future_value(value_id) };
+                    let value = Self::new(self.globals).resolve(expr, scope, states, value_id);
+                    drop(common_val);
+                    return EvalValue::Index(value.into(), rhs.into());
+                }
 
+                // -----------------------------------------------------------------------------
+                //   - Static map -
+                // -----------------------------------------------------------------------------
+                if let (Expression::Map(map), Path::Key(key)) = (lhs.as_ref(), path) {
+                    let Some(expr) = map.get(key) else { return future_value(value_id) };
+                    let value = Self::new(self.globals).resolve(expr, scope, states, value_id);
+                    drop(common_val);
+                    return EvalValue::Index(value.into(), rhs.into());
+                }
+
+                // -----------------------------------------------------------------------------
+                //   - Dynamic value -
+                // -----------------------------------------------------------------------------
                 let EvalValue::Pending(pending_val) = self.resolve(lhs, scope, states, None) else {
                     return future_value(value_id);
                 };
 
-                let rhs = Self::new(self.globals).resolve(rhs, scope, states, value_id);
-                let Some(com) = rhs.load_common_val() else { return future_value(value_id) };
-                let Some(path) = com.load_path() else { return future_value(value_id) };
-
                 match value_id {
                     Some(id) => match pending_val.as_state(|state| state.state_get(path, id)) {
-                        Some(val) => EvalValue::Dyn(val),
+                        Some(val) => {
+                            drop(common_val);
+                            EvalValue::Index(EvalValue::Dyn(val).into(), rhs.into())
+                        }
                         None => future_value(value_id),
                     },
                     None => match pending_val.as_state(|state| state.state_lookup(path)) {

@@ -1,15 +1,13 @@
 use std::fmt::{self, Debug};
 use std::ops::Deref;
 
-use super::Ticket;
+use super::{Index, Ticket};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 struct Gen(u16);
 
 impl Gen {
-    const ZERO: Self = Self(0);
-
     fn bump(&mut self) {
         self.0 = self.0.wrapping_add(1);
     }
@@ -32,30 +30,6 @@ impl Deref for Gen {
 impl From<usize> for Gen {
     fn from(val: usize) -> Self {
         Self(val as u16)
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-struct Index(u32);
-
-impl Deref for Index {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<usize> for Index {
-    fn from(val: usize) -> Self {
-        Self(val as u32)
-    }
-}
-
-impl From<Index> for usize {
-    fn from(idx: Index) -> Self {
-        idx.0 as usize
     }
 }
 
@@ -104,6 +78,12 @@ impl From<(usize, usize)> for Key {
             index: index.into(),
             gen: gen.into(),
         }
+    }
+}
+
+impl From<Key> for Index {
+    fn from(value: Key) -> Self {
+        value.index
     }
 }
 
@@ -261,74 +241,8 @@ impl<T> GenSlab<T> {
         }
     }
 
-    /// Insert a value at a given index.
-    /// This will force the underlying storage to grow if
-    /// the index given is larger than the current capacity.
-    ///
-    /// # Panics
-    ///
-    /// This will panic if the index contains a checked-out value.
-    pub fn insert_at(&mut self, key: Key, value: T) {
-        // If the index is outside of the current
-        // length then fill the slots in between with
-        // vacant entries
-        let index = key.index.into();
-        if index >= self.inner.len() {
-            for i in self.inner.len()..index {
-                let entry = Entry::Vacant(self.next_id.take());
-                self.next_id = Some(Key::new(i as u32));
-                self.inner.push(entry);
-            }
-            self.inner.push(Entry::Occupied(value, Gen::ZERO));
-        // If the index is inside the current length:
-        } else {
-            let entry = self
-                .inner
-                .get_mut(key.index.0 as usize)
-                .expect("there should be entries up to self.len()");
-
-            match entry {
-                Entry::Vacant(None) => {
-                    *entry = Entry::Occupied(value, Gen::ZERO);
-                }
-                Entry::Occupied(val, gen) => {
-                    *val = value;
-                    *gen = key.gen;
-                }
-                &mut Entry::Vacant(Some(next_free)) => {
-                    // Find the values that points to `index`
-                    // and replace that with `next_free`
-
-                    let mut next_id = &mut self.next_id;
-                    loop {
-                        match next_id {
-                            Some(id) if id.index == key.index => {
-                                *id = next_free;
-                                break;
-                            }
-                            Some(id) => {
-                                let idx: usize = id.index.into();
-                                match self.inner.get_mut(idx) {
-                                    Some(Entry::Vacant(id)) => {
-                                        next_id = id;
-                                        continue;
-                                    }
-                                    None | Some(_) => unreachable!("the index can only point to a vacant value"),
-                                }
-                            }
-                            None => todo!(),
-                        }
-                    }
-
-                    // Insert new value
-                    self.inner[key.index.0 as usize] = Entry::Occupied(value, key.gen);
-                }
-                Entry::CheckedOut(_) => panic!("can not write over a checked-out value"),
-            }
-        }
-    }
-
     /// Remove a value from the slab, as long as the index and generation matches
+    #[must_use]
     pub fn remove(&mut self, mut key: Key) -> Option<T> {
         let mut entry = Entry::Vacant(self.next_id.take());
         // Increment the generation
@@ -526,28 +440,5 @@ mod test {
         let key_1 = slab.insert(1);
         let _t1 = slab.checkout(key_1);
         let _t2 = slab.checkout(key_1);
-    }
-
-    #[test]
-    fn aainsert_at_with_prior_allocations() {
-        let mut slab = GenSlab::<&str>::empty();
-        slab.insert("a");
-        slab.insert("b");
-        slab.insert("c");
-
-        // Free order: [1:0, 2:0, 0:0]
-        slab.remove(Key::new(0));
-        slab.remove(Key::new(2));
-        slab.remove(Key::new(1));
-
-        assert_eq!(Some(Key::from((1, 1))), slab.next_id);
-        assert_eq!(Entry::Vacant(Some(Key::from((2, 1)))), slab.inner[1]);
-        assert_eq!(Entry::Vacant(Some(Key::from((0, 1)))), slab.inner[2]);
-
-        // Free order: [2, 0]
-        slab.insert_at(Key::from((1, 0)), "x");
-
-        assert_eq!(Some(Key::from((2, 1))), slab.next_id);
-        assert_eq!(Entry::Vacant(Some(Key::from((0, 1)))), slab.inner[2]);
     }
 }

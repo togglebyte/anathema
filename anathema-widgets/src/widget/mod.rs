@@ -20,14 +20,14 @@ mod attributes;
 mod factory;
 mod query;
 
-pub struct FloatingWidgets(SecondaryMap<WidgetId>);
+pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
 
 impl FloatingWidgets {
     pub fn empty() -> Self {
         Self(SecondaryMap::empty())
     }
 
-    pub fn remove(&mut self, key: WidgetId) {
+    pub fn try_remove(&mut self, key: WidgetId) {
         self.0.try_remove(key);
     }
 

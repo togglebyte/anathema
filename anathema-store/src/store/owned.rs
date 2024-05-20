@@ -133,7 +133,7 @@ impl<T> Owned<T> {
         match self.inner.borrow_mut().remove(key) {
             OwnedEntry::Occupied(value) => value,
             OwnedEntry::Unique => panic!("invalid state (U)"),
-            OwnedEntry::Shared(key) => panic!("invalid state (S: {key:?})"),
+            OwnedEntry::Shared(_) => panic!("invalid state"),
         }
     }
 
@@ -202,7 +202,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "invalid state")]
+    #[should_panic(expected = "value unavailable")]
     fn remove() {
         let owned = Owned::empty();
         let key = owned.push(Box::new(123u32));

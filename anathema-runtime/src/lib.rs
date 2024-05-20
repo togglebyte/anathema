@@ -337,10 +337,11 @@ where
             backend.render();
             backend.clear();
 
-            // Cleanup removed attributes
+            // Cleanup removed attributes from widgets.
+            // Not all widgets has attributes, only `Element`s.
             for key in tree.drain_removed() {
-                attribute_storage.remove(key);
-                floating_widgets.remove(key);
+                attribute_storage.try_remove(key);
+                floating_widgets.try_remove(key);
             }
 
             let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;

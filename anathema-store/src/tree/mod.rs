@@ -165,7 +165,10 @@ impl<T> Tree<T> {
 
         if let Some(mut node) = node {
             let value_key = node.value();
-            self.values.remove(value_key);
+            let _ = self
+                .values
+                .remove(value_key)
+                .expect("a node is always associated with a value");
             node.children.clear(&mut self.values, &mut self.removed_values);
         }
     }
@@ -395,7 +398,7 @@ impl Nodes {
     // Clear nodes and remove associted values
     fn clear<T>(&mut self, values: &mut GenSlab<(NodePath, T)>, removed_values: &mut Vec<ValueId>) {
         for mut node in self.inner.drain(..) {
-            values.remove(node.value);
+            let _ = values.remove(node.value);
             removed_values.push(node.value);
             node.children.clear(values, removed_values);
         }

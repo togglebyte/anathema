@@ -14,6 +14,10 @@ impl<T: 'static + State> List<T> {
         Value::<Self>::empty()
     }
 
+    pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Value<Self> {
+        Value::from_iter(iter)
+    }
+
     pub fn get(&self, index: usize) -> Option<&Value<T>> {
         self.inner.get(index)
     }

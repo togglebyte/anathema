@@ -20,6 +20,31 @@ mod generational;
 mod rc;
 mod secondary_map;
 
+/// Index value for a slab
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct Index(u32);
+
+impl Deref for Index {
+    type Target = u32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<usize> for Index {
+    fn from(val: usize) -> Self {
+        Self(val as u32)
+    }
+}
+
+impl From<Index> for usize {
+    fn from(idx: Index) -> Self {
+        idx.0 as usize
+    }
+}
+
 /// A ticket used when checkout an entry out of the slab.
 #[derive(Debug)]
 pub struct Ticket<T> {

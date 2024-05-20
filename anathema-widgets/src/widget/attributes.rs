@@ -9,7 +9,8 @@ use crate::values::{ValueIndex, Values};
 use crate::widget::ValueKey;
 use crate::{Value, WidgetId};
 
-pub struct AttributeStorage<'bp>(SecondaryMap<Attributes<'bp>>);
+#[derive(Debug)]
+pub struct AttributeStorage<'bp>(SecondaryMap<WidgetId, Attributes<'bp>>);
 
 impl<'bp> AttributeStorage<'bp> {
     pub fn empty() -> Self {
@@ -28,8 +29,8 @@ impl<'bp> AttributeStorage<'bp> {
         self.0.insert(widget_id, attribs)
     }
 
-    pub fn remove(&mut self, id: WidgetId) {
-        self.0.remove(id);
+    pub fn try_remove(&mut self, id: WidgetId) {
+        self.0.try_remove(id);
     }
 }
 

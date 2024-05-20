@@ -79,18 +79,18 @@ fn update_widget<'bp>(
     path: &NodePath,
     tree: &mut WidgetTree<'bp>,
 ) {
-    // Any dropped dyn value should register for future updates.
-    // This is done by reloading the value, making it empty
-    if let Change::Dropped = change {
-        let attributes = ctx.attribute_storage.get_mut(value_id.key());
-        if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
-            value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states);
-        }
-    }
-
     match widget {
         WidgetKind::Element(..) => {
             // Reflow of the layout will be triggered by the runtime and not in this step
+
+            // Any dropped dyn value should register for future updates.
+            // This is done by reloading the value, making it empty
+            if let Change::Dropped | Change::Changed = change {
+                let attributes = ctx.attribute_storage.get_mut(value_id.key());
+                if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
+                    value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states);
+                }
+            }
         }
         WidgetKind::For(for_loop) => for_loop.update(ctx, change, value_id, path, tree),
         WidgetKind::Iteration(_) => todo!(),

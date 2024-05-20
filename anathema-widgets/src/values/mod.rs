@@ -65,6 +65,9 @@ impl<'bp> Value<'bp, EvalValue<'bp>> {
         scope: &Scope<'bp>,
         states: &anathema_state::States,
     ) {
+        if !self.inner.contains_index() {
+            return;
+        }
         let Some(expr) = self.expr else { return };
         let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, id);
         self.inner = inner;
