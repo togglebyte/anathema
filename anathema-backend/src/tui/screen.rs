@@ -6,7 +6,7 @@ use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, ExecutableCommand, QueueableCommand};
 
-use super::buffer::{diff, draw_changes, Buffer};
+use super::buffer::{diff, draw_changes, Buffer, Change};
 use super::{ScreenPos, Style};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);

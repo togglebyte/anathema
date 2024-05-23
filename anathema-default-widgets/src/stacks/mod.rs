@@ -4,13 +4,17 @@ use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, WidgetId};
 
+pub use self::column::Column;
 pub use self::hstack::HStack;
+pub use self::row::Row;
 pub use self::vstack::VStack;
 pub use self::zstack::ZStack;
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, DIRECTION};
 
+mod column;
 mod hstack;
+mod row;
 mod vstack;
 mod zstack;
 

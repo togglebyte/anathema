@@ -254,7 +254,7 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(ScreenPos, Opt
         }
     }
 
-    Ok(changes)
+    Ok(())
 }
 
 // -----------------------------------------------------------------------------
