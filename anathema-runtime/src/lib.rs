@@ -126,6 +126,10 @@ where
         Emitter(self.message_sender.clone())
     }
 
+    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
+        self.factory.register_default::<W>(ident);
+    }
+
     pub fn run(mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
@@ -351,10 +355,6 @@ where
 
             fps_now = Instant::now();
         }
-    }
-
-    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
-        self.factory.register_default::<W>(ident);
     }
 }
 

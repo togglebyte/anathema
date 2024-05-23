@@ -217,7 +217,7 @@ pub(crate) enum Change {
 }
 
 impl Change {
-    fn width(&self) -> usize {
+    fn width(self) -> usize {
         match self {
             Change::Remove => 1,
             Change::Insert(c) => c.width().unwrap_or(1),
@@ -225,9 +225,7 @@ impl Change {
     }
 }
 
-pub(crate) fn diff(old: &Buffer, new: &Buffer) -> Result<Vec<(ScreenPos, Option<Style>, Change)>> {
-    let mut changes = Vec::new();
-
+pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(ScreenPos, Option<Style>, Change)>) -> Result<()> {
     let mut previous_style = None;
 
     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
@@ -262,7 +260,7 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer) -> Result<Vec<(ScreenPos, Option<
 // -----------------------------------------------------------------------------
 //     - Draw changes -
 // -----------------------------------------------------------------------------
-pub(crate) fn draw_changes(mut w: impl Write, changes: Vec<(ScreenPos, Option<Style>, Change)>) -> Result<()> {
+pub(crate) fn draw_changes(mut w: impl Write, changes: &Vec<(ScreenPos, Option<Style>, Change)>) -> Result<()> {
     let mut last_y = None;
     let mut next_cell_x = None;
 
@@ -305,6 +303,8 @@ mod test {
         // The isnerts are for C and N, and since V is no longer present
         // in the new buffer, it should be removed
 
+        let mut changes = vec![];
+
         let mut old_buffer = Buffer::new((5u16, 3));
         old_buffer.inner[0] = Cell::new('O', Style::reset());
         old_buffer.inner[1] = Cell::new('V', Style::reset());
@@ -313,7 +313,7 @@ mod test {
         new_buffer.inner[0] = Cell::new('C', Style::reset());
         new_buffer.inner[2] = Cell::new('N', Style::reset());
 
-        let changes = diff(&old_buffer, &new_buffer).unwrap();
+        diff(&old_buffer, &new_buffer, &mut changes).unwrap();
 
         let (_, _, change_1) = changes[0]; // Insert 'C'
         let (_, _, change_2) = changes[1]; // Remove 'V'

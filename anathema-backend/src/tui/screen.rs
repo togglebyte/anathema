@@ -14,6 +14,7 @@ pub struct Screen {
     // This is pub(crate) for testing purposes
     pub(crate) new_buffer: Buffer,
     old_buffer: Buffer,
+    changes: Vec<(ScreenPos, Option<Style>, Change)>,
 }
 
 impl Screen {
@@ -38,6 +39,7 @@ impl Screen {
         Self {
             old_buffer: Buffer::new(size),
             new_buffer: Buffer::new(size),
+            changes: vec![],
         }
     }
 
@@ -76,13 +78,16 @@ impl Screen {
 
     /// Draw the changes to the screen
     pub(crate) fn render(&mut self, mut output: impl Write) -> Result<()> {
-        let changes = diff(&self.old_buffer, &self.new_buffer)?;
+        diff(&self.old_buffer, &self.new_buffer, &mut self.changes)?;
 
-        if changes.is_empty() {
+        if self.changes.is_empty() {
             return Ok(());
         }
 
-        draw_changes(&mut output, changes)?;
+        draw_changes(&mut output, &self.changes)?;
+
+        self.changes.clear();
+
         output.flush()?;
 
         self.old_buffer = self.new_buffer.clone();

@@ -4,6 +4,7 @@ use anathema_widgets::Factory;
 
 mod alignment;
 mod border;
+mod column;
 mod expand;
 mod layout;
 mod position;
@@ -26,6 +27,7 @@ pub use viewport::Viewport;
 pub fn register_default_widgets(factory: &mut Factory) {
     factory.register_default::<alignment::Align>("align");
     factory.register_default::<expand::Expand>("expand");
+    factory.register_default::<column::Column>("col");
     factory.register_default::<position::Position>("position");
     factory.register_default::<spacer::Spacer>("spacer");
     factory.register_default::<stacks::HStack>("hstack");
