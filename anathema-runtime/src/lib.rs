@@ -34,6 +34,7 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
     FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
+use error::Error;
 use flume::Receiver;
 use tabindex::TabIndex;
 
@@ -68,6 +69,9 @@ pub struct Runtime<T> {
     changes: Changes,
     components: ComponentRegistry,
     globals: Globals,
+    string_storage: StringStorage,
+    viewport: Viewport,
+    floating_widgets: FloatingWidgets,
 }
 
 impl<T> Runtime<T>
@@ -98,6 +102,9 @@ where
             tab_indices: TabIndex::new(),
             components: ComponentRegistry::new(),
             globals,
+            string_storage: StringStorage::new(),
+            viewport: Viewport::new((width, height)),
+            floating_widgets: FloatingWidgets::empty(),
         };
 
         Ok(inst)
@@ -130,52 +137,37 @@ where
         self.factory.register_default::<W>(ident);
     }
 
-    pub fn run(mut self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
 
-        let components = &mut self.components;
         let mut states = States::new();
         let mut scope = Scope::new();
-        let globals = &self.globals;
+        let globals = self.globals.clone();
         let mut ctx = EvalContext::new(
-            globals,
+            &globals,
             &self.factory,
             &mut scope,
             &mut states,
-            components,
+            &mut self.components,
             &mut attribute_storage,
             &mut floating_widgets,
         );
-        let bp = self.bp.clone(); // TODO ewwww
 
+        let bp = self.bp.clone();
         // First build the tree
         eval_blueprint(&bp, &mut ctx, &NodePath::root(), &mut tree);
 
-        let Self {
-            mut backend,
-            message_receiver,
-            factory,
-            mut future_values,
-            mut changes,
-            mut tab_indices,
-            mut components,
-            ..
-        } = self;
-
-        let mut string_storage = StringStorage::new();
-
-        let size = backend.size();
-        let mut viewport = Viewport::new(size);
+        let size = self.backend.size();
 
         // ... then the tab indices
-        tree.apply_visitor(&mut tab_indices);
+        tree.apply_visitor(&mut self.tab_indices);
 
         // Select the first widget
-        if let Some(entry) = tab_indices.current() {
+        if let Some(entry) = self.tab_indices.current() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
@@ -186,175 +178,185 @@ where
         }
 
         'run: loop {
-            // Pull and keep consuming events while there are events present
-            // in the queu. The time used to pull events should be subtracted
-            // from the poll duration of self.events.poll
-            let poll_duration = handle_messages(
-                &message_receiver,
-                &tab_indices,
-                fps_now,
-                sleep_micros,
-                &mut tree,
-                &mut states,
-                &mut attribute_storage,
-            );
-
-            // Clear the text buffer
-            string_storage.clear();
-
-            while let Some(event) = backend.next_event(poll_duration) {
-                let event = global_event(
-                    &mut backend,
-                    &mut tab_indices,
-                    event,
-                    &mut tree,
-                    &mut states,
-                    &mut attribute_storage,
-                );
-
-                // Ignore mouse events, as they are handled by global event
-                if !event.is_mouse_event() {
-                    if let Some(entry) = tab_indices.current() {
-                        tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                            let WidgetKind::Component(component) = widget else { return };
-                            let state = entry.state_id.and_then(|id| states.get_mut(id));
-                            let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                            let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                            component.component.any_event(event, state, elements);
-                        });
-                    }
-                }
-
-                // Make sure event handling isn't holding up the rest of the event loop.
-                if fps_now.elapsed().as_micros() > sleep_micros {
-                    break;
-                }
-
-                match event {
-                    Event::Resize(width, height) => {
-                        let size = Size::from((width, height));
-                        backend.resize(size);
-                        viewport.resize(size);
-                        self.constraints.set_max_width(size.width);
-                        self.constraints.set_max_height(size.height);
-                    }
-                    Event::Blur => (),
-                    Event::Focus => (),
-                    Event::Stop => break 'run Ok(()),
-                    _ => {}
-                }
-
-                if let Event::Stop = event {
-                    break 'run Ok(());
-                }
-            }
-
-            apply_futures(
-                globals,
-                &mut future_values,
-                &factory,
-                &mut tree,
-                &mut states,
-                &mut components,
-                &mut attribute_storage,
-                &mut floating_widgets,
-            );
-
-            // TODO
-            // Instead of draining the changes when applying
-            // the changes, we can keep the changes and use them in the
-            // subsequent update / position / paint sequence
-            //
-            // Store the size and constraint on a widget
-            //
-            // * If the widget changes but the size remains the same then
-            //   there is no reason to perform a layout on the entire tree,
-            //   and only the widget it self needs to be re-painted
-            //
-            // Q) What about floating widgets?
-
-            // panic!("see this TODO and the one about updating widgets");
-
-            apply_changes(
-                globals,
-                &mut changes,
-                &factory,
-                &mut tree,
-                &mut states,
-                &mut components,
-                &mut attribute_storage,
-                &mut floating_widgets,
-            );
-
-            // -----------------------------------------------------------------------------
-            //   - Layout, position and paint -
-            // -----------------------------------------------------------------------------
-            let mut filter = LayoutFilter::new(true, &attribute_storage);
-            tree.for_each(&mut filter).first(&mut |widget, children, values| {
-                // Layout
-                // TODO: once the text buffer can be read-only for the paint
-                //       the context can be made outside of this closure.
-                //
-                //       That doesn't have as much of an impact here
-                //       as it will do when dealing with the floating widgets
-                let mut layout_ctx = LayoutCtx::new(string_storage.new_session(), &attribute_storage, &viewport);
-                layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
-
-                // Position
-                position_widget(Pos::ZERO, widget, children, values, &attribute_storage, true);
-
-                // Paint
-                let mut string_session = string_storage.new_session();
-                backend.paint(widget, children, values, &mut string_session, &attribute_storage, true);
-            });
-
-            // Floating widgets
-            for widget_id in floating_widgets.iter() {
-                // Find the parent widget and get the position
-                // If no parent element is found assume Pos::ZERO
-                let mut parent = tree.path(*widget_id).pop();
-                let (pos, constraints) = loop {
-                    match parent {
-                        None => break (Pos::ZERO, self.constraints),
-                        Some(p) => match tree.get_ref_by_path(p) {
-                            Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
-                            _ => parent = p.pop(),
-                        },
-                    }
-                };
-
-                tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                    let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                    let mut layout_ctx = LayoutCtx::new(string_storage.new_session(), &attribute_storage, &viewport);
-
-                    layout_widget(el, children, values, constraints, &mut layout_ctx, true);
-
-                    // Position
-                    position_widget(pos, el, children, values, &attribute_storage, true);
-
-                    // Paint
-                    let mut string_session = string_storage.new_session();
-                    backend.paint(el, children, values, &mut string_session, &attribute_storage, true);
-                });
-            }
-
-            backend.render();
-            backend.clear();
-
-            // Cleanup removed attributes from widgets.
-            // Not all widgets has attributes, only `Element`s.
-            for key in tree.drain_removed() {
-                attribute_storage.try_remove(key);
-                floating_widgets.try_remove(key);
-            }
-
-            let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
-            if sleep > 0 {
-                std::thread::sleep(Duration::from_micros(sleep));
-            }
-
+            self.tick(fps_now, sleep_micros, &mut tree, &mut states, &mut attribute_storage, &globals)?;
             fps_now = Instant::now();
         }
+    }
+
+    pub fn tick<'bp>(
+        &mut self,
+        fps_now: Instant,
+        sleep_micros: u128,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+        globals: &'bp Globals,
+    ) -> Result<()> {
+        // Pull and keep consuming events while there are events present
+        // in the queu. The time used to pull events should be subtracted
+        // from the poll duration of self.events.poll
+        let poll_duration = handle_messages(
+            &self.message_receiver,
+            &self.tab_indices,
+            fps_now,
+            sleep_micros,
+            tree,
+            states,
+            attribute_storage,
+        );
+
+        // Clear the text buffer
+        self.string_storage.clear();
+
+        while let Some(event) = self.backend.next_event(poll_duration) {
+            let event = global_event(
+                &mut self.backend,
+                &mut self.tab_indices,
+                event,
+                tree,
+                states,
+                attribute_storage,
+            );
+
+            // Ignore mouse events, as they are handled by global event
+            if !event.is_mouse_event() {
+                if let Some(entry) = self.tab_indices.current() {
+                    tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                        let WidgetKind::Component(component) = widget else { return };
+                        let state = entry.state_id.and_then(|id| states.get_mut(id));
+                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                        let elements = Elements::new(node.children(), values, attribute_storage);
+                        component.component.any_event(event, state, elements);
+                    });
+                }
+            }
+
+            // Make sure event handling isn't holding up the rest of the event loop.
+            if fps_now.elapsed().as_micros() > sleep_micros {
+                break;
+            }
+
+            match event {
+                Event::Resize(width, height) => {
+                    let size = Size::from((width, height));
+                    self.backend.resize(size);
+                    self.viewport.resize(size);
+                    self.constraints.set_max_width(size.width);
+                    self.constraints.set_max_height(size.height);
+                }
+                Event::Blur => (),
+                Event::Focus => (),
+                Event::Stop => return Err(Error::Stop),
+                _ => {}
+            }
+        }
+
+        apply_futures(
+            globals,
+            &mut self.future_values,
+            &self.factory,
+            tree,
+            states,
+            &mut self.components,
+            attribute_storage,
+            &mut self.floating_widgets,
+        );
+
+        // TODO
+        // Instead of draining the changes when applying
+        // the changes, we can keep the changes and use them in the
+        // subsequent update / position / paint sequence
+        //
+        // Store the size and constraint on a widget
+        //
+        // * If the widget changes but the size remains the same then
+        //   there is no reason to perform a layout on the entire tree,
+        //   and only the widget it self needs to be re-painted
+        //
+        // Q) What about floating widgets?
+
+        // panic!("see this TODO and the one about updating widgets");
+
+        apply_changes(
+            globals,
+            &mut self.changes,
+            &self.factory,
+            tree,
+            states,
+            &mut self.components,
+            attribute_storage,
+            &mut self.floating_widgets,
+        );
+
+        // -----------------------------------------------------------------------------
+        //   - Layout, position and paint -
+        // -----------------------------------------------------------------------------
+        let mut filter = LayoutFilter::new(true, &attribute_storage);
+        tree.for_each(&mut filter).first(&mut |widget, children, values| {
+            // Layout
+            // TODO: once the text buffer can be read-only for the paint
+            //       the context can be made outside of this closure.
+            //
+            //       That doesn't have as much of an impact here
+            //       as it will do when dealing with the floating widgets
+            let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), &attribute_storage, &self.viewport);
+            layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
+
+            // Position
+            position_widget(Pos::ZERO, widget, children, values, &attribute_storage, true);
+
+            // Paint
+            let mut string_session = self.string_storage.new_session();
+            self.backend.paint(widget, children, values, &mut string_session, &attribute_storage, true);
+        });
+
+        // Floating widgets
+        for widget_id in self.floating_widgets.iter() {
+            // Find the parent widget and get the position
+            // If no parent element is found assume Pos::ZERO
+            let mut parent = tree.path(*widget_id).pop();
+            let (pos, constraints) = loop {
+                match parent {
+                    None => break (Pos::ZERO, self.constraints),
+                    Some(p) => match tree.get_ref_by_path(p) {
+                        Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
+                        _ => parent = p.pop(),
+                    },
+                }
+            };
+
+            tree.with_nodes_and_values(*widget_id, |widget, children, values| {
+                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
+                let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), &attribute_storage, &self.viewport);
+
+                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
+
+                // Position
+                position_widget(pos, el, children, values, &attribute_storage, true);
+
+                // Paint
+                let mut string_session = self.string_storage.new_session();
+                self.backend.paint(el, children, values, &mut string_session, &attribute_storage, true);
+            });
+        }
+
+        self.backend.render();
+        self.backend.clear();
+
+        // Cleanup removed attributes from widgets.
+        // Not all widgets has attributes, only `Element`s.
+        for key in tree.drain_removed() {
+            attribute_storage.try_remove(key);
+            self.floating_widgets.try_remove(key);
+        }
+
+        let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
+        if sleep > 0 {
+            std::thread::sleep(Duration::from_micros(sleep));
+        }
+
+        // TODO unreachable
+        Ok(())
     }
 }
 

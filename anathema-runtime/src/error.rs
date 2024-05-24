@@ -8,12 +8,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     Template(TemplateError),
+    Stop,
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Template(template) => write!(f, "{template}"),
+            Error::Stop => write!(f, "stopping"),
         }
     }
 }
