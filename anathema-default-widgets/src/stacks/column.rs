@@ -31,10 +31,8 @@ impl Widget for Column {
         mut children: PositionChildren<'_, '_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
-        let mut y = 0;
-
         let x_offset = (ctx.inner_size.width / 2) as i32;
 
         children.for_each(|child, children| {
@@ -42,11 +40,41 @@ impl Widget for Column {
             let child_width = size.width as i32;
             let x = x_offset - child_width / 2;
 
-            let mut pos = Pos { x, y };
+            let mut pos = ctx.pos;
+            pos.x += x;
 
             child.position(children, pos, attribute_storage);
-            y += size.height as i32;
+            ctx.pos.y += size.height as i32;
             ControlFlow::Continue(())
         });
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::TestRunner;
+
+    #[test]
+    fn basic_column() {
+        let tpl = "
+            column
+                text 'a'
+                border
+                    text 'b'
+                text 'c'
+        ";
+
+        let expected = "
+            ╔═══╗
+            ║ a ║
+            ║┌─┐║
+            ║│b│║
+            ║└─┘║
+            ║ c ║
+            ╚═══╝
+        ";
+
+        TestRunner::new(tpl, (3, 5)).instance().render_assert(expected);
     }
 }

@@ -1,15 +1,15 @@
 // -----------------------------------------------------------------------------
 //   - Runtime -
 //   1. Creating the initial widget tree
-//   2. Runtime loop      <---------------------------------+
-//    ^  2.1. Wait for messages                             |
-//    |  2.2. Wait for events                               |
+//   2. Runtime loop      <--------------------------------+
+//    ^  2.1. Wait for messages                            |
+//    |  2.2. Wait for events                              v
 //    |  2.4. Was there events / messages / data changes? (no) (yes)
-//    |                                                           |
-//    |                                                           |
-//    |        +--------------------------------------------------+
-//    |        |
-//    |        V
+//    |                                                         ^
+//    |                                                         |
+//    |       +-------------------------------------------------+
+//    |       |
+//    |       V
 //    |       1. Layout
 //    |       2. Position
 //    |       3. Draw

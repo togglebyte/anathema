@@ -80,24 +80,24 @@ mod test {
             .render_assert(expected_second);
     }
 
-    // #[test]
-    // fn fixed_height() {
-    //     let tpl = "
-    //         vstack [height: 2]
-    //             for i in [0, 1]
-    //                 border
-    //                     text i
-    //     ";
+    #[test]
+    fn fixed_height() {
+        let tpl = "
+            vstack [height: 2]
+                for i in [0, 1]
+                    border
+                        text i
+        ";
 
-    //     let expected = "
-    //         ╔══╗
-    //         ║┌┐║
-    //         ║└┘║
-    //         ╚══╝
-    //     ";
+        let expected = "
+            ╔══╗
+            ║┌┐║
+            ║└┘║
+            ╚══╝
+        ";
 
-    //     TestRunner::new(tpl, (2, 2)).instance().render_assert(expected);
-    // }
+        TestRunner::new(tpl, (2, 2)).instance().render_assert(expected);
+    }
 
     #[test]
     fn fixed_width() {

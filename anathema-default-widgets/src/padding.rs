@@ -36,14 +36,11 @@ impl Widget for Padding {
         let attributes = ctx.attribs.get(id);
         let mut size = Size::ZERO;
         let padding = attributes.get("padding").unwrap_or(0);
-        let padding_right = attributes.get("padding-right").unwrap_or(0);
-        let padding_bottom = attributes.get("padding-bottom").unwrap_or(0);
-        let padding_left = attributes.get("padding-left").unwrap_or(0);
 
-        self.0.top = attributes.get("padding-top").unwrap_or(padding);
-        self.0.right = attributes.get("padding-right").unwrap_or(padding);
-        self.0.bottom = attributes.get("padding-bottom").unwrap_or(padding);
-        self.0.left = attributes.get("padding-left").unwrap_or(padding);
+        self.0.top = attributes.get("top").unwrap_or(padding);
+        self.0.right = attributes.get("right").unwrap_or(padding);
+        self.0.bottom = attributes.get("bottom").unwrap_or(padding);
+        self.0.left = attributes.get("left").unwrap_or(padding);
 
         let padding_size = self.0.size();
 
@@ -79,5 +76,174 @@ impl Widget for Padding {
             child.position(children, ctx.pos, attribute_storage);
             ControlFlow::Break(())
         });
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::TestRunner;
+
+    #[test]
+    fn padding_all() {
+        let tpl = "
+            padding [padding: 1]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔═══╗
+            ║   ║
+            ║ a ║
+            ║   ║
+            ╚═══╝
+        ";
+
+        TestRunner::new(tpl, (3, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_top_inclusive() {
+        let tpl = "
+            padding [padding: 1, top: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║    ║
+            ║ a  ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 4)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_top() {
+        let tpl = "
+            padding [top: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║    ║
+            ║a   ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_right_inclusive() {
+        let tpl = "
+            padding [padding: 1, right: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║ a  ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_right() {
+        let tpl = "
+            padding [right: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║a   ║
+            ║    ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_bottom_inclusive() {
+        let tpl = "
+            padding [padding: 1, bottom: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║ a  ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_bottom() {
+        let tpl = "
+            padding [bottom: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║a   ║
+            ║    ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_left_inclusive() {
+        let tpl = "
+            padding [padding: 1, left: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║  a ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn padding_left() {
+        let tpl = "
+            padding [left: 2]
+                text 'a'
+        ";
+
+        let expected = "
+            ╔════╗
+            ║  a ║
+            ║    ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
     }
 }
