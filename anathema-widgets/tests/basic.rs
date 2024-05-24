@@ -29,17 +29,32 @@ impl State for TestState {
 #[test]
 fn basic() {
     let state = TestState { is_true: true.into() };
-    TestCase::setup(input!("basic"))
+    TestCase::setup("test is_true")
         .build(state)
-        .expect_frame(out!("basic", 1))
+        .expect_frame("test Bool(true)")
         .with_state(0, |state| *state.is_true.to_mut() = false)
-        .expect_frame(out!("basic", 2));
+        .expect_frame("test Bool(false)");
 }
 
 #[test]
 fn if_else() {
     let state = TestState { is_true: false.into() };
-    TestCase::setup(input!("if_else"))
+    TestCase::setup(r#"
+if does.not.exist
+    test "a"
+else if !is_true
+    test "b"
+else
+    test "c"
+    "#)
         .build(state)
-        .expect_frame(out!("if_else", 1));
+        .expect_frame(r#"
+<control flow>
+    <if cond = false>
+        test Str("a")
+    <else cond = true>
+        test Str("b")
+    <else>
+        test Str("c")
+        "#);
 }

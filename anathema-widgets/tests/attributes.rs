@@ -4,12 +4,15 @@ mod run;
 
 #[test]
 fn set_attributes() {
-    // let state = Map::<bool>::empty();
-    // TestCase::setup(input!("attributes"))
-    //     .build(state)
-    //     .expect_frame(out!("attributes", 1))
-    //     .query(|state, elements| {
-    //         // elements.query(&state).first()
-    //     })
-    //     .expect_frame(out!("attributes", 2));
+    let template = "test [bold: true]";
+
+    let mut x = TestCase::setup(template);
+
+    let mut y = x.build(());
+
+    y.expect_frame("test[bold: Bool(true)]")
+        .query(|state, elements| {
+            // elements.query(&state).first()
+        })
+        .expect_frame("test[bold: Bool(false)]");
 }

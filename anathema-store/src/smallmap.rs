@@ -40,7 +40,7 @@ impl From<SmallIndex> for usize {
 /// let value = map.get("b").unwrap();
 /// assert_eq!(2, *value);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SmallMap<K, V>(Slab<SmallIndex, (K, V)>);
 
 impl<K, V> SmallMap<K, V>
@@ -69,13 +69,14 @@ where
         }
     }
 
-    pub fn insert_with<F>(&mut self, key: K, f: F)
+    pub fn insert_with<F>(&mut self, key: K, f: F) -> SmallIndex
     where
         F: FnOnce(SmallIndex) -> V,
     {
         let id = self.0.next_id();
         let value = f(id);
         assert_eq!(self.0.insert((key, value)), id);
+        id
     }
 
     /// Get a reference to a value in the map

@@ -1,7 +1,0 @@
-<for>
-    <iter binding = val, index = 0>
-        test Int(2)
-    <iter binding = val, index = 1>
-        test Int(4)
-    <iter binding = val, index = 2>
-        test Int(6)

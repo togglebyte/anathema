@@ -42,11 +42,15 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
                 let attrib_count = attribs.iter().count();
                 if attrib_count > 0 {
                     // Print attributes
-                    let _ = write!(&mut self.output, "[ ");
-                    for (_k, val) in attribs.iter() {
+                    let _ = write!(&mut self.output, "[");
+                    for (i, (key, val)) in attribs.iter().enumerate() {
                         if let Some(common_val) = val.load_common_val() {
                             let v = common_val.to_common().unwrap();
-                            let _ = write!(&mut self.output, "{:?} ", *v);
+                            // Write a comma before the values if this is not the first entry
+                            if i > 0 {
+                                let _ = write!(&mut self.output, ", ");
+                            }
+                            let _ = write!(&mut self.output, "{}: {:?}", key.to_str(), *v);
                         }
                     }
                     let _ = write!(&mut self.output, "]");

@@ -91,12 +91,13 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty(widget_id);
 
         if let Some(expr) = single.value.as_ref() {
-            attributes.insert_with(ValueKey::Value, |value_index| {
+            let value = attributes.insert_with(ValueKey::Value, |value_index| {
                 eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
             });
+            attributes.value = Some(value);
         }
 
-        for (key, expr) in &single.attributes {
+        for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
             });

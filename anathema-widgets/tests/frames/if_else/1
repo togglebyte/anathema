@@ -1,7 +1,0 @@
-<control flow>
-    <if cond = false>
-        test Str("a")
-    <else cond = true>
-        test Str("b")
-    <else>
-        test Str("c")

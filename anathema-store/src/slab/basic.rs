@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 //   - Entry -
 // -----------------------------------------------------------------------------
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum Entry<I, T> {
     Vacant(Option<I>),
     Occupied(T),
@@ -35,7 +35,7 @@ impl<I, T> Entry<I, T> {
 //   - Slab -
 // -----------------------------------------------------------------------------
 /// A basic slab
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Slab<I, T> {
     next_id: Option<I>,
     inner: Vec<Entry<I, T>>,

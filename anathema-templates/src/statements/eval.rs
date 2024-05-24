@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
 use super::const_eval::const_eval;
@@ -81,13 +82,13 @@ impl Scope {
         scope.eval(ctx)
     }
 
-    fn eval_attributes(&mut self, ctx: &mut Context<'_, '_>) -> Result<HashMap<Rc<str>, Expression>> {
-        let mut hm = HashMap::new();
+    fn eval_attributes(&mut self, ctx: &mut Context<'_, '_>) -> Result<SmallMap<Rc<str>, Expression>> {
+        let mut hm = SmallMap::empty();
 
         for (key, value) in self.statements.take_attributes() {
             let value = const_eval(value, ctx);
             let key = ctx.strings.get_unchecked(key);
-            hm.insert(key.into(), value);
+            hm.set(key.into(), value);
         }
 
         Ok(hm)

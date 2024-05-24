@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use anathema_store::smallmap::SmallMap;
+
 use crate::components::ComponentId;
 use crate::Expression;
 
@@ -8,7 +10,7 @@ use crate::Expression;
 pub struct Single {
     pub ident: Rc<str>,
     pub children: Vec<Blueprint>,
-    pub attributes: HashMap<Rc<str>, Expression>,
+    pub attributes: SmallMap<Rc<str>, Expression>,
     pub value: Option<Expression>,
 }
 
@@ -41,7 +43,7 @@ pub struct Else {
 pub struct Component {
     pub id: ComponentId,
     pub body: Vec<Blueprint>,
-    pub attributes: HashMap<Rc<str>, Expression>,
+    pub attributes: SmallMap<Rc<str>, Expression>,
     pub state: Option<Rc<HashMap<Rc<str>, Expression>>>,
 }
 
@@ -60,7 +62,7 @@ macro_rules! single {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: vec![],
-            attributes: HashMap::new(),
+            attributes: SmallMap::empty(),
             value: None,
         })
     };
@@ -68,7 +70,7 @@ macro_rules! single {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: $children,
-            attributes: HashMap::new(),
+            attributes: SmallMap::empty(),
             value: None,
         })
     };

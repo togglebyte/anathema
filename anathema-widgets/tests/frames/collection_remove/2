@@ -1,3 +1,0 @@
-<for>
-    <iter binding = val, index = 1>
-        test Int(2)

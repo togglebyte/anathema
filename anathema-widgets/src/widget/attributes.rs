@@ -34,17 +34,10 @@ impl<'bp> AttributeStorage<'bp> {
     }
 }
 
-// TODO
-// At the time of writing the attributes were read-only.
-// The inner values could change, but the attributes them selves
-// would never be removed or new ones inserted.
-//
-// After some consideration this turned out to be a bad idea.
-// Therefore we don't need the index anymore and the entire underlying storage
-// should be replaced with something that can have new values added, old values removed.
 #[derive(Debug)]
 pub struct Attributes<'bp> {
     pub(crate) values: Values<'bp>,
+    pub(crate) value: Option<SmallIndex>,
     widget_id: WidgetId,
 }
 
@@ -53,6 +46,7 @@ impl<'bp> Attributes<'bp> {
     pub fn empty(widget_id: WidgetId) -> Self {
         Self {
             values: Values::empty(),
+            value: None,
             widget_id,
         }
     }
@@ -81,7 +75,7 @@ impl<'bp> Attributes<'bp> {
         }
     }
 
-    pub(crate) fn insert_with<F>(&mut self, key: ValueKey<'bp>, f: F)
+    pub(crate) fn insert_with<F>(&mut self, key: ValueKey<'bp>, f: F) -> SmallIndex
     where
         F: Fn(SmallIndex) -> Value<'bp, EvalValue<'bp>>,
     {
@@ -96,7 +90,8 @@ impl<'bp> Attributes<'bp> {
     /// Get the `Value` out of attributes.
     /// This is always the first item
     pub fn value(&self) -> Option<&Value<'_, EvalValue<'_>>> {
-        self.values.get_with_index(ValueIndex::ZERO)
+        let idx = self.value?;
+        self.values.get_with_index(idx)
     }
 
     /// Get a copy of a value
@@ -151,12 +146,18 @@ impl<'bp> Attributes<'bp> {
         self.get_val(key).map(|val| val.load_bool()).unwrap_or(false)
     }
 
-    /// Iterate over attributes, skipping the first one
-    /// as that is the `Value`.
+    /// Iterate over attributes.
+    /// This will skip the value
     pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &Value<'_, EvalValue<'_>>)> {
-        self.values.iter().skip(1)
+        self.values.iter().filter(|(key, _)| {
+            match key {
+                ValueKey::Value => false,
+                ValueKey::Attribute(_) => true,
+            }
+        })
     }
 
+    /// Returns true if the attributes contains the key
     pub fn contains(&self, key: &'bp str) -> bool {
         let key = ValueKey::Attribute(key);
         self.values.get(&key).is_some()

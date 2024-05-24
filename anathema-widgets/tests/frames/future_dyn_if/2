@@ -1,3 +1,0 @@
-<control flow>
-    <if cond = true>
-        test Str("hello")

@@ -52,6 +52,15 @@ pub enum ValueKey<'bp> {
     Attribute(&'bp str),
 }
 
+impl ValueKey<'_> {
+    pub fn to_str(&self) -> &str {
+        match self {
+            ValueKey::Value => "value",
+            ValueKey::Attribute(name) => name,
+        }
+    }
+}
+
 pub trait AnyWidget {
     fn to_any_ref(&self) -> &dyn Any;
     fn to_any_mut(&mut self) -> &mut dyn Any;
