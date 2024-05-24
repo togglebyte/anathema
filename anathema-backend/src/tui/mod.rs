@@ -92,6 +92,12 @@ impl TuiBackend {
             quit_on_ctrl_c: true,
         }
     }
+
+    /// Disable raw mode
+    pub fn disable_raw_mode(self) -> Self {
+        let _ = Screen::disable_raw_mode();
+        self
+    }
 }
 
 impl Backend for TuiBackend {

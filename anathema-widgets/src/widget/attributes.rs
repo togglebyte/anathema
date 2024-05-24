@@ -5,7 +5,7 @@ use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallIndex;
 
 use crate::expressions::EvalValue;
-use crate::values::{ValueIndex, Values};
+use crate::values::Values;
 use crate::widget::ValueKey;
 use crate::{Value, WidgetId};
 

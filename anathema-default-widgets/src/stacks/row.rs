@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
 
@@ -29,7 +29,7 @@ impl Widget for Row {
     fn position<'bp>(
         &mut self,
         mut children: PositionChildren<'_, '_, 'bp>,
-        id: WidgetId,
+        _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
     ) {

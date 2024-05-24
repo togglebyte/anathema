@@ -7,7 +7,7 @@ use anathema_store::slab::Slab;
 use crate::expressions::Expression;
 use crate::primitives::Primitive;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Globals(HashMap<Rc<str>, Expression>);
 
 impl Globals {

@@ -21,12 +21,11 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::Pos;
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, States};
 use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
@@ -34,14 +33,14 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
     FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-use error::Error;
-use flume::Receiver;
+use events::EventHandler;
 use tabindex::TabIndex;
 
 pub use crate::error::Result;
 pub use crate::messages::{Emitter, ViewMessage};
 
 mod error;
+mod events;
 mod messages;
 mod tabindex;
 
@@ -72,6 +71,7 @@ pub struct Runtime<T> {
     string_storage: StringStorage,
     viewport: Viewport,
     floating_widgets: FloatingWidgets,
+    event_handler: EventHandler,
 }
 
 impl<T> Runtime<T>
@@ -105,6 +105,7 @@ where
             string_storage: StringStorage::new(),
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
+            event_handler: EventHandler::new(),
         };
 
         Ok(inst)
@@ -137,12 +138,104 @@ where
         self.factory.register_default::<W>(ident);
     }
 
+    fn apply_futures<'bp>(
+        &mut self,
+        globals: &'bp Globals,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+    ) {
+        drain_futures(&mut self.future_values);
+
+        let mut scope = Scope::new();
+        self.future_values.drain().rev().for_each(|sub| {
+            scope.clear();
+            let path = tree.path(sub).clone();
+
+            try_resolve_future_values(
+                globals,
+                &self.factory,
+                &mut scope,
+                states,
+                &mut self.components,
+                sub,
+                &path,
+                tree,
+                attribute_storage,
+                &mut self.floating_widgets,
+            );
+        });
+    }
+
+    fn apply_changes<'bp>(
+        &mut self,
+        globals: &'bp Globals,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+    ) {
+        drain_changes(&mut self.changes);
+
+        if self.changes.is_empty() {
+            return;
+        }
+
+        let mut scope = Scope::new();
+        self.changes.drain().rev().for_each(|(sub, change)| {
+            sub.iter().for_each(|sub| {
+                scope.clear();
+                let Some(path) = tree.try_path(sub).cloned() else { return };
+
+                update_tree(
+                    globals,
+                    &self.factory,
+                    &mut scope,
+                    states,
+                    &mut self.components,
+                    &change,
+                    sub,
+                    &path,
+                    tree,
+                    attribute_storage,
+                    &mut self.floating_widgets,
+                );
+            });
+        });
+    }
+
+    fn handle_messages<'bp>(
+        &mut self,
+        fps_now: Instant,
+        sleep_micros: u128,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+    ) -> Duration {
+        while let Ok(msg) = self.message_receiver.try_recv() {
+            if let Some(entry) = self.tab_indices.dumb_fetch(msg.recipient) {
+                tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                    let WidgetKind::Component(component) = widget else { return };
+                    let state = entry.state_id.and_then(|id| states.get_mut(id));
+                    let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                    let elements = Elements::new(node.children(), values, attribute_storage);
+                    component.component.any_message(msg.payload, state, elements);
+                });
+            }
+
+            // Make sure event handling isn't holding up the rest of the event loop.
+            if fps_now.elapsed().as_micros() > sleep_micros / 2 {
+                break;
+            }
+        }
+
+        fps_now.elapsed()
+    }
+
     pub fn run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
-        let mut floating_widgets = FloatingWidgets::empty();
 
         let mut states = States::new();
         let mut scope = Scope::new();
@@ -154,14 +247,12 @@ where
             &mut states,
             &mut self.components,
             &mut attribute_storage,
-            &mut floating_widgets,
+            &mut self.floating_widgets,
         );
 
         let bp = self.bp.clone();
         // First build the tree
         eval_blueprint(&bp, &mut ctx, &NodePath::root(), &mut tree);
-
-        let size = self.backend.size();
 
         // ... then the tab indices
         tree.apply_visitor(&mut self.tab_indices);
@@ -177,8 +268,15 @@ where
             });
         }
 
-        'run: loop {
-            self.tick(fps_now, sleep_micros, &mut tree, &mut states, &mut attribute_storage, &globals)?;
+        loop {
+            self.tick(
+                fps_now,
+                sleep_micros,
+                &mut tree,
+                &mut states,
+                &mut attribute_storage,
+                &globals,
+            )?;
             fps_now = Instant::now();
         }
     }
@@ -195,72 +293,25 @@ where
         // Pull and keep consuming events while there are events present
         // in the queu. The time used to pull events should be subtracted
         // from the poll duration of self.events.poll
-        let poll_duration = handle_messages(
-            &self.message_receiver,
-            &self.tab_indices,
-            fps_now,
-            sleep_micros,
-            tree,
-            states,
-            attribute_storage,
-        );
+        let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage);
 
         // Clear the text buffer
         self.string_storage.clear();
 
-        while let Some(event) = self.backend.next_event(poll_duration) {
-            let event = global_event(
-                &mut self.backend,
-                &mut self.tab_indices,
-                event,
-                tree,
-                states,
-                attribute_storage,
-            );
-
-            // Ignore mouse events, as they are handled by global event
-            if !event.is_mouse_event() {
-                if let Some(entry) = self.tab_indices.current() {
-                    tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                        let WidgetKind::Component(component) = widget else { return };
-                        let state = entry.state_id.and_then(|id| states.get_mut(id));
-                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                        let elements = Elements::new(node.children(), values, attribute_storage);
-                        component.component.any_event(event, state, elements);
-                    });
-                }
-            }
-
-            // Make sure event handling isn't holding up the rest of the event loop.
-            if fps_now.elapsed().as_micros() > sleep_micros {
-                break;
-            }
-
-            match event {
-                Event::Resize(width, height) => {
-                    let size = Size::from((width, height));
-                    self.backend.resize(size);
-                    self.viewport.resize(size);
-                    self.constraints.set_max_width(size.width);
-                    self.constraints.set_max_height(size.height);
-                }
-                Event::Blur => (),
-                Event::Focus => (),
-                Event::Stop => return Err(Error::Stop),
-                _ => {}
-            }
-        }
-
-        apply_futures(
-            globals,
-            &mut self.future_values,
-            &self.factory,
+        self.event_handler.handle(
+            poll_duration,
+            fps_now,
+            sleep_micros,
+            &mut self.backend,
+            &mut self.viewport,
             tree,
+            &mut self.tab_indices,
             states,
-            &mut self.components,
             attribute_storage,
-            &mut self.floating_widgets,
-        );
+            &mut self.constraints,
+        )?;
+
+        self.apply_futures(globals, tree, states, attribute_storage);
 
         // TODO
         // Instead of draining the changes when applying
@@ -275,18 +326,7 @@ where
         //
         // Q) What about floating widgets?
 
-        // panic!("see this TODO and the one about updating widgets");
-
-        apply_changes(
-            globals,
-            &mut self.changes,
-            &self.factory,
-            tree,
-            states,
-            &mut self.components,
-            attribute_storage,
-            &mut self.floating_widgets,
-        );
+        self.apply_changes(globals, tree, states, attribute_storage);
 
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
@@ -307,7 +347,8 @@ where
 
             // Paint
             let mut string_session = self.string_storage.new_session();
-            self.backend.paint(widget, children, values, &mut string_session, &attribute_storage, true);
+            self.backend
+                .paint(widget, children, values, &mut string_session, &attribute_storage, true);
         });
 
         // Floating widgets
@@ -327,7 +368,8 @@ where
 
             tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), &attribute_storage, &self.viewport);
+                let mut layout_ctx =
+                    LayoutCtx::new(self.string_storage.new_session(), &attribute_storage, &self.viewport);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
@@ -336,7 +378,8 @@ where
 
                 // Paint
                 let mut string_session = self.string_storage.new_session();
-                self.backend.paint(el, children, values, &mut string_session, &attribute_storage, true);
+                self.backend
+                    .paint(el, children, values, &mut string_session, &attribute_storage, true);
             });
         }
 
@@ -355,171 +398,6 @@ where
             std::thread::sleep(Duration::from_micros(sleep));
         }
 
-        // TODO unreachable
         Ok(())
     }
-}
-
-fn global_event<'bp, T: Backend>(
-    backend: &mut T,
-    tab_indices: &mut TabIndex,
-    event: Event,
-    tree: &mut WidgetTree<'bp>,
-    states: &mut States,
-    attribute_storage: &mut AttributeStorage<'bp>,
-) -> Event {
-    // -----------------------------------------------------------------------------
-    //   - Ctrl-c to quite -
-    //   This should be on by default.
-    //   Give it a good name
-    // -----------------------------------------------------------------------------
-    if backend.quit_test(event) {
-        return Event::Stop;
-    }
-
-    // -----------------------------------------------------------------------------
-    //   - Handle tabbing between components -
-    // -----------------------------------------------------------------------------
-    if let Event::Key(KeyEvent { code, .. }) = event {
-        let prev = match code {
-            KeyCode::Tab => tab_indices.next(),
-            KeyCode::BackTab => tab_indices.prev(),
-            _ => return event,
-        };
-
-        if let Some(entry) = prev {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_blur(state, elements);
-            });
-        }
-
-        if let Some(entry) = tab_indices.current() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_focus(state, elements);
-            });
-        }
-    }
-
-    // Mouse events are global
-    if let Event::Mouse(_) = event {
-        for entry in tab_indices.iter() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = entry.state_id.and_then(|id| states.get_mut(id));
-                let _ = component.component.any_event(event, state, elements);
-            });
-        }
-    }
-
-    event
-}
-
-fn handle_messages<'bp>(
-    message_receiver: &Receiver<ViewMessage>,
-    tab_indices: &TabIndex,
-    fps_now: Instant,
-    sleep_micros: u128,
-    tree: &mut WidgetTree<'bp>,
-    states: &mut States,
-    attribute_storage: &mut AttributeStorage<'bp>,
-) -> Duration {
-    while let Ok(msg) = message_receiver.try_recv() {
-        if let Some(entry) = tab_indices.dumb_fetch(msg.recipient) {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let state = entry.state_id.and_then(|id| states.get_mut(id));
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                component.component.any_message(msg.payload, state, elements);
-            });
-        }
-
-        // Make sure event handling isn't holding up the rest of the event loop.
-        if fps_now.elapsed().as_micros() > sleep_micros / 2 {
-            break;
-        }
-    }
-
-    fps_now.elapsed()
-}
-
-fn apply_futures<'bp>(
-    globals: &'bp Globals,
-    future_values: &mut FutureValues,
-    factory: &Factory,
-    tree: &mut WidgetTree<'bp>,
-    states: &mut States,
-    components: &mut ComponentRegistry,
-    attribute_storage: &mut AttributeStorage<'bp>,
-    floating_widgets: &mut FloatingWidgets,
-) {
-    drain_futures(future_values);
-
-    let mut scope = Scope::new();
-    future_values.drain().rev().for_each(|sub| {
-        scope.clear();
-        let path = tree.path(sub).clone();
-
-        try_resolve_future_values(
-            globals,
-            factory,
-            &mut scope,
-            states,
-            components,
-            sub,
-            &path,
-            tree,
-            attribute_storage,
-            floating_widgets,
-        );
-    });
-}
-
-fn apply_changes<'bp>(
-    globals: &'bp Globals,
-    changes: &mut Changes,
-    factory: &Factory,
-    tree: &mut WidgetTree<'bp>,
-    states: &mut States,
-    components: &mut ComponentRegistry,
-    attribute_storage: &mut AttributeStorage<'bp>,
-    floating_widgets: &mut FloatingWidgets,
-) {
-    drain_changes(changes);
-
-    if changes.is_empty() {
-        return;
-    }
-
-    let mut scope = Scope::new();
-    changes.drain().rev().for_each(|(sub, change)| {
-        sub.iter().for_each(|sub| {
-            scope.clear();
-            let Some(path) = tree.try_path(sub).cloned() else { return };
-
-            update_tree(
-                globals,
-                factory,
-                &mut scope,
-                states,
-                components,
-                &change,
-                sub,
-                &path,
-                tree,
-                attribute_storage,
-                floating_widgets,
-            );
-        });
-    });
 }
