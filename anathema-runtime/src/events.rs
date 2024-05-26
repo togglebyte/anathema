@@ -8,7 +8,7 @@ use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Elements, WidgetKind, WidgetTree};
 
 use crate::error::{Result, Error};
-use crate::tabindex::TabIndex;
+use crate::components::Components;
 
 pub struct EventHandler {}
 
@@ -25,7 +25,7 @@ impl EventHandler {
         backend: &mut impl Backend,
         viewport: &mut Viewport,
         tree: &mut WidgetTree<'bp>,
-        tab_indices: &mut TabIndex,
+        tab_indices: &mut Components,
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
         constraints: &mut Constraints,
@@ -79,7 +79,7 @@ impl EventHandler {
 
 pub fn global_event<'bp, T: Backend>(
     backend: &mut T,
-    tab_indices: &mut TabIndex,
+    tab_indices: &mut Components,
     event: Event,
     tree: &mut WidgetTree<'bp>,
     states: &mut States,

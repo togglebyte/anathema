@@ -33,16 +33,16 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
     FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
+use components::Components;
 use events::EventHandler;
-use tabindex::TabIndex;
 
 pub use crate::error::Result;
 pub use crate::messages::{Emitter, ViewMessage};
 
+mod components;
 mod error;
 mod events;
 mod messages;
-mod tabindex;
 
 /// A runtime for Anathema.
 /// Needs a backend and a document.
@@ -56,22 +56,43 @@ mod tabindex;
 /// ```
 pub struct Runtime<T> {
     pub fps: u16,
-    backend: T,
 
     message_receiver: flume::Receiver<ViewMessage>,
     message_sender: flume::Sender<ViewMessage>,
     bp: Blueprint,
-    constraints: Constraints,
     factory: Factory,
-    tab_indices: TabIndex,
-    future_values: FutureValues,
-    changes: Changes,
-    components: ComponentRegistry,
     globals: Globals,
-    string_storage: StringStorage,
+
+    // -----------------------------------------------------------------------------
+    //   - Mut during runtime -
+    // -----------------------------------------------------------------------------
+    // * Event handling
+    // * Layout
+    backend: T,
+    // * Event handling
+    // * Layout (immutable)
     viewport: Viewport,
-    floating_widgets: FloatingWidgets,
+    // * Event handling
     event_handler: EventHandler,
+    // * Layout
+    string_storage: StringStorage,
+    // * Event handling
+    constraints: Constraints,
+    // * Event handling
+    tab_indices: Components,
+
+    // -----------------------------------------------------------------------------
+    //   - Mut during updates -
+    // -----------------------------------------------------------------------------
+    // * Changes
+    changes: Changes,
+    // * Futures
+    future_values: FutureValues,
+    // * Changes
+    // * Futures
+    components: ComponentRegistry,
+    // * Layout
+    floating_widgets: FloatingWidgets,
 }
 
 impl<T> Runtime<T>
@@ -99,7 +120,7 @@ where
             factory,
             future_values: FutureValues::empty(),
             changes: Changes::empty(),
-            tab_indices: TabIndex::new(),
+            tab_indices: Components::new(),
             components: ComponentRegistry::new(),
             globals,
             string_storage: StringStorage::new(),
@@ -401,3 +422,37 @@ where
         Ok(())
     }
 }
+
+// struct Futures {
+//     future_values: FutureValues
+// }
+
+// impl Futures {
+//     fn new() -> Self {
+//         Self {
+//             future_values: FutureValues::empty(),
+//         }
+//     }
+
+//     fn update(&mut self) {
+//         drain_futures(&mut self.future_values);
+//         let mut scope = Scope::new();
+//         self.future_values.drain().rev().for_each(|sub| {
+//             scope.clear();
+//             let path = tree.path(sub).clone();
+
+//             try_resolve_future_values(
+//                 globals,
+//                 &self.factory,
+//                 &mut scope,
+//                 states,
+//                 &mut self.components,
+//                 sub,
+//                 &path,
+//                 tree,
+//                 attribute_storage,
+//                 &mut self.floating_widgets,
+//             );
+//         });
+//     }
+// }
