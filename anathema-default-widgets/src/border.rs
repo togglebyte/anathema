@@ -417,6 +417,7 @@ impl Widget for Border {
             .unwrap_or_default();
 
         self.border_style = attributes.get_ref("border-style").unwrap_or_default();
+        self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
             min_width: attributes.get("min-width"),
