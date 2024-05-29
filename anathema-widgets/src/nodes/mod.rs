@@ -93,7 +93,7 @@ mod test {
             let widget_key = Subscriber::ONE;
             // Scope::get will recursively lookup the correct value:
             let output = scope
-                .get(ScopeLookup::get("val", widget_key), &mut None, &states)
+                .get(ScopeLookup::new("val", widget_key), &mut None, &states)
                 .unwrap();
 
             let int = output.load::<u32>().unwrap();
@@ -145,7 +145,7 @@ mod test {
                 collection.scope(&mut scope, "val", index);
 
                 let sub = ValueId::ONE;
-                let output = scope.get(ScopeLookup::get("val", sub), &mut None, &states).unwrap();
+                let output = scope.get(ScopeLookup::new("val", sub), &mut None, &states).unwrap();
 
                 let int = output.load::<u32>().unwrap();
                 assert_eq!(int, 123 + index as u32);

@@ -331,6 +331,14 @@ impl ValueRef {
     pub fn owned_key(&self) -> OwnedKey {
         self.value_key.owned()
     }
+
+    pub fn copy_with_sub(&self, subscriber: Subscriber) -> ValueRef {
+        subscribe(self.value_key.sub(), subscriber);
+        ValueRef {
+            value_key: self.value_key,
+            subscriber,
+        }
+    }
 }
 
 impl Drop for ValueRef {

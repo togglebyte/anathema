@@ -39,16 +39,19 @@ fn basic() {
 #[test]
 fn if_else() {
     let state = TestState { is_true: false.into() };
-    TestCase::setup(r#"
+    TestCase::setup(
+        r#"
 if does.not.exist
     test "a"
 else if !is_true
     test "b"
 else
     test "c"
-    "#)
-        .build(state)
-        .expect_frame(r#"
+    "#,
+    )
+    .build(state)
+    .expect_frame(
+        r#"
 <control flow>
     <if cond = false>
         test Str("a")
@@ -56,5 +59,6 @@ else
         test Str("b")
     <else>
         test Str("c")
-        "#);
+        "#,
+    );
 }

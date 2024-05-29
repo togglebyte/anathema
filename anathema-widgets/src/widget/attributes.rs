@@ -149,11 +149,9 @@ impl<'bp> Attributes<'bp> {
     /// Iterate over attributes.
     /// This will skip the value
     pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &Value<'_, EvalValue<'_>>)> {
-        self.values.iter().filter(|(key, _)| {
-            match key {
-                ValueKey::Value => false,
-                ValueKey::Attribute(_) => true,
-            }
+        self.values.iter().filter(|(key, _)| match key {
+            ValueKey::Value => false,
+            ValueKey::Attribute(_) => true,
         })
     }
 

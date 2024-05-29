@@ -9,32 +9,15 @@ use crate::values::ValueId;
 #[derive(Debug)]
 pub struct ScopeLookup<'bp> {
     path: Path<'bp>,
-    id: Option<ValueId>,
+    id: ValueId,
 }
 
 impl<'bp> ScopeLookup<'bp> {
-    /// If the widget id is `None` this will become a lookup, otherwise it
-    /// will act as a `get` and subscribe to value changes
-    pub(crate) fn new(path: impl Into<Path<'bp>>, value_id: Option<ValueId>) -> Self {
-        match value_id {
-            Some(id) => Self::get(path, id),
-            None => Self::lookup(path),
-        }
-    }
-
     /// Get and subscribe to a value
-    pub(crate) fn get(path: impl Into<Path<'bp>>, value_id: ValueId) -> Self {
+    pub(crate) fn new(path: impl Into<Path<'bp>>, value_id: ValueId) -> Self {
         Self {
             path: path.into(),
-            id: Some(value_id),
-        }
-    }
-
-    /// Lookup a value without subscribing
-    pub(crate) fn lookup(path: impl Into<Path<'bp>>) -> Self {
-        Self {
-            path: path.into(),
-            id: None,
+            id: value_id,
         }
     }
 }
@@ -148,36 +131,24 @@ impl<'bp> Scope<'bp> {
 
             match entry {
                 // Pending
-                Entry::Pending(_, pending) => match lookup.id {
-                    Some(id) => break Some(EvalValue::Dyn(pending.to_value(id))),
-                    None => break Some(EvalValue::Pending(*pending)),
-                },
+                Entry::Pending(_, pending) => break Some(EvalValue::Dyn(pending.to_value(lookup.id))),
 
                 // Downgraded
-                // TODO: can this ever be called without a value id?
-                //       Something something path lookup in value resolver maybe?
                 Entry::Downgraded(_, downgrade) => break Some(downgrade.upgrade(lookup.id)),
 
                 // State value
-                &Entry::State(state_id) => match lookup.id {
-                    Some(id) => {
-                        let state = states.get(state_id)?;
-                        if let Some(value) = state.state_get(lookup.path, id) {
-                            break Some(EvalValue::Dyn(value));
-                        }
+                &Entry::State(state_id) => {
+                    let state = states.get(state_id)?;
+                    if let Some(value) = state.state_get(lookup.path, lookup.id) {
+                        break Some(EvalValue::Dyn(value));
                     }
-                    None => {
-                        let state = states.get(state_id)?;
-                        if let Some(value) = state.state_lookup(lookup.path) {
-                            break Some(EvalValue::Pending(value));
-                        }
-                    }
-                },
+                }
                 _ => continue,
             }
         }
     }
 
+    /// Get can never return an eval value that is downgraded or pending
     pub(crate) fn get(
         &self,
         lookup: ScopeLookup<'bp>,
@@ -265,7 +236,7 @@ mod test {
     fn fetch_state_value() {
         ScopedTest::new()
             .with_value("a", 123u32)
-            .lookup(ScopeLookup::new("a", Some(Subscriber::ZERO)), |val| {
+            .lookup(ScopeLookup::new("a", Subscriber::ZERO), |val| {
                 let val = val.load::<u32>().unwrap();
                 assert_eq!(val, 123u32);
             });

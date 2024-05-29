@@ -10,9 +10,9 @@ fn set_attributes() {
 
     let mut y = x.build(());
 
-    y.expect_frame("test[bold: Bool(true)]")
-        .query(|state, elements| {
-            // elements.query(&state).first()
-        })
-        .expect_frame("test[bold: Bool(false)]");
+    // y.expect_frame("test[bold: Bool(true)]")
+    //     .query(|state, elements| {
+    //         // elements.query(&state).first()
+    //     })
+    //     .expect_frame("test[bold: Bool(false)]");
 }

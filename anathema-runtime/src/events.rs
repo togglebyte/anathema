@@ -7,8 +7,8 @@ use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Elements, WidgetKind, WidgetTree};
 
-use crate::error::{Result, Error};
 use crate::components::Components;
+use crate::error::{Error, Result};
 
 pub struct EventHandler {}
 
@@ -31,14 +31,7 @@ impl EventHandler {
         constraints: &mut Constraints,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let event = global_event(
-                backend,
-                tab_indices,
-                event,
-                tree,
-                states,
-                attribute_storage,
-            );
+            let event = global_event(backend, tab_indices, event, tree, states, attribute_storage);
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
