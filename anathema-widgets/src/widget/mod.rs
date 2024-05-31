@@ -61,6 +61,8 @@ impl ValueKey<'_> {
     }
 }
 
+/// Any widget should never be implemented directly
+/// as it's implemented for any type that implements `Widget`
 pub trait AnyWidget {
     fn to_any_ref(&self) -> &dyn Any;
     fn to_any_mut(&mut self) -> &mut dyn Any;
