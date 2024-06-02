@@ -18,17 +18,17 @@ fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
     match expr {
         E::Ident(ident) => ctx.fetch(ident),
         E::Str(strlit) => ctx.fetch(strlit),
-        E::Index(lhs, index) => {
+        E::Index(lhs, rhs) => {
             match eval_path(lhs, ctx)? {
-                E::List(list) => match const_eval(index.clone(), ctx) {
+                E::List(list) => match const_eval(rhs.clone(), ctx) {
                     E::Primitive(P::Int(num)) => list.get(num as usize).cloned(),
                     _ => Some(E::Index(
                         E::List(list.clone()).into(),
-                        const_eval(*index.clone(), ctx).into(),
+                        const_eval(*rhs.clone(), ctx).into(),
                     )),
                 },
                 E::Map(map) => {
-                    match const_eval(index.clone(), ctx) {
+                    match const_eval(rhs.clone(), ctx) {
                         E::Str(key) => map.get(&*key).cloned(),
                         // E::Ident(key) => match ctx.fetch(&key) {
                         //     Some(E::Str(key)) => map.get(&*key).cloned().map(|e| const_eval(e, ctx)),
@@ -36,10 +36,11 @@ fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
                         // },
                         _ => Some(E::Index(
                             E::Map(map.clone()).into(),
-                            const_eval(*index.clone(), ctx).into(),
+                            const_eval(*rhs.clone(), ctx).into(),
                         )),
                     }
                 }
+                index @ E::Index(..) => Some(E::Index(index.into(), const_eval(*rhs.clone(), ctx).into())),
                 _ => None,
             }
         }
@@ -185,6 +186,22 @@ mod test {
             let expr = *index(ident("a"), ident("b"));
             let output = const_eval(expr, &ctx);
             assert_eq!(output, *strlit("blue"));
+        });
+    }
+
+    #[test]
+    fn nested_list() {
+        with_context(|ctx| {
+            ctx.globals.declare("a", list([list([strlit("red"), strlit("blue")])]));
+            let expr = *index(index(ident("a"), ident("b")), ident("c"));
+            let output = const_eval(expr, &ctx);
+            assert_eq!(
+                output,
+                *index(
+                    index(list([list([strlit("red"), strlit("blue")])]), ident("b")),
+                    ident("c")
+                )
+            );
         });
     }
 }
