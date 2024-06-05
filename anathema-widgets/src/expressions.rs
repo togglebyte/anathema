@@ -501,7 +501,9 @@ impl<'bp> ValueResolver<'bp> {
                 // -----------------------------------------------------------------------------
                 let rhs = self.reset_offset().resolve(rhs, scope, states);
                 if rhs == EvalValue::Empty {
-                    return rhs;
+                    // No need to register a future value here as that is already
+                    // done when trying to resolve the `rhs`.
+                    return EvalValue::Empty;
                 }
                 let Some(common_val) = rhs.load_common_val() else { return future_value(self.value_id) };
                 let Some(path) = common_val.load_path() else { return future_value(self.value_id) };
@@ -527,12 +529,11 @@ impl<'bp> ValueResolver<'bp> {
                 }
 
                 let lhs = self.resolve(lhs, scope, states);
-
                 match &lhs {
                     EvalValue::Index(ref val, _) => match val.get(path, self.value_id) {
                         Some(val) => {
                             drop(common_val);
-                            EvalValue::Index(val.into(), rhs.into())
+                            EvalValue::Index(val.into(), EvalValue::Index(lhs.into(), rhs.into()).into())
                         }
                         None => future_value(self.value_id),
                     },
@@ -543,7 +544,10 @@ impl<'bp> ValueResolver<'bp> {
                         {
                             Some(value) => {
                                 drop(common_val);
-                                EvalValue::Index(EvalValue::Dyn(value).into(), rhs.into())
+                                EvalValue::Index(
+                                    EvalValue::Dyn(value).into(),
+                                    EvalValue::Index(lhs.into(), rhs.into()).into(),
+                                )
                             }
                             None => future_value(self.value_id),
                         }

@@ -352,7 +352,7 @@ where
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
-        let mut filter = LayoutFilter::new(true, &attribute_storage);
+        let mut filter = LayoutFilter::new(true, attribute_storage);
         tree.for_each(&mut filter).first(&mut |widget, children, values| {
             // Layout
             // TODO: once the text buffer can be read-only for the paint
@@ -360,16 +360,16 @@ where
             //
             //       That doesn't have as much of an impact here
             //       as it will do when dealing with the floating widgets
-            let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), &attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
             layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
             // Position
-            position_widget(Pos::ZERO, widget, children, values, &attribute_storage, true);
+            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
 
             // Paint
             let mut string_session = self.string_storage.new_session();
             self.backend
-                .paint(widget, children, values, &mut string_session, &attribute_storage, true);
+                .paint(widget, children, values, &mut string_session, attribute_storage, true);
         });
 
         // Floating widgets
@@ -390,17 +390,17 @@ where
             tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
                 let mut layout_ctx =
-                    LayoutCtx::new(self.string_storage.new_session(), &attribute_storage, &self.viewport);
+                    LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
                 // Position
-                position_widget(pos, el, children, values, &attribute_storage, true);
+                position_widget(pos, el, children, values, attribute_storage, true);
 
                 // Paint
                 let mut string_session = self.string_storage.new_session();
                 self.backend
-                    .paint(el, children, values, &mut string_session, &attribute_storage, true);
+                    .paint(el, children, values, &mut string_session, attribute_storage, true);
             });
         }
 
