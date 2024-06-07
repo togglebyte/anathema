@@ -135,7 +135,7 @@ where
     pub fn register_component<S: 'static + State>(
         &mut self,
         id: impl Into<ComponentId>,
-        component: impl Component + 'static,
+        component: impl Component<State = S> + 'static,
         state: S,
     ) {
         self.components.add_component(id.into(), component, state);
