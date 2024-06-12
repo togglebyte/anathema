@@ -160,8 +160,8 @@ impl Widget for Text {
         _attribute_storage: &AttributeStorage<'bp>,
         _ctx: PositionCtx,
     ) {
-        // NOTE: there is no need to position text as the text
-        // is printed from the context position
+        // NOTE
+        // No positioning is done in here, it's all done when painting
     }
 }
 

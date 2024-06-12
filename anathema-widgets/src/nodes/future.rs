@@ -123,6 +123,21 @@ fn try_resolve_value<'bp>(
                             .expect("the collection has a value since it has a length");
                         ctx.scope.scope_pending(binding, value)
                     }
+                    Collection::Index(collection, _) => match &**collection {
+                        Collection::Static(expressions) => {
+                            let downgrade = expressions[index].downgrade();
+                            ctx.scope.scope_downgrade(binding, downgrade)
+                        }
+                        Collection::Dyn(value_ref) => {
+                            let value = value_ref
+                                .as_state()
+                                .and_then(|state| state.state_lookup(index.into()))
+                                .expect("the collection has a value since it has a length");
+                            ctx.scope.scope_pending(binding, value)
+                        }
+                        Collection::Future => {}
+                        Collection::Index(_,_) => unreachable!("maaybe it's not?"),
+                    }
                     Collection::Future => {}
                 }
 

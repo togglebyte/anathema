@@ -292,6 +292,7 @@ impl<'bp> EvalValue<'bp> {
                 let s = s.as_ref();
                 f(s)
             }
+            EvalValue::Index(val, _) => val.internal_str_iter(f)?,
             _ => {
                 let val = self.load_common_val()?;
                 let val = val.to_common()?;
@@ -384,6 +385,7 @@ impl<'bp> EvalValue<'bp> {
                 Some(value) => Some(*value),
                 None => val.as_state()?.to_common()?.try_into().ok(),
             },
+            EvalValue::Index(val, _) => val.load::<T>(),
             EvalValue::Op(lhs, rhs, op) => {
                 let lhs = lhs.load_number()?;
                 let rhs = rhs.load_number()?;
@@ -420,6 +422,7 @@ impl<'bp> EvalValue<'bp> {
         match self {
             Self::Index(..) => true,
             Self::ExprList(list) => list.iter().any(Self::contains_index),
+            Self::ExprMap(_) => todo!(),
             _ => false,
         }
     }
@@ -637,9 +640,15 @@ pub(crate) fn eval_collection<'bp>(
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
     let value = ValueResolver::new(globals, value_id).resolve(expr, scope, states);
+
     let collection = match value {
         EvalValue::Dyn(val) => Collection::Dyn(val),
         EvalValue::ExprList(list) => Collection::Static(list),
+        EvalValue::Index(list, rhs) => match *list {
+            EvalValue::Dyn(val) => Collection::Index(Collection::Dyn(val).into(), rhs),
+            EvalValue::ExprList(list) => Collection::Index(Collection::Static(list).into(), rhs),
+            _ => Collection::Future,
+        }
         _ => Collection::Future,
     };
 

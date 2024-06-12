@@ -113,6 +113,8 @@ pub(crate) enum Collection<'bp> {
     Static(Box<[EvalValue<'bp>]>),
     /// This will (probably) resolve to a collection from a state.
     Dyn(ValueRef),
+    /// Index value
+    Index(Box<Collection<'bp>>, Box<EvalValue<'bp>>),
     /// This value doesn't exist now, but might exist in the future.
     /// See [`nodes::future::try_resolve_value`].
     Future,
@@ -123,6 +125,7 @@ impl<'bp> Collection<'bp> {
         match self {
             Self::Static(e) => e.len(),
             Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.len()).unwrap_or(0),
+            Self::Index(collection, _) => collection.len(),
             Self::Future => 0,
         }
     }
@@ -140,6 +143,7 @@ impl<'bp> Collection<'bp> {
                     .unwrap(); // TODO: unwrap...
                 scope.scope_pending(binding, value)
             }
+            Collection::Index(collection, _) => collection.scope(scope, binding, index),
             Collection::Future => {}
         }
     }

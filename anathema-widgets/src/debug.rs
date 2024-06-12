@@ -81,6 +81,7 @@ impl DebugWriter for ForDebug<'_> {
             }
             crate::values::Collection::Static(_) => write!(output, " <value> "),
             crate::values::Collection::Future => write!(output, " <future> "),
+            crate::values::Collection::Index(_, _) => todo!(),
         }?;
         write!(output, ">")
     }

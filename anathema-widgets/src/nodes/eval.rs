@@ -183,11 +183,13 @@ impl Evaluator for ForLoopEval {
         let transaction = tree.insert(parent);
         let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
 
-        let widget = WidgetKind::For(super::loops::For {
+        let for_loop = super::loops::For {
             binding: &for_loop.binding,
             collection: eval_collection(&for_loop.data, ctx.globals, ctx.scope, ctx.states, value_id),
             body: &for_loop.body,
-        });
+        };
+
+        let widget = WidgetKind::For(for_loop);
 
         let for_loop_id = transaction.commit_child(widget).unwrap(); // TODO: unwrap...
 

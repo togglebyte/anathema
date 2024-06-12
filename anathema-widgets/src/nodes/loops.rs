@@ -20,20 +20,7 @@ pub struct For<'bp> {
 
 impl<'bp> For<'bp> {
     pub(super) fn scope_value(&self, scope: &mut Scope<'bp>, index: usize) {
-        match self.collection.inner() {
-            Collection::Static(expressions) => {
-                let downgrade = expressions[index].downgrade();
-                scope.scope_downgrade(self.binding, downgrade)
-            }
-            Collection::Dyn(value_ref) => {
-                let value = value_ref
-                    .as_state()
-                    .and_then(|state| state.state_lookup(index.into()))
-                    .unwrap(); // TODO: ewwww
-                scope.scope_pending(self.binding, value)
-            }
-            Collection::Future => {}
-        }
+        self.collection.scope(scope, self.binding, index)
     }
 
     pub(crate) fn collection(&self) -> &Collection<'_> {
