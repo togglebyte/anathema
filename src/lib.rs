@@ -19,7 +19,7 @@ pub mod prelude {
 
 pub mod component {
     pub use crate::state::{List, Map, State, Value};
-    pub use crate::widgets::components::events::{KeyEvent, MouseEvent};
+    pub use crate::widgets::components::events::{KeyEvent, MouseEvent, KeyCode};
     pub use crate::widgets::components::Component;
     pub use crate::widgets::Elements;
 }

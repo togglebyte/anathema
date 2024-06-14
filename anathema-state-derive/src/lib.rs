@@ -2,8 +2,10 @@ use manyhow::{ensure, manyhow, Result};
 use quote_use::quote_use as quote;
 use syn::{self, Fields};
 
+static STATE_IGNORE: &str = "state_ignore";
+
 #[manyhow]
-#[proc_macro_derive(State)]
+#[proc_macro_derive(State, attributes(state_ignore))]
 pub fn state_derive(strct: syn::ItemStruct) -> Result {
     let name = &strct.ident;
 
@@ -16,6 +18,10 @@ pub fn state_derive(strct: syn::ItemStruct) -> Result {
     let (field_idents, field_names): (Vec<_>, Vec<_>) = struct_fields
         .named
         .iter()
+        .filter(|f| {
+            // Ignore all `STATE_IGNORE` attributes
+            !f.attrs.iter().any(|attr| attr.path().is_ident(STATE_IGNORE))
+        })
         .filter_map(|f| f.ident.as_ref())
         .map(|f| (f, f.to_string()))
         .unzip();

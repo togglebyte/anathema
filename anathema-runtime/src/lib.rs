@@ -30,8 +30,8 @@ use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Elements, EvalContext, Factory,
-    FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
+    EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
 use components::Components;
 use events::EventHandler;
@@ -48,6 +48,7 @@ pub struct RuntimeBuilder<T> {
     document: Document,
     component_registry: ComponentRegistry,
     backend: T,
+    factory: Factory,
 }
 
 impl<T> RuntimeBuilder<T> {
@@ -80,13 +81,18 @@ impl<T> RuntimeBuilder<T> {
         self.component_registry.add_prototype(id.into(), proto, state);
     }
 
+    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
+        self.factory.register_default::<W>(ident);
+    }
+
+    pub fn register_widget(&mut self, ident: &str, factory: impl Fn(&Attributes<'_>) -> Box<dyn AnyWidget> + 'static) {
+        self.factory.register_widget(ident.into(), factory);
+    }
+
     pub fn finish(self) -> Result<Runtime<T>>
     where
         T: Backend,
     {
-        let mut factory = Factory::new();
-        register_default_widgets(&mut factory);
-
         let (bp, globals) = self.document.compile()?;
 
         let (tx, rx) = flume::unbounded();
@@ -101,7 +107,7 @@ impl<T> RuntimeBuilder<T> {
             fps: 30,
             constraints,
             bp,
-            factory,
+            factory: self.factory,
             future_values: FutureValues::empty(),
             changes: Changes::empty(),
             components: Components::new(),
@@ -125,7 +131,7 @@ impl<T> RuntimeBuilder<T> {
 /// # use anathema_backend::test::TestBackend;
 /// # let backend = TestBackend::new((10, 10));
 /// let document = Document::new("border");
-/// let mut runtime = Runtime::new(document, backend).unwrap();
+/// let mut runtime = Runtime::new(document, backend).finish().unwrap();
 /// ```
 pub struct Runtime<T> {
     pub fps: u16,
@@ -173,10 +179,14 @@ where
     T: Backend,
 {
     pub fn new(document: Document, backend: T) -> RuntimeBuilder<T> {
+        let mut factory = Factory::new();
+        register_default_widgets(&mut factory);
+
         RuntimeBuilder {
             backend,
             document,
             component_registry: ComponentRegistry::new(),
+            factory,
         }
     }
 
@@ -201,10 +211,6 @@ where
 
     pub fn emitter(&self) -> Emitter {
         Emitter(self.message_sender.clone())
-    }
-
-    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
-        self.factory.register_default::<W>(ident);
     }
 
     fn apply_futures<'bp>(

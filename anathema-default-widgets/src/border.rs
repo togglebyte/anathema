@@ -8,8 +8,7 @@ use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{
-    AnyWidget, AttributeStorage, Attributes, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetFactory,
-    WidgetId,
+    AnyWidget, AttributeStorage, Attributes, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId,
 };
 use unicode_width::UnicodeWidthChar;
 
@@ -489,25 +488,25 @@ impl Widget for Border {
     }
 }
 
-pub(crate) struct BorderFactory;
+//pub(crate) struct BorderFactory;
 
-impl WidgetFactory for BorderFactory {
-    fn make(&self, attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-        let border_style: BorderStyle = attributes.get_ref("border-style").unwrap_or_default();
+//impl WidgetFactory for BorderFactory {
+pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
+    let border_style: BorderStyle = attributes.get_ref("border-style").unwrap_or_default();
 
-        let sides = attributes
-            .get_val("sides")
-            .and_then(|s| Sides::try_from(s.deref()).ok())
-            .unwrap_or_default();
+    let sides = attributes
+        .get_val("sides")
+        .and_then(|s| Sides::try_from(s.deref()).ok())
+        .unwrap_or_default();
 
-        let text = Border {
-            sides,
-            edges: border_style.edges(),
-            border_style,
-        };
-        Box::new(text)
-    }
+    let text = Border {
+        sides,
+        edges: border_style.edges(),
+        border_style,
+    };
+    Box::new(text)
 }
+//}
 
 #[cfg(test)]
 mod test {

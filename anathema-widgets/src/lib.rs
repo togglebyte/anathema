@@ -6,7 +6,7 @@ pub use crate::nodes::{eval_blueprint, try_resolve_future_values, update_tree, E
 pub use crate::values::{Value, Values};
 pub use crate::widget::{
     AnyWidget, AttributeStorage, Attributes, Elements, Factory, FloatingWidgets, LayoutChildren, PaintChildren,
-    PositionChildren, Query, Widget, WidgetFactory, WidgetId, WidgetRenderer, WidgetTree,
+    PositionChildren, Query, Widget, WidgetId, WidgetRenderer, WidgetTree,
 };
 
 pub mod components;

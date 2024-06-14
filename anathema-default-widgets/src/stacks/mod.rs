@@ -29,6 +29,15 @@ impl Stack {
         ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
+
+        if let Some(width) = attributes.get("min-width") {
+            constraints.min_width = width;
+        }
+
+        if let Some(height) = attributes.get("min-height") {
+            constraints.min_height = height;
+        }
+
         if let Some(width) = attributes.get("width") {
             constraints.make_width_tight(width);
         }

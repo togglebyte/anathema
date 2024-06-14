@@ -40,5 +40,5 @@ pub fn register_default_widgets(factory: &mut Factory) {
     factory.register_default::<text::Text>("text");
     factory.register_default::<viewport::Viewport>("viewport");
 
-    factory.register_widget("border", border::BorderFactory);
+    factory.register_widget("border", border::make);
 }
