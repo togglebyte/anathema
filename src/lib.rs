@@ -10,3 +10,16 @@ pub use {
     anathema_templates as templates,             // templates
     anathema_widgets as widgets,                 // wigets
 };
+
+pub mod prelude {
+    pub use crate::backend::tui::TuiBackend;
+    pub use crate::runtime::Runtime;
+    pub use crate::templates::Document;
+}
+
+pub mod component {
+    pub use crate::state::{List, Map, State, Value};
+    pub use crate::widgets::components::events::{KeyEvent, MouseEvent};
+    pub use crate::widgets::components::Component;
+    pub use crate::widgets::Elements;
+}

@@ -44,6 +44,80 @@ mod error;
 mod events;
 mod messages;
 
+pub struct RuntimeBuilder<T> {
+    document: Document,
+    component_registry: ComponentRegistry,
+    backend: T,
+}
+
+impl<T> RuntimeBuilder<T> {
+    pub fn register_component<S: 'static + State>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl Into<String>,
+        component: impl Component + 'static,
+        state: S,
+    ) -> ComponentId {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.into()).into();
+        self.component_registry.add_component(id, component, state);
+        id
+    }
+
+    pub fn register_prototype<FC, FS, C, S>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl Into<String>,
+        proto: FC,
+        state: FS,
+    ) where
+        FC: 'static + Fn() -> C,
+        FS: 'static + FnMut() -> S,
+        C: Component + 'static,
+        S: State + 'static,
+    {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.into());
+        self.component_registry.add_prototype(id.into(), proto, state);
+    }
+
+    pub fn finish(self) -> Result<Runtime<T>>
+    where
+        T: Backend,
+    {
+        let mut factory = Factory::new();
+        register_default_widgets(&mut factory);
+
+        let (bp, globals) = self.document.compile()?;
+
+        let (tx, rx) = flume::unbounded();
+
+        let (width, height) = self.backend.size().into();
+        let constraints = Constraints::new(width as usize, height as usize);
+
+        let inst = Runtime {
+            backend: self.backend,
+            message_sender: tx,
+            message_receiver: rx,
+            fps: 30,
+            constraints,
+            bp,
+            factory,
+            future_values: FutureValues::empty(),
+            changes: Changes::empty(),
+            components: Components::new(),
+            component_registry: self.component_registry,
+            globals,
+            string_storage: StringStorage::new(),
+            viewport: Viewport::new((width, height)),
+            floating_widgets: FloatingWidgets::empty(),
+            event_handler: EventHandler::new(),
+        };
+
+        Ok(inst)
+    }
+}
+
 /// A runtime for Anathema.
 /// Needs a backend and a document.
 /// ```
@@ -90,7 +164,7 @@ pub struct Runtime<T> {
     future_values: FutureValues,
     // * Changes
     // * Futures
-    component_registery: ComponentRegistry,
+    component_registry: ComponentRegistry,
     // * Layout
     floating_widgets: FloatingWidgets,
 }
@@ -99,37 +173,12 @@ impl<T> Runtime<T>
 where
     T: Backend,
 {
-    pub fn new(doc: Document, backend: T) -> Result<Self> {
-        let mut factory = Factory::new();
-        register_default_widgets(&mut factory);
-
-        let (bp, globals) = doc.compile()?;
-
-        let (tx, rx) = flume::unbounded();
-
-        let (width, height) = backend.size().into();
-        let constraints = Constraints::new(width as usize, height as usize);
-
-        let inst = Self {
+    pub fn new(document: Document, backend: T) -> RuntimeBuilder<T> {
+        RuntimeBuilder {
             backend,
-            message_sender: tx,
-            message_receiver: rx,
-            fps: 30,
-            constraints,
-            bp,
-            factory,
-            future_values: FutureValues::empty(),
-            changes: Changes::empty(),
-            components: Components::new(),
-            component_registery: ComponentRegistry::new(),
-            globals,
-            string_storage: StringStorage::new(),
-            viewport: Viewport::new((width, height)),
-            floating_widgets: FloatingWidgets::empty(),
-            event_handler: EventHandler::new(),
-        };
-
-        Ok(inst)
+            document,
+            component_registry: ComponentRegistry::new(),
+        }
     }
 
     pub fn register_component<S: 'static + State>(
@@ -138,7 +187,7 @@ where
         component: impl Component<State = S> + 'static,
         state: S,
     ) {
-        self.component_registery.add_component(id.into(), component, state);
+        self.component_registry.add_component(id.into(), component, state);
     }
 
     pub fn register_prototype<FC, FS, C, S>(&mut self, id: impl Into<ComponentId>, proto: FC, state: FS)
@@ -148,7 +197,7 @@ where
         C: Component + 'static,
         S: State + 'static,
     {
-        self.component_registery.add_prototype(id.into(), proto, state);
+        self.component_registry.add_prototype(id.into(), proto, state);
     }
 
     pub fn emitter(&self) -> Emitter {
@@ -178,7 +227,7 @@ where
                 &self.factory,
                 &mut scope,
                 states,
-                &mut self.component_registery,
+                &mut self.component_registry,
                 sub,
                 &path,
                 tree,
@@ -212,7 +261,7 @@ where
                     &self.factory,
                     &mut scope,
                     states,
-                    &mut self.component_registery,
+                    &mut self.component_registry,
                     &change,
                     sub,
                     &path,
@@ -266,7 +315,7 @@ where
             &self.factory,
             &mut scope,
             &mut states,
-            &mut self.component_registery,
+            &mut self.component_registry,
             &mut attribute_storage,
             &mut self.floating_widgets,
         );
