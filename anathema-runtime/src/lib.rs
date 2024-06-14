@@ -79,7 +79,7 @@ pub struct Runtime<T> {
     // * Event handling
     constraints: Constraints,
     // * Event handling
-    tab_indices: Components,
+    components: Components,
 
     // -----------------------------------------------------------------------------
     //   - Mut during updates -
@@ -90,7 +90,7 @@ pub struct Runtime<T> {
     future_values: FutureValues,
     // * Changes
     // * Futures
-    components: ComponentRegistry,
+    component_registery: ComponentRegistry,
     // * Layout
     floating_widgets: FloatingWidgets,
 }
@@ -120,8 +120,8 @@ where
             factory,
             future_values: FutureValues::empty(),
             changes: Changes::empty(),
-            tab_indices: Components::new(),
-            components: ComponentRegistry::new(),
+            components: Components::new(),
+            component_registery: ComponentRegistry::new(),
             globals,
             string_storage: StringStorage::new(),
             viewport: Viewport::new((width, height)),
@@ -138,7 +138,7 @@ where
         component: impl Component<State = S> + 'static,
         state: S,
     ) {
-        self.components.add_component(id.into(), component, state);
+        self.component_registery.add_component(id.into(), component, state);
     }
 
     pub fn register_prototype<FC, FS, C, S>(&mut self, id: impl Into<ComponentId>, proto: FC, state: FS)
@@ -148,7 +148,7 @@ where
         C: Component + 'static,
         S: State + 'static,
     {
-        self.components.add_prototype(id.into(), proto, state);
+        self.component_registery.add_prototype(id.into(), proto, state);
     }
 
     pub fn emitter(&self) -> Emitter {
@@ -178,7 +178,7 @@ where
                 &self.factory,
                 &mut scope,
                 states,
-                &mut self.components,
+                &mut self.component_registery,
                 sub,
                 &path,
                 tree,
@@ -212,7 +212,7 @@ where
                     &self.factory,
                     &mut scope,
                     states,
-                    &mut self.components,
+                    &mut self.component_registery,
                     &change,
                     sub,
                     &path,
@@ -233,7 +233,7 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
     ) -> Duration {
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some(entry) = self.tab_indices.dumb_fetch(msg.recipient) {
+            if let Some(entry) = self.components.dumb_fetch(msg.recipient) {
                 tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
                     let state = entry.state_id.and_then(|id| states.get_mut(id));
@@ -266,7 +266,7 @@ where
             &self.factory,
             &mut scope,
             &mut states,
-            &mut self.components,
+            &mut self.component_registery,
             &mut attribute_storage,
             &mut self.floating_widgets,
         );
@@ -276,10 +276,10 @@ where
         eval_blueprint(&bp, &mut ctx, &NodePath::root(), &mut tree);
 
         // ... then the tab indices
-        tree.apply_visitor(&mut self.tab_indices);
+        tree.apply_visitor(&mut self.components);
 
         // Select the first widget
-        if let Some(entry) = self.tab_indices.current() {
+        if let Some(entry) = self.components.current() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
@@ -326,7 +326,7 @@ where
             &mut self.backend,
             &mut self.viewport,
             tree,
-            &mut self.tab_indices,
+            &mut self.components,
             states,
             attribute_storage,
             &mut self.constraints,

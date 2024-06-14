@@ -86,19 +86,19 @@ pub trait Component {
     type Message;
 
     #[allow(unused_variables, unused_mut)]
-    fn on_blur(&mut self, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
+    fn on_blur(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_focus(&mut self, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
+    fn on_focus(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_key(&mut self, key: KeyEvent, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_mouse(&mut self, mouse: MouseEvent, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
+    fn on_mouse(&mut self, mouse: MouseEvent, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn message(&mut self, message: Self::Message, state: Option<&mut Self::State>, mut elements: Elements<'_, '_>) {}
+    fn message(&mut self, message: Self::Message, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
 
     fn accept_focus(&self) -> bool {
         true
@@ -109,15 +109,15 @@ impl Component for () {
     type Message = ();
     type State = ();
 
-    fn on_blur(&mut self, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
+    fn on_blur(&mut self, _state: &mut Self::State, _: Elements<'_, '_>) {}
 
-    fn on_focus(&mut self, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
+    fn on_focus(&mut self, _state: &mut Self::State, _: Elements<'_, '_>) {}
 
-    fn on_key(&mut self, _key: KeyEvent, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
+    fn on_key(&mut self, _key: KeyEvent, _state: &mut Self::State, _: Elements<'_, '_>) {}
 
-    fn on_mouse(&mut self, _mouse: MouseEvent, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
+    fn on_mouse(&mut self, _mouse: MouseEvent, _state: &mut Self::State, _: Elements<'_, '_>) {}
 
-    fn message(&mut self, _message: Self::Message, _state: Option<&mut Self::State>, _: Elements<'_, '_>) {}
+    fn message(&mut self, _message: Self::Message, _state: &mut Self::State, _: Elements<'_, '_>) {}
 
     fn accept_focus(&self) -> bool {
         false
@@ -142,7 +142,7 @@ where
     T: 'static,
 {
     fn any_event(&mut self, event: Event, state: Option<&mut dyn AnyState>, widgets: Elements<'_, '_>) -> Event {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
+        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
 
@@ -159,18 +159,18 @@ where
     }
 
     fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
+        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
         self.message(*message, state, elements);
     }
 
     fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
+        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
         self.on_focus(state, elements);
     }
 
     fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>());
+        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
         self.on_blur(state, elements);
     }
 }

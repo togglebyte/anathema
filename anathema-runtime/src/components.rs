@@ -15,6 +15,7 @@ pub struct IndexEntry {
 
 pub struct Components {
     inner: Stack<IndexEntry>,
+    tabs: Vec<usize>,
     current: usize,
 }
 
@@ -22,6 +23,7 @@ impl Components {
     pub fn new() -> Self {
         Self {
             inner: Stack::empty(),
+            tabs: vec![],
             current: 0,
         }
     }
@@ -31,9 +33,10 @@ impl Components {
             return None;
         }
 
-        let prev = self.inner.get(self.current);
+        let prev = self.tabs.get(self.current)?;
+        let prev = self.inner.get(*prev);
         self.current += 1;
-        if self.current == self.inner.len() {
+        if self.current == self.tabs.len() {
             self.current = 0;
         }
         prev
@@ -44,7 +47,8 @@ impl Components {
             return None;
         }
 
-        let prev = self.inner.get(self.current);
+        let prev = self.tabs.get(self.current)?;
+        let prev = self.inner.get(*prev);
         if self.current == 0 {
             self.current = self.inner.len();
         }
@@ -54,7 +58,8 @@ impl Components {
     }
 
     pub fn current(&mut self) -> Option<&IndexEntry> {
-        self.inner.get(self.current)
+        let current = self.tabs.get(self.current)?;
+        self.inner.get(*current)
     }
 
     pub fn dumb_fetch(&self, component_id: ComponentId) -> Option<&IndexEntry> {
@@ -69,6 +74,9 @@ impl Components {
 impl NodeVisitor<WidgetKind<'_>> for Components {
     fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &NodePath, widget_id: WidgetId) -> ControlFlow<()> {
         if let WidgetKind::Component(component) = value {
+            if component.component.accept_focus_any() {
+                self.tabs.push(self.inner.len());
+            }
             self.inner.push(IndexEntry {
                 widget_id,
                 state_id: component.state_id,

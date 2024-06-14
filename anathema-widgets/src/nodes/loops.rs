@@ -118,7 +118,7 @@ impl<'bp> For<'bp> {
                     value_id,
                 );
 
-                for index in 0..self.collection.len() {
+                for index in 0..self.collection.count() {
                     self.scope_value(ctx.scope, index);
                     ctx.scope.push();
 

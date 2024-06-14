@@ -108,7 +108,7 @@ fn try_resolve_value<'bp>(
             let body = for_loop.body;
             let parent = path;
 
-            for index in 0..collection.len() {
+            for index in 0..collection.count() {
                 ctx.scope.push();
 
                 match collection.inner() {

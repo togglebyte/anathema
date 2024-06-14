@@ -150,7 +150,7 @@ impl<T: 'static + State> State for List<T> {
         None
     }
 
-    fn len(&self) -> usize {
+    fn count(&self) -> usize {
         self.inner.len()
     }
 }

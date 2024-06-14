@@ -41,7 +41,7 @@ pub trait AnyState: 'static {
 
     fn to_bool(&self) -> bool;
 
-    fn len(&self) -> usize;
+    fn count(&self) -> usize;
 }
 
 impl AnyState for Box<dyn AnyState> {
@@ -73,8 +73,8 @@ impl AnyState for Box<dyn AnyState> {
         self.as_ref().to_bool()
     }
 
-    fn len(&self) -> usize {
-        self.as_ref().len()
+    fn count(&self) -> usize {
+        self.as_ref().count()
     }
 }
 
@@ -107,8 +107,8 @@ impl<T: State> AnyState for T {
         <Self as State>::to_bool(self)
     }
 
-    fn len(&self) -> usize {
-        <Self as State>::len(self)
+    fn count(&self) -> usize {
+        <Self as State>::count(self)
     }
 }
 
@@ -129,7 +129,7 @@ pub trait State: 'static {
 
     /// Get the length of any underlying collection.
     /// If the state is not a collection it should return zero
-    fn len(&self) -> usize {
+    fn count(&self) -> usize {
         0
     }
 
@@ -165,8 +165,8 @@ impl State for Box<dyn State> {
         self.as_ref().to_common()
     }
 
-    fn len(&self) -> usize {
-        self.as_ref().len()
+    fn count(&self) -> usize {
+        self.as_ref().count()
     }
 }
 
@@ -191,8 +191,8 @@ impl<T: 'static + State> State for Value<T> {
         None
     }
 
-    fn len(&self) -> usize {
-        self.to_ref().len()
+    fn count(&self) -> usize {
+        self.to_ref().count()
     }
 }
 
@@ -253,6 +253,12 @@ impl State for bool {
 impl State for Hex {
     fn to_common(&self) -> Option<CommonVal<'_>> {
         Some(CommonVal::Hex(*self))
+    }
+}
+
+impl State for char {
+    fn to_common(&self) -> Option<CommonVal<'_>> {
+        Some(CommonVal::Char(*self))
     }
 }
 

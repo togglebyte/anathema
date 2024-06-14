@@ -121,11 +121,11 @@ pub(crate) enum Collection<'bp> {
 }
 
 impl<'bp> Collection<'bp> {
-    pub(crate) fn len(&self) -> usize {
+    pub(crate) fn count(&self) -> usize {
         match self {
             Self::Static(e) => e.len(),
-            Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.len()).unwrap_or(0),
-            Self::Index(collection, _) => collection.len(),
+            Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
+            Self::Index(collection, _) => collection.count(),
             Self::Future => 0,
         }
     }

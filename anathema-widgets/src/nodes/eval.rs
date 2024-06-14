@@ -143,7 +143,7 @@ impl ForLoopEval {
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
     ) {
-        for index in 0..for_loop.collection.len() {
+        for index in 0..for_loop.collection.count() {
             ctx.scope.push();
             for_loop.scope_value(ctx.scope, index);
 
