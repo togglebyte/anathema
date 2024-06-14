@@ -51,12 +51,12 @@ pub struct RuntimeBuilder<T> {
 }
 
 impl<T> RuntimeBuilder<T> {
-    pub fn register_component<S: 'static + State>(
+    pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
         template: impl Into<String>,
-        component: impl Component + 'static,
-        state: S,
+        component: C,
+        state: C::State,
     ) -> ComponentId {
         let ident = ident.into();
         let id = self.document.add_component(ident, template.into()).into();
@@ -64,7 +64,7 @@ impl<T> RuntimeBuilder<T> {
         id
     }
 
-    pub fn register_prototype<FC, FS, C, S>(
+    pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
         template: impl Into<String>,
@@ -72,9 +72,8 @@ impl<T> RuntimeBuilder<T> {
         state: FS,
     ) where
         FC: 'static + Fn() -> C,
-        FS: 'static + FnMut() -> S,
+        FS: 'static + FnMut() -> C::State,
         C: Component + 'static,
-        S: State + 'static,
     {
         let ident = ident.into();
         let id = self.document.add_component(ident, template.into());
