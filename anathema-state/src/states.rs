@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use anathema_store::slab::Slab;
