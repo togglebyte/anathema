@@ -9,7 +9,7 @@ use anathema_store::slab::SecondaryMap;
 use anathema_store::tree::{Tree, TreeForEach};
 
 pub use self::attributes::{AttributeStorage, Attributes};
-pub use self::factory::{Factory};
+pub use self::factory::Factory;
 pub use self::query::{Elements, Query};
 use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};

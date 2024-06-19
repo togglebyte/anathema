@@ -648,7 +648,7 @@ pub(crate) fn eval_collection<'bp>(
             EvalValue::Dyn(val) => Collection::Index(Collection::Dyn(val).into(), rhs),
             EvalValue::ExprList(list) => Collection::Index(Collection::Static(list).into(), rhs),
             _ => Collection::Future,
-        }
+        },
         _ => Collection::Future,
     };
 

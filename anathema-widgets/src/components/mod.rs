@@ -142,7 +142,9 @@ where
     T: 'static,
 {
     fn any_event(&mut self, event: Event, state: Option<&mut dyn AnyState>, widgets: Elements<'_, '_>) -> Event {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
 
@@ -159,18 +161,24 @@ where
     }
 
     fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
         self.message(*message, state, elements);
     }
 
     fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
         self.on_focus(state, elements);
     }
 
     fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
-        let state = state.and_then(|s| s.to_any_mut().downcast_mut::<T::State>()).expect("components always have a state");
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
         self.on_blur(state, elements);
     }
 }

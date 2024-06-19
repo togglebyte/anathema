@@ -136,8 +136,8 @@ fn try_resolve_value<'bp>(
                             ctx.scope.scope_pending(binding, value)
                         }
                         Collection::Future => {}
-                        Collection::Index(_,_) => unreachable!("maaybe it's not?"),
-                    }
+                        Collection::Index(_, _) => unreachable!("maaybe it's not?"),
+                    },
                     Collection::Future => {}
                 }
 

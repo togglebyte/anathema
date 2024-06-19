@@ -49,6 +49,8 @@ pub struct RuntimeBuilder<T> {
     component_registry: ComponentRegistry,
     backend: T,
     factory: Factory,
+    message_receiver: flume::Receiver<ViewMessage>,
+    message_sender: flume::Sender<ViewMessage>,
 }
 
 impl<T> RuntimeBuilder<T> {
@@ -89,21 +91,23 @@ impl<T> RuntimeBuilder<T> {
         self.factory.register_widget(ident.into(), factory);
     }
 
+    pub fn emitter(&self) -> Emitter {
+        Emitter(self.message_sender.clone())
+    }
+
     pub fn finish(self) -> Result<Runtime<T>>
     where
         T: Backend,
     {
         let (bp, globals) = self.document.compile()?;
 
-        let (tx, rx) = flume::unbounded();
-
         let (width, height) = self.backend.size().into();
         let constraints = Constraints::new(width as usize, height as usize);
 
         let inst = Runtime {
             backend: self.backend,
-            message_sender: tx,
-            message_receiver: rx,
+            message_sender: self.message_sender,
+            message_receiver: self.message_receiver,
             fps: 30,
             constraints,
             bp,
@@ -180,6 +184,8 @@ where
 {
     pub fn new(document: Document, backend: T) -> RuntimeBuilder<T> {
         let mut factory = Factory::new();
+
+        let (message_sender, message_receiver) = flume::unbounded();
         register_default_widgets(&mut factory);
 
         RuntimeBuilder {
@@ -187,6 +193,8 @@ where
             document,
             component_registry: ComponentRegistry::new(),
             factory,
+            message_sender,
+            message_receiver,
         }
     }
 
