@@ -24,6 +24,12 @@ impl Pos {
     }
 }
 
+impl Default for Pos {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
 impl From<(i32, i32)> for Pos {
     fn from(val: (i32, i32)) -> Self {
         Self::new(val.0, val.1)
@@ -55,6 +61,14 @@ impl Add<LocalPos> for Pos {
 
     fn add(self, rhs: LocalPos) -> Self::Output {
         Pos::new(self.x + rhs.x as i32, self.y + rhs.y as i32)
+    }
+}
+
+impl Sub<LocalPos> for Pos {
+    type Output = Self;
+
+    fn sub(self, rhs: LocalPos) -> Self::Output {
+        Pos::new(self.x - rhs.x as i32, self.y - rhs.y as i32)
     }
 }
 
@@ -134,6 +148,17 @@ impl Add<Pos> for LocalPos {
         LocalPos {
             x: self.x + rhs.x as u16,
             y: self.y + rhs.y as u16,
+        }
+    }
+}
+
+impl Sub<Pos> for LocalPos {
+    type Output = Self;
+
+    fn sub(self, rhs: Pos) -> Self::Output {
+        LocalPos {
+            x: (self.x as i32 - rhs.x) as u16,
+            y: (self.y as i32 - rhs.y) as u16,
         }
     }
 }

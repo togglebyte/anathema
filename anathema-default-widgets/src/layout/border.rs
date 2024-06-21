@@ -9,6 +9,8 @@ use crate::border::BorderSize;
 pub struct BorderLayout {
     pub min_width: Option<usize>,
     pub min_height: Option<usize>,
+    pub max_width: Option<usize>,
+    pub max_height: Option<usize>,
     pub width: Option<usize>,
     pub height: Option<usize>,
     pub border_size: BorderSize,
@@ -29,6 +31,14 @@ impl BorderLayout {
 
         if let Some(min_height) = self.min_height {
             constraints.min_height = constraints.min_height.max(min_height);
+        }
+
+        if let Some(width) = self.max_width {
+            constraints.set_max_width(width);
+        }
+
+        if let Some(height) = self.max_height {
+            constraints.set_max_height(height);
         }
 
         // If there is a width / height then make the constraints tight

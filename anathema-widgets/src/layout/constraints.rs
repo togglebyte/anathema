@@ -190,3 +190,9 @@ impl From<Size> for Constraints {
         Self::new(value.width, value.height)
     }
 }
+
+impl Default for Constraints {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}

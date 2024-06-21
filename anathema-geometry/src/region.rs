@@ -50,7 +50,7 @@ impl Region {
     /// Regions are inclusive, so a region from 0,0 to 10, 10 contains both Pos::ZERO and
     /// Pos::New(10, 10)
     pub const fn contains(&self, pos: Pos) -> bool {
-        pos.x >= self.from.x && pos.x <= self.to.x && pos.y >= self.from.y && pos.y <= self.to.y
+        pos.x >= self.from.x && pos.x < self.to.x && pos.y >= self.from.y && pos.y < self.to.y
     }
 
     /// Constrain a region to fit within another region

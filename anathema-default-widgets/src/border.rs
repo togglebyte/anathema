@@ -421,6 +421,8 @@ impl Widget for Border {
         let mut layout = BorderLayout {
             min_width: attributes.get("min-width"),
             min_height: attributes.get("min-height"),
+            max_width: attributes.get("max-width"),
+            max_height: attributes.get("max-height"),
             height: attributes.get("height"),
             width: attributes.get("width"),
             border_size: self.border_size(self.sides),

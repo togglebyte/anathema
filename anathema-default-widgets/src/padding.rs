@@ -80,7 +80,7 @@ impl Widget for Padding {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    
     use crate::testing::TestRunner;
 
     #[test]

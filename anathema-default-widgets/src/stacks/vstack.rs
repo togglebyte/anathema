@@ -140,4 +140,24 @@ mod test {
 
         TestRunner::new(tpl, (6, 5)).instance().render_assert(expected);
     }
+
+    #[test]
+    fn vstack_overflow() {
+        let tpl = "
+            vstack
+                text 'a'
+                text 'b'
+                text 'c'
+                text 'd'
+        ";
+
+        let expected = "
+            ╔══════╗
+            ║a     ║
+            ║b     ║
+            ╚══════╝
+        ";
+
+        TestRunner::new(tpl, (6, 2)).instance().render_assert(expected);
+    }
 }

@@ -4,6 +4,7 @@ use anathema_widgets::Factory;
 
 mod alignment;
 mod border;
+mod canvas;
 mod expand;
 mod layout;
 mod padding;
@@ -18,6 +19,7 @@ mod testing;
 
 pub use alignment::Align;
 pub use border::Border;
+pub use canvas::Canvas;
 pub use expand::Expand;
 pub use padding::Padding;
 pub use position::Position;
@@ -28,6 +30,7 @@ pub use viewport::Viewport;
 pub fn register_default_widgets(factory: &mut Factory) {
     factory.register_default::<alignment::Align>("align");
     factory.register_default::<expand::Expand>("expand");
+    factory.register_default::<canvas::Canvas>("canvas");
     factory.register_default::<padding::Padding>("padding");
     factory.register_default::<position::Position>("position");
     factory.register_default::<stacks::Column>("column");

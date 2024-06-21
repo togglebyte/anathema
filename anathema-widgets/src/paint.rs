@@ -143,8 +143,8 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         let mut region = Region::new(
             self.global_pos,
             Pos::new(
-                self.global_pos.x + self.local_size.width as i32 - 1,
-                self.global_pos.y + self.local_size.height as i32 - 1,
+                self.global_pos.x + self.local_size.width as i32,
+                self.global_pos.y + self.local_size.height as i32,
             ),
         );
 
