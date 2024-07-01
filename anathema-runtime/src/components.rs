@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_state::StateId;
-use anathema_store::slab::Key;
 use anathema_store::stack::Stack;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::NodePath;

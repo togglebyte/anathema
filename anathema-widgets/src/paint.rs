@@ -54,7 +54,7 @@ impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
 }
 
 pub fn paint<'bp>(
-    surface: &mut dyn WidgetRenderer,
+    surface: &mut impl WidgetRenderer,
     element: &mut Element<'bp>,
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,

@@ -128,6 +128,29 @@ impl LocalPos {
     pub const fn new(x: u16, y: u16) -> Self {
         Self { x, y }
     }
+
+    pub const fn to_index(self, width: usize) -> usize {
+        self.y as usize * width + self.x as usize
+    }
+}
+
+impl TryFrom<Pos> for LocalPos {
+    type Error = ();
+
+    fn try_from(value: Pos) -> Result<Self, Self::Error> {
+        if value.x < 0 || value.y < 0 {
+            return Err(());
+        }
+
+        if value.x > u16::MAX as i32 || value.y < u16::MAX  as i32 {
+            return Err(());
+        }
+
+        Ok(Self {
+            x: value.x as u16,
+            y: value.y as u16,
+        })
+    }
 }
 
 impl Add for LocalPos {

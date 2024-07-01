@@ -33,6 +33,14 @@ impl<T: 'static + State> List<T> {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Value<T>> {
         self.inner.iter_mut()
     }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
 /// A `List` of values.
@@ -129,6 +137,10 @@ impl<T: 'static + State> Value<List<T>> {
         let list = &mut *self.to_mut();
 
         list.iter_mut().for_each(|el| f(&mut *el.to_mut()));
+    }
+
+    pub fn len(&self) -> usize {
+        self.to_ref().len()
     }
 }
 

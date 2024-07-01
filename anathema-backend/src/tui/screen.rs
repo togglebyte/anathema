@@ -7,14 +7,14 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScree
 use crossterm::{cursor, ExecutableCommand, QueueableCommand};
 
 use super::buffer::{diff, draw_changes, Buffer, Change};
-use super::{ScreenPos, Style};
+use super::{LocalPos, Style};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
 pub struct Screen {
     // This is pub(crate) for testing purposes
     pub(crate) new_buffer: Buffer,
     old_buffer: Buffer,
-    changes: Vec<(ScreenPos, Option<Style>, Change)>,
+    changes: Vec<(LocalPos, Option<Style>, Change)>,
 }
 
 impl Screen {
@@ -53,18 +53,18 @@ impl Screen {
 
     /// Erase the entire buffer by writing empty cells
     pub(crate) fn erase(&mut self) {
-        self.erase_region(ScreenPos::ZERO, self.size());
+        self.erase_region(LocalPos::ZERO, self.size());
     }
 
     /// Erase a specific region.
     /// Will reset the styles for all the cells as well.
-    pub(crate) fn erase_region(&mut self, pos: ScreenPos, size: Size) {
+    pub(crate) fn erase_region(&mut self, pos: LocalPos, size: Size) {
         let to_x = (size.width as u16 + pos.x).min(self.size().width as u16);
         let to_y = (size.height as u16 + pos.y).min(self.size().height as u16);
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                self.new_buffer.empty(ScreenPos::new(x, y));
+                self.new_buffer.empty(LocalPos::new(x, y));
             }
         }
     }
@@ -72,7 +72,7 @@ impl Screen {
     /// Put a char at the given screen position, with a given style.
     /// If the screen position is outside the [`Buffer`]s size then this is
     /// out of bounds and will panic.
-    pub(crate) fn paint_glyph(&mut self, c: char, style: Style, pos: ScreenPos) {
+    pub(crate) fn paint_glyph(&mut self, c: char, style: Style, pos: LocalPos) {
         self.new_buffer.put_char(c, style, pos);
     }
 
@@ -127,9 +127,9 @@ impl Screen {
 }
 
 impl WidgetRenderer for Screen {
-    fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, local_pos: Pos) {
+    fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, pos: Pos) {
+        let Ok(screen_pos) = pos.try_into() else { return };
         let style: Style = attribs.into();
-        let screen_pos = local_pos.try_into().unwrap(); // TODO unwrap...
         self.paint_glyph(c, style, screen_pos);
     }
 
@@ -148,7 +148,7 @@ mod test {
         for y in 0..size.height {
             let c = y.to_string().chars().next().unwrap();
             for x in 0..size.width {
-                screen.paint_glyph(c, Style::reset(), ScreenPos::new(x as u16, y as u16));
+                screen.paint_glyph(c, Style::reset(), LocalPos::new(x as u16, y as u16));
             }
         }
 
@@ -160,7 +160,7 @@ mod test {
         // Render a character
         let mut render_output = vec![];
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph('x', Style::reset(), ScreenPos::ZERO);
+        screen.paint_glyph('x', Style::reset(), LocalPos::ZERO);
         screen.render(&mut render_output).unwrap();
 
         let expected = Cell::new('x', Style::reset());
@@ -175,7 +175,7 @@ mod test {
         let mut screen = make_screen(Size::new(2, 2));
         screen.render(&mut render_output).unwrap();
 
-        screen.erase_region(ScreenPos::new(1, 1), Size::new(1, 1));
+        screen.erase_region(LocalPos::new(1, 1), Size::new(1, 1));
         screen.render(&mut render_output).unwrap();
 
         let top_left = screen.new_buffer.inner[0];
@@ -189,7 +189,7 @@ mod test {
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph('x', Style::reset(), ScreenPos::new(2, 2));
+        screen.paint_glyph('x', Style::reset(), LocalPos::new(2, 2));
         screen.render(&mut vec![]).unwrap();
     }
 }

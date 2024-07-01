@@ -1,4 +1,3 @@
-use anathema_state::{List, Map, Value};
 use run::TestCase;
 mod run;
 
@@ -6,9 +5,9 @@ mod run;
 fn set_attributes() {
     let template = "test [bold: true]";
 
-    let mut x = TestCase::setup(template);
+    let x = TestCase::setup(template);
 
-    let mut y = x.build(());
+    let y = x.build(());
 
     // y.expect_frame("test[bold: Bool(true)]")
     //     .query(|state, elements| {

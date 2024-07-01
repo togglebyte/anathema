@@ -1,93 +1,116 @@
+use anathema_backend::tui::{Buffer, Style};
 use anathema_geometry::{LocalPos, Pos, Size};
+use anathema_store::slab::Slab;
 use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
-#[derive(Debug, Default)]
-struct Buffer {
-    inner: Vec<Cell>,
-    size: Size,
-}
-
-impl Buffer {
-    fn put(&mut self, c: char, pos: LocalPos) {
-        let index = pos.y as usize * self.size.width + pos.x as usize;
-        if index < self.inner.len() {
-            self.inner[index] = Cell::Occupied(c);
-        }
-    }
-
-    fn get(&mut self, pos: LocalPos) -> Option<char> {
-        let index = pos.y as usize * self.size.width + pos.x as usize;
-        match self.inner[index] {
-            Cell::Occupied(c) => Some(c),
-            Cell::Empty => None,
-        }
-    }
-
-    fn remove(&mut self, pos: LocalPos) {
-        let index = pos.y as usize * self.size.width + pos.x as usize;
-        if index < self.inner.len() {
-            self.inner[index] = Cell::Empty;
-        }
-    }
-
-    fn copy_from(other: &mut Buffer, size: Size) -> Self {
-        let mut inner = vec![Cell::Empty; size.width * size.height];
-
-        // Copy from other to self
-        for i in 0..other.inner.len() {
-            let y = i / other.size.width;
-            let x = i - y * other.size.width;
-
-            if x > size.width {
-                continue;
-            }
-
-            if y > size.height {
-                break;
-            }
-
-            let j = y * size.width + x;
-
-            std::mem::swap(
-                &mut inner[j], 
-                &mut other.inner[i]
-            );
-        }
-
-        Buffer { inner, size }
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (char, LocalPos)> + '_ {
-        self.inner
-            .iter()
-            .copied()
-            .enumerate()
-            .filter_map(|(i, cell)| match cell {
-                Cell::Empty => None,
-                Cell::Occupied(c) => {
-                    let y = i / self.size.width;
-                    let x = i - y * self.size.width;
-                    let pos = LocalPos::new(x as u16, y as u16);
-                    Some((c, pos))
-                }
-            })
-    }
-}
-
 #[derive(Debug, Default, Copy, Clone)]
 enum Cell {
     #[default]
     Empty,
-    Occupied(char),
+    Occupied(LocalPos, char, Style),
+}
+
+#[derive(Debug, Default)]
+enum Entry {
+    #[default]
+    Vacant,
+    Occupied(usize),
+}
+
+#[derive(Debug)]
+struct Buffer2 {
+    inner: Slab<usize, Cell>,
+    positions: Vec<Entry>,
+    size: Size,
+}
+
+impl Buffer2 {
+    pub fn new(size: Size) -> Self {
+        Self {
+            inner: Slab::empty(),
+            positions: Vec::with_capacity(size.width * size.height),
+            size,
+        }
+    }
+
+    fn put(&mut self, c: char, style: Style, pos: LocalPos) {
+        let data = self.inner.next_id();
+
+        let index = pos.to_index(self.size.width);
+        if index < self.positions.len() {
+            let cell = Cell::Occupied(pos, c, style);
+            let mut entry = Entry::Occupied(data);
+            std::mem::swap(&mut self.positions[index], &mut entry);
+
+            match entry {
+                Entry::Vacant => {
+                    self.inner.insert(cell);
+                }
+                Entry::Occupied(idx) => {
+                    self.inner.replace(idx, cell);
+                }
+            }
+        }
+    }
+
+    fn get(&mut self, pos: LocalPos) -> Option<Cell> {
+        let index = pos.to_index(self.size.width);
+        match self.positions[index] {
+            Entry::Occupied(idx) => self.inner.get(idx).copied(),
+            Entry::Vacant => None,
+        }
+    }
+
+    fn remove(&mut self, pos: LocalPos) {
+        let index = pos.to_index(self.size.width);
+        if index < self.positions.len() {
+            let Entry::Occupied(idx) = std::mem::take(&mut self.positions[index]) else { return };
+            self.inner.remove(idx);
+        }
+    }
+
+    //     fn copy_from(other: &mut Buffer2, size: Size) -> Self {
+    //         let mut inner = vec![Cell::Empty; size.width * size.height];
+
+    //         // Copy from other to self
+    //         for i in 0..other.inner.len() {
+    //             let y = i / other.size.width;
+    //             let x = i - y * other.size.width;
+
+    //             if x >= size.width {
+    //                 continue;
+    //             }
+
+    //             if y >= size.height {
+    //                 break;
+    //             }
+
+    //             let j = y * size.width + x;
+
+    //             std::mem::swap(
+    //                 &mut inner[j],
+    //                 &mut other.inner[i]
+    //             );
+    //         }
+
+    //         Buffer2 { inner, size }
+    //     }
+
+    fn iter(&self) -> impl Iterator<Item = (LocalPos, char, Style)> + '_ {
+        self.inner.iter().filter_map(|(_, cell)| match cell {
+            Cell::Empty => None,
+            Cell::Occupied(pos, c, style) => Some((*pos, *c, *style)),
+        })
+    }
 }
 
 #[derive(Debug)]
 pub struct Canvas {
     constraints: Constraints,
-    buffer: Buffer,
+    buffer: Buffer2,
     pos: Pos,
 }
 
@@ -97,12 +120,15 @@ impl Canvas {
         LocalPos::new(offset.x as u16, offset.y as u16)
     }
 
-    pub fn put(&mut self, c: char, pos: LocalPos) {
-        self.buffer.put(c, pos);
+    pub fn put(&mut self, c: char, style: Style, pos: LocalPos) {
+        self.buffer.put(c, style, pos);
     }
 
-    pub fn get(&mut self, pos: LocalPos) -> Option<char> {
-        self.buffer.get(pos)
+    pub fn get(&mut self, pos: LocalPos) -> Option<(char, Style)> {
+        match self.buffer.get(pos)? {
+            Cell::Occupied(_, c, style) => Some((c, style)),
+            Cell::Empty => None,
+        }
     }
 
     pub fn erase(&mut self, pos: LocalPos) {
@@ -114,10 +140,7 @@ impl Default for Canvas {
     fn default() -> Self {
         Self {
             constraints: Constraints::unbounded(),
-            buffer: Buffer {
-                inner: vec![Cell::Empty; 1024],
-                size: Size::new(32, 32),
-            },
+            buffer: Buffer2::new((32, 32).into()),
             pos: Pos::ZERO,
         }
     }
@@ -134,7 +157,8 @@ impl Widget for Canvas {
         let size = constraints.max_size();
 
         if self.buffer.size != size {
-            self.buffer = Buffer::copy_from(&mut self.buffer, size);
+            panic!("resize buffer")
+            // self.buffer.resize(size);
         }
 
         self.buffer.size
@@ -158,9 +182,25 @@ impl Widget for Canvas {
         mut ctx: PaintCtx<'_, SizePos>,
         text: &mut StringSession<'_>,
     ) {
-        let attribs = attribute_storage.get(id);
-        for (c, pos) in self.buffer.iter() {
-            ctx.place_glyph(c, attribs, pos);
+        for (pos, c, style) in self.buffer.iter() {
+            // ctx.place_glyph(c, attribs, pos);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::TestRunner;
+
+    #[test]
+    fn resize_canvas() {
+        let expected = "
+            ╔══╗
+            ║  ║
+            ║  ║
+            ╚══╝
+        ";
+        TestRunner::new("canvas", (2, 2)).instance().render_assert(expected);
     }
 }

@@ -6,7 +6,7 @@ use crossterm::style::Print;
 use crossterm::{cursor, QueueableCommand};
 use unicode_width::UnicodeWidthChar;
 
-use super::{ScreenPos, Style};
+use super::{LocalPos, Style};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {
@@ -109,7 +109,7 @@ impl Buffer {
                     break;
                 }
 
-                let pos = ScreenPos::new(x as u16, y as u16);
+                let pos = LocalPos::new(x as u16, y as u16);
                 new_buf.put(*cell, pos);
             }
         }
@@ -119,13 +119,13 @@ impl Buffer {
     }
 
     /// Put a character with a style at a given position.
-    pub fn put_char(&mut self, c: char, style: Style, pos: ScreenPos) {
+    pub fn put_char(&mut self, c: char, style: Style, pos: LocalPos) {
         let cell = Cell::new(c, style);
         self.put(cell, pos);
     }
 
     /// Get a `char` and [`Style`] at a given position inside the buffer.
-    pub fn get(&self, pos: ScreenPos) -> Option<(char, Style)> {
+    pub fn get(&self, pos: LocalPos) -> Option<(char, Style)> {
         let index = self.index(pos);
         let cell = self.inner.get(index)?;
         match cell.inner {
@@ -135,7 +135,7 @@ impl Buffer {
     }
 
     /// Empty a cell at a given position
-    pub fn empty(&mut self, pos: ScreenPos) {
+    pub fn empty(&mut self, pos: LocalPos) {
         let index = self.index(pos);
         self.inner[index] = Cell::empty();
     }
@@ -150,11 +150,11 @@ impl Buffer {
         })
     }
 
-    fn index(&self, pos: ScreenPos) -> usize {
+    fn index(&self, pos: LocalPos) -> usize {
         pos.y as usize * self.size.width + pos.x as usize
     }
 
-    fn put(&mut self, mut cell: Cell, pos: ScreenPos) {
+    fn put(&mut self, mut cell: Cell, pos: LocalPos) {
         let index = self.index(pos);
 
         if let CellState::Occupied(c) = cell.inner {
@@ -163,7 +163,7 @@ impl Buffer {
             // we can set the continuation cell to `Empty`.
             if pos.x < self.size.width as u16 {
                 if let Some(2..) = c.width() {
-                    self.put(Cell::continuation(cell.style), ScreenPos::new(pos.x + 1, pos.y));
+                    self.put(Cell::continuation(cell.style), LocalPos::new(pos.x + 1, pos.y));
                 }
             }
         }
@@ -225,7 +225,7 @@ impl Change {
     }
 }
 
-pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(ScreenPos, Option<Style>, Change)>) -> Result<()> {
+pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
     let mut previous_style = None;
 
     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
@@ -250,7 +250,7 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(ScreenPos, Opt
                 CellState::Occupied(c) => Change::Insert(c),
             };
 
-            changes.push((ScreenPos::new(x, y), style, change));
+            changes.push((LocalPos::new(x, y), style, change));
         }
     }
 
@@ -260,7 +260,7 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(ScreenPos, Opt
 // -----------------------------------------------------------------------------
 //     - Draw changes -
 // -----------------------------------------------------------------------------
-pub(crate) fn draw_changes(mut w: impl Write, changes: &Vec<(ScreenPos, Option<Style>, Change)>) -> Result<()> {
+pub(crate) fn draw_changes(mut w: impl Write, changes: &Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
     let mut last_y = None;
     let mut next_cell_x = None;
 

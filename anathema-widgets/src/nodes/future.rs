@@ -191,15 +191,15 @@ fn try_resolve_value<'bp>(
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{drain_futures, List, Map};
+    use anathema_state::{drain_futures};
     use anathema_store::stack::Stack;
     use anathema_templates::expressions::{ident, index, list, map, num, strlit};
     use anathema_templates::Expression;
 
     use super::*;
-    use crate::expressions::EvalValue;
-    use crate::scope::ScopeLookup;
-    use crate::Value;
+    
+    
+    
 
     fn future_value(expr: &Expression, value_id: ValueId) {
         let globals = Globals::default();

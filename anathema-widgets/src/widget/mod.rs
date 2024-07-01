@@ -193,5 +193,7 @@ impl Debug for dyn Widget {
 pub trait WidgetRenderer {
     fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, local_pos: Pos);
 
+    // fn x<T>(t: T) {}
+
     fn size(&self) -> Size;
 }
