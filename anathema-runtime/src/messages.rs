@@ -28,12 +28,12 @@ impl Emitter {
 
     pub async fn emit_async<T: 'static + Send + Sync>(
         &self,
+        component_id: ComponentId<T>,
         value: T,
-        component_id: WidgetComponentId,
     ) -> Result<(), SendError<ViewMessage>> {
         let msg = ViewMessage {
             payload: Box::new(value),
-            recipient: component_id,
+            recipient: component_id.0,
         };
         self.0.send_async(msg).await
     }
