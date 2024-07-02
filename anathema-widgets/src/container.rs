@@ -59,7 +59,7 @@ impl Container {
             for y in 0..self.size.height as u16 {
                 for x in 0..self.size.width as u16 {
                     let pos = LocalPos::new(x, y);
-                    ctx.place_glyph(' ', attrs, pos);
+                    ctx.set_attributes(attrs, pos);
                 }
             }
         }

@@ -13,7 +13,7 @@ pub use self::factory::Factory;
 pub use self::query::{Elements, Query};
 use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::paint::{PaintCtx, PaintFilter, SizePos};
+use crate::paint::{CellAttributes, PaintCtx, PaintFilter, SizePos};
 use crate::WidgetKind;
 
 mod attributes;
@@ -191,9 +191,9 @@ impl Debug for dyn Widget {
 }
 
 pub trait WidgetRenderer {
-    fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, local_pos: Pos);
+    fn draw_glyph(&mut self, c: char, attribs: &dyn CellAttributes, local_pos: Pos);
 
-    // fn x<T>(t: T) {}
+    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos);
 
     fn size(&self) -> Size;
 }

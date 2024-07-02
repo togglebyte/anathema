@@ -11,7 +11,7 @@ use super::{LocalPos, Style};
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {
     pub(crate) style: Style,
-    pub(crate) inner: CellState,
+    pub(crate) state: CellState,
 }
 
 impl Cell {
@@ -20,28 +20,28 @@ impl Cell {
         // might be residual colors from previous draw.
         Self {
             style: Style::reset(),
-            inner: CellState::Empty,
+            state: CellState::Empty,
         }
     }
 
     pub(crate) fn reset() -> Self {
         Self {
             style: Style::reset(),
-            inner: CellState::Occupied(' '),
+            state: CellState::Occupied(' '),
         }
     }
 
     fn continuation(style: Style) -> Self {
         Self {
             style,
-            inner: CellState::Continuation,
+            state: CellState::Continuation,
         }
     }
 
     pub(crate) fn new(c: char, style: Style) -> Self {
         Self {
             style,
-            inner: CellState::Occupied(c),
+            state: CellState::Occupied(c),
         }
     }
 }
@@ -69,7 +69,7 @@ pub(crate) enum CellState {
 #[derive(Debug, Clone)]
 pub struct Buffer {
     size: Size,
-    pub(crate) inner: Vec<Cell>,
+    pub(crate) inner: Box<[Cell]>,
 }
 
 impl Buffer {
@@ -77,7 +77,7 @@ impl Buffer {
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::empty(); size.width * size.height],
+            inner: vec![Cell::empty(); size.width * size.height].into_boxed_slice(),
             size,
         }
     }
@@ -86,7 +86,7 @@ impl Buffer {
     pub(crate) fn reset(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::reset(); size.width * size.height],
+            inner: vec![Cell::reset(); size.width * size.height].into_boxed_slice(),
             size,
         }
     }
@@ -124,11 +124,36 @@ impl Buffer {
         self.put(cell, pos);
     }
 
+    /// Update the attributes at a given cell.
+    /// If there is no character at that cell, then write an empty space into it
+    pub fn update_cell(&mut self, style: Style, pos: LocalPos) {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return;
+        }
+
+        let index = pos.to_index(self.size.width);
+        let cell = &mut self.inner[index];
+
+        if let fg @ Some(_) = style.fg {
+            cell.style.fg = fg;
+        }
+
+        if let bg @ Some(_) = style.bg {
+            cell.style.bg = bg;
+        }
+
+        cell.style.attributes |= style.attributes;
+
+        if let CellState::Empty = cell.state {
+            cell.state = CellState::Occupied(' ');
+        }
+    }
+
     /// Get a `char` and [`Style`] at a given position inside the buffer.
     pub fn get(&self, pos: LocalPos) -> Option<(char, Style)> {
         let index = self.index(pos);
         let cell = self.inner.get(index)?;
-        match cell.inner {
+        match cell.state {
             CellState::Occupied(c) => Some((c, cell.style)),
             _ => None,
         }
@@ -143,7 +168,7 @@ impl Buffer {
     /// An iterator over all the rows in the buffer
     pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = Option<(char, Style)>> + '_> {
         self.cell_lines().map(|chunk| {
-            chunk.iter().map(|cell| match cell.inner {
+            chunk.iter().map(|cell| match cell.state {
                 CellState::Occupied(c) => Some((c, cell.style)),
                 _ => None,
             })
@@ -157,7 +182,7 @@ impl Buffer {
     fn put(&mut self, mut cell: Cell, pos: LocalPos) {
         let index = self.index(pos);
 
-        if let CellState::Occupied(c) = cell.inner {
+        if let CellState::Occupied(c) = cell.state {
             // If this is a unicode char that is wider than one cell,
             // add a continuation cell if it fits, this way if we overwrite it
             // we can set the continuation cell to `Empty`.
@@ -171,7 +196,7 @@ impl Buffer {
         let current = &mut self.inner[index];
         cell.style.merge(current.style);
 
-        match (&mut current.inner, cell.inner) {
+        match (&mut current.state, cell.state) {
             // Merge the styles
             (CellState::Occupied(ref mut current_char), CellState::Occupied(new_char)) => {
                 *current_char = new_char;
@@ -203,7 +228,7 @@ impl Buffer {
 
     pub fn char_at(&self, x: usize, y: usize) -> char {
         let cell = self.cell_at(x, y);
-        match cell.inner {
+        match cell.state {
             CellState::Occupied(c) => c,
             _ => panic!("no character at index {x}, {y}"),
         }
@@ -244,7 +269,7 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Opti
 
             previous_style = Some(new_cell.style);
 
-            let change = match new_cell.inner {
+            let change = match new_cell.state {
                 CellState::Empty => Change::Remove,
                 CellState::Continuation => continue,
                 CellState::Occupied(c) => Change::Insert(c),

@@ -142,7 +142,7 @@ impl TryFrom<Pos> for LocalPos {
             return Err(());
         }
 
-        if value.x > u16::MAX as i32 || value.y < u16::MAX  as i32 {
+        if value.x > u16::MAX as i32 || value.y > u16::MAX  as i32 {
             return Err(());
         }
 

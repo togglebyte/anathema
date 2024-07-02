@@ -1,6 +1,7 @@
 use std::io::{Result, Write};
 
 use anathema_state::Hex;
+use anathema_widgets::paint::CellAttributes;
 use anathema_widgets::Attributes as Attribs;
 pub use crossterm::style::Attribute as CrossAttrib;
 use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
@@ -48,6 +49,51 @@ impl Style {
             bg: None,
             attributes: Attributes::empty(),
         }
+    }
+
+    /// Create an instance of `Style` from `CellAttributes`.
+    pub fn from_cell_attribs(attributes: &dyn CellAttributes) -> Self {
+        let mut style = Self::new();
+
+        match attributes.get_hex("foreground") {
+            Some(Hex { r, g, b }) => style.fg = Some(Color::from((r, g, b))),
+            None => attributes.with_str("foreground", &mut |s| style.fg = Color::try_from(s).ok()),
+        }
+
+        match attributes.get_hex("background") {
+            Some(Hex { r, g, b }) => style.bg = Some(Color::from((r, g, b))),
+            None => attributes.with_str("background", &mut |s| style.bg = Color::try_from(s).ok()),
+        }
+
+        if attributes.get_bool("bold") {
+            style.attributes |= Attributes::BOLD;
+        }
+
+        if attributes.get_bool("dim") {
+            style.attributes |= Attributes::DIM;
+        }
+
+        if attributes.get_bool("italic") {
+            style.attributes |= Attributes::ITALIC;
+        }
+
+        if attributes.get_bool("underline") {
+            style.attributes |= Attributes::UNDERLINED;
+        }
+
+        if attributes.get_bool("crossed-out") {
+            style.attributes |= Attributes::CROSSED_OUT;
+        }
+
+        if attributes.get_bool("overline") {
+            style.attributes |= Attributes::OVERLINED;
+        }
+
+        if attributes.get_bool("inverse") {
+            style.attributes |= Attributes::INVERSE;
+        }
+
+        style
     }
 
     pub(crate) fn write(&self, w: &mut impl Write) -> Result<()> {
@@ -202,64 +248,6 @@ impl Style {
         }
 
         self.attributes |= other.attributes;
-    }
-}
-
-impl<'bp> From<&Attribs<'bp>> for Style {
-    fn from(attributes: &Attribs<'bp>) -> Self {
-        let mut style = Self::new();
-
-        if let Some(fg) = attributes.get_val("foreground").and_then(|val| val.load_common_val()) {
-            if let Some(val) = fg.to_common() {
-                let val = *val;
-                let colour = match val.to_hex() {
-                    None => Color::try_from(val.to_common_str().as_ref()).ok(),
-                    Some(Hex { r, g, b }) => Some(Color::from((r, g, b))),
-                };
-                style.fg = colour;
-            }
-        }
-
-        if let Some(bg) = attributes.get_val("background").and_then(|val| val.load_common_val()) {
-            if let Some(val) = bg.to_common() {
-                let val = *val;
-                let colour = match val.to_hex() {
-                    None => Color::try_from(val.to_common_str().as_ref()).ok(),
-                    Some(Hex { r, g, b }) => Some(Color::from((r, g, b))),
-                };
-                style.bg = colour;
-            }
-        }
-
-        if attributes.get_bool("bold") {
-            style.attributes |= Attributes::BOLD;
-        }
-
-        if attributes.get_bool("dim") {
-            style.attributes |= Attributes::DIM;
-        }
-
-        if attributes.get_bool("italic") {
-            style.attributes |= Attributes::ITALIC;
-        }
-
-        if attributes.get_bool("underline") {
-            style.attributes |= Attributes::UNDERLINED;
-        }
-
-        if attributes.get_bool("crossed-out") {
-            style.attributes |= Attributes::CROSSED_OUT;
-        }
-
-        if attributes.get_bool("overline") {
-            style.attributes |= Attributes::OVERLINED;
-        }
-
-        if attributes.get_bool("inverse") {
-            style.attributes |= Attributes::INVERSE;
-        }
-
-        style
     }
 }
 

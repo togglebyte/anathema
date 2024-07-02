@@ -1,6 +1,7 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::{Pos, Size};
+use anathema_widgets::paint::CellAttributes;
 use anathema_widgets::{Attributes, WidgetRenderer};
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
@@ -76,6 +77,10 @@ impl Screen {
         self.new_buffer.put_char(c, style, pos);
     }
 
+    pub(crate) fn update_cell(&mut self, style: Style, pos: LocalPos) {
+        self.new_buffer.update_cell(style, pos);
+    }
+
     /// Draw the changes to the screen
     pub(crate) fn render(&mut self, mut output: impl Write) -> Result<()> {
         diff(&self.old_buffer, &self.new_buffer, &mut self.changes)?;
@@ -127,10 +132,16 @@ impl Screen {
 }
 
 impl WidgetRenderer for Screen {
-    fn draw_glyph(&mut self, c: char, attribs: &Attributes<'_>, pos: Pos) {
+    fn draw_glyph(&mut self, c: char, attribs: &dyn CellAttributes, pos: Pos) {
         let Ok(screen_pos) = pos.try_into() else { return };
-        let style: Style = attribs.into();
+        let style = Style::from_cell_attribs(attribs);
         self.paint_glyph(c, style, screen_pos);
+    }
+
+    fn set_attributes(&mut self, attribs: &dyn CellAttributes, pos: Pos) {
+        let Ok(screen_pos) = pos.try_into() else { return };
+        let style = Style::from_cell_attribs(attribs);
+        self.update_cell(style, screen_pos);
     }
 
     fn size(&self) -> Size {

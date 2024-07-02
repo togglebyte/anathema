@@ -50,7 +50,7 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
                             if i > 0 {
                                 let _ = write!(&mut self.output, ", ");
                             }
-                            let _ = write!(&mut self.output, "{}: {:?}", key.to_str(), *v);
+                            let _ = write!(&mut self.output, "{}: {:?}", key.to_str(), v);
                         }
                     }
                     let _ = write!(&mut self.output, "]");
@@ -59,7 +59,7 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
                 if let Some(val) = attribs.value() {
                     if let Some(common_val) = val.load_common_val() {
                         let v = common_val.to_common().unwrap();
-                        let _ = write!(&mut self.output, " {:?}", *v);
+                        let _ = write!(&mut self.output, " {:?}", v);
                     }
 
                     // let _ = write!(&mut self.output, " (expr: {:?})", val.expr);

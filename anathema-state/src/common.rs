@@ -97,6 +97,18 @@ impl From<Number> for CommonVal<'_> {
     }
 }
 
+impl From<(u8, u8, u8)> for CommonVal<'_> {
+    fn from(value: (u8, u8, u8)) -> Self {
+        CommonVal::Hex(value.into())
+    }
+}
+
+impl From<Hex> for CommonVal<'_> {
+    fn from(value: Hex) -> Self {
+        CommonVal::Hex(value)
+    }
+}
+
 impl<'a> From<&'a str> for CommonVal<'a> {
     fn from(value: &'a str) -> Self {
         CommonVal::Str(value)

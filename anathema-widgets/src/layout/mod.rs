@@ -157,6 +157,7 @@ mod test {
     fn region_contains() {
         let a = Region::new(Pos::ZERO, Pos::new(10, 10));
         assert!(a.contains(Pos::ZERO));
-        assert!(a.contains(Pos::new(10, 10)));
+        assert!(a.contains(Pos::new(9, 9)));
+        assert!(!a.contains(Pos::new(10, 10)));
     }
 }

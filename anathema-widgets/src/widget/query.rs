@@ -109,7 +109,7 @@ where
                         .and_then(|attribute| {
                             attribute
                                 .load_common_val()
-                                .and_then(|either| either.to_common().map(|attrib_val| val.eq(&*attrib_val)))
+                                .and_then(|either| either.to_common().map(|attrib_val| val.eq(&attrib_val)))
                         })
                         .unwrap_or(false);
 

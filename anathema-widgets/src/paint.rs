@@ -1,6 +1,7 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
+use anathema_state::{CommonString, Hex};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use unicode_width::UnicodeWidthChar;
 
@@ -9,6 +10,16 @@ use crate::layout::Display;
 use crate::nodes::element::Element;
 use crate::widget::WidgetRenderer;
 use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
+
+pub trait CellAttributes {
+    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
+
+    fn get_i64(&self, key: &str) -> Option<i64>;
+
+    fn get_hex(&self, key: &str) -> Option<Hex>;
+
+    fn get_bool(&self, key: &str) -> bool;
+}
 
 pub struct PaintFilter<'frame, 'bp> {
     attributes: &'frame AttributeStorage<'bp>,
@@ -198,13 +209,21 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         Some(pos)
     }
 
+    pub(crate) fn set_attributes(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {
+        let screen_pos = match self.translate_to_global(pos) {
+            Some(pos) => pos,
+            None => return,
+        };
+        self.surface.set_attributes(attrs, screen_pos);
+    }
+
     // Place a char on the screen buffer, return the next cursor position in local space.
     //
     // The `input_pos` is the position, in local space, where the character
     // should be placed. This will (possibly) be offset if there is clipping available.
     //
-    // The `outpout_pos` is the same as the `input_pos` unless clipping has been applied.
-    pub fn place_glyph(&mut self, c: char, attribs: &Attributes<'_>, input_pos: LocalPos) -> Option<LocalPos> {
+    // The `output_pos` is the same as the `input_pos` unless clipping has been applied.
+    pub fn place_glyph<T: CellAttributes>(&mut self, c: char, attribs: &T, input_pos: LocalPos) -> Option<LocalPos> {
         let width = c.width().unwrap_or(0);
         let next = LocalPos {
             x: input_pos.x + width as u16,

@@ -198,25 +198,6 @@ where
         }
     }
 
-    pub fn register_component<S: 'static + State>(
-        &mut self,
-        id: impl Into<ComponentId>,
-        component: impl Component<State = S> + 'static,
-        state: S,
-    ) {
-        self.component_registry.add_component(id.into(), component, state);
-    }
-
-    pub fn register_prototype<FC, FS, C, S>(&mut self, id: impl Into<ComponentId>, proto: FC, state: FS)
-    where
-        FC: 'static + Fn() -> C,
-        FS: 'static + FnMut() -> S,
-        C: Component + 'static,
-        S: State + 'static,
-    {
-        self.component_registry.add_prototype(id.into(), proto, state);
-    }
-
     pub fn emitter(&self) -> Emitter {
         Emitter(self.message_sender.clone())
     }

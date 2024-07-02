@@ -35,7 +35,7 @@ impl<I, T> Entry<I, T> {
 //   - Slab -
 // -----------------------------------------------------------------------------
 /// A basic slab
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Slab<I, T> {
     next_id: Option<I>,
     inner: Vec<Entry<I, T>>,
@@ -197,6 +197,17 @@ where
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
             Entry::Occupied(val) => Some((i.into(), val)),
+            Entry::Vacant(_) => None,
+        })
+    }
+
+    /// Consume all the values in the slab and resets the next id.
+    /// This does not replace occupied entries with vacant ones,
+    /// but rather drain the underlying storage.
+    pub fn consume(&mut self) -> impl Iterator<Item = T> + '_ {
+        self.next_id = None;
+        self.inner.drain(..).filter_map(|e| match e {
+            Entry::Occupied(val) => Some(val),
             Entry::Vacant(_) => None,
         })
     }

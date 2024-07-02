@@ -61,6 +61,10 @@ impl Viewport {
         self.scroll(Direction::Backward, amount);
     }
 
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
     fn clamp(&mut self, children: usize, parent: usize) {
         let children = children as u32;
         let parent = parent as u32;

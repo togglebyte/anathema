@@ -1,10 +1,11 @@
 use std::ops::Deref;
 
-use anathema_state::{CommonVal, PendingValue};
+use anathema_state::{CommonString, CommonVal, Hex, PendingValue};
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallIndex;
 
-use crate::expressions::EvalValue;
+use crate::expressions::{Either, EvalValue};
+use crate::paint::CellAttributes;
 use crate::values::Values;
 use crate::widget::ValueKey;
 use crate::{Value, WidgetId};
@@ -159,6 +160,32 @@ impl<'bp> Attributes<'bp> {
     pub fn contains(&self, key: &'bp str) -> bool {
         let key = ValueKey::Attribute(key);
         self.values.get(&key).is_some()
+    }
+}
+
+impl CellAttributes for Attributes<'_> {
+    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
+        let Some(value) = self.get_val(key).and_then(|value| value.load_common_val()) else { return };
+        let Some(value) = value.to_common() else { return };
+        let CommonVal::Str(s) = value else { return };
+        f(s);
+    }
+
+    fn get_i64(&self, key: &str) -> Option<i64> {
+        self.get_int(key)
+    }
+
+    fn get_hex(&self, key: &str) -> Option<anathema_state::Hex> {
+        let value = self.get_val(key)?;
+        let value = value.load_common_val()?;
+        match value.to_common()? {
+            CommonVal::Hex(hex) => Some(hex),
+            _ => None,
+        }
+    }
+
+    fn get_bool(&self, key: &str) -> bool {
+        Attributes::get_bool(self, key)
     }
 }
 

@@ -15,22 +15,6 @@ pub(crate) fn future_value<'a>(id: ValueId) -> EvalValue<'a> {
     EvalValue::Empty
 }
 
-pub enum CommonRef<'a, 'b> {
-    Owned(CommonVal<'b>),
-    Borrowed(&'b CommonVal<'a>),
-}
-
-impl<'a, 'b> Deref for CommonRef<'a, 'b> {
-    type Target = CommonVal<'b>;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            CommonRef::Owned(o) => o,
-            CommonRef::Borrowed(b) => b,
-        }
-    }
-}
-
 pub enum Either<'a> {
     Static(CommonVal<'a>),
     Dyn(SharedState<'a>),
@@ -64,10 +48,10 @@ impl<'a> Either<'a> {
         }
     }
 
-    pub fn to_common<'b>(&'b self) -> Option<CommonRef<'a, 'b>> {
+    pub fn to_common(&self) -> Option<CommonVal<'_>> {
         match self {
-            Either::Static(val) => Some(CommonRef::Borrowed(val)),
-            Either::Dyn(state) => state.to_common().map(CommonRef::Owned),
+            Either::Static(val) => Some(*val),
+            Either::Dyn(state) => state.to_common(),
         }
     }
 }
@@ -336,7 +320,7 @@ impl<'bp> EvalValue<'bp> {
                     Equality::Eq => {
                         let lhs = lhs.load_common_val()?;
                         let rhs = rhs.load_common_val()?;
-                        *lhs.to_common()? == *rhs.to_common()?
+                        lhs.to_common()? == rhs.to_common()?
                     }
                     Equality::And => lhs.load_bool() && rhs.load_bool(),
                     Equality::Or => lhs.load_bool() || rhs.load_bool(),
