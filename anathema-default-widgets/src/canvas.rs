@@ -124,16 +124,16 @@ impl Buffer {
         }
     }
 
-    fn get(&mut self, pos: LocalPos) -> Option<&Cell> {
-        let index = pos.to_index(self.size.width);
+    fn get(&mut self, pos: impl Into<LocalPos>) -> Option<&Cell> {
+        let index = pos.into().to_index(self.size.width);
         match self.positions[index] {
             Entry::Occupied(idx) => self.cells.get(idx),
             Entry::Vacant => None,
         }
     }
 
-    fn remove(&mut self, pos: LocalPos) {
-        let index = pos.to_index(self.size.width);
+    fn remove(&mut self, pos: impl Into<LocalPos>) {
+        let index = pos.into().to_index(self.size.width);
         if index < self.positions.len() {
             let Entry::Occupied(idx) = std::mem::take(&mut self.positions[index]) else { return };
             self.cells.remove(idx);
@@ -180,18 +180,18 @@ impl Canvas {
         LocalPos::new(offset.x as u16, offset.y as u16)
     }
 
-    pub fn put(&mut self, c: char, attribs: CanvasAttribs, pos: LocalPos) {
+    pub fn put(&mut self, c: char, attribs: CanvasAttribs, pos: impl Into<LocalPos>) {
         self.buffer.put(c, attribs, pos);
     }
 
-    pub fn get(&mut self, pos: LocalPos) -> Option<(char, &CanvasAttribs)> {
+    pub fn get(&mut self, pos: impl Into<LocalPos>) -> Option<(char, &CanvasAttribs)> {
         match self.buffer.get(pos)? {
             Cell::Occupied(_, c, attribs) => Some((*c, attribs)),
             Cell::Empty => None,
         }
     }
 
-    pub fn erase(&mut self, pos: LocalPos) {
+    pub fn erase(&mut self, pos: impl Into<LocalPos>) {
         self.buffer.remove(pos)
     }
 }
@@ -270,5 +270,22 @@ mod test {
             ╚══╝
         ";
         TestRunner::new("canvas", (2, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn get_set_glyph() {
+        let mut canvas = Canvas::default();
+        canvas.put('a', CanvasAttribs::new(), (0, 0));
+        let (c, _) = canvas.get((0, 0)).unwrap();
+        assert_eq!(c, 'a');
+    }
+
+    #[test]
+    fn remove_glyph() {
+        let mut canvas = Canvas::default();
+        canvas.put('a', CanvasAttribs::new(), (0, 0));
+        assert!(canvas.get((0, 0)).is_some());
+        canvas.erase((0, 0));
+        assert!(canvas.get((0, 0)).is_none());
     }
 }

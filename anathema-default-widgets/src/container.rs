@@ -56,8 +56,6 @@ impl Widget for Container {
 mod test {
     use crate::testing::TestRunner;
 
-    use super::*;
-
     #[test]
     fn container() {
         let tpl = "
