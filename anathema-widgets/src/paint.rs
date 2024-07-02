@@ -1,7 +1,7 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_state::{CommonString, Hex};
+use anathema_state::Hex;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use unicode_width::UnicodeWidthChar;
 

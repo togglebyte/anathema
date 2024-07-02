@@ -12,23 +12,23 @@ use crate::variables::Variables;
 use crate::Lexer;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ComponentId(usize);
+pub struct TemplateComponentId(usize);
 
-impl From<ComponentId> for usize {
-    fn from(value: ComponentId) -> Self {
+impl From<TemplateComponentId> for usize {
+    fn from(value: TemplateComponentId) -> Self {
         value.0
     }
 }
 
-impl From<usize> for ComponentId {
+impl From<usize> for TemplateComponentId {
     fn from(value: usize) -> Self {
         Self(value)
     }
 }
 
 pub(crate) struct ComponentTemplates {
-    dependencies: Stack<ComponentId>,
-    components: Storage<ComponentId, String, Option<String>>,
+    dependencies: Stack<TemplateComponentId>,
+    components: Storage<TemplateComponentId, String, Option<String>>,
 }
 
 impl ComponentTemplates {
@@ -39,16 +39,16 @@ impl ComponentTemplates {
         }
     }
 
-    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> ComponentId {
+    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> TemplateComponentId {
         self.components.push(name.into(), None)
     }
 
-    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: impl Into<String>) -> ComponentId {
+    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: impl Into<String>) -> TemplateComponentId {
         let ident = ident.into();
         self.components.insert(ident, Some(template.into()))
     }
 
-    pub(crate) fn load(&mut self, id: ComponentId, globals: &mut Variables) -> Result<Vec<Blueprint>> {
+    pub(crate) fn load(&mut self, id: TemplateComponentId, globals: &mut Variables) -> Result<Vec<Blueprint>> {
         if self.dependencies.contains(&id) {
             return Err(Error::CircularDependency);
         }

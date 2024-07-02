@@ -5,7 +5,7 @@ use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::paint::CellAttributes;
-use anathema_widgets::{AttributeStorage, Attributes, Element, WidgetKind, WidgetRenderer};
+use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
 
 use crate::Backend;
 
@@ -91,7 +91,7 @@ impl TestSurface {
 }
 
 impl WidgetRenderer for TestSurface {
-    fn draw_glyph(&mut self, c: char, attribs: &dyn CellAttributes, local_pos: Pos) {
+    fn draw_glyph(&mut self, c: char, _: &dyn CellAttributes, local_pos: Pos) {
         let y_offset = local_pos.y as usize * self.size.width;
         let x_offset = local_pos.x as usize;
         let index = y_offset + x_offset;
@@ -102,8 +102,8 @@ impl WidgetRenderer for TestSurface {
         self.size
     }
 
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos) {
-        todo!()
+    fn set_attributes(&mut self, _attribs: &dyn CellAttributes, _local_pos: Pos) {
+        // NOTE: currently no attributes are stored on the test surface
     }
 }
 

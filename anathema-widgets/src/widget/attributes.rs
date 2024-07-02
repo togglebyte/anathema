@@ -1,10 +1,10 @@
 use std::ops::Deref;
 
-use anathema_state::{CommonString, CommonVal, Hex, PendingValue};
+use anathema_state::{CommonVal, PendingValue};
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallIndex;
 
-use crate::expressions::{Either, EvalValue};
+use crate::expressions::EvalValue;
 use crate::paint::CellAttributes;
 use crate::values::Values;
 use crate::widget::ValueKey;

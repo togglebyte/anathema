@@ -17,23 +17,24 @@
 //
 // -----------------------------------------------------------------------------
 
+use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Pos;
-use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, States};
+use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, States};
 use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
+use anathema_widgets::components::{Component, ComponentRegistry};
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-use components::Components;
+use components::{ComponentId, Components};
 use events::EventHandler;
 
 pub use crate::error::Result;
@@ -60,11 +61,11 @@ impl<T> RuntimeBuilder<T> {
         template: impl Into<String>,
         component: C,
         state: C::State,
-    ) -> ComponentId {
+    ) -> ComponentId<C::Message> {
         let ident = ident.into();
         let id = self.document.add_component(ident, template.into()).into();
         self.component_registry.add_component(id, component, state);
-        id
+        ComponentId(id, PhantomData)
     }
 
     pub fn register_prototype<FC, FS, C>(
@@ -88,7 +89,7 @@ impl<T> RuntimeBuilder<T> {
     }
 
     pub fn register_widget(&mut self, ident: &str, factory: impl Fn(&Attributes<'_>) -> Box<dyn AnyWidget> + 'static) {
-        self.factory.register_widget(ident.into(), factory);
+        self.factory.register_widget(ident, factory);
     }
 
     pub fn emitter(&self) -> Emitter {
@@ -182,7 +183,13 @@ impl<T> Runtime<T>
 where
     T: Backend,
 {
+    #[deprecated(note = "use the `builder` function instead")]
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(document: Document, backend: T) -> RuntimeBuilder<T> {
+        Self::builder(document, backend)
+    }
+
+    pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
         let mut factory = Factory::new();
 
         let (message_sender, message_receiver) = flume::unbounded();

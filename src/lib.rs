@@ -15,7 +15,7 @@ pub mod prelude {
     pub use crate::backend::tui::TuiBackend;
     pub use crate::runtime::Runtime;
     pub use crate::templates::Document;
-    pub use crate::widgets::components::ComponentId;
+    pub use crate::widgets::components::WidgetComponentId;
 }
 
 pub mod component {

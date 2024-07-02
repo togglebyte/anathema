@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ops::{ControlFlow, Deref};
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, SharedState, States, ValueRef};

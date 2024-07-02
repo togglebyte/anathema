@@ -8,7 +8,7 @@ use crate::Elements;
 
 pub mod events;
 
-pub const ROOT_VIEW: ComponentId = ComponentId(usize::MAX);
+pub const ROOT_VIEW: WidgetComponentId = WidgetComponentId(usize::MAX);
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
 pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
@@ -18,7 +18,7 @@ enum ComponentType {
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
-pub struct ComponentRegistry(Slab<ComponentId, ComponentType>);
+pub struct ComponentRegistry(Slab<WidgetComponentId, ComponentType>);
 
 impl ComponentRegistry {
     pub fn new() -> Self {
@@ -30,7 +30,7 @@ impl ComponentRegistry {
     /// This is fine as the component ids are generated at the same time.
     pub fn add_component<S: 'static + State>(
         &mut self,
-        id: ComponentId,
+        id: WidgetComponentId,
         component: impl Component + 'static,
         state: S,
     ) {
@@ -38,7 +38,7 @@ impl ComponentRegistry {
         self.0.insert_at(id, comp_type);
     }
 
-    pub fn add_prototype<FC, FS, C, S>(&mut self, id: ComponentId, proto: FC, mut state: FS)
+    pub fn add_prototype<FC, FS, C, S>(&mut self, id: WidgetComponentId, proto: FC, mut state: FS)
     where
         FC: 'static + Fn() -> C,
         FS: 'static + FnMut() -> S,
@@ -55,7 +55,7 @@ impl ComponentRegistry {
     ///
     /// Panics if the component isn't registered.
     /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(&mut self, id: ComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
+    pub fn get(&mut self, id: WidgetComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => (comp.take(), state.take()),
@@ -67,16 +67,16 @@ impl ComponentRegistry {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(usize);
+pub struct WidgetComponentId(usize);
 
-impl From<usize> for ComponentId {
+impl From<usize> for WidgetComponentId {
     fn from(value: usize) -> Self {
         Self(value)
     }
 }
 
-impl From<ComponentId> for usize {
-    fn from(value: ComponentId) -> Self {
+impl From<WidgetComponentId> for usize {
+    fn from(value: WidgetComponentId) -> Self {
         value.0
     }
 }

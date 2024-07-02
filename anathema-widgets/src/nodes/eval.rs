@@ -10,7 +10,7 @@ use anathema_templates::Globals;
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow};
-use crate::components::{AnyComponent, ComponentId, ComponentRegistry};
+use crate::components::{AnyComponent, WidgetComponentId, ComponentRegistry};
 use crate::container::Container;
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
@@ -51,7 +51,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
 
     fn get_component(
         &mut self,
-        component_id: ComponentId,
+        component_id: WidgetComponentId,
     ) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
         self.components.get(component_id)
     }

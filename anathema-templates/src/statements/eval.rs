@@ -6,7 +6,7 @@ use anathema_store::storage::strings::StringId;
 use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, If, Single};
-use crate::components::ComponentId;
+use crate::components::TemplateComponentId;
 use crate::error::Result;
 use crate::expressions::Expression;
 
@@ -106,7 +106,7 @@ impl Scope {
         Ok(Blueprint::ControlFlow(ControlFlow { if_node, elses }))
     }
 
-    fn eval_component(&mut self, component_id: ComponentId, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
+    fn eval_component(&mut self, component_id: TemplateComponentId, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
         let attributes = self.eval_attributes(ctx)?;
         let state = self.statements.take_value().map(|v| const_eval(v, ctx));
 

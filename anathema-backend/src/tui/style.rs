@@ -2,7 +2,6 @@ use std::io::{Result, Write};
 
 use anathema_state::Hex;
 use anathema_widgets::paint::CellAttributes;
-use anathema_widgets::Attributes as Attribs;
 pub use crossterm::style::Attribute as CrossAttrib;
 use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;

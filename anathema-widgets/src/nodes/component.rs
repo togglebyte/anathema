@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anathema_state::StateId;
 use anathema_templates::blueprints::Blueprint;
 
-use crate::components::{AnyComponent, ComponentId};
+use crate::components::{AnyComponent, WidgetComponentId};
 use crate::expressions::EvalValue;
 use crate::{Value, ValueIndex};
 
@@ -15,7 +15,7 @@ pub struct Component<'bp> {
     pub component: Box<dyn AnyComponent>,
     pub state_id: Option<StateId>,
     pub(crate) external_state: Option<ExternalState<'bp>>,
-    pub component_id: ComponentId,
+    pub component_id: WidgetComponentId,
 }
 
 impl<'bp> Component<'bp> {
@@ -24,7 +24,7 @@ impl<'bp> Component<'bp> {
         component: Box<dyn AnyComponent>,
         state_id: Option<StateId>,
         external_state: Option<ExternalState<'bp>>,
-        component_id: ComponentId,
+        component_id: WidgetComponentId,
     ) -> Self {
         Self {
             body,

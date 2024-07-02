@@ -1,7 +1,7 @@
 use anathema_store::storage::strings::{StringId, Strings};
 
 use crate::blueprints::Blueprint;
-use crate::components::{ComponentId, ComponentTemplates};
+use crate::components::{TemplateComponentId, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::variables::Variables;
@@ -21,7 +21,7 @@ impl Context<'_, '_> {
         self.globals.fetch(key)
     }
 
-    fn load_component(&mut self, component_id: ComponentId) -> Result<Vec<Blueprint>> {
+    fn load_component(&mut self, component_id: TemplateComponentId) -> Result<Vec<Blueprint>> {
         self.components.load(component_id, self.globals)
     }
 }
@@ -30,7 +30,7 @@ impl Context<'_, '_> {
 pub(crate) enum Statement {
     LoadValue(Expression),
     LoadAttribute { key: StringId, value: Expression },
-    Component(ComponentId),
+    Component(TemplateComponentId),
     Node(StringId),
     For { binding: StringId, data: Expression },
     Declaration { binding: StringId, value: Expression },
@@ -166,7 +166,7 @@ mod test {
         }
     }
 
-    pub(crate) fn view(id: impl Into<ComponentId>) -> Statement {
+    pub(crate) fn view(id: impl Into<TemplateComponentId>) -> Statement {
         Statement::Component(id.into())
     }
 

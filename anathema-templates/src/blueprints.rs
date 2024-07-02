@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use anathema_store::smallmap::SmallMap;
 
-use crate::components::ComponentId;
+use crate::components::TemplateComponentId;
 use crate::Expression;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,7 +41,7 @@ pub struct Else {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
-    pub id: ComponentId,
+    pub id: TemplateComponentId,
     pub body: Vec<Blueprint>,
     pub attributes: SmallMap<Rc<str>, Expression>,
     pub state: Option<Rc<HashMap<Rc<str>, Expression>>>,

@@ -113,7 +113,8 @@ pub(crate) enum Collection<'bp> {
     Static(Box<[EvalValue<'bp>]>),
     /// This will (probably) resolve to a collection from a state.
     Dyn(ValueRef),
-    /// Index value
+    /// Index value.
+    #[allow(dead_code)]
     Index(Box<Collection<'bp>>, Box<EvalValue<'bp>>),
     /// This value doesn't exist now, but might exist in the future.
     /// See [`nodes::future::try_resolve_value`].

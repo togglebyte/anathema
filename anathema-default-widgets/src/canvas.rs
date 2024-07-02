@@ -44,7 +44,7 @@ impl CanvasAttribs {
     }
 }
 
-impl<'a> CellAttributes for CanvasAttribs {
+impl CellAttributes for CanvasAttribs {
     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
         let Some(value) = self.get(key) else { return };
         match value {
@@ -65,10 +65,7 @@ impl<'a> CellAttributes for CanvasAttribs {
     }
 
     fn get_bool(&self, key: &str) -> bool {
-        match self.get(key) {
-            Some(CanvasAttrib::Common(CommonVal::Bool(true))) => true,
-            _ => false,
-        }
+        matches!(self.get(key), Some(CanvasAttrib::Common(CommonVal::Bool(true))))
     }
 }
 
@@ -171,7 +168,6 @@ impl Buffer {
 
 #[derive(Debug)]
 pub struct Canvas {
-    constraints: Constraints,
     buffer: Buffer,
     pos: Pos,
 }
@@ -201,7 +197,6 @@ impl Canvas {
 impl Default for Canvas {
     fn default() -> Self {
         Self {
-            constraints: Constraints::unbounded(),
             buffer: Buffer::new((32, 32).into()),
             pos: Pos::ZERO,
         }
@@ -211,7 +206,7 @@ impl Default for Canvas {
 impl Widget for Canvas {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        _children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, '_, 'bp>,
@@ -237,9 +232,9 @@ impl Widget for Canvas {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
-        id: WidgetId,
-        attribute_storage: &AttributeStorage<'bp>,
+        _children: PositionChildren<'_, '_, 'bp>,
+        _id: WidgetId,
+        _attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
         self.pos = ctx.pos;
@@ -247,11 +242,11 @@ impl Widget for Canvas {
 
     fn paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
-        id: WidgetId,
-        attribute_storage: &AttributeStorage<'bp>,
+        _children: PaintChildren<'_, '_, 'bp>,
+        _id: WidgetId,
+        _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
+        _text: &mut StringSession<'_>,
     ) {
         for (pos, c, attribs) in self.buffer.iter() {
             ctx.place_glyph(c, attribs, pos);

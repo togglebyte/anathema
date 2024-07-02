@@ -1,16 +1,28 @@
+use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 use anathema_state::StateId;
 use anathema_store::stack::Stack;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::NodePath;
-use anathema_widgets::components::ComponentId;
+use anathema_widgets::components::WidgetComponentId;
 use anathema_widgets::{WidgetId, WidgetKind};
+
+#[derive(Debug)]
+pub struct ComponentId<T>(pub(crate) WidgetComponentId, pub(crate) PhantomData<T>);
+
+impl<T> Clone for ComponentId<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for ComponentId<T> {}
 
 pub struct IndexEntry {
     pub(super) widget_id: WidgetId,
     pub(super) state_id: Option<StateId>,
-    pub(super) component_id: ComponentId,
+    pub(super) component_id: WidgetComponentId,
 }
 
 pub struct Components {
@@ -62,7 +74,7 @@ impl Components {
         self.inner.get(*current)
     }
 
-    pub fn dumb_fetch(&self, component_id: ComponentId) -> Option<&IndexEntry> {
+    pub fn dumb_fetch(&self, component_id: WidgetComponentId) -> Option<&IndexEntry> {
         self.inner.iter().find(|entry| entry.component_id == component_id)
     }
 
