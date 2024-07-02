@@ -99,7 +99,9 @@ impl Buffer {
         }
     }
 
-    fn put(&mut self, c: char, attribs: CanvasAttribs, pos: LocalPos) {
+    fn put(&mut self, c: char, attribs: CanvasAttribs, pos: impl Into<LocalPos>) {
+        let pos = pos.into();
+
         let cell_id = self.cells.next_id();
 
         let index = pos.to_index(self.size.width);
