@@ -1,3 +1,4 @@
+use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::{StringId, Strings};
 
 use crate::blueprints::Blueprint;
@@ -14,6 +15,7 @@ pub(crate) struct Context<'vars, 'strings> {
     pub(crate) globals: &'vars mut Variables,
     pub(crate) components: &'strings mut ComponentTemplates,
     pub(crate) strings: &'strings Strings,
+    pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
 }
 
 impl Context<'_, '_> {
@@ -21,8 +23,8 @@ impl Context<'_, '_> {
         self.globals.fetch(key)
     }
 
-    fn load_component(&mut self, component_id: TemplateComponentId) -> Result<Vec<Blueprint>> {
-        self.components.load(component_id, self.globals)
+    fn load_component(&mut self, component_id: TemplateComponentId, slots: SmallMap<StringId, Vec<Blueprint>>) -> Result<Vec<Blueprint>> {
+        self.components.load(component_id, self.globals, slots)
     }
 }
 
@@ -31,6 +33,7 @@ pub(crate) enum Statement {
     LoadValue(Expression),
     LoadAttribute { key: StringId, value: Expression },
     Component(TemplateComponentId),
+    ComponentSlot(StringId),
     Node(StringId),
     For { binding: StringId, data: Expression },
     Declaration { binding: StringId, value: Expression },
@@ -124,6 +127,16 @@ impl Statements {
         }
     }
 
+    fn next_slot(&mut self) -> Option<StringId> {
+        match matches!(self.0.first(), Some(Statement::ComponentSlot(_))) {
+            true => match self.0.remove(0) {
+                Statement::ComponentSlot(slot_id) => Some(slot_id),
+                _ => unreachable!(),
+            },
+            false => None,
+        }
+    }
+
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -143,6 +156,7 @@ where
         globals: &mut globals,
         strings: &strings,
         components: &mut components,
+        slots: SmallMap::empty(),
     };
 
     f(context)
@@ -166,8 +180,12 @@ mod test {
         }
     }
 
-    pub(crate) fn view(id: impl Into<TemplateComponentId>) -> Statement {
+    pub(crate) fn component(id: impl Into<TemplateComponentId>) -> Statement {
         Statement::Component(id.into())
+    }
+
+    pub(crate) fn slot(id: impl Into<StringId>) -> Statement {
+        Statement::ComponentSlot(id.into())
     }
 
     pub(crate) fn node(id: impl Into<StringId>) -> Statement {

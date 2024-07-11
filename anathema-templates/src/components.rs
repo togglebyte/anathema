@@ -1,5 +1,6 @@
+use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
-use anathema_store::storage::strings::Strings;
+use anathema_store::storage::strings::{StringId, Strings};
 use anathema_store::storage::Storage;
 
 use crate::blueprints::Blueprint;
@@ -48,7 +49,12 @@ impl ComponentTemplates {
         self.components.insert(ident, Some(template.into()))
     }
 
-    pub(crate) fn load(&mut self, id: TemplateComponentId, globals: &mut Variables) -> Result<Vec<Blueprint>> {
+    pub(crate) fn load(
+        &mut self,
+        id: TemplateComponentId,
+        globals: &mut Variables,
+        slots: SmallMap<StringId, Vec<Blueprint>>,
+    ) -> Result<Vec<Blueprint>> {
         if self.dependencies.contains(&id) {
             return Err(Error::CircularDependency);
         }
@@ -57,7 +63,7 @@ impl ComponentTemplates {
 
         let ret = match self.components.remove(id) {
             Some((key, Some(template))) => {
-                let ret = self.compile(&template, globals);
+                let ret = self.compile(&template, globals, slots);
                 // This will re-insert the component in the same location
                 // as it was removed from since nothing else has
                 // written to the component storage since the component
@@ -74,7 +80,12 @@ impl ComponentTemplates {
         ret
     }
 
-    fn compile(&mut self, template: &str, globals: &mut Variables) -> Result<Vec<Blueprint>> {
+    fn compile(
+        &mut self,
+        template: &str,
+        globals: &mut Variables,
+        slots: SmallMap<StringId, Vec<Blueprint>>,
+    ) -> Result<Vec<Blueprint>> {
         let mut strings = Strings::empty();
         let tokens = Lexer::new(template, &mut strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, template.len());
@@ -86,6 +97,7 @@ impl ComponentTemplates {
             globals,
             components: self,
             strings: &strings,
+            slots,
         };
 
         Scope::new(statements).eval(&mut context)

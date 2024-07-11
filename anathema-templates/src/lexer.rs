@@ -102,7 +102,8 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             ('<', _) => Ok(Kind::Op(Operator::LessThan).to_token(index)),
             ('=', _) => Ok(Kind::Equal.to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
-            ('@', _) => Ok(Kind::View.to_token(index)),
+            ('@', _) => Ok(Kind::Component.to_token(index)),
+            ('$', _) => Ok(Kind::ComponentSlot.to_token(index)),
 
             // -----------------------------------------------------------------------------
             //     - Ident -
@@ -429,9 +430,15 @@ mod test {
     }
 
     #[test]
-    fn view() {
-        let input = "@view";
-        assert_eq!(Kind::View, token_kind(input));
+    fn component() {
+        let input = "@component";
+        assert_eq!(Kind::Component, token_kind(input));
+    }
+
+    #[test]
+    fn component_slot() {
+        let input = "$slot";
+        assert_eq!(Kind::ComponentSlot, token_kind(input));
     }
 
     #[test]

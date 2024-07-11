@@ -1,3 +1,4 @@
+use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::Strings;
 
 use crate::blueprints::Blueprint;
@@ -50,6 +51,7 @@ impl Document {
             globals: &mut self.globals,
             strings: &mut self.strings,
             components: &mut self.components,
+            slots: SmallMap::empty(),
         };
 
         let mut blueprints = Scope::new(statements).eval(&mut context)?;

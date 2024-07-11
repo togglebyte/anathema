@@ -16,6 +16,7 @@ enum State {
     ParseIf,
     ParseDeclaration,
     ParseComponent,
+    ParseComponentSlot,
     ParseIdent,
     ParseAttributes,
     ParseAttribute,
@@ -95,6 +96,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
                 State::ParseIf => self.parse_if()?,
                 State::ParseDeclaration => self.parse_declaration()?,
                 State::ParseComponent => self.parse_component()?,
+                State::ParseComponentSlot => self.parse_component_slot()?,
                 State::ExitScope => self.exit_scope()?,
                 State::ParseIdent => self.parse_ident()?,
                 State::ParseAttributes => {
@@ -121,9 +123,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             State::ExitScope => self.state = State::ParseFor,
             State::ParseFor => self.state = State::ParseIf,
             State::ParseIf => self.state = State::ParseDeclaration,
-            State::ParseDeclaration => self.state = State::ParseComponent,
-            State::ParseComponent => self.state = State::ParseIdent,
-            State::ParseIdent => self.state = State::ParseAttributes,
+            State::ParseDeclaration => self.state = State::ParseIdent,
+            State::ParseIdent => self.state = State::ParseComponent,
+            State::ParseComponent => self.state = State::ParseComponentSlot,
+            State::ParseComponentSlot => self.state = State::ParseAttributes,
             State::ParseAttributes => self.state = State::ParseAttribute,
             State::ParseAttribute => self.state = State::ParseValue,
             State::ParseValue => self.state = State::Done,
@@ -218,7 +221,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         // Since the previous parse state was `ParseFor`, the tokens
         // might've been consumed.
         // If the next token is a newline char then move to the next state
-        if Kind::Newline == self.tokens.peek() {
+        if let Kind::Newline | Kind::Component | Kind::ComponentSlot = self.tokens.peek() {
             self.next_state();
             return Ok(None);
         }
@@ -306,7 +309,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     }
 
     fn parse_component(&mut self) -> Result<Option<Statement>, ParseError> {
-        if Kind::View != self.tokens.peek_skip_indent() {
+        if Kind::Component != self.tokens.peek_skip_indent() {
             self.next_state();
             return Ok(None);
         }
@@ -320,8 +323,23 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         self.tokens.consume_indent();
 
         self.next_state();
-        self.next_state();
         Ok(Some(Statement::Component(component_id)))
+    }
+
+    fn parse_component_slot(&mut self) -> Result<Option<Statement>, ParseError> {
+        if Kind::ComponentSlot != self.tokens.peek_skip_indent() {
+            self.next_state();
+            return Ok(None);
+        }
+
+        self.tokens.consume();
+        self.tokens.consume_indent();
+
+        let ident = self.read_ident()?;
+        self.tokens.consume_indent();
+
+        self.next_state();
+        Ok(Some(Statement::ComponentSlot(ident)))
     }
 
     // -----------------------------------------------------------------------------
@@ -468,7 +486,7 @@ mod test {
     use crate::expressions::{ident, list, map, num, strlit};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node, scope_end, scope_start, view,
+        component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node, scope_end, scope_start, slot
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
@@ -663,15 +681,22 @@ mod test {
     }
 
     #[test]
-    fn parse_view() {
-        let src = "@myview";
+    fn parse_component() {
+        let src = "@mycomp";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), view(0));
+        assert_eq!(statements.remove(0), component(0));
 
-        let src = "@myview state";
+        let src = "@mycomp state";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), view(0));
+        assert_eq!(statements.remove(0), component(0));
         assert_eq!(statements.remove(0), load_value(ident("state")));
+    }
+
+    #[test]
+    fn parse_component_slot() {
+        let src = "$slot";
+        let mut statements = parse_ok(src);
+        assert_eq!(statements.remove(0), slot(0));
     }
 
     #[test]

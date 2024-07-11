@@ -33,6 +33,11 @@ impl Scope {
                     let binding = ctx.strings.get_unchecked(binding);
                     ctx.globals.declare(binding, value);
                 }
+                Statement::ComponentSlot(slot_id) => {
+                    if let Some(bp) = ctx.slots.get(&slot_id).cloned() {
+                        output.extend(bp);
+                    }
+                },
 
                 // These statements can't be evaluated on their own,
                 // as they are part of other statements
@@ -110,13 +115,25 @@ impl Scope {
         let attributes = self.eval_attributes(ctx)?;
         let state = self.statements.take_value().map(|v| const_eval(v, ctx));
 
+        // State
         let state = match state {
             Some(Expression::Map(map)) => Some(map),
             Some(_) => todo!("Invalid state: state has to be a map or nothing"),
             None => None,
         };
 
-        let body = ctx.load_component(component_id)?;
+        // Slots
+        let mut slots = SmallMap::empty();
+        let mut scope = self.statements.take_scope();
+
+        // for each slot take the scope and associate it with the slot id
+        while let Some(slot_id) = scope.next_slot() {
+            let scope = Scope::new(scope.take_scope());
+            let body = scope.eval(ctx)?;
+            slots.set(slot_id, body);
+        }
+
+        let body = ctx.load_component(component_id, slots)?;
 
         let component = Component {
             id: component_id,
@@ -181,6 +198,29 @@ mod test {
     fn eval_component() {
         let src = "@comp {a: 1}";
         let comp_src = "node a + 2";
+
+        let mut doc = Document::new(src);
+        doc.add_component("comp", comp_src);
+        let (blueprint, _) = doc.compile().unwrap();
+        assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
+    }
+
+
+    #[test]
+    fn eval_component_slots() {
+        let src = "
+            @comp
+                $s1
+                    node '1'
+                $s2
+                    node '2'
+        ";
+
+        let comp_src = "
+            node
+                $s1
+                $s2
+        ";
 
         let mut doc = Document::new(src);
         doc.add_component("comp", comp_src);
