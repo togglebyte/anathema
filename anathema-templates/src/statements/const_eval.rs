@@ -12,7 +12,7 @@ use crate::primitives::Primitive;
 // a.b[c]
 // ```
 // would resolve `a` from vars, `b` from `a`, and `c` from vars.
-fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
+fn eval_path(expr: &Expression, ctx: &Context<'_>) -> Option<Expression> {
     use {Expression as E, Primitive as P};
 
     match expr {
@@ -40,7 +40,7 @@ fn eval_path(expr: &Expression, ctx: &Context<'_, '_>) -> Option<Expression> {
     }
 }
 
-pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_, '_>) -> Expression {
+pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Expression {
     use {Expression as E, Primitive as P};
 
     macro_rules! ce {

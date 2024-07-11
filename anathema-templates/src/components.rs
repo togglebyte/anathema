@@ -54,6 +54,7 @@ impl ComponentTemplates {
         id: TemplateComponentId,
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
+        strings: &mut Strings,
     ) -> Result<Vec<Blueprint>> {
         if self.dependencies.contains(&id) {
             return Err(Error::CircularDependency);
@@ -63,7 +64,7 @@ impl ComponentTemplates {
 
         let ret = match self.components.remove(id) {
             Some((key, Some(template))) => {
-                let ret = self.compile(&template, globals, slots);
+                let ret = self.compile(&template, globals, slots, strings);
                 // This will re-insert the component in the same location
                 // as it was removed from since nothing else has
                 // written to the component storage since the component
@@ -85,18 +86,19 @@ impl ComponentTemplates {
         template: &str,
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
+        strings: &mut Strings,
     ) -> Result<Vec<Blueprint>> {
-        let mut strings = Strings::empty();
-        let tokens = Lexer::new(template, &mut strings).collect::<Result<Vec<_>>>()?;
+        // let mut strings = Strings::empty();
+        let tokens = Lexer::new(template, strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, template.len());
-        let parser = Parser::new(tokens, &mut strings, template, self);
+        let parser = Parser::new(tokens, strings, template, self);
 
         let statements = parser.collect::<Result<Statements>>()?;
 
         let mut context = Context {
             globals,
             components: self,
-            strings: &strings,
+            strings,
             slots,
         };
 

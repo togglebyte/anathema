@@ -17,8 +17,8 @@ impl Strings {
         self.inner.push(string, ())
     }
 
-    pub fn get_unchecked(&self, string_id: StringId) -> &str {
-        &self.inner.get_unchecked(string_id).0
+    pub fn get_unchecked(&self, string_id: StringId) -> String {
+        self.inner.get_unchecked(string_id).0.clone()
     }
 }
 

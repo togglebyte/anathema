@@ -19,7 +19,7 @@ impl Scope {
         Self { statements }
     }
 
-    pub(crate) fn eval(mut self, ctx: &mut Context<'_, '_>) -> Result<Vec<Blueprint>> {
+    pub(crate) fn eval(mut self, ctx: &mut Context<'_>) -> Result<Vec<Blueprint>> {
         let mut output = vec![];
 
         while let Some(statement) = self.statements.next() {
@@ -37,7 +37,7 @@ impl Scope {
                     if let Some(bp) = ctx.slots.get(&slot_id).cloned() {
                         output.extend(bp);
                     }
-                },
+                }
 
                 // These statements can't be evaluated on their own,
                 // as they are part of other statements
@@ -54,7 +54,7 @@ impl Scope {
         Ok(output)
     }
 
-    fn eval_node(&mut self, ident: StringId, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
+    fn eval_node(&mut self, ident: StringId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let ident = ctx.strings.get_unchecked(ident);
         let attributes = self.eval_attributes(ctx)?;
         let value = self.statements.take_value().map(|v| const_eval(v, ctx));
@@ -69,7 +69,7 @@ impl Scope {
         Ok(node)
     }
 
-    fn eval_for(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
+    fn eval_for(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let data = const_eval(data, ctx);
         let binding = ctx.strings.get_unchecked(binding);
         let body = self.consume_scope(ctx)?;
@@ -81,12 +81,12 @@ impl Scope {
         Ok(node)
     }
 
-    fn consume_scope(&mut self, ctx: &mut Context<'_, '_>) -> Result<Vec<Blueprint>> {
+    fn consume_scope(&mut self, ctx: &mut Context<'_>) -> Result<Vec<Blueprint>> {
         let scope = Scope::new(self.statements.take_scope());
         scope.eval(ctx)
     }
 
-    fn eval_attributes(&mut self, ctx: &mut Context<'_, '_>) -> Result<SmallMap<Rc<str>, Expression>> {
+    fn eval_attributes(&mut self, ctx: &mut Context<'_>) -> Result<SmallMap<Rc<str>, Expression>> {
         let mut hm = SmallMap::empty();
 
         for (key, value) in self.statements.take_attributes() {
@@ -98,7 +98,7 @@ impl Scope {
         Ok(hm)
     }
 
-    fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
+    fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let cond = const_eval(cond, ctx);
         let body = self.consume_scope(ctx)?;
         let if_node = If { cond, body };
@@ -111,7 +111,7 @@ impl Scope {
         Ok(Blueprint::ControlFlow(ControlFlow { if_node, elses }))
     }
 
-    fn eval_component(&mut self, component_id: TemplateComponentId, ctx: &mut Context<'_, '_>) -> Result<Blueprint> {
+    fn eval_component(&mut self, component_id: TemplateComponentId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let attributes = self.eval_attributes(ctx)?;
         let state = self.statements.take_value().map(|v| const_eval(v, ctx));
 
@@ -204,7 +204,6 @@ mod test {
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
-
 
     #[test]
     fn eval_component_slots() {

@@ -11,20 +11,20 @@ mod const_eval;
 pub(crate) mod eval;
 pub(super) mod parser;
 
-pub(crate) struct Context<'vars, 'strings> {
+pub(crate) struct Context<'vars> {
     pub(crate) globals: &'vars mut Variables,
-    pub(crate) components: &'strings mut ComponentTemplates,
-    pub(crate) strings: &'strings Strings,
+    pub(crate) components: &'vars mut ComponentTemplates,
+    pub(crate) strings: &'vars mut Strings,
     pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
 }
 
-impl Context<'_, '_> {
+impl Context<'_> {
     fn fetch(&self, key: &str) -> Option<Expression> {
         self.globals.fetch(key)
     }
 
     fn load_component(&mut self, component_id: TemplateComponentId, slots: SmallMap<StringId, Vec<Blueprint>>) -> Result<Vec<Blueprint>> {
-        self.components.load(component_id, self.globals, slots)
+        self.components.load(component_id, self.globals, slots, self.strings)
     }
 }
 
@@ -146,15 +146,15 @@ impl Statements {
 #[cfg(test)]
 fn with_context<F>(mut f: F)
 where
-    F: FnMut(Context<'_, '_>),
+    F: FnMut(Context<'_>),
 {
     let mut globals = Variables::new();
-    let strings = Strings::empty();
+    let mut strings = Strings::empty();
     let mut components = ComponentTemplates::new();
 
     let context = Context {
         globals: &mut globals,
-        strings: &strings,
+        strings: &mut strings,
         components: &mut components,
         slots: SmallMap::empty(),
     };
