@@ -36,6 +36,12 @@ pub struct Value<T> {
     _p: PhantomData<*const T>,
 }
 
+impl<T: Default + AnyState + 'static> Default for Value<T> {
+    fn default() -> Self {
+        Self::new(T::default())
+    }
+}
+
 impl<T: AnyState + 'static> From<T> for Value<T> {
     fn from(value: T) -> Self {
         Value::new(value)

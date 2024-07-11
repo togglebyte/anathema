@@ -47,10 +47,9 @@ impl Stack {
         }
 
         let dir = attributes.get(DIRECTION).unwrap_or_default();
-        let offset = 0;
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = false;
-        let mut many = Many::new(dir, self.0, offset, unconstrained);
+        let mut many = Many::new(dir, self.0, unconstrained);
         many.layout(children, constraints, ctx)
     }
 

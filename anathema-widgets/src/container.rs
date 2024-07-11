@@ -52,15 +52,16 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
     ) {
         let mut ctx = ctx.into_sized(self.size, self.pos);
+        let region = ctx.create_region();
+        ctx.set_clip_region(region);
 
         let attrs = attribute_storage.get(self.id);
-        // Draw background
-        if attrs.contains("background") {
-            for y in 0..self.size.height as u16 {
-                for x in 0..self.size.width as u16 {
-                    let pos = LocalPos::new(x, y);
-                    ctx.set_attributes(attrs, pos);
-                }
+
+        // Apply all attributes
+        for y in 0..self.size.height as u16 {
+            for x in 0..self.size.width as u16 {
+                let pos = LocalPos::new(x, y);
+                ctx.set_attributes(attrs, pos);
             }
         }
 

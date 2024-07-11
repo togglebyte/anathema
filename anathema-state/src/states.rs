@@ -267,6 +267,32 @@ impl State for () {
     }
 }
 
+impl<T: State> State for Option<T> {
+    fn to_common(&self) -> Option<CommonVal<'_>> {
+        self.as_ref()?.to_common()
+    }
+
+    fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
+        self.as_ref()?.state_get(path, sub)
+    }
+
+    fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
+        self.as_ref()?.state_lookup(path)
+    }
+
+    fn count(&self) -> usize {
+        self.as_ref().map(|s| s.count()).unwrap_or(0)
+    }
+
+    fn to_number(&self) -> Option<Number> {
+        self.as_ref()?.to_number()
+    }
+
+    fn to_bool(&self) -> bool {
+        self.as_ref().map(|s| s.to_bool()).unwrap_or(false)
+    }
+}
+
 impl_num_state!(u8);
 impl_num_state!(i8);
 impl_num_state!(u16);

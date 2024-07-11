@@ -73,8 +73,8 @@ impl Screen {
     /// Put a char at the given screen position, with a given style.
     /// If the screen position is outside the [`Buffer`]s size then this is
     /// out of bounds and will panic.
-    pub(crate) fn paint_glyph(&mut self, c: char, style: Style, pos: LocalPos) {
-        self.new_buffer.put_char(c, style, pos);
+    pub(crate) fn paint_glyph(&mut self, c: char, pos: LocalPos) {
+        self.new_buffer.put_char(c, pos);
     }
 
     pub(crate) fn update_cell(&mut self, style: Style, pos: LocalPos) {
@@ -132,10 +132,9 @@ impl Screen {
 }
 
 impl WidgetRenderer for Screen {
-    fn draw_glyph(&mut self, c: char, attribs: &dyn CellAttributes, pos: Pos) {
+    fn draw_glyph(&mut self, c: char, pos: Pos) {
         let Ok(screen_pos) = pos.try_into() else { return };
-        let style = Style::from_cell_attribs(attribs);
-        self.paint_glyph(c, style, screen_pos);
+        self.paint_glyph(c, screen_pos);
     }
 
     fn set_attributes(&mut self, attribs: &dyn CellAttributes, pos: Pos) {
@@ -159,7 +158,7 @@ mod test {
         for y in 0..size.height {
             let c = y.to_string().chars().next().unwrap();
             for x in 0..size.width {
-                screen.paint_glyph(c, Style::reset(), LocalPos::new(x as u16, y as u16));
+                screen.paint_glyph(c, LocalPos::new(x as u16, y as u16));
             }
         }
 
@@ -171,7 +170,7 @@ mod test {
         // Render a character
         let mut render_output = vec![];
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph('x', Style::reset(), LocalPos::ZERO);
+        screen.paint_glyph('x', LocalPos::ZERO);
         screen.render(&mut render_output).unwrap();
 
         let expected = Cell::new('x', Style::reset());
@@ -200,7 +199,7 @@ mod test {
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph('x', Style::reset(), LocalPos::new(2, 2));
+        screen.paint_glyph('x', LocalPos::new(2, 2));
         screen.render(&mut vec![]).unwrap();
     }
 }

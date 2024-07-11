@@ -100,7 +100,7 @@ fn update_widget<'bp>(
         // these in the layout process instead, as
         // the ControlFlow has access to all the
         // branches.
-        WidgetKind::Component(_) => unreachable!("components do not receive updates"),
+        WidgetKind::Component(_) => (),
     }
 }
 

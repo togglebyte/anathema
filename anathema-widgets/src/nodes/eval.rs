@@ -10,7 +10,7 @@ use anathema_templates::Globals;
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow};
-use crate::components::{AnyComponent, WidgetComponentId, ComponentRegistry};
+use crate::components::{AnyComponent, ComponentRegistry, WidgetComponentId};
 use crate::container::Container;
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};

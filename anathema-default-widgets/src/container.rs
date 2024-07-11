@@ -27,6 +27,22 @@ impl Widget for Container {
             constraints.make_height_tight(height as usize);
         }
 
+        if let Some(width @ 0..=i64::MAX) = attribs.get("min-width") {
+            constraints.min_width = width as usize;
+        }
+
+        if let Some(height @ 0..=i64::MAX) = attribs.get("min-height") {
+            constraints.min_height = height as usize;
+        }
+
+        if let Some(width @ 0..=i64::MAX) = attribs.get("max-width") {
+            constraints.set_max_width(width as usize);
+        }
+
+        if let Some(height @ 0..=i64::MAX) = attribs.get("max-height") {
+            constraints.set_max_height(height as usize);
+        }
+
         children.for_each(|child, children| {
             size = child.layout(children, constraints, ctx);
             ControlFlow::Break(())
@@ -72,5 +88,4 @@ mod test {
 
         TestRunner::new(tpl, (6, 2)).instance().render_assert(expected);
     }
-    
 }

@@ -9,7 +9,7 @@ use crate::layout::text::StringSession;
 use crate::layout::Display;
 use crate::nodes::element::Element;
 use crate::widget::WidgetRenderer;
-use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
+use crate::{AttributeStorage, WidgetId, WidgetKind};
 
 pub trait CellAttributes {
     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
@@ -132,12 +132,6 @@ impl<'surface> PaintCtx<'surface, Unsized> {
             state: SizePos::new(size, global_pos),
         }
     }
-
-    /// This will create an intersection with any previous regions
-    pub fn set_clip_region(&mut self, region: Region) {
-        let current = self.clip.get_or_insert(region);
-        current.intersect_with(&region);
-    }
 }
 
 impl<'screen> PaintCtx<'screen, SizePos> {
@@ -148,6 +142,12 @@ impl<'screen> PaintCtx<'screen, SizePos> {
     pub fn update(&mut self, new_size: Size, new_pos: Pos) {
         self.state.local_size = new_size;
         self.state.global_pos = new_pos;
+    }
+
+    /// This will create an intersection with any previous regions
+    pub fn set_clip_region(&mut self, region: Region) {
+        let current = self.clip.get_or_insert(region);
+        *current = current.intersect_with(&region);
     }
 
     pub fn create_region(&self) -> Region {
@@ -177,7 +177,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
 
     // Translate local coordinates to screen coordinates.
     // Will return `None` if the coordinates are outside the screen bounds
-    fn translate_to_global(&self, local: LocalPos) -> Option<Pos> {
+    pub fn translate_to_global(&self, local: LocalPos) -> Option<Pos> {
         let screen_x = local.x as i32 + self.global_pos.x;
         let screen_y = local.y as i32 + self.global_pos.y;
 
@@ -201,19 +201,27 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         }
     }
 
-    pub fn place_glyphs(&mut self, s: &str, attribs: &Attributes<'_>, mut pos: LocalPos) -> Option<LocalPos> {
+    pub fn place_glyphs(&mut self, s: &str, mut pos: LocalPos) -> Option<LocalPos> {
         for c in s.chars() {
-            let p = self.place_glyph(c, attribs, pos)?;
+            let p = self.place_glyph(c, pos)?;
             pos = p;
         }
         Some(pos)
     }
 
-    pub(crate) fn set_attributes(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {
+    pub fn set_attributes(&mut self, attrs: &dyn CellAttributes, pos: LocalPos) {
+        // Ensure that the position is inside provided clipping region
+        if let Some(clip) = self.clip.as_ref() {
+            if !self.clip(pos, clip) {
+                return;
+            }
+        }
+
         let screen_pos = match self.translate_to_global(pos) {
             Some(pos) => pos,
             None => return,
         };
+
         self.surface.set_attributes(attrs, screen_pos);
     }
 
@@ -223,7 +231,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
     // should be placed. This will (possibly) be offset if there is clipping available.
     //
     // The `output_pos` is the same as the `input_pos` unless clipping has been applied.
-    pub fn place_glyph<T: CellAttributes>(&mut self, c: char, attribs: &T, input_pos: LocalPos) -> Option<LocalPos> {
+    pub fn place_glyph(&mut self, c: char, input_pos: LocalPos) -> Option<LocalPos> {
         let width = c.width().unwrap_or(0);
         let next = LocalPos {
             x: input_pos.x + width as u16,
@@ -252,7 +260,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
             Some(pos) => pos,
             None => return Some(next),
         };
-        self.surface.draw_glyph(c, attribs, screen_pos);
+        self.surface.draw_glyph(c, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)
         if input_pos.x >= self.local_size.width as u16 {

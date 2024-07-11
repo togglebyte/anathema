@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::Size;
+use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
@@ -11,8 +11,7 @@ use crate::layout::{Axis, Direction, AXIS, DIRECTION};
 
 #[derive(Debug, Default)]
 pub struct Viewport {
-    // Store the offset as a u32 so it can never go below 0
-    offset: u32,
+    offset: Pos,
     // The size of the children since the last layout call
     inner_size: Size,
 
@@ -20,58 +19,72 @@ pub struct Viewport {
 }
 
 impl Viewport {
-    pub fn scroll(&mut self, direction: Direction, amount: u32) {
+    pub fn scroll(&mut self, direction: Direction, amount: Pos) {
         match (self.direction, direction) {
-            (Direction::Forward, Direction::Forward) => self.offset = self.offset.saturating_sub(amount),
-            (Direction::Forward, Direction::Backward) => self.offset += amount,
-            (Direction::Backward, Direction::Forward) => self.offset += amount,
-            (Direction::Backward, Direction::Backward) => self.offset = self.offset.saturating_sub(amount),
+            (Direction::Forward, Direction::Forward) => self.offset += amount,
+            (Direction::Forward, Direction::Backward) => self.offset -= amount,
+            (Direction::Backward, Direction::Backward) => self.offset += amount,
+            (Direction::Backward, Direction::Forward) => self.offset -= amount,
         }
     }
 
     pub fn scroll_up(&mut self) {
-        self.scroll(Direction::Forward, 1);
+        self.scroll(Direction::Backward, Pos { x: 0, y: 1 });
     }
 
-    pub fn scroll_up_by(&mut self, amount: u32) {
-        self.scroll(Direction::Forward, amount);
+    pub fn scroll_up_by(&mut self, amount: i32) {
+        self.scroll(Direction::Backward, Pos { x: 0, y: amount });
     }
 
     pub fn scroll_down(&mut self) {
-        self.scroll(Direction::Backward, 1);
+        self.scroll(Direction::Forward, Pos { x: 0, y: 1 });
     }
 
-    pub fn scroll_down_by(&mut self, amount: u32) {
-        self.scroll(Direction::Backward, amount);
+    pub fn scroll_down_by(&mut self, amount: i32) {
+        self.scroll(Direction::Forward, Pos { x: 0, y: amount });
     }
 
     pub fn scroll_right(&mut self) {
-        self.scroll(Direction::Forward, 1);
+        self.scroll(Direction::Forward, Pos { x: 1, y: 0 });
     }
 
-    pub fn scroll_right_by(&mut self, amount: u32) {
-        self.scroll(Direction::Forward, amount);
+    pub fn scroll_right_by(&mut self, amount: i32) {
+        self.scroll(Direction::Forward, Pos { x: amount, y: 0 });
     }
 
     pub fn scroll_left(&mut self) {
-        self.scroll(Direction::Backward, 1);
+        self.scroll(Direction::Backward, Pos { x: 1, y: 0 });
     }
 
-    pub fn scroll_left_by(&mut self, amount: u32) {
-        self.scroll(Direction::Backward, amount);
+    pub fn scroll_left_by(&mut self, amount: i32) {
+        self.scroll(Direction::Backward, Pos { x: amount, y: 0 });
     }
 
-    pub fn offset(&self) -> u32 {
+    pub fn offset(&self) -> Pos {
         self.offset
     }
 
-    fn clamp(&mut self, children: usize, parent: usize) {
-        let children = children as u32;
-        let parent = parent as u32;
+    fn clamp(&mut self, children: Size, parent: Size) {
+        if self.offset.x < 0 {
+            self.offset.x = 0;
+        }
 
-        if children < parent {
-            let clamp = parent.saturating_sub(children);
-            self.offset = self.offset.saturating_sub(clamp);
+        if self.offset.y < 0 {
+            self.offset.y = 0;
+        }
+
+        if children.height > parent.height {
+            let max_y = children.height as i32 - parent.height as i32;
+            if self.offset.y > max_y {
+                self.offset.y = max_y;
+            }
+        }
+
+        if children.width > parent.width {
+            let max_x = children.width as i32 - parent.width as i32;
+            if self.offset.x > max_x {
+                self.offset.x = max_x
+            }
         }
     }
 }
@@ -87,6 +100,11 @@ impl Widget for Viewport {
         let attributes = ctx.attribs.get(id);
         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
 
+        let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
+
+        constraints.unbound_width();
+        constraints.unbound_height();
+
         if let Some(width) = attributes.get("width") {
             constraints.make_width_tight(width);
         }
@@ -95,28 +113,17 @@ impl Widget for Viewport {
             constraints.make_height_tight(height);
         }
 
-        let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
-
-        match axis {
-            Axis::Horizontal => constraints.unbound_width(),
-            Axis::Vertical => constraints.unbound_height(),
-        }
-
         self.direction = attributes.get(DIRECTION).unwrap_or_default();
 
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = true;
-        let mut many = Many::new(self.direction, axis, self.offset, unconstrained);
+        let mut many = Many::new(self.direction, axis, unconstrained);
 
-        let mut size = many.layout(children, constraints, ctx);
+        let _size = many.layout(children, constraints, ctx);
+
         self.inner_size = many.used_size.inner_size();
 
-        match axis {
-            Axis::Vertical => size.height = output_size.height,
-            Axis::Horizontal => size.width = output_size.width,
-        }
-
-        size
+        output_size
     }
 
     fn position<'bp>(
@@ -132,14 +139,10 @@ impl Widget for Viewport {
         let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset
-        match axis {
-            Axis::Horizontal => {
-                self.clamp(self.inner_size.width, ctx.inner_size.width);
-            }
-            Axis::Vertical => {
-                self.clamp(self.inner_size.height, ctx.inner_size.height);
-            }
-        };
+        match attributes.get("clamp") {
+            Some(false) => {}
+            _ => self.clamp(self.inner_size, ctx.inner_size),
+        }
 
         if let Direction::Backward = direction {
             match axis {
@@ -148,15 +151,10 @@ impl Widget for Viewport {
             }
         }
 
-        let offset = match direction {
-            Direction::Forward => -(self.offset as i32),
-            Direction::Backward => self.offset as i32,
+        let mut pos = match direction {
+            Direction::Forward => pos - self.offset,
+            Direction::Backward => pos + self.offset,
         };
-
-        match axis {
-            Axis::Horizontal => pos.x += offset,
-            Axis::Vertical => pos.y += offset,
-        }
 
         children.for_each(|node, children| {
             match direction {
@@ -190,8 +188,8 @@ impl Widget for Viewport {
     ) {
         let region = ctx.create_region();
         children.for_each(|widget, children| {
-            let mut ctx = ctx.to_unsized();
             ctx.set_clip_region(region);
+            let ctx = ctx.to_unsized();
             widget.paint(children, ctx, text, attribute_storage);
             ControlFlow::Continue(())
         });
@@ -240,7 +238,7 @@ mod test {
             .render_assert(expected_first)
             .with_widget(|query| {
                 query.by_tag("viewport").first(|el, _| {
-                    let viewport = el.to::<Viewport>().unwrap();
+                    let viewport = el.to::<Viewport>();
                     viewport.scroll_down();
                 });
             })

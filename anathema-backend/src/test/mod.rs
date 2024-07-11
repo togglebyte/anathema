@@ -91,7 +91,7 @@ impl TestSurface {
 }
 
 impl WidgetRenderer for TestSurface {
-    fn draw_glyph(&mut self, c: char, _: &dyn CellAttributes, local_pos: Pos) {
+    fn draw_glyph(&mut self, c: char, local_pos: Pos) {
         let y_offset = local_pos.y as usize * self.size.width;
         let x_offset = local_pos.x as usize;
         let index = y_offset + x_offset;

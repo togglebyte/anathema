@@ -1,7 +1,7 @@
 use anathema_store::storage::strings::{StringId, Strings};
 
 use crate::blueprints::Blueprint;
-use crate::components::{TemplateComponentId, ComponentTemplates};
+use crate::components::{ComponentTemplates, TemplateComponentId};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::variables::Variables;

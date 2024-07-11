@@ -52,7 +52,7 @@ impl Widget for Column {
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::testing::TestRunner;
 
     #[test]

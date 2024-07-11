@@ -455,11 +455,13 @@ impl Widget for Border {
     fn paint<'bp>(
         &mut self,
         mut children: PaintChildren<'_, '_, 'bp>,
-        id: WidgetId,
+        _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
         text: &mut StringSession<'_>,
     ) {
+        let border_size = self.border_size(self.sides);
+
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, text, attribute_storage);
@@ -480,10 +482,9 @@ impl Widget for Border {
             return;
         }
 
-        let mut painter = BorderPainter::new(&self.edges, self.border_size(self.sides), ctx.local_size);
-        let attribs = attribute_storage.get(id);
+        let mut painter = BorderPainter::new(&self.edges, border_size, ctx.local_size);
         let mut paint = |pos, glyph| {
-            ctx.place_glyph(glyph, attribs, pos);
+            ctx.place_glyph(glyph, pos);
         };
 
         painter.paint(&mut paint);

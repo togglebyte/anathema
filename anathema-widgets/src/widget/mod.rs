@@ -191,7 +191,7 @@ impl Debug for dyn Widget {
 }
 
 pub trait WidgetRenderer {
-    fn draw_glyph(&mut self, c: char, attribs: &dyn CellAttributes, local_pos: Pos);
+    fn draw_glyph(&mut self, c: char, local_pos: Pos);
 
     fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos);
 

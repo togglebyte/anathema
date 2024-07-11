@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region};
-use anathema_state::{CommonVal, State};
+use anathema_state::CommonVal;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{apply_visitor, Node, NodePath, TreeValues};
 
@@ -28,8 +28,8 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         }
     }
 
-    pub fn query<'state, S: State>(&mut self, state: &'state &'state mut S) -> Query<'_, 'tree, 'state, 'bp, S> {
-        Query { state, widgets: self }
+    pub fn query(&mut self) -> Query<'_, 'tree, 'bp> {
+        Query { widgets: self }
     }
 }
 
@@ -39,17 +39,15 @@ enum QueryArg<'a> {
     AtPosition(Pos),
 }
 
-pub struct Query<'widgets, 'tree, 'state, 'bp, S> {
-    state: &'state &'state mut S,
+pub struct Query<'widgets, 'tree, 'bp> {
     widgets: &'widgets mut Elements<'tree, 'bp>,
 }
 
-impl<'widgets, 'tree, 'state, 'bp, S> Query<'widgets, 'tree, 'state, 'bp, S> {
+impl<'widgets, 'tree, 'bp> Query<'widgets, 'tree, 'bp> {
     /// Find elements by its tag (this is the name of the element in the template, e.g `text`,
     /// `vstack` etc.)
-    pub fn by_tag(self, ident: &'widgets str) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
+    pub fn by_tag(self, ident: &'widgets str) -> QueryResult<'widgets, 'tree, 'bp> {
         QueryResult {
-            _s: self.state,
             widgets: self.widgets,
             arg: QueryArg::ByTag(ident),
         }
@@ -60,19 +58,17 @@ impl<'widgets, 'tree, 'state, 'bp, S> Query<'widgets, 'tree, 'state, 'bp, S> {
         self,
         key: &'widgets str,
         value: impl Into<CommonVal<'widgets>>,
-    ) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
+    ) -> QueryResult<'widgets, 'tree, 'bp> {
         QueryResult {
-            _s: self.state,
             widgets: self.widgets,
             arg: QueryArg::ByAttribute(key, value.into()),
         }
     }
 
     /// Find elements at a given position
-    pub fn at_position(self, pos: impl Into<Pos>) -> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
+    pub fn at_position(self, pos: impl Into<Pos>) -> QueryResult<'widgets, 'tree, 'bp> {
         let pos = pos.into();
         QueryResult {
-            _s: self.state,
             widgets: self.widgets,
             arg: QueryArg::AtPosition(pos),
         }
@@ -139,13 +135,12 @@ where
     }
 }
 
-pub struct QueryResult<'widgets, 'tree, 'state, 'bp, S> {
-    _s: &'state &'state mut S,
+pub struct QueryResult<'widgets, 'tree, 'bp> {
     widgets: &'widgets mut Elements<'tree, 'bp>,
     arg: QueryArg<'widgets>,
 }
 
-impl<'widgets, 'tree, 'state, 'bp, S> QueryResult<'widgets, 'tree, 'state, 'bp, S> {
+impl<'widgets, 'tree, 'bp> QueryResult<'widgets, 'tree, 'bp> {
     pub fn each<F>(self, f: F)
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>),

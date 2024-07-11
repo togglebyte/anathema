@@ -28,7 +28,7 @@ impl Widget for Padding {
     fn layout<'bp>(
         &mut self,
         mut children: LayoutChildren<'_, '_, 'bp>,
-        mut constraints: Constraints,
+        constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
@@ -44,9 +44,10 @@ impl Widget for Padding {
         let padding_size = self.0.size();
 
         children.for_each(|child, children| {
-            constraints.sub_max_width(padding_size.width);
-            constraints.sub_max_height(padding_size.height);
-            let mut child_size = child.layout(children, constraints, ctx);
+            let mut child_constraints = constraints;
+            child_constraints.sub_max_width(padding_size.width);
+            child_constraints.sub_max_height(padding_size.height);
+            let mut child_size = child.layout(children, child_constraints, ctx);
             child_size += padding_size;
             size.width = child_size.width.max(size.width);
             size.height = child_size.height.max(size.height);
@@ -69,18 +70,43 @@ impl Widget for Padding {
     ) {
         children.for_each(|child, children| {
             ctx.pos.y += self.0.top as i32;
-
             ctx.pos.x += self.0.left as i32;
 
             child.position(children, ctx.pos, attribute_storage);
             ControlFlow::Break(())
         });
     }
+
+    fn paint<'bp>(
+        &mut self,
+        mut children: anathema_widgets::PaintChildren<'_, '_, 'bp>,
+        _id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        mut ctx: anathema_widgets::paint::PaintCtx<'_, anathema_widgets::paint::SizePos>,
+        // TODO make a read-only version of the buffer as it shouldn't change on paint
+        text: &mut anathema_widgets::layout::text::StringSession<'_>,
+    ) {
+        children.for_each(|child, children| {
+            let mut ctx = ctx.to_unsized();
+            if let Some(clip) = ctx.clip.as_mut() {
+                clip.from.x += self.0.left as i32;
+                clip.from.y += self.0.top as i32;
+                clip.to.x -= self.0.right as i32;
+                clip.to.y -= self.0.bottom as i32;
+            }
+            child.paint(children, ctx, text, attribute_storage);
+            ControlFlow::Break(())
+        });
+    }
+
+    fn floats(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::testing::TestRunner;
 
     #[test]
@@ -186,10 +212,11 @@ mod test {
             ║    ║
             ║ a  ║
             ║    ║
+            ║    ║
             ╚════╝
         ";
 
-        TestRunner::new(tpl, (4, 3)).instance().render_assert(expected);
+        TestRunner::new(tpl, (4, 4)).instance().render_assert(expected);
     }
 
     #[test]

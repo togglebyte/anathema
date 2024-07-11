@@ -124,10 +124,10 @@ impl Buffer {
         }
     }
 
-    fn get(&mut self, pos: impl Into<LocalPos>) -> Option<&Cell> {
+    fn get_mut(&mut self, pos: impl Into<LocalPos>) -> Option<&mut Cell> {
         let index = pos.into().to_index(self.size.width);
         match self.positions[index] {
-            Entry::Occupied(idx) => self.cells.get(idx),
+            Entry::Occupied(idx) => self.cells.get_mut(idx),
             Entry::Vacant => None,
         }
     }
@@ -184,9 +184,9 @@ impl Canvas {
         self.buffer.put(c, attribs, pos);
     }
 
-    pub fn get(&mut self, pos: impl Into<LocalPos>) -> Option<(char, &CanvasAttribs)> {
-        match self.buffer.get(pos)? {
-            Cell::Occupied(_, c, attribs) => Some((*c, attribs)),
+    pub fn get(&mut self, pos: impl Into<LocalPos>) -> Option<(&mut char, &mut CanvasAttribs)> {
+        match self.buffer.get_mut(pos)? {
+            Cell::Occupied(_, c, attribs) => Some((c, attribs)),
             Cell::Empty => None,
         }
     }
@@ -251,7 +251,8 @@ impl Widget for Canvas {
         _text: &mut StringSession<'_>,
     ) {
         for (pos, c, attribs) in self.buffer.iter() {
-            ctx.place_glyph(c, attribs, pos);
+            ctx.set_attributes(attribs, pos);
+            ctx.place_glyph(c, pos);
         }
     }
 }
@@ -277,7 +278,7 @@ mod test {
         let mut canvas = Canvas::default();
         canvas.put('a', CanvasAttribs::new(), (0, 0));
         let (c, _) = canvas.get((0, 0)).unwrap();
-        assert_eq!(c, 'a');
+        assert_eq!(*c, 'a');
     }
 
     #[test]

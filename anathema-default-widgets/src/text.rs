@@ -90,7 +90,7 @@ impl Widget for Text {
 
         // Layout text of all the sub-nodes
         children.for_each(|child, _| {
-            let Some(_span) = child.to_ref::<Span>() else {
+            let Some(_span) = child.try_to_ref::<Span>() else {
                 return ControlFlow::Continue(());
             };
             layout.set_style(child.id());
@@ -141,7 +141,14 @@ impl Widget for Text {
             for entry in line.entries {
                 match entry {
                     Segment::Str(s) => {
-                        if let Some(new_pos) = ctx.place_glyphs(s, style, pos) {
+                        if let Some(new_pos) = ctx.place_glyphs(s, pos) {
+                            // NOTE:
+                            // This isn't very nice, but it works for now.
+                            // In the future there should probably be a means to
+                            // provide both style and glyph at the same time.
+                            for x in pos.x..new_pos.x {
+                                ctx.set_attributes(style, (x, pos.y).into());
+                            }
                             pos = new_pos;
                         }
                     }

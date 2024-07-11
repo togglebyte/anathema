@@ -56,12 +56,30 @@ impl<'bp> Element<'bp> {
     }
 
     /// Get a mutable reference to the underlying widget of the given type
-    pub fn to<T: 'static>(&mut self) -> Option<&mut T> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the element is of a different type
+    pub fn to<T: 'static>(&mut self) -> &mut T {
+        self.try_to().expect("wrong element type")
+    }
+
+    /// Get a mutable reference to the underlying widget of the given type
+    pub fn try_to<T: 'static>(&mut self) -> Option<&mut T> {
         self.container.inner.to_any_mut().downcast_mut::<T>()
     }
 
     /// Get a reference to the underlying widget of the given type
-    pub fn to_ref<T: 'static>(&self) -> Option<&T> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if hte element is of a different type
+    pub fn to_ref<T: 'static>(&self) -> &T {
+        self.try_to_ref().expect("wrong element type")
+    }
+
+    /// Get a reference to the underlying widget of the given type
+    pub fn try_to_ref<T: 'static>(&self) -> Option<&T> {
         self.container.inner.to_any_ref().downcast_ref::<T>()
     }
 

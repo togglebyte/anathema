@@ -55,59 +55,18 @@ impl SizeMod {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Offset {
-    axis: Axis,
-    inner: u32,
-    enabled: bool,
-}
-
-impl Offset {
-    fn skip(&mut self, size: &mut Size) -> bool {
-        let height = size.height as u32;
-        let width = size.width as u32;
-        match self.axis {
-            Axis::Vertical if self.enabled && self.inner >= height => {
-                self.inner -= height;
-                true
-            }
-            Axis::Vertical if self.enabled => {
-                self.enabled = false;
-                size.height = (size.height as u32 - self.inner) as usize;
-                false
-            }
-            Axis::Horizontal if self.enabled && self.inner >= width => {
-                self.inner -= width;
-                true
-            }
-            Axis::Horizontal if self.enabled => {
-                self.enabled = false;
-                size.width = (size.width as u32 - self.inner) as usize;
-                false
-            }
-            _ => false,
-        }
-    }
-}
-
 pub struct Many {
     pub direction: Direction,
     pub axis: Axis,
-    offset: Offset,
     unconstrained: bool,
     pub(crate) used_size: SizeMod,
 }
 
 impl Many {
-    pub fn new(direction: Direction, axis: Axis, offset: u32, unconstrained: bool) -> Self {
+    pub fn new(direction: Direction, axis: Axis, unconstrained: bool) -> Self {
         Self {
             direction,
             axis,
-            offset: Offset {
-                axis,
-                inner: offset,
-                enabled: true,
-            },
             unconstrained,
             used_size: SizeMod::ZERO,
         }
@@ -144,11 +103,7 @@ impl Many {
                 constraints
             };
 
-            let mut widget_size = node.layout(children, widget_constraints, ctx);
-
-            if self.offset.skip(&mut widget_size) {
-                return ControlFlow::Continue(());
-            }
+            let widget_size = node.layout(children, widget_constraints, ctx);
 
             self.used_size.apply(widget_size);
 

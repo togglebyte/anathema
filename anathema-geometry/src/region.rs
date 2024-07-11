@@ -33,14 +33,16 @@ impl Region {
 
     /// Create a new region by intersecting two regions
     pub fn intersect_with(self, other: &Region) -> Self {
+        // There is no intersection, making this a zero sized region
+        // as there is no space in between
         if !self.intersects(other) {
             return Self::ZERO;
         }
 
-        let from_x = self.from.x.min(other.from.x);
-        let to_x = self.to.x.min(other.to.x);
+        let from_x = self.from.x.max(other.from.x);
+        let from_y = self.from.y.max(other.from.y);
 
-        let from_y = self.from.y.min(other.from.y);
+        let to_x = self.to.x.min(other.to.x);
         let to_y = self.to.y.min(other.to.y);
 
         Region::new(Pos::new(from_x, from_y), Pos::new(to_x, to_y))

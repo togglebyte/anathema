@@ -178,7 +178,7 @@ impl TestInstance<'_> {
 
     pub(crate) fn with_widget<F>(&mut self, mut f: F) -> &mut Self
     where
-        F: FnMut(Query<'_, '_, '_, '_, TestState>),
+        F: FnMut(Query<'_, '_, '_>),
     {
         // path [0, 0, 0] points to:
         // border [0]
@@ -187,10 +187,8 @@ impl TestInstance<'_> {
         let path = [0, 0, 0].into();
 
         let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
-        let Some(state) = self.states.get_mut(StateId::ZERO) else { return self };
-        let state = state.to_any_mut().downcast_mut::<TestState>().unwrap();
         let mut widgets = Elements::new(node.children(), values, &mut self.attribute_storage);
-        let query = widgets.query(&state);
+        let query = widgets.query();
         f(query);
         self
     }

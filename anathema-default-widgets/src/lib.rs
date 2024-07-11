@@ -20,7 +20,7 @@ mod testing;
 
 pub use alignment::Align;
 pub use border::Border;
-pub use canvas::{CanvasAttribs, Canvas};
+pub use canvas::{Canvas, CanvasAttribs};
 pub use expand::Expand;
 pub use padding::Padding;
 pub use position::Position;

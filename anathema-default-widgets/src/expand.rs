@@ -62,7 +62,7 @@ impl Widget for Expand {
                 loop {
                     let pos = LocalPos::new(used_width, y);
                     let controlflow = fill.str_iter(|s| {
-                        let Some(p) = ctx.place_glyphs(s, attributes, pos) else {
+                        let Some(p) = ctx.place_glyphs(s, pos) else {
                             return ControlFlow::Break(());
                         };
                         used_width += p.x - used_width;

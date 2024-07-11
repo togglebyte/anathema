@@ -1,5 +1,7 @@
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
+use crate::Size;
+
 // -----------------------------------------------------------------------------
 //   - Generic position -
 // -----------------------------------------------------------------------------
@@ -42,6 +44,12 @@ impl From<(u16, u16)> for Pos {
     }
 }
 
+impl From<LocalPos> for Pos {
+    fn from(LocalPos { x, y }: LocalPos) -> Self {
+        Self::new(x as i32, y as i32)
+    }
+}
+
 impl From<(usize, usize)> for Pos {
     fn from(val: (usize, usize)) -> Self {
         Self::new(val.0 as i32, val.1 as i32)
@@ -53,6 +61,14 @@ impl Add for Pos {
 
     fn add(self, rhs: Self) -> Self::Output {
         Pos::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl Add<Size> for Pos {
+    type Output = Self;
+
+    fn add(self, rhs: Size) -> Self::Output {
+        Pos::new(self.x + rhs.width as i32, self.y + rhs.height as i32)
     }
 }
 
@@ -112,7 +128,7 @@ impl SubAssign for Pos {
 /// Positions in a local space.
 /// These coordiantes can not be negative.
 /// `0, 0` refers to top left.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct LocalPos {
     /// X coordinate
     pub x: u16,
@@ -132,14 +148,17 @@ impl LocalPos {
     pub const fn to_index(self, width: usize) -> usize {
         self.y as usize * width + self.x as usize
     }
+
+    pub const fn saturating_sub(mut self, other: Self) -> Self {
+        self.x = self.x.saturating_sub(other.x);
+        self.y = self.y.saturating_sub(other.y);
+        self
+    }
 }
 
 impl From<(u16, u16)> for LocalPos {
     fn from((x, y): (u16, u16)) -> Self {
-        Self {
-            x,
-            y
-        }
+        Self { x, y }
     }
 }
 
@@ -151,7 +170,7 @@ impl TryFrom<Pos> for LocalPos {
             return Err(());
         }
 
-        if value.x > u16::MAX as i32 || value.y > u16::MAX  as i32 {
+        if value.x > u16::MAX as i32 || value.y > u16::MAX as i32 {
             return Err(());
         }
 
@@ -173,24 +192,9 @@ impl Add for LocalPos {
     }
 }
 
-impl Add<Pos> for LocalPos {
-    type Output = Self;
-
-    fn add(self, rhs: Pos) -> Self::Output {
-        LocalPos {
-            x: self.x + rhs.x as u16,
-            y: self.y + rhs.y as u16,
-        }
-    }
-}
-
-impl Sub<Pos> for LocalPos {
-    type Output = Self;
-
-    fn sub(self, rhs: Pos) -> Self::Output {
-        LocalPos {
-            x: (self.x as i32 - rhs.x) as u16,
-            y: (self.y as i32 - rhs.y) as u16,
-        }
+impl AddAssign for LocalPos {
+    fn add_assign(&mut self, rhs: Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
     }
 }
