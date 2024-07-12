@@ -1,0 +1,12 @@
+[package]
+name = "anathema-state"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anathema-debug = { path = "../anathema-debug" }
+anathema-state-derive = { path = "../anathema-state-derive" }
+anathema-store = { path = "../anathema-store" }
+
+[lints]
+workspace = true

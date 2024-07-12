@@ -1,22 +1,14 @@
 [package]
 name = "anathema-widgets"
-version = "0.1.0"
-edition = "2021"
-description = "Anathema core widgets"
-license = "MIT"
-homepage = "https://github.com/togglebyte/anathema"
-repository = "https://github.com/togglebyte/anathema"
-documentation = "https://docs.rs/anathema-widgets"
-
-[features]
-default = []
-testing = ["anathema-widget-core/testing"]
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
-anathema-render = { path = "../anathema-render" }
-anathema-widget-core = { path = "../anathema-widget-core" }
-anathema-values = { path = "../anathema-values" }
-bitflags = { workspace = true }
+anathema-debug = { path = "../anathema-debug" }
+anathema-geometry = { path = "../anathema-geometry" }
+anathema-state = { path = "../anathema-state" }
+anathema-store = { path = "../anathema-store" }
+anathema-templates = { path = "../anathema-templates" }
 unicode-width = { workspace = true }
 
 [lints]

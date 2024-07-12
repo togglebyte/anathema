@@ -1,315 +1,508 @@
-use std::io::{stdout, Stdout};
+// -----------------------------------------------------------------------------
+//   - Runtime -
+//   1. Creating the initial widget tree
+//   2. Runtime loop      <--------------------------------+
+//    ^  2.1. Wait for messages                            |
+//    |  2.2. Wait for events                              v
+//    |  2.4. Was there events / messages / data changes? (no) (yes)
+//    |                                                         ^
+//    |                                                         |
+//    |       +-------------------------------------------------+
+//    |       |
+//    |       V
+//    |       1. Layout
+//    |       2. Position
+//    |       3. Draw
+//    +------ 4. Run again
+//
+// -----------------------------------------------------------------------------
+
+use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
-use anathema_render::{size, Screen, Size};
-use anathema_values::{drain_dirty_nodes, Context};
-use anathema_vm::CompiledTemplates;
-use anathema_widget_core::contexts::PaintCtx;
-use anathema_widget_core::error::Result;
-use anathema_widget_core::layout::Constraints;
-use anathema_widget_core::nodes::{make_it_so, Nodes};
-use anathema_widget_core::views::Views;
-use anathema_widget_core::{Event, Events, KeyCode, LayoutNodes, Pos};
-use anathema_widgets::register_default_widgets;
-use crossterm::terminal::enable_raw_mode;
-use tabindex::Direction;
+use anathema_backend::Backend;
+use anathema_default_widgets::register_default_widgets;
+use anathema_geometry::Pos;
+use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, States};
+use anathema_store::tree::{AsNodePath, NodePath};
+use anathema_templates::blueprints::Blueprint;
+use anathema_templates::{Document, Globals};
+use anathema_widgets::components::{Component, ComponentRegistry};
+use anathema_widgets::layout::text::StringStorage;
+use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::{
+    eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
+    EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
+};
+use components::{ComponentId, Components};
+use events::EventHandler;
 
-use crate::tabindex::TabIndexing;
+pub use crate::error::Result;
+pub use crate::messages::{Emitter, ViewMessage};
 
-#[allow(unused_extern_crates)]
-extern crate anathema_values as anathema;
+mod components;
+mod error;
+mod events;
+mod messages;
 
-mod meta;
-mod tabindex;
-
-/// The runtime handles events, tab indices and configuration of the display
-///
-/// ```
-/// # use anathema_runtime::Runtime;
-/// # use anathema_vm::CompiledTemplates;
-/// # fn run(templates: &CompiledTemplates) {
-/// # let expressions = panic![];
-/// let mut runtime = Runtime::new(templates).unwrap();
-/// runtime.enable_mouse = true;
-/// runtime.enable_alt_screen = false;
-/// runtime.fps = 120;
-/// runtime.run().unwrap();
-/// # }
-/// ```
-pub struct Runtime<'e> {
-    /// Enable meta information such as frame timing, screen size and widget count.
-    /// ```text
-    /// // Meta information available in the template:
-    /// _size.width
-    /// _size.height
-    /// _timings: Timings
-    /// _timings.layout
-    /// _timings.position
-    /// _timings.paint
-    /// _timings.render
-    /// _timings.total
-    /// _count
-    /// ```
-    pub enable_meta: bool,
-    /// Enable mouse support on terminals that supports it
-    pub enable_mouse: bool,
-    /// This captures the ctrl+c command and terminates the runtime.
-    pub enable_ctrlc: bool,
-    /// Enable tab indices.
-    /// If this is set to false, the root view will receive all events,
-    /// if this is set to true, only views with a given tab index will receive
-    /// events.
-    ///
-    /// The root view will never have a tab index
-    pub enable_tabindex: bool,
-    /// This will create an alternate screen and render to this screen.
-    /// This retains the old content of the terminal and restores it once the
-    /// runtime terminates.
-    pub enable_alt_screen: bool,
-    /// Set the target number of frames to render per second.
-    pub fps: u8,
-    screen: Screen,
-    output: Stdout,
-    constraints: Constraints,
-    nodes: Nodes<'e>,
-    events: Events,
-    needs_layout: bool,
-    meta: meta::Meta,
-    tabindex: TabIndexing,
+pub struct RuntimeBuilder<T> {
+    document: Document,
+    component_registry: ComponentRegistry,
+    backend: T,
+    factory: Factory,
+    message_receiver: flume::Receiver<ViewMessage>,
+    message_sender: flume::Sender<ViewMessage>,
 }
 
-impl<'e> Drop for Runtime<'e> {
-    fn drop(&mut self) {
-        let _ = self.screen.restore(&mut self.output);
+impl<T> RuntimeBuilder<T> {
+    pub fn register_component<C: Component + 'static>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl Into<String>,
+        component: C,
+        state: C::State,
+    ) -> ComponentId<C::Message> {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.into()).into();
+        self.component_registry.add_component(id, component, state);
+        ComponentId(id, PhantomData)
     }
-}
 
-impl<'e> Runtime<'e> {
-    /// Create a new runtime.
-    pub fn new(templates: &'e CompiledTemplates) -> Result<Self> {
-        let expressions = templates.expressions();
-        register_default_widgets()?;
+    pub fn register_prototype<FC, FS, C>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl Into<String>,
+        proto: FC,
+        state: FS,
+    ) where
+        FC: 'static + Fn() -> C,
+        FS: 'static + FnMut() -> C::State,
+        C: Component + 'static,
+    {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.into());
+        self.component_registry.add_prototype(id.into(), proto, state);
+    }
 
-        let nodes = make_it_so(expressions);
+    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
+        self.factory.register_default::<W>(ident);
+    }
 
-        let size: Size = size()?.into();
-        let constraints = Constraints::new(Some(size.width), Some(size.height));
-        let screen = Screen::new(size);
+    pub fn register_widget(&mut self, ident: &str, factory: impl Fn(&Attributes<'_>) -> Box<dyn AnyWidget> + 'static) {
+        self.factory.register_widget(ident, factory);
+    }
 
-        let inst = Self {
-            output: stdout(),
-            screen,
-            constraints,
-            nodes,
-            enable_meta: false,
-            enable_mouse: false,
-            enable_alt_screen: true,
-            events: Events,
+    pub fn emitter(&self) -> Emitter {
+        Emitter(self.message_sender.clone())
+    }
+
+    pub fn finish(self) -> Result<Runtime<T>>
+    where
+        T: Backend,
+    {
+        let (bp, globals) = self.document.compile()?;
+
+        let (width, height) = self.backend.size().into();
+        let constraints = Constraints::new(width as usize, height as usize);
+
+        let inst = Runtime {
+            backend: self.backend,
+            message_sender: self.message_sender,
+            message_receiver: self.message_receiver,
             fps: 30,
-            needs_layout: true,
-            meta: meta::Meta::new(size.width, size.height),
-            tabindex: TabIndexing::new(),
-            enable_ctrlc: true,
-            enable_tabindex: false,
+            constraints,
+            bp,
+            factory: self.factory,
+            future_values: FutureValues::empty(),
+            changes: Changes::empty(),
+            components: Components::new(),
+            component_registry: self.component_registry,
+            globals,
+            string_storage: StringStorage::new(),
+            viewport: Viewport::new((width, height)),
+            floating_widgets: FloatingWidgets::empty(),
+            event_handler: EventHandler::new(),
         };
 
         Ok(inst)
     }
+}
 
-    fn layout(&mut self) -> Result<()> {
-        self.nodes.reset_cache();
-        let context = Context::root(&self.meta);
+/// A runtime for Anathema.
+/// Needs a backend and a document.
+/// ```
+/// # use anathema_runtime::Runtime;
+/// # use anathema_templates::Document;
+/// # use anathema_backend::test::TestBackend;
+/// # let backend = TestBackend::new((10, 10));
+/// let document = Document::new("border");
+/// let mut runtime = Runtime::new(document, backend).finish().unwrap();
+/// ```
+pub struct Runtime<T> {
+    pub fps: u16,
 
-        let mut nodes = LayoutNodes::new(&mut self.nodes, self.constraints, &context);
+    message_receiver: flume::Receiver<ViewMessage>,
+    message_sender: flume::Sender<ViewMessage>,
+    bp: Blueprint,
+    factory: Factory,
+    globals: Globals,
 
-        nodes.for_each(|mut node| {
-            node.layout(self.constraints)?;
-            Ok(())
-        })?;
+    // -----------------------------------------------------------------------------
+    //   - Mut during runtime -
+    // -----------------------------------------------------------------------------
+    // * Event handling
+    // * Layout
+    backend: T,
+    // * Event handling
+    // * Layout (immutable)
+    viewport: Viewport,
+    // * Event handling
+    event_handler: EventHandler,
+    // * Layout
+    string_storage: StringStorage,
+    // * Event handling
+    constraints: Constraints,
+    // * Event handling
+    components: Components,
 
-        Ok(())
+    // -----------------------------------------------------------------------------
+    //   - Mut during updates -
+    // -----------------------------------------------------------------------------
+    // * Changes
+    changes: Changes,
+    // * Futures
+    future_values: FutureValues,
+    // * Changes
+    // * Futures
+    component_registry: ComponentRegistry,
+    // * Layout
+    floating_widgets: FloatingWidgets,
+}
+
+impl<T> Runtime<T>
+where
+    T: Backend,
+{
+    #[deprecated(note = "use the `builder` function instead")]
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(document: Document, backend: T) -> RuntimeBuilder<T> {
+        Self::builder(document, backend)
     }
 
-    fn position(&mut self) {
-        for (widget, children) in self.nodes.iter_mut() {
-            widget.position(children, Pos::ZERO);
+    pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
+        let mut factory = Factory::new();
+
+        let (message_sender, message_receiver) = flume::unbounded();
+        register_default_widgets(&mut factory);
+
+        RuntimeBuilder {
+            backend,
+            document,
+            component_registry: ComponentRegistry::new(),
+            factory,
+            message_sender,
+            message_receiver,
         }
     }
 
-    fn paint(&mut self) {
-        for (widget, children) in self.nodes.iter_mut() {
-            widget.paint(children, PaintCtx::new(&mut self.screen, None));
-        }
+    pub fn emitter(&self) -> Emitter {
+        Emitter(self.message_sender.clone())
     }
 
-    fn changes(&mut self) {
-        let dirty_nodes = drain_dirty_nodes();
-        if dirty_nodes.is_empty() {
-            return;
-        }
+    fn apply_futures<'bp>(
+        &mut self,
+        globals: &'bp Globals,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+    ) {
+        drain_futures(&mut self.future_values);
 
-        self.needs_layout = true;
+        let mut scope = Scope::new();
+        self.future_values.drain().rev().for_each(|sub| {
+            scope.clear();
+            let path = tree.path(sub).clone();
 
-        let state = &self.meta;
-        let context = Context::root(state);
-
-        for (node_id, change) in dirty_nodes {
-            self.nodes.update(node_id.as_slice(), &change, &context);
-        }
-    }
-
-    fn tick_views(&mut self) {
-        Views::for_each(|node_id, _| {
-            self.nodes.with_view(node_id, |view| view.tick());
+            try_resolve_future_values(
+                globals,
+                &self.factory,
+                &mut scope,
+                states,
+                &mut self.component_registry,
+                sub,
+                &path,
+                tree,
+                attribute_storage,
+                &mut self.floating_widgets,
+            );
         });
     }
 
-    fn global_event(&mut self, event: Event) -> Event {
-        // -----------------------------------------------------------------------------
-        //   - Ctrl-c to quite -
-        //   This should be on by default.
-        //   Give it a good name
-        // -----------------------------------------------------------------------------
-        if self.enable_ctrlc {
-            if let Event::CtrlC = event {
-                return Event::Stop;
-            }
+    fn apply_changes<'bp>(
+        &mut self,
+        globals: &'bp Globals,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+    ) {
+        drain_changes(&mut self.changes);
+
+        if self.changes.is_empty() {
+            return;
         }
 
-        // -----------------------------------------------------------------------------
-        //   - Handle tabbing between widgets -
-        // -----------------------------------------------------------------------------
-        if self.enable_tabindex {
-            if let Event::KeyPress(code @ (KeyCode::Tab | KeyCode::BackTab), ..) = event {
-                let dir = match code {
-                    KeyCode::Tab => Direction::Forwards,
-                    KeyCode::BackTab => Direction::Backwards,
-                    _ => unreachable!(),
-                };
+        let mut scope = Scope::new();
+        self.changes.drain().rev().for_each(|(sub, change)| {
+            sub.iter().for_each(|sub| {
+                scope.clear();
+                let Some(path) = tree.try_path(sub).cloned() else { return };
 
-                if let Some(old) = self.tabindex.next(dir) {
-                    self.nodes.with_view(&old, |view| view.blur());
-                }
-
-                if let Some(next) = self.tabindex.current_node() {
-                    self.nodes.with_view(next, |view| view.focus());
-                }
-            }
-        }
-
-        event
+                update_tree(
+                    globals,
+                    &self.factory,
+                    &mut scope,
+                    states,
+                    &mut self.component_registry,
+                    &change,
+                    sub,
+                    &path,
+                    tree,
+                    attribute_storage,
+                    &mut self.floating_widgets,
+                );
+            });
+        });
     }
 
-    /// Consumes the runtime and loops until
-    /// either the runtime receives an error or the `Quit` event is triggered.
-    pub fn run(mut self) -> Result<()> {
-        if self.enable_alt_screen {
-            self.screen.enter_alt_screen(&mut self.output)?;
-        }
+    fn handle_messages<'bp>(
+        &mut self,
+        fps_now: Instant,
+        sleep_micros: u128,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+    ) -> Duration {
+        while let Ok(msg) = self.message_receiver.try_recv() {
+            if let Some(entry) = self.components.dumb_fetch(msg.recipient) {
+                tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                    let WidgetKind::Component(component) = widget else { return };
+                    let state = entry.state_id.and_then(|id| states.get_mut(id));
+                    let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                    let elements = Elements::new(node.children(), values, attribute_storage);
+                    component.component.any_message(msg.payload, state, elements);
+                });
+            }
 
-        enable_raw_mode()?;
-        Screen::hide_cursor(&mut self.output)?;
-
-        self.layout()?;
-
-        if self.enable_mouse {
-            Screen::enable_mouse(&mut self.output)?;
-        }
-
-        if self.enable_tabindex {
-            self.tabindex.next(Direction::Forwards);
-            if let Some(next) = self.tabindex.current_node() {
-                self.nodes.with_view(next, |view| view.focus());
+            // Make sure event handling isn't holding up the rest of the event loop.
+            if fps_now.elapsed().as_micros() > sleep_micros / 2 {
+                break;
             }
         }
 
-        self.screen.clear_all(&mut self.output)?;
+        fps_now.elapsed()
+    }
 
+    pub fn run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
+        let mut tree = WidgetTree::empty();
+        let mut attribute_storage = AttributeStorage::empty();
 
-        'run: loop {
-            while let Some(event) = self.events.poll(Duration::from_millis(1)) {
-                let event = self.global_event(event);
+        let mut states = States::new();
+        let mut scope = Scope::new();
+        let globals = self.globals.clone();
+        let mut ctx = EvalContext::new(
+            &globals,
+            &self.factory,
+            &mut scope,
+            &mut states,
+            &mut self.component_registry,
+            &mut attribute_storage,
+            &mut self.floating_widgets,
+        );
 
-                // Make sure event handling isn't holding up the rest of the event loop.
-                if fps_now.elapsed().as_micros() > sleep_micros {
-                    break;
-                }
+        let bp = self.bp.clone();
+        // First build the tree
+        eval_blueprint(&bp, &mut ctx, &NodePath::root(), &mut tree);
 
-                match event {
-                    Event::Resize(width, height) => {
-                        let size = Size::from((width, height));
-                        self.screen.erase();
-                        self.screen.render(&mut self.output)?;
-                        self.screen.resize(size);
-                        self.screen.clear_all(&mut self.output)?;
+        // ... then the tab indices
+        tree.apply_visitor(&mut self.components);
 
-                        self.constraints.max_width = size.width;
-                        self.constraints.max_height = size.height;
+        // Select the first widget
+        if let Some(entry) = self.components.current() {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
+                let state = entry.state_id.and_then(|id| states.get_mut(id));
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, &mut attribute_storage);
+                component.component.any_focus(state, elements);
+            });
+        }
 
-                        *self.meta._size.width = size.width;
-                        *self.meta._size.height = size.height;
-                    }
-                    Event::Blur => *self.meta._focus = false,
-                    Event::Focus => *self.meta._focus = true,
-                    Event::Stop => break 'run Ok(()),
-                    _ => {}
-                }
-
-                let event = if self.enable_tabindex {
-                    if let Some(view_id) = self.tabindex.current_node() {
-                        self.nodes.with_view(view_id, |view| view.on_event(event))
-                    } else {
-                        None
-                    }
-                } else {
-                    // TODO: this is a bit sketchy
-                    let root = 0.into(); // TODO: this should be a `const`
-                    self.nodes.with_view(&root, |view| view.on_event(event))
-                };
-
-                if let Some(Event::Stop) = event {
-                    break 'run Ok(());
-                }
-            }
-
-            self.changes();
-
-            *self.meta._count = self.nodes.count();
-
-            // TODO: the meta info should only be updated if `self.enable_meta`
-            if self.needs_layout {
-                let meta_total = Instant::now();
-
-                self.layout()?;
-                *self.meta._timings.layout = format!("{:?}", meta_total.elapsed());
-
-                let now = Instant::now();
-                self.position();
-                *self.meta._timings.position = format!("{:?}", now.elapsed());
-
-                let now = Instant::now();
-                self.paint();
-                *self.meta._timings.paint = format!("{:?}", now.elapsed());
-
-                let now = Instant::now();
-                self.screen.render(&mut self.output)?;
-                *self.meta._timings.render = format!("{:?}", now.elapsed());
-                *self.meta._timings.total = format!("{:?}", meta_total.elapsed());
-                self.screen.erase();
-
-                self.needs_layout = false;
-            }
-
-            self.tick_views();
-
-            let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
-            if sleep > 0 {
-                std::thread::sleep(Duration::from_micros(sleep));
-            }
-
+        loop {
+            self.tick(
+                fps_now,
+                sleep_micros,
+                &mut tree,
+                &mut states,
+                &mut attribute_storage,
+                &globals,
+            )?;
             fps_now = Instant::now();
         }
     }
+
+    pub fn tick<'bp>(
+        &mut self,
+        fps_now: Instant,
+        sleep_micros: u128,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+        globals: &'bp Globals,
+    ) -> Result<()> {
+        // Pull and keep consuming events while there are events present
+        // in the queu. The time used to pull events should be subtracted
+        // from the poll duration of self.events.poll
+        let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage);
+
+        // Clear the text buffer
+        self.string_storage.clear();
+
+        self.event_handler.handle(
+            poll_duration,
+            fps_now,
+            sleep_micros,
+            &mut self.backend,
+            &mut self.viewport,
+            tree,
+            &mut self.components,
+            states,
+            attribute_storage,
+            &mut self.constraints,
+        )?;
+
+        self.apply_futures(globals, tree, states, attribute_storage);
+
+        // TODO
+        // Instead of draining the changes when applying
+        // the changes, we can keep the changes and use them in the
+        // subsequent update / position / paint sequence
+        //
+        // Store the size and constraint on a widget
+        //
+        // * If the widget changes but the size remains the same then
+        //   there is no reason to perform a layout on the entire tree,
+        //   and only the widget it self needs to be re-painted
+        //
+        // Q) What about floating widgets?
+
+        self.apply_changes(globals, tree, states, attribute_storage);
+
+        // -----------------------------------------------------------------------------
+        //   - Layout, position and paint -
+        // -----------------------------------------------------------------------------
+        let mut filter = LayoutFilter::new(true, attribute_storage);
+        tree.for_each(&mut filter).first(&mut |widget, children, values| {
+            // Layout
+            // TODO: once the text buffer can be read-only for the paint
+            //       the context can be made outside of this closure.
+            //
+            //       That doesn't have as much of an impact here
+            //       as it will do when dealing with the floating widgets
+            let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
+            layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
+
+            // Position
+            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
+
+            // Paint
+            let mut string_session = self.string_storage.new_session();
+            self.backend
+                .paint(widget, children, values, &mut string_session, attribute_storage, true);
+        });
+
+        // Floating widgets
+        for widget_id in self.floating_widgets.iter() {
+            // Find the parent widget and get the position
+            // If no parent element is found assume Pos::ZERO
+            let mut parent = tree.path(*widget_id).pop();
+            let (pos, constraints) = loop {
+                match parent {
+                    None => break (Pos::ZERO, self.constraints),
+                    Some(p) => match tree.get_ref_by_path(p) {
+                        Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
+                        _ => parent = p.pop(),
+                    },
+                }
+            };
+
+            tree.with_nodes_and_values(*widget_id, |widget, children, values| {
+                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
+                let mut layout_ctx =
+                    LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
+
+                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
+
+                // Position
+                position_widget(pos, el, children, values, attribute_storage, true);
+
+                // Paint
+                let mut string_session = self.string_storage.new_session();
+                self.backend
+                    .paint(el, children, values, &mut string_session, attribute_storage, true);
+            });
+        }
+
+        self.backend.render();
+        self.backend.clear();
+
+        // Cleanup removed attributes from widgets.
+        // Not all widgets has attributes, only `Element`s.
+        for key in tree.drain_removed() {
+            attribute_storage.try_remove(key);
+            self.floating_widgets.try_remove(key);
+        }
+
+        let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
+        if sleep > 0 {
+            std::thread::sleep(Duration::from_micros(sleep));
+        }
+
+        Ok(())
+    }
 }
+
+// struct Futures {
+//     future_values: FutureValues
+// }
+
+// impl Futures {
+//     fn new() -> Self {
+//         Self {
+//             future_values: FutureValues::empty(),
+//         }
+//     }
+
+//     fn update(&mut self) {
+//         drain_futures(&mut self.future_values);
+//         let mut scope = Scope::new();
+//         self.future_values.drain().rev().for_each(|sub| {
+//             scope.clear();
+//             let path = tree.path(sub).clone();
+
+//             try_resolve_future_values(
+//                 globals,
+//                 &self.factory,
+//                 &mut scope,
+//                 states,
+//                 &mut self.components,
+//                 sub,
+//                 &path,
+//                 tree,
+//                 attribute_storage,
+//                 &mut self.floating_widgets,
+//             );
+//         });
+//     }
+// }
