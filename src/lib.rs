@@ -16,6 +16,7 @@ pub mod prelude {
     pub use crate::runtime::Runtime;
     pub use crate::templates::Document;
     pub use crate::widgets::components::WidgetComponentId;
+    pub use crate::widgets::layout::Viewport;
 }
 
 pub mod component {

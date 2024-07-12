@@ -81,7 +81,7 @@ impl Display for CommonVal<'_> {
             CommonVal::Bool(val) => write!(f, "{val}"),
             CommonVal::Char(val) => write!(f, "{val}"),
             CommonVal::Int(val) => write!(f, "{val}"),
-            CommonVal::Float(val) => write!(f, "{val}"),
+            CommonVal::Float(val) => write!(f, "{val:.4}"),
             CommonVal::Hex(Hex { r, g, b }) => write!(f, "r: {r}, g: {g}, b: {b}"),
             CommonVal::Str(val) => write!(f, "{val}"),
         }

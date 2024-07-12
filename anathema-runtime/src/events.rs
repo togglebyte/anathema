@@ -31,7 +31,7 @@ impl EventHandler {
         constraints: &mut Constraints,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let event = global_event(backend, tab_indices, event, tree, states, attribute_storage);
+            let event = global_event(backend, tab_indices, event, tree, states, attribute_storage, *viewport);
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
@@ -41,7 +41,7 @@ impl EventHandler {
                         let state = entry.state_id.and_then(|id| states.get_mut(id));
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
-                        component.component.any_event(event, state, elements);
+                        component.component.any_event(event, state, elements, *viewport);
                     });
                 }
             }
@@ -77,6 +77,7 @@ pub fn global_event<'bp, T: Backend>(
     tree: &mut WidgetTree<'bp>,
     states: &mut States,
     attribute_storage: &mut AttributeStorage<'bp>,
+    viewport: Viewport,
 ) -> Event {
     // -----------------------------------------------------------------------------
     //   - Ctrl-c to quite -
@@ -103,7 +104,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_blur(state, elements);
+                component.component.any_blur(state, elements, viewport);
             });
         }
 
@@ -113,7 +114,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_focus(state, elements);
+                component.component.any_focus(state, elements, viewport);
             });
         }
     }
@@ -126,7 +127,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                let _ = component.component.any_event(event, state, elements);
+                let _ = component.component.any_event(event, state, elements, viewport);
             });
         }
     }

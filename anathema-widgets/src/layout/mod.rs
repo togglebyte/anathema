@@ -13,7 +13,7 @@ mod constraints;
 mod display;
 pub mod text;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 /// A viewport represents the available space in the root
 pub struct Viewport {
     size: Size,

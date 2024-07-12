@@ -55,10 +55,8 @@ impl Number {
             Self::I16(n) => n as i64,
             Self::U8(n) => n as i64,
             Self::I8(n) => n as i64,
-            // There should never be a cast from float to int,
-            // given that if one of the values is a float then all values
-            // should be treated as floats in any operation.
-            Self::F64(_) | Self::F32(_) => unreachable!(),
+            Self::F64(n) => n as i64,
+            Self::F32(n) => n as i64,
         }
     }
 
