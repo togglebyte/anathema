@@ -34,7 +34,8 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-use components::{ComponentId, Components};
+pub use components::ComponentId;
+use components::Components;
 use events::EventHandler;
 
 pub use crate::error::Result;
