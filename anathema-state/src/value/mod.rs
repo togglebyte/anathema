@@ -114,6 +114,7 @@ impl<T: AnyState + 'static> Value<T> {
     }
 }
 
+/// Copy the inner value from the owned value.
 impl<T: State + 'static + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
         copy_val(self.key.owned())

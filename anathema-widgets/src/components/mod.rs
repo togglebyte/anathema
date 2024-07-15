@@ -119,6 +119,9 @@ pub trait Component {
     ) {
     }
 
+    #[allow(unused_variables, unused_mut)]
+    fn resize(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport) {}
+
     fn accept_focus(&self) -> bool {
         true
     }
@@ -161,6 +164,8 @@ pub trait AnyComponent {
     fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport);
 
     fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport);
+
+    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport);
 
     fn accept_focus_any(&self) -> bool;
 }
@@ -234,6 +239,13 @@ where
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
         self.tick(state, elements, viewport, dt);
+    }
+
+    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport) {
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
+        self.resize(state, elements, viewport);
     }
 }
 

@@ -10,7 +10,7 @@ use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
 
 #[derive(Debug, Default)]
-pub struct Viewport {
+pub struct Overflow {
     offset: Pos,
     // The size of the children since the last layout call
     inner_size: Size,
@@ -18,7 +18,7 @@ pub struct Viewport {
     direction: Direction,
 }
 
-impl Viewport {
+impl Overflow {
     pub fn scroll(&mut self, direction: Direction, amount: Pos) {
         match (self.direction, direction) {
             (Direction::Forward, Direction::Forward) => self.offset += amount,
@@ -89,7 +89,7 @@ impl Viewport {
     }
 }
 
-impl Widget for Viewport {
+impl Widget for Overflow {
     fn layout<'bp>(
         &mut self,
         children: LayoutChildren<'_, '_, 'bp>,
@@ -200,12 +200,12 @@ impl Widget for Viewport {
 mod test {
 
     use crate::testing::TestRunner;
-    use crate::Viewport;
+    use crate::Overflow;
 
     #[test]
-    fn viewport() {
+    fn overflow() {
         let tpl = "
-    viewport
+    overflow
         for i in [0, 1, 2]
             border
                 text i
@@ -237,11 +237,58 @@ mod test {
             .instance()
             .render_assert(expected_first)
             .with_widget(|query| {
-                query.by_tag("viewport").first(|el, _| {
-                    let viewport = el.to::<Viewport>();
-                    viewport.scroll_down();
+                query.by_tag("overflow").first(|el, _| {
+                    let overflow = el.to::<Overflow>();
+                    overflow.scroll_down();
                 });
             })
             .render_assert(expected_second);
+    }
+
+    #[test]
+    fn clamp_prevents_scrolling() {
+        let tpl = "
+    overflow
+        text '0'
+";
+
+        let expected_first = "
+    ╔═══╗
+    ║0  ║
+    ║   ║
+    ╚═══╝
+";
+
+        TestRunner::new(tpl, (3, 2))
+            .instance()
+            .render_assert(expected_first)
+            .with_widget(|query| {
+                query.by_tag("overflow").first(|el, _| {
+                    let overflow = el.to::<Overflow>();
+                    overflow.scroll_left();
+                });
+            })
+            .render_assert(expected_first)
+            .with_widget(|query| {
+                query.by_tag("overflow").first(|el, _| {
+                    let overflow = el.to::<Overflow>();
+                    overflow.scroll_right();
+                });
+            })
+            .render_assert(expected_first)
+            .with_widget(|query| {
+                query.by_tag("overflow").first(|el, _| {
+                    let overflow = el.to::<Overflow>();
+                    overflow.scroll_up();
+                });
+            })
+            .render_assert(expected_first)
+            .with_widget(|query| {
+                query.by_tag("overflow").first(|el, _| {
+                    let overflow = el.to::<Overflow>();
+                    overflow.scroll_down();
+                });
+            })
+            .render_assert(expected_first);
     }
 }
