@@ -23,7 +23,11 @@ impl Context<'_> {
         self.globals.fetch(key)
     }
 
-    fn load_component(&mut self, component_id: TemplateComponentId, slots: SmallMap<StringId, Vec<Blueprint>>) -> Result<Vec<Blueprint>> {
+    fn load_component(
+        &mut self,
+        component_id: TemplateComponentId,
+        slots: SmallMap<StringId, Vec<Blueprint>>,
+    ) -> Result<Vec<Blueprint>> {
         self.components.load(component_id, self.globals, slots, self.strings)
     }
 }

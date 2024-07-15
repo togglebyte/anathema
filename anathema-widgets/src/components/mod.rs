@@ -1,9 +1,11 @@
 use std::any::Any;
+use std::time::Duration;
 
 use anathema_state::{AnyState, State};
 use anathema_store::slab::Slab;
 
 use self::events::{Event, KeyEvent, MouseEvent};
+use crate::layout::Viewport;
 use crate::Elements;
 
 pub mod events;
@@ -86,19 +88,39 @@ pub trait Component {
     type Message;
 
     #[allow(unused_variables, unused_mut)]
-    fn on_blur(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
+    fn on_blur(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_focus(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
+    fn on_focus(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_mouse(&mut self, mouse: MouseEvent, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
+    fn on_mouse(
+        &mut self,
+        mouse: MouseEvent,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        viewport: Viewport,
+    ) {
+    }
 
     #[allow(unused_variables, unused_mut)]
-    fn message(&mut self, message: Self::Message, state: &mut Self::State, mut elements: Elements<'_, '_>) {}
+    fn tick(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport, dt: Duration) {}
+
+    #[allow(unused_variables, unused_mut)]
+    fn message(
+        &mut self,
+        message: Self::Message,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        viewport: Viewport,
+    ) {
+    }
+
+    #[allow(unused_variables, unused_mut)]
+    fn resize(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport) {}
 
     fn accept_focus(&self) -> bool {
         true
@@ -109,29 +131,41 @@ impl Component for () {
     type Message = ();
     type State = ();
 
-    fn on_blur(&mut self, _state: &mut Self::State, _: Elements<'_, '_>) {}
-
-    fn on_focus(&mut self, _state: &mut Self::State, _: Elements<'_, '_>) {}
-
-    fn on_key(&mut self, _key: KeyEvent, _state: &mut Self::State, _: Elements<'_, '_>) {}
-
-    fn on_mouse(&mut self, _mouse: MouseEvent, _state: &mut Self::State, _: Elements<'_, '_>) {}
-
-    fn message(&mut self, _message: Self::Message, _state: &mut Self::State, _: Elements<'_, '_>) {}
-
     fn accept_focus(&self) -> bool {
         false
     }
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, ev: Event, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) -> Event;
+    fn any_event(
+        &mut self,
+        ev: Event,
+        state: Option<&mut dyn AnyState>,
+        elements: Elements<'_, '_>,
+        viewport: Viewport,
+    ) -> Event;
 
-    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>);
+    fn any_message(
+        &mut self,
+        message: Box<dyn Any>,
+        state: Option<&mut dyn AnyState>,
+        elements: Elements<'_, '_>,
+        viewport: Viewport,
+    );
 
-    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>);
+    fn any_tick(
+        &mut self,
+        state: Option<&mut dyn AnyState>,
+        elements: Elements<'_, '_>,
+        viewport: Viewport,
+        dt: Duration,
+    );
 
-    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>);
+    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport);
+
+    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport);
+
+    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport);
 
     fn accept_focus_any(&self) -> bool;
 }
@@ -141,15 +175,21 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, event: Event, state: Option<&mut dyn AnyState>, widgets: Elements<'_, '_>) -> Event {
+    fn any_event(
+        &mut self,
+        event: Event,
+        state: Option<&mut dyn AnyState>,
+        widgets: Elements<'_, '_>,
+        viewport: Viewport,
+    ) -> Event {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
 
-            Event::Key(ev) => self.on_key(ev, state, widgets),
-            Event::Mouse(ev) => self.on_mouse(ev, state, widgets),
+            Event::Key(ev) => self.on_key(ev, state, widgets, viewport),
+            Event::Mouse(ev) => self.on_mouse(ev, state, widgets, viewport),
 
             Event::Resize(_, _) | Event::Noop | Event::Stop => (),
         }
@@ -160,26 +200,52 @@ where
         self.accept_focus()
     }
 
-    fn any_message(&mut self, message: Box<dyn Any>, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
+    fn any_message(
+        &mut self,
+        message: Box<dyn Any>,
+        state: Option<&mut dyn AnyState>,
+        elements: Elements<'_, '_>,
+        viewport: Viewport,
+    ) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
-        self.message(*message, state, elements);
+        self.message(*message, state, elements, viewport);
     }
 
-    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
+    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
-        self.on_focus(state, elements);
+        self.on_focus(state, elements, viewport);
     }
 
-    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>) {
+    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
-        self.on_blur(state, elements);
+        self.on_blur(state, elements, viewport);
+    }
+
+    fn any_tick(
+        &mut self,
+        state: Option<&mut dyn AnyState>,
+        elements: Elements<'_, '_>,
+        viewport: Viewport,
+        dt: Duration,
+    ) {
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
+        self.tick(state, elements, viewport, dt);
+    }
+
+    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, viewport: Viewport) {
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
+        self.resize(state, elements, viewport);
     }
 }
 

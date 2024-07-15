@@ -1,0 +1,11 @@
+zstack
+    position [left: x, placement: "absolute"]
+        border [background: "blue", foreground: "black", width: 8]
+            text "hello"
+
+    align [alignment: "centre"]
+        border
+            vstack
+                text "speed: " speed
+                text "press k to increase"
+                text "press j to decrease"

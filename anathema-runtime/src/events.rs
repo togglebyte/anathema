@@ -25,23 +25,23 @@ impl EventHandler {
         backend: &mut impl Backend,
         viewport: &mut Viewport,
         tree: &mut WidgetTree<'bp>,
-        tab_indices: &mut Components,
+        components: &mut Components,
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
         constraints: &mut Constraints,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let event = global_event(backend, tab_indices, event, tree, states, attribute_storage);
+            let event = global_event(backend, components, event, tree, states, attribute_storage, *viewport);
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
-                if let Some(entry) = tab_indices.current() {
+                if let Some(entry) = components.current() {
                     tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                         let WidgetKind::Component(component) = widget else { return };
                         let state = entry.state_id.and_then(|id| states.get_mut(id));
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
-                        component.component.any_event(event, state, elements);
+                        component.component.any_event(event, state, elements, *viewport);
                     });
                 }
             }
@@ -58,6 +58,17 @@ impl EventHandler {
                     viewport.resize(size);
                     constraints.set_max_width(size.width);
                     constraints.set_max_height(size.height);
+
+                    // Notify all components of the resize
+                    for entry in components.iter() {
+                        tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                            let WidgetKind::Component(component) = widget else { return };
+                            let state = entry.state_id.and_then(|id| states.get_mut(id));
+                            let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                            let elements = Elements::new(node.children(), values, attribute_storage);
+                            component.component.any_resize(state, elements, *viewport);
+                        });
+                    }
                 }
                 Event::Blur => (),
                 Event::Focus => (),
@@ -77,6 +88,7 @@ pub fn global_event<'bp, T: Backend>(
     tree: &mut WidgetTree<'bp>,
     states: &mut States,
     attribute_storage: &mut AttributeStorage<'bp>,
+    viewport: Viewport,
 ) -> Event {
     // -----------------------------------------------------------------------------
     //   - Ctrl-c to quite -
@@ -103,7 +115,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_blur(state, elements);
+                component.component.any_blur(state, elements, viewport);
             });
         }
 
@@ -113,7 +125,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_focus(state, elements);
+                component.component.any_focus(state, elements, viewport);
             });
         }
     }
@@ -126,7 +138,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                let _ = component.component.any_event(event, state, elements);
+                let _ = component.component.any_event(event, state, elements, viewport);
             });
         }
     }

@@ -225,6 +225,26 @@ macro_rules! impl_num_state {
     };
 }
 
+macro_rules! impl_float_state {
+    ($t:ty) => {
+        impl State for $t {
+            fn to_number(&self) -> Option<Number> {
+                Number::try_from(*self).ok()
+            }
+
+            fn to_bool(&self) -> bool {
+                <Self as State>::to_number(self)
+                    .map(|n| n.as_int() != 0)
+                    .unwrap_or(false)
+            }
+
+            fn to_common(&self) -> Option<CommonVal<'_>> {
+                Some(CommonVal::Float(*self as f64))
+            }
+        }
+    };
+}
+
 macro_rules! impl_str_state {
     ($t:ty) => {
         impl State for $t {
@@ -301,9 +321,9 @@ impl_num_state!(u32);
 impl_num_state!(i32);
 impl_num_state!(u64);
 impl_num_state!(i64);
-impl_num_state!(f32);
-impl_num_state!(f64);
 impl_num_state!(usize);
+impl_float_state!(f32);
+impl_float_state!(f64);
 impl_str_state!(String);
 impl_str_state!(&'static str);
 impl_str_state!(Box<str>);

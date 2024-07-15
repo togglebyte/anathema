@@ -1,0 +1,7 @@
+align [alignment: "centre"]
+    border
+        vstack
+            text [foreground: "red", italic: true] "You"
+            text [foreground: "green"] "are"
+            text [foreground: "yellow", bold: true] "great!"
+

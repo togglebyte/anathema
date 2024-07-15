@@ -78,6 +78,7 @@ impl Components {
         self.inner.iter().find(|entry| entry.component_id == component_id)
     }
 
+    /// Iterate over all component ids
     pub fn iter(&self) -> impl Iterator<Item = &IndexEntry> {
         self.inner.iter()
     }

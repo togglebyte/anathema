@@ -34,7 +34,8 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-use components::{ComponentId, Components};
+pub use components::ComponentId;
+use components::Components;
 use events::EventHandler;
 
 pub use crate::error::Result;
@@ -289,7 +290,9 @@ where
                     let state = entry.state_id.and_then(|id| states.get_mut(id));
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
-                    component.component.any_message(msg.payload, state, elements);
+                    component
+                        .component
+                        .any_message(msg.payload, state, elements, self.viewport);
                 });
             }
 
@@ -335,13 +338,15 @@ where
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                component.component.any_focus(state, elements);
+                component.component.any_focus(state, elements, self.viewport);
             });
         }
 
+        let mut dt = Instant::now();
         loop {
             self.tick(
                 fps_now,
+                &mut dt,
                 sleep_micros,
                 &mut tree,
                 &mut states,
@@ -355,6 +360,7 @@ where
     pub fn tick<'bp>(
         &mut self,
         fps_now: Instant,
+        dt: &mut Instant,
         sleep_micros: u128,
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
@@ -381,6 +387,10 @@ where
             attribute_storage,
             &mut self.constraints,
         )?;
+
+        // Call the `tick` function on all components
+        self.tick_components(tree, states, attribute_storage, dt.elapsed());
+        *dt = Instant::now();
 
         self.apply_futures(globals, tree, states, attribute_storage);
 
@@ -470,6 +480,24 @@ where
         }
 
         Ok(())
+    }
+
+    fn tick_components<'bp>(
+        &mut self,
+        tree: &mut WidgetTree<'bp>,
+        states: &mut States,
+        attribute_storage: &mut AttributeStorage<'bp>,
+        dt: Duration,
+    ) {
+        for entry in self.components.iter() {
+            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                let WidgetKind::Component(component) = widget else { return };
+                let state = entry.state_id.and_then(|id| states.get_mut(id));
+                let Some((node, values)) = tree.get_node_by_path(path) else { return };
+                let elements = Elements::new(node.children(), values, attribute_storage);
+                component.component.any_tick(state, elements, self.viewport, dt);
+            });
+        }
     }
 }
 
