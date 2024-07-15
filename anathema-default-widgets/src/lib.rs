@@ -27,7 +27,6 @@ pub use padding::Padding;
 pub use position::Position;
 pub use stacks::{Column, HStack, Row, VStack};
 pub use text::Text;
-pub use overflow::Overflow;
 
 pub fn register_default_widgets(factory: &mut Factory) {
     factory.register_default::<alignment::Align>("align");
