@@ -2,8 +2,10 @@ use std::ops::ControlFlow;
 
 use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
+use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::paint::{PaintCtx, SizePos};
+use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum HorzEdge {
@@ -154,6 +156,22 @@ impl Widget for Position {
             }
             child.position(children, ctx.pos, attribute_storage);
             ControlFlow::Break(())
+        });
+    }
+
+    fn paint<'bp>(
+        &mut self,
+        mut children: PaintChildren<'_, '_, 'bp>,
+        _id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        mut ctx: PaintCtx<'_, SizePos>,
+        text: &mut StringSession<'_>,
+    ) {
+        children.for_each(|child, children| {
+            let mut ctx = ctx.to_unsized();
+            ctx.clip = None;
+            child.paint(children, ctx, text, attribute_storage);
+            ControlFlow::Continue(())
         });
     }
 }

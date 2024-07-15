@@ -13,7 +13,7 @@ mod position;
 mod spacer;
 mod stacks;
 mod text;
-mod viewport;
+mod overflow;
 
 #[cfg(test)]
 mod testing;
@@ -26,7 +26,7 @@ pub use padding::Padding;
 pub use position::Position;
 pub use stacks::{Column, HStack, Row, VStack};
 pub use text::Text;
-pub use viewport::Viewport;
+pub use overflow::Overflow;
 
 pub fn register_default_widgets(factory: &mut Factory) {
     factory.register_default::<alignment::Align>("align");
@@ -43,6 +43,6 @@ pub fn register_default_widgets(factory: &mut Factory) {
     factory.register_default::<stacks::ZStack>("zstack");
     factory.register_default::<text::Span>("span");
     factory.register_default::<text::Text>("text");
-    factory.register_default::<viewport::Viewport>("viewport");
+    factory.register_default::<overflow::Overflow>("overflow");
     factory.register_widget("border", border::make);
 }
