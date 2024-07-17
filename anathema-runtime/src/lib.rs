@@ -17,7 +17,6 @@
 //
 // -----------------------------------------------------------------------------
 
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
@@ -27,24 +26,21 @@ use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, States
 use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_widgets::components::{Component, ComponentRegistry};
+use anathema_widgets::components::{Component, ComponentId, ComponentRegistry, Context, Emitter, ViewMessage};
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-pub use components::ComponentId;
 use components::Components;
 use events::EventHandler;
 
 pub use crate::error::Result;
-pub use crate::messages::{Emitter, ViewMessage};
 
 mod components;
 mod error;
 mod events;
-mod messages;
 
 pub struct RuntimeBuilder<T> {
     document: Document,
@@ -52,7 +48,7 @@ pub struct RuntimeBuilder<T> {
     backend: T,
     factory: Factory,
     message_receiver: flume::Receiver<ViewMessage>,
-    message_sender: flume::Sender<ViewMessage>,
+    emitter: Emitter,
 }
 
 impl<T> RuntimeBuilder<T> {
@@ -66,7 +62,7 @@ impl<T> RuntimeBuilder<T> {
         let ident = ident.into();
         let id = self.document.add_component(ident, template.into()).into();
         self.component_registry.add_component(id, component, state);
-        ComponentId(id, PhantomData)
+        id.into()
     }
 
     pub fn register_prototype<FC, FS, C>(
@@ -94,7 +90,7 @@ impl<T> RuntimeBuilder<T> {
     }
 
     pub fn emitter(&self) -> Emitter {
-        Emitter(self.message_sender.clone())
+        self.emitter.clone()
     }
 
     pub fn finish(self) -> Result<Runtime<T>>
@@ -108,7 +104,7 @@ impl<T> RuntimeBuilder<T> {
 
         let inst = Runtime {
             backend: self.backend,
-            message_sender: self.message_sender,
+            emitter: self.emitter,
             message_receiver: self.message_receiver,
             fps: 30,
             constraints,
@@ -143,7 +139,7 @@ pub struct Runtime<T> {
     pub fps: u16,
 
     message_receiver: flume::Receiver<ViewMessage>,
-    message_sender: flume::Sender<ViewMessage>,
+    emitter: Emitter,
     bp: Blueprint,
     factory: Factory,
     globals: Globals,
@@ -201,13 +197,13 @@ where
             document,
             component_registry: ComponentRegistry::new(),
             factory,
-            message_sender,
+            emitter: message_sender.into(),
             message_receiver,
         }
     }
 
     pub fn emitter(&self) -> Emitter {
-        Emitter(self.message_sender.clone())
+        self.emitter.clone()
     }
 
     fn apply_futures<'bp>(
@@ -284,15 +280,19 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
     ) -> Duration {
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some(entry) = self.components.dumb_fetch(msg.recipient) {
+            if let Some(entry) = self.components.dumb_fetch(msg.recipient()) {
                 tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
                     let state = entry.state_id.and_then(|id| states.get_mut(id));
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
-                    component
-                        .component
-                        .any_message(msg.payload, state, elements, self.viewport);
+
+                    let context = Context {
+                        emitter: &self.emitter,
+                        viewport: self.viewport,
+                    };
+
+                    component.component.any_message(msg.payload(), state, elements, context);
                 });
             }
 
@@ -338,7 +338,11 @@ where
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                component.component.any_focus(state, elements, self.viewport);
+                let context = Context {
+                    emitter: &self.emitter,
+                    viewport: self.viewport,
+                };
+                component.component.any_focus(state, elements, context);
             });
         }
 
@@ -381,6 +385,7 @@ where
             sleep_micros,
             &mut self.backend,
             &mut self.viewport,
+            &self.emitter,
             tree,
             &mut self.components,
             states,
@@ -489,13 +494,17 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         dt: Duration,
     ) {
+        let context = Context {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+        };
         for entry in self.components.iter() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
-                component.component.any_tick(state, elements, self.viewport, dt);
+                component.component.any_tick(state, elements, context, dt);
             });
         }
     }

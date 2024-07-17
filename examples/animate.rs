@@ -25,15 +25,15 @@ impl Component for C {
     type Message = ();
     type State = Num;
 
-    fn tick(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport, dt: Duration) {
+    fn tick(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>, dt: Duration) {
         let x = dt.as_millis() as f64;
 
         self.val += x / 1000.0 * *state.speed.to_ref();
-        let x = ease_in_out(self.val) * (viewport.size().width - 8) as f64;
+        let x = ease_in_out(self.val) * (context.viewport.size().width - 8) as f64;
         state.x.set(x);
     }
 
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>, viewport: Viewport) {
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {
         match key.code {
             KeyCode::Char('k') => *state.speed.to_mut() += 0.1,
             KeyCode::Char('j') => *state.speed.to_mut() -= 0.1,

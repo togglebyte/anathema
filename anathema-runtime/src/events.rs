@@ -4,6 +4,7 @@ use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::States;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
+use anathema_widgets::components::{Context, Emitter};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Elements, WidgetKind, WidgetTree};
 
@@ -24,6 +25,7 @@ impl EventHandler {
         sleep_micros: u128,
         backend: &mut impl Backend,
         viewport: &mut Viewport,
+        emitter: &Emitter,
         tree: &mut WidgetTree<'bp>,
         components: &mut Components,
         states: &mut States,
@@ -31,7 +33,8 @@ impl EventHandler {
         constraints: &mut Constraints,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let event = global_event(backend, components, event, tree, states, attribute_storage, *viewport);
+            let context = Context { emitter, viewport: *viewport };
+            let event = global_event(backend, components, event, tree, states, attribute_storage, context);
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
@@ -41,7 +44,8 @@ impl EventHandler {
                         let state = entry.state_id.and_then(|id| states.get_mut(id));
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
-                        component.component.any_event(event, state, elements, *viewport);
+                        let context = Context { emitter, viewport: *viewport };
+                        component.component.any_event(event, state, elements, context);
                     });
                 }
             }
@@ -66,7 +70,8 @@ impl EventHandler {
                             let state = entry.state_id.and_then(|id| states.get_mut(id));
                             let Some((node, values)) = tree.get_node_by_path(path) else { return };
                             let elements = Elements::new(node.children(), values, attribute_storage);
-                            component.component.any_resize(state, elements, *viewport);
+                            let context = Context { emitter, viewport: *viewport };
+                            component.component.any_resize(state, elements, context);
                         });
                     }
                 }
@@ -88,7 +93,7 @@ pub fn global_event<'bp, T: Backend>(
     tree: &mut WidgetTree<'bp>,
     states: &mut States,
     attribute_storage: &mut AttributeStorage<'bp>,
-    viewport: Viewport,
+    context: Context<'_>,
 ) -> Event {
     // -----------------------------------------------------------------------------
     //   - Ctrl-c to quite -
@@ -115,7 +120,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_blur(state, elements, viewport);
+                component.component.any_blur(state, elements, context);
             });
         }
 
@@ -125,7 +130,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                component.component.any_focus(state, elements, viewport);
+                component.component.any_focus(state, elements, context);
             });
         }
     }
@@ -138,7 +143,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = entry.state_id.and_then(|id| states.get_mut(id));
-                let _ = component.component.any_event(event, state, elements, viewport);
+                let _ = component.component.any_event(event, state, elements, context);
             });
         }
     }

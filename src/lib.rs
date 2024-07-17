@@ -13,15 +13,15 @@ pub use {
 
 pub mod prelude {
     pub use crate::backend::tui::TuiBackend;
-    pub use crate::runtime::{ComponentId, Emitter, Runtime};
+    pub use crate::runtime::Runtime;
     pub use crate::templates::Document;
-    pub use crate::widgets::components::WidgetComponentId;
+    pub use crate::widgets::components::{Context, WidgetComponentId};
     pub use crate::widgets::layout::Viewport;
 }
 
 pub mod component {
     pub use crate::state::{List, Map, State, Value};
     pub use crate::widgets::components::events::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseState};
-    pub use crate::widgets::components::Component;
+    pub use crate::widgets::components::{Component, ComponentId, Emitter};
     pub use crate::widgets::Elements;
 }
