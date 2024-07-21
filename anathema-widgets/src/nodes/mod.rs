@@ -6,6 +6,7 @@ use self::eval::{ComponentEval, ControlFlowEval, EvalContext, Evaluator, ForLoop
 pub use self::future::try_resolve_future_values;
 pub use self::stringify::Stringify;
 pub use self::update::update_tree;
+use crate::error::Result;
 use crate::WidgetTree;
 
 mod component;
@@ -33,7 +34,7 @@ pub fn eval_blueprint<'bp>(
     ctx: &mut EvalContext<'_, '_, 'bp>,
     parent: &NodePath,
     tree: &mut WidgetTree<'bp>,
-) {
+) -> Result<()> {
     match blueprint {
         Blueprint::Single(single) => SingleEval.eval(single, ctx, parent, tree),
         Blueprint::For(for_loop) => ForLoopEval.eval(for_loop, ctx, parent, tree),

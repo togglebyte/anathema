@@ -38,6 +38,10 @@ impl<T> Tree<T> {
         }
     }
 
+    pub fn values(self) -> TreeValues<T> {
+        self.values
+    }
+
     /// Give a capacity to the underlying value store.
     /// This will not affect the storage of the layout.
     pub fn with_capacity(cap: usize) -> Self {
@@ -191,13 +195,14 @@ impl<T> Tree<T> {
 
     /// Perform a given operation (`F`) on a reference to a value in the tree
     /// while still haveing mutable access to the tree.
-    pub fn with_value<F>(&mut self, value_id: ValueId, mut f: F)
+    pub fn with_value<F, R>(&mut self, value_id: ValueId, mut f: F) -> R
     where
-        F: FnMut(&NodePath, &T, &mut Self),
+        F: FnMut(&NodePath, &T, &mut Self) -> R,
     {
         let ticket = self.values.checkout(value_id);
-        f(&ticket.value.0, &ticket.value.1, self);
+        let ret = f(&ticket.value.0, &ticket.value.1, self);
         self.values.restore(ticket);
+        ret
     }
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree

@@ -43,8 +43,6 @@ impl Component for C {
 }
 
 fn main() {
-    let template = read_to_string("examples/templates/animate.aml").unwrap();
-
     let mut doc = Document::new("@main");
 
     let mut backend = TuiBackend::builder()
@@ -55,16 +53,17 @@ fn main() {
         .unwrap();
 
     let mut runtime = Runtime::new(doc, backend);
-    runtime.register_component(
-        "main",
-        template,
-        C { val: 0.0 },
-        Num {
-            x: 0.0.into(),
-            speed: 0.1.into(),
-        },
-    );
+    runtime
+        .register_component(
+            "main",
+            "examples/templates/animate.aml",
+            C { val: 0.0 },
+            Num {
+                x: 0.0.into(),
+                speed: 0.1.into(),
+            },
+        )
+        .unwrap();
     let mut runtime = runtime.finish().unwrap();
-    runtime.fps = 40;
     runtime.run();
 }

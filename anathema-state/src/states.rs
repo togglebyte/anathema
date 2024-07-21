@@ -352,4 +352,13 @@ impl States {
             state
         })
     }
+
+    /// Remove and return a given state.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the state does not exist.
+    pub fn remove(&mut self, state_id: StateId) -> Box<dyn AnyState> {
+        self.inner.remove(state_id)
+    }
 }

@@ -5,7 +5,8 @@ pub use crate::common::{CommonString, CommonVal};
 pub use crate::numbers::Number;
 pub use crate::states::{AnyState, State, StateId, States};
 pub use crate::store::{
-    debug, drain_changes, drain_futures, register_future, Change, Changes, FutureValues, Subscriber,
+    clear_all_changes, clear_all_futures, clear_all_subs, debug, drain_changes, drain_futures, register_future, Change,
+    Changes, FutureValues, Subscriber,
 };
 pub use crate::value::{List, Map, PendingValue, SharedState, Value, ValueRef};
 

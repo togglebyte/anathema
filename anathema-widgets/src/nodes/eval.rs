@@ -10,8 +10,9 @@ use anathema_templates::Globals;
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow};
-use crate::components::{AnyComponent, ComponentRegistry, WidgetComponentId};
+use crate::components::{AnyComponent, ComponentKind, ComponentRegistry, WidgetComponentId};
 use crate::container::Container;
+use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, FloatingWidgets, ValueKey};
@@ -52,7 +53,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
     fn get_component(
         &mut self,
         component_id: WidgetComponentId,
-    ) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
+    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
         self.components.get(component_id)
     }
 }
@@ -67,7 +68,7 @@ pub(super) trait Evaluator {
         context: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    );
+    ) -> Result<()>;
 }
 
 pub(super) struct SingleEval;
@@ -81,7 +82,7 @@ impl Evaluator for SingleEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         let transaction = tree.insert(parent);
         let widget_id = transaction.node_id();
 
@@ -103,7 +104,7 @@ impl Evaluator for SingleEval {
             });
         }
 
-        let widget = ctx.factory.make(&single.ident, &attributes);
+        let widget = ctx.factory.make(&single.ident, &attributes)?;
 
         // Is the widget a floating widget?
         if widget.any_floats() {
@@ -123,13 +124,15 @@ impl Evaluator for SingleEval {
         // Widget
         let widget = WidgetKind::Element(Element::new(&single.ident, container));
 
-        transaction.commit_child(widget);
+        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
 
         // Children
         let parent = &tree.path(widget_id).clone();
         for child in &single.children {
-            super::eval_blueprint(child, ctx, parent, tree);
+            super::eval_blueprint(child, ctx, parent, tree)?;
         }
+
+        Ok(())
     }
 }
 
@@ -142,7 +145,7 @@ impl ForLoopEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         for index in 0..for_loop.collection.count() {
             ctx.scope.push();
             for_loop.scope_value(ctx.scope, index);
@@ -153,7 +156,7 @@ impl ForLoopEval {
                     loop_index: Value::new(index as i64),
                     binding: for_loop.binding,
                 }))
-                .unwrap(); // TODO unwrap
+                .ok_or(Error::TreeTransactionFailed)?;
 
             // Scope the iteration value
             tree.with_value(iter_id, |parent, widget, tree| {
@@ -161,12 +164,15 @@ impl ForLoopEval {
                 ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
                 for bp in for_loop.body {
-                    eval_blueprint(bp, ctx, parent, tree);
+                    eval_blueprint(bp, ctx, parent, tree)?;
                 }
-            });
+                Ok(())
+            })?;
 
             ctx.scope.pop();
         }
+
+        Ok(())
     }
 }
 
@@ -179,7 +185,7 @@ impl Evaluator for ForLoopEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         let transaction = tree.insert(parent);
         let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
 
@@ -191,12 +197,15 @@ impl Evaluator for ForLoopEval {
 
         let widget = WidgetKind::For(for_loop);
 
-        let for_loop_id = transaction.commit_child(widget).unwrap(); // TODO: unwrap...
+        let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
 
         tree.with_value(for_loop_id, move |parent, widget, tree| {
             let WidgetKind::For(for_loop) = widget else { unreachable!() };
-            self.eval_body(for_loop, ctx, parent, tree);
-        });
+            self.eval_body(for_loop, ctx, parent, tree)?;
+            Ok(())
+        })?;
+
+        Ok(())
     }
 }
 
@@ -211,19 +220,20 @@ impl Evaluator for ControlFlowEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         let transaction = tree.insert(parent);
         let widget = WidgetKind::ControlFlow(controlflow::ControlFlow {});
-        let for_loop_id = transaction.commit_child(widget).unwrap(); // TODO: unwrap...
+        let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         let parent = tree.path(for_loop_id).clone();
 
         tree.with_value(for_loop_id, move |parent, _widget, tree| {
-            IfEval.eval(&control_flow.if_node, ctx, parent, tree);
+            IfEval.eval(&control_flow.if_node, ctx, parent, tree)?;
             control_flow
                 .elses
                 .iter()
-                .for_each(|e| ElseEval.eval(e, ctx, parent, tree));
-        });
+                .try_for_each(|e| ElseEval.eval(e, ctx, parent, tree))?;
+            Ok(())
+        })?;
 
         let mut was_set = false;
 
@@ -249,6 +259,8 @@ impl Evaluator for ControlFlowEval {
                 _ => unreachable!(),
             }
         });
+
+        Ok(())
     }
 }
 
@@ -263,7 +275,7 @@ impl Evaluator for IfEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         let transaction = tree.insert(parent);
         let node_id = transaction.node_id();
 
@@ -272,12 +284,16 @@ impl Evaluator for IfEval {
 
         let if_widget = controlflow::If { cond, show: false };
 
-        let if_widget_id = transaction.commit_child(WidgetKind::If(if_widget)).unwrap(); // TODO: unwrap..
+        let if_widget_id = transaction
+            .commit_child(WidgetKind::If(if_widget))
+            .ok_or(Error::TreeTransactionFailed)?;
 
         let parent = &tree.path(if_widget_id).clone();
         for bp in &input.body {
-            eval_blueprint(bp, ctx, parent, tree);
+            eval_blueprint(bp, ctx, parent, tree)?;
         }
+
+        Ok(())
     }
 }
 
@@ -292,7 +308,7 @@ impl Evaluator for ElseEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         let transaction = tree.insert(parent);
         let widget_id = transaction.node_id();
         let value_id = (widget_id, ValueIndex::ZERO);
@@ -308,11 +324,16 @@ impl Evaluator for ElseEval {
             show: false,
         };
 
-        let _ = transaction.commit_child(WidgetKind::Else(else_widget)).unwrap();
+        let _ = transaction
+            .commit_child(WidgetKind::Else(else_widget))
+            .ok_or(Error::TreeTransactionFailed)?;
+
         let parent = &tree.path(widget_id).clone();
         for bp in &input.body {
-            eval_blueprint(bp, ctx, parent, tree);
+            eval_blueprint(bp, ctx, parent, tree)?;
         }
+
+        Ok(())
     }
 }
 
@@ -327,7 +348,7 @@ impl Evaluator for ComponentEval {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         let transaction = tree.insert(parent);
 
         let external_state = match &input.state {
@@ -344,21 +365,22 @@ impl Evaluator for ComponentEval {
         };
 
         let component_id = usize::from(input.id).into();
-        let (component, state) = ctx.get_component(component_id);
-        let Some(component) = component else { return };
-        let state_id = state.map(|state| ctx.states.insert(state));
-        let comp_widget = component::Component::new(&input.body, component, state_id, external_state, component_id);
+        let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
+        let state_id = ctx.states.insert(state);
+        let comp_widget =
+            component::Component::new(&input.body, component, state_id, external_state, component_id, kind);
 
-        let widget_id = transaction.commit_child(WidgetKind::Component(comp_widget)).unwrap();
+        let widget_id = transaction
+            .commit_child(WidgetKind::Component(comp_widget))
+            .ok_or(Error::TreeTransactionFailed)?;
 
         tree.with_value(widget_id, move |parent, widget, tree| {
-            let WidgetKind::Component(component) = widget else { panic!() };
+            let WidgetKind::Component(component) = widget else { unreachable!() };
             ctx.scope.push();
 
             // Insert internal state
-            if let Some(state_id) = component.state_id() {
-                ctx.scope.insert_state(state_id);
-            }
+            let state_id = component.state_id();
+            ctx.scope.insert_state(state_id);
 
             // Insert external state (if there is one)
             if let Some(state) = &component.external_state {
@@ -369,10 +391,14 @@ impl Evaluator for ComponentEval {
             }
 
             for bp in &input.body {
-                eval_blueprint(bp, ctx, parent, tree);
+                eval_blueprint(bp, ctx, parent, tree)?;
             }
 
             ctx.scope.pop();
-        });
+
+            Ok(())
+        })?;
+
+        Ok(())
     }
 }

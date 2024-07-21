@@ -9,7 +9,7 @@ use anathema_widgets::{WidgetId, WidgetKind};
 
 pub struct IndexEntry {
     pub(super) widget_id: WidgetId,
-    pub(super) state_id: Option<StateId>,
+    pub(super) state_id: StateId,
     pub(super) component_id: WidgetComponentId,
 }
 

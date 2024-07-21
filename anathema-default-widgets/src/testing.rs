@@ -44,7 +44,7 @@ impl TestRunner {
                 @main
         ";
         let mut doc = Document::new(root);
-        let main = doc.add_component("main", src);
+        let main = doc.add_component("main", src).unwrap();
         components.add_component(main.into(), (), ());
 
         let (blueprint, globals) = doc.compile().unwrap();

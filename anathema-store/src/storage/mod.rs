@@ -77,4 +77,12 @@ where
     pub fn remove(&mut self, index: I) -> Option<(K, V)> {
         self.0.try_remove(index)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+        self.0.iter_values()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (K, V)> {
+        self.0.iter_values_mut()
+    }
 }

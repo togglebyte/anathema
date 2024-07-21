@@ -322,6 +322,11 @@ impl<'bp> EvalValue<'bp> {
                         let rhs = rhs.load_common_val()?;
                         lhs.to_common()? == rhs.to_common()?
                     }
+                    Equality::NotEq => {
+                        let lhs = lhs.load_common_val()?;
+                        let rhs = rhs.load_common_val()?;
+                        lhs.to_common()? != rhs.to_common()?
+                    }
                     Equality::And => lhs.load_bool() && rhs.load_bool(),
                     Equality::Or => lhs.load_bool() || rhs.load_bool(),
                     Equality::Gt => lhs.load_number()? > rhs.load_number()?,

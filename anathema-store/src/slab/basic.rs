@@ -82,6 +82,64 @@ where
         }
     }
 
+    /// Insert a value at a given index.
+    /// This will force the underlying storage to grow if
+    /// the index given is larger than the current capacity.
+    pub fn insert_at(&mut self, index: I, value: T) {
+        let idx = index.into();
+
+        // If the index is outside of the current
+        // length then fill the slots in between with
+        // vacant entries
+        if idx >= self.inner.len() {
+            for i in self.inner.len()..idx {
+                let entry = Entry::Vacant(self.next_id.take());
+                self.next_id = Some(i.into());
+                self.inner.push(entry);
+            }
+            self.inner.push(Entry::Occupied(value));
+        // If the index is inside the current length:
+        } else {
+            let entry = self
+                .inner
+                .get_mut(idx)
+                .expect("there should be entries up to self.len()");
+
+            match entry {
+                Entry::Vacant(None) => *entry = Entry::Occupied(value),
+                Entry::Occupied(val) => *val = value,
+                &mut Entry::Vacant(Some(next_free)) => {
+                    // Find the values that points to `index`
+                    // and replace that with `next_free`
+
+                    let mut next_id = &mut self.next_id;
+                    loop {
+                        match next_id {
+                            Some(id) if *id == index => {
+                                *id = next_free;
+                                break;
+                            }
+                            Some(id) => {
+                                let idx: usize = (*id).into();
+                                match self.inner.get_mut(idx) {
+                                    Some(Entry::Vacant(id)) => {
+                                        next_id = id;
+                                        continue;
+                                    }
+                                    None | Some(_) => unreachable!("the index can only point to a vacant value"),
+                                }
+                            }
+                            None => todo!(),
+                        }
+                    }
+
+                    // Insert new value
+                    self.inner[idx] = Entry::Occupied(value);
+                }
+            }
+        }
+    }
+
     /// Get the next id.
     ///
     /// # Warning
@@ -193,6 +251,18 @@ where
         })
     }
 
+    /// Be aware that this will only ever be as performant as
+    /// the underlying vector if all entries are occupied.
+    ///
+    /// E.g if the only slot occupied is 1,000,000, then this will
+    /// iterate over 1,000,000 entries to get there.
+    pub fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
+        self.inner.iter_mut().filter_map(|e| match e {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) => None,
+        })
+    }
+
     /// Iterator over the keys and elements
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
@@ -218,64 +288,6 @@ where
             Entry::Occupied(val) => Some((i.into(), val)),
             Entry::Vacant(_) => None,
         })
-    }
-
-    /// Insert a value at a given index.
-    /// This will force the underlying storage to grow if
-    /// the index given is larger than the current capacity.
-    pub fn insert_at(&mut self, index: I, value: T) {
-        let idx = index.into();
-
-        // If the index is outside of the current
-        // length then fill the slots in between with
-        // vacant entries
-        if idx >= self.inner.len() {
-            for i in self.inner.len()..idx {
-                let entry = Entry::Vacant(self.next_id.take());
-                self.next_id = Some(i.into());
-                self.inner.push(entry);
-            }
-            self.inner.push(Entry::Occupied(value));
-        // If the index is inside the current length:
-        } else {
-            let entry = self
-                .inner
-                .get_mut(idx)
-                .expect("there should be entries up to self.len()");
-
-            match entry {
-                Entry::Vacant(None) => *entry = Entry::Occupied(value),
-                Entry::Occupied(val) => *val = value,
-                &mut Entry::Vacant(Some(next_free)) => {
-                    // Find the values that points to `index`
-                    // and replace that with `next_free`
-
-                    let mut next_id = &mut self.next_id;
-                    loop {
-                        match next_id {
-                            Some(id) if *id == index => {
-                                *id = next_free;
-                                break;
-                            }
-                            Some(id) => {
-                                let idx: usize = (*id).into();
-                                match self.inner.get_mut(idx) {
-                                    Some(Entry::Vacant(id)) => {
-                                        next_id = id;
-                                        continue;
-                                    }
-                                    None | Some(_) => unreachable!("the index can only point to a vacant value"),
-                                }
-                            }
-                            None => todo!(),
-                        }
-                    }
-
-                    // Insert new value
-                    self.inner[idx] = Entry::Occupied(value);
-                }
-            }
-        }
     }
 }
 

@@ -61,6 +61,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
             | Operator::Or => {
                 let equality = match op {
                     Operator::EqualEqual => Equality::Eq,
+                    Operator::NotEqual => Equality::NotEq,
                     Operator::GreaterThan => Equality::Gt,
                     Operator::GreaterThanOrEqual => Equality::Gte,
                     Operator::LessThan => Equality::Lt,
@@ -275,5 +276,53 @@ mod test {
     fn function_call() {
         let expr = eval_src("fun(5, 4)");
         assert_eq!(expr.to_string(), "fun(5, 4)");
+    }
+
+    #[test]
+    fn equality() {
+        let expr = eval_src("1 == 1");
+        assert_eq!(expr.to_string(), "1 == 1");
+    }
+
+    #[test]
+    fn not_equal() {
+        let expr = eval_src("1 != 1");
+        assert_eq!(expr.to_string(), "1 != 1");
+    }
+
+    #[test]
+    fn greater_than() {
+        let expr = eval_src("1 > 1");
+        assert_eq!(expr.to_string(), "1 > 1");
+    }
+
+    #[test]
+    fn greater_than_or_equal_to() {
+        let expr = eval_src("1 >= 1");
+        assert_eq!(expr.to_string(), "1 >= 1");
+    }
+
+    #[test]
+    fn less_than() {
+        let expr = eval_src("1 < 1");
+        assert_eq!(expr.to_string(), "1 < 1");
+    }
+
+    #[test]
+    fn less_than_or_equal_to() {
+        let expr = eval_src("1 <= 1");
+        assert_eq!(expr.to_string(), "1 <= 1");
+    }
+
+    #[test]
+    fn and() {
+        let expr = eval_src("true && true");
+        assert_eq!(expr.to_string(), "true && true");
+    }
+
+    #[test]
+    fn or() {
+        let expr = eval_src("true || true");
+        assert_eq!(expr.to_string(), "true || true");
     }
 }

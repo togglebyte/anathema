@@ -35,6 +35,7 @@ bitflags = "2.4.1"
 crossterm = "0.27.0"
 unicode-width = "0.1.11"
 flume = "0.11.0"
+notify = "6.1.1"
 
 [workspace]
 members = [

@@ -306,9 +306,10 @@ mod test {
         let mut lexer = Lexer::new(input, &mut strings);
         match lexer.next().unwrap().unwrap_err() {
             crate::error::Error::ParseError(err) => err.kind,
-            crate::error::Error::CircularDependency => panic!("invalid error"),
-            crate::error::Error::MissingComponent => panic!("invalid error"),
-            crate::error::Error::EmptyTemplate => panic!("invalid error"),
+            crate::error::Error::CircularDependency
+            | crate::error::Error::MissingComponent
+            | crate::error::Error::EmptyTemplate
+            | crate::error::Error::Io(_) => panic!("invalid error"),
         }
     }
 

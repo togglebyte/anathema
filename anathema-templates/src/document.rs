@@ -1,8 +1,11 @@
+use std::fs::read_to_string;
+use std::path::PathBuf;
+
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::Strings;
 
 use crate::blueprints::Blueprint;
-use crate::components::ComponentTemplates;
+use crate::components::{ComponentSource, ComponentTemplates, SourceKind};
 use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
@@ -21,6 +24,7 @@ pub struct Document {
     strings: Strings,
     globals: Variables,
     components: ComponentTemplates,
+    pub hot_reload: bool,
 }
 
 impl Document {
@@ -29,18 +33,33 @@ impl Document {
         Self {
             template,
             strings: Strings::empty(),
-            globals: Variables::new(),
+            globals: Variables::default(),
             components: ComponentTemplates::new(),
+            hot_reload: true,
         }
     }
 
-    pub fn add_component(&mut self, name: impl Into<String>, template: impl Into<String>) -> usize {
+    #[allow(private_bounds)]
+    pub fn add_component(&mut self, name: impl Into<String>, src: impl Into<SourceKind>) -> Result<usize> {
         let name = name.into();
-        let id = self.components.insert(name, template.into());
-        id.into()
+        let src = src.into();
+
+        let component_src = match src {
+            SourceKind::Str(s) => ComponentSource::InMemory(s),
+            SourceKind::Path(path) => {
+                let template = read_to_string(&path)?;
+                ComponentSource::File { path, template }
+            }
+        };
+
+        let id = self.components.insert(name, component_src);
+        Ok(id.into())
     }
 
-    pub fn compile(mut self) -> Result<(Blueprint, Globals)> {
+    pub fn compile(&mut self) -> Result<(Blueprint, Globals)> {
+        self.strings = Strings::empty();
+        self.globals = Variables::default();
+
         let tokens = Lexer::new(&self.template, &mut self.strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, self.template.len());
         let parser = Parser::new(tokens, &mut self.strings, &self.template, &mut self.components);
@@ -57,7 +76,15 @@ impl Document {
         let mut blueprints = Scope::new(statements).eval(&mut context)?;
         match blueprints.is_empty() {
             true => Err(Error::EmptyTemplate),
-            false => Ok((blueprints.remove(0), self.globals.into())),
+            false => Ok((blueprints.remove(0), self.globals.take().into())),
         }
+    }
+
+    pub fn template_paths(&self) -> impl Iterator<Item = &PathBuf> {
+        self.components.file_paths()
+    }
+
+    pub fn reload_templates(&mut self) -> Result<()> {
+        self.components.reload()
     }
 }

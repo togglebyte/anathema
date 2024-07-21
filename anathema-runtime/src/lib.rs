@@ -17,16 +17,22 @@
 //
 // -----------------------------------------------------------------------------
 
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Pos;
-use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, States};
+use anathema_state::{
+    clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
+};
 use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_widgets::components::{Component, ComponentId, ComponentRegistry, Context, Emitter, ViewMessage};
+use anathema_widgets::components::{
+    Component, ComponentId, ComponentKind, ComponentRegistry, Context, Emitter, ViewMessage,
+};
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
@@ -34,9 +40,13 @@ use anathema_widgets::{
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
 use components::Components;
+use error::Error;
 use events::EventHandler;
+use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub use crate::error::Result;
+
+static REBUILD: AtomicBool = AtomicBool::new(false);
 
 mod components;
 mod error;
@@ -55,30 +65,32 @@ impl<T> RuntimeBuilder<T> {
     pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
-        template: impl Into<String>,
+        template_path: impl Into<PathBuf>,
         component: C,
         state: C::State,
-    ) -> ComponentId<C::Message> {
+    ) -> Result<ComponentId<C::Message>> {
         let ident = ident.into();
-        let id = self.document.add_component(ident, template.into()).into();
+        let id = self.document.add_component(ident, template_path.into())?.into();
         self.component_registry.add_component(id, component, state);
-        id.into()
+        Ok(id.into())
     }
 
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
-        template: impl Into<String>,
+        template_path: impl Into<PathBuf>,
         proto: FC,
         state: FS,
-    ) where
+    ) -> Result<()>
+    where
         FC: 'static + Fn() -> C,
         FS: 'static + FnMut() -> C::State,
         C: Component + 'static,
     {
         let ident = ident.into();
-        let id = self.document.add_component(ident, template.into());
-        self.component_registry.add_prototype(id.into(), proto, state);
+        let id = self.document.add_component(ident, template_path.into())?.into();
+        self.component_registry.add_prototype(id, proto, state);
+        Ok(())
     }
 
     pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
@@ -93,32 +105,69 @@ impl<T> RuntimeBuilder<T> {
         self.emitter.clone()
     }
 
-    pub fn finish(self) -> Result<Runtime<T>>
+    fn set_watcher(&mut self) -> Result<RecommendedWatcher> {
+        let paths = self
+            .document
+            .template_paths()
+            .filter_map(|p| p.canonicalize().ok())
+            .collect::<Vec<_>>();
+
+        let mut watcher = recommended_watcher(move |event: std::result::Result<Event, _>| match event {
+            Ok(event) => match event.kind {
+                notify::EventKind::Create(_) | notify::EventKind::Remove(_) | notify::EventKind::Modify(_) => {
+                    if paths.iter().any(|p| event.paths.contains(p)) {
+                        REBUILD.store(true, Ordering::Relaxed);
+                    }
+                }
+                notify::EventKind::Any | notify::EventKind::Access(_) | notify::EventKind::Other => (),
+            },
+            Err(_err) => (),
+        })?;
+
+        for path in self.document.template_paths() {
+            let path = path.canonicalize().unwrap();
+
+            if let Some(parent) = path.parent() {
+                watcher.watch(&parent, RecursiveMode::NonRecursive)?;
+            }
+        }
+
+        Ok(watcher)
+    }
+
+    pub fn finish(mut self) -> Result<Runtime<T>>
     where
         T: Backend,
     {
-        let (bp, globals) = self.document.compile()?;
+        let (blueprint, globals) = self.document.compile()?;
+        let watcher = match self.document.hot_reload {
+            false => None,
+            true => Some(self.set_watcher()?),
+        };
 
         let (width, height) = self.backend.size().into();
         let constraints = Constraints::new(width as usize, height as usize);
 
         let inst = Runtime {
+            _watcher: watcher,
             backend: self.backend,
             emitter: self.emitter,
             message_receiver: self.message_receiver,
             fps: 30,
             constraints,
-            bp,
+            blueprint,
             factory: self.factory,
             future_values: FutureValues::empty(),
+
             changes: Changes::empty(),
             components: Components::new(),
             component_registry: self.component_registry,
             globals,
+            document: self.document,
             string_storage: StringStorage::new(),
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
-            event_handler: EventHandler::new(),
+            event_handler: EventHandler,
         };
 
         Ok(inst)
@@ -138,11 +187,13 @@ impl<T> RuntimeBuilder<T> {
 pub struct Runtime<T> {
     pub fps: u16,
 
+    _watcher: Option<RecommendedWatcher>,
     message_receiver: flume::Receiver<ViewMessage>,
     emitter: Emitter,
-    bp: Blueprint,
+    blueprint: Blueprint,
     factory: Factory,
     globals: Globals,
+    document: Document,
 
     // -----------------------------------------------------------------------------
     //   - Mut during runtime -
@@ -283,7 +334,7 @@ where
             if let Some(entry) = self.components.dumb_fetch(msg.recipient()) {
                 tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
-                    let state = entry.state_id.and_then(|id| states.get_mut(id));
+                    let state = states.get_mut(entry.state_id);
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
 
@@ -305,7 +356,18 @@ where
         fps_now.elapsed()
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) {
+        match self.internal_run() {
+            Ok(()) => (),
+            Err(Error::Stop) => return,
+            Err(err) => {
+                self.show_error(err);
+                self.run();
+            }
+        }
+    }
+
+    fn internal_run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
         let mut tree = WidgetTree::empty();
@@ -313,7 +375,7 @@ where
 
         let mut states = States::new();
         let mut scope = Scope::new();
-        let globals = self.globals.clone();
+        let globals = self.globals.take();
         let mut ctx = EvalContext::new(
             &globals,
             &self.factory,
@@ -324,9 +386,20 @@ where
             &mut self.floating_widgets,
         );
 
-        let bp = self.bp.clone();
+        let blueprint = self.blueprint.clone();
+
         // First build the tree
-        eval_blueprint(&bp, &mut ctx, &NodePath::root(), &mut tree);
+        let res = eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree);
+        match res {
+            Ok(_) => (),
+            Err(err) => {
+                match self.reset(tree, &mut states) {
+                    Ok(()) => (),
+                    Err(err) => return Err(err.into()),
+                }
+                return Err(err.into());
+            }
+        }
 
         // ... then the tab indices
         tree.apply_visitor(&mut self.components);
@@ -335,7 +408,7 @@ where
         if let Some(entry) = self.components.current() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
-                let state = entry.state_id.and_then(|id| states.get_mut(id));
+                let state = states.get_mut(entry.state_id);
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
                 let context = Context {
@@ -357,8 +430,68 @@ where
                 &mut attribute_storage,
                 &globals,
             )?;
+
+            if REBUILD.swap(false, Ordering::Relaxed) {
+                break;
+            }
+
             fps_now = Instant::now();
         }
+
+        self.reset(tree, &mut states)?;
+        self.internal_run()
+    }
+
+    pub fn show_error(&mut self, err: Error) {
+        let tpl = format!(
+            "
+            align [alignment: 'centre']
+                border [background: 'red']
+                    vstack
+                        @errors
+        "
+        );
+
+        let errors = err
+            .to_string()
+            .lines()
+            .map(|line| format!("text [foreground: 'black'] '{line}'\n"))
+            .collect::<String>();
+
+        let mut document = Document::new(tpl);
+        let _component_id = document.add_component("errors", errors);
+        let (blueprint, globals) = document.compile().expect("the error template can't fail");
+        self.blueprint = blueprint;
+        self.globals = globals;
+    }
+
+    fn reset(&mut self, tree: WidgetTree<'_>, states: &mut States) -> Result<()> {
+        clear_all_futures();
+        clear_all_changes();
+        clear_all_subs();
+
+        self.components = Components::new();
+        self.floating_widgets = FloatingWidgets::empty();
+        self.string_storage = StringStorage::new();
+
+        // The only way we can get here is if we break the loop
+        // as a result of the hot_reload triggering.
+        self.document.reload_templates()?;
+
+        // move all components from the tree back to the registry.
+        for (_, widget) in tree.values().into_iter() {
+            let WidgetKind::Component(comp) = widget else { continue };
+            let ComponentKind::Instance = comp.kind else { continue };
+            let state = states.remove(comp.state_id);
+            self.component_registry
+                .return_component(comp.component_id, comp.component, state);
+        }
+
+        let (blueprint, globals) = self.document.compile()?;
+        self.blueprint = blueprint;
+        self.globals = globals;
+
+        Ok(())
     }
 
     pub fn tick<'bp>(
@@ -501,7 +634,7 @@ where
         for entry in self.components.iter() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
-                let state = entry.state_id.and_then(|id| states.get_mut(id));
+                let state = states.get_mut(entry.state_id);
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 component.component.any_tick(state, elements, context, dt);

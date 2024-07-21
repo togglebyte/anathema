@@ -59,11 +59,34 @@ impl ComponentRegistry {
     ///
     /// Panics if the component isn't registered.
     /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(&mut self, id: WidgetComponentId) -> (Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>) {
+    pub fn get(&mut self, id: WidgetComponentId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
         match self.0.get_mut(id) {
             Some(component) => match component {
-                ComponentType::Component(comp, state) => (comp.take(), state.take()),
-                ComponentType::Prototype(proto, state) => (Some(proto()), Some(state())),
+                ComponentType::Component(comp, state) => Some((ComponentKind::Instance, comp.take()?, state.take()?)),
+                ComponentType::Prototype(proto, state) => Some((ComponentKind::Prototype, proto(), state())),
+            },
+            None => panic!(),
+        }
+    }
+
+    /// Return a component back to the registry.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the component entry doesn't exist or if the entry is for a prototype.
+    pub fn return_component(
+        &mut self,
+        id: WidgetComponentId,
+        current_component: Box<dyn AnyComponent>,
+        current_state: Box<dyn AnyState>,
+    ) {
+        match self.0.get_mut(id) {
+            Some(component) => match component {
+                ComponentType::Component(comp, state) => {
+                    *comp = Some(current_component);
+                    *state = Some(current_state);
+                }
+                ComponentType::Prototype(..) => panic!("trying to return a prototype"),
             },
             None => panic!(),
         }
@@ -155,7 +178,7 @@ impl Emitter {
 #[derive(Debug, Copy, Clone)]
 pub struct Context<'rt> {
     pub emitter: &'rt Emitter,
-    pub viewport: Viewport
+    pub viewport: Viewport,
 }
 
 pub trait Component {
@@ -169,7 +192,8 @@ pub trait Component {
     fn on_focus(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {}
 
     #[allow(unused_variables, unused_mut)]
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {}
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {
+    }
 
     #[allow(unused_variables, unused_mut)]
     fn on_mouse(
@@ -209,6 +233,12 @@ impl Component for () {
     fn accept_focus(&self) -> bool {
         false
     }
+}
+
+#[derive(Debug)]
+pub enum ComponentKind {
+    Instance,
+    Prototype,
 }
 
 pub trait AnyComponent {

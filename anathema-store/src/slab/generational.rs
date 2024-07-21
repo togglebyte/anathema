@@ -307,6 +307,18 @@ impl<T> GenSlab<T> {
         })
     }
 
+    /// Be aware that this will only ever be as performant as
+    /// the underlying vector if all entries are occupied.
+    ///
+    /// E.g if the only slot occupied is 1,000,000, then this will
+    /// iterate over 1,000,000 entries to get there.
+    pub fn into_iter(self) -> impl Iterator<Item = T> {
+        self.inner.into_iter().filter_map(|e| match e {
+            Entry::Occupied(val, _) => Some(val),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        })
+    }
+
     /// Mutably iterate over the values in the slab.
     /// See [`GenSlab::iter`] for information about performance.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
