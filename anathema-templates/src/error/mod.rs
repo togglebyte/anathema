@@ -11,8 +11,9 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     ParseError(ParseError),
     CircularDependency,
-    MissingComponent,
+    MissingComponent(String),
     EmptyTemplate,
+    EmptyBody,
     Io(std::io::Error),
 }
 
@@ -21,8 +22,9 @@ impl Display for Error {
         match self {
             Error::ParseError(err) => write!(f, "{err}"),
             Error::CircularDependency => write!(f, "circular dependency"),
-            Error::MissingComponent => write!(f, "missing component"),
+            Error::MissingComponent(name) => write!(f, "`@{name}` is not a registered component"),
             Error::EmptyTemplate => write!(f, "empty template"),
+            Error::EmptyBody => write!(f, "if or else node has no children"),
             Error::Io(err) => write!(f, "{err}"),
         }
     }

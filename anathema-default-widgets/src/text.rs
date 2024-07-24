@@ -7,6 +7,11 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
+use crate::{LEFT, RIGHT};
+
+pub(crate) const WRAP: &str = "wrap";
+pub(crate) const TEXT_ALIGN: &str = "text_align";
+
 /// Text alignment aligns the text inside its parent.
 ///
 /// Given a border with a width of nine and text alignment set to [`TextAlignment::Right`]:
@@ -39,8 +44,8 @@ impl TryFrom<CommonVal<'_>> for TextAlignment {
     fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
         match value {
             CommonVal::Str(wrap) => match wrap {
-                "left" => Ok(TextAlignment::Left),
-                "right" => Ok(TextAlignment::Right),
+                LEFT => Ok(TextAlignment::Left),
+                RIGHT => Ok(TextAlignment::Right),
                 "centre" | "center" => Ok(TextAlignment::Centre),
                 _ => Err(()),
             },
@@ -75,7 +80,7 @@ impl Widget for Text {
         ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
-        let wrap = attributes.get("wrap").unwrap_or_default();
+        let wrap = attributes.get(WRAP).unwrap_or_default();
 
         let mut layout = ctx.text.new_layout(constraints.max_size(), wrap);
         layout.set_style(id);
@@ -124,7 +129,7 @@ impl Widget for Text {
         text: &mut StringSession<'_>,
     ) {
         let lines = text.lines(self.text_key);
-        let alignment = attribute_storage.get(id).get("text-align").unwrap_or_default();
+        let alignment = attribute_storage.get(id).get(TEXT_ALIGN).unwrap_or_default();
 
         let mut pos = LocalPos::ZERO;
         let mut style = attribute_storage.get(id);
@@ -235,11 +240,11 @@ mod test {
 
     #[test]
     fn break_word_wrap() {
-        let src = "text [wrap: 'break'] 'hellohowareyoudoing'";
+        let src = "text [wrap: 'break'] 'hello howareyoudoing'";
         let expected = r#"
            ╔════════════════╗
-           ║hellohowareyoudo║
-           ║ing             ║
+           ║hello howareyoud║
+           ║oing            ║
            ║                ║
            ╚════════════════╝
            "#;
@@ -289,7 +294,7 @@ mod test {
 
     #[test]
     fn right_alignment() {
-        let src = "text [text-align: 'right'] 'a one xxxxxxxxxxxxxxxxxx'";
+        let src = "text [text_align: 'right'] 'a one xxxxxxxxxxxxxxxxxx'";
         let expected = r#"
                ╔══════════════════╗
                ║            a one ║
@@ -303,7 +308,7 @@ mod test {
 
     #[test]
     fn centre_alignment() {
-        let src = "text [text-align: 'centre'] 'a one xxxxxxxxxxxxxxxxxx'";
+        let src = "text [text_align: 'centre'] 'a one xxxxxxxxxxxxxxxxxx'";
         let expected = r#"
                ╔══════════════════╗
                ║      a one       ║
@@ -313,5 +318,19 @@ mod test {
            "#;
 
         TestRunner::new(src, (18, 3)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn line_break() {
+        let src = "text 'What have you'";
+        let expected = r#"
+               ╔═════════╗
+               ║What have║
+               ║you      ║
+               ║         ║
+               ╚═════════╝
+           "#;
+
+        TestRunner::new(src, (9, 3)).instance().render_assert(expected);
     }
 }

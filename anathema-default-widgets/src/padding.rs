@@ -4,6 +4,10 @@ use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
 
+use crate::{BOTTOM, LEFT, RIGHT, TOP};
+
+const PADDING: &str = "padding";
+
 #[derive(Default)]
 struct PaddingValues {
     top: u16,
@@ -34,12 +38,12 @@ impl Widget for Padding {
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let mut size = Size::ZERO;
-        let padding = attributes.get("padding").unwrap_or(0);
+        let padding = attributes.get(PADDING).unwrap_or(0);
 
-        self.0.top = attributes.get("top").unwrap_or(padding);
-        self.0.right = attributes.get("right").unwrap_or(padding);
-        self.0.bottom = attributes.get("bottom").unwrap_or(padding);
-        self.0.left = attributes.get("left").unwrap_or(padding);
+        self.0.top = attributes.get(TOP).unwrap_or(padding);
+        self.0.right = attributes.get(RIGHT).unwrap_or(padding);
+        self.0.bottom = attributes.get(BOTTOM).unwrap_or(padding);
+        self.0.left = attributes.get(LEFT).unwrap_or(padding);
 
         let padding_size = self.0.size();
 

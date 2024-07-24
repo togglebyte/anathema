@@ -110,6 +110,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                 .into_iter()
                 .map(|expr| eval(expr, strings))
                 .collect::<Result<Vec<_>, _>>()?;
+
             Expression::Call {
                 fun: eval(*fun, strings)?.into(),
                 args: args.into_boxed_slice(),
@@ -324,5 +325,17 @@ mod test {
     fn or() {
         let expr = eval_src("true || true");
         assert_eq!(expr.to_string(), "true || true");
+    }
+
+    #[test]
+    fn list() {
+        let expr = eval_src("[1, 2, 3]");
+        assert_eq!(expr.to_string(), "[1, 2, 3]");
+    }
+
+    #[test]
+    fn map() {
+        let expr = eval_src("[{a: 1}, {b: 89}]");
+        assert_eq!(expr.to_string(), "[{a: 1}, {b: 89}]");
     }
 }

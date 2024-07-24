@@ -48,7 +48,6 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                 self.chars.next(); // consume the second slash
                 loop {
                     if let Some((_, '\n')) | None = self.chars.peek() {
-                        self.chars.next();
                         break;
                     }
                     self.chars.next();
@@ -78,6 +77,10 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             ('<', Some('=')) => {
                 let _ = self.chars.next();
                 Ok(Kind::Op(Operator::LessThanOrEqual).to_token(index))
+            }
+            ('-', Some('>')) => {
+                let _ = self.chars.next();
+                Ok(Kind::Op(Operator::Association).to_token(index))
             }
 
             // -----------------------------------------------------------------------------
@@ -202,7 +205,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
 
     fn take_ident_or_keyword(&mut self, index: usize) -> Kind {
         let mut end = index;
-        while let Some((e, 'a'..='z' | 'A'..='Z' | '-' | '_' | '|' | '0'..='9')) = self.chars.peek() {
+        while let Some((e, 'a'..='z' | 'A'..='Z' | '_' | '|' | '0'..='9')) = self.chars.peek() {
             end = *e;
             self.chars.next();
         }
@@ -307,8 +310,9 @@ mod test {
         match lexer.next().unwrap().unwrap_err() {
             crate::error::Error::ParseError(err) => err.kind,
             crate::error::Error::CircularDependency
-            | crate::error::Error::MissingComponent
+            | crate::error::Error::MissingComponent(_)
             | crate::error::Error::EmptyTemplate
+            | crate::error::Error::EmptyBody
             | crate::error::Error::Io(_) => panic!("invalid error"),
         }
     }
@@ -319,6 +323,15 @@ mod test {
         let input = "// hello world";
         let mut lexer = Lexer::new(input, &mut strings);
         assert!(lexer.next().is_none());
+    }
+
+    #[test]
+    fn comment_retain_newline() {
+        let strings = Strings::empty();
+        let input = "// hello world\n";
+        let actual = token_kind(input);
+        let expected = Kind::Newline;
+        assert_eq!(expected, actual);
     }
 
     #[test]
@@ -475,5 +488,11 @@ mod test {
     fn declaration() {
         let decl = token_kind("let");
         assert_eq!(decl, Kind::Decl);
+    }
+
+    #[test]
+    fn association() {
+        let decl = token_kind("->");
+        assert_eq!(decl, Kind::Op(Operator::Association));
     }
 }

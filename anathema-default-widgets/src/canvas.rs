@@ -7,6 +7,8 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{CellAttributes, PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
+use crate::{HEIGHT, WIDTH};
+
 #[derive(Debug, Clone)]
 pub enum CanvasAttrib {
     Str(String),
@@ -21,6 +23,12 @@ impl<T: Into<CommonVal<'static>>> From<T> for CanvasAttrib {
 
 #[derive(Debug, Clone)]
 pub struct CanvasAttribs(SmallMap<String, CanvasAttrib>);
+
+impl Default for CanvasAttribs {
+    fn default() -> Self {
+        Self(SmallMap::empty())
+    }
+}
 
 impl CanvasAttribs {
     pub fn new() -> Self {
@@ -215,11 +223,11 @@ impl Widget for Canvas {
     ) -> Size {
         let attribs = ctx.attribs.get(id);
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get_int("width") {
+        if let Some(width @ 0..=i64::MAX) = attribs.get_int(WIDTH) {
             constraints.set_max_width(width as usize);
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get_int("height") {
+        if let Some(height @ 0..=i64::MAX) = attribs.get_int(HEIGHT) {
             constraints.set_max_height(height as usize);
         }
 

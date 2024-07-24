@@ -18,6 +18,17 @@ mod text;
 #[cfg(test)]
 mod testing;
 
+pub(crate) const WIDTH: &str = "width";
+pub(crate) const HEIGHT: &str = "height";
+pub(crate) const MIN_WIDTH: &str = "min_width";
+pub(crate) const MIN_HEIGHT: &str = "min_height";
+pub(crate) const MAX_WIDTH: &str = "max_width";
+pub(crate) const MAX_HEIGHT: &str = "max_height";
+pub(crate) const TOP: &str = "top";
+pub(crate) const RIGHT: &str = "right";
+pub(crate) const BOTTOM: &str = "bottom";
+pub(crate) const LEFT: &str = "left";
+
 pub use alignment::Align;
 pub use border::Border;
 pub use canvas::{Canvas, CanvasAttribs};

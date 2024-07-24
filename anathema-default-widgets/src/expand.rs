@@ -66,7 +66,10 @@ impl Widget for Expand {
                             return ControlFlow::Break(());
                         };
                         used_width += p.x - used_width;
-                        ControlFlow::Continue(())
+                        match used_width >= ctx.local_size.width as u16 {
+                            true => ControlFlow::Break(()),
+                            false => ControlFlow::Continue(()),
+                        }
                     });
 
                     if let ControlFlow::Break(()) = controlflow {

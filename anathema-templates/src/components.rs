@@ -45,23 +45,23 @@ pub(crate) enum ComponentSource {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TemplateComponentId(usize);
+pub struct WidgetComponentId(u32);
 
-impl From<TemplateComponentId> for usize {
-    fn from(value: TemplateComponentId) -> Self {
-        value.0
+impl From<WidgetComponentId> for usize {
+    fn from(value: WidgetComponentId) -> Self {
+        value.0 as usize
     }
 }
 
-impl From<usize> for TemplateComponentId {
+impl From<usize> for WidgetComponentId {
     fn from(value: usize) -> Self {
-        Self(value)
+        Self(value as u32)
     }
 }
 
 pub(crate) struct ComponentTemplates {
-    dependencies: Stack<TemplateComponentId>,
-    components: Storage<TemplateComponentId, String, ComponentSource>,
+    dependencies: Stack<WidgetComponentId>,
+    components: Storage<WidgetComponentId, String, ComponentSource>,
 }
 
 impl ComponentTemplates {
@@ -72,21 +72,22 @@ impl ComponentTemplates {
         }
     }
 
-    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> TemplateComponentId {
+    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> WidgetComponentId {
         self.components.push(name.into(), ComponentSource::Empty)
     }
 
-    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> TemplateComponentId {
+    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> WidgetComponentId {
         let ident = ident.into();
         self.components.insert(ident, template)
     }
 
     pub(crate) fn load(
         &mut self,
-        id: TemplateComponentId,
+        id: WidgetComponentId,
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
+        parent: WidgetComponentId,
     ) -> Result<Vec<Blueprint>> {
         if self.dependencies.contains(&id) {
             return Err(Error::CircularDependency);
@@ -99,9 +100,9 @@ impl ComponentTemplates {
                 let template = match &component_src {
                     ComponentSource::File { template, .. } => template,
                     ComponentSource::InMemory(template) => template,
-                    ComponentSource::Empty => return Err(Error::MissingComponent),
+                    ComponentSource::Empty => return Err(Error::MissingComponent(key)),
                 };
-                let ret = self.compile(&template, globals, slots, strings);
+                let ret = self.compile(&template, globals, slots, strings, parent);
                 // This will re-insert the component in the same location
                 // as it was removed from since nothing else has
                 // written to the component storage since the component
@@ -110,7 +111,7 @@ impl ComponentTemplates {
                 assert_eq!(id, new_id);
                 ret
             }
-            _ => return Err(Error::MissingComponent),
+            _ => unreachable!("a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"),
         };
 
         self.dependencies.pop();
@@ -124,6 +125,7 @@ impl ComponentTemplates {
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
+        parent: WidgetComponentId,
     ) -> Result<Vec<Blueprint>> {
         let tokens = Lexer::new(template, strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, template.len());
@@ -131,18 +133,13 @@ impl ComponentTemplates {
 
         let statements = parser.collect::<Result<Statements>>()?;
 
-        let mut context = Context {
-            globals,
-            components: self,
-            strings,
-            slots,
-        };
+        let mut context = Context::new(globals, self, strings, slots, Some(parent));
 
         Scope::new(statements).eval(&mut context)
     }
 
     pub(crate) fn file_paths(&self) -> impl Iterator<Item = &PathBuf> {
-        self.components.iter().filter_map(|(_, src)| match src {
+        self.components.iter().filter_map(|(_, (_, src))| match src {
             ComponentSource::File { path, .. } => Some(path),
             ComponentSource::InMemory(_) => None,
             ComponentSource::Empty => None,

@@ -39,7 +39,7 @@ impl TestRunner {
         size.height += 2;
 
         let root = "
-        border [border-style: 'thick']
+        border [border_style: 'thick']
             expand
                 @main
         ";
@@ -78,7 +78,7 @@ impl TestRunner {
         );
 
         let path = Default::default();
-        eval_blueprint(&self.blueprint, &mut ctx, &path, &mut tree);
+        eval_blueprint(&self.blueprint, &mut ctx, &path, &mut tree).unwrap();
 
         TestInstance {
             states: &mut self.states,

@@ -1,3 +1,5 @@
+use super::Ticket;
+
 // -----------------------------------------------------------------------------
 //   - Entry -
 // -----------------------------------------------------------------------------
@@ -5,6 +7,7 @@
 enum Entry<I, T> {
     Vacant(Option<I>),
     Occupied(T),
+    CheckedOut(I),
 }
 
 impl<I, T> Entry<I, T> {
@@ -26,7 +29,7 @@ impl<I, T> Entry<I, T> {
     fn as_occupied_mut(&mut self) -> &mut T {
         match self {
             Entry::Occupied(value) => value,
-            Entry::Vacant(_) => unreachable!("invalid state"),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => unreachable!("invalid state"),
         }
     }
 }
@@ -85,6 +88,10 @@ where
     /// Insert a value at a given index.
     /// This will force the underlying storage to grow if
     /// the index given is larger than the current capacity.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a value is inserted at a position that is currently checked out
     pub fn insert_at(&mut self, index: I, value: T) {
         let idx = index.into();
 
@@ -106,6 +113,7 @@ where
                 .expect("there should be entries up to self.len()");
 
             match entry {
+                Entry::CheckedOut(_) => panic!("value is checked out"),
                 Entry::Vacant(None) => *entry = Entry::Occupied(value),
                 Entry::Occupied(val) => *val = value,
                 &mut Entry::Vacant(Some(next_free)) => {
@@ -166,7 +174,7 @@ where
 
         match entry {
             Entry::Occupied(val) => val,
-            Entry::Vacant(..) => panic!("removal of vacant entry"),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => panic!("removal of vacant entry"),
         }
     }
 
@@ -185,7 +193,7 @@ where
 
         match entry {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(..) => None,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         }
     }
 
@@ -198,7 +206,7 @@ where
                 std::mem::swap(value, &mut new_value);
                 Some(new_value)
             }
-            Entry::Vacant(_) => None,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         }
     }
 
@@ -229,6 +237,41 @@ where
         }
     }
 
+    /// Check out a value from the slab.
+    /// The value has to be manually returned using `Self::restore`.
+    ///
+    /// It's up to the developer to remember to do this
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a value does not at exist at the given key
+    pub fn checkout(&mut self, key: I) -> Ticket<I, T> {
+        let mut entry = Entry::CheckedOut(key);
+        std::mem::swap(&mut entry, &mut self.inner[key.into()]);
+
+        match entry {
+            Entry::Occupied(value) => Ticket { value, key },
+            Entry::CheckedOut(_) => panic!("value already checked out"),
+            _ => panic!("no entry maching the key"),
+        }
+    }
+
+    /// Restore a value that is currently checked out.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a value does not at exist at the given key,
+    /// or if the value is not currently checked out
+    pub fn restore(&mut self, Ticket { value, key }: Ticket<I, T>) {
+        let mut entry = Entry::Occupied(value);
+        std::mem::swap(&mut entry, &mut self.inner[key.into()]);
+
+        match entry {
+            Entry::CheckedOut(_) => (),
+            _ => panic!("failed to return checked out value"),
+        }
+    }
+
     /// # Panics
     ///
     /// Will panic if the value does not exist
@@ -248,6 +291,7 @@ where
         self.inner.iter().filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
             Entry::Vacant(_) => None,
+            Entry::CheckedOut(_) => None,
         })
     }
 
@@ -259,7 +303,7 @@ where
     pub fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
         self.inner.iter_mut().filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
 
@@ -267,7 +311,7 @@ where
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
             Entry::Occupied(val) => Some((i.into(), val)),
-            Entry::Vacant(_) => None,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
 
@@ -278,7 +322,7 @@ where
         self.next_id = None;
         self.inner.drain(..).filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
 
@@ -286,7 +330,7 @@ where
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> + '_ {
         self.inner.iter_mut().enumerate().filter_map(|(i, e)| match e {
             Entry::Occupied(val) => Some((i.into(), val)),
-            Entry::Vacant(_) => None,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
 }
@@ -314,6 +358,7 @@ where
                     }
                 }
                 Entry::Occupied(value) => writeln!(&mut s, "{idx}: {value:?}"),
+                Entry::CheckedOut(_) => writeln!(&mut s, "entry is checked out"),
             };
         }
 
