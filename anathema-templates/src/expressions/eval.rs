@@ -110,6 +110,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                 .into_iter()
                 .map(|expr| eval(expr, strings))
                 .collect::<Result<Vec<_>, _>>()?;
+
             Expression::Call {
                 fun: eval(*fun, strings)?.into(),
                 args: args.into_boxed_slice(),

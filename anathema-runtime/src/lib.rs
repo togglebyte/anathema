@@ -40,11 +40,10 @@ use anathema_widgets::{
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
 use components::Components;
-use error::Error;
 use events::EventHandler;
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
-pub use crate::error::Result;
+pub use crate::error::{Error, Result};
 
 static REBUILD: AtomicBool = AtomicBool::new(false);
 
@@ -72,6 +71,22 @@ impl<T> RuntimeBuilder<T> {
         let ident = ident.into();
         let id = self.document.add_component(ident, template_path.into())?.into();
         self.component_registry.add_component(id, component, state);
+        Ok(id.into())
+    }
+
+    pub fn register_default<C>(
+        &mut self,
+        ident: impl Into<String>,
+        template_path: impl Into<PathBuf>,
+    ) -> Result<ComponentId<C::Message>>
+    where
+        C: Component + Default + 'static,
+        C::State: Default,
+    {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template_path.into())?.into();
+        self.component_registry
+            .add_component(id, C::default(), C::State::default());
         Ok(id.into())
     }
 

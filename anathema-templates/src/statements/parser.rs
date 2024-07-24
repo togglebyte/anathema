@@ -713,6 +713,19 @@ mod test {
     }
 
     #[test]
+    fn indented_comment() {
+        let src = "
+            if x
+                // x
+            else
+        ";
+
+        let mut statements = parse_ok(src);
+        assert_eq!(statements.remove(0), if_stmt(ident("x")));
+        assert_eq!(statements.remove(0), else_stmt());
+    }
+
+    #[test]
     fn parse_no_instruction() {
         let src = "";
         let expected = vec![eof()];

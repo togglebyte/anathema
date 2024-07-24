@@ -43,6 +43,12 @@ impl<T: 'static + State> List<T> {
     }
 }
 
+impl<T: State> Default for Value<List<T>> {
+    fn default() -> Self {
+        List::empty()
+    }
+}
+
 /// A `List` of values.
 /// ```
 /// # use anathema_state::List;

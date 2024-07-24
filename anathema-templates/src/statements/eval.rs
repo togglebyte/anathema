@@ -7,7 +7,7 @@ use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, If, Single};
 use crate::components::TemplateComponentId;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::expressions::Expression;
 
 pub(crate) struct Scope {
@@ -101,11 +101,20 @@ impl Scope {
     fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let cond = const_eval(cond, ctx);
         let body = self.consume_scope(ctx)?;
+        if body.is_empty() {
+            return Err(Error::EmptyBody);
+        }
+
         let if_node = If { cond, body };
         let mut elses = vec![];
         while let Some(cond) = self.statements.next_else() {
             let cond = cond.map(|v| const_eval(v, ctx));
             let body = self.consume_scope(ctx)?;
+
+            if body.is_empty() {
+                return Err(Error::EmptyBody);
+            }
+
             elses.push(Else { cond, body });
         }
         Ok(Blueprint::ControlFlow(ControlFlow { if_node, elses }))

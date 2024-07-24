@@ -60,6 +60,10 @@ impl Overflow {
         self.scroll(Direction::Backward, Pos { x: amount, y: 0 });
     }
 
+    pub fn scroll_to(&mut self, pos: Pos) {
+        self.offset = pos;
+    }
+
     pub fn offset(&self) -> Pos {
         self.offset
     }

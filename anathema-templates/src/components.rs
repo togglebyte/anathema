@@ -99,7 +99,7 @@ impl ComponentTemplates {
                 let template = match &component_src {
                     ComponentSource::File { template, .. } => template,
                     ComponentSource::InMemory(template) => template,
-                    ComponentSource::Empty => return Err(Error::MissingComponent),
+                    ComponentSource::Empty => return Err(Error::MissingComponent(key)),
                 };
                 let ret = self.compile(&template, globals, slots, strings);
                 // This will re-insert the component in the same location
@@ -110,7 +110,7 @@ impl ComponentTemplates {
                 assert_eq!(id, new_id);
                 ret
             }
-            _ => return Err(Error::MissingComponent),
+            _ => unreachable!("a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"),
         };
 
         self.dependencies.pop();

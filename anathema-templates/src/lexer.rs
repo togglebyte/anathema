@@ -48,7 +48,6 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                 self.chars.next(); // consume the second slash
                 loop {
                     if let Some((_, '\n')) | None = self.chars.peek() {
-                        self.chars.next();
                         break;
                     }
                     self.chars.next();
@@ -307,8 +306,9 @@ mod test {
         match lexer.next().unwrap().unwrap_err() {
             crate::error::Error::ParseError(err) => err.kind,
             crate::error::Error::CircularDependency
-            | crate::error::Error::MissingComponent
+            | crate::error::Error::MissingComponent(_)
             | crate::error::Error::EmptyTemplate
+            | crate::error::Error::EmptyBody
             | crate::error::Error::Io(_) => panic!("invalid error"),
         }
     }
@@ -319,6 +319,15 @@ mod test {
         let input = "// hello world";
         let mut lexer = Lexer::new(input, &mut strings);
         assert!(lexer.next().is_none());
+    }
+
+    #[test]
+    fn comment_retain_newline() {
+        let mut strings = Strings::empty();
+        let input = "// hello world\n";
+        let actual = token_kind(input);
+        let expected = Kind::Newline;
+        assert_eq!(expected, actual);
     }
 
     #[test]

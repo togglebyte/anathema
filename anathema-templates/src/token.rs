@@ -143,6 +143,7 @@ impl Display for Kind {
 #[derive(Debug, Copy, Clone)]
 pub struct Token(pub(crate) Kind, pub(crate) usize);
 
+#[derive(Debug)]
 pub(crate) struct Tokens {
     inner: Vec<Token>,
     index: usize,
