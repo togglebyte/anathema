@@ -16,6 +16,6 @@ fn main() {
         .finish()
         .unwrap();
 
-    let mut runtime = Runtime::new(doc, backend).finish().unwrap();
-    runtime.run();
+    let mut runtime = Runtime::builder(doc, backend).finish().unwrap();
+    runtime.run().unwrap();
 }

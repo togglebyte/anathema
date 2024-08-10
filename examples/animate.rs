@@ -54,7 +54,7 @@ fn main() {
         .finish()
         .unwrap();
 
-    let mut runtime = Runtime::new(doc, backend);
+    let mut runtime = Runtime::builder(doc, backend);
     runtime.register_component(
         "main",
         template,
