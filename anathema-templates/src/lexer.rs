@@ -48,6 +48,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                 self.chars.next(); // consume the second slash
                 loop {
                     if let Some((_, '\n')) | None = self.chars.peek() {
+                        self.chars.next(); // consume newline char
                         break;
                     }
                     self.chars.next();
