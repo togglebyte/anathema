@@ -211,7 +211,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);
@@ -323,7 +323,7 @@ mod test {
             &mut attribute_storage,
             &mut floating_widgets,
         );
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         tree.apply_visitor(&mut stringify);

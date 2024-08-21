@@ -327,7 +327,6 @@ mod test {
 
     #[test]
     fn comment_retain_newline() {
-        let strings = Strings::empty();
         let input = "// hello world\n";
         let actual = token_kind(input);
         let expected = Kind::Newline;

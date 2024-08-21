@@ -217,7 +217,7 @@ mod test {
         let comp_src = "node a + 2";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src);
+        doc.add_component("comp", comp_src).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -239,7 +239,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src);
+        doc.add_component("comp", comp_src).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -253,7 +253,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", "node a");
-        let (blueprint, _) = doc.compile().unwrap();
+        doc.add_component("comp", "node a").unwrap();
+        let _ = doc.compile().unwrap();
     }
 }

@@ -54,12 +54,6 @@ impl Key {
         self
     }
 
-    #[cfg(test)]
-    pub(super) fn set_index(&mut self, new_index: u64) {
-        new_index << Self::GEN_BITS >> Self::GEN_BITS;
-        self.0 |= new_index;
-    }
-
     pub(super) fn set_gen(&mut self, new_gen: u16) {
         let gen = (new_gen as u64) << Self::INDEX_BITS;
         self.0 |= gen;

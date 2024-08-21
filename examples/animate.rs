@@ -24,7 +24,7 @@ impl Component for C {
     type Message = ();
     type State = Num;
 
-    fn tick(&mut self, state: &mut Self::State, elements: Elements<'_, '_>, context: Context<'_>, dt: Duration) {
+    fn tick(&mut self, state: &mut Self::State, _: Elements<'_, '_>, context: Context<'_>, dt: Duration) {
         let x = dt.as_millis() as f64;
 
         self.val += x / 1000.0 * *state.speed.to_ref();
@@ -32,7 +32,7 @@ impl Component for C {
         state.x.set(x);
     }
 
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, elements: Elements<'_, '_>, context: Context<'_>) {
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, _: Elements<'_, '_>, _: Context<'_>) {
         match key.code {
             KeyCode::Char('k') => *state.speed.to_mut() += 0.1,
             KeyCode::Char('j') => *state.speed.to_mut() -= 0.1,
@@ -50,8 +50,8 @@ fn main() {
         .hide_cursor()
         .finish()
         .unwrap();
-  
-    let mut runtime = Runtime::new(doc, backend);
+
+    let mut runtime = Runtime::builder(doc, backend);
     runtime
         .register_component(
             "main",
