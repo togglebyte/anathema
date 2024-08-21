@@ -50,7 +50,7 @@ fn main() {
         .hide_cursor()
         .finish()
         .unwrap();
-
+  
     let mut runtime = Runtime::new(doc, backend);
     runtime
         .register_component(
@@ -63,6 +63,7 @@ fn main() {
             },
         )
         .unwrap();
+
     let mut runtime = runtime.finish().unwrap();
     runtime.run();
 }

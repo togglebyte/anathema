@@ -1,6 +1,8 @@
 # Anathema
 
-A TUI library with a custom template language and runtime
+A TUI library with a custom template language and runtime.
+
+**Note** Anathema should be considered alpha for now.
 
 [Getting started](https://togglebyte.github.io/anathema-guide/)
 
@@ -10,9 +12,8 @@ hstack [width: 40, height: 10]
     expand [factor: 1]
         border
             vstack
-                text "Item 1"
-                text "Item 2"
-                text "Item 3"
+                for item in [1, 2, 3]
+                    text "Item " item
 
     // Right pane
     expand [factor: 4]
