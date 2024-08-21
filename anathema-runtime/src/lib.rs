@@ -387,6 +387,7 @@ where
     }
 
     pub fn run(&mut self) {
+        self.backend.finalize();
         match self.internal_run() {
             Ok(()) => (),
             Err(Error::Stop) => (),
