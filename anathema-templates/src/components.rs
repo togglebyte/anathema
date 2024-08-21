@@ -83,32 +83,31 @@ impl ComponentTemplates {
 
     pub(crate) fn load(
         &mut self,
-        id: WidgetComponentId,
+        parent_id: WidgetComponentId,
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
-        parent: WidgetComponentId,
     ) -> Result<Vec<Blueprint>> {
-        if self.dependencies.contains(&id) {
+        if self.dependencies.contains(&parent_id) {
             return Err(Error::CircularDependency);
         }
 
-        self.dependencies.push(id);
+        self.dependencies.push(parent_id);
 
-        let ret = match self.components.remove(id) {
+        let ret = match self.components.remove(parent_id) {
             Some((key, component_src)) => {
                 let template = match &component_src {
                     ComponentSource::File { template, .. } => template,
                     ComponentSource::InMemory(template) => template,
                     ComponentSource::Empty => return Err(Error::MissingComponent(key)),
                 };
-                let ret = self.compile(&template, globals, slots, strings, parent);
+                let ret = self.compile(&template, globals, slots, strings, parent_id);
                 // This will re-insert the component in the same location
                 // as it was removed from since nothing else has
                 // written to the component storage since the component
                 // was removed.
                 let new_id = self.components.insert(key, component_src);
-                assert_eq!(id, new_id);
+                assert_eq!(parent_id, new_id);
                 ret
             }
             _ => unreachable!("a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"),
