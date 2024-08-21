@@ -52,7 +52,7 @@ where
         let mut scope = Scope::new();
         scope.insert_state(StateId::ZERO);
         let mut ctx = EvalContext::new(
-            &self.globals,
+            self.globals,
             &self.factory,
             &mut scope,
             &mut self.states,
@@ -112,7 +112,7 @@ where
             let path = self.tree.path(sub).clone();
 
             try_resolve_future_values(
-                &self.globals,
+                self.globals,
                 &self.factory,
                 &mut scope,
                 &mut self.states,
@@ -136,7 +136,7 @@ where
                 let Some(path) = self.tree.try_path(sub).cloned() else { return };
 
                 update_tree(
-                    &self.globals,
+                    self.globals,
                     &self.factory,
                     &mut scope,
                     &mut self.states,

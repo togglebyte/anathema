@@ -101,7 +101,7 @@ impl ComponentTemplates {
                     ComponentSource::InMemory(template) => template,
                     ComponentSource::Empty => return Err(Error::MissingComponent(key)),
                 };
-                let ret = self.compile(&template, globals, slots, strings, parent_id);
+                let ret = self.compile(template, globals, slots, strings, parent_id);
                 // This will re-insert the component in the same location
                 // as it was removed from since nothing else has
                 // written to the component storage since the component

@@ -219,7 +219,7 @@ mod test {
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 0);
 
-        eval(&expr, &globals, &scope, &states, value_id);
+        eval(expr, &globals, &scope, &states, value_id);
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 1);
