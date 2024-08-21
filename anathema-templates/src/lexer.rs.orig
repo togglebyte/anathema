@@ -48,7 +48,6 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                 self.chars.next(); // consume the second slash
                 loop {
                     if let Some((_, '\n')) | None = self.chars.peek() {
-                        self.chars.next(); // consume newline char
                         break;
                     }
                     self.chars.next();
@@ -328,7 +327,11 @@ mod test {
 
     #[test]
     fn comment_retain_newline() {
+<<<<<<< HEAD
         let strings = Strings::empty();
+=======
+        let mut strings = Strings::empty();
+>>>>>>> d2a33feecc34c4e0a093e772480b052ea958ac7f
         let input = "// hello world\n";
         let actual = token_kind(input);
         let expected = Kind::Newline;

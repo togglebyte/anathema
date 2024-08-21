@@ -92,7 +92,7 @@ mod test {
         let mut map = Map::empty();
         map.insert("a", true);
 
-        let doc = Document::new(tpl);
+        let mut doc = Document::new(tpl);
         let (blueprint, globals) = doc.compile().unwrap();
         let mut widget_tree = Tree::<_>::empty();
         let mut attribute_storage = AttributeStorage::empty();

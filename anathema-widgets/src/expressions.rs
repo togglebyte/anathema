@@ -322,6 +322,11 @@ impl<'bp> EvalValue<'bp> {
                         let rhs = rhs.load_common_val()?;
                         lhs.to_common()? == rhs.to_common()?
                     }
+                    Equality::NotEq => {
+                        let lhs = lhs.load_common_val()?;
+                        let rhs = rhs.load_common_val()?;
+                        lhs.to_common()? != rhs.to_common()?
+                    }
                     Equality::And => lhs.load_bool() && rhs.load_bool(),
                     Equality::Or => lhs.load_bool() || rhs.load_bool(),
                     Equality::Gt => lhs.load_number()? > rhs.load_number()?,
@@ -517,7 +522,7 @@ impl<'bp> ValueResolver<'bp> {
 
                 let lhs = self.resolve(lhs, scope, states);
                 match &lhs {
-                    EvalValue::Index(ref val, _) => match val.get(path, self.value_id) {
+                    EvalValue::Index(val, _) => match val.get(path, self.value_id) {
                         Some(val) => {
                             drop(common_val);
                             EvalValue::Index(val.into(), EvalValue::Index(lhs.into(), rhs.into()).into())
@@ -539,6 +544,10 @@ impl<'bp> ValueResolver<'bp> {
                             None => future_value(self.value_id),
                         }
                     }
+                    EvalValue::ExprList(_) | EvalValue::ExprMap(_) => match lhs.get(path, self.value_id) {
+                        Some(val) => val,
+                        None => future_value(self.value_id),
+                    },
                     _ => future_value(self.value_id),
                 }
             }
@@ -642,10 +651,10 @@ pub(crate) fn eval_collection<'bp>(
 #[cfg(test)]
 mod test {
 
-    use anathema_state::List;
+    use anathema_state::{List, Map, Value};
     use anathema_templates::expressions::{
         add, and, eq, greater_than, greater_than_equal, ident, index, less_than, less_than_equal, mul, neg, not, num,
-        or, sub,
+        or, strlit, sub,
     };
 
     use crate::testing::ScopedTest;
@@ -665,6 +674,23 @@ mod test {
             .eval(|value| {
                 let val = value.load::<u32>().unwrap();
                 assert_eq!(val, 8);
+            });
+    }
+
+    #[test]
+    fn index_lookup_on_lists_of_maps() {
+        let mut map = Map::empty();
+        map.insert("val", 1u32);
+
+        let mut lists = List::<Value<Map<u32>>>::empty();
+        lists.push_back(map);
+
+        ScopedTest::new()
+            .with_value("list", lists)
+            .with_expr(add(index(index(ident("list"), num(0)), strlit("val")), num(1)))
+            .eval(|value| {
+                let val = value.load::<u32>().unwrap();
+                assert_eq!(val, 2);
             });
     }
 

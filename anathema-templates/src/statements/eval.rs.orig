@@ -6,6 +6,10 @@ use anathema_store::storage::strings::StringId;
 use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, If, Single};
+<<<<<<< HEAD
+=======
+use crate::components::TemplateComponentId;
+>>>>>>> d2a33feecc34c4e0a093e772480b052ea958ac7f
 use crate::error::{Error, Result};
 use crate::expressions::Expression;
 use crate::WidgetComponentId;
@@ -148,7 +152,7 @@ impl Scope {
             slots.set(slot_id, body);
         }
 
-        let body = ctx.load_component(component_id, slots)?;
+        let body = ctx.load_component(component_id, slots, component_id)?;
 
         let component = Component {
             id: component_id,

@@ -47,12 +47,12 @@ impl From<Index> for usize {
 
 /// A ticket used when checkout an entry out of the slab.
 #[derive(Debug)]
-pub struct Ticket<T> {
+pub struct Ticket<I, T> {
     pub(crate) value: T,
-    key: Key,
+    key: I,
 }
 
-impl<T> Deref for Ticket<T> {
+impl<I, T> Deref for Ticket<I, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -60,7 +60,7 @@ impl<T> Deref for Ticket<T> {
     }
 }
 
-impl<T> DerefMut for Ticket<T> {
+impl<I, T> DerefMut for Ticket<I, T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }

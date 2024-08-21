@@ -67,7 +67,7 @@ mod test {
     #[test]
     fn top_left() {
         let tpl = "
-            align [alignment: 'top-left']
+            align [alignment: 'top_left']
                 text 'x'
         ";
 
@@ -103,7 +103,7 @@ mod test {
     #[test]
     fn top_right() {
         let tpl = "
-            align [alignment: 'top-right']
+            align [alignment: 'top_right']
                 text 'x'
         ";
 
@@ -139,7 +139,7 @@ mod test {
     #[test]
     fn bottom_right() {
         let tpl = "
-            align [alignment: 'bottom-right']
+            align [alignment: 'bottom_right']
                 text 'x'
         ";
 
@@ -175,7 +175,7 @@ mod test {
     #[test]
     fn bottom_left() {
         let tpl = "
-            align [alignment: 'bottom-left']
+            align [alignment: 'bottom_left']
                 text 'x'
         ";
 

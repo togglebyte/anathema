@@ -7,12 +7,6 @@ use super::{Index, Ticket};
 #[repr(transparent)]
 struct Gen(u16);
 
-impl Gen {
-    fn bump(&mut self) {
-        self.0 = self.0.wrapping_add(1);
-    }
-}
-
 impl From<u16> for Gen {
     fn from(val: u16) -> Self {
         Self(val)
@@ -36,54 +30,73 @@ impl From<usize> for Gen {
 /// A key is a combination of an index and a generation.
 /// To access a value using a key the value at the given index
 /// has to have a matching generation.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Key {
-    index: Index,
-    gen: Gen,
-}
+#[derive(Copy, Clone, PartialEq, Hash, Eq)]
+pub struct Key(u64);
 
 impl Key {
-    /// Max key value
-    pub const MAX: Self = Self {
-        index: Index(u32::MAX),
-        gen: Gen(u16::MAX),
-    };
-    /// One
-    pub const ONE: Self = Self::new(1);
-    /// Zero
-    pub const ZERO: Self = Self::new(0);
+    const GEN_BITS: usize = 16;
+    const INDEX_BITS: usize = 48;
+    /// Max, with the generation set to zero
+    pub const MAX: Self = Self(u64::MAX << Self::GEN_BITS >> Self::GEN_BITS);
+    /// One (generation is set to zero)
+    pub const ONE: Self = Self(1);
+    /// Zero for both index and generation
+    pub const ZERO: Self = Self(0);
 
-    /// Create a new key with a generation of zero
-    pub const fn new(index: u32) -> Self {
-        Self {
-            index: Index(index),
-            gen: Gen(0),
-        }
+    /// Create a new instance of a key
+    pub const fn new(index: usize) -> Self {
+        Self((index as u64) << Self::GEN_BITS >> Self::GEN_BITS)
     }
 
-    fn bump(&mut self) {
-        self.gen.bump();
+    pub(super) fn bump(mut self) -> Self {
+        let gen = self.gen().wrapping_add(1);
+        self.set_gen(gen);
+        self
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_index(&mut self, new_index: u64) {
+        new_index << Self::GEN_BITS >> Self::GEN_BITS;
+        self.0 |= new_index;
+    }
+
+    pub(super) fn set_gen(&mut self, new_gen: u16) {
+        let gen = (new_gen as u64) << Self::INDEX_BITS;
+        self.0 |= gen;
+    }
+
+    pub(super) const fn index(&self) -> usize {
+        (self.0 << Self::GEN_BITS >> Self::GEN_BITS) as usize
+    }
+
+    const fn gen(&self) -> Gen {
+        Gen((self.0 >> Self::INDEX_BITS) as u16)
     }
 }
 
 impl Debug for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Key <{}:{}>", self.index.0, self.gen.0)
+        write!(f, "Key <{}:{}>", self.index(), self.gen().0)
     }
 }
 
 impl From<(usize, usize)> for Key {
     fn from((index, gen): (usize, usize)) -> Self {
-        Self {
-            index: index.into(),
-            gen: gen.into(),
-        }
+        let gen = (gen as u64) << Self::INDEX_BITS;
+        let index = (index as u64) << Self::GEN_BITS >> Self::GEN_BITS;
+        Self(gen & index)
+    }
+}
+
+impl From<(usize, Gen)> for Key {
+    fn from((index, gen): (usize, Gen)) -> Self {
+        (index, gen.0 as usize).into()
     }
 }
 
 impl From<Key> for Index {
     fn from(value: Key) -> Self {
-        value.index
+        value.index().into()
     }
 }
 
@@ -153,11 +166,11 @@ impl<T> GenSlab<T> {
 
     /// Replace an existing value with a new one.
     /// This will bump the generation.
-    pub fn replace(&mut self, mut key: Key, mut new_value: T) -> Option<(Key, T)> {
-        match &mut self.inner[*key.index as usize] {
-            Entry::Occupied(val, gen) if key.gen == *gen => {
+    pub fn replace(&mut self, key: Key, mut new_value: T) -> Option<(Key, T)> {
+        match &mut self.inner[key.index()] {
+            Entry::Occupied(val, gen) if key.gen() == *gen => {
                 key.bump();
-                *gen = key.gen;
+                *gen = key.gen().into();
                 std::mem::swap(&mut new_value, val);
                 Some((key, new_value))
             }
@@ -176,23 +189,23 @@ impl<T> GenSlab<T> {
         ret
     }
 
-    pub(crate) fn checkout(&mut self, key: Key) -> Ticket<T> {
+    pub(crate) fn checkout(&mut self, key: Key) -> Ticket<Key, T> {
         let mut entry = Entry::CheckedOut(key);
-        std::mem::swap(&mut entry, &mut self.inner[*key.index as usize]);
+        std::mem::swap(&mut entry, &mut self.inner[key.index()]);
 
         match entry {
-            Entry::Occupied(value, gen) if key.gen == gen => Ticket { value, key },
+            Entry::Occupied(value, gen) if key.gen() == gen => Ticket { value, key },
             Entry::CheckedOut(_) => panic!("value already checked out"),
             _ => panic!("no entry maching the key"),
         }
     }
 
-    pub(crate) fn restore(&mut self, Ticket { value, key }: Ticket<T>) {
-        let mut entry = Entry::Occupied(value, key.gen);
-        std::mem::swap(&mut entry, &mut self.inner[*key.index as usize]);
+    pub(crate) fn restore(&mut self, Ticket { value, key }: Ticket<Key, T>) {
+        let mut entry = Entry::Occupied(value, key.gen());
+        std::mem::swap(&mut entry, &mut self.inner[key.index()]);
 
         match entry {
-            Entry::CheckedOut(checked_key) if key.gen == checked_key.gen => (),
+            Entry::CheckedOut(checked_key) if key.gen() == checked_key.gen() => (),
             _ => panic!("failed to return checked out value"),
         }
     }
@@ -207,7 +220,7 @@ impl<T> GenSlab<T> {
     pub fn next_id(&self) -> Key {
         match self.next_id {
             Some(id) => id,
-            None => Key::new(self.inner.len() as u32),
+            None => Key::new(self.inner.len()),
         }
     }
 
@@ -220,23 +233,21 @@ impl<T> GenSlab<T> {
     pub fn insert(&mut self, value: T) -> Key {
         match self.next_id.take() {
             Some(key) => {
-                let entry = &mut self.inner[*key.index as usize];
+                let entry = &mut self.inner[key.index()];
 
                 let Entry::Vacant(new_next_id) = entry else {
                     unreachable!("you found a bug with Anathema, please file a bug report")
                 };
 
                 self.next_id = new_next_id.take();
-                entry.swap(value, key.gen);
+                entry.swap(value, key.gen());
 
                 key
             }
             None => {
-                self.inner.push(Entry::occupied(value, Gen(0)));
-                Key {
-                    index: (self.inner.len() - 1).into(),
-                    gen: Gen(0),
-                }
+                let index = Key::new(self.inner.len());
+                self.inner.push(Entry::occupied(value, index.gen()));
+                index
             }
         }
     }
@@ -246,30 +257,30 @@ impl<T> GenSlab<T> {
     pub fn remove(&mut self, mut key: Key) -> Option<T> {
         let mut entry = Entry::Vacant(self.next_id.take());
         // Increment the generation
-        std::mem::swap(&mut self.inner[*key.index as usize], &mut entry);
+        std::mem::swap(&mut self.inner[key.index()], &mut entry);
 
         let ret = match entry {
-            Entry::Occupied(val, gen) if gen == key.gen => val,
+            Entry::Occupied(val, gen) if gen == key.gen() => val,
             Entry::Vacant(..) | Entry::Occupied(..) | Entry::CheckedOut(_) => return None,
         };
 
-        key.bump();
+        key = key.bump();
         self.next_id = Some(key);
 
         Some(ret)
     }
 
     /// Try to remove a value from the slab, where the index and generation matches
-    pub fn try_remove(&mut self, mut key: Key) -> Option<T> {
-        if self.inner.len() <= *key.index as usize {
+    pub fn try_remove(&mut self, key: Key) -> Option<T> {
+        if self.inner.len() <= key.index() {
             return None;
         }
         let mut entry = Entry::Vacant(self.next_id.take());
         // Increment the generation
-        std::mem::swap(&mut self.inner[*key.index as usize], &mut entry);
+        std::mem::swap(&mut self.inner[key.index()], &mut entry);
 
         let ret = match entry {
-            Entry::Occupied(val, gen) if gen == key.gen => val,
+            Entry::Occupied(val, gen) if gen == key.gen() => val,
             Entry::Vacant(..) | Entry::Occupied(..) | Entry::CheckedOut(_) => return None,
         };
 
@@ -281,16 +292,16 @@ impl<T> GenSlab<T> {
 
     /// Get a reference to a value in the slab
     pub fn get(&self, key: Key) -> Option<&T> {
-        match self.inner.get(*key.index as usize)? {
-            Entry::Occupied(val, gen) if key.gen.eq(gen) => Some(val),
+        match self.inner.get(key.index())? {
+            Entry::Occupied(val, gen) if key.gen() == *gen => Some(val),
             _ => None,
         }
     }
 
     /// Get a mutable reference to a value in the slab
     pub fn get_mut(&mut self, key: Key) -> Option<&mut T> {
-        match self.inner.get_mut(*key.index as usize)? {
-            Entry::Occupied(val, gen) if key.gen.eq(gen) => Some(val),
+        match self.inner.get_mut(key.index())? {
+            Entry::Occupied(val, gen) if key.gen() == *gen => Some(val),
             _ => None,
         }
     }
@@ -302,6 +313,18 @@ impl<T> GenSlab<T> {
     /// iterate over 1,000,000 entries to get there.
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
         self.inner.iter().filter_map(|e| match e {
+            Entry::Occupied(val, _) => Some(val),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        })
+    }
+
+    /// Be aware that this will only ever be as performant as
+    /// the underlying vector if all entries are occupied.
+    ///
+    /// E.g if the only slot occupied is 1,000,000, then this will
+    /// iterate over 1,000,000 entries to get there.
+    pub fn into_iter(self) -> impl Iterator<Item = T> {
+        self.inner.into_iter().filter_map(|e| match e {
             Entry::Occupied(val, _) => Some(val),
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
@@ -319,13 +342,7 @@ impl<T> GenSlab<T> {
     /// Iterate over the keys and elements
     pub fn iter_keys(&self) -> impl Iterator<Item = (Key, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val, gen) => Some((
-                Key {
-                    index: i.into(),
-                    gen: *gen,
-                },
-                val,
-            )),
+            Entry::Occupied(val, gen) => Some(((i, *gen).into(), val)),
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
@@ -346,9 +363,7 @@ where
                 Entry::Vacant(key) => {
                     let _ = write!(&mut s, "{idx}: vacant ");
                     match key {
-                        Some(key) => {
-                            writeln!(&mut s, "next key: {}:{}", key.index.0, key.gen.0)
-                        }
+                        Some(key) => writeln!(&mut s, "next key: {:?}", key),
                         None => writeln!(&mut s, "no next id"),
                     }
                 }
@@ -362,7 +377,7 @@ where
         let _ = writeln!(&mut s, "---- next id ----");
 
         let _ = match self.next_id {
-            Some(key) => writeln!(&mut s, "next key: {}:{}", *key.index, *key.gen),
+            Some(key) => writeln!(&mut s, "next key: {:?}", key),
             None => writeln!(&mut s, "no next id"),
         };
 
@@ -388,8 +403,8 @@ mod test {
         let key_1 = slab.insert(1);
         let _ = slab.remove(key_1);
         let key_2 = slab.insert(2);
-        assert_eq!(key_1.index, key_2.index);
-        assert!(key_1.gen != key_2.gen);
+        assert_eq!(key_1.index(), key_2.index());
+        assert!(key_1.gen() != key_2.gen());
     }
 
     #[test]
@@ -418,6 +433,7 @@ mod test {
         let mut slab = GenSlab::empty();
         let key_1 = slab.insert(1);
         let key_2 = slab.insert(2);
+
         // Check out two values
         let mut ticket_1 = slab.checkout(key_1);
         let mut ticket_2 = slab.checkout(key_2);

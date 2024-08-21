@@ -102,6 +102,12 @@ impl<T: AnyState + 'static> Value<T> {
         PendingValue(self.key)
     }
 
+    pub fn shared_state(&self) -> Option<SharedState<'_>> {
+        let (key, value) = try_make_shared(self.key.owned())?;
+        let shared = SharedState::new(key, value);
+        Some(shared)
+    }
+
     /// Get a copy of the value key.
     /// Useful for debugging.
     pub fn key(&self) -> ValueKey {

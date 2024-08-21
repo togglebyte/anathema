@@ -10,6 +10,7 @@ anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
 anathema-templates = { path = "../anathema-templates" }
 unicode-width = { workspace = true }
+flume = { workspace = true }
 
 [lints]
 workspace = true

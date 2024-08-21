@@ -120,13 +120,12 @@ impl Buffer {
 
     /// Put a character with a style at a given position.
     pub fn put_char(&mut self, c: char, pos: LocalPos) {
-        match self.get_mut(pos) {
-            Some((cur, _)) => *cur = c,
-            None => {
-                let cell = Cell::new(c, Style::new());
-                self.put(cell, pos);
-            }
-        }
+        let style = match self.get(pos) {
+            Some((_, style)) => *style,
+            None => Style::new(),
+        };
+        let cell = Cell::new(c, style);
+        self.put(cell, pos);
     }
 
     /// Update the attributes at a given cell.
@@ -154,7 +153,17 @@ impl Buffer {
         }
     }
 
-    /// Get a `char` and [`Style`] at a given position inside the buffer.
+    /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
+    pub fn get(&self, pos: LocalPos) -> Option<(&char, &Style)> {
+        let index = self.index(pos);
+        let cell = self.inner.get(index)?;
+        match &cell.state {
+            CellState::Occupied(c) => Some((c, &cell.style)),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get_mut(&mut self, pos: LocalPos) -> Option<(&mut char, &mut Style)> {
         let index = self.index(pos);
         let cell = self.inner.get_mut(index)?;

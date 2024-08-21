@@ -39,12 +39,12 @@ impl TestRunner {
         size.height += 2;
 
         let root = "
-        border [border-style: 'thick']
+        border [border_style: 'thick']
             expand
                 @main
         ";
         let mut doc = Document::new(root);
-        let main = doc.add_component("main", src);
+        let main = doc.add_component("main", src).unwrap();
         components.add_component(main.into(), (), ());
 
         let (blueprint, globals) = doc.compile().unwrap();
@@ -78,7 +78,7 @@ impl TestRunner {
         );
 
         let path = Default::default();
-        eval_blueprint(&self.blueprint, &mut ctx, &path, &mut tree);
+        eval_blueprint(&self.blueprint, &mut ctx, &path, &mut tree).unwrap();
 
         TestInstance {
             states: &mut self.states,
