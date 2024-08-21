@@ -51,6 +51,7 @@ impl Display for ParseError {
         let msg = match &self.kind {
             ParseErrorKind::UnterminatedString => "unterminated string".into(),
             ParseErrorKind::UnterminatedAttributes => "unterminated attributes (missing `]`)".into(),
+            ParseErrorKind::UnterminatedAssociation => "unterminated association (missing `)`)".into(),
             ParseErrorKind::UnterminatedElement => "unterminated element".into(),
             ParseErrorKind::InvalidToken { expected } => {
                 format!("invalid token (expected: \"{expected}\")")
@@ -88,6 +89,7 @@ pub enum ParseErrorKind {
     UnterminatedString,
     UnterminatedElement,
     UnterminatedAttributes,
+    UnterminatedAssociation,
     InvalidToken { expected: &'static str },
     InvalidNumber,
     InvalidIndex,

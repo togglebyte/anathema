@@ -92,7 +92,7 @@ mod test {
         let mut map = Map::empty();
         map.insert("a", true);
 
-        let doc = Document::new(tpl);
+        let mut doc = Document::new(tpl);
         let (blueprint, globals) = doc.compile().unwrap();
         let mut widget_tree = Tree::<_>::empty();
         let mut attribute_storage = AttributeStorage::empty();
@@ -114,7 +114,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);

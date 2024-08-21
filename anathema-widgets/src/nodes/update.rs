@@ -6,6 +6,7 @@ use super::element::Element;
 use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 use crate::components::ComponentRegistry;
+use crate::error::Result;
 use crate::values::ValueId;
 use crate::widget::FloatingWidgets;
 use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
@@ -23,18 +24,22 @@ struct UpdateTree<'a, 'b, 'bp> {
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
-    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) {
+    type Output = Result<()>;
+
+    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
-        let mut ctx = EvalContext {
-            globals: self.globals,
-            factory: self.factory,
-            scope: self.scope,
-            states: self.states,
-            components: self.components,
-            attribute_storage: self.attribute_storage,
-            floating_widgets: self.floating_widgets,
-        };
-        update_widget(node, &mut ctx, self.value_id, self.change, path, tree);
+        let mut ctx = EvalContext::new(
+            self.globals,
+            self.factory,
+            self.scope,
+            self.states,
+            self.components,
+            self.attribute_storage,
+            self.floating_widgets,
+        );
+        update_widget(node, &mut ctx, self.value_id, self.change, path, tree)?;
+
+        Ok(())
     }
 
     fn parent(&mut self, parent: &WidgetKind<'bp>, children: &[u16]) {
@@ -78,7 +83,7 @@ fn update_widget<'bp>(
     change: &Change,
     path: &NodePath,
     tree: &mut WidgetTree<'bp>,
-) {
+) -> Result<()> {
     match widget {
         WidgetKind::Element(..) => {
             // Reflow of the layout will be triggered by the runtime and not in this step
@@ -92,7 +97,7 @@ fn update_widget<'bp>(
                 }
             }
         }
-        WidgetKind::For(for_loop) => for_loop.update(ctx, change, value_id, path, tree),
+        WidgetKind::For(for_loop) => for_loop.update(ctx, change, value_id, path, tree)?,
         WidgetKind::Iteration(_) => todo!(),
         WidgetKind::ControlFlow(_) => unreachable!("update is never called on ControlFlow, only the children"),
         WidgetKind::If(_) | WidgetKind::Else(_) => (), // If / Else are not updated by themselves
@@ -102,6 +107,8 @@ fn update_widget<'bp>(
         // branches.
         WidgetKind::Component(_) => (),
     }
+
+    Ok(())
 }
 
 pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>, children: &[u16]) {
@@ -124,9 +131,8 @@ pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>,
                 }
             }
             // Insert internal state
-            if let Some(state_id) = component.state_id() {
-                scope.insert_state(state_id);
-            }
+            let state_id = component.state_id();
+            scope.insert_state(state_id);
         }
         WidgetKind::ControlFlow(_) | WidgetKind::Element(Element { .. }) | WidgetKind::If(_) | WidgetKind::Else(_) => {}
     }

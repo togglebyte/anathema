@@ -40,18 +40,19 @@ impl TryFrom<CommonVal<'_>> for Wrap {
 }
 
 #[derive(Debug)]
-struct Width(usize);
+struct LineWidth(usize);
 
-impl Width {
+impl LineWidth {
     const ZERO: Self = Self(0);
 
+    // update the current value and return the old value
     fn swap(&mut self, mut new_value: usize) -> u16 {
         std::mem::swap(&mut self.0, &mut new_value);
         new_value as u16
     }
 }
 
-impl Deref for Width {
+impl Deref for LineWidth {
     type Target = usize;
 
     fn deref(&self) -> &Self::Target {
@@ -59,21 +60,30 @@ impl Deref for Width {
     }
 }
 
-impl AddAssign<usize> for Width {
+impl AddAssign<usize> for LineWidth {
     fn add_assign(&mut self, rhs: usize) {
         self.0 += rhs;
     }
 }
 
+/// The process result dictates whether it's possible to
+/// fit more text or not.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ProcessResult {
+    /// Continue means it's possible to process more text
     Continue,
+    /// Break means that there is no more room for text and
+    /// further processing should be avoided
     Break,
 }
 
 /// A shared storage of byte, layout and line data for string layout.
 pub struct StringStorage {
+    // All the bytes that makes up all the strings.
     bytes: Buffer<u8>,
+    // The layout of the text, this is not the same as the `lines`,
+    // as the lines can be iterated over and contains the information
+    // required to draw the lines.
     layout: Buffer<(u32, Entry)>,
     lines: Buffer<LineEntry>,
 }
@@ -128,7 +138,7 @@ impl<'buf> StringSession<'buf> {
             layout,
             lines,
             chomper: Chomper::Continuous(0),
-            current_width: Width::ZERO,
+            current_width: LineWidth::ZERO,
             wrap,
             max,
             line: 0,
@@ -243,7 +253,7 @@ struct Layout<'a, 'buf> {
 }
 
 impl<'a, 'buf> Layout<'a, 'buf> {
-    pub fn new(inner: &'a mut Session<'buf, (u32, Entry)>, key: SliceIndex) -> Self {
+    fn new(inner: &'a mut Session<'buf, (u32, Entry)>, key: SliceIndex) -> Self {
         Self { inner, key }
     }
 
@@ -263,11 +273,11 @@ struct Lines<'a, 'buf> {
 }
 
 impl<'a, 'buf> Lines<'a, 'buf> {
-    pub fn new(inner: &'a mut Session<'buf, LineEntry>, key: SliceIndex) -> Self {
+    fn new(inner: &'a mut Session<'buf, LineEntry>, key: SliceIndex) -> Self {
         Self { inner, key }
     }
 
-    pub fn push(&mut self, entry: LineEntry) {
+    fn push(&mut self, entry: LineEntry) {
         self.inner.push(entry);
     }
 
@@ -297,7 +307,7 @@ pub struct Strings<'a, 'buf> {
     bytes: Bytes<'a, 'buf>,
     lines: Lines<'a, 'buf>,
     chomper: Chomper,
-    current_width: Width,
+    current_width: LineWidth,
     wrap: Wrap,
     max: Size,
     // Byte index where the current line starts
@@ -311,10 +321,12 @@ impl<'buf> Strings<'_, 'buf> {
         self.bytes.str(self.line, index)
     }
 
+    /// Layout another string slice.
     pub fn add_str(&mut self, s: &str) -> ProcessResult {
         if self.frozen {
             return ProcessResult::Break;
         }
+
         for word in s.split_inclusive(char::is_whitespace) {
             self.bytes.extend(word.bytes());
             for c in word.chars() {
@@ -333,7 +345,8 @@ impl<'buf> Strings<'_, 'buf> {
         let width = c.width().unwrap_or(0);
 
         // NOTE
-        // Special case: the character is too wide to ever fits so it's removed
+        // Special case: the character is too wide to ever fit so it's removed,
+        // e.g a character width of two with a max width of one.
         if width > self.max.width {
             for _ in 0..c.len_utf8() {
                 self.bytes.inner.pop();
@@ -349,17 +362,27 @@ impl<'buf> Strings<'_, 'buf> {
             if self.size.height >= self.max.height {
                 return ProcessResult::Break;
             }
+
+            self.chomper.force_word_boundary();
             self.newline();
             return ProcessResult::Continue;
         }
 
         // NOTE
-        // If the trailing whitespace should be removed do so here
+        // If the trailing whitespace should be removed, do so here
         while width + *self.current_width > self.max.width {
             if c.is_whitespace() {
+                // 1. Make this the next word boundary
+                // 2. Insert a newline here
+                // 3. Remove the bytes representing this whitespace
+
                 for _ in 0..c.len_utf8() {
                     self.bytes.inner.pop();
                 }
+
+                self.chomper.force_word_boundary();
+                self.newline();
+
                 return ProcessResult::Continue;
             }
 
@@ -386,14 +409,17 @@ impl<'buf> Strings<'_, 'buf> {
                 self.layout.push(idx as u32, Entry::Newline);
                 idx
             }
-            Chomper::WordBoundary(wb, idx) => {
-                let diff = self.line(idx).width() - self.line(wb).width();
+            Chomper::WordBoundary {
+                word_boundary,
+                current_index,
+            } => {
+                let diff = self.line(current_index).width() - self.line(word_boundary).width();
                 let width = *self.current_width - diff;
-                self.layout.push(wb as u32, Entry::LineWidth(width as u16));
-                self.layout.push(wb as u32, Entry::Newline);
+                self.layout.push(word_boundary as u32, Entry::LineWidth(width as u16));
+                self.layout.push(word_boundary as u32, Entry::Newline);
                 let _ = self.current_width.swap(diff);
-                self.chomper = Chomper::Continuous(idx);
-                wb
+                self.chomper = Chomper::Continuous(current_index);
+                word_boundary
             }
         };
     }
@@ -403,6 +429,7 @@ impl<'buf> Strings<'_, 'buf> {
         self.layout.push(index, Entry::Style(style));
     }
 
+    /// Finalize the layout, converting entries to lines
     pub fn finish(mut self) -> (LayoutKey, Size) {
         self.layout
             .inner
@@ -457,6 +484,9 @@ impl<'buf> Strings<'_, 'buf> {
         self.size.width = self.size.width.max(*self.current_width);
     }
 
+    // Set the layout to frozen, this means
+    // any call to layout will return `Break`, similar to how
+    // a fused iterator works
     fn freeze(&mut self) {
         self.frozen = true;
     }
@@ -465,13 +495,23 @@ impl<'buf> Strings<'_, 'buf> {
 #[derive(Debug)]
 enum Chomper {
     Continuous(usize),
-    WordBoundary(usize, usize),
+    WordBoundary { word_boundary: usize, current_index: usize },
 }
 
 impl Chomper {
     fn index(&self) -> usize {
         match self {
-            Chomper::Continuous(idx) | Chomper::WordBoundary(_, idx) => *idx,
+            Chomper::Continuous(current_index) | Chomper::WordBoundary { current_index, .. } => *current_index,
+        }
+    }
+
+    fn force_word_boundary(&mut self) {
+        if let Chomper::WordBoundary {
+            word_boundary,
+            current_index,
+        } = self
+        {
+            *word_boundary = *current_index;
         }
     }
 
@@ -480,8 +520,12 @@ impl Chomper {
 
         if c.is_whitespace() && wrap.is_word_wrap() {
             match self {
-                Chomper::Continuous(idx) | Chomper::WordBoundary(_, idx) => {
-                    *self = Self::WordBoundary(*idx + c_len, *idx + c_len);
+                Chomper::Continuous(idx) | Chomper::WordBoundary { current_index: idx, .. } => {
+                    let new_index = *idx + c_len;
+                    *self = Self::WordBoundary {
+                        word_boundary: new_index,
+                        current_index: new_index,
+                    };
                     return;
                 }
             }
@@ -489,7 +533,7 @@ impl Chomper {
 
         match self {
             Self::Continuous(idx) => *idx += c_len,
-            Self::WordBoundary(_, idx) => *idx += c_len,
+            Self::WordBoundary { current_index, .. } => *current_index += c_len,
         }
     }
 }
@@ -532,10 +576,11 @@ mod test {
     fn word_wrapping_layout() {
         let inputs: &[(&[&str], &str)] = &[
             (&["a\nb\nc"], "a\nb\nc"),
-            (&[" 12", "345　12", "345 "], " \n12345\n12345"),
-            (&[" 🐇🐇🐇", "🐇🐇 12", "345 "], " \n🐇🐇\n🐇🐇\n🐇 \n12345"),
-            (&["1", "23", "45 12", "345 "], "12345\n12345"),
-            (&["12345 abcde "], "12345\nabcde"),
+            (&[" 12", "345 12", "345 "], " \n12345\n12345\n"),
+            (&[" 12", "345　12", "345 "], " \n12345\n12345\n"),
+            (&[" 🐇🐇🐇", "🐇🐇 12", "345 "], " \n🐇🐇\n🐇🐇\n🐇 \n12345\n"),
+            (&["1", "23", "45 12", "345 "], "12345\n12345\n"),
+            (&["12345 abcde "], "12345\nabcde\n"),
             (&["onereallylongword"], "onere\nallyl\nongwo\nrd"),
             (&["ahello do the"], "ahell\no do \nthe"),
             (&["hello do the"], "hello\ndo \nthe"),

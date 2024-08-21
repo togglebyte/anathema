@@ -7,6 +7,12 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
+use crate::{BOTTOM, LEFT, RIGHT, TOP};
+
+const RELATIVE: &str = "relative";
+const ABSOLUTE: &str = "absolute";
+const PLACEMENT: &str = "placement";
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum HorzEdge {
     Left(u32),
@@ -34,8 +40,8 @@ impl TryFrom<CommonVal<'_>> for Placement {
     fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
         match value {
             CommonVal::Str(wrap) => match wrap {
-                "relative" => Ok(Placement::Relative),
-                "absolute" => Ok(Placement::Absolute),
+                RELATIVE => Ok(Placement::Relative),
+                ABSOLUTE => Ok(Placement::Absolute),
                 _ => Err(()),
             },
             _ => Err(()),
@@ -73,19 +79,19 @@ impl Widget for Position {
         ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribs.get(id);
-        self.placement = attribs.get("placement").unwrap_or_default();
+        self.placement = attribs.get(PLACEMENT).unwrap_or_default();
 
-        self.horz_edge = match attribs.get_int("left") {
+        self.horz_edge = match attribs.get_int(LEFT) {
             Some(left) => HorzEdge::Left(left as u32),
-            None => match attribs.get_int("right") {
+            None => match attribs.get_int(RIGHT) {
                 Some(right) => HorzEdge::Right(right as u32),
                 None => HorzEdge::Left(0),
             },
         };
 
-        self.vert_edge = match attribs.get_int("top") {
+        self.vert_edge = match attribs.get_int(TOP) {
             Some(top) => VertEdge::Top(top as u32),
-            None => match attribs.get_int("bottom") {
+            None => match attribs.get_int(BOTTOM) {
                 Some(bottom) => VertEdge::Bottom(bottom as u32),
                 None => VertEdge::Top(0),
             },

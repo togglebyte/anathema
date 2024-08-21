@@ -180,6 +180,10 @@ impl Subscribers {
             Subscribers::Heap(_) => heap.as_mut()?.next(),
         })
     }
+
+    fn clear(&mut self) {
+        *self = Subscribers::Empty;
+    }
 }
 
 pub(super) struct SubscriberMap {
@@ -212,6 +216,13 @@ impl SubscriberMap {
     pub(super) fn unsubscribe(&mut self, key: SubKey, subscriber: Subscriber) {
         if let Some(subs) = self.inner.get_mut(key) {
             subs.remove(subscriber);
+        }
+    }
+
+    // Remove every subscriber but keep the entry as it is owned by a value.
+    pub(super) fn clear_subscribers(&mut self) {
+        for (_, subs) in self.inner.iter_mut() {
+            subs.clear();
         }
     }
 

@@ -352,4 +352,23 @@ impl States {
             state
         })
     }
+
+    pub fn with_mut<F, U>(&mut self, index: impl Into<StateId>, f: F) -> U
+    where
+        F: FnOnce(&mut dyn AnyState, &mut Self) -> U,
+    {
+        let mut ticket = self.inner.checkout(index.into());
+        let ret = f(&mut *ticket, self);
+        self.inner.restore(ticket);
+        ret
+    }
+
+    /// Remove and return a given state.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the state does not exist.
+    pub fn remove(&mut self, state_id: StateId) -> Box<dyn AnyState> {
+        self.inner.remove(state_id)
+    }
 }

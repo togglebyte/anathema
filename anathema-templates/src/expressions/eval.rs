@@ -61,6 +61,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
             | Operator::Or => {
                 let equality = match op {
                     Operator::EqualEqual => Equality::Eq,
+                    Operator::NotEqual => Equality::NotEq,
                     Operator::GreaterThan => Equality::Gt,
                     Operator::GreaterThanOrEqual => Equality::Gte,
                     Operator::LessThan => Equality::Lt,
@@ -109,6 +110,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                 .into_iter()
                 .map(|expr| eval(expr, strings))
                 .collect::<Result<Vec<_>, _>>()?;
+
             Expression::Call {
                 fun: eval(*fun, strings)?.into(),
                 args: args.into_boxed_slice(),
@@ -275,5 +277,65 @@ mod test {
     fn function_call() {
         let expr = eval_src("fun(5, 4)");
         assert_eq!(expr.to_string(), "fun(5, 4)");
+    }
+
+    #[test]
+    fn equality() {
+        let expr = eval_src("1 == 1");
+        assert_eq!(expr.to_string(), "1 == 1");
+    }
+
+    #[test]
+    fn not_equal() {
+        let expr = eval_src("1 != 1");
+        assert_eq!(expr.to_string(), "1 != 1");
+    }
+
+    #[test]
+    fn greater_than() {
+        let expr = eval_src("1 > 1");
+        assert_eq!(expr.to_string(), "1 > 1");
+    }
+
+    #[test]
+    fn greater_than_or_equal_to() {
+        let expr = eval_src("1 >= 1");
+        assert_eq!(expr.to_string(), "1 >= 1");
+    }
+
+    #[test]
+    fn less_than() {
+        let expr = eval_src("1 < 1");
+        assert_eq!(expr.to_string(), "1 < 1");
+    }
+
+    #[test]
+    fn less_than_or_equal_to() {
+        let expr = eval_src("1 <= 1");
+        assert_eq!(expr.to_string(), "1 <= 1");
+    }
+
+    #[test]
+    fn and() {
+        let expr = eval_src("true && true");
+        assert_eq!(expr.to_string(), "true && true");
+    }
+
+    #[test]
+    fn or() {
+        let expr = eval_src("true || true");
+        assert_eq!(expr.to_string(), "true || true");
+    }
+
+    #[test]
+    fn list() {
+        let expr = eval_src("[1, 2, 3]");
+        assert_eq!(expr.to_string(), "[1, 2, 3]");
+    }
+
+    #[test]
+    fn map() {
+        let expr = eval_src("[{a: 1}, {b: 89}]");
+        assert_eq!(expr.to_string(), "[{a: 1}, {b: 89}]");
     }
 }

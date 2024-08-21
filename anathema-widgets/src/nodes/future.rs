@@ -7,6 +7,7 @@ use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 use super::update::scope_value;
 use crate::components::ComponentRegistry;
+use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
 use crate::widget::FloatingWidgets;
@@ -24,18 +25,23 @@ struct ResolveFutureValues<'a, 'b, 'bp> {
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'bp> {
-    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) {
+    type Output = Result<()>;
+
+    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
-        let mut ctx = EvalContext {
-            globals: self.globals,
-            factory: self.factory,
-            scope: self.scope,
-            states: self.states,
-            components: self.components,
-            attribute_storage: self.attribute_storage,
-            floating_widgets: self.floating_widgets,
-        };
-        try_resolve_value(node, &mut ctx, self.value_id, path, tree);
+        let mut ctx = EvalContext::new(
+            self.globals,
+            self.factory,
+            self.scope,
+            self.states,
+            self.components,
+            self.attribute_storage,
+            self.floating_widgets,
+        );
+
+        try_resolve_value(node, &mut ctx, self.value_id, path, tree)?;
+
+        Ok(())
     }
 
     fn parent(&mut self, parent: &WidgetKind<'bp>, children: &[u16]) {
@@ -75,7 +81,7 @@ fn try_resolve_value<'bp>(
     value_id: ValueId,
     path: &NodePath,
     tree: &mut WidgetTree<'bp>,
-) {
+) -> Result<()> {
     match widget {
         WidgetKind::Element(Element { container, .. }) => {
             let Some(val) = ctx
@@ -83,8 +89,9 @@ fn try_resolve_value<'bp>(
                 .get_mut(container.id)
                 .get_mut_with_index(value_id.index())
             else {
-                return;
+                return Ok(());
             };
+
             if let Some(expr) = val.expr {
                 let value = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);
                 *val = value;
@@ -102,7 +109,9 @@ fn try_resolve_value<'bp>(
                 ctx.states,
                 value_id,
             );
+
             tree.remove_children(path);
+
             let collection = &for_loop.collection;
             let binding = &for_loop.binding;
             let body = for_loop.body;
@@ -147,7 +156,7 @@ fn try_resolve_value<'bp>(
                         loop_index: anathema_state::Value::new(index as i64),
                         binding,
                     }))
-                    .unwrap(); // TODO unwrap
+                    .ok_or(Error::TreeTransactionFailed)?;
 
                 // Scope the iteration value
                 tree.with_value(iter_id, |parent, widget, tree| {
@@ -155,9 +164,10 @@ fn try_resolve_value<'bp>(
                     ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
                     for bp in body {
-                        crate::eval_blueprint(bp, ctx, parent, tree);
+                        crate::eval_blueprint(bp, ctx, parent, tree)?;
                     }
-                });
+                    Ok(())
+                })?;
 
                 ctx.scope.pop();
             }
@@ -169,7 +179,7 @@ fn try_resolve_value<'bp>(
             }
         }
         WidgetKind::Else(el) => {
-            let Some(val) = &mut el.cond else { return };
+            let Some(val) = &mut el.cond else { return Ok(()) };
             if let Some(expr) = val.expr {
                 *val = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);
             }
@@ -177,7 +187,7 @@ fn try_resolve_value<'bp>(
         WidgetKind::ControlFlow(_) => unreachable!(),
         WidgetKind::Iteration(_) => unreachable!(),
         WidgetKind::Component(component) => {
-            let Some(state) = &mut component.external_state else { return };
+            let Some(state) = &mut component.external_state else { return Ok(()) };
             for ((_, i), v) in state.iter_mut() {
                 if *i == value_id.index() {
                     if let Some(expr) = v.expr {
@@ -187,6 +197,8 @@ fn try_resolve_value<'bp>(
             }
         }
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -207,7 +219,7 @@ mod test {
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 0);
 
-        eval(&expr, &globals, &scope, &states, value_id);
+        eval(expr, &globals, &scope, &states, value_id);
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 1);

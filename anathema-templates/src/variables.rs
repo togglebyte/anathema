@@ -18,6 +18,10 @@ impl Globals {
     pub fn get(&self, ident: &str) -> Option<&Expression> {
         self.0.get(ident)
     }
+
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
+    }
 }
 
 impl From<Variables> for Globals {
@@ -135,11 +139,13 @@ impl<const N: usize> From<[u16; N]> for ScopeId {
 #[derive(Debug)]
 struct RootScope(Scope);
 
-impl RootScope {
-    pub fn new() -> Self {
+impl Default for RootScope {
+    fn default() -> Self {
         Self(Scope::new(ScopeId(vec![0].into())))
     }
+}
 
+impl RootScope {
     fn get_scope_mut(&mut self, id: impl AsRef<[u16]>) -> &mut Scope {
         let mut scope = &mut self.0;
         let mut id = &id.as_ref()[1..];
@@ -277,15 +283,25 @@ pub struct Variables {
     declarations: Declarations,
 }
 
-impl Variables {
-    pub fn new() -> Self {
-        let root = RootScope::new();
+impl Default for Variables {
+    fn default() -> Self {
+        let root = RootScope::default();
         Self {
             current: root.0.id.clone(),
             root,
             store: Slab::empty(),
             declarations: Declarations::new(),
         }
+    }
+}
+
+impl Variables {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn take(&mut self) -> Self {
+        std::mem::take(self)
     }
 
     fn declare_at(&mut self, ident: impl Into<Rc<str>>, var_id: VarId, id: ScopeId) -> VarId {
@@ -428,7 +444,7 @@ mod test {
 
     #[test]
     fn create_child() {
-        let mut root = RootScope::new();
+        let mut root = RootScope::default();
         let child_id = root.create_child();
         assert_eq!(root.0.children.len(), 1);
         assert_eq!(child_id.as_ref(), &[0, 0]);
@@ -438,7 +454,7 @@ mod test {
     fn get_value() {
         let expected: VarId = 123.into();
 
-        let mut root = RootScope::new();
+        let mut root = RootScope::default();
         root.insert("var", expected);
         let actual = root.get_var_id(root.id(), "var").unwrap();
         assert_eq!(expected, actual);
@@ -449,7 +465,7 @@ mod test {
         let expected: VarId = 1.into();
         let ident = "var";
 
-        let mut root = RootScope::new();
+        let mut root = RootScope::default();
         let child_id = root.create_child();
         let child = root.get_scope_mut(&child_id);
         child.insert(ident, expected);

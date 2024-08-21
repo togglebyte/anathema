@@ -11,6 +11,7 @@ pub use self::vstack::VStack;
 pub use self::zstack::ZStack;
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, DIRECTION};
+use crate::{HEIGHT, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 
 mod column;
 mod hstack;
@@ -30,19 +31,19 @@ impl Stack {
     ) -> Size {
         let attributes = ctx.attribs.get(id);
 
-        if let Some(width) = attributes.get("min-width") {
+        if let Some(width) = attributes.get(MIN_WIDTH) {
             constraints.min_width = width;
         }
 
-        if let Some(height) = attributes.get("min-height") {
+        if let Some(height) = attributes.get(MIN_HEIGHT) {
             constraints.min_height = height;
         }
 
-        if let Some(width) = attributes.get("width") {
+        if let Some(width) = attributes.get(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get("height") {
+        if let Some(height) = attributes.get(HEIGHT) {
             constraints.make_height_tight(height);
         }
 

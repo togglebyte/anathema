@@ -8,6 +8,10 @@ use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widge
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
+use crate::{HEIGHT, WIDTH};
+
+const UNCONSTRAINED: &str = "unconstrained";
+const CLAMP: &str = "clamp";
 
 #[derive(Debug, Default)]
 pub struct Overflow {
@@ -60,6 +64,10 @@ impl Overflow {
         self.scroll(Direction::Backward, Pos { x: amount, y: 0 });
     }
 
+    pub fn scroll_to(&mut self, pos: Pos) {
+        self.offset = pos;
+    }
+
     pub fn offset(&self) -> Pos {
         self.offset
     }
@@ -102,14 +110,21 @@ impl Widget for Overflow {
 
         let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
 
-        constraints.unbound_width();
-        constraints.unbound_height();
+        match axis {
+            Axis::Horizontal => constraints.unbound_width(),
+            Axis::Vertical => constraints.unbound_height(),
+        }
 
-        if let Some(width) = attributes.get("width") {
+        if attributes.get_bool(UNCONSTRAINED) {
+            constraints.unbound_width();
+            constraints.unbound_height();
+        }
+
+        if let Some(width) = attributes.get(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get("height") {
+        if let Some(height) = attributes.get(HEIGHT) {
             constraints.make_height_tight(height);
         }
 
@@ -139,7 +154,7 @@ impl Widget for Overflow {
         let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset
-        match attributes.get("clamp") {
+        match attributes.get(CLAMP) {
             Some(false) => {}
             _ => self.clamp(self.inner_size, ctx.inner_size),
         }

@@ -3,6 +3,7 @@ use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::Blueprint;
 
 use super::WidgetKind;
+use crate::error::{Error, Result};
 use crate::expressions::eval_collection;
 use crate::nodes::EvalContext;
 use crate::scope::Scope;
@@ -34,7 +35,7 @@ impl<'bp> For<'bp> {
         value_id: ValueId,
         path: &NodePath,
         tree: &mut WidgetTree<'bp>,
-    ) {
+    ) -> Result<()> {
         match change {
             Change::Inserted(index, value) => {
                 // 1. Declare insert path
@@ -90,16 +91,13 @@ impl<'bp> For<'bp> {
                     let WidgetKind::Iteration(iter) = iter_widget else { unreachable!() };
                     ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
-                    // let mut ctx = EvalContext {
-                    //     factory,
-                    //     scope,
-                    //     value_store,
-                    // };
-
                     for bp in self.body {
-                        eval_blueprint(bp, ctx, parent, tree);
+                        eval_blueprint(bp, ctx, parent, tree)?;
                     }
-                });
+
+                    Ok(())
+                })?;
+
                 ctx.scope.pop();
             }
             Change::Removed(index) => {
@@ -128,17 +126,19 @@ impl<'bp> For<'bp> {
                             loop_index: anathema_state::Value::new(index as i64),
                             binding: self.binding,
                         }))
-                        .unwrap();
+                        .ok_or(Error::TreeTransactionFailed)?;
 
                     // Scope the iteration value
-                    tree.with_value(iter_id, |parent, widget, tree| {
+                    tree.with_value(iter_id, |parent, widget, tree| -> Result<()> {
                         let WidgetKind::Iteration(iter) = widget else { unreachable!() };
                         ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
                         for bp in self.body {
-                            eval_blueprint(bp, ctx, parent, tree);
+                            eval_blueprint(bp, ctx, parent, tree)?;
                         }
-                    });
+
+                        Ok(())
+                    })?;
 
                     ctx.scope.pop();
                 }
@@ -152,6 +152,8 @@ impl<'bp> For<'bp> {
                 //      throughout the widget tree
             }
         }
+
+        Ok(())
     }
 }
 
@@ -209,7 +211,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);
@@ -321,7 +323,7 @@ mod test {
             &mut attribute_storage,
             &mut floating_widgets,
         );
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree);
+        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         tree.apply_visitor(&mut stringify);

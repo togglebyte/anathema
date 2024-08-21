@@ -1,3 +1,5 @@
+use super::Ticket;
+
 // -----------------------------------------------------------------------------
 //   - Entry -
 // -----------------------------------------------------------------------------
@@ -5,6 +7,7 @@
 enum Entry<I, T> {
     Vacant(Option<I>),
     Occupied(T),
+    CheckedOut(I),
 }
 
 impl<I, T> Entry<I, T> {
@@ -26,7 +29,7 @@ impl<I, T> Entry<I, T> {
     fn as_occupied_mut(&mut self) -> &mut T {
         match self {
             Entry::Occupied(value) => value,
-            Entry::Vacant(_) => unreachable!("invalid state"),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => unreachable!("invalid state"),
         }
     }
 }
@@ -82,147 +85,13 @@ where
         }
     }
 
-    /// Get the next id.
-    ///
-    /// # Warning
-    ///
-    /// There is no guarantee that this value will be the same
-    /// value produced when doing an insert if another insert has happened
-    /// since this value was returned.
-    pub fn next_id(&self) -> I {
-        match self.next_id {
-            Some(id) => id,
-            None => I::from(self.inner.len()),
-        }
-    }
-
-    /// Removes a value out of the slab.
-    /// This assumes the value exists
-    ///
-    /// # Panics
-    /// Will panic if the slot is not occupied
-    pub fn remove(&mut self, index: I) -> T {
-        let mut entry = Entry::Vacant(self.next_id.take());
-        self.next_id = Some(index);
-        std::mem::swap(&mut self.inner[index.into()], &mut entry);
-
-        match entry {
-            Entry::Occupied(val) => val,
-            Entry::Vacant(..) => panic!("removal of vacant entry"),
-        }
-    }
-
-    /// Removes a value out of the slab.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if the slot is not occupied
-    pub fn try_remove(&mut self, index: I) -> Option<T> {
-        let mut entry = Entry::Vacant(self.next_id.take());
-        self.next_id = Some(index);
-
-        let old = self.inner.get_mut(index.into())?;
-
-        std::mem::swap(old, &mut entry);
-
-        match entry {
-            Entry::Occupied(val) => Some(val),
-            Entry::Vacant(..) => None,
-        }
-    }
-
-    /// Try to replace an existing value with a new value.
-    /// Unlike [`Self::replace`] this function will not panic
-    /// if the value does not exist
-    pub fn try_replace(&mut self, index: I, mut new_value: T) -> Option<T> {
-        match &mut self.inner[index.into()] {
-            Entry::Occupied(value) => {
-                std::mem::swap(value, &mut new_value);
-                Some(new_value)
-            }
-            Entry::Vacant(_) => None,
-        }
-    }
-
-    /// Replace an existing value with a new one.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if there is no value at the given index.
-    pub fn replace(&mut self, index: I, mut new_value: T) -> T {
-        let value = self.inner[index.into()].as_occupied_mut();
-        std::mem::swap(value, &mut new_value);
-        new_value
-    }
-
-    /// Get a reference to a value
-    pub fn get(&self, index: I) -> Option<&T> {
-        match self.inner.get(index.into())? {
-            Entry::Occupied(val) => Some(val),
-            _ => None,
-        }
-    }
-
-    /// Get a mutable reference to a value
-    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
-        match self.inner.get_mut(index.into())? {
-            Entry::Occupied(val) => Some(val),
-            _ => None,
-        }
-    }
-
-    /// # Panics
-    ///
-    /// Will panic if the value does not exist
-    pub fn get_mut_unchecked(&mut self, index: I) -> &mut T {
-        match self.inner.get_mut(index.into()) {
-            Some(Entry::Occupied(val)) => val,
-            _ => panic!("no slot at index {}", index.into()),
-        }
-    }
-
-    /// Be aware that this will only ever be as performant as
-    /// the underlying vector if all entries are occupied.
-    ///
-    /// E.g if the only slot occupied is 1,000,000, then this will
-    /// iterate over 1,000,000 entries to get there.
-    pub fn iter_values(&self) -> impl Iterator<Item = &T> + '_ {
-        self.inner.iter().filter_map(|e| match e {
-            Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
-        })
-    }
-
-    /// Iterator over the keys and elements
-    pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
-        self.inner.iter().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val) => Some((i.into(), val)),
-            Entry::Vacant(_) => None,
-        })
-    }
-
-    /// Consume all the values in the slab and resets the next id.
-    /// This does not replace occupied entries with vacant ones,
-    /// but rather drain the underlying storage.
-    pub fn consume(&mut self) -> impl Iterator<Item = T> + '_ {
-        self.next_id = None;
-        self.inner.drain(..).filter_map(|e| match e {
-            Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
-        })
-    }
-
-    /// Mutable iterator over the keys and elements
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> + '_ {
-        self.inner.iter_mut().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val) => Some((i.into(), val)),
-            Entry::Vacant(_) => None,
-        })
-    }
-
     /// Insert a value at a given index.
     /// This will force the underlying storage to grow if
     /// the index given is larger than the current capacity.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a value is inserted at a position that is currently checked out
     pub fn insert_at(&mut self, index: I, value: T) {
         let idx = index.into();
 
@@ -244,6 +113,7 @@ where
                 .expect("there should be entries up to self.len()");
 
             match entry {
+                Entry::CheckedOut(_) => panic!("value is checked out"),
                 Entry::Vacant(None) => *entry = Entry::Occupied(value),
                 Entry::Occupied(val) => *val = value,
                 &mut Entry::Vacant(Some(next_free)) => {
@@ -277,6 +147,192 @@ where
             }
         }
     }
+
+    /// Get the next id.
+    ///
+    /// # Warning
+    ///
+    /// There is no guarantee that this value will be the same
+    /// value produced when doing an insert if another insert has happened
+    /// since this value was returned.
+    pub fn next_id(&self) -> I {
+        match self.next_id {
+            Some(id) => id,
+            None => I::from(self.inner.len()),
+        }
+    }
+
+    /// Removes a value out of the slab.
+    /// This assumes the value exists
+    ///
+    /// # Panics
+    /// Will panic if the slot is not occupied
+    pub fn remove(&mut self, index: I) -> T {
+        let mut entry = Entry::Vacant(self.next_id.take());
+        self.next_id = Some(index);
+        std::mem::swap(&mut self.inner[index.into()], &mut entry);
+
+        match entry {
+            Entry::Occupied(val) => val,
+            Entry::Vacant(_) | Entry::CheckedOut(_) => panic!("removal of vacant entry"),
+        }
+    }
+
+    /// Removes a value out of the slab.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the slot is not occupied
+    pub fn try_remove(&mut self, index: I) -> Option<T> {
+        let mut entry = Entry::Vacant(self.next_id.take());
+        self.next_id = Some(index);
+
+        let old = self.inner.get_mut(index.into())?;
+
+        std::mem::swap(old, &mut entry);
+
+        match entry {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        }
+    }
+
+    /// Try to replace an existing value with a new value.
+    /// Unlike [`Self::replace`] this function will not panic
+    /// if the value does not exist
+    pub fn try_replace(&mut self, index: I, mut new_value: T) -> Option<T> {
+        match &mut self.inner[index.into()] {
+            Entry::Occupied(value) => {
+                std::mem::swap(value, &mut new_value);
+                Some(new_value)
+            }
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        }
+    }
+
+    /// Replace an existing value with a new one.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if there is no value at the given index.
+    pub fn replace(&mut self, index: I, mut new_value: T) -> T {
+        let value = self.inner[index.into()].as_occupied_mut();
+        std::mem::swap(value, &mut new_value);
+        new_value
+    }
+
+    /// Get a reference to a value
+    pub fn get(&self, index: I) -> Option<&T> {
+        match self.inner.get(index.into())? {
+            Entry::Occupied(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference to a value
+    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
+        match self.inner.get_mut(index.into())? {
+            Entry::Occupied(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    /// Check out a value from the slab.
+    /// The value has to be manually returned using `Self::restore`.
+    ///
+    /// It's up to the developer to remember to do this
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a value does not at exist at the given key
+    pub fn checkout(&mut self, key: I) -> Ticket<I, T> {
+        let mut entry = Entry::CheckedOut(key);
+        std::mem::swap(&mut entry, &mut self.inner[key.into()]);
+
+        match entry {
+            Entry::Occupied(value) => Ticket { value, key },
+            Entry::CheckedOut(_) => panic!("value already checked out"),
+            _ => panic!("no entry maching the key"),
+        }
+    }
+
+    /// Restore a value that is currently checked out.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if a value does not at exist at the given key,
+    /// or if the value is not currently checked out
+    pub fn restore(&mut self, Ticket { value, key }: Ticket<I, T>) {
+        let mut entry = Entry::Occupied(value);
+        std::mem::swap(&mut entry, &mut self.inner[key.into()]);
+
+        match entry {
+            Entry::CheckedOut(_) => (),
+            _ => panic!("failed to return checked out value"),
+        }
+    }
+
+    /// # Panics
+    ///
+    /// Will panic if the value does not exist
+    pub fn get_mut_unchecked(&mut self, index: I) -> &mut T {
+        match self.inner.get_mut(index.into()) {
+            Some(Entry::Occupied(val)) => val,
+            _ => panic!("no slot at index {}", index.into()),
+        }
+    }
+
+    /// Be aware that this will only ever be as performant as
+    /// the underlying vector if all entries are occupied.
+    ///
+    /// E.g if the only slot occupied is 1,000,000, then this will
+    /// iterate over 1,000,000 entries to get there.
+    pub fn iter_values(&self) -> impl Iterator<Item = &T> + '_ {
+        self.inner.iter().filter_map(|e| match e {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) => None,
+            Entry::CheckedOut(_) => None,
+        })
+    }
+
+    /// Be aware that this will only ever be as performant as
+    /// the underlying vector if all entries are occupied.
+    ///
+    /// E.g if the only slot occupied is 1,000,000, then this will
+    /// iterate over 1,000,000 entries to get there.
+    pub fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
+        self.inner.iter_mut().filter_map(|e| match e {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        })
+    }
+
+    /// Iterator over the keys and elements
+    pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
+        self.inner.iter().enumerate().filter_map(|(i, e)| match e {
+            Entry::Occupied(val) => Some((i.into(), val)),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        })
+    }
+
+    /// Consume all the values in the slab and resets the next id.
+    /// This does not replace occupied entries with vacant ones,
+    /// but rather drain the underlying storage.
+    pub fn consume(&mut self) -> impl Iterator<Item = T> + '_ {
+        self.next_id = None;
+        self.inner.drain(..).filter_map(|e| match e {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        })
+    }
+
+    /// Mutable iterator over the keys and elements
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> + '_ {
+        self.inner.iter_mut().enumerate().filter_map(|(i, e)| match e {
+            Entry::Occupied(val) => Some((i.into(), val)),
+            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        })
+    }
 }
 
 impl<I, T> Slab<I, T>
@@ -302,6 +358,7 @@ where
                     }
                 }
                 Entry::Occupied(value) => writeln!(&mut s, "{idx}: {value:?}"),
+                Entry::CheckedOut(_) => writeln!(&mut s, "entry is checked out"),
             };
         }
 

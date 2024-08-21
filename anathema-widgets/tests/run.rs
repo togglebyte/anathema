@@ -52,7 +52,7 @@ where
         let mut scope = Scope::new();
         scope.insert_state(StateId::ZERO);
         let mut ctx = EvalContext::new(
-            &self.globals,
+            self.globals,
             &self.factory,
             &mut scope,
             &mut self.states,
@@ -61,7 +61,7 @@ where
             &mut self.floating_widgets,
         );
 
-        eval_blueprint(self.blueprint, &mut ctx, &NodePath::root(), &mut self.tree);
+        eval_blueprint(self.blueprint, &mut ctx, &NodePath::root(), &mut self.tree).unwrap();
 
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
@@ -112,7 +112,7 @@ where
             let path = self.tree.path(sub).clone();
 
             try_resolve_future_values(
-                &self.globals,
+                self.globals,
                 &self.factory,
                 &mut scope,
                 &mut self.states,
@@ -136,7 +136,7 @@ where
                 let Some(path) = self.tree.try_path(sub).cloned() else { return };
 
                 update_tree(
-                    &self.globals,
+                    self.globals,
                     &self.factory,
                     &mut scope,
                     &mut self.states,
@@ -152,43 +152,43 @@ where
         })
     }
 
-    /// Perform a state changing operation.
-    /// This will also apply future values
-    pub fn with_query<F>(&mut self, state_id: impl Into<StateId>, f: F) -> &mut Self
-    where
-        F: FnOnce(&mut S),
-    {
-        let state_id = state_id.into();
-        let state = self.states.get_mut(state_id).unwrap();
-        f(state.to_any_mut().downcast_mut().unwrap());
-        self.apply_futures();
-        self.update_tree();
+    // /// Perform a state changing operation.
+    // /// This will also apply future values
+    // pub fn with_query<F>(&mut self, state_id: impl Into<StateId>, f: F) -> &mut Self
+    // where
+    //     F: FnOnce(&mut S),
+    // {
+    //     let state_id = state_id.into();
+    //     let state = self.states.get_mut(state_id).unwrap();
+    //     f(state.to_any_mut().downcast_mut().unwrap());
+    //     self.apply_futures();
+    //     self.update_tree();
 
-        let mut filter = LayoutFilter::new(false, &self.attribute_storage);
-        self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
-            layout_widget(
-                widget,
-                children,
-                values,
-                self.viewport.constraints(),
-                &mut layout_ctx,
-                false,
-            );
-        });
+    //     let mut filter = LayoutFilter::new(false, &self.attribute_storage);
+    //     self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
+    //         let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
+    //         layout_widget(
+    //             widget,
+    //             children,
+    //             values,
+    //             self.viewport.constraints(),
+    //             &mut layout_ctx,
+    //             false,
+    //         );
+    //     });
 
-        // anathema_state::debug::Debug
-        //     .heading()
-        //     .header("owned")
-        //     .print_owned()
-        //     .header("shared")
-        //     .print_shared()
-        //     .header("tree")
-        //     .print_tree::<anathema_widgets::DebugWidgets>(&mut self.tree)
-        //     .footer();
+    //     // anathema_state::debug::Debug
+    //     //     .heading()
+    //     //     .header("owned")
+    //     //     .print_owned()
+    //     //     .header("shared")
+    //     //     .print_shared()
+    //     //     .header("tree")
+    //     //     .print_tree::<anathema_widgets::DebugWidgets>(&mut self.tree)
+    //     //     .footer();
 
-        self
-    }
+    //     self
+    // }
 
     /// Perform a state changing operation.
     /// This will also apply future values

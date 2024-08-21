@@ -14,6 +14,9 @@ use unicode_width::UnicodeWidthChar;
 
 use crate::layout::border::BorderLayout;
 use crate::layout::Axis;
+use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
+
+pub const BORDER_STYLE: &str = "border_style";
 
 // -----------------------------------------------------------------------------
 //     - Indices -
@@ -415,16 +418,16 @@ impl Widget for Border {
             .and_then(|s| Sides::try_from(s.deref()).ok())
             .unwrap_or_default();
 
-        self.border_style = attributes.get_ref("border-style").unwrap_or_default();
+        self.border_style = attributes.get_ref(BORDER_STYLE).unwrap_or_default();
         self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
-            min_width: attributes.get("min-width"),
-            min_height: attributes.get("min-height"),
-            max_width: attributes.get("max-width"),
-            max_height: attributes.get("max-height"),
-            height: attributes.get("height"),
-            width: attributes.get("width"),
+            min_width: attributes.get(MIN_WIDTH),
+            min_height: attributes.get(MIN_HEIGHT),
+            max_width: attributes.get(MAX_WIDTH),
+            max_height: attributes.get(MAX_HEIGHT),
+            height: attributes.get_int(HEIGHT).map(|n| n as usize),
+            width: attributes.get_int(WIDTH).map(|n| n as usize),
             border_size: self.border_size(self.sides),
         };
 
@@ -495,7 +498,7 @@ impl Widget for Border {
 
 //impl WidgetFactory for BorderFactory {
 pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-    let border_style: BorderStyle = attributes.get_ref("border-style").unwrap_or_default();
+    let border_style: BorderStyle = attributes.get_ref(BORDER_STYLE).unwrap_or_default();
 
     let sides = attributes
         .get_val("sides")
@@ -535,7 +538,7 @@ mod test {
 
     #[test]
     fn thick_border() {
-        let tpl = "border [width: 6, height: 4, border-style: 'thick']";
+        let tpl = "border [width: 6, height: 4, border_style: 'thick']";
 
         let expected = "
             ╔════════╗
@@ -553,7 +556,7 @@ mod test {
 
     #[test]
     fn custom_border() {
-        let tpl = "border [width: 6, height: 4, border-style: '╔─╗│╝─╚│']";
+        let tpl = "border [width: 6, height: 4, border_style: '╔─╗│╝─╚│']";
 
         let expected = "
             ╔════════╗
@@ -571,7 +574,7 @@ mod test {
 
     #[test]
     fn border_top() {
-        let tpl = "border [sides: 'top', width: 6, height: 4, border-style: '╔─╗│╝─╚│']";
+        let tpl = "border [sides: 'top', width: 6, height: 4, border_style: '╔─╗│╝─╚│']";
 
         let expected = "
             ╔════════╗
@@ -589,7 +592,7 @@ mod test {
 
     #[test]
     fn border_top_bottom() {
-        let tpl = "border [sides: 'bottom', width: 6, height: 4, border-style: '╔─╗│╝─╚│']";
+        let tpl = "border [sides: 'bottom', width: 6, height: 4, border_style: '╔─╗│╝─╚│']";
 
         let expected = "
             ╔════════╗
@@ -607,7 +610,7 @@ mod test {
 
     #[test]
     fn border_left() {
-        let tpl = "border [sides: 'left', width: 6, height: 4, border-style: '╔─╗│╝─╚│']";
+        let tpl = "border [sides: 'left', width: 6, height: 4, border_style: '╔─╗│╝─╚│']";
 
         let expected = "
             ╔════════╗
@@ -625,7 +628,7 @@ mod test {
 
     #[test]
     fn border_right() {
-        let tpl = "border [sides: 'right', width: 6, height: 4, border-style: '╔─╗│╝─╚│']";
+        let tpl = "border [sides: 'right', width: 6, height: 4, border_style: '╔─╗│╝─╚│']";
 
         let expected = "
             ╔════════╗
@@ -643,7 +646,7 @@ mod test {
 
     #[test]
     fn border_top_left() {
-        let tpl = "border [sides: ['top', 'left'], width: 6, height: 4, border-style: '╔─╗│╝─╚│']";
+        let tpl = "border [sides: ['top', 'left'], width: 6, height: 4, border_style: '╔─╗│╝─╚│']";
 
         let expected = "
             ╔════════╗

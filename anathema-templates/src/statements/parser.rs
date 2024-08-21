@@ -16,6 +16,8 @@ enum State {
     ParseIf,
     ParseDeclaration,
     ParseComponent,
+    ParseAssociatedFunctions,
+    ParseAssociatedFunction,
     ParseComponentSlot,
     ParseIdent,
     ParseAttributes,
@@ -96,6 +98,16 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
                 State::ParseIf => self.parse_if()?,
                 State::ParseDeclaration => self.parse_declaration()?,
                 State::ParseComponent => self.parse_component()?,
+                State::ParseAssociatedFunctions => {
+                    // This is used to skip state,
+                    // rather than calling "next state" multiple times
+                    // inside the `parse_associated_functions` function
+                    if !self.parse_associated_functions()? {
+                        self.state = State::ParseComponentSlot;
+                    }
+                    None
+                }
+                State::ParseAssociatedFunction => self.parse_associated_function()?,
                 State::ParseComponentSlot => self.parse_component_slot()?,
                 State::ExitScope => self.exit_scope()?,
                 State::ParseIdent => self.parse_ident()?,
@@ -125,7 +137,9 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             State::ParseIf => self.state = State::ParseDeclaration,
             State::ParseDeclaration => self.state = State::ParseIdent,
             State::ParseIdent => self.state = State::ParseComponent,
-            State::ParseComponent => self.state = State::ParseComponentSlot,
+            State::ParseComponent => self.state = State::ParseAssociatedFunctions,
+            State::ParseAssociatedFunctions => self.state = State::ParseAssociatedFunction,
+            State::ParseAssociatedFunction => self.state = State::ParseComponentSlot,
             State::ParseComponentSlot => self.state = State::ParseAttributes,
             State::ParseAttributes => self.state = State::ParseAttribute,
             State::ParseAttribute => self.state = State::ParseValue,
@@ -220,7 +234,9 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
 
         // Since the previous parse state was `ParseFor`, the tokens
         // might've been consumed.
-        // If the next token is a newline char then move to the next state
+        //
+        // If the next token is a newline char, a component or a component slot
+        // then move to the next state
         if let Kind::Newline | Kind::Component | Kind::ComponentSlot = self.tokens.peek() {
             self.next_state();
             return Ok(None);
@@ -322,8 +338,63 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         let component_id = self.components.insert_id(ident.to_owned());
         self.tokens.consume_indent();
 
+        if let Kind::Op(Operator::LParen) = self.tokens.peek_skip_indent() {}
+
+        // check for brackets,
+        // if there are brackets then parse the associated functions
+        // if not move to the next state
+
         self.next_state();
         Ok(Some(Statement::Component(component_id)))
+    }
+
+    fn parse_associated_functions(&mut self) -> Result<bool, ParseError> {
+        if Kind::Op(Operator::LParen) == self.tokens.peek_skip_indent() {
+            self.tokens.consume();
+            self.tokens.consume_all_whitespace();
+            self.next_state();
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn parse_associated_function(&mut self) -> Result<Option<Statement>, ParseError> {
+        // Check for the closing paren
+        if Kind::Op(Operator::RParen) == self.tokens.peek_skip_indent() {
+            self.tokens.consume();
+            self.next_state();
+            return Ok(None);
+        }
+
+        self.tokens.consume_all_whitespace();
+        let internal = self.read_ident()?;
+        self.tokens.consume_all_whitespace();
+
+        if Kind::Op(Operator::Association) != self.tokens.peek_skip_indent() {
+            return Err(self.error(ParseErrorKind::InvalidToken { expected: "->" }));
+        }
+
+        // Consume `->`
+        self.tokens.consume();
+        self.tokens.consume_all_whitespace();
+
+        let external = self.read_ident()?;
+
+        self.tokens.consume_all_whitespace();
+
+        // Consume comma
+        if Kind::Op(Operator::Comma) == self.tokens.peek() {
+            self.tokens.consume();
+            self.tokens.consume_all_whitespace();
+        } else if Kind::Op(Operator::RParen) == self.tokens.peek() {
+            self.tokens.consume();
+            self.next_state();
+        } else {
+            return Err(self.error(ParseErrorKind::UnterminatedAssociation));
+        }
+
+        Ok(Some(Statement::AssociatedFunction { internal, external }))
     }
 
     fn parse_component_slot(&mut self) -> Result<Option<Statement>, ParseError> {
@@ -486,8 +557,8 @@ mod test {
     use crate::expressions::{ident, list, map, num, strlit};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node, scope_end,
-        scope_start, slot,
+        associated_fun, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node,
+        scope_end, scope_start, slot,
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
@@ -713,6 +784,19 @@ mod test {
     }
 
     #[test]
+    fn indented_comment() {
+        let src = "
+            if x
+                // x
+            else
+        ";
+
+        let mut statements = parse_ok(src);
+        assert_eq!(statements.remove(0), if_stmt(ident("x")));
+        assert_eq!(statements.remove(0), else_stmt());
+    }
+
+    #[test]
     fn parse_no_instruction() {
         let src = "";
         let expected = vec![eof()];
@@ -778,5 +862,28 @@ mod test {
             statements.remove(0),
             decl(0, map([("a", num(1)), ("b", map([("a", num(2))]))])),
         );
+    }
+
+    #[test]
+    fn associated_functions() {
+        let src = "@x (inner->outer,another -> out)";
+        let mut statements = parse_ok(src);
+
+        assert_eq!(statements.remove(0), component(0));
+        assert_eq!(statements.remove(0), associated_fun(1, 2));
+        assert_eq!(statements.remove(0), associated_fun(3, 4));
+    }
+
+    #[test]
+    fn associated_functions_multiline() {
+        let src = "@x (
+            inner->outer,
+            another -> out,
+        )";
+        let mut statements = parse_ok(src);
+
+        assert_eq!(statements.remove(0), component(0));
+        assert_eq!(statements.remove(0), associated_fun(1, 2));
+        assert_eq!(statements.remove(0), associated_fun(3, 4));
     }
 }

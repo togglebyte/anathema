@@ -6,9 +6,9 @@ use anathema_store::storage::strings::StringId;
 use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, If, Single};
-use crate::components::TemplateComponentId;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::expressions::Expression;
+use crate::WidgetComponentId;
 
 pub(crate) struct Scope {
     statements: Statements,
@@ -44,6 +44,7 @@ impl Scope {
                 Statement::ScopeStart
                 | Statement::ScopeEnd
                 | Statement::LoadAttribute { .. }
+                | Statement::AssociatedFunction { .. }
                 | Statement::Else(_)
                 | Statement::LoadValue(_) => {
                     unreachable!("\"{statement:?}\" found: this is a bug in Anathema. Please open an issue")
@@ -101,18 +102,32 @@ impl Scope {
     fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let cond = const_eval(cond, ctx);
         let body = self.consume_scope(ctx)?;
+        if body.is_empty() {
+            return Err(Error::EmptyBody);
+        }
+
         let if_node = If { cond, body };
         let mut elses = vec![];
         while let Some(cond) = self.statements.next_else() {
             let cond = cond.map(|v| const_eval(v, ctx));
             let body = self.consume_scope(ctx)?;
+
+            if body.is_empty() {
+                return Err(Error::EmptyBody);
+            }
+
             elses.push(Else { cond, body });
         }
         Ok(Blueprint::ControlFlow(ControlFlow { if_node, elses }))
     }
 
-    fn eval_component(&mut self, component_id: TemplateComponentId, ctx: &mut Context<'_>) -> Result<Blueprint> {
+    fn eval_component(&mut self, component_id: WidgetComponentId, ctx: &mut Context<'_>) -> Result<Blueprint> {
+        let parent = ctx.component_parent();
         let attributes = self.eval_attributes(ctx)?;
+
+        // Associated functions
+        let assoc_functions = self.statements.take_assoc_functions();
+
         let state = self.statements.take_value().map(|v| const_eval(v, ctx));
 
         // State
@@ -140,6 +155,8 @@ impl Scope {
             body,
             attributes,
             state,
+            assoc_functions,
+            parent,
         };
 
         Ok(Blueprint::Component(component))
@@ -155,7 +172,7 @@ mod test {
 
     #[test]
     fn eval_node() {
-        let doc = Document::new("node");
+        let mut doc = Document::new("node");
         let (bp, _) = doc.compile().unwrap();
         assert_eq!(bp, single!("node"));
     }
@@ -166,7 +183,7 @@ mod test {
         a
             b
         ";
-        let doc = Document::new(src);
+        let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
         assert_eq!(blueprint, single!("a", vec![single!("b")]));
     }
@@ -178,7 +195,7 @@ mod test {
                 node a
         ";
 
-        let doc = Document::new(src);
+        let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Single(Single { value: Some(_), .. })));
     }
@@ -189,7 +206,7 @@ mod test {
             for a in a
                 node
         ";
-        let doc = Document::new(src);
+        let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::For(For { .. })));
     }
@@ -200,7 +217,7 @@ mod test {
         let comp_src = "node a + 2";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src);
+        doc.add_component("comp", comp_src).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -222,8 +239,21 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src);
+        doc.add_component("comp", comp_src).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
+    }
+
+    #[test]
+    fn eval_two_identical_components() {
+        let src = "
+            vstack
+                @comp (a->b) { a: 1 }
+                @comp (a->b) { a: 2 }
+        ";
+
+        let mut doc = Document::new(src);
+        doc.add_component("comp", "node a").unwrap();
+        let _ = doc.compile().unwrap();
     }
 }

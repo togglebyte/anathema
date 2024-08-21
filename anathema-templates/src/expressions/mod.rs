@@ -19,6 +19,7 @@ pub enum Op {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Equality {
     Eq,
+    NotEq,
     And,
     Or,
     Gt,
@@ -110,6 +111,7 @@ impl Display for Expression {
             Self::Equality(lhs, rhs, equality) => {
                 let equality = match equality {
                     Equality::Eq => "==",
+                    Equality::NotEq => "!=",
                     Equality::And => "&&",
                     Equality::Or => "||",
                     Equality::Gt => ">",

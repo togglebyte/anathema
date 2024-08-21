@@ -4,7 +4,7 @@ use anathema_store::stack::Stack;
 use anathema_store::store::{Owned, OwnedKey, Shared};
 
 pub(crate) use self::change::changed;
-pub use self::change::{drain_changes, Change, Changes};
+pub use self::change::{clear_all_changes, drain_changes, Change, Changes};
 pub use self::subscriber::{FutureValues, Subscriber};
 use self::subscriber::{SubKey, SubscriberMap};
 use crate::states::AnyState;
@@ -44,6 +44,19 @@ pub fn register_future(sub: Subscriber) {
 /// Drain values from FUTURE_VALUES into the local stack.
 pub fn drain_futures(local: &mut Stack<Subscriber>) {
     FUTURE_VALUES.with_borrow_mut(|futures| futures.drain_copy_into(local));
+}
+
+/// Clear all FUTURE_VALUES
+pub fn clear_all_futures() {
+    FUTURE_VALUES.with_borrow_mut(|futures| futures.clear());
+}
+
+/// Remove all subscribers from values.
+///
+/// This keeps the values intact and leaves them with
+/// empty subscribers.
+pub fn clear_all_subs() {
+    SUBSCRIBERS.with_borrow_mut(|subs| subs.clear_subscribers());
 }
 
 // -----------------------------------------------------------------------------

@@ -40,6 +40,39 @@ impl FloatingWidgets {
     }
 }
 
+/// Parent in a component relationship
+#[derive(Debug, Copy, Clone)]
+pub struct Parent(pub WidgetId);
+
+impl From<Parent> for WidgetId {
+    fn from(value: Parent) -> Self {
+        value.0
+    }
+}
+
+impl From<WidgetId> for Parent {
+    fn from(value: WidgetId) -> Self {
+        Self(value)
+    }
+}
+
+/// Component relationships, tracking the parent component of each component
+pub struct ComponentParents(SecondaryMap<WidgetId, Parent>);
+
+impl ComponentParents {
+    pub fn empty() -> Self {
+        Self(SecondaryMap::empty())
+    }
+
+    pub fn try_remove(&mut self, key: WidgetId) {
+        self.0.try_remove(key);
+    }
+
+    pub fn get_parent(&self, child: WidgetId) -> Option<Parent> {
+        self.0.get(child).copied()
+    }
+}
+
 pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
 pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
 pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
