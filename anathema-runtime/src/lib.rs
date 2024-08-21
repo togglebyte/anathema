@@ -17,6 +17,7 @@
 //
 // -----------------------------------------------------------------------------
 
+use std::fmt::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -143,7 +144,7 @@ impl<T> RuntimeBuilder<T> {
             let path = path.canonicalize().unwrap();
 
             if let Some(parent) = path.parent() {
-                watcher.watch(&parent, RecursiveMode::NonRecursive)?;
+                watcher.watch(parent, RecursiveMode::NonRecursive)?;
             }
         }
 
@@ -367,7 +368,7 @@ where
                         state_id: entry.state_id,
                         parent,
                         strings: &mut self.document.strings,
-                        assoc_functions: &component.assoc_functions,
+                        assoc_functions: component.assoc_functions,
                     };
 
                     component
@@ -388,7 +389,7 @@ where
     pub fn run(&mut self) {
         match self.internal_run() {
             Ok(()) => (),
-            Err(Error::Stop) => return,
+            Err(Error::Stop) => (),
             Err(err) => {
                 self.show_error(err);
                 self.run();
@@ -425,7 +426,7 @@ where
             Err(err) => {
                 match self.reset(tree, &mut states) {
                     Ok(()) => (),
-                    Err(err) => return Err(err.into()),
+                    Err(err) => return Err(err),
                 }
                 return Err(err.into());
             }
@@ -454,7 +455,7 @@ where
                     state_id: entry.state_id,
                     parent,
                     strings: &mut self.document.strings,
-                    assoc_functions: &component.assoc_functions,
+                    assoc_functions: component.assoc_functions,
                 };
                 component.dyn_component.any_focus(state, elements, context);
             });
@@ -485,20 +486,18 @@ where
     }
 
     pub fn show_error(&mut self, err: Error) {
-        let tpl = format!(
-            "
+        let tpl = "
             align [alignment: 'centre']
                 border [background: 'red']
                     vstack
                         @errors
         "
-        );
+        .to_string();
 
-        let errors = err
-            .to_string()
-            .lines()
-            .map(|line| format!("text [foreground: 'black'] '{line}'\n"))
-            .collect::<String>();
+        let errors = err.to_string().lines().fold(String::new(), |mut s, line| {
+            let _ = writeln!(&mut s, "text [foreground: 'black'] '{line}'");
+            s
+        });
 
         let mut document = Document::new(tpl);
         let _component_id = document.add_component("errors", errors);
@@ -568,7 +567,7 @@ where
             attribute_storage,
             &mut self.constraints,
             assoc_events,
-            &mut self.document.strings,
+            &self.document.strings,
         )?;
 
         // Call the `tick` function on all components
@@ -693,7 +692,7 @@ where
                     state_id: entry.state_id,
                     parent,
                     strings: &mut self.document.strings,
-                    assoc_functions: &component.assoc_functions,
+                    assoc_functions: component.assoc_functions,
                 };
 
                 component.dyn_component.any_tick(state, elements, context, dt);

@@ -164,7 +164,7 @@ impl<T> GenSlab<T> {
         match &mut self.inner[key.index()] {
             Entry::Occupied(val, gen) if key.gen() == *gen => {
                 key.bump();
-                *gen = key.gen().into();
+                *gen = key.gen();
                 std::mem::swap(&mut new_value, val);
                 Some((key, new_value))
             }

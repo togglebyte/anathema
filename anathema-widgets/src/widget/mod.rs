@@ -69,7 +69,7 @@ impl ComponentParents {
     }
 
     pub fn get_parent(&self, child: WidgetId) -> Option<Parent> {
-        self.0.get(child).map(|p| *p)
+        self.0.get(child).copied()
     }
 }
 

@@ -68,7 +68,7 @@ impl EventHandler {
                             state_id: entry.state_id,
                             parent,
                             strings,
-                            assoc_functions: &component.assoc_functions,
+                            assoc_functions: component.assoc_functions,
                         };
                         component.dyn_component.any_event(event, state, elements, context);
                     });
@@ -103,7 +103,7 @@ impl EventHandler {
                                 state_id: entry.state_id,
                                 parent,
                                 strings,
-                                assoc_functions: &component.assoc_functions,
+                                assoc_functions: component.assoc_functions,
                             };
                             component.dyn_component.any_resize(state, elements, context);
                         });
@@ -149,7 +149,7 @@ impl EventHandler {
                             state_id: entry.state_id,
                             parent,
                             strings,
-                            assoc_functions: &component.assoc_functions,
+                            assoc_functions: component.assoc_functions,
                         };
 
                         component
@@ -214,7 +214,7 @@ pub fn global_event<'bp, T: Backend>(
                     state_id: entry.state_id,
                     parent,
                     strings,
-                    assoc_functions: &component.assoc_functions,
+                    assoc_functions: component.assoc_functions,
                 };
                 component.dyn_component.any_blur(state, elements, context);
             });
@@ -239,7 +239,7 @@ pub fn global_event<'bp, T: Backend>(
                     state_id: entry.state_id,
                     parent,
                     strings,
-                    assoc_functions: &component.assoc_functions,
+                    assoc_functions: component.assoc_functions,
                 };
                 component.dyn_component.any_focus(state, elements, context);
             });
@@ -269,7 +269,7 @@ pub fn global_event<'bp, T: Backend>(
                     state_id: entry.state_id,
                     parent,
                     strings,
-                    assoc_functions: &component.assoc_functions,
+                    assoc_functions: component.assoc_functions,
                 };
                 let _ = component.dyn_component.any_event(event, state, elements, context);
             });

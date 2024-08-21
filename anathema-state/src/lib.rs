@@ -88,7 +88,7 @@ impl TryFrom<&str> for Hex {
                 let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| ())?;
                 Ok(Self::from((r, g, b)))
             }
-            _ => return Err(()),
+            _ => Err(()),
         }
     }
 }
