@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use anathema_store::smallmap::SmallMap;
+use anathema_store::storage::strings::StringId;
 
-use crate::components::TemplateComponentId;
-use crate::Expression;
+use crate::{Expression, WidgetComponentId};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {
@@ -41,10 +41,12 @@ pub struct Else {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
-    pub id: TemplateComponentId,
+    pub id: WidgetComponentId,
     pub body: Vec<Blueprint>,
     pub attributes: SmallMap<Rc<str>, Expression>,
     pub state: Option<Rc<HashMap<Rc<str>, Expression>>>,
+    pub assoc_functions: Vec<(StringId, StringId)>,
+    pub parent: Option<WidgetComponentId>,
 }
 
 /// A blueprint represents what widget should be built from the information

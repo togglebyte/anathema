@@ -4,9 +4,10 @@ use anathema_state::StateId;
 use anathema_store::stack::Stack;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::NodePath;
-use anathema_widgets::components::WidgetComponentId;
+use anathema_templates::WidgetComponentId;
 use anathema_widgets::{WidgetId, WidgetKind};
 
+#[derive(Debug, Copy, Clone)]
 pub struct IndexEntry {
     pub(super) widget_id: WidgetId,
     pub(super) state_id: StateId,
@@ -28,13 +29,13 @@ impl Components {
         }
     }
 
-    pub fn next(&mut self) -> Option<&IndexEntry> {
+    pub fn next(&mut self) -> Option<IndexEntry> {
         if self.inner.is_empty() {
             return None;
         }
 
         let prev = self.tabs.get(self.current)?;
-        let prev = self.inner.get(*prev);
+        let prev = self.inner.get(*prev).copied();
         self.current += 1;
         if self.current == self.tabs.len() {
             self.current = 0;
@@ -42,13 +43,13 @@ impl Components {
         prev
     }
 
-    pub fn prev(&mut self) -> Option<&IndexEntry> {
+    pub fn prev(&mut self) -> Option<IndexEntry> {
         if self.inner.is_empty() {
             return None;
         }
 
         let prev = self.tabs.get(self.current)?;
-        let prev = self.inner.get(*prev);
+        let prev = self.inner.get(*prev).copied();
         if self.current == 0 {
             self.current = self.inner.len();
         }
@@ -57,9 +58,13 @@ impl Components {
         prev
     }
 
-    pub fn current(&mut self) -> Option<&IndexEntry> {
+    pub fn current(&mut self) -> Option<IndexEntry> {
         let current = self.tabs.get(self.current)?;
-        self.inner.get(*current)
+        self.inner.get(*current).copied()
+    }
+
+    pub fn by_widget_id(&self, widget_id: WidgetId) -> Option<&IndexEntry> {
+        self.inner.iter().find(|entry| entry.widget_id == widget_id)
     }
 
     pub fn dumb_fetch(&self, component_id: WidgetComponentId) -> Option<&IndexEntry> {
@@ -75,7 +80,7 @@ impl Components {
 impl NodeVisitor<WidgetKind<'_>> for Components {
     fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &NodePath, widget_id: WidgetId) -> ControlFlow<()> {
         if let WidgetKind::Component(component) = value {
-            if component.component.accept_focus_any() {
+            if component.dyn_component.accept_focus_any() {
                 self.tabs.push(self.inner.len());
             }
             self.inner.push(IndexEntry {

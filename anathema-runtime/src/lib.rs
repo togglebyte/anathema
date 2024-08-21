@@ -31,7 +31,7 @@ use anathema_store::tree::{AsNodePath, NodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::{
-    Component, ComponentId, ComponentKind, ComponentRegistry, Context, Emitter, ViewMessage,
+    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Context, Emitter, ViewMessage,
 };
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
@@ -344,21 +344,35 @@ where
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
+        assoc_events: &mut AssociatedEvents,
     ) -> Duration {
         while let Ok(msg) = self.message_receiver.try_recv() {
             if let Some(entry) = self.components.dumb_fetch(msg.recipient()) {
                 tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
                     let state = states.get_mut(entry.state_id);
+
+                    let parent = component
+                        .parent
+                        .and_then(|parent| self.components.dumb_fetch(parent))
+                        .map(|parent| parent.widget_id.into());
+
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
 
                     let context = Context {
                         emitter: &self.emitter,
                         viewport: self.viewport,
+                        assoc_events,
+                        state_id: entry.state_id,
+                        parent,
+                        strings: &mut self.document.strings,
+                        assoc_functions: &component.assoc_functions,
                     };
 
-                    component.component.any_message(msg.payload(), state, elements, context);
+                    component
+                        .dyn_component
+                        .any_message(msg.payload(), state, elements, context);
                 });
             }
 
@@ -387,6 +401,7 @@ where
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
+        let mut assoc_events = AssociatedEvents::new();
 
         let mut states = States::new();
         let mut scope = Scope::new();
@@ -424,13 +439,24 @@ where
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = states.get_mut(entry.state_id);
+
+                let parent = component
+                    .parent
+                    .and_then(|parent| self.components.dumb_fetch(parent))
+                    .map(|parent| parent.widget_id.into());
+
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
                 let context = Context {
                     emitter: &self.emitter,
                     viewport: self.viewport,
+                    assoc_events: &mut assoc_events,
+                    state_id: entry.state_id,
+                    parent,
+                    strings: &mut self.document.strings,
+                    assoc_functions: &component.assoc_functions,
                 };
-                component.component.any_focus(state, elements, context);
+                component.dyn_component.any_focus(state, elements, context);
             });
         }
 
@@ -444,6 +470,7 @@ where
                 &mut states,
                 &mut attribute_storage,
                 &globals,
+                &mut assoc_events,
             )?;
 
             if REBUILD.swap(false, Ordering::Relaxed) {
@@ -499,7 +526,7 @@ where
             let ComponentKind::Instance = comp.kind else { continue };
             let state = states.remove(comp.state_id);
             self.component_registry
-                .return_component(comp.component_id, comp.component, state);
+                .return_component(comp.component_id, comp.dyn_component, state);
         }
 
         let (blueprint, globals) = self.document.compile()?;
@@ -518,11 +545,12 @@ where
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
         globals: &'bp Globals,
+        assoc_events: &mut AssociatedEvents,
     ) -> Result<()> {
         // Pull and keep consuming events while there are events present
         // in the queu. The time used to pull events should be subtracted
         // from the poll duration of self.events.poll
-        let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage);
+        let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events);
 
         // Clear the text buffer
         self.string_storage.clear();
@@ -539,10 +567,12 @@ where
             states,
             attribute_storage,
             &mut self.constraints,
+            assoc_events,
+            &mut self.document.strings,
         )?;
 
         // Call the `tick` function on all components
-        self.tick_components(tree, states, attribute_storage, dt.elapsed());
+        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
         *dt = Instant::now();
 
         self.apply_futures(globals, tree, states, attribute_storage);
@@ -641,18 +671,32 @@ where
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
         dt: Duration,
+        assoc_events: &mut AssociatedEvents,
     ) {
-        let context = Context {
-            emitter: &self.emitter,
-            viewport: self.viewport,
-        };
         for entry in self.components.iter() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = states.get_mut(entry.state_id);
+
+                let parent = component
+                    .parent
+                    .and_then(|parent| self.components.dumb_fetch(parent))
+                    .map(|parent| parent.widget_id.into());
+
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
-                component.component.any_tick(state, elements, context, dt);
+
+                let context = Context {
+                    emitter: &self.emitter,
+                    viewport: self.viewport,
+                    assoc_events,
+                    state_id: entry.state_id,
+                    parent,
+                    strings: &mut self.document.strings,
+                    assoc_functions: &component.assoc_functions,
+                };
+
+                component.dyn_component.any_tick(state, elements, context, dt);
             });
         }
     }

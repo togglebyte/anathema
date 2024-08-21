@@ -29,15 +29,15 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
-        let mut ctx = EvalContext {
-            globals: self.globals,
-            factory: self.factory,
-            scope: self.scope,
-            states: self.states,
-            components: self.components,
-            attribute_storage: self.attribute_storage,
-            floating_widgets: self.floating_widgets,
-        };
+        let mut ctx = EvalContext::new(
+            self.globals,
+            self.factory,
+            self.scope,
+            self.states,
+            self.components,
+            self.attribute_storage,
+            self.floating_widgets,
+        );
 
         try_resolve_value(node, &mut ctx, self.value_id, path, tree)?;
 

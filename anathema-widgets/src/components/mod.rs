@@ -2,17 +2,18 @@ use std::any::Any;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use anathema_state::{AnyState, State};
+use anathema_state::{AnyState, CommonVal, SharedState, State, StateId, Value};
 use anathema_store::slab::Slab;
+use anathema_store::storage::strings::{StringId, Strings};
+use anathema_templates::WidgetComponentId;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
 use crate::layout::Viewport;
+use crate::widget::Parent;
 use crate::Elements;
 
 pub mod events;
-
-pub const ROOT_VIEW: WidgetComponentId = WidgetComponentId(usize::MAX);
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
 pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
@@ -93,20 +94,20 @@ impl ComponentRegistry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WidgetComponentId(usize);
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// pub struct WidgetComponentId(usize);
 
-impl From<usize> for WidgetComponentId {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
+// impl From<usize> for WidgetComponentId {
+//     fn from(value: usize) -> Self {
+//         Self(value)
+//     }
+// }
 
-impl From<WidgetComponentId> for usize {
-    fn from(value: WidgetComponentId) -> Self {
-        value.0
-    }
-}
+// impl From<WidgetComponentId> for usize {
+//     fn from(value: WidgetComponentId) -> Self {
+//         value.0
+//     }
+// }
 
 #[derive(Debug)]
 pub struct ComponentId<T>(pub(crate) WidgetComponentId, pub(crate) PhantomData<T>);
@@ -175,10 +176,94 @@ impl Emitter {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
 pub struct Context<'rt> {
     pub emitter: &'rt Emitter,
     pub viewport: Viewport,
+    pub assoc_events: &'rt mut AssociatedEvents,
+    pub state_id: StateId,
+    pub parent: Option<Parent>,
+    pub strings: &'rt Strings,
+    pub assoc_functions: &'rt [(StringId, StringId)],
+}
+
+impl<'rt> Context<'rt> {
+    /// Publish event
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the shared value is exclusively borrowed
+    /// at the time of the invocation.
+    pub fn publish<F, T: 'static, V>(&mut self, ident: &str, mut f: F)
+    where
+        F: FnMut(&T) -> &Value<V> + 'static,
+        V: AnyState,
+    {
+        let Some(internal) = self.strings.lookup(ident) else { return };
+
+        let ids = self.assoc_functions.iter().find(|(i, _)| *i == internal);
+
+        // If there is no parent there is no one to emit the event to.
+        let Some(parent) = self.parent else { return };
+        let Some((_, external)) = ids else { return };
+
+        self.assoc_events.push(
+            self.state_id,
+            parent,
+            *external,
+            Box::new(move |state: &dyn AnyState| -> SharedState<'_> {
+                let state = state
+                    .to_any_ref()
+                    .downcast_ref::<T>()
+                    .expect("the state type is associated with the context");
+
+                let value = f(state);
+
+                match value.shared_state() {
+                    Some(val) => val,
+                    None => panic!("there is currently a unique reference to this value"),
+                }
+            }),
+        );
+    }
+}
+
+pub struct AssociatedEvent {
+    pub state: StateId,
+    pub parent: Parent,
+    pub external: StringId,
+    pub f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_> + 'static>,
+}
+
+// The reason the component can not have access
+// to the children during this event is because the parent is borrowing from the childs
+// state while this is happening.
+pub struct AssociatedEvents {
+    inner: Vec<AssociatedEvent>,
+}
+
+impl AssociatedEvents {
+    pub fn new() -> Self {
+        Self { inner: vec![] }
+    }
+
+    fn push(
+        &mut self,
+        state: StateId,
+        parent: Parent,
+        external: StringId,
+        f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_>>,
+    ) {
+        self.inner.push(AssociatedEvent {
+            state,
+            parent,
+            external,
+            f,
+        })
+    }
+
+    pub fn next(&mut self) -> Option<AssociatedEvent> {
+        self.inner.pop()
+    }
 }
 
 pub trait Component {
@@ -220,6 +305,17 @@ pub trait Component {
 
     #[allow(unused_variables, unused_mut)]
     fn resize(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {}
+
+    #[allow(unused_variables, unused_mut)]
+    fn callback(
+        &mut self,
+        state: &mut Self::State,
+        callback_ident: &str,
+        value: CommonVal<'_>,
+        elements: Elements<'_, '_>,
+        context: Context<'_>,
+    ) {
+    }
 
     fn accept_focus(&self) -> bool {
         true
@@ -271,6 +367,15 @@ pub trait AnyComponent {
     fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>);
 
     fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>);
+
+    fn any_callback(
+        &mut self,
+        state: Option<&mut dyn AnyState>,
+        name: &str,
+        value: CommonVal<'_>,
+        elements: Elements<'_, '_>,
+        context: Context<'_>,
+    );
 
     fn accept_focus_any(&self) -> bool;
 }
@@ -351,6 +456,21 @@ where
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
         self.resize(state, elements, context);
+    }
+
+    fn any_callback(
+        &mut self,
+        state: Option<&mut dyn AnyState>,
+        name: &str,
+        value: CommonVal<'_>,
+        elements: Elements<'_, '_>,
+        context: Context<'_>,
+    ) {
+        let state = state
+            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .expect("components always have a state");
+
+        self.callback(state, name, value, elements, context);
     }
 }
 

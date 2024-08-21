@@ -326,4 +326,16 @@ mod test {
         let expr = eval_src("true || true");
         assert_eq!(expr.to_string(), "true || true");
     }
+
+    #[test]
+    fn list() {
+        let expr = eval_src("[1, 2, 3]");
+        assert_eq!(expr.to_string(), "[1, 2, 3]");
+    }
+
+    #[test]
+    fn map() {
+        let expr = eval_src("[{a: 1}, {b: 89}]");
+        assert_eq!(expr.to_string(), "[{a: 1}, {b: 89}]");
+    }
 }

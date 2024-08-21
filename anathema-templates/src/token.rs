@@ -34,6 +34,7 @@ pub enum Operator {
     Dot,
     Comma,
     Colon,
+    Association,
 }
 
 impl Display for Operator {
@@ -67,6 +68,7 @@ impl Display for Operator {
             Self::Colon => write!(f, ":"),
             Self::LCurly => write!(f, "{{"),
             Self::RCurly => write!(f, "}}"),
+            Self::Association => write!(f, "->"),
         }
     }
 }
@@ -255,20 +257,4 @@ impl Tokens {
             _ => None,
         }
     }
-
-    // TODO: is this needed?
-    // pub(crate) fn line_contains(&self, kind: Kind) -> bool {
-    //     let tokens = &self.inner[self.index..];
-    //     for token in tokens {
-    //         if token.0 == kind {
-    //             return true;
-    //         }
-
-    //         match token.0 {
-    //             Kind::Newline | Kind::Eof => break,
-    //             _ => continue,
-    //         }
-    //     }
-    //     false
-    // }
 }

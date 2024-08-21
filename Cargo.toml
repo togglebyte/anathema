@@ -52,7 +52,6 @@ members = [
 ]
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
 rust_2018_idioms = "deny"
 
 [workspace.lints.clippy]

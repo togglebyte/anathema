@@ -2,10 +2,11 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::{StringId, Strings};
 
 use crate::blueprints::Blueprint;
-use crate::components::{ComponentTemplates, TemplateComponentId};
+use crate::components::ComponentTemplates;
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::variables::Variables;
+use crate::WidgetComponentId;
 
 mod const_eval;
 pub(crate) mod eval;
@@ -16,19 +17,43 @@ pub(crate) struct Context<'vars> {
     pub(crate) components: &'vars mut ComponentTemplates,
     pub(crate) strings: &'vars mut Strings,
     pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
+    pub(crate) current_component_parent: Option<WidgetComponentId>,
+}
+
+impl<'vars> Context<'vars> {
+    pub fn new(
+        globals: &'vars mut Variables,
+        components: &'vars mut ComponentTemplates,
+        strings: &'vars mut Strings,
+        slots: SmallMap<StringId, Vec<Blueprint>>,
+        current_component_parent: Option<WidgetComponentId>,
+    ) -> Self {
+        Self {
+            globals,
+            components,
+            strings,
+            slots,
+            current_component_parent,
+        }
+    }
 }
 
 impl Context<'_> {
+    pub fn component_parent(&self) -> Option<WidgetComponentId> {
+        self.current_component_parent
+    }
+
     fn fetch(&self, key: &str) -> Option<Expression> {
         self.globals.fetch(key)
     }
 
     fn load_component(
         &mut self,
-        component_id: TemplateComponentId,
+        parent_component_id: WidgetComponentId,
         slots: SmallMap<StringId, Vec<Blueprint>>,
     ) -> Result<Vec<Blueprint>> {
-        self.components.load(component_id, self.globals, slots, self.strings)
+        self.components
+            .load(parent_component_id, self.globals, slots, self.strings)
     }
 }
 
@@ -36,7 +61,8 @@ impl Context<'_> {
 pub(crate) enum Statement {
     LoadValue(Expression),
     LoadAttribute { key: StringId, value: Expression },
-    Component(TemplateComponentId),
+    AssociatedFunction { internal: StringId, external: StringId },
+    Component(WidgetComponentId),
     ComponentSlot(StringId),
     Node(StringId),
     For { binding: StringId, data: Expression },
@@ -86,6 +112,17 @@ impl Statements {
         while matches!(&self.0.first(), Some(Statement::LoadAttribute { .. })) {
             match self.0.remove(0) {
                 Statement::LoadAttribute { key, value } => v.push((key, value)),
+                _ => unreachable!(),
+            }
+        }
+        v
+    }
+
+    fn take_assoc_functions(&mut self) -> Vec<(StringId, StringId)> {
+        let mut v = vec![];
+        while matches!(&self.0.first(), Some(Statement::AssociatedFunction { .. })) {
+            match self.0.remove(0) {
+                Statement::AssociatedFunction { internal, external } => v.push((internal, external)),
                 _ => unreachable!(),
             }
         }
@@ -161,6 +198,7 @@ where
         strings: &mut strings,
         components: &mut components,
         slots: SmallMap::empty(),
+        current_component_parent: None,
     };
 
     f(context)
@@ -184,12 +222,19 @@ mod test {
         }
     }
 
-    pub(crate) fn component(id: impl Into<TemplateComponentId>) -> Statement {
+    pub(crate) fn component(id: impl Into<WidgetComponentId>) -> Statement {
         Statement::Component(id.into())
     }
 
     pub(crate) fn slot(id: impl Into<StringId>) -> Statement {
         Statement::ComponentSlot(id.into())
+    }
+
+    pub(crate) fn associated_fun(internal: impl Into<StringId>, external: impl Into<StringId>) -> Statement {
+        Statement::AssociatedFunction {
+            internal: internal.into(),
+            external: external.into(),
+        }
     }
 
     pub(crate) fn node(id: impl Into<StringId>) -> Statement {

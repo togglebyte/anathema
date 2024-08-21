@@ -4,6 +4,8 @@ use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
 
+use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
+
 #[derive(Debug, Default)]
 pub struct Container;
 
@@ -19,27 +21,27 @@ impl Widget for Container {
 
         let attribs = ctx.attribs.get(id);
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get("width") {
+        if let Some(width @ 0..=i64::MAX) = attribs.get(WIDTH) {
             constraints.make_width_tight(width as usize);
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get("height") {
+        if let Some(height @ 0..=i64::MAX) = attribs.get(HEIGHT) {
             constraints.make_height_tight(height as usize);
         }
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get("min-width") {
+        if let Some(width @ 0..=i64::MAX) = attribs.get(MIN_WIDTH) {
             constraints.min_width = width as usize;
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get("min-height") {
+        if let Some(height @ 0..=i64::MAX) = attribs.get(MIN_HEIGHT) {
             constraints.min_height = height as usize;
         }
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get("max-width") {
+        if let Some(width @ 0..=i64::MAX) = attribs.get(MAX_WIDTH) {
             constraints.set_max_width(width as usize);
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get("max-height") {
+        if let Some(height @ 0..=i64::MAX) = attribs.get(MAX_HEIGHT) {
             constraints.set_max_height(height as usize);
         }
 

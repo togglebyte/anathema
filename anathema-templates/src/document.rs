@@ -21,7 +21,7 @@ use crate::{Globals, Lexer};
 /// ```
 pub struct Document {
     template: String,
-    strings: Strings,
+    pub strings: Strings,
     globals: Variables,
     components: ComponentTemplates,
     pub hot_reload: bool,
@@ -71,6 +71,7 @@ impl Document {
             strings: &mut self.strings,
             components: &mut self.components,
             slots: SmallMap::empty(),
+            current_component_parent: None,
         };
 
         let mut blueprints = Scope::new(statements).eval(&mut context)?;

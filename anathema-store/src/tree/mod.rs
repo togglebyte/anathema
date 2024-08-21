@@ -194,7 +194,7 @@ impl<T> Tree<T> {
     }
 
     /// Perform a given operation (`F`) on a reference to a value in the tree
-    /// while still haveing mutable access to the tree.
+    /// while still haveing mutable access to the rest of the tree.
     pub fn with_value<F, R>(&mut self, value_id: ValueId, mut f: F) -> R
     where
         F: FnMut(&NodePath, &T, &mut Self) -> R,
@@ -206,7 +206,7 @@ impl<T> Tree<T> {
     }
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
-    /// while still having mutable access to the tree.
+    /// while still having mutable access to the rest of the tree.
     pub fn with_value_mut<F>(&mut self, value_id: ValueId, f: F)
     where
         F: FnOnce(&NodePath, &mut T, &mut Self),

@@ -5,12 +5,12 @@ use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::SmallIndex;
 use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
-use anathema_templates::Globals;
+use anathema_templates::{Globals, WidgetComponentId};
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow};
-use crate::components::{AnyComponent, ComponentKind, ComponentRegistry, WidgetComponentId};
+use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::Container;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
@@ -367,8 +367,16 @@ impl Evaluator for ComponentEval {
         let component_id = usize::from(input.id).into();
         let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(state);
-        let comp_widget =
-            component::Component::new(&input.body, component, state_id, external_state, component_id, kind);
+        let comp_widget = component::Component::new(
+            &input.body,
+            component,
+            state_id,
+            external_state,
+            component_id,
+            kind,
+            &input.assoc_functions,
+            input.parent,
+        );
 
         let widget_id = transaction
             .commit_child(WidgetKind::Component(comp_widget))
