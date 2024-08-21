@@ -362,6 +362,8 @@ impl<'buf> Strings<'_, 'buf> {
             if self.size.height >= self.max.height {
                 return ProcessResult::Break;
             }
+
+            self.chomper.force_word_boundary();
             self.newline();
             return ProcessResult::Continue;
         }
