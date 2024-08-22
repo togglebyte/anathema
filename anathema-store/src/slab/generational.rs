@@ -189,8 +189,9 @@ impl<T> GenSlab<T> {
 
         match entry {
             Entry::Occupied(value, gen) if key.gen() == gen => Ticket { value, key },
+            Entry::Occupied(..) => panic!("invalid generation"),
             Entry::CheckedOut(_) => panic!("value already checked out"),
-            _ => panic!("no entry maching the key"),
+            Entry::Vacant(_) => panic!("entry has been removed"),
         }
     }
 
