@@ -3,7 +3,6 @@ use std::ops::ControlFlow;
 use anathema_state::StateId;
 use anathema_store::stack::Stack;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::NodePath;
 use anathema_templates::WidgetComponentId;
 use anathema_widgets::{WidgetId, WidgetKind};
 
@@ -14,13 +13,13 @@ pub struct IndexEntry {
     pub(super) component_id: WidgetComponentId,
 }
 
-pub struct Components {
+pub struct TabIndices {
     inner: Stack<IndexEntry>,
     tabs: Vec<usize>,
     current: usize,
 }
 
-impl Components {
+impl TabIndices {
     pub fn new() -> Self {
         Self {
             inner: Stack::empty(),
@@ -77,8 +76,8 @@ impl Components {
     }
 }
 
-impl NodeVisitor<WidgetKind<'_>> for Components {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &NodePath, widget_id: WidgetId) -> ControlFlow<()> {
+impl NodeVisitor<WidgetKind<'_>> for TabIndices {
+    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], widget_id: WidgetId) -> ControlFlow<()> {
         if let WidgetKind::Component(component) = value {
             if component.dyn_component.accept_focus_any() {
                 self.tabs.push(self.inner.len());

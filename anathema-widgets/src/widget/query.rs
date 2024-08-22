@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Region};
 use anathema_state::CommonVal;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{apply_visitor, Node, NodePath, TreeValues};
+use anathema_store::tree::{apply_visitor, Node, TreeValues};
 
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
@@ -87,7 +87,7 @@ impl<'tag, 'bp, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'tag, 'bp, F>
 where
     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
-    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &NodePath, _widget_id: WidgetId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], _widget_id: WidgetId) -> ControlFlow<()> {
         if let WidgetKind::Element(el) = value {
             match self.arg {
                 QueryArg::ByTag(tag) if el.ident == tag => {

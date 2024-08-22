@@ -77,8 +77,7 @@ impl TestRunner {
             &mut floating_widgets,
         );
 
-        let path = Default::default();
-        eval_blueprint(&self.blueprint, &mut ctx, &path, &mut tree).unwrap();
+        eval_blueprint(&self.blueprint, &mut ctx, &[], &mut tree).unwrap();
 
         TestInstance {
             states: &mut self.states,
@@ -184,7 +183,7 @@ impl TestInstance<'_> {
         // border [0]
         //     expand [0, 0]
         //          @main [0, 0, 0] <- this one
-        let path = [0, 0, 0].into();
+        let path = [0, 0, 0];
 
         let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
         let mut widgets = Elements::new(node.children(), values, &mut self.attribute_storage);

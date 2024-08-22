@@ -1,5 +1,5 @@
 use anathema_state::States;
-use anathema_store::tree::{NodePath, PathFinder};
+use anathema_store::tree::PathFinder;
 use anathema_templates::Globals;
 
 use super::element::Element;
@@ -27,7 +27,7 @@ struct ResolveFutureValues<'a, 'b, 'bp> {
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'bp> {
     type Output = Result<()>;
 
-    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) -> Self::Output {
+    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
         let mut ctx = EvalContext::new(
             self.globals,
@@ -56,7 +56,7 @@ pub fn try_resolve_future_values<'bp>(
     states: &mut States,
     components: &mut ComponentRegistry,
     value_id: ValueId,
-    path: &NodePath,
+    path: &[u16],
     tree: &mut WidgetTree<'bp>,
     attribute_storage: &mut AttributeStorage<'bp>,
     floating_widgets: &mut FloatingWidgets,
@@ -79,7 +79,7 @@ fn try_resolve_value<'bp>(
     widget: &mut WidgetKind<'bp>,
     ctx: &mut EvalContext<'_, '_, 'bp>,
     value_id: ValueId,
-    path: &NodePath,
+    path: &[u16],
     tree: &mut WidgetTree<'bp>,
 ) -> Result<()> {
     match widget {

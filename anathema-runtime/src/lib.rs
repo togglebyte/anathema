@@ -28,7 +28,7 @@ use anathema_geometry::Pos;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::{AsNodePath, NodePath};
+use anathema_store::tree::{root_node, AsNodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::{
@@ -40,7 +40,7 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
     EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-use components::Components;
+use components::TabIndices;
 use events::EventHandler;
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
@@ -176,7 +176,7 @@ impl<T> RuntimeBuilder<T> {
             future_values: FutureValues::empty(),
 
             changes: Changes::empty(),
-            components: Components::new(),
+            tab_indices: TabIndices::new(),
             component_registry: self.component_registry,
             globals,
             document: self.document,
@@ -227,7 +227,7 @@ pub struct Runtime<T> {
     // * Event handling
     constraints: Constraints,
     // * Event handling
-    components: Components,
+    tab_indices: TabIndices,
 
     // -----------------------------------------------------------------------------
     //   - Mut during updates -
@@ -241,6 +241,7 @@ pub struct Runtime<T> {
     component_registry: ComponentRegistry,
     // * Layout
     floating_widgets: FloatingWidgets,
+    // components: Components,
 }
 
 impl<T> Runtime<T>
@@ -285,7 +286,7 @@ where
         let mut scope = Scope::new();
         self.future_values.drain().rev().for_each(|sub| {
             scope.clear();
-            let path = tree.path(sub).clone();
+            let path = tree.path(sub);
 
             try_resolve_future_values(
                 globals,
@@ -319,7 +320,7 @@ where
         self.changes.drain().rev().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
                 scope.clear();
-                let Some(path) = tree.try_path(sub).cloned() else { return };
+                let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
 
                 update_tree(
                     globals,
@@ -348,14 +349,14 @@ where
         assoc_events: &mut AssociatedEvents,
     ) -> Duration {
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some(entry) = self.components.dumb_fetch(msg.recipient()) {
+            if let Some(entry) = self.tab_indices.dumb_fetch(msg.recipient()) {
                 tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
                     let state = states.get_mut(entry.state_id);
 
                     let parent = component
                         .parent
-                        .and_then(|parent| self.components.dumb_fetch(parent))
+                        .and_then(|parent| self.tab_indices.dumb_fetch(parent))
                         .map(|parent| parent.widget_id.into());
 
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
@@ -421,7 +422,7 @@ where
         let blueprint = self.blueprint.clone();
 
         // First build the tree
-        let res = eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree);
+        let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree);
         match res {
             Ok(_) => (),
             Err(err) => {
@@ -434,17 +435,17 @@ where
         }
 
         // ... then the tab indices
-        tree.apply_visitor(&mut self.components);
+        tree.apply_visitor(&mut self.tab_indices);
 
         // Select the first widget
-        if let Some(entry) = self.components.current() {
+        if let Some(entry) = self.tab_indices.current() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = states.get_mut(entry.state_id);
 
                 let parent = component
                     .parent
-                    .and_then(|parent| self.components.dumb_fetch(parent))
+                    .and_then(|parent| self.tab_indices.dumb_fetch(parent))
                     .map(|parent| parent.widget_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
@@ -512,7 +513,7 @@ where
         clear_all_changes();
         clear_all_subs();
 
-        self.components = Components::new();
+        self.tab_indices = TabIndices::new();
         self.floating_widgets = FloatingWidgets::empty();
         self.string_storage = StringStorage::new();
 
@@ -563,7 +564,7 @@ where
             &mut self.viewport,
             &self.emitter,
             tree,
-            &mut self.components,
+            &mut self.tab_indices,
             states,
             attribute_storage,
             &mut self.constraints,
@@ -619,13 +620,13 @@ where
         for widget_id in self.floating_widgets.iter() {
             // Find the parent widget and get the position
             // If no parent element is found assume Pos::ZERO
-            let mut parent = tree.path(*widget_id).pop();
+            let mut parent = tree.path_ref(*widget_id).parent();
             let (pos, constraints) = loop {
                 match parent {
                     None => break (Pos::ZERO, self.constraints),
                     Some(p) => match tree.get_ref_by_path(p) {
                         Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
-                        _ => parent = p.pop(),
+                        _ => parent = p.parent(),
                     },
                 }
             };
@@ -673,14 +674,14 @@ where
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
     ) {
-        for entry in self.components.iter() {
+        for entry in self.tab_indices.iter() {
             tree.with_value_mut(entry.widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
                 let state = states.get_mut(entry.state_id);
 
                 let parent = component
                     .parent
-                    .and_then(|parent| self.components.dumb_fetch(parent))
+                    .and_then(|parent| self.tab_indices.dumb_fetch(parent))
                     .map(|parent| parent.widget_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };

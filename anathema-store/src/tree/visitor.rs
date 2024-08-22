@@ -1,10 +1,10 @@
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
-use super::{NodePath, ValueId};
+use super::ValueId;
 
 pub trait NodeVisitor<T> {
-    fn visit(&mut self, value: &mut T, path: &NodePath, value_id: ValueId) -> ControlFlow<()>;
+    fn visit(&mut self, value: &mut T, path: &[u16], value_id: ValueId) -> ControlFlow<()>;
 
     fn push(&mut self) {}
 
@@ -34,12 +34,11 @@ impl<T> NodeVisitor<T> for DebugPrintTree
 where
     T: std::fmt::Debug,
 {
-    fn visit(&mut self, value: &mut T, path: &NodePath, _: ValueId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut T, path: &[u16], _: ValueId) -> ControlFlow<()> {
         let _ = writeln!(
             &mut self.output,
             "{}{path:?}: {value:?}",
             " ".repeat(self.level * 4),
-            path = path.as_slice()
         );
         ControlFlow::Continue(())
     }

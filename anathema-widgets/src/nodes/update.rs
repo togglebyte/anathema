@@ -1,5 +1,5 @@
 use anathema_state::{Change, States};
-use anathema_store::tree::{NodePath, PathFinder};
+use anathema_store::tree::PathFinder;
 use anathema_templates::Globals;
 
 use super::element::Element;
@@ -26,7 +26,7 @@ struct UpdateTree<'a, 'b, 'bp> {
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
     type Output = Result<()>;
 
-    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) -> Self::Output {
+    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
         let mut ctx = EvalContext::new(
             self.globals,
@@ -57,7 +57,7 @@ pub fn update_tree<'bp>(
     components: &mut ComponentRegistry,
     change: &Change,
     value_id: ValueId,
-    path: &NodePath,
+    path: &[u16],
     tree: &mut WidgetTree<'bp>,
     attribute_storage: &mut AttributeStorage<'bp>,
     floating_widgets: &mut FloatingWidgets,
@@ -81,7 +81,7 @@ fn update_widget<'bp>(
     ctx: &mut EvalContext<'_, '_, 'bp>,
     value_id: ValueId,
     change: &Change,
-    path: &NodePath,
+    path: &[u16],
     tree: &mut WidgetTree<'bp>,
 ) -> Result<()> {
     match widget {

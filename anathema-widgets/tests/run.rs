@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use anathema_geometry::Size;
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, StateId, States};
-use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
@@ -61,7 +60,7 @@ where
             &mut self.floating_widgets,
         );
 
-        eval_blueprint(self.blueprint, &mut ctx, &NodePath::root(), &mut self.tree).unwrap();
+        eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree).unwrap();
 
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
@@ -109,7 +108,7 @@ where
         self.future_values.drain().for_each(|sub| {
             scope.clear();
             scope.insert_state(StateId::ZERO);
-            let path = self.tree.path(sub).clone();
+            let path = self.tree.path(sub);
 
             try_resolve_future_values(
                 self.globals,
@@ -133,7 +132,7 @@ where
             sub.iter().for_each(|sub| {
                 scope.clear();
                 scope.insert_state(StateId::ZERO);
-                let Some(path) = self.tree.try_path(sub).cloned() else { return };
+                let Some(path) = self.tree.try_path(sub) else { return };
 
                 update_tree(
                     self.globals,

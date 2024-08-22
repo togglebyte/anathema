@@ -20,6 +20,8 @@ mod attributes;
 mod factory;
 mod query;
 
+pub struct Components(SecondaryMap<WidgetId, WidgetId>);
+
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
 
 impl FloatingWidgets {

@@ -68,7 +68,7 @@ impl Else<'_> {
 #[cfg(test)]
 mod test {
     use anathema_state::{Map, States};
-    use anathema_store::tree::{NodePath, Tree};
+    use anathema_store::tree::Tree;
     use anathema_templates::Document;
 
     use crate::components::ComponentRegistry;
@@ -114,7 +114,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree).unwrap();
+        eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);

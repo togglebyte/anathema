@@ -1,5 +1,5 @@
 use anathema_state::Change;
-use anathema_store::tree::NodePath;
+use anathema_store::tree::new_node_path;
 use anathema_templates::blueprints::Blueprint;
 
 use super::WidgetKind;
@@ -33,7 +33,7 @@ impl<'bp> For<'bp> {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         change: &Change,
         value_id: ValueId,
-        path: &NodePath,
+        path: &[u16],
         tree: &mut WidgetTree<'bp>,
     ) -> Result<()> {
         match change {
@@ -46,10 +46,9 @@ impl<'bp> For<'bp> {
                 // 6. Eval body
 
                 ctx.scope.push();
-
                 ctx.scope.scope_pending(self.binding, *value);
 
-                let insert_at = path + *index as u16;
+                let insert_at = new_node_path(path, *index as u16);
                 let iter_id = tree
                     .insert(&insert_at)
                     .commit_at(WidgetKind::Iteration(Iteration {
@@ -101,7 +100,7 @@ impl<'bp> For<'bp> {
                 ctx.scope.pop();
             }
             Change::Removed(index) => {
-                let child_to_remove = path + *index as u16;
+                let child_to_remove = new_node_path(path, *index as u16);
                 tree.remove(&child_to_remove);
             }
             Change::Dropped => {
@@ -166,6 +165,7 @@ pub struct Iteration<'bp> {
 #[cfg(test)]
 mod test {
     use anathema_state::{drain_changes, Changes, List, Map, StateId, States};
+    use anathema_store::tree::root_node;
     use anathema_templates::Document;
 
     use super::*;
@@ -211,7 +211,7 @@ mod test {
             &mut floating_widgets,
         );
 
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree).unwrap();
+        eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);
@@ -244,7 +244,7 @@ mod test {
             subs.with(|sub| {
                 eprintln!("- apply change: {change:?}");
                 let mut scope = Scope::with_capacity(10);
-                let widget_path = &widget_tree.path(sub).clone();
+                let widget_path = widget_tree.path(sub);
                 update_tree(
                     &globals,
                     &factory,
@@ -253,7 +253,7 @@ mod test {
                     &mut components,
                     &change,
                     sub,
-                    widget_path,
+                    &widget_path,
                     &mut widget_tree,
                     &mut attribute_storage,
                     &mut floating_widgets,
@@ -323,7 +323,7 @@ mod test {
             &mut attribute_storage,
             &mut floating_widgets,
         );
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree).unwrap();
+        eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         tree.apply_visitor(&mut stringify);
