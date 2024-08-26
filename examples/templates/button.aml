@@ -1,0 +1,6 @@
+border
+    row
+        if in_focus
+            text [background: "grey", foreground: "black"] caption
+        else
+            text [background: "black"] caption
