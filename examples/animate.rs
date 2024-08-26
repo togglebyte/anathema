@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anathema::component::*;
 use anathema::prelude::*;
+use anathema_widgets::components::events::KeyState;
 
 #[derive(State)]
 struct Num {
@@ -33,10 +34,12 @@ impl Component for C {
     }
 
     fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, _: Elements<'_, '_>, _: Context<'_>) {
-        match key.code {
-            KeyCode::Char('k') => *state.speed.to_mut() += 0.1,
-            KeyCode::Char('j') => *state.speed.to_mut() -= 0.1,
-            _ => {}
+        if matches!(key.state, KeyState::Press) {
+            match key.code {
+                KeyCode::Char('k') => *state.speed.to_mut() += 0.1,
+                KeyCode::Char('j') => *state.speed.to_mut() -= 0.1,
+                _ => {}
+            }
         }
     }
 }
