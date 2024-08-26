@@ -77,7 +77,7 @@ impl TabIndices {
 }
 
 impl NodeVisitor<WidgetKind<'_>> for TabIndices {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], widget_id: WidgetId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
         if let WidgetKind::Component(component) = value {
             if component.dyn_component.accept_focus_any() {
                 self.tabs.push(self.inner.len());

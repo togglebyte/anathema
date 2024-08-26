@@ -24,7 +24,6 @@ impl<'tree, T> InsertTransaction<'tree, T> {
     pub fn commit_child(self, value: T) -> Option<Key> {
         let node_id = self.tree.layout.with_mut(self.source, |nodes| {
             // The node path is the source + len of children in source
-
             let node_path = new_node_path(self.source, nodes.len() as u16);
 
             let node_id = self.tree.values.insert((node_path, value));

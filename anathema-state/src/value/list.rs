@@ -72,7 +72,7 @@ impl<T: 'static + State> Value<List<T>> {
         let list = &mut *self.to_mut();
         let index = list.inner.len();
         let value = value.into();
-        changed(key.sub(), Change::Inserted(index, value.to_pending()));
+        changed(key.sub(), Change::Inserted(index as u32, value.to_pending()));
         list.inner.push_back(value);
     }
 
@@ -94,7 +94,7 @@ impl<T: 'static + State> Value<List<T>> {
         let key = self.key;
         let list = &mut *self.to_mut();
         let value = value.into();
-        changed(key.sub(), Change::Inserted(index, value.to_pending()));
+        changed(key.sub(), Change::Inserted(index as u32, value.to_pending()));
         list.inner.insert(index, value);
     }
 
@@ -104,7 +104,7 @@ impl<T: 'static + State> Value<List<T>> {
         let key = self.key;
         let list = &mut *self.to_mut();
         let value = list.inner.remove(index);
-        changed(key.sub(), Change::Removed(index));
+        changed(key.sub(), Change::Removed(index as u32));
         value
     }
 
@@ -131,7 +131,7 @@ impl<T: 'static + State> Value<List<T>> {
         let value = list.inner.pop_back();
         if value.is_some() {
             let index = list.inner.len();
-            changed(key.sub(), Change::Removed(index));
+            changed(key.sub(), Change::Removed(index as u32));
         }
         value
     }
@@ -141,7 +141,6 @@ impl<T: 'static + State> Value<List<T>> {
         F: FnMut(&mut T),
     {
         let list = &mut *self.to_mut();
-
         list.iter_mut().for_each(|el| f(&mut *el.to_mut()));
     }
 

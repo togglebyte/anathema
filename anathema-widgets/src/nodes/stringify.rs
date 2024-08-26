@@ -32,7 +32,7 @@ impl<'a, 'bp> Stringify<'a, 'bp> {
 }
 
 impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let _ = write!(&mut self.output, "{}", self.indent);
         match value {
             WidgetKind::Element(Element { ident, container, .. }) => {

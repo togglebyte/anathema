@@ -37,8 +37,8 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
-    EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Components,
+    Elements, EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
 use components::TabIndices;
 use events::EventHandler;
@@ -176,13 +176,14 @@ impl<T> RuntimeBuilder<T> {
             future_values: FutureValues::empty(),
 
             changes: Changes::empty(),
-            tab_indices: TabIndices::new(),
+            // tab_indices: TabIndices::new(),
             component_registry: self.component_registry,
             globals,
             document: self.document,
             string_storage: StringStorage::new(),
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
+            components: Components::new(),
             event_handler: EventHandler,
         };
 
@@ -227,7 +228,8 @@ pub struct Runtime<T> {
     // * Event handling
     constraints: Constraints,
     // * Event handling
-    tab_indices: TabIndices,
+    components: Components,
+    // tab_indices: TabIndices,
 
     // -----------------------------------------------------------------------------
     //   - Mut during updates -
@@ -241,7 +243,6 @@ pub struct Runtime<T> {
     component_registry: ComponentRegistry,
     // * Layout
     floating_widgets: FloatingWidgets,
-    // components: Components,
 }
 
 impl<T> Runtime<T>
@@ -299,6 +300,7 @@ where
                 tree,
                 attribute_storage,
                 &mut self.floating_widgets,
+                &mut self.components,
             );
         });
     }
@@ -334,6 +336,7 @@ where
                     tree,
                     attribute_storage,
                     &mut self.floating_widgets,
+                    &mut self.components,
                 );
             });
         });
@@ -349,15 +352,19 @@ where
         assoc_events: &mut AssociatedEvents,
     ) -> Duration {
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some(entry) = self.tab_indices.dumb_fetch(msg.recipient()) {
-                tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+            if let Some((widget_id, state_id)) = self
+                .components
+                .get_by_component_id(msg.recipient())
+                .map(|e| (e.widget_id, e.state_id))
+            {
+                tree.with_value_mut(widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
-                    let state = states.get_mut(entry.state_id);
+                    let state = states.get_mut(state_id);
 
                     let parent = component
                         .parent
-                        .and_then(|parent| self.tab_indices.dumb_fetch(parent))
-                        .map(|parent| parent.widget_id.into());
+                        .and_then(|parent| self.components.get_by_component_id(parent))
+                        .map(|parent| parent.component_id.into());
 
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
@@ -366,7 +373,7 @@ where
                         emitter: &self.emitter,
                         viewport: self.viewport,
                         assoc_events,
-                        state_id: entry.state_id,
+                        state_id,
                         parent,
                         strings: &mut self.document.strings,
                         assoc_functions: component.assoc_functions,
@@ -417,6 +424,7 @@ where
             &mut self.component_registry,
             &mut attribute_storage,
             &mut self.floating_widgets,
+            &mut self.components,
         );
 
         let blueprint = self.blueprint.clone();
@@ -434,19 +442,16 @@ where
             }
         }
 
-        // ... then the tab indices
-        tree.apply_visitor(&mut self.tab_indices);
-
         // Select the first widget
-        if let Some(entry) = self.tab_indices.current() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        if let Some((widget_id, state_id)) = self.components.current() {
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
 
                 let parent = component
                     .parent
-                    .and_then(|parent| self.tab_indices.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| self.components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
@@ -454,7 +459,7 @@ where
                     emitter: &self.emitter,
                     viewport: self.viewport,
                     assoc_events: &mut assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings: &mut self.document.strings,
                     assoc_functions: component.assoc_functions,
@@ -513,7 +518,7 @@ where
         clear_all_changes();
         clear_all_subs();
 
-        self.tab_indices = TabIndices::new();
+        self.components = Components::new();
         self.floating_widgets = FloatingWidgets::empty();
         self.string_storage = StringStorage::new();
 
@@ -564,7 +569,7 @@ where
             &mut self.viewport,
             &self.emitter,
             tree,
-            &mut self.tab_indices,
+            &mut self.components,
             states,
             attribute_storage,
             &mut self.constraints,
@@ -674,15 +679,21 @@ where
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
     ) {
-        for entry in self.tab_indices.iter() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        for i in 0..self.components.len() {
+
+            let (widget_id, state_id) = self
+                .components
+                .get(i)
+                .expect("the components can not change as a result of this step");
+
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
 
                 let parent = component
                     .parent
-                    .and_then(|parent| self.tab_indices.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| self.components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
@@ -691,7 +702,7 @@ where
                     emitter: &self.emitter,
                     viewport: self.viewport,
                     assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings: &mut self.document.strings,
                     assoc_functions: component.assoc_functions,

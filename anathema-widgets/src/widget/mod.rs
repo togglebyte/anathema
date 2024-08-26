@@ -1,12 +1,17 @@
 use std::any::Any;
+use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::ops::ControlFlow;
 
 pub type WidgetId = anathema_store::slab::Key;
 
 use anathema_geometry::{Pos, Size};
+use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
+use anathema_store::smallmap::SmallMap;
+use anathema_store::sorted::SortedList;
 use anathema_store::tree::{Tree, TreeForEach};
+use anathema_templates::WidgetComponentId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
@@ -20,7 +25,103 @@ mod attributes;
 mod factory;
 mod query;
 
-pub struct Components(SecondaryMap<WidgetId, WidgetId>);
+#[derive(Debug)]
+pub struct CompEntry {
+    pub widget_id: WidgetId,
+    pub component_id: WidgetComponentId,
+    pub state_id: StateId,
+    path: Box<[u16]>,
+}
+
+impl PartialOrd for CompEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.path.partial_cmp(&other.path)
+    }
+}
+
+impl Ord for CompEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.path.cmp(&other.path)
+    }
+}
+
+impl Eq for CompEntry {}
+
+impl PartialEq for CompEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.path.eq(&other.path)
+    }
+}
+
+pub struct Components {
+    tab_index: usize,
+    inner: SortedList<CompEntry>,
+    comp_ids: SmallMap<WidgetComponentId, usize>,
+}
+
+impl Components {
+    pub fn new() -> Self {
+        Self {
+            tab_index: 0,
+            inner: SortedList::empty(),
+            comp_ids: SmallMap::empty(),
+        }
+    }
+
+    pub fn next(&mut self) -> usize {
+        let prev = self.tab_index;
+        if self.tab_index == self.inner.len() - 1 {
+            self.tab_index = 0;
+        } else {
+            self.tab_index += 1;
+        }
+        prev
+    }
+
+    pub fn prev(&mut self) -> usize {
+        let prev = self.tab_index;
+        if self.tab_index == 0 {
+            self.tab_index = self.inner.len() - 1;
+        } else {
+            self.tab_index -= 1;
+        }
+        prev
+    }
+
+    pub fn push(&mut self, path: Box<[u16]>, widget_id: WidgetId, state_id: StateId, component_id: WidgetComponentId) {
+        let entry = CompEntry { path, widget_id, state_id, component_id };
+        self.comp_ids.set(component_id, self.inner.len());
+        self.inner.push(entry);
+    }
+
+    pub fn remove(&mut self, path: &[u16]) {
+        if let Some(index) = self.inner.binary_search_by(|entry| (&*entry.path).cmp(path)) {
+            let entry = self.inner.remove(index);
+            self.comp_ids.remove(&entry.component_id);
+        }
+    }
+
+    pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
+        self.get(self.tab_index)
+    }
+
+    pub fn get(&mut self, index: usize) -> Option<(WidgetId, StateId)> {
+        self.inner.get(index).map(|e| (e.widget_id, e.state_id))
+    }
+
+    pub fn get_by_component_id(&mut self, id: WidgetComponentId) -> Option<&CompEntry> {
+        let index = self.comp_ids.get(&id)?;
+        self.inner.get(*index)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {
+        self.inner.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
 
@@ -44,33 +145,33 @@ impl FloatingWidgets {
 
 /// Parent in a component relationship
 #[derive(Debug, Copy, Clone)]
-pub struct Parent(pub WidgetId);
+pub struct Parent(pub WidgetComponentId);
 
-impl From<Parent> for WidgetId {
+impl From<Parent> for WidgetComponentId {
     fn from(value: Parent) -> Self {
         value.0
     }
 }
 
-impl From<WidgetId> for Parent {
-    fn from(value: WidgetId) -> Self {
+impl From<WidgetComponentId> for Parent {
+    fn from(value: WidgetComponentId) -> Self {
         Self(value)
     }
 }
 
 /// Component relationships, tracking the parent component of each component
-pub struct ComponentParents(SecondaryMap<WidgetId, Parent>);
+pub struct ComponentParents(SecondaryMap<WidgetComponentId, Parent>);
 
 impl ComponentParents {
     pub fn empty() -> Self {
         Self(SecondaryMap::empty())
     }
 
-    pub fn try_remove(&mut self, key: WidgetId) {
+    pub fn try_remove(&mut self, key: WidgetComponentId) {
         self.0.try_remove(key);
     }
 
-    pub fn get_parent(&self, child: WidgetId) -> Option<Parent> {
+    pub fn get_parent(&self, child: WidgetComponentId) -> Option<Parent> {
         self.0.get(child).copied()
     }
 }

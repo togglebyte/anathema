@@ -10,7 +10,7 @@ use crate::components::ComponentRegistry;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
-use crate::widget::FloatingWidgets;
+use crate::widget::{Components, FloatingWidgets};
 use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
 
 struct ResolveFutureValues<'a, 'b, 'bp> {
@@ -19,9 +19,10 @@ struct ResolveFutureValues<'a, 'b, 'bp> {
     factory: &'a Factory,
     scope: &'b mut Scope<'bp>,
     states: &'b mut States,
-    components: &'b mut ComponentRegistry,
+    component_registry: &'b mut ComponentRegistry,
     attribute_storage: &'b mut AttributeStorage<'bp>,
     floating_widgets: &'b mut FloatingWidgets,
+    components: &'b mut Components,
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'bp> {
@@ -34,9 +35,10 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
             self.factory,
             self.scope,
             self.states,
-            self.components,
+            self.component_registry,
             self.attribute_storage,
             self.floating_widgets,
+            self.components,
         );
 
         try_resolve_value(node, &mut ctx, self.value_id, path, tree)?;
@@ -54,12 +56,13 @@ pub fn try_resolve_future_values<'bp>(
     factory: &Factory,
     scope: &mut Scope<'bp>,
     states: &mut States,
-    components: &mut ComponentRegistry,
+    component_registry: &mut ComponentRegistry,
     value_id: ValueId,
     path: &[u16],
     tree: &mut WidgetTree<'bp>,
     attribute_storage: &mut AttributeStorage<'bp>,
     floating_widgets: &mut FloatingWidgets,
+    components: &mut Components,
 ) {
     let res = ResolveFutureValues {
         globals,
@@ -67,9 +70,10 @@ pub fn try_resolve_future_values<'bp>(
         factory,
         scope,
         states,
-        components,
+        component_registry,
         attribute_storage,
         floating_widgets,
+        components,
     };
 
     tree.apply_path_finder(path, res);

@@ -14,7 +14,7 @@ use crate::container::Container;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
-use crate::widget::{Attributes, FloatingWidgets, ValueKey};
+use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
 use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
 
 /// Evaluation context
@@ -23,9 +23,10 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) factory: &'a Factory,
     pub(super) scope: &'b mut Scope<'bp>,
     pub(super) states: &'b mut States,
-    pub(super) components: &'b mut ComponentRegistry,
+    pub(super) component_registry: &'b mut ComponentRegistry,
     pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
+    pub(super) components: &'b mut Components,
 }
 
 impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
@@ -34,18 +35,20 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         factory: &'a Factory,
         scope: &'b mut Scope<'bp>,
         states: &'b mut States,
-        components: &'b mut ComponentRegistry,
+        component_registry: &'b mut ComponentRegistry,
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
+        components: &'b mut Components,
     ) -> Self {
         Self {
             globals,
             factory,
             scope,
             states,
-            components,
+            component_registry,
             attribute_storage,
             floating_widgets,
+            components,
         }
     }
 
@@ -53,7 +56,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         &mut self,
         component_id: WidgetComponentId,
     ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
-        self.components.get(component_id)
+        self.component_registry.get(component_id)
     }
 }
 
@@ -380,6 +383,9 @@ impl Evaluator for ComponentEval {
         let widget_id = transaction
             .commit_child(WidgetKind::Component(comp_widget))
             .ok_or(Error::TreeTransactionFailed)?;
+
+        let path = tree.path(widget_id);
+        ctx.components.push(path, widget_id, state_id, component_id);
 
         tree.with_value(widget_id, move |parent, widget, tree| {
             let WidgetKind::Component(component) = widget else { unreachable!() };

@@ -87,14 +87,14 @@ impl<'tag, 'bp, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'tag, 'bp, F>
 where
     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
-    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], _widget_id: WidgetId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], _widget_id: WidgetId) -> ControlFlow<bool> {
         if let WidgetKind::Element(el) = value {
             match self.arg {
                 QueryArg::ByTag(tag) if el.ident == tag => {
                     let attributes = self.attributes.get_mut(el.id());
                     (self.f)(el, attributes);
                     if !self.continuous {
-                        return ControlFlow::Break(());
+                        return ControlFlow::Break(false);
                     }
                 }
                 QueryArg::ByTag(_) => {}
@@ -113,7 +113,7 @@ where
                         let attributes = self.attributes.get_mut(el.id());
                         (self.f)(el, attributes);
                         if !self.continuous {
-                            return ControlFlow::Break(());
+                            return ControlFlow::Break(false);
                         }
                     }
                 }
@@ -124,7 +124,7 @@ where
                         let attributes = self.attributes.get_mut(el.id());
                         (self.f)(el, attributes);
                         if !self.continuous {
-                            return ControlFlow::Break(());
+                            return ControlFlow::Break(false);
                         }
                     }
                 }

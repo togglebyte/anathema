@@ -4,7 +4,11 @@ use std::ops::ControlFlow;
 use super::ValueId;
 
 pub trait NodeVisitor<T> {
-    fn visit(&mut self, value: &mut T, path: &[u16], value_id: ValueId) -> ControlFlow<()>;
+    /// Return control flow.
+    /// * `ControlFlow::Continue(())` continue
+    /// * `ControlFlow::Break(false)` stop iterating over the children of the current node
+    /// * `ControlFlow::Break(true)` stop iterating
+    fn visit(&mut self, value: &mut T, path: &[u16], value_id: ValueId) -> ControlFlow<bool>;
 
     fn push(&mut self) {}
 
@@ -34,7 +38,7 @@ impl<T> NodeVisitor<T> for DebugPrintTree
 where
     T: std::fmt::Debug,
 {
-    fn visit(&mut self, value: &mut T, path: &[u16], _: ValueId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut T, path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let _ = writeln!(
             &mut self.output,
             "{}{path:?}: {value:?}",
