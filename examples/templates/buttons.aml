@@ -1,0 +1,6 @@
+align [alignment: "centre"]
+    border
+        column
+            @button {"caption": "Increment"}
+            text number
+            @button {"caption": "Decrement", "message": "Decrement"}
