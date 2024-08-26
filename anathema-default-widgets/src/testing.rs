@@ -8,15 +8,15 @@ use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, AttributeStorage, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope, WidgetKind,
-    WidgetRenderer as _, WidgetTree,
+    eval_blueprint, AttributeStorage, Components, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope,
+    WidgetKind, WidgetRenderer as _, WidgetTree,
 };
 
 use crate::register_default_widgets;
 
 pub struct TestRunner {
     states: States,
-    components: ComponentRegistry,
+    component_registry: ComponentRegistry,
     factory: Factory,
     backend: TestBackend,
     blueprint: Blueprint,
@@ -53,7 +53,7 @@ impl TestRunner {
             factory,
             backend: TestBackend::new(size),
             states,
-            components,
+            component_registry: components,
             blueprint,
             globals,
         }
@@ -63,6 +63,7 @@ impl TestRunner {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
+        let mut components = Components::new();
         let viewport = Viewport::new(self.backend.surface.size());
 
         let mut scope = Scope::new();
@@ -72,9 +73,10 @@ impl TestRunner {
             &self.factory,
             &mut scope,
             &mut self.states,
-            &mut self.components,
+            &mut self.component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
+            &mut components,
         );
 
         eval_blueprint(&self.blueprint, &mut ctx, &[], &mut tree).unwrap();
@@ -83,6 +85,7 @@ impl TestRunner {
             states: &mut self.states,
             backend: &mut self.backend,
             floating_widgets,
+            components,
             tree,
             attribute_storage,
             text: StringStorage::new(),
@@ -95,6 +98,7 @@ pub struct TestInstance<'bp> {
     tree: WidgetTree<'bp>,
     attribute_storage: AttributeStorage<'bp>,
     floating_widgets: FloatingWidgets,
+    components: Components,
     text: StringStorage,
     states: &'bp mut States,
     backend: &'bp mut TestBackend,

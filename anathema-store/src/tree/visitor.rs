@@ -39,11 +39,7 @@ where
     T: std::fmt::Debug,
 {
     fn visit(&mut self, value: &mut T, path: &[u16], _: ValueId) -> ControlFlow<bool> {
-        let _ = writeln!(
-            &mut self.output,
-            "{}{path:?}: {value:?}",
-            " ".repeat(self.level * 4),
-        );
+        let _ = writeln!(&mut self.output, "{}{path:?}: {value:?}", " ".repeat(self.level * 4),);
         ControlFlow::Continue(())
     }
 

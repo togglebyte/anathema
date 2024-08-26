@@ -75,7 +75,7 @@ mod test {
     use crate::nodes::stringify::Stringify;
     use crate::scope::Scope;
     use crate::testing::setup_test_factory;
-    use crate::{eval_blueprint, AttributeStorage, EvalContext, FloatingWidgets};
+    use crate::{eval_blueprint, AttributeStorage, Components, EvalContext, FloatingWidgets};
 
     #[test]
     fn if_stmt() {
@@ -98,7 +98,8 @@ mod test {
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
         let factory = setup_test_factory();
-        let mut components = ComponentRegistry::new();
+        let mut component_registry = ComponentRegistry::new();
+        let mut components = Components::new();
         let mut states = States::new();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
@@ -109,9 +110,10 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
-            &mut components,
+            &mut component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
+            &mut components,
         );
 
         eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();

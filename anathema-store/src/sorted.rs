@@ -50,13 +50,14 @@ impl<T: Ord> SortedList<T> {
         self.inner.len()
     }
 
-    pub fn binary_search_by<F>(&self, f: F) -> Option<usize> 
-        where F: FnMut(&T) -> Ordering
+    pub fn binary_search_by<F>(&self, f: F) -> Option<usize>
+    where
+        F: FnMut(&T) -> Ordering,
     {
         self.inner.binary_search_by(f).ok()
     }
 
-    /// Note that this function is not guaranteed to return 
+    /// Note that this function is not guaranteed to return
     /// a sorted result
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.inner.iter()

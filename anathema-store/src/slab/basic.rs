@@ -115,7 +115,9 @@ where
             match entry {
                 Entry::CheckedOut(_) => panic!("value is checked out"),
                 Entry::Vacant(None) => *entry = Entry::Occupied(value),
-                Entry::Occupied(val) => *val = value,
+                Entry::Occupied(val) => {
+                    *val = value
+                },
                 &mut Entry::Vacant(Some(next_free)) => {
                     // Find the values that points to `index`
                     // and replace that with `next_free`

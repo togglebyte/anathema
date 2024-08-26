@@ -40,7 +40,6 @@ use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Components,
     Elements, EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
 };
-use components::TabIndices;
 use events::EventHandler;
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
@@ -48,7 +47,6 @@ pub use crate::error::{Error, Result};
 
 static REBUILD: AtomicBool = AtomicBool::new(false);
 
-mod components;
 mod error;
 mod events;
 
@@ -653,15 +651,17 @@ where
             });
         }
 
-        self.backend.render();
-        self.backend.clear();
-
         // Cleanup removed attributes from widgets.
         // Not all widgets has attributes, only `Element`s.
         for key in tree.drain_removed() {
-            attribute_storage.try_remove(key);
-            self.floating_widgets.try_remove(key);
+            // attribute_storage.try_remove(key);
+            // self.floating_widgets.try_remove(key);
+            // // TODO: this function is rubbish and has to be rewritten
+            // self.components.dodgy_remove(key);
         }
+
+        self.backend.render();
+        self.backend.clear();
 
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
         if sleep > 0 {
@@ -680,7 +680,6 @@ where
         assoc_events: &mut AssociatedEvents,
     ) {
         for i in 0..self.components.len() {
-
             let (widget_id, state_id) = self
                 .components
                 .get(i)

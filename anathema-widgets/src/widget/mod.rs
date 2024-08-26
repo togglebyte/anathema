@@ -89,7 +89,12 @@ impl Components {
     }
 
     pub fn push(&mut self, path: Box<[u16]>, widget_id: WidgetId, state_id: StateId, component_id: WidgetComponentId) {
-        let entry = CompEntry { path, widget_id, state_id, component_id };
+        let entry = CompEntry {
+            path,
+            widget_id,
+            state_id,
+            component_id,
+        };
         self.comp_ids.set(component_id, self.inner.len());
         self.inner.push(entry);
     }
@@ -120,6 +125,12 @@ impl Components {
 
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    pub fn dodgy_remove(&mut self, widget_id: WidgetId) {
+        let Some(index) = self.inner.iter().position(|entry| entry.widget_id == widget_id) else { return };
+        let entry = self.inner.remove(index);
+        self.comp_ids.remove(&entry.component_id);
     }
 }
 

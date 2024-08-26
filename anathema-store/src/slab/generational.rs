@@ -341,6 +341,14 @@ impl<T> GenSlab<T> {
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
+
+    // TODO: bad name, rename this
+    pub(crate) fn has_newer(&self, key: Key) -> bool {
+        match self.inner.get(key.index()) {
+            Some(Entry::Occupied(_, gen)) => false,
+            _ => true,
+        }
+    }
 }
 
 impl<T> GenSlab<T>

@@ -60,9 +60,10 @@ impl<T> Tree<T> {
         self.values.iter_mut()
     }
 
-    /// Drain the removed value ids
+    /// Drain the removed value ids.
+    /// This only returns values that does not have newer keys at the same index
     pub fn drain_removed(&mut self) -> impl DoubleEndedIterator<Item = ValueId> + '_ {
-        self.removed_values.drain(..)
+        self.removed_values.drain(..).filter(|key| self.values.has_newer(*key))
     }
 
     /// The path reference for a value in the tree.
@@ -292,6 +293,10 @@ impl<T> Tree<T> {
     /// Split the tree giving access to the layout and the values.
     pub fn split_mut(&mut self) -> (&[Node], &mut TreeValues<T>) {
         (&self.layout, &mut self.values)
+    }
+
+    pub fn has_newer(&self, key: ValueId) -> bool {
+        self.values.has_newer(key)
     }
 }
 

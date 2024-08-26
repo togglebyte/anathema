@@ -4,12 +4,11 @@ use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, States};
 use anathema_store::storage::strings::Strings;
-use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
+use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, Context, Emitter};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Components, Elements, WidgetKind, WidgetTree};
 
-use crate::components::TabIndices;
 use crate::error::{Error, Result};
 
 pub(super) struct EventHandler;
@@ -196,7 +195,7 @@ pub fn global_event<'bp, T: Backend>(
     // -----------------------------------------------------------------------------
     //   - Handle tabbing between components -
     // -----------------------------------------------------------------------------
-    if let Event::Key(KeyEvent { code, .. }) = event {
+    if let Event::Key(KeyEvent { code, state: KeyState::Press, .. }) = event {
         let prev = match code {
             KeyCode::Tab => components.next(),
             KeyCode::BackTab => components.prev(),
