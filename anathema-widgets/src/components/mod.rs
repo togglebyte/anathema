@@ -23,6 +23,8 @@ enum ComponentType {
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
+/// Store component factories.
+/// This is how components are created.
 pub struct ComponentRegistry(Slab<WidgetComponentId, ComponentType>);
 
 impl ComponentRegistry {
@@ -93,21 +95,6 @@ impl ComponentRegistry {
         }
     }
 }
-
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-// pub struct WidgetComponentId(usize);
-
-// impl From<usize> for WidgetComponentId {
-//     fn from(value: usize) -> Self {
-//         Self(value)
-//     }
-// }
-
-// impl From<WidgetComponentId> for usize {
-//     fn from(value: WidgetComponentId) -> Self {
-//         value.0
-//     }
-// }
 
 #[derive(Debug)]
 pub struct ComponentId<T>(pub(crate) WidgetComponentId, pub(crate) PhantomData<T>);

@@ -1,4 +1,3 @@
-use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::Blueprint;
 
 pub use self::element::Element;
@@ -32,7 +31,7 @@ pub enum WidgetKind<'bp> {
 pub fn eval_blueprint<'bp>(
     blueprint: &'bp Blueprint,
     ctx: &mut EvalContext<'_, '_, 'bp>,
-    parent: &NodePath,
+    parent: &[u16],
     tree: &mut WidgetTree<'bp>,
 ) -> Result<()> {
     match blueprint {

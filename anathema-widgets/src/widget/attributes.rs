@@ -54,8 +54,8 @@ impl<'bp> Attributes<'bp> {
 
     /// Set the value
     pub fn set(&mut self, key: &'bp str, value: impl Into<CommonVal<'bp>>) {
-        let value = value.into();
-        self.values.set(ValueKey::Attribute(key), value.into());
+        let value = value.into().into();
+        self.values.set(ValueKey::Attribute(key), value);
     }
 
     /// Resolve the value from a state and track it from the attributes.

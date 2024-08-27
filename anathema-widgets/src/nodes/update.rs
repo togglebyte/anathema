@@ -1,5 +1,5 @@
 use anathema_state::{Change, States};
-use anathema_store::tree::{NodePath, PathFinder};
+use anathema_store::tree::PathFinder;
 use anathema_templates::Globals;
 
 use super::element::Element;
@@ -8,7 +8,7 @@ use super::loops::LOOP_INDEX;
 use crate::components::ComponentRegistry;
 use crate::error::Result;
 use crate::values::ValueId;
-use crate::widget::FloatingWidgets;
+use crate::widget::{Components, FloatingWidgets};
 use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
 
 struct UpdateTree<'a, 'b, 'bp> {
@@ -18,24 +18,26 @@ struct UpdateTree<'a, 'b, 'bp> {
     factory: &'a Factory,
     scope: &'b mut Scope<'bp>,
     states: &'b mut States,
-    components: &'b mut ComponentRegistry,
+    component_registry: &'b mut ComponentRegistry,
     attribute_storage: &'b mut AttributeStorage<'bp>,
     floating_widgets: &'b mut FloatingWidgets,
+    components: &'b mut Components,
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
     type Output = Result<()>;
 
-    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &NodePath, tree: &mut WidgetTree<'bp>) -> Self::Output {
+    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
         let mut ctx = EvalContext::new(
             self.globals,
             self.factory,
             self.scope,
             self.states,
-            self.components,
+            self.component_registry,
             self.attribute_storage,
             self.floating_widgets,
+            self.components,
         );
         update_widget(node, &mut ctx, self.value_id, self.change, path, tree)?;
 
@@ -54,13 +56,14 @@ pub fn update_tree<'bp>(
     factory: &Factory,
     scope: &mut Scope<'bp>,
     states: &mut States,
-    components: &mut ComponentRegistry,
+    component_registry: &mut ComponentRegistry,
     change: &Change,
     value_id: ValueId,
-    path: &NodePath,
+    path: &[u16],
     tree: &mut WidgetTree<'bp>,
     attribute_storage: &mut AttributeStorage<'bp>,
     floating_widgets: &mut FloatingWidgets,
+    components: &mut Components,
 ) {
     let update = UpdateTree {
         globals,
@@ -69,9 +72,10 @@ pub fn update_tree<'bp>(
         factory,
         scope,
         states,
-        components,
+        component_registry,
         attribute_storage,
         floating_widgets,
+        components,
     };
     tree.apply_path_finder(path, update);
 }
@@ -81,7 +85,7 @@ fn update_widget<'bp>(
     ctx: &mut EvalContext<'_, '_, 'bp>,
     value_id: ValueId,
     change: &Change,
-    path: &NodePath,
+    path: &[u16],
     tree: &mut WidgetTree<'bp>,
 ) -> Result<()> {
     match widget {
@@ -99,13 +103,17 @@ fn update_widget<'bp>(
         }
         WidgetKind::For(for_loop) => for_loop.update(ctx, change, value_id, path, tree)?,
         WidgetKind::Iteration(_) => todo!(),
-        WidgetKind::ControlFlow(_) => unreachable!("update is never called on ControlFlow, only the children"),
-        WidgetKind::If(_) | WidgetKind::Else(_) => (), // If / Else are not updated by themselves
         // but rather the ControlFlow is managing
         // these in the layout process instead, as
         // the ControlFlow has access to all the
         // branches.
-        WidgetKind::Component(_) => (),
+        WidgetKind::ControlFlow(_) => unreachable!("update is never called on ControlFlow, only the children"),
+        WidgetKind::If(_) | WidgetKind::Else(_) => (), // If / Else are not updated by themselves
+        WidgetKind::Component(_) => {
+            if let Change::Dropped = change {
+                ctx.components.remove(path);
+            }
+        }
     }
 
     Ok(())

@@ -32,6 +32,5 @@ pub trait Backend {
 
     fn clear(&mut self);
 
-    fn finalize(&mut self) {
-    }
+    fn finalize(&mut self) {}
 }

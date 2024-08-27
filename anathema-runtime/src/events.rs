@@ -7,9 +7,8 @@ use anathema_store::storage::strings::Strings;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, Context, Emitter};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Elements, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, Components, Elements, WidgetKind, WidgetTree};
 
-use crate::components::Components;
 use crate::error::{Error, Result};
 
 pub(super) struct EventHandler;
@@ -49,15 +48,15 @@ impl EventHandler {
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
-                if let Some(entry) = components.current() {
-                    tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                if let Some((widget_id, state_id)) = components.current() {
+                    tree.with_value_mut(widget_id, |path, widget, tree| {
                         let WidgetKind::Component(component) = widget else { return };
-                        let state = states.get_mut(entry.state_id);
+                        let state = states.get_mut(state_id);
 
                         let parent = component
                             .parent
-                            .and_then(|parent| components.dumb_fetch(parent))
-                            .map(|parent| parent.widget_id.into());
+                            .and_then(|parent| components.get_by_component_id(parent))
+                            .map(|parent| parent.component_id.into());
 
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
@@ -65,7 +64,7 @@ impl EventHandler {
                             emitter,
                             viewport: *viewport,
                             assoc_events,
-                            state_id: entry.state_id,
+                            state_id,
                             parent,
                             strings,
                             assoc_functions: component.assoc_functions,
@@ -84,15 +83,19 @@ impl EventHandler {
                     constraints.set_max_height(size.height);
 
                     // Notify all components of the resize
-                    for entry in components.iter() {
-                        tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                    let len = components.len();
+                    for i in 0..len {
+                        let (widget_id, state_id) =
+                            components.get(i).expect("components can not change during this call");
+
+                        tree.with_value_mut(widget_id, |path, widget, tree| {
                             let WidgetKind::Component(component) = widget else { return };
-                            let state = states.get_mut(entry.state_id);
+                            let state = states.get_mut(state_id);
 
                             let parent = component
                                 .parent
-                                .and_then(|parent| components.dumb_fetch(parent))
-                                .map(|parent| parent.widget_id.into());
+                                .and_then(|parent| components.get_by_component_id(parent))
+                                .map(|parent| parent.component_id.into());
 
                             let Some((node, values)) = tree.get_node_by_path(path) else { return };
                             let elements = Elements::new(node.children(), values, attribute_storage);
@@ -100,7 +103,7 @@ impl EventHandler {
                                 emitter,
                                 viewport: *viewport,
                                 assoc_events,
-                                state_id: entry.state_id,
+                                state_id,
                                 parent,
                                 strings,
                                 assoc_functions: component.assoc_functions,
@@ -127,18 +130,22 @@ impl EventHandler {
                 states.with_mut(event.state, |state, states| {
                     let common_val = (event.f)(state);
                     let Some(common_val) = common_val.to_common() else { return };
-                    let Some(entry) = components.by_widget_id(event.parent.into()) else { return };
-                    tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+                    let Some(entry) = components.get_by_component_id(event.parent.into()) else {
+                        return;
+                    };
+
+                    let (widget_id, state_id) = (entry.widget_id, entry.state_id);
+                    tree.with_value_mut(widget_id, |path, widget, tree| {
                         let WidgetKind::Component(component) = widget else { return };
 
                         let event_ident = strings.get_ref_unchecked(event.external);
 
-                        let state = states.get_mut(entry.state_id);
+                        let state = states.get_mut(state_id);
 
                         let parent = component
                             .parent
-                            .and_then(|parent| components.dumb_fetch(parent))
-                            .map(|parent| parent.widget_id.into());
+                            .and_then(|parent| components.get_by_component_id(parent))
+                            .map(|parent| parent.component_id.into());
 
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
@@ -146,7 +153,7 @@ impl EventHandler {
                             emitter,
                             viewport: *viewport,
                             assoc_events,
-                            state_id: entry.state_id,
+                            state_id,
                             parent,
                             strings,
                             assoc_functions: component.assoc_functions,
@@ -188,30 +195,35 @@ pub fn global_event<'bp, T: Backend>(
     // -----------------------------------------------------------------------------
     //   - Handle tabbing between components -
     // -----------------------------------------------------------------------------
-    if let Event::Key(KeyEvent { code, state: KeyState::Press, .. }) = event {
+    if let Event::Key(KeyEvent {
+        code,
+        state: KeyState::Press,
+        ..
+    }) = event
+    {
         let prev = match code {
             KeyCode::Tab => components.next(),
             KeyCode::BackTab => components.prev(),
             _ => return Some(event),
         };
 
-        if let Some(entry) = prev {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        if let Some((widget_id, state_id)) = components.get(prev) {
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
 
                 let parent = component
                     .parent
-                    .and_then(|parent| components.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
                 let context = Context {
                     emitter,
                     viewport,
                     assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings,
                     assoc_functions: component.assoc_functions,
@@ -220,23 +232,23 @@ pub fn global_event<'bp, T: Backend>(
             });
         }
 
-        if let Some(entry) = components.current() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        if let Some((widget_id, state_id)) = components.current() {
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
 
                 let parent = component
                     .parent
-                    .and_then(|parent| components.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
                 let context = Context {
                     emitter,
                     viewport,
                     assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings,
                     assoc_functions: component.assoc_functions,
@@ -250,23 +262,24 @@ pub fn global_event<'bp, T: Backend>(
 
     // Mouse events are global
     if let Event::Mouse(_) = event {
-        for entry in components.iter() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        for i in 0..components.len() {
+            let (widget_id, state_id) = components.get(i).expect("components can not change during this call");
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
 
                 let parent = component
                     .parent
-                    .and_then(|parent| components.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
                 let context = Context {
                     emitter,
                     viewport,
                     assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings,
                     assoc_functions: component.assoc_functions,

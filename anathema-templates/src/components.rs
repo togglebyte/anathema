@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
+use anathema_store::slab::Index;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::strings::{StringId, Strings};
@@ -46,6 +47,12 @@ pub(crate) enum ComponentSource {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetComponentId(u32);
+
+impl From<WidgetComponentId> for Index {
+    fn from(value: WidgetComponentId) -> Self {
+        value.0.into()
+    }
+}
 
 impl From<WidgetComponentId> for usize {
     fn from(value: WidgetComponentId) -> Self {

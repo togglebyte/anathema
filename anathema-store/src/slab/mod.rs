@@ -39,6 +39,12 @@ impl From<usize> for Index {
     }
 }
 
+impl From<u32> for Index {
+    fn from(val: u32) -> Self {
+        Self(val)
+    }
+}
+
 impl From<Index> for usize {
     fn from(idx: Index) -> Self {
         idx.0 as usize

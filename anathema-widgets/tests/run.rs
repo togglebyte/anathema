@@ -2,15 +2,14 @@ use std::marker::PhantomData;
 
 use anathema_geometry::Size;
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, StateId, States};
-use anathema_store::tree::NodePath;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, EvalContext, Factory, FloatingWidgets,
-    LayoutChildren, Scope, Stringify, Widget, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
+    FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]
@@ -38,10 +37,11 @@ pub struct TestCaseRunner<'bp, S> {
     floating_widgets: FloatingWidgets,
     text: StringStorage,
     states: States,
-    components: ComponentRegistry,
+    component_registry: ComponentRegistry,
     future_values: FutureValues,
     changes: Changes,
     viewport: Viewport,
+    components: Components,
 }
 
 impl<'bp, S> TestCaseRunner<'bp, S>
@@ -56,12 +56,13 @@ where
             &self.factory,
             &mut scope,
             &mut self.states,
-            &mut self.components,
+            &mut self.component_registry,
             &mut self.attribute_storage,
             &mut self.floating_widgets,
+            &mut self.components,
         );
 
-        eval_blueprint(self.blueprint, &mut ctx, &NodePath::root(), &mut self.tree).unwrap();
+        eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree).unwrap();
 
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
@@ -109,19 +110,20 @@ where
         self.future_values.drain().for_each(|sub| {
             scope.clear();
             scope.insert_state(StateId::ZERO);
-            let path = self.tree.path(sub).clone();
+            let path = self.tree.path(sub);
 
             try_resolve_future_values(
                 self.globals,
                 &self.factory,
                 &mut scope,
                 &mut self.states,
-                &mut self.components,
+                &mut self.component_registry,
                 sub,
                 &path,
                 &mut self.tree,
                 &mut self.attribute_storage,
                 &mut self.floating_widgets,
+                &mut self.components,
             );
         });
     }
@@ -133,20 +135,21 @@ where
             sub.iter().for_each(|sub| {
                 scope.clear();
                 scope.insert_state(StateId::ZERO);
-                let Some(path) = self.tree.try_path(sub).cloned() else { return };
+                let Some(path) = self.tree.try_path(sub) else { return };
 
                 update_tree(
                     self.globals,
                     &self.factory,
                     &mut scope,
                     &mut self.states,
-                    &mut self.components,
+                    &mut self.component_registry,
                     &change,
                     sub,
                     &path,
                     &mut self.tree,
                     &mut self.attribute_storage,
                     &mut self.floating_widgets,
+                    &mut self.components,
                 );
             });
         })
@@ -255,13 +258,14 @@ impl TestCase {
             tree,
             text: StringStorage::new(),
             states,
-            components,
+            component_registry: components,
             factory,
             future_values: FutureValues::empty(),
             changes: Changes::empty(),
             attribute_storage: AttributeStorage::empty(),
             floating_widgets: FloatingWidgets::empty(),
             viewport: Viewport::new((1, 1)),
+            components: Components::new(),
         };
 
         runner.exec();
