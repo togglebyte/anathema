@@ -87,6 +87,7 @@ impl EventHandler {
                     for i in 0..len {
                         let (widget_id, state_id) =
                             components.get(i).expect("components can not change during this call");
+
                         tree.with_value_mut(widget_id, |path, widget, tree| {
                             let WidgetKind::Component(component) = widget else { return };
                             let state = states.get_mut(state_id);
@@ -134,7 +135,6 @@ impl EventHandler {
                     };
 
                     let (widget_id, state_id) = (entry.widget_id, entry.state_id);
-                    drop(entry);
                     tree.with_value_mut(widget_id, |path, widget, tree| {
                         let WidgetKind::Component(component) = widget else { return };
 
@@ -195,7 +195,12 @@ pub fn global_event<'bp, T: Backend>(
     // -----------------------------------------------------------------------------
     //   - Handle tabbing between components -
     // -----------------------------------------------------------------------------
-    if let Event::Key(KeyEvent { code, state: KeyState::Press, .. }) = event {
+    if let Event::Key(KeyEvent {
+        code,
+        state: KeyState::Press,
+        ..
+    }) = event
+    {
         let prev = match code {
             KeyCode::Tab => components.next(),
             KeyCode::BackTab => components.prev(),
@@ -257,8 +262,7 @@ pub fn global_event<'bp, T: Backend>(
 
     // Mouse events are global
     if let Event::Mouse(_) = event {
-        let mut len = components.len();
-        for i in 0..len {
+        for i in 0..components.len() {
             let (widget_id, state_id) = components.get(i).expect("components can not change during this call");
             tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };

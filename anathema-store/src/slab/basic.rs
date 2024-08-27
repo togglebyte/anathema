@@ -89,6 +89,8 @@ where
     /// This will force the underlying storage to grow if
     /// the index given is larger than the current capacity.
     ///
+    /// This will overwrite any value currently at that index.
+    ///
     /// # Panics
     ///
     /// Panics if a value is inserted at a position that is currently checked out
@@ -115,9 +117,7 @@ where
             match entry {
                 Entry::CheckedOut(_) => panic!("value is checked out"),
                 Entry::Vacant(None) => *entry = Entry::Occupied(value),
-                Entry::Occupied(val) => {
-                    *val = value
-                },
+                Entry::Occupied(val) => *val = value,
                 &mut Entry::Vacant(Some(next_free)) => {
                     // Find the values that points to `index`
                     // and replace that with `next_free`
@@ -136,7 +136,11 @@ where
                                         next_id = id;
                                         continue;
                                     }
-                                    None | Some(_) => unreachable!("the index can only point to a vacant value"),
+                                    Some(Entry::Occupied(_)) => {
+                                        unreachable!("entry is occupied, so this should never be the next value")
+                                    }
+                                    Some(Entry::CheckedOut(_)) => unreachable!("entry checked out"),
+                                    None => unreachable!("the index can only point to a vacant value"),
                                 }
                             }
                             None => todo!(),
@@ -186,16 +190,18 @@ where
     ///
     /// Will panic if the slot is not occupied
     pub fn try_remove(&mut self, index: I) -> Option<T> {
-        let mut entry = Entry::Vacant(self.next_id.take());
-        self.next_id = Some(index);
-
         let old = self.inner.get_mut(index.into())?;
 
-        std::mem::swap(old, &mut entry);
-
-        match entry {
-            Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+        match old {
+            Entry::Occupied(_) => {
+                let mut entry = Entry::Vacant(self.next_id.take());
+                std::mem::swap(old, &mut entry);
+                self.next_id = Some(index);
+                let Entry::Occupied(val) = entry else { unreachable!() };
+                Some(val)
+            }
+            Entry::Vacant(_) => None,
+            Entry::CheckedOut(_) => panic!("value is in use"),
         }
     }
 

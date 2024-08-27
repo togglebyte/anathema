@@ -35,7 +35,7 @@ pub struct CompEntry {
 
 impl PartialOrd for CompEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.path.partial_cmp(&other.path)
+        Some(self.path.cmp(&other.path))
     }
 }
 
@@ -100,7 +100,7 @@ impl Components {
     }
 
     pub fn remove(&mut self, path: &[u16]) {
-        if let Some(index) = self.inner.binary_search_by(|entry| (&*entry.path).cmp(path)) {
+        if let Some(index) = self.inner.binary_search_by(|entry| (*entry.path).cmp(path)) {
             let entry = self.inner.remove(index);
             self.comp_ids.remove(&entry.component_id);
         }

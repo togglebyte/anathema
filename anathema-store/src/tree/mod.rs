@@ -61,9 +61,9 @@ impl<T> Tree<T> {
     }
 
     /// Drain the removed value ids.
-    /// This only returns values that does not have newer keys at the same index
+    /// This will not return keys that have been replaced.
     pub fn drain_removed(&mut self) -> impl DoubleEndedIterator<Item = ValueId> + '_ {
-        self.removed_values.drain(..).filter(|key| self.values.has_newer(*key))
+        self.removed_values.drain(..).filter(|key| self.values.is_vacant(*key))
     }
 
     /// The path reference for a value in the tree.
@@ -295,8 +295,8 @@ impl<T> Tree<T> {
         (&self.layout, &mut self.values)
     }
 
-    pub fn has_newer(&self, key: ValueId) -> bool {
-        self.values.has_newer(key)
+    pub fn is_vacant(&self, key: ValueId) -> bool {
+        self.values.is_vacant(key)
     }
 }
 

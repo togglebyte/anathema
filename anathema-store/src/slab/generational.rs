@@ -342,12 +342,8 @@ impl<T> GenSlab<T> {
         })
     }
 
-    // TODO: bad name, rename this
-    pub(crate) fn has_newer(&self, key: Key) -> bool {
-        match self.inner.get(key.index()) {
-            Some(Entry::Occupied(_, gen)) => false,
-            _ => true,
-        }
+    pub(crate) fn is_vacant(&self, key: Key) -> bool {
+        matches!(self.inner.get(key.index()), Some(Entry::Vacant(_)))
     }
 }
 

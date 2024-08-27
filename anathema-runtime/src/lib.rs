@@ -654,10 +654,10 @@ where
         // Cleanup removed attributes from widgets.
         // Not all widgets has attributes, only `Element`s.
         for key in tree.drain_removed() {
-            // attribute_storage.try_remove(key);
-            // self.floating_widgets.try_remove(key);
-            // // TODO: this function is rubbish and has to be rewritten
-            // self.components.dodgy_remove(key);
+            attribute_storage.try_remove(key);
+            self.floating_widgets.try_remove(key);
+            // TODO: this function is rubbish and has to be rewritten
+            self.components.dodgy_remove(key);
         }
 
         self.backend.render();
@@ -712,37 +712,3 @@ where
         }
     }
 }
-
-// struct Futures {
-//     future_values: FutureValues
-// }
-
-// impl Futures {
-//     fn new() -> Self {
-//         Self {
-//             future_values: FutureValues::empty(),
-//         }
-//     }
-
-//     fn update(&mut self) {
-//         drain_futures(&mut self.future_values);
-//         let mut scope = Scope::new();
-//         self.future_values.drain().rev().for_each(|sub| {
-//             scope.clear();
-//             let path = tree.path(sub).clone();
-
-//             try_resolve_future_values(
-//                 globals,
-//                 &self.factory,
-//                 &mut scope,
-//                 states,
-//                 &mut self.components,
-//                 sub,
-//                 &path,
-//                 tree,
-//                 attribute_storage,
-//                 &mut self.floating_widgets,
-//             );
-//         });
-//     }
-// }
