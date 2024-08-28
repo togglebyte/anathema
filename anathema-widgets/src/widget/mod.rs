@@ -15,7 +15,7 @@ use anathema_templates::WidgetComponentId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
-pub use self::query::{Elements, Query};
+pub use self::query::Elements;
 use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::paint::{CellAttributes, PaintCtx, PaintFilter, SizePos};

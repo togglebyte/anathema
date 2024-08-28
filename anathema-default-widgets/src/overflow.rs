@@ -251,7 +251,7 @@ mod test {
         TestRunner::new(tpl, (3, 6))
             .instance()
             .render_assert(expected_first)
-            .with_widget(|query| {
+            .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();
                     overflow.scroll_down();
@@ -277,28 +277,28 @@ mod test {
         TestRunner::new(tpl, (3, 2))
             .instance()
             .render_assert(expected_first)
-            .with_widget(|query| {
+            .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();
                     overflow.scroll_left();
                 });
             })
             .render_assert(expected_first)
-            .with_widget(|query| {
+            .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();
                     overflow.scroll_right();
                 });
             })
             .render_assert(expected_first)
-            .with_widget(|query| {
+            .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();
                     overflow.scroll_up();
                 });
             })
             .render_assert(expected_first)
-            .with_widget(|query| {
+            .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();
                     overflow.scroll_down();

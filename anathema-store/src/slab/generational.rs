@@ -3,9 +3,12 @@ use std::ops::Deref;
 
 use super::{Index, Ticket};
 
+/// A generation associated with a key.
+/// The generation is used to ensure that the same key can be reused without retaining
+/// a reference to old data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-struct Gen(u16);
+pub struct Gen(u16);
 
 impl From<u16> for Gen {
     fn from(val: u16) -> Self {
@@ -56,14 +59,15 @@ impl Key {
 
     pub(super) fn set_gen(&mut self, new_gen: u16) {
         let gen = (new_gen as u64) << Self::INDEX_BITS;
-        self.0 |= gen;
+        self.0 = (self.0 << Self::GEN_BITS >> Self::GEN_BITS) | gen;
     }
 
     pub(super) const fn index(&self) -> usize {
         (self.0 << Self::GEN_BITS >> Self::GEN_BITS) as usize
     }
 
-    const fn gen(&self) -> Gen {
+    /// Get the key generation
+    pub const fn gen(&self) -> Gen {
         Gen((self.0 >> Self::INDEX_BITS) as u16)
     }
 }
@@ -189,7 +193,7 @@ impl<T> GenSlab<T> {
 
         match entry {
             Entry::Occupied(value, gen) if key.gen() == gen => Ticket { value, key },
-            Entry::Occupied(..) => panic!("invalid generation"),
+            Entry::Occupied(_, gen) => panic!("invalid generation, current: {gen:?} | key: {:?}", key.gen()),
             Entry::CheckedOut(_) => panic!("value already checked out"),
             Entry::Vacant(_) => panic!("entry has been removed"),
         }
@@ -243,6 +247,75 @@ impl<T> GenSlab<T> {
                 let index = Key::new(self.inner.len());
                 self.inner.push(Entry::occupied(value, index.gen()));
                 index
+            }
+        }
+    }
+
+    /// Insert a value at a given index.
+    /// This will force the underlying storage to grow if
+    /// the index given is larger than the current capacity.
+    ///
+    /// This will overwrite any value currently at that index.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a value is inserted at a position that is currently checked out
+    pub fn insert_at(&mut self, key: Key, value: T) {
+        // let idx = index.into();
+
+        // If the index is outside of the current
+        // length then fill the slots in between with
+        // vacant entries
+        if key.index() >= self.inner.len() {
+            for i in self.inner.len()..key.index() {
+                let entry = Entry::Vacant(self.next_id.take());
+                self.next_id = Some(Key::new(i));
+                self.inner.push(entry);
+            }
+            self.inner.push(Entry::Occupied(value, key.gen()));
+        // If the index is inside the current length:
+        } else {
+            let entry = self
+                .inner
+                .get_mut(key.index())
+                .expect("there should be entries up to self.len()");
+
+            match entry {
+                Entry::CheckedOut(_) => panic!("value is checked out"),
+                Entry::Vacant(None) => *entry = Entry::Occupied(value, key.gen()),
+                Entry::Occupied(val, gen) => {
+                    *val = value;
+                    *gen = key.gen();
+                }
+                &mut Entry::Vacant(Some(next_free)) => {
+                    // Find the values that points to `index`
+                    // and replace that with `next_free`
+
+                    let next_id = &mut self.next_id;
+                    loop {
+                        match next_id {
+                            Some(id) if *id == key => {
+                                *id = next_free;
+                                break;
+                            }
+                            Some(id) => match self.inner.get_mut(id.index()) {
+                                Some(Entry::Vacant(id)) => {
+                                    *next_id = *id;
+                                    continue;
+                                }
+                                Some(Entry::Occupied(..)) => {
+                                    unreachable!("entry is occupied, so this should never be the next value")
+                                }
+                                Some(Entry::CheckedOut(_)) => unreachable!("entry checked out"),
+                                None => unreachable!("the index can only point to a vacant value"),
+                            },
+                            None => todo!(),
+                        }
+                    }
+
+                    // Insert new value
+                    self.inner[key.index()] = Entry::Occupied(value, key.gen());
+                }
             }
         }
     }
@@ -455,5 +528,16 @@ mod test {
         let key_1 = slab.insert(1);
         let _t1 = slab.checkout(key_1);
         let _t2 = slab.checkout(key_1);
+    }
+
+    #[test]
+    fn bump_test() {
+        let index = Key::new(0);
+        let index = index.bump();
+        let mut index = index.bump();
+        index.set_gen(u16::MAX);
+        let index = index.bump();
+
+        assert_eq!(index.gen().0, 0);
     }
 }

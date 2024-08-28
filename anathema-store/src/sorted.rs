@@ -24,6 +24,7 @@ impl<T: Ord> SortedList<T> {
             return;
         }
 
+        self.dirty = false;
         self.inner.sort();
     }
 

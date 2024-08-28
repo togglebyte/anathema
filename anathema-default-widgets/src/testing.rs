@@ -8,8 +8,8 @@ use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, AttributeStorage, Components, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope,
-    WidgetKind, WidgetRenderer as _, WidgetTree,
+    eval_blueprint, AttributeStorage, Components, Elements, EvalContext, Factory, FloatingWidgets, Scope, WidgetKind,
+    WidgetRenderer as _, WidgetTree,
 };
 
 use crate::register_default_widgets;
@@ -179,7 +179,7 @@ impl TestInstance<'_> {
 
     pub(crate) fn with_widget<F>(&mut self, mut f: F) -> &mut Self
     where
-        F: FnMut(Query<'_, '_, '_>),
+        F: FnMut(Elements<'_, '_>),
     {
         // path [0, 0, 0] points to:
         // border [0]
@@ -188,9 +188,8 @@ impl TestInstance<'_> {
         let path = [0, 0, 0];
 
         let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
-        let mut widgets = Elements::new(node.children(), values, &mut self.attribute_storage);
-        let query = widgets.query();
-        f(query);
+        let elements = Elements::new(node.children(), values, &mut self.attribute_storage);
+        f(elements);
         self
     }
 }

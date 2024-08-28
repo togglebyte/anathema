@@ -17,6 +17,10 @@ use super::{Index, Slab};
 ///
 /// assert_eq!("apple", favourite_foods.remove(lilly));
 /// ```
+// The reason this is not using a `GenSlab`: the key size for the gen
+// slab is 64bits whereas the basic slab can make do with 32 bits.
+//
+// This means we can store the generation (when needed) as part of the value instead.
 #[derive(Debug)]
 pub struct SecondaryMap<K, V>(Slab<Index, V>, PhantomData<K>);
 
@@ -52,6 +56,14 @@ where
     /// Try to remove a value from the map
     pub fn try_remove(&mut self, key: K) -> Option<V> {
         self.0.try_remove(key.into())
+    }
+
+    /// Try to remove a value from the map
+    pub fn remove_if<F>(&mut self, key: K, f: F) -> Option<V>
+    where
+        F: Fn(&V) -> bool,
+    {
+        self.0.remove_if(key.into(), f)
     }
 
     /// Produce an iterator over the values in the secondary map

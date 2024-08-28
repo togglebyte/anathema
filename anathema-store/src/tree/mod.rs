@@ -63,7 +63,7 @@ impl<T> Tree<T> {
     /// Drain the removed value ids.
     /// This will not return keys that have been replaced.
     pub fn drain_removed(&mut self) -> impl DoubleEndedIterator<Item = ValueId> + '_ {
-        self.removed_values.drain(..).filter(|key| self.values.is_vacant(*key))
+        self.removed_values.drain(..)
     }
 
     /// The path reference for a value in the tree.

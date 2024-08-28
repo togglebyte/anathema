@@ -11,7 +11,7 @@
 use std::ops::{Deref, DerefMut};
 
 pub use self::basic::Slab;
-pub use self::generational::{GenSlab, Key};
+pub use self::generational::{Gen, GenSlab, Key};
 pub use self::rc::{Element, RcSlab};
 pub use self::secondary_map::SecondaryMap;
 
