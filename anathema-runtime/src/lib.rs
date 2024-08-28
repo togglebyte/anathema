@@ -596,6 +596,15 @@ where
 
         self.apply_changes(globals, tree, states, attribute_storage);
 
+        // Cleanup removed attributes from widgets.
+        // Not all widgets has attributes, only `Element`s.
+        for key in tree.drain_removed() {
+            attribute_storage.try_remove(key);
+            self.floating_widgets.try_remove(key);
+            // TODO: this function is rubbish and has to be rewritten
+            self.components.dodgy_remove(key);
+        }
+
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
@@ -649,15 +658,6 @@ where
                 self.backend
                     .paint(el, children, values, &mut string_session, attribute_storage, true);
             });
-        }
-
-        // Cleanup removed attributes from widgets.
-        // Not all widgets has attributes, only `Element`s.
-        for key in tree.drain_removed() {
-            attribute_storage.try_remove(key);
-            self.floating_widgets.try_remove(key);
-            // TODO: this function is rubbish and has to be rewritten
-            self.components.dodgy_remove(key);
         }
 
         self.backend.render();

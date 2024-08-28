@@ -205,6 +205,34 @@ where
         }
     }
 
+    /// Removes a value out of the slab.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the slot is not occupied
+    pub fn remove_if<F>(&mut self, index: I, f: F) -> Option<T>
+    where
+        F: Fn(&T) -> bool,
+    {
+        let old = self.inner.get_mut(index.into())?;
+
+        match old {
+            Entry::Occupied(val) => {
+                if !f(val) {
+                    return None;
+                }
+
+                let mut entry = Entry::Vacant(self.next_id.take());
+                std::mem::swap(old, &mut entry);
+                self.next_id = Some(index);
+                let Entry::Occupied(val) = entry else { unreachable!() };
+                Some(val)
+            }
+            Entry::Vacant(_) => None,
+            Entry::CheckedOut(_) => panic!("value is in use"),
+        }
+    }
+
     /// Try to replace an existing value with a new value.
     /// Unlike [`Self::replace`] this function will not panic
     /// if the value does not exist

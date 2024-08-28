@@ -39,6 +39,9 @@ impl From<SmallIndex> for usize {
 ///
 /// let value = map.get("b").unwrap();
 /// assert_eq!(2, *value);
+///
+/// let value = map.get("a").unwrap();
+/// assert_eq!(5, *value);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct SmallMap<K, V>(Slab<SmallIndex, (K, V)>);

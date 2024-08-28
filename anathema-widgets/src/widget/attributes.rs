@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use anathema_state::{CommonVal, PendingValue};
-use anathema_store::slab::SecondaryMap;
+use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
 use crate::expressions::EvalValue;
@@ -11,7 +11,7 @@ use crate::widget::ValueKey;
 use crate::{Value, WidgetId};
 
 #[derive(Debug)]
-pub struct AttributeStorage<'bp>(SecondaryMap<WidgetId, Attributes<'bp>>);
+pub struct AttributeStorage<'bp>(SecondaryMap<WidgetId, (Gen, Attributes<'bp>)>);
 
 impl<'bp> AttributeStorage<'bp> {
     pub fn empty() -> Self {
@@ -19,19 +19,22 @@ impl<'bp> AttributeStorage<'bp> {
     }
 
     pub fn get(&self, id: WidgetId) -> &Attributes<'bp> {
-        self.0.get(id).expect("every element has attributes")
+        self.0.get(id).map(|(_, a)| a).expect("every element has attributes")
     }
 
     pub fn get_mut(&mut self, id: WidgetId) -> &mut Attributes<'bp> {
-        self.0.get_mut(id).expect("every element has attributes")
+        self.0
+            .get_mut(id)
+            .map(|(_, a)| a)
+            .expect("every element has attributes")
     }
 
     pub fn insert(&mut self, widget_id: WidgetId, attribs: Attributes<'bp>) {
-        self.0.insert(widget_id, attribs)
+        self.0.insert(widget_id, (widget_id.gen(), attribs))
     }
 
     pub fn try_remove(&mut self, id: WidgetId) {
-        self.0.try_remove(id);
+        let _ = self.0.remove_if(id, |(current_gen, _)| *current_gen == id.gen());
     }
 }
 

@@ -1,15 +1,16 @@
 use std::marker::PhantomData;
+use std::ops::ControlFlow;
 
-use anathema_geometry::Size;
+use anathema_geometry::{Pos, Size};
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, StateId, States};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
-use anathema_widgets::layout::{layout_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
-    FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
+    Factory, FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]
@@ -76,6 +77,8 @@ where
                 &mut layout_ctx,
                 true,
             );
+
+            position_widget(Pos::ZERO, widget, children, values, &self.attribute_storage, true);
         });
 
         // Floating widgets
@@ -90,6 +93,8 @@ where
                 &mut layout_ctx,
                 true,
             );
+
+            position_widget(Pos::ZERO, widget, children, values, &self.attribute_storage, true);
         });
     }
 
@@ -155,46 +160,41 @@ where
         })
     }
 
-    // /// Perform a state changing operation.
-    // /// This will also apply future values
-    // pub fn with_query<F>(&mut self, state_id: impl Into<StateId>, f: F) -> &mut Self
-    // where
-    //     F: FnOnce(&mut S),
-    // {
-    //     let state_id = state_id.into();
-    //     let state = self.states.get_mut(state_id).unwrap();
-    //     f(state.to_any_mut().downcast_mut().unwrap());
-    //     self.apply_futures();
-    //     self.update_tree();
+    /// Perform a state changing operation.
+    /// This will also apply future values
+    #[allow(dead_code)]
+    pub fn with_query<F>(&mut self, state_id: impl Into<StateId>, f: F) -> &mut Self
+    where
+        for<'a, 'b> F: FnOnce(&mut S, Elements<'a, 'b>),
+    {
+        let state_id = state_id.into();
+        let state = self.states.get_mut(state_id).unwrap();
 
-    //     let mut filter = LayoutFilter::new(false, &self.attribute_storage);
-    //     self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-    //         let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
-    //         layout_widget(
-    //             widget,
-    //             children,
-    //             values,
-    //             self.viewport.constraints(),
-    //             &mut layout_ctx,
-    //             false,
-    //         );
-    //     });
+        let Some((node, values)) = self.tree.get_node_by_path(&[0]) else { return self };
+        let elements = Elements::new(node.children(), values, &mut self.attribute_storage);
 
-    //     // anathema_state::debug::Debug
-    //     //     .heading()
-    //     //     .header("owned")
-    //     //     .print_owned()
-    //     //     .header("shared")
-    //     //     .print_shared()
-    //     //     .header("tree")
-    //     //     .print_tree::<anathema_widgets::DebugWidgets>(&mut self.tree)
-    //     //     .footer();
+        let state = state.to_any_mut().downcast_mut().unwrap();
+        f(state, elements);
 
-    //     self
-    // }
+        self.apply_futures();
+        self.update_tree();
+
+        // anathema_state::debug::Debug
+        //     .heading()
+        //     .header("owned")
+        //     .print_owned()
+        //     .header("shared")
+        //     .print_shared()
+        //     .header("tree")
+        //     .print_tree::<anathema_widgets::DebugWidgets>(&mut self.tree)
+        //     .footer();
+
+        self
+    }
 
     /// Perform a state changing operation.
     /// This will also apply future values
+    #[allow(dead_code)]
     pub fn with_state<F>(&mut self, state_id: impl Into<StateId>, f: F) -> &mut Self
     where
         F: FnOnce(&mut S),
@@ -279,22 +279,38 @@ struct TestWidget;
 impl Widget for TestWidget {
     fn layout<'bp>(
         &mut self,
-        _children: LayoutChildren<'_, '_, 'bp>,
-        _constraints: Constraints,
+        mut children: LayoutChildren<'_, '_, 'bp>,
+        constraints: Constraints,
         _attributs: anathema_widgets::WidgetId,
-        _ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, '_, 'bp>,
     ) -> Size {
-        Size::new(1, 1)
+        let mut size = Size::new(1, 1);
+
+        children.for_each(|node, children| {
+            let widget_size = node.layout(children, constraints, ctx);
+            size.width = size.width.max(widget_size.width);
+            size.height += widget_size.height;
+
+            ControlFlow::Continue(())
+        });
+
+        size
     }
 
     fn position<'bp>(
         &mut self,
-        _children: anathema_widgets::PositionChildren<'_, '_, 'bp>,
+        mut children: anathema_widgets::PositionChildren<'_, '_, 'bp>,
         _attributes: anathema_widgets::WidgetId,
-        _attribute_storage: &AttributeStorage<'bp>,
+        attribute_storage: &AttributeStorage<'bp>,
         _ctx: anathema_widgets::layout::PositionCtx,
     ) {
-        todo!()
+        let mut pos = Pos::ZERO;
+        children.for_each(|node, children| {
+            node.position(children, pos, attribute_storage);
+            pos.y += node.size().height as i32;
+
+            ControlFlow::Continue(())
+        });
     }
 }
 
