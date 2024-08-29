@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
 use anathema_state::{AnyState, CommonVal, SharedState, State, StateId, Value};
@@ -163,38 +164,34 @@ impl Emitter {
     }
 }
 
-pub struct Context<'rt> {
-    pub emitter: &'rt Emitter,
-    pub viewport: Viewport,
-    pub assoc_events: &'rt mut AssociatedEvents,
-    pub state_id: StateId,
-    pub parent: Option<Parent>,
-    pub strings: &'rt Strings,
-    pub assoc_functions: &'rt [(StringId, StringId)],
-}
+pub struct Context<'rt, T>(UntypedContext<'rt>, PhantomData<T>);
 
-impl<'rt> Context<'rt> {
+impl<'rt, T: 'static> Context<'rt, T> {
+    fn new(context: UntypedContext<'rt>) -> Self {
+        Self(context, PhantomData)
+    }
+
     /// Publish event
     ///
     /// # Panics
     ///
     /// This will panic if the shared value is exclusively borrowed
     /// at the time of the invocation.
-    pub fn publish<F, T: 'static, V>(&mut self, ident: &str, mut f: F)
+    pub fn publish<F, V>(&mut self, ident: &str, mut f: F)
     where
         F: FnMut(&T) -> &Value<V> + 'static,
         V: AnyState,
     {
-        let Some(internal) = self.strings.lookup(ident) else { return };
+        let Some(internal) = self.0.strings.lookup(ident) else { return };
 
-        let ids = self.assoc_functions.iter().find(|(i, _)| *i == internal);
+        let ids = self.0.assoc_functions.iter().find(|(i, _)| *i == internal);
 
         // If there is no parent there is no one to emit the event to.
-        let Some(parent) = self.parent else { return };
+        let Some(parent) = self.0.parent else { return };
         let Some((_, external)) = ids else { return };
 
-        self.assoc_events.push(
-            self.state_id,
+        self.0.assoc_events.push(
+            self.0.state_id,
             parent,
             *external,
             Box::new(move |state: &dyn AnyState| -> SharedState<'_> {
@@ -212,6 +209,36 @@ impl<'rt> Context<'rt> {
             }),
         );
     }
+
+    pub fn emit<M: 'static + Send + Sync>(&self, recipient: ComponentId<M>, value: M) {
+        self.emitter
+            .emit(recipient, value)
+            .expect("this will not fail unless the runtime is droped")
+    }
+}
+
+impl<'rt, T> Deref for Context<'rt, T> {
+    type Target = UntypedContext<'rt>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'rt, T> DerefMut for Context<'rt, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+pub struct UntypedContext<'rt> {
+    pub emitter: &'rt Emitter,
+    pub viewport: Viewport,
+    pub assoc_events: &'rt mut AssociatedEvents,
+    pub state_id: StateId,
+    pub parent: Option<Parent>,
+    pub strings: &'rt Strings,
+    pub assoc_functions: &'rt [(StringId, StringId)],
 }
 
 pub struct AssociatedEvent {
@@ -258,13 +285,31 @@ pub trait Component {
     type Message;
 
     #[allow(unused_variables, unused_mut)]
-    fn on_blur(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {}
+    fn on_blur(
+        &mut self,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        mut context: Context<'_, Self::State>,
+    ) {
+    }
 
     #[allow(unused_variables, unused_mut)]
-    fn on_focus(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {}
+    fn on_focus(
+        &mut self,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        mut context: Context<'_, Self::State>,
+    ) {
+    }
 
     #[allow(unused_variables, unused_mut)]
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {
+    fn on_key(
+        &mut self,
+        key: KeyEvent,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        mut context: Context<'_, Self::State>,
+    ) {
     }
 
     #[allow(unused_variables, unused_mut)]
@@ -273,12 +318,19 @@ pub trait Component {
         mouse: MouseEvent,
         state: &mut Self::State,
         mut elements: Elements<'_, '_>,
-        context: Context<'_>,
+        mut context: Context<'_, Self::State>,
     ) {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn tick(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>, dt: Duration) {}
+    fn tick(
+        &mut self,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        context: Context<'_, Self::State>,
+        dt: Duration,
+    ) {
+    }
 
     #[allow(unused_variables, unused_mut)]
     fn message(
@@ -286,21 +338,27 @@ pub trait Component {
         message: Self::Message,
         state: &mut Self::State,
         mut elements: Elements<'_, '_>,
-        context: Context<'_>,
+        mut context: Context<'_, Self::State>,
     ) {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn resize(&mut self, state: &mut Self::State, mut elements: Elements<'_, '_>, context: Context<'_>) {}
-
-    #[allow(unused_variables, unused_mut)]
-    fn callback(
+    fn resize(
         &mut self,
         state: &mut Self::State,
-        callback_ident: &str,
+        mut elements: Elements<'_, '_>,
+        mut context: Context<'_, Self::State>,
+    ) {
+    }
+
+    #[allow(unused_variables, unused_mut)]
+    fn receive(
+        &mut self,
+        ident: &str,
         value: CommonVal<'_>,
-        elements: Elements<'_, '_>,
-        context: Context<'_>,
+        state: &mut Self::State,
+        mut elements: Elements<'_, '_>,
+        mut context: Context<'_, Self::State>,
     ) {
     }
 
@@ -330,7 +388,7 @@ pub trait AnyComponent {
         ev: Event,
         state: Option<&mut dyn AnyState>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
     ) -> Event;
 
     fn any_message(
@@ -338,30 +396,30 @@ pub trait AnyComponent {
         message: Box<dyn Any>,
         state: Option<&mut dyn AnyState>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
     );
 
     fn any_tick(
         &mut self,
         state: Option<&mut dyn AnyState>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
         dt: Duration,
     );
 
-    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>);
+    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: UntypedContext<'_>);
 
-    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>);
+    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: UntypedContext<'_>);
 
-    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>);
+    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: UntypedContext<'_>);
 
-    fn any_callback(
+    fn any_receive(
         &mut self,
         state: Option<&mut dyn AnyState>,
         name: &str,
         value: CommonVal<'_>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
     );
 
     fn accept_focus_any(&self) -> bool;
@@ -377,11 +435,12 @@ where
         event: Event,
         state: Option<&mut dyn AnyState>,
         widgets: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
     ) -> Event {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
+        let context = Context::<T::State>::new(context);
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
 
@@ -402,26 +461,29 @@ where
         message: Box<dyn Any>,
         state: Option<&mut dyn AnyState>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
     ) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
+        let context = Context::<T::State>::new(context);
         self.message(*message, state, elements, context);
     }
 
-    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>) {
+    fn any_focus(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: UntypedContext<'_>) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
+        let context = Context::<T::State>::new(context);
         self.on_focus(state, elements, context);
     }
 
-    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>) {
+    fn any_blur(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: UntypedContext<'_>) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
+        let context = Context::<T::State>::new(context);
         self.on_blur(state, elements, context);
     }
 
@@ -429,35 +491,44 @@ where
         &mut self,
         state: Option<&mut dyn AnyState>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
         dt: Duration,
     ) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
+        let context = Context::<T::State>::new(context);
         self.tick(state, elements, context, dt);
     }
 
-    fn any_resize(&mut self, state: Option<&mut dyn AnyState>, elements: Elements<'_, '_>, context: Context<'_>) {
+    fn any_resize(
+        &mut self,
+        state: Option<&mut dyn AnyState>,
+        elements: Elements<'_, '_>,
+        context: UntypedContext<'_>,
+    ) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
+        let context = Context::<T::State>::new(context);
         self.resize(state, elements, context);
     }
 
-    fn any_callback(
+    fn any_receive(
         &mut self,
         state: Option<&mut dyn AnyState>,
         name: &str,
         value: CommonVal<'_>,
         elements: Elements<'_, '_>,
-        context: Context<'_>,
+        context: UntypedContext<'_>,
     ) {
         let state = state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
             .expect("components always have a state");
 
-        self.callback(state, name, value, elements, context);
+        let context = Context::<T::State>::new(context);
+
+        self.receive(name, value, state, elements, context);
     }
 }
 

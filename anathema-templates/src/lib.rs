@@ -1,4 +1,4 @@
-pub use crate::components::WidgetComponentId;
+pub use crate::components::{SourceKind, ToSourceKind, WidgetComponentId};
 pub use crate::document::Document;
 pub use crate::expressions::Expression;
 pub use crate::lexer::Lexer;

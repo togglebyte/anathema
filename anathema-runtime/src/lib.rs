@@ -18,7 +18,6 @@
 // -----------------------------------------------------------------------------
 
 use std::fmt::Write;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -30,15 +29,15 @@ use anathema_state::{
 };
 use anathema_store::tree::{root_node, AsNodePath};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
-    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Context, Emitter, ViewMessage,
+    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Components,
-    Elements, EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
+    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
 use events::EventHandler;
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -63,36 +62,20 @@ impl<T> RuntimeBuilder<T> {
     pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
-        template_path: impl Into<PathBuf>,
+        template: impl ToSourceKind,
         component: C,
         state: C::State,
     ) -> Result<ComponentId<C::Message>> {
         let ident = ident.into();
-        let id = self.document.add_component(ident, template_path.into())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_component(id, component, state);
-        Ok(id.into())
-    }
-
-    pub fn register_default<C>(
-        &mut self,
-        ident: impl Into<String>,
-        template_path: impl Into<PathBuf>,
-    ) -> Result<ComponentId<C::Message>>
-    where
-        C: Component + Default + 'static,
-        C::State: Default,
-    {
-        let ident = ident.into();
-        let id = self.document.add_component(ident, template_path.into())?.into();
-        self.component_registry
-            .add_component(id, C::default(), C::State::default());
         Ok(id.into())
     }
 
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
-        template_path: impl Into<PathBuf>,
+        template: impl ToSourceKind,
         proto: FC,
         state: FS,
     ) -> Result<()>
@@ -102,17 +85,25 @@ impl<T> RuntimeBuilder<T> {
         C: Component + 'static,
     {
         let ident = ident.into();
-        let id = self.document.add_component(ident, template_path.into())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_prototype(id, proto, state);
         Ok(())
     }
 
-    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
-        self.factory.register_default::<W>(ident);
-    }
-
-    pub fn register_widget(&mut self, ident: &str, factory: impl Fn(&Attributes<'_>) -> Box<dyn AnyWidget> + 'static) {
-        self.factory.register_widget(ident, factory);
+    pub fn register_default<C>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl ToSourceKind,
+    ) -> Result<ComponentId<C::Message>>
+    where
+        C: Component + Default + 'static,
+        C::State: Default,
+    {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
+        self.component_registry
+            .add_component(id, C::default(), C::State::default());
+        Ok(id.into())
     }
 
     pub fn emitter(&self) -> Emitter {
@@ -316,6 +307,13 @@ where
             return;
         }
 
+        // use std::io::Write;
+        // let mut file = std::fs::OpenOptions::new()
+        //     .append(true)
+        //     .write(true)
+        //     .open("/tmp/log.lol").unwrap();
+        // file.write(format!("{}\n", self.changes.len()).as_bytes()).unwrap();
+
         let mut scope = Scope::new();
         self.changes.drain().rev().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
@@ -367,7 +365,7 @@ where
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
 
-                    let context = Context {
+                    let context = UntypedContext {
                         emitter: &self.emitter,
                         viewport: self.viewport,
                         assoc_events,
@@ -453,7 +451,7 @@ where
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                let context = Context {
+                let context = UntypedContext {
                     emitter: &self.emitter,
                     viewport: self.viewport,
                     assoc_events: &mut assoc_events,
@@ -505,7 +503,7 @@ where
         });
 
         let mut document = Document::new(tpl);
-        let _component_id = document.add_component("errors", errors);
+        let _component_id = document.add_component("errors", errors.to_template());
         let (blueprint, globals) = document.compile().expect("the error template can't fail");
         self.blueprint = blueprint;
         self.globals = globals;
@@ -697,7 +695,7 @@ where
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
 
-                let context = Context {
+                let context = UntypedContext {
                     emitter: &self.emitter,
                     viewport: self.viewport,
                     assoc_events,
