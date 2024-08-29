@@ -3,7 +3,7 @@ use anathema_backend::Backend;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
@@ -44,7 +44,7 @@ impl TestRunner {
                 @main
         ";
         let mut doc = Document::new(root);
-        let main = doc.add_component("main", src).unwrap();
+        let main = doc.add_component("main", src.to_template()).unwrap();
         components.add_component(main.into(), (), ());
 
         let (blueprint, globals) = doc.compile().unwrap();

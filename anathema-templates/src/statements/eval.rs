@@ -168,7 +168,7 @@ mod test {
 
     use super::*;
     use crate::document::Document;
-    use crate::single;
+    use crate::{single, ToSourceKind};
 
     #[test]
     fn eval_node() {
@@ -217,7 +217,7 @@ mod test {
         let comp_src = "node a + 2";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src).unwrap();
+        doc.add_component("comp", comp_src.to_template()).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -239,7 +239,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src).unwrap();
+        doc.add_component("comp", comp_src.to_template()).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -253,7 +253,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", "node a").unwrap();
+        doc.add_component("comp", "node a".to_template()).unwrap();
         let _ = doc.compile().unwrap();
     }
 }

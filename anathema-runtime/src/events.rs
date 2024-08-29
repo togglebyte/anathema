@@ -5,7 +5,7 @@ use anathema_geometry::Size;
 use anathema_state::{AnyState, States};
 use anathema_store::storage::strings::Strings;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{AssociatedEvents, Context, Emitter};
+use anathema_widgets::components::{AssociatedEvents, Emitter, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Components, Elements, WidgetKind, WidgetTree};
 
@@ -60,7 +60,7 @@ impl EventHandler {
 
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
-                        let context = Context {
+                        let context = UntypedContext {
                             emitter,
                             viewport: *viewport,
                             assoc_events,
@@ -99,7 +99,7 @@ impl EventHandler {
 
                             let Some((node, values)) = tree.get_node_by_path(path) else { return };
                             let elements = Elements::new(node.children(), values, attribute_storage);
-                            let context = Context {
+                            let context = UntypedContext {
                                 emitter,
                                 viewport: *viewport,
                                 assoc_events,
@@ -149,7 +149,7 @@ impl EventHandler {
 
                         let Some((node, values)) = tree.get_node_by_path(path) else { return };
                         let elements = Elements::new(node.children(), values, attribute_storage);
-                        let context = Context {
+                        let context = UntypedContext {
                             emitter,
                             viewport: *viewport,
                             assoc_events,
@@ -161,7 +161,7 @@ impl EventHandler {
 
                         component
                             .dyn_component
-                            .any_callback(state, event_ident, common_val, elements, context);
+                            .any_receive(state, event_ident, common_val, elements, context);
                     });
                 })
             }
@@ -219,7 +219,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = states.get_mut(state_id);
-                let context = Context {
+                let context = UntypedContext {
                     emitter,
                     viewport,
                     assoc_events,
@@ -244,7 +244,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = states.get_mut(state_id);
-                let context = Context {
+                let context = UntypedContext {
                     emitter,
                     viewport,
                     assoc_events,
@@ -275,7 +275,7 @@ pub fn global_event<'bp, T: Backend>(
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
                 let state = states.get_mut(state_id);
-                let context = Context {
+                let context = UntypedContext {
                     emitter,
                     viewport,
                     assoc_events,

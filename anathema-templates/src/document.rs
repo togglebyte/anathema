@@ -40,9 +40,8 @@ impl Document {
     }
 
     #[allow(private_bounds)]
-    pub fn add_component(&mut self, name: impl Into<String>, src: impl Into<SourceKind>) -> Result<usize> {
+    pub fn add_component(&mut self, name: impl Into<String>, src: SourceKind) -> Result<usize> {
         let name = name.into();
-        let src = src.into();
 
         let component_src = match src {
             SourceKind::Str(s) => ComponentSource::InMemory(s),

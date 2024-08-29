@@ -16,9 +16,42 @@ use crate::token::Tokens;
 use crate::variables::Variables;
 use crate::Lexer;
 
-pub(crate) enum SourceKind {
+pub trait ToSourceKind {
+    fn to_path(self) -> SourceKind;
+
+    fn to_template(self) -> SourceKind;
+
+    fn to_source_kind(self) -> SourceKind
+    where
+        Self: Sized,
+    {
+        self.to_path()
+    }
+}
+
+impl<T: AsRef<str>> ToSourceKind for T {
+    fn to_path(self) -> SourceKind {
+        SourceKind::Path(self.as_ref().into())
+    }
+
+    fn to_template(self) -> SourceKind {
+        SourceKind::Str(self.as_ref().into())
+    }
+}
+
+pub enum SourceKind {
     Path(PathBuf),
     Str(String),
+}
+
+impl ToSourceKind for SourceKind {
+    fn to_path(self) -> SourceKind {
+        self
+    }
+
+    fn to_template(self) -> SourceKind {
+        self
+    }
 }
 
 impl From<PathBuf> for SourceKind {
