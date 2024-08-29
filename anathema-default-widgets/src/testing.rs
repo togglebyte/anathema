@@ -3,12 +3,12 @@ use anathema_backend::Backend;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, AttributeStorage, Elements, EvalContext, Factory, FloatingWidgets, Query, Scope, WidgetKind,
+    eval_blueprint, AttributeStorage, Components, Elements, EvalContext, Factory, FloatingWidgets, Scope, WidgetKind,
     WidgetRenderer as _, WidgetTree,
 };
 
@@ -16,7 +16,7 @@ use crate::register_default_widgets;
 
 pub struct TestRunner {
     states: States,
-    components: ComponentRegistry,
+    component_registry: ComponentRegistry,
     factory: Factory,
     backend: TestBackend,
     blueprint: Blueprint,
@@ -44,7 +44,7 @@ impl TestRunner {
                 @main
         ";
         let mut doc = Document::new(root);
-        let main = doc.add_component("main", src).unwrap();
+        let main = doc.add_component("main", src.to_template()).unwrap();
         components.add_component(main.into(), (), ());
 
         let (blueprint, globals) = doc.compile().unwrap();
@@ -53,7 +53,7 @@ impl TestRunner {
             factory,
             backend: TestBackend::new(size),
             states,
-            components,
+            component_registry: components,
             blueprint,
             globals,
         }
@@ -63,6 +63,7 @@ impl TestRunner {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
+        let mut components = Components::new();
         let viewport = Viewport::new(self.backend.surface.size());
 
         let mut scope = Scope::new();
@@ -72,13 +73,13 @@ impl TestRunner {
             &self.factory,
             &mut scope,
             &mut self.states,
-            &mut self.components,
+            &mut self.component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
+            &mut components,
         );
 
-        let path = Default::default();
-        eval_blueprint(&self.blueprint, &mut ctx, &path, &mut tree).unwrap();
+        eval_blueprint(&self.blueprint, &mut ctx, &[], &mut tree).unwrap();
 
         TestInstance {
             states: &mut self.states,
@@ -178,18 +179,17 @@ impl TestInstance<'_> {
 
     pub(crate) fn with_widget<F>(&mut self, mut f: F) -> &mut Self
     where
-        F: FnMut(Query<'_, '_, '_>),
+        F: FnMut(Elements<'_, '_>),
     {
         // path [0, 0, 0] points to:
         // border [0]
         //     expand [0, 0]
         //          @main [0, 0, 0] <- this one
-        let path = [0, 0, 0].into();
+        let path = [0, 0, 0];
 
         let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
-        let mut widgets = Elements::new(node.children(), values, &mut self.attribute_storage);
-        let query = widgets.query();
-        f(query);
+        let elements = Elements::new(node.children(), values, &mut self.attribute_storage);
+        f(elements);
         self
     }
 }

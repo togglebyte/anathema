@@ -1,13 +1,15 @@
 use manyhow::{ensure, manyhow, Result};
 use quote_use::quote_use as quote;
-use syn::{self, Fields};
+use syn::{self, Data, DeriveInput, Fields};
 
 static STATE_IGNORE: &str = "state_ignore";
 
 #[manyhow]
 #[proc_macro_derive(State, attributes(state_ignore))]
-pub fn state_derive(strct: syn::ItemStruct) -> Result {
-    let name = &strct.ident;
+pub fn state_derive(input: DeriveInput) -> Result {
+    let name = &input.ident;
+
+    ensure!(let Data::Struct(strct) = &input.data, input, "only structs are supported");
 
     ensure!(
         let Fields::Named(struct_fields) = &strct.fields,

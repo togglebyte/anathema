@@ -1,17 +1,36 @@
-// use run::TestCase;
-// mod run;
+use run::TestCase;
+mod run;
 
-// #[test]
-// fn set_attributes() {
-//     let template = "test [bold: true]";
+#[test]
+fn set_attributes() {
+    let template = "
+test
+    test [bold: false, a: 'b']
+        ";
 
-//     let x = TestCase::setup(template);
+    let frame = "
+test
+    test[bold: Bool(true), a: Str(\"b\")]
+        ";
 
-//     let y = x.build(());
+    TestCase::setup(template)
+        .build(())
+        .with_query(0, |_state, mut elements| {
+            elements.by_tag("test").at_position((0, 0)).each(|_el, attribs| {
+                attribs.set("bold", true);
+            });
 
-//     // y.expect_frame("test[bold: Bool(true)]")
-//     //     .query(|state, elements| {
-//     //         // elements.query(&state).first()
-//     //     })
-//     //     .expect_frame("test[bold: Bool(false)]");
-// }
+            elements.at_position((0, 0)).each(|_el, attribs| {
+                assert!(attribs.get::<bool>("bold").unwrap_or(false));
+            });
+
+            elements.by_attribute("a", "b").each(|_el, attribs| {
+                assert!(attribs.get::<bool>("bold").unwrap_or(false));
+            });
+
+            elements.by_tag("test").each(|_el, attribs| {
+                assert!(attribs.get::<bool>("bold").unwrap_or(false));
+            });
+        })
+        .expect_frame(frame);
+}

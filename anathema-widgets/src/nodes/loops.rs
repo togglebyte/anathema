@@ -1,5 +1,5 @@
 use anathema_state::Change;
-use anathema_store::tree::NodePath;
+use anathema_store::tree::new_node_path;
 use anathema_templates::blueprints::Blueprint;
 
 use super::WidgetKind;
@@ -33,7 +33,7 @@ impl<'bp> For<'bp> {
         ctx: &mut EvalContext<'_, '_, 'bp>,
         change: &Change,
         value_id: ValueId,
-        path: &NodePath,
+        path: &[u16],
         tree: &mut WidgetTree<'bp>,
     ) -> Result<()> {
         match change {
@@ -46,10 +46,9 @@ impl<'bp> For<'bp> {
                 // 6. Eval body
 
                 ctx.scope.push();
-
                 ctx.scope.scope_pending(self.binding, *value);
 
-                let insert_at = path + *index as u16;
+                let insert_at = new_node_path(path, *index as u16);
                 let iter_id = tree
                     .insert(&insert_at)
                     .commit_at(WidgetKind::Iteration(Iteration {
@@ -101,7 +100,7 @@ impl<'bp> For<'bp> {
                 ctx.scope.pop();
             }
             Change::Removed(index) => {
-                let child_to_remove = path + *index as u16;
+                let child_to_remove = new_node_path(path, *index as u16);
                 tree.remove(&child_to_remove);
             }
             Change::Dropped => {
@@ -166,6 +165,7 @@ pub struct Iteration<'bp> {
 #[cfg(test)]
 mod test {
     use anathema_state::{drain_changes, Changes, List, Map, StateId, States};
+    use anathema_store::tree::root_node;
     use anathema_templates::Document;
 
     use super::*;
@@ -173,7 +173,7 @@ mod test {
     use crate::nodes::stringify::Stringify;
     use crate::nodes::{eval_blueprint, update_tree};
     use crate::testing::setup_test_factory;
-    use crate::{AttributeStorage, FloatingWidgets};
+    use crate::{AttributeStorage, Components, FloatingWidgets};
 
     #[test]
     fn loop_remove() {
@@ -196,7 +196,8 @@ mod test {
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
         let factory = setup_test_factory();
-        let mut components = ComponentRegistry::new();
+        let mut component_registry = ComponentRegistry::new();
+        let mut components = Components::new();
         let mut states = States::new();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
@@ -206,12 +207,13 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
-            &mut components,
+            &mut component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
+            &mut components,
         );
 
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut widget_tree).unwrap();
+        eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         widget_tree.apply_visitor(&mut stringify);
@@ -244,19 +246,20 @@ mod test {
             subs.with(|sub| {
                 eprintln!("- apply change: {change:?}");
                 let mut scope = Scope::with_capacity(10);
-                let widget_path = &widget_tree.path(sub).clone();
+                let widget_path = widget_tree.path(sub);
                 update_tree(
                     &globals,
                     &factory,
                     &mut scope,
                     &mut states,
-                    &mut components,
+                    &mut component_registry,
                     &change,
                     sub,
-                    widget_path,
+                    &widget_path,
                     &mut widget_tree,
                     &mut attribute_storage,
                     &mut floating_widgets,
+                    &mut components,
                 );
             });
         });
@@ -308,8 +311,9 @@ mod test {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
+        let mut components = Components::new();
         let factory = setup_test_factory();
-        let mut components = ComponentRegistry::new();
+        let mut component_reg = ComponentRegistry::new();
         let mut states = States::new();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
@@ -319,11 +323,12 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
-            &mut components,
+            &mut component_reg,
             &mut attribute_storage,
             &mut floating_widgets,
+            &mut components,
         );
-        eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree).unwrap();
+        eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree).unwrap();
 
         let mut stringify = Stringify::new(&attribute_storage);
         tree.apply_visitor(&mut stringify);

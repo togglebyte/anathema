@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anathema::component::*;
 use anathema::prelude::*;
+use anathema_widgets::components::events::KeyState;
 
 #[derive(State)]
 struct Num {
@@ -24,7 +25,7 @@ impl Component for C {
     type Message = ();
     type State = Num;
 
-    fn tick(&mut self, state: &mut Self::State, _: Elements<'_, '_>, context: Context<'_>, dt: Duration) {
+    fn tick(&mut self, state: &mut Self::State, _: Elements<'_, '_>, context: Context<'_, Self::State>, dt: Duration) {
         let x = dt.as_millis() as f64;
 
         self.val += x / 1000.0 * *state.speed.to_ref();
@@ -32,11 +33,13 @@ impl Component for C {
         state.x.set(x);
     }
 
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, _: Elements<'_, '_>, _: Context<'_>) {
-        match key.code {
-            KeyCode::Char('k') => *state.speed.to_mut() += 0.1,
-            KeyCode::Char('j') => *state.speed.to_mut() -= 0.1,
-            _ => {}
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, _: Elements<'_, '_>, _: Context<'_, Self::State>) {
+        if matches!(key.state, KeyState::Press) {
+            match key.code {
+                KeyCode::Char('k') => *state.speed.to_mut() += 0.1,
+                KeyCode::Char('j') => *state.speed.to_mut() -= 0.1,
+                _ => {}
+            }
         }
     }
 }

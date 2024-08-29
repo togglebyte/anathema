@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
+use anathema_store::slab::Index;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::strings::{StringId, Strings};
@@ -15,9 +16,42 @@ use crate::token::Tokens;
 use crate::variables::Variables;
 use crate::Lexer;
 
-pub(crate) enum SourceKind {
+pub trait ToSourceKind {
+    fn to_path(self) -> SourceKind;
+
+    fn to_template(self) -> SourceKind;
+
+    fn to_source_kind(self) -> SourceKind
+    where
+        Self: Sized,
+    {
+        self.to_path()
+    }
+}
+
+impl<T: AsRef<str>> ToSourceKind for T {
+    fn to_path(self) -> SourceKind {
+        SourceKind::Path(self.as_ref().into())
+    }
+
+    fn to_template(self) -> SourceKind {
+        SourceKind::Str(self.as_ref().into())
+    }
+}
+
+pub enum SourceKind {
     Path(PathBuf),
     Str(String),
+}
+
+impl ToSourceKind for SourceKind {
+    fn to_path(self) -> SourceKind {
+        self
+    }
+
+    fn to_template(self) -> SourceKind {
+        self
+    }
 }
 
 impl From<PathBuf> for SourceKind {
@@ -46,6 +80,12 @@ pub(crate) enum ComponentSource {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetComponentId(u32);
+
+impl From<WidgetComponentId> for Index {
+    fn from(value: WidgetComponentId) -> Self {
+        value.0.into()
+    }
+}
 
 impl From<WidgetComponentId> for usize {
     fn from(value: WidgetComponentId) -> Self {

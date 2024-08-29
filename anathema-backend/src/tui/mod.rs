@@ -30,30 +30,35 @@ mod style;
 pub struct TuiBackendBuilder {
     output: Stdout,
     quit_on_ctrl_c: bool,
+
+    hide_cursor: bool,
+    enable_raw_mode: bool,
+    enable_alt_screen: bool,
+    enable_mouse: bool,
 }
 
 impl TuiBackendBuilder {
     /// Enable alt screen
     pub fn enable_alt_screen(mut self) -> Self {
-        let _ = Screen::enter_alt_screen(&mut self.output);
+        self.enable_alt_screen = true;
         self
     }
 
     /// Enable mouse support
     pub fn enable_mouse(mut self) -> Self {
-        let _ = Screen::enable_mouse(&mut self.output);
+        self.enable_mouse = true;
         self
     }
 
     /// Enable raw mode
-    pub fn enable_raw_mode(self) -> Self {
-        let _ = Screen::enable_raw_mode();
+    pub fn enable_raw_mode(mut self) -> Self {
+        self.enable_raw_mode = true;
         self
     }
 
     /// Hide the cursor (not the mouse cursor)
     pub fn hide_cursor(mut self) -> Self {
-        let _ = Screen::hide_cursor(&mut self.output);
+        self.hide_cursor = true;
         self
     }
 
@@ -67,6 +72,11 @@ impl TuiBackendBuilder {
             screen,
             output: self.output,
             events: Events,
+
+            hide_cursor: self.hide_cursor,
+            enable_raw_mode: self.enable_raw_mode,
+            enable_alt_screen: self.enable_alt_screen,
+            enable_mouse: self.enable_mouse,
         };
 
         Ok(backend)
@@ -80,6 +90,12 @@ pub struct TuiBackend {
     screen: Screen,
     output: Stdout,
     events: Events,
+
+    // Settings
+    hide_cursor: bool,
+    enable_raw_mode: bool,
+    enable_alt_screen: bool,
+    enable_mouse: bool,
 }
 
 impl TuiBackend {
@@ -90,6 +106,11 @@ impl TuiBackend {
         TuiBackendBuilder {
             output,
             quit_on_ctrl_c: true,
+
+            hide_cursor: false,
+            enable_raw_mode: false,
+            enable_alt_screen: false,
+            enable_mouse: false,
         }
     }
 
@@ -147,6 +168,24 @@ impl Backend for TuiBackend {
 
     fn clear(&mut self) {
         self.screen.erase();
+    }
+
+    fn finalize(&mut self) {
+        if self.hide_cursor {
+            let _ = Screen::hide_cursor(&mut self.output);
+        }
+
+        if self.enable_raw_mode {
+            let _ = Screen::enable_raw_mode();
+        }
+
+        if self.enable_alt_screen {
+            let _ = Screen::enter_alt_screen(&mut self.output);
+        }
+
+        if self.enable_mouse {
+            let _ = Screen::enable_mouse(&mut self.output);
+        }
     }
 }
 

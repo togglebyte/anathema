@@ -1,14 +1,16 @@
-use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region};
 use anathema_state::CommonVal;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{apply_visitor, Node, NodePath, TreeValues};
+use anathema_store::tree::{apply_visitor, Node, TreeValues};
 
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
 
+// -----------------------------------------------------------------------------
+//   - Elements -
+// -----------------------------------------------------------------------------
 pub struct Elements<'tree, 'bp> {
     nodes: &'tree [Node],
     widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
@@ -28,143 +30,238 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         }
     }
 
-    pub fn query(&mut self) -> Query<'_, 'tree, 'bp> {
-        Query { widgets: self }
+    pub fn at_position(&mut self, pos: impl Into<Pos>) -> Query<'_, 'tree, 'bp, Kind<'_>> {
+        Query {
+            filter: Kind::AtPosition(pos.into()),
+            elements: self,
+        }
+    }
+
+    pub fn by_tag<'tag>(&mut self, tag: &'tag str) -> Query<'_, 'tree, 'bp, Kind<'tag>> {
+        Query {
+            filter: Kind::ByTag(tag),
+            elements: self,
+        }
+    }
+
+    pub fn by_attribute<'a>(
+        &mut self,
+        key: &'a str,
+        value: impl Into<CommonVal<'a>>,
+    ) -> Query<'_, 'tree, 'bp, Kind<'a>> {
+        Query {
+            filter: Kind::ByAttribute(key, value.into()),
+            elements: self,
+        }
     }
 }
 
-enum QueryArg<'a> {
+// -----------------------------------------------------------------------------
+//   - Query -
+// -----------------------------------------------------------------------------
+pub struct Query<'el, 'tree, 'bp, F> {
+    filter: F,
+    elements: &'el mut Elements<'tree, 'bp>,
+}
+
+impl<'el, 'tree, 'bp, F> Query<'el, 'tree, 'bp, F>
+where
+    F: Filter<'bp>,
+{
+    pub fn by_filter<'a>(self, kind: Kind<'a>) -> Query<'el, 'tree, 'bp, FilterChain<F, Kind<'a>>> {
+        Query {
+            filter: FilterChain {
+                a: self.filter,
+                b: kind,
+            },
+            elements: self.elements,
+        }
+    }
+
+    pub fn at_position<'a>(self, pos: impl Into<Pos>) -> Query<'el, 'tree, 'bp, FilterChain<F, Kind<'a>>> {
+        self.by_filter(Kind::AtPosition(pos.into()))
+    }
+
+    pub fn by_tag<'a>(self, tag: &'a str) -> Query<'el, 'tree, 'bp, FilterChain<F, Kind<'a>>> {
+        self.by_filter(Kind::ByTag(tag))
+    }
+
+    pub fn by_attribute<'a>(
+        self,
+        key: &'a str,
+        value: impl Into<CommonVal<'a>>,
+    ) -> Query<'el, 'tree, 'bp, FilterChain<F, Kind<'a>>> {
+        self.by_filter(Kind::ByAttribute(key, value.into()))
+    }
+
+    fn query(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>), continuous: bool) {
+        let mut run = QueryRun {
+            filter: self.filter,
+            f,
+            continuous,
+            attributes: self.elements.attributes,
+        };
+
+        apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
+    }
+
+    pub fn each<T>(self, f: T)
+    where
+        T: FnMut(&mut Element<'_>, &mut Attributes<'_>),
+    {
+        self.query(f, true);
+    }
+
+    pub fn first(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>)) {
+        self.query(f, false);
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Query kind -
+// -----------------------------------------------------------------------------
+pub enum Kind<'a> {
     ByTag(&'a str),
     ByAttribute(&'a str, CommonVal<'a>),
     AtPosition(Pos),
 }
 
-pub struct Query<'widgets, 'tree, 'bp> {
-    widgets: &'widgets mut Elements<'tree, 'bp>,
-}
-
-impl<'widgets, 'tree, 'bp> Query<'widgets, 'tree, 'bp> {
-    /// Find elements by its tag (this is the name of the element in the template, e.g `text`,
-    /// `vstack` etc.)
-    pub fn by_tag(self, ident: &'widgets str) -> QueryResult<'widgets, 'tree, 'bp> {
-        QueryResult {
-            widgets: self.widgets,
-            arg: QueryArg::ByTag(ident),
-        }
-    }
-
-    /// Find elements based on their attribute values
-    pub fn by_attribute(
-        self,
-        key: &'widgets str,
-        value: impl Into<CommonVal<'widgets>>,
-    ) -> QueryResult<'widgets, 'tree, 'bp> {
-        QueryResult {
-            widgets: self.widgets,
-            arg: QueryArg::ByAttribute(key, value.into()),
-        }
-    }
-
-    /// Find elements at a given position
-    pub fn at_position(self, pos: impl Into<Pos>) -> QueryResult<'widgets, 'tree, 'bp> {
-        let pos = pos.into();
-        QueryResult {
-            widgets: self.widgets,
-            arg: QueryArg::AtPosition(pos),
+impl<'bp, 'a> Filter<'bp> for Kind<'a> {
+    fn filter(&self, el: &Element<'bp>, attributes: &mut AttributeStorage<'_>) -> bool {
+        match self {
+            Kind::ByTag(tag) => el.ident == *tag,
+            Kind::ByAttribute(key, value) => {
+                let attribs = attributes.get(el.container.id);
+                attribs
+                    .get_val(key)
+                    .and_then(|attribute| {
+                        attribute
+                            .load_common_val()
+                            .and_then(|either| either.to_common().map(|attrib_val| value.eq(&attrib_val)))
+                    })
+                    .unwrap_or(false)
+            }
+            Kind::AtPosition(pos) => {
+                let region = Region::from((el.container.pos, el.container.size));
+                region.contains(*pos)
+            }
         }
     }
 }
 
-struct QueryRun<'tag, 'bp, F> {
-    arg: QueryArg<'tag>,
-    p: PhantomData<&'bp ()>,
+// -----------------------------------------------------------------------------
+//   - Filter -
+// -----------------------------------------------------------------------------
+pub trait Filter<'bp> {
+    fn filter(&self, el: &Element<'bp>, attributes: &mut AttributeStorage<'_>) -> bool;
+
+    fn chain(self, other: impl Filter<'bp>) -> impl Filter<'bp>
+    where
+        Self: Sized,
+    {
+        FilterChain { a: self, b: other }
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Filter chain -
+// -----------------------------------------------------------------------------
+pub struct FilterChain<A, B> {
+    a: A,
+    b: B,
+}
+
+impl<'a, A, B> FilterChain<A, B>
+where
+    A: Filter<'a>,
+    B: Filter<'a>,
+{
+    pub fn by_tag(self, tag: &'a str) -> FilterChain<Self, Kind<'a>>
+    where
+        Self: Sized,
+    {
+        FilterChain {
+            a: self,
+            b: Kind::ByTag(tag),
+        }
+    }
+
+    pub fn by_attribute(self, key: &'a str, value: impl Into<CommonVal<'a>>) -> FilterChain<Self, Kind<'a>>
+    where
+        Self: Sized,
+    {
+        FilterChain {
+            a: self,
+            b: Kind::ByAttribute(key, value.into()),
+        }
+    }
+}
+
+impl<'bp, A: Filter<'bp>, B: Filter<'bp>> Filter<'bp> for FilterChain<A, B> {
+    fn filter(&self, el: &Element<'bp>, attributes: &mut AttributeStorage<'_>) -> bool {
+        match self.a.filter(el, attributes) {
+            false => false,
+            true => self.b.filter(el, attributes),
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Query runner -
+// -----------------------------------------------------------------------------
+pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
+    filter: T,
     f: F,
     continuous: bool,
     attributes: &'tag mut AttributeStorage<'bp>,
 }
 
-impl<'tag, 'bp, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'tag, 'bp, F>
+// impl QueryRun {
+//     pub fn each<F>(self, f: F)
+//     where
+//         F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
+//     {
+//         let mut run = QueryRun {
+//             arg: self.arg,
+//             p: PhantomData,
+//             f,
+//             continuous: true,
+//             attributes: self.widgets.attributes,
+//         };
+
+//         apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
+//     }
+
+//     pub fn first(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>)) {
+//         let mut run = QueryRun {
+//             arg: self.arg,
+//             p: PhantomData,
+//             f,
+//             continuous: false,
+//             attributes: self.widgets.attributes,
+//         };
+
+//         apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
+//     }
+// }
+
+impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'bp, 'tag, T, F>
 where
     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
-    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &NodePath, _widget_id: WidgetId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], _widget_id: WidgetId) -> ControlFlow<bool> {
         if let WidgetKind::Element(el) = value {
-            match self.arg {
-                QueryArg::ByTag(tag) if el.ident == tag => {
-                    let attributes = self.attributes.get_mut(el.id());
-                    (self.f)(el, attributes);
-                    if !self.continuous {
-                        return ControlFlow::Break(());
-                    }
-                }
-                QueryArg::ByTag(_) => {}
-                QueryArg::ByAttribute(key, val) => {
-                    let attribs = self.attributes.get(el.container.id);
-                    let query_result = attribs
-                        .get_val(key)
-                        .and_then(|attribute| {
-                            attribute
-                                .load_common_val()
-                                .and_then(|either| either.to_common().map(|attrib_val| val.eq(&attrib_val)))
-                        })
-                        .unwrap_or(false);
-
-                    if query_result {
-                        let attributes = self.attributes.get_mut(el.id());
-                        (self.f)(el, attributes);
-                        if !self.continuous {
-                            return ControlFlow::Break(());
-                        }
-                    }
-                }
-                QueryArg::AtPosition(pos) => {
-                    let region = Region::from((el.container.pos, el.container.size));
-
-                    if region.contains(pos) {
-                        let attributes = self.attributes.get_mut(el.id());
-                        (self.f)(el, attributes);
-                        if !self.continuous {
-                            return ControlFlow::Break(());
-                        }
-                    }
+            if self.filter.filter(el, self.attributes) {
+                let attributes = self.attributes.get_mut(el.id());
+                (self.f)(el, attributes);
+                if !self.continuous {
+                    return ControlFlow::Break(false);
                 }
             }
+
+            return ControlFlow::Continue(());
         }
 
         ControlFlow::Continue(())
-    }
-}
-
-pub struct QueryResult<'widgets, 'tree, 'bp> {
-    widgets: &'widgets mut Elements<'tree, 'bp>,
-    arg: QueryArg<'widgets>,
-}
-
-impl<'widgets, 'tree, 'bp> QueryResult<'widgets, 'tree, 'bp> {
-    pub fn each<F>(self, f: F)
-    where
-        F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
-    {
-        let mut run = QueryRun {
-            arg: self.arg,
-            p: PhantomData,
-            f,
-            continuous: true,
-            attributes: self.widgets.attributes,
-        };
-
-        apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
-    }
-
-    pub fn first(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>)) {
-        let mut run = QueryRun {
-            arg: self.arg,
-            p: PhantomData,
-            f,
-            continuous: false,
-            attributes: self.widgets.attributes,
-        };
-
-        apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
     }
 }
