@@ -17,7 +17,7 @@ pub use screen::Screen;
 
 pub use self::buffer::Buffer;
 use self::events::Events;
-pub use self::style::{Attributes, Style};
+pub use self::style::{Attributes, Color, Style};
 use crate::Backend;
 
 mod buffer;

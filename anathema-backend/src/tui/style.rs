@@ -2,9 +2,32 @@ use std::io::{Result, Write};
 
 use anathema_state::Hex;
 use anathema_widgets::paint::CellAttributes;
-pub use crossterm::style::Attribute as CrossAttrib;
-use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
+pub use crossterm::style::{Attribute as CrossAttrib, Color};
+use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
+
+fn color_to_string(color: Color) -> &'static str {
+    match color {
+        Color::Reset => "reset",
+        Color::Black => "black",
+        Color::DarkGrey => "dark_grey",
+        Color::Red => "red",
+        Color::DarkRed => "dark_red",
+        Color::Green => "green",
+        Color::DarkGreen => "dark_green",
+        Color::Yellow => "yellow",
+        Color::DarkYellow => "dark_yellow",
+        Color::Blue => "blue",
+        Color::DarkBlue => "dark_blue",
+        Color::Magenta => "magenta",
+        Color::DarkMagenta => "dark_magenta",
+        Color::Cyan => "cyan",
+        Color::DarkCyan => "dark_cyan",
+        Color::White => "white",
+        Color::Grey => "grey",
+        _ => "",
+    }
+}
 
 /// The style for a cell in a [`crate::Buffer`]
 /// A style is applied to ever single cell in a [`crate::Buffer`].
@@ -38,6 +61,46 @@ pub struct Style {
     pub bg: Option<Color>,
     /// Attributes.
     pub attributes: Attributes,
+}
+
+impl CellAttributes for Style {
+    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
+        match key {
+            "foreground" => self.fg.map(|c| f(color_to_string(c))),
+            "background" => self.bg.map(|c| f(color_to_string(c))),
+            _ => None,
+        };
+    }
+
+    fn get_i64(&self, _key: &str) -> Option<i64> {
+        None
+    }
+
+    fn get_hex(&self, key: &str) -> Option<Hex> {
+        let colour = match key {
+            "foreground" => self.fg,
+            "background" => self.bg,
+            _ => return None,
+        };
+
+        match colour {
+            Some(Color::Rgb { r, g, b }) => Some(Hex::from((r, g, b))),
+            None | Some(_) => None,
+        }
+    }
+
+    fn get_bool(&self, key: &str) -> bool {
+        match key {
+            "bold" => self.attributes.contains(Attributes::BOLD),
+            "dim" => self.attributes.contains(Attributes::DIM),
+            "italic" => self.attributes.contains(Attributes::ITALIC),
+            "underline" => self.attributes.contains(Attributes::UNDERLINED),
+            "crossed-out" => self.attributes.contains(Attributes::CROSSED_OUT),
+            "overline" => self.attributes.contains(Attributes::OVERLINED),
+            "inverse" => self.attributes.contains(Attributes::INVERSE),
+            _ => false,
+        }
+    }
 }
 
 impl Style {
