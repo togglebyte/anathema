@@ -165,7 +165,6 @@ impl<T> RuntimeBuilder<T> {
             future_values: FutureValues::empty(),
 
             changes: Changes::empty(),
-            // tab_indices: TabIndices::new(),
             component_registry: self.component_registry,
             globals,
             document: self.document,
