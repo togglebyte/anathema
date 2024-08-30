@@ -171,6 +171,9 @@ impl Backend for TuiBackend {
     }
 
     fn finalize(&mut self) {
+        // This is to fix an issue with Windows cmd.exe
+        let _ = Screen::show_cursor(&mut self.output);
+
         if self.hide_cursor {
             let _ = Screen::hide_cursor(&mut self.output);
         }
