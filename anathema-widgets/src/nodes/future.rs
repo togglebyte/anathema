@@ -163,7 +163,7 @@ fn try_resolve_value<'bp>(
                     .ok_or(Error::TreeTransactionFailed)?;
 
                 // Scope the iteration value
-                tree.with_value(iter_id, |parent, widget, tree| {
+                tree.with_value_mut(iter_id, |parent, widget, tree| {
                     let WidgetKind::Iteration(iter) = widget else { unreachable!() };
                     ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 

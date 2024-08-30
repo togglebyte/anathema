@@ -3,7 +3,7 @@
 //! It uses two buffers and only draws the diffs from top left to bottom right, making it less
 //! likely to flicker when moving the cursor etc.
 #![deny(missing_docs)]
-use std::io::Stdout;
+use std::io::{Stdout, Write};
 use std::ops::Add;
 use std::time::Duration;
 
@@ -172,6 +172,8 @@ impl Backend for TuiBackend {
 
     fn finalize(&mut self) {
         if self.hide_cursor {
+            // This is to fix an issue with Windows cmd.exe
+            let _ = Screen::show_cursor(&mut self.output);
             let _ = Screen::hide_cursor(&mut self.output);
         }
 
@@ -186,6 +188,8 @@ impl Backend for TuiBackend {
         if self.enable_mouse {
             let _ = Screen::enable_mouse(&mut self.output);
         }
+
+        let _ = self.output.flush();
     }
 }
 

@@ -36,11 +36,12 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
-    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
+    FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
-use events::EventHandler;
+use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use tree::Tree;
 
 pub use crate::error::{Error, Result};
 
@@ -48,6 +49,7 @@ static REBUILD: AtomicBool = AtomicBool::new(false);
 
 mod error;
 mod events;
+mod tree;
 
 pub struct RuntimeBuilder<T> {
     document: Document,
@@ -165,7 +167,6 @@ impl<T> RuntimeBuilder<T> {
             future_values: FutureValues::empty(),
 
             changes: Changes::empty(),
-            // tab_indices: TabIndices::new(),
             component_registry: self.component_registry,
             globals,
             document: self.document,
@@ -307,13 +308,6 @@ where
             return;
         }
 
-        // use std::io::Write;
-        // let mut file = std::fs::OpenOptions::new()
-        //     .append(true)
-        //     .write(true)
-        //     .open("/tmp/log.lol").unwrap();
-        // file.write(format!("{}\n", self.changes.len()).as_bytes()).unwrap();
-
         let mut scope = Scope::new();
         self.changes.drain().rev().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
@@ -347,37 +341,28 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         assoc_events: &mut AssociatedEvents,
     ) -> Duration {
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &mut self.document.strings,
+        };
+
+        let mut event_ctx = EventCtx {
+            components: &mut self.components,
+            states,
+            attribute_storage,
+            assoc_events,
+            context,
+        };
+
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some((widget_id, state_id)) = self
+            if let Some((widget_id, state_id)) = event_ctx
                 .components
                 .get_by_component_id(msg.recipient())
                 .map(|e| (e.widget_id, e.state_id))
             {
-                tree.with_value_mut(widget_id, |path, widget, tree| {
-                    let WidgetKind::Component(component) = widget else { return };
-                    let state = states.get_mut(state_id);
-
-                    let parent = component
-                        .parent
-                        .and_then(|parent| self.components.get_by_component_id(parent))
-                        .map(|parent| parent.component_id.into());
-
-                    let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                    let elements = Elements::new(node.children(), values, attribute_storage);
-
-                    let context = UntypedContext {
-                        emitter: &self.emitter,
-                        viewport: self.viewport,
-                        assoc_events,
-                        state_id,
-                        parent,
-                        strings: &mut self.document.strings,
-                        assoc_functions: component.assoc_functions,
-                    };
-
-                    component
-                        .dyn_component
-                        .any_message(msg.payload(), state, elements, context);
+                tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| {
+                    a.any_message(msg.payload(), b)
                 });
             }
 
@@ -438,31 +423,27 @@ where
             }
         }
 
-        // Select the first widget
-        if let Some((widget_id, state_id)) = self.components.current() {
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(state_id);
+        // // Select the first widget
+        // if let Some((widget_id, state_id)) = self.components.current() {
+        //     tree.with_value_mut(widget_id, |path, widget, tree| {
+        //         let WidgetKind::Component(component) = widget else { return };
+        //         let state = states.get_mut(state_id);
 
-                let parent = component
-                    .parent
-                    .and_then(|parent| self.components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
+        //         let parent = component
+        //             .parent
+        //             .and_then(|parent| self.components.get_by_component_id(parent))
+        //             .map(|parent| parent.component_id.into());
 
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                let context = UntypedContext {
-                    emitter: &self.emitter,
-                    viewport: self.viewport,
-                    assoc_events: &mut assoc_events,
-                    state_id,
-                    parent,
-                    strings: &mut self.document.strings,
-                    assoc_functions: component.assoc_functions,
-                };
-                component.dyn_component.any_focus(state, elements, context);
-            });
-        }
+        //         let Some((node, values)) = tree.get_node_by_path(path) else { return };
+        //         let elements = Elements::new(node.children(), values, &mut attribute_storage);
+
+        //         let component_ctx = ComponentContext::new(state_id, component.parent, component.assoc_functions);
+
+        //         component
+        //             .dyn_component
+        //             .any_focus(state, elements, context, component_ctx);
+        //     });
+        // }
 
         let mut dt = Instant::now();
         loop {
@@ -557,24 +538,34 @@ where
         // Clear the text buffer
         self.string_storage.clear();
 
+        // Call the `tick` function on all components
+        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
+
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &self.document.strings,
+        };
+
+        let mut event_ctx = EventCtx {
+            components: &mut self.components,
+            states,
+            attribute_storage,
+            assoc_events,
+            context,
+        };
+
         self.event_handler.handle(
             poll_duration,
             fps_now,
             sleep_micros,
             &mut self.backend,
             &mut self.viewport,
-            &self.emitter,
             tree,
-            &mut self.components,
-            states,
-            attribute_storage,
             &mut self.constraints,
-            assoc_events,
-            &self.document.strings,
+            &mut event_ctx,
         )?;
 
-        // Call the `tick` function on all components
-        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
         *dt = Instant::now();
 
         self.apply_futures(globals, tree, states, attribute_storage);
@@ -677,36 +668,27 @@ where
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
     ) {
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &self.document.strings,
+        };
+
         for i in 0..self.components.len() {
             let (widget_id, state_id) = self
                 .components
                 .get(i)
                 .expect("the components can not change as a result of this step");
 
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(state_id);
+            let mut event_ctx = EventCtx {
+                components: &mut self.components,
+                states,
+                attribute_storage,
+                assoc_events,
+                context,
+            };
 
-                let parent = component
-                    .parent
-                    .and_then(|parent| self.components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
-
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-
-                let context = UntypedContext {
-                    emitter: &self.emitter,
-                    viewport: self.viewport,
-                    assoc_events,
-                    state_id,
-                    parent,
-                    strings: &mut self.document.strings,
-                    assoc_functions: component.assoc_functions,
-                };
-
-                component.dyn_component.any_tick(state, elements, context, dt);
-            });
+            tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| a.any_tick(b, dt));
         }
     }
 }
