@@ -131,7 +131,7 @@ impl Screen {
         disable_raw_mode()?;
         output.execute(LeaveAlternateScreen)?;
         #[cfg(not(target_os = "windows"))]
-        output.execute(DisableMouseCapture)?;
+        output.execute(crossterm::event::DisableMouseCapture)?;
         output.execute(cursor::Show)?;
         Ok(())
     }
