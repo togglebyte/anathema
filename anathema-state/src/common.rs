@@ -1,4 +1,5 @@
 use std::fmt::{self, Display};
+use std::ops::Deref;
 
 use crate::{Hex, Number};
 
@@ -17,6 +18,14 @@ impl<'bp> CommonString<'bp> {
             CommonString::Owned(s) => s.as_str(),
             CommonString::Borrowed(s) => s,
         }
+    }
+}
+
+impl Deref for CommonString<'_> {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.to_str()
     }
 }
 
@@ -203,6 +212,21 @@ macro_rules! impl_try_from_int {
     };
 }
 
+macro_rules! impl_try_from_float {
+    ($t:ty) => {
+        impl TryFrom<CommonVal<'_>> for $t {
+            type Error = ();
+
+            fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+                match value {
+                    CommonVal::Float(n) => Ok(n as $t),
+                    _ => Err(()),
+                }
+            }
+        }
+    };
+}
+
 impl_try_from_int!(usize);
 impl_try_from_int!(isize);
 impl_try_from_int!(u64);
@@ -213,6 +237,9 @@ impl_try_from_int!(u16);
 impl_try_from_int!(i16);
 impl_try_from_int!(u8);
 impl_try_from_int!(i8);
+
+impl_try_from_float!(f64);
+impl_try_from_float!(f32);
 
 #[cfg(test)]
 mod test {

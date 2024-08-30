@@ -8,11 +8,8 @@ pub type Changes = Stack<(Subscribers, Change)>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
-    // TODO Given that value store will keep at most u32::MAX
-    //      values it would stand to reason that both `Inserted` and `Removed`
-    //      can use u32 instead of usize to save a bit of space.
-    Inserted(usize, PendingValue),
-    Removed(usize),
+    Inserted(u32, PendingValue),
+    Removed(u32),
     Changed,
     Dropped,
 }

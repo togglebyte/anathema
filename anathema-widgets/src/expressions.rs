@@ -371,7 +371,7 @@ impl<'bp> EvalValue<'bp> {
         match self {
             EvalValue::Static(p) => (*p).try_into().ok(),
             EvalValue::Dyn(val) => match val.value::<T>() {
-                Some(value) => Some(*value),
+                Some(value) => value.try_as_ref().copied(),
                 None => val.as_state()?.to_common()?.try_into().ok(),
             },
             EvalValue::Index(val, _) => val.load::<T>(),

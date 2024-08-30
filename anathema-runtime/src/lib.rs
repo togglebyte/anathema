@@ -18,7 +18,6 @@
 // -----------------------------------------------------------------------------
 
 use std::fmt::Write;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -28,19 +27,18 @@ use anathema_geometry::Pos;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::{AsNodePath, NodePath};
+use anathema_store::tree::{root_node, AsNodePath};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
-    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Context, Emitter, ViewMessage,
+    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AnyWidget, AttributeStorage, Attributes, Elements,
-    EvalContext, Factory, FloatingWidgets, Scope, Widget, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
+    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
-use components::Components;
 use events::EventHandler;
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
@@ -48,7 +46,6 @@ pub use crate::error::{Error, Result};
 
 static REBUILD: AtomicBool = AtomicBool::new(false);
 
-mod components;
 mod error;
 mod events;
 
@@ -65,36 +62,20 @@ impl<T> RuntimeBuilder<T> {
     pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
-        template_path: impl Into<PathBuf>,
+        template: impl ToSourceKind,
         component: C,
         state: C::State,
     ) -> Result<ComponentId<C::Message>> {
         let ident = ident.into();
-        let id = self.document.add_component(ident, template_path.into())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_component(id, component, state);
-        Ok(id.into())
-    }
-
-    pub fn register_default<C>(
-        &mut self,
-        ident: impl Into<String>,
-        template_path: impl Into<PathBuf>,
-    ) -> Result<ComponentId<C::Message>>
-    where
-        C: Component + Default + 'static,
-        C::State: Default,
-    {
-        let ident = ident.into();
-        let id = self.document.add_component(ident, template_path.into())?.into();
-        self.component_registry
-            .add_component(id, C::default(), C::State::default());
         Ok(id.into())
     }
 
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
-        template_path: impl Into<PathBuf>,
+        template: impl ToSourceKind,
         proto: FC,
         state: FS,
     ) -> Result<()>
@@ -104,17 +85,25 @@ impl<T> RuntimeBuilder<T> {
         C: Component + 'static,
     {
         let ident = ident.into();
-        let id = self.document.add_component(ident, template_path.into())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_prototype(id, proto, state);
         Ok(())
     }
 
-    pub fn register_default_widget<W: 'static + Widget + Default>(&mut self, ident: &str) {
-        self.factory.register_default::<W>(ident);
-    }
-
-    pub fn register_widget(&mut self, ident: &str, factory: impl Fn(&Attributes<'_>) -> Box<dyn AnyWidget> + 'static) {
-        self.factory.register_widget(ident, factory);
+    pub fn register_default<C>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl ToSourceKind,
+    ) -> Result<ComponentId<C::Message>>
+    where
+        C: Component + Default + 'static,
+        C::State: Default,
+    {
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
+        self.component_registry
+            .add_component(id, C::default(), C::State::default());
+        Ok(id.into())
     }
 
     pub fn emitter(&self) -> Emitter {
@@ -176,13 +165,14 @@ impl<T> RuntimeBuilder<T> {
             future_values: FutureValues::empty(),
 
             changes: Changes::empty(),
-            components: Components::new(),
+            // tab_indices: TabIndices::new(),
             component_registry: self.component_registry,
             globals,
             document: self.document,
             string_storage: StringStorage::new(),
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
+            components: Components::new(),
             event_handler: EventHandler,
         };
 
@@ -228,6 +218,7 @@ pub struct Runtime<T> {
     constraints: Constraints,
     // * Event handling
     components: Components,
+    // tab_indices: TabIndices,
 
     // -----------------------------------------------------------------------------
     //   - Mut during updates -
@@ -285,7 +276,7 @@ where
         let mut scope = Scope::new();
         self.future_values.drain().rev().for_each(|sub| {
             scope.clear();
-            let path = tree.path(sub).clone();
+            let path = tree.path(sub);
 
             try_resolve_future_values(
                 globals,
@@ -298,6 +289,7 @@ where
                 tree,
                 attribute_storage,
                 &mut self.floating_widgets,
+                &mut self.components,
             );
         });
     }
@@ -315,11 +307,18 @@ where
             return;
         }
 
+        // use std::io::Write;
+        // let mut file = std::fs::OpenOptions::new()
+        //     .append(true)
+        //     .write(true)
+        //     .open("/tmp/log.lol").unwrap();
+        // file.write(format!("{}\n", self.changes.len()).as_bytes()).unwrap();
+
         let mut scope = Scope::new();
         self.changes.drain().rev().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
                 scope.clear();
-                let Some(path) = tree.try_path(sub).cloned() else { return };
+                let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
 
                 update_tree(
                     globals,
@@ -333,6 +332,7 @@ where
                     tree,
                     attribute_storage,
                     &mut self.floating_widgets,
+                    &mut self.components,
                 );
             });
         });
@@ -348,24 +348,28 @@ where
         assoc_events: &mut AssociatedEvents,
     ) -> Duration {
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some(entry) = self.components.dumb_fetch(msg.recipient()) {
-                tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+            if let Some((widget_id, state_id)) = self
+                .components
+                .get_by_component_id(msg.recipient())
+                .map(|e| (e.widget_id, e.state_id))
+            {
+                tree.with_value_mut(widget_id, |path, widget, tree| {
                     let WidgetKind::Component(component) = widget else { return };
-                    let state = states.get_mut(entry.state_id);
+                    let state = states.get_mut(state_id);
 
                     let parent = component
                         .parent
-                        .and_then(|parent| self.components.dumb_fetch(parent))
-                        .map(|parent| parent.widget_id.into());
+                        .and_then(|parent| self.components.get_by_component_id(parent))
+                        .map(|parent| parent.component_id.into());
 
                     let Some((node, values)) = tree.get_node_by_path(path) else { return };
                     let elements = Elements::new(node.children(), values, attribute_storage);
 
-                    let context = Context {
+                    let context = UntypedContext {
                         emitter: &self.emitter,
                         viewport: self.viewport,
                         assoc_events,
-                        state_id: entry.state_id,
+                        state_id,
                         parent,
                         strings: &mut self.document.strings,
                         assoc_functions: component.assoc_functions,
@@ -416,12 +420,13 @@ where
             &mut self.component_registry,
             &mut attribute_storage,
             &mut self.floating_widgets,
+            &mut self.components,
         );
 
         let blueprint = self.blueprint.clone();
 
         // First build the tree
-        let res = eval_blueprint(&blueprint, &mut ctx, &NodePath::root(), &mut tree);
+        let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree);
         match res {
             Ok(_) => (),
             Err(err) => {
@@ -433,27 +438,24 @@ where
             }
         }
 
-        // ... then the tab indices
-        tree.apply_visitor(&mut self.components);
-
         // Select the first widget
-        if let Some(entry) = self.components.current() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        if let Some((widget_id, state_id)) = self.components.current() {
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
 
                 let parent = component
                     .parent
-                    .and_then(|parent| self.components.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| self.components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                let context = Context {
+                let context = UntypedContext {
                     emitter: &self.emitter,
                     viewport: self.viewport,
                     assoc_events: &mut assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings: &mut self.document.strings,
                     assoc_functions: component.assoc_functions,
@@ -501,7 +503,7 @@ where
         });
 
         let mut document = Document::new(tpl);
-        let _component_id = document.add_component("errors", errors);
+        let _component_id = document.add_component("errors", errors.to_template());
         let (blueprint, globals) = document.compile().expect("the error template can't fail");
         self.blueprint = blueprint;
         self.globals = globals;
@@ -592,6 +594,15 @@ where
 
         self.apply_changes(globals, tree, states, attribute_storage);
 
+        // Cleanup removed attributes from widgets.
+        // Not all widgets has attributes, only `Element`s.
+        for key in tree.drain_removed() {
+            attribute_storage.try_remove(key);
+            self.floating_widgets.try_remove(key);
+            // TODO: this function is rubbish and has to be rewritten
+            self.components.dodgy_remove(key);
+        }
+
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
@@ -619,13 +630,13 @@ where
         for widget_id in self.floating_widgets.iter() {
             // Find the parent widget and get the position
             // If no parent element is found assume Pos::ZERO
-            let mut parent = tree.path(*widget_id).pop();
+            let mut parent = tree.path_ref(*widget_id).parent();
             let (pos, constraints) = loop {
                 match parent {
                     None => break (Pos::ZERO, self.constraints),
                     Some(p) => match tree.get_ref_by_path(p) {
                         Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
-                        _ => parent = p.pop(),
+                        _ => parent = p.parent(),
                     },
                 }
             };
@@ -650,13 +661,6 @@ where
         self.backend.render();
         self.backend.clear();
 
-        // Cleanup removed attributes from widgets.
-        // Not all widgets has attributes, only `Element`s.
-        for key in tree.drain_removed() {
-            attribute_storage.try_remove(key);
-            self.floating_widgets.try_remove(key);
-        }
-
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
         if sleep > 0 {
             std::thread::sleep(Duration::from_micros(sleep));
@@ -673,24 +677,29 @@ where
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
     ) {
-        for entry in self.components.iter() {
-            tree.with_value_mut(entry.widget_id, |path, widget, tree| {
+        for i in 0..self.components.len() {
+            let (widget_id, state_id) = self
+                .components
+                .get(i)
+                .expect("the components can not change as a result of this step");
+
+            tree.with_value_mut(widget_id, |path, widget, tree| {
                 let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(entry.state_id);
+                let state = states.get_mut(state_id);
 
                 let parent = component
                     .parent
-                    .and_then(|parent| self.components.dumb_fetch(parent))
-                    .map(|parent| parent.widget_id.into());
+                    .and_then(|parent| self.components.get_by_component_id(parent))
+                    .map(|parent| parent.component_id.into());
 
                 let Some((node, values)) = tree.get_node_by_path(path) else { return };
                 let elements = Elements::new(node.children(), values, attribute_storage);
 
-                let context = Context {
+                let context = UntypedContext {
                     emitter: &self.emitter,
                     viewport: self.viewport,
                     assoc_events,
-                    state_id: entry.state_id,
+                    state_id,
                     parent,
                     strings: &mut self.document.strings,
                     assoc_functions: component.assoc_functions,
@@ -701,37 +710,3 @@ where
         }
     }
 }
-
-// struct Futures {
-//     future_values: FutureValues
-// }
-
-// impl Futures {
-//     fn new() -> Self {
-//         Self {
-//             future_values: FutureValues::empty(),
-//         }
-//     }
-
-//     fn update(&mut self) {
-//         drain_futures(&mut self.future_values);
-//         let mut scope = Scope::new();
-//         self.future_values.drain().rev().for_each(|sub| {
-//             scope.clear();
-//             let path = tree.path(sub).clone();
-
-//             try_resolve_future_values(
-//                 globals,
-//                 &self.factory,
-//                 &mut scope,
-//                 states,
-//                 &mut self.components,
-//                 sub,
-//                 &path,
-//                 tree,
-//                 attribute_storage,
-//                 &mut self.floating_widgets,
-//             );
-//         });
-//     }
-// }

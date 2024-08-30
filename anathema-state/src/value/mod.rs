@@ -204,6 +204,13 @@ impl ElementState {
         }
     }
 
+    fn try_as_ref<T: 'static>(&self) -> Option<&T> {
+        match self {
+            Self::Dropped => unreachable!(),
+            Self::Alive(ref value) => value.to_any_ref().downcast_ref(),
+        }
+    }
+
     fn drop_value(&mut self) {
         let _ = std::mem::take(self);
     }
@@ -220,6 +227,10 @@ impl<'a, T> Shared<'a, T> {
             state: SharedState::new(key, value),
             _p: PhantomData,
         }
+    }
+
+    pub fn try_as_ref(&self) -> Option<&T> {
+        self.state.inner.try_as_ref()
     }
 }
 

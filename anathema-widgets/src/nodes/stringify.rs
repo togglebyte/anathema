@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{NodePath, ValueId};
+use anathema_store::tree::ValueId;
 
 use super::element::Element;
 use crate::{AttributeStorage, WidgetKind};
@@ -32,7 +32,7 @@ impl<'a, 'bp> Stringify<'a, 'bp> {
 }
 
 impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &NodePath, _: ValueId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let _ = write!(&mut self.output, "{}", self.indent);
         match value {
             WidgetKind::Element(Element { ident, container, .. }) => {

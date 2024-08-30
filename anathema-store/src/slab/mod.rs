@@ -11,7 +11,7 @@
 use std::ops::{Deref, DerefMut};
 
 pub use self::basic::Slab;
-pub use self::generational::{GenSlab, Key};
+pub use self::generational::{Gen, GenSlab, Key};
 pub use self::rc::{Element, RcSlab};
 pub use self::secondary_map::SecondaryMap;
 
@@ -36,6 +36,12 @@ impl Deref for Index {
 impl From<usize> for Index {
     fn from(val: usize) -> Self {
         Self(val as u32)
+    }
+}
+
+impl From<u32> for Index {
+    fn from(val: u32) -> Self {
+        Self(val)
     }
 }
 

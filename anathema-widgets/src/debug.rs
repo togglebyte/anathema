@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use anathema_debug::DebugWriter;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{NodePath, ValueId};
+use anathema_store::tree::ValueId;
 
 use crate::expressions::EvalValue;
 use crate::nodes::element::Element;
@@ -154,7 +154,7 @@ struct DebugWidgetsVisitor<'a, 'bp, O> {
 }
 
 impl<O: std::fmt::Write> NodeVisitor<WidgetKind<'_>> for DebugWidgetsVisitor<'_, '_, O> {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &NodePath, _: ValueId) -> ControlFlow<()> {
+    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let indent = " ".repeat(self.level * 4);
         write!(self.output, "{indent}").unwrap();
         WidgetDebug(value, self.attribute_storage).write(self.output).unwrap();
