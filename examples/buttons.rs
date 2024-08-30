@@ -61,9 +61,8 @@ impl Component for Button {
         mut context: Context<'_, Self::State>,
     ) {
         if matches!(key.state, KeyState::Press) {
-            match key.code {
-                KeyCode::Enter => context.publish("click", |state| &state.caption),
-                _ => (),
+            if let KeyCode::Enter = key.code {
+                context.publish("click", |state| &state.caption)
             }
         }
     }
