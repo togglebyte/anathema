@@ -1,12 +1,10 @@
-use std::ops::Add;
 use anathema_backend::tui::TuiBackend;
 use anathema_runtime::Runtime;
-use anathema_state::{AnyState, CommonVal, State, Value};
+use anathema_state::{CommonVal, State, Value};
 use anathema_templates::Document;
-use anathema_widgets::components::{Component, ComponentId, Context};
 use anathema_widgets::components::events::{KeyCode, KeyEvent, KeyState};
+use anathema_widgets::components::{Component, Context};
 use anathema_widgets::Elements;
-use strum_macros::{Display, EnumString, IntoStaticStr};
 
 struct App;
 
@@ -14,63 +12,50 @@ struct App;
 struct AppState {
     number: Value<i32>,
 }
+
 impl Component for App {
-    type Message = AppMessage;
+    type Message = ();
     type State = AppState;
 
-    fn message(&mut self, message: Self::Message, state: &mut Self::State, elements: Elements<'_, '_>, context: Context<'_>) {
-        match message {
-            AppMessage::Increment => {
-                let number = state.number.to_ref().add(1);
-                state.number.set(number);
-            }
-            AppMessage::Decrement => {}
+    fn receive(&mut self, ident: &str, _value: CommonVal<'_>, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
+        if ident == "increment" {
+            *state.number.to_mut() += 1;
+        }
+        else if ident == "decrement" {
+            *state.number.to_mut() -= 1;
         }
     }
 }
 
-#[derive(EnumString, IntoStaticStr, Copy, Clone)]
-enum AppMessage {
-    Increment, Decrement,
-}
-
-impl State for AppMessage {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
-        Some(CommonVal::Str(<&str>::from(self)))
-    }
-}
-
-struct Button(ComponentId<AppMessage>);
+struct Button;
 
 #[derive(State)]
 struct ButtonState {
     caption: Value<String>,
     in_focus: Value<bool>,
-    message: Value<AppMessage>,
 }
 
 impl Component for Button {
-    type Message = ();
     type State = ButtonState;
+    type Message = ();
 
-    fn on_focus(&mut self, state: &mut Self::State, elements: Elements<'_, '_>, context: Context<'_>) {
+    fn on_blur(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
+        state.in_focus.set(false);
+    }
+
+    fn on_focus(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
         state.in_focus.set(true);
     }
 
-    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, elements: Elements<'_, '_>, context: Context<'_>) {
+    fn on_key(&mut self, key: KeyEvent, _state: &mut Self::State, _elements: Elements<'_, '_>, mut context: Context<'_, Self::State>) {
         if matches!(key.state, KeyState::Press) {
             match key.code {
                 KeyCode::Enter => {
-                    let emitter = context.emitter;
-                    emitter.emit(self.0, state.message.copy_value()).unwrap()
+                    context.publish("click", |state| &state.caption)
                 },
                 _ => ()
             }
         }
-    }
-
-    fn on_blur(&mut self, state: &mut Self::State, elements: Elements<'_, '_>, context: Context<'_>) {
-        state.in_focus.set(false);
     }
 }
 
@@ -85,7 +70,7 @@ fn main() {
         .unwrap();
 
     let mut runtime = Runtime::builder(doc, backend);
-    let app_id = runtime
+    runtime
         .register_component(
             "main",
             "examples/templates/buttons.aml",
@@ -97,11 +82,10 @@ fn main() {
         .register_prototype(
             "button",
             "examples/templates/button.aml",
-            move || Button(app_id),
+            move || Button,
             || ButtonState {
                 caption: String::from("lark").into(),
                 in_focus: false.into(),
-                message: AppMessage::Increment.into(),
             },
         )
         .unwrap();

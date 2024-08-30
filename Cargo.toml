@@ -23,10 +23,6 @@ anathema-templates = { path = "./anathema-templates" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-geometry = { path = "./anathema-geometry" }
 
-[dev-dependencies]
-strum = "0.26"
-strum_macros = "0.26"
-
 [lints]
 workspace = true
 
