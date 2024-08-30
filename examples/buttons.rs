@@ -17,11 +17,17 @@ impl Component for App {
     type Message = ();
     type State = AppState;
 
-    fn receive(&mut self, ident: &str, _value: CommonVal<'_>, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
+    fn receive(
+        &mut self,
+        ident: &str,
+        _value: CommonVal<'_>,
+        state: &mut Self::State,
+        _elements: Elements<'_, '_>,
+        _context: Context<'_, Self::State>,
+    ) {
         if ident == "increment" {
             *state.number.to_mut() += 1;
-        }
-        else if ident == "decrement" {
+        } else if ident == "decrement" {
             *state.number.to_mut() -= 1;
         }
     }
@@ -36,8 +42,8 @@ struct ButtonState {
 }
 
 impl Component for Button {
-    type State = ButtonState;
     type Message = ();
+    type State = ButtonState;
 
     fn on_blur(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
         state.in_focus.set(false);
@@ -47,13 +53,17 @@ impl Component for Button {
         state.in_focus.set(true);
     }
 
-    fn on_key(&mut self, key: KeyEvent, _state: &mut Self::State, _elements: Elements<'_, '_>, mut context: Context<'_, Self::State>) {
+    fn on_key(
+        &mut self,
+        key: KeyEvent,
+        _state: &mut Self::State,
+        _elements: Elements<'_, '_>,
+        mut context: Context<'_, Self::State>,
+    ) {
         if matches!(key.state, KeyState::Press) {
             match key.code {
-                KeyCode::Enter => {
-                    context.publish("click", |state| &state.caption)
-                },
-                _ => ()
+                KeyCode::Enter => context.publish("click", |state| &state.caption),
+                _ => (),
             }
         }
     }
