@@ -223,13 +223,14 @@ impl<T> Tree<T> {
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the rest of the tree.
-    pub fn with_value_mut<F>(&mut self, value_id: ValueId, f: F)
+    pub fn with_value_mut<F, V>(&mut self, value_id: ValueId, f: F) -> V
     where
-        F: FnOnce(&[u16], &mut T, &mut Self),
+        F: FnOnce(&[u16], &mut T, &mut Self) -> V,
     {
         let mut ticket = self.values.checkout(value_id);
-        f(&ticket.value.0, &mut ticket.value.1, self);
+        let value = f(&ticket.value.0, &mut ticket.value.1, self);
         self.values.restore(ticket);
+        value
     }
 
     /// Get mutable access to a node value along with the children
