@@ -211,25 +211,25 @@ impl<T> Tree<T> {
 
     /// Perform a given operation (`F`) on a reference to a value in the tree
     /// while still haveing mutable access to the rest of the tree.
-    pub fn with_value<F, R>(&mut self, value_id: ValueId, mut f: F) -> R
+    pub fn with_value<F, R>(&self, value_id: ValueId, mut f: F) -> Option<R>
     where
-        F: FnMut(&[u16], &T, &mut Self) -> R,
+        F: FnMut(&[u16], &T, &Self) -> R,
     {
-        let ticket = self.values.checkout(value_id);
-        let ret = f(&ticket.value.0, &ticket.value.1, self);
-        self.values.restore(ticket);
-        ret
+        let value = self.values.get(value_id)?;
+        let ret = f(&value.0, &value.1, self);
+        Some(ret)
     }
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the rest of the tree.
-    pub fn with_value_mut<F>(&mut self, value_id: ValueId, f: F)
+    pub fn with_value_mut<F, V>(&mut self, value_id: ValueId, f: F) -> V
     where
-        F: FnOnce(&[u16], &mut T, &mut Self),
+        F: FnOnce(&[u16], &mut T, &mut Self) -> V,
     {
         let mut ticket = self.values.checkout(value_id);
-        f(&ticket.value.0, &mut ticket.value.1, self);
+        let value = f(&ticket.value.0, &mut ticket.value.1, self);
         self.values.restore(ticket);
+        value
     }
 
     /// Get mutable access to a node value along with the children
@@ -577,7 +577,7 @@ mod test {
         let mut tree = Tree::empty();
         let key = tree.insert(root_node()).commit_child(0).unwrap();
         tree.insert(root_node()).commit_child(1);
-        tree.with_value(key, |_path, _value, tree| {
+        tree.with_value_mut(key, |_path, _value, tree| {
             // The value is already checked out
             assert!(tree.get_ref_by_id(key).is_none());
         });
