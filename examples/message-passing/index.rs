@@ -11,7 +11,8 @@ impl Index {
 }
 
 impl Component for Index {
-    type Message = (); // we dont accept messages, we only send them!
+    // we dont accept messages, we only send them!
+    type Message = ();
     type State = ();
 
     fn on_mouse(

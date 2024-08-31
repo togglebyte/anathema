@@ -4,7 +4,6 @@ mod messages;
 use anathema::backend::tui::TuiBackend;
 use anathema::runtime::Runtime;
 use anathema::templates::Document;
-
 use index::Index;
 use messages::Messages;
 
