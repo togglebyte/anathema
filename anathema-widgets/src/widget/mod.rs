@@ -54,7 +54,7 @@ impl PartialEq for CompEntry {
 }
 
 pub struct Components {
-    tab_index: usize,
+    pub tab_index: usize,
     inner: SortedList<CompEntry>,
     comp_ids: SmallMap<WidgetComponentId, usize>,
 }
@@ -68,25 +68,32 @@ impl Components {
         }
     }
 
-    pub fn next(&mut self) -> usize {
-        let prev = self.tab_index;
-        if self.tab_index == self.inner.len() - 1 {
-            self.tab_index = 0;
-        } else {
-            self.tab_index += 1;
-        }
-        prev
-    }
+    // pub fn next(&mut self, tree: &WidgetTree<'_>) -> usize {
+    //     let Some((widget_id, _)) = self.get(self.tab_index) else { panic!() };
 
-    pub fn prev(&mut self) -> usize {
-        let prev = self.tab_index;
-        if self.tab_index == 0 {
-            self.tab_index = self.inner.len() - 1;
-        } else {
-            self.tab_index -= 1;
-        }
-        prev
-    }
+    //     let val = tree.with_value(widget_id, |path, widget, tree| {
+    //         let WidgetKind::Component(component) = widget else { return false };
+    //         component.dyn_component.accept_focus_any()
+    //     }).unwrap_or(false);
+
+    //     let prev = self.tab_index;
+    //     if self.tab_index == self.inner.len() - 1 {
+    //         self.tab_index = 0;
+    //     } else {
+    //         self.tab_index += 1;
+    //     }
+    //     prev
+    // }
+
+    // pub fn prev(&mut self) -> usize {
+    //     let prev = self.tab_index;
+    //     if self.tab_index == 0 {
+    //         self.tab_index = self.inner.len() - 1;
+    //     } else {
+    //         self.tab_index -= 1;
+    //     }
+    //     prev
+    // }
 
     pub fn push(&mut self, path: Box<[u16]>, widget_id: WidgetId, state_id: StateId, component_id: WidgetComponentId) {
         let entry = CompEntry {

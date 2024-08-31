@@ -161,7 +161,7 @@ impl ForLoopEval {
                 .ok_or(Error::TreeTransactionFailed)?;
 
             // Scope the iteration value
-            tree.with_value(iter_id, |parent, widget, tree| {
+            tree.with_value_mut(iter_id, |parent, widget, tree| {
                 let WidgetKind::Iteration(iter) = widget else { unreachable!() };
                 ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
@@ -201,7 +201,7 @@ impl Evaluator for ForLoopEval {
 
         let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
 
-        tree.with_value(for_loop_id, move |parent, widget, tree| {
+        tree.with_value_mut(for_loop_id, move |parent, widget, tree| {
             let WidgetKind::For(for_loop) = widget else { unreachable!() };
             self.eval_body(for_loop, ctx, parent, tree)?;
             Ok(())
@@ -228,7 +228,7 @@ impl Evaluator for ControlFlowEval {
         let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         let parent = tree.path(for_loop_id);
 
-        tree.with_value(for_loop_id, move |parent, _widget, tree| {
+        tree.with_value_mut(for_loop_id, move |parent, _widget, tree| {
             IfEval.eval(&control_flow.if_node, ctx, parent, tree)?;
             control_flow
                 .elses
@@ -387,7 +387,7 @@ impl Evaluator for ComponentEval {
         let path = tree.path(widget_id);
         ctx.components.push(path, widget_id, state_id, component_id);
 
-        tree.with_value(widget_id, move |parent, widget, tree| {
+        tree.with_value_mut(widget_id, move |parent, widget, tree| {
             let WidgetKind::Component(component) = widget else { unreachable!() };
             ctx.scope.push();
 

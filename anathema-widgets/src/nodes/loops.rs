@@ -64,7 +64,7 @@ impl<'bp> For<'bp> {
                     *iter.loop_index.to_mut() += 1;
                 });
 
-                tree.with_value(iter_id, |parent, iter_widget, tree| {
+                tree.with_value_mut(iter_id, |parent, iter_widget, tree| {
                     // NOTE
                     // The value has to be scoped to the current binding and not
                     // the iteration, since the collection might've changed more than once
@@ -128,7 +128,7 @@ impl<'bp> For<'bp> {
                         .ok_or(Error::TreeTransactionFailed)?;
 
                     // Scope the iteration value
-                    tree.with_value(iter_id, |parent, widget, tree| -> Result<()> {
+                    tree.with_value_mut(iter_id, |parent, widget, tree| -> Result<()> {
                         let WidgetKind::Iteration(iter) = widget else { unreachable!() };
                         ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
