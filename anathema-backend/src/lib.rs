@@ -29,10 +29,10 @@ pub trait Backend {
         ignore_floats: bool,
     );
 
-    /// Publish the changes to the Buffer to the Screen.
+    /// Called by the runtime at the end of the frame.
     fn render(&mut self);
 
-    /// Clear the internal buffer entirely. This should not change the screen.
+    /// Clear is called immediately after `render` is called.
     fn clear(&mut self);
 
     /// Finalizes the backend. This is called when the runtime starts.

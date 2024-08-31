@@ -36,8 +36,8 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext,
-    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
+    FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -61,9 +61,12 @@ pub struct RuntimeBuilder<T> {
 }
 
 impl<T> RuntimeBuilder<T> {
-    /// Registers a [Component] with the runtime. This returns a unique [ComponentId] that can be used to send messages to the component.
-    /// A component can only be used once in a template, even if it wouldn't actually be displayed in the end.
-    /// If you want multiple occurrences, register it as a prototype instead, see [RuntimeBuilder::register_prototype], it is basically a drop-in replacement
+    /// Registers a [Component] with the runtime. 
+    /// This returns a unique [ComponentId] that is used to send messages to the component.
+    ///
+    /// A component can only be used once in a template.
+    /// If you want multiple instances, register the component as a prototype instead,
+    /// see [RuntimeBuilder::register_prototype].
     pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
@@ -77,8 +80,8 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
-    /// Registers a [Component] as a prototype with the [Runtime], which allows the usage of multiple instances of the component in the templates.
-    /// This is useful if for reuse of the component.
+    /// Registers a [Component] as a prototype with the [Runtime], 
+    /// which allows for multiple instances of the component to exist the templates.
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
@@ -97,10 +100,18 @@ impl<T> RuntimeBuilder<T> {
         Ok(())
     }
 
-    /// Registers a [Component] with the runtime. This returns a unique [ComponentId] that can be used to send messages to the component.
-    /// Uses the [Default::default] implementation for the [Component] and [Component::State].
-    /// A component can only be used once in a template, even if it wouldn't actually be displayed in the end.
-    /// If you want multiple occurrences, register it as a prototype instead, see [RuntimeBuilder::register_prototype], it is basically a drop-in replacement
+    /// Registers a [Component] with the runtime as long as the component and the associated state
+    /// implements default. 
+    ///
+    /// This is a shortcut for calling 
+    /// ```norun
+    /// runtime.register_component(
+    ///     "name", 
+    ///     "template.aml", 
+    ///     TheComponent::default(), 
+    ///     TheComponent::State::default()
+    /// );
+    /// ```
     pub fn register_default<C>(
         &mut self,
         ident: impl Into<String>,
@@ -117,7 +128,7 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
-    /// Returns the Runtime [Emitter] to emit messages to components
+    /// Returns an [Emitter] to send messages to components
     pub fn emitter(&self) -> Emitter {
         self.emitter.clone()
     }
@@ -152,7 +163,7 @@ impl<T> RuntimeBuilder<T> {
         Ok(watcher)
     }
 
-    /// Builds the [Runtime]. This will remove the ability to add new components or prototypes.
+    /// Builds the [Runtime]. 
     /// Fails if compiling the [Document] or creating the file watcher fails.
     pub fn finish(mut self) -> Result<Runtime<T>>
     where
@@ -257,7 +268,7 @@ where
         Self::builder(document, backend)
     }
 
-    /// Creates a [RuntimeBuilder] based on the [Document] and [Backend]. Hot Reloading is configured on the [Document]
+    /// Creates a [RuntimeBuilder] based on the [Document] and the [Backend]. 
     pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
         let mut factory = Factory::new();
 
@@ -321,13 +332,6 @@ where
             return;
         }
 
-        // use std::io::Write;
-        // let mut file = std::fs::OpenOptions::new()
-        //     .append(true)
-        //     .write(true)
-        //     .open("/tmp/log.lol").unwrap();
-        // file.write(format!("{}\n", self.changes.len()).as_bytes()).unwrap();
-
         let mut scope = Scope::new();
         self.changes.drain().rev().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
@@ -352,7 +356,7 @@ where
         });
     }
 
-    /// Handles component messages for (ideally) at most half of a tick
+    // Handles component messages for (ideally) at most half of a tick
     fn handle_messages<'bp>(
         &mut self,
         fps_now: Instant,
@@ -396,6 +400,7 @@ where
         fps_now.elapsed()
     }
 
+    /// Start the runtime
     pub fn run(&mut self) {
         self.backend.finalize();
         match self.internal_run() {
@@ -408,11 +413,13 @@ where
         }
     }
 
-    /// 1 - Tries to build the first widget tree or throws an error
-    /// 2 - Selects the first [Component] and calls [Component::on_focus] on it
-    /// 3 - Repeatedly calls [Self::tick] until [REBUILD] is set to true or any error occured. Using the [Error::Stop], we exit the main loop.
-    /// 4 - Resets itself using [Self::reset]
-    /// 5 - Recursively calls [Self::internal_run]. Note: This does not free up the call stack. We should move this into a loop in [Self::run].
+    // 1 - Tries to build the tree
+    // TODO: step 2 is not implemented yet
+    // 2 - Selects the first [Component] and calls [Component::on_focus] on it
+    // 3 - Repeatedly calls [Self::tick] until [REBUILD] is set to true or an error occurs. Using the [Error::Stop] breaks the main loop.
+    // 4 - Resets using [Self::reset]
+    // 5 - Recursively calls [Self::internal_run]. 
+    // TODO: We should move this into a loop in [Self::run].
     fn internal_run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
@@ -449,27 +456,7 @@ where
             }
         }
 
-        // // Select the first widget
-        // if let Some((widget_id, state_id)) = self.components.current() {
-        //     tree.with_value_mut(widget_id, |path, widget, tree| {
-        //         let WidgetKind::Component(component) = widget else { return };
-        //         let state = states.get_mut(state_id);
-
-        //         let parent = component
-        //             .parent
-        //             .and_then(|parent| self.components.get_by_component_id(parent))
-        //             .map(|parent| parent.component_id.into());
-
-        //         let Some((node, values)) = tree.get_node_by_path(path) else { return };
-        //         let elements = Elements::new(node.children(), values, &mut attribute_storage);
-
-        //         let component_ctx = ComponentContext::new(state_id, component.parent, component.assoc_functions);
-
-        //         component
-        //             .dyn_component
-        //             .any_focus(state, elements, context, component_ctx);
-        //     });
-        // }
+        // TODO: try to set focus on the first available component
 
         let mut dt = Instant::now();
         loop {
@@ -516,11 +503,10 @@ where
         self.globals = globals;
     }
 
-    /// Resets the Runtime:
-    /// - Throws away all futures, pending changes and value subscribers
-    /// - Reloads all components
-    /// - Moves all the components from the tree back to the registry.
-    /// - Recompiles the document
+    // Resets the Runtime:
+    // * Reloads all components
+    // * Moves all the components from the tree back to the registry.
+    // * Recompiles the document
     fn reset(&mut self, tree: WidgetTree<'_>, states: &mut States) -> Result<()> {
         clear_all_futures();
         clear_all_changes();
@@ -534,7 +520,7 @@ where
         // as a result of the hot_reload triggering or when building the first tree fails.
         self.document.reload_templates()?;
 
-        // move all components from the tree back to the registry.
+        // Move all components from the tree back to the registry.
         for (_, widget) in tree.values().into_iter() {
             let WidgetKind::Component(comp) = widget else { continue };
             let ComponentKind::Instance = comp.kind else { continue };
@@ -561,9 +547,7 @@ where
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
     ) -> Result<()> {
-        // Pull and keep consuming events while there are events present
-        // in the queu. The time used to pull events should be subtracted
-        // from the poll duration of self.events.poll
+        // Pull and keep consuming events while there are events present in the queue. 
         let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events);
 
         // Clear the text buffer
@@ -617,7 +601,6 @@ where
         self.apply_changes(globals, tree, states, attribute_storage);
 
         // Cleanup removed attributes from widgets.
-        // Not all widgets has attributes, only `Element`s.
         for key in tree.drain_removed() {
             attribute_storage.try_remove(key);
             self.floating_widgets.try_remove(key);
