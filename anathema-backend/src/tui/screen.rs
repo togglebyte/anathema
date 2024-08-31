@@ -21,7 +21,7 @@ pub struct Screen {
 impl Screen {
     /// Hide the cursor
     pub(super) fn hide_cursor(mut output: impl Write) -> Result<()> {
-        output.execute(cursor::Hide)?;
+        output.queue(cursor::Hide)?;
         Ok(())
     }
 
