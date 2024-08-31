@@ -79,8 +79,6 @@ impl<T> RuntimeBuilder<T> {
 
     /// Registers a [Component] as a prototype with the [Runtime], which allows the usage of multiple instances of the component in the templates.
     /// This is useful if for reuse of the component.
-    /// If you don't need that, consider using [RuntimeBuilder::register_component] or [RuntimeBuilder::register_default] instead.
-    /// Unlike when registering a component, this won't return a [ComponentId] because there's no meaningful way to express which component the message would go to.
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
