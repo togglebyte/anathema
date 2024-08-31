@@ -61,7 +61,7 @@ pub struct RuntimeBuilder<T> {
 }
 
 impl<T> RuntimeBuilder<T> {
-    /// Registers a [Component] with the runtime. 
+    /// Registers a [Component] with the runtime.
     /// This returns a unique [ComponentId] that is used to send messages to the component.
     ///
     /// A component can only be used once in a template.
@@ -80,7 +80,7 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
-    /// Registers a [Component] as a prototype with the [Runtime], 
+    /// Registers a [Component] as a prototype with the [Runtime],
     /// which allows for multiple instances of the component to exist the templates.
     pub fn register_prototype<FC, FS, C>(
         &mut self,
@@ -101,14 +101,14 @@ impl<T> RuntimeBuilder<T> {
     }
 
     /// Registers a [Component] with the runtime as long as the component and the associated state
-    /// implements default. 
+    /// implements default.
     ///
-    /// This is a shortcut for calling 
+    /// This is a shortcut for calling
     /// ```norun
     /// runtime.register_component(
-    ///     "name", 
-    ///     "template.aml", 
-    ///     TheComponent::default(), 
+    ///     "name",
+    ///     "template.aml",
+    ///     TheComponent::default(),
     ///     TheComponent::State::default()
     /// );
     /// ```
@@ -163,7 +163,7 @@ impl<T> RuntimeBuilder<T> {
         Ok(watcher)
     }
 
-    /// Builds the [Runtime]. 
+    /// Builds the [Runtime].
     /// Fails if compiling the [Document] or creating the file watcher fails.
     pub fn finish(mut self) -> Result<Runtime<T>>
     where
@@ -268,7 +268,7 @@ where
         Self::builder(document, backend)
     }
 
-    /// Creates a [RuntimeBuilder] based on the [Document] and the [Backend]. 
+    /// Creates a [RuntimeBuilder] based on the [Document] and the [Backend].
     pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
         let mut factory = Factory::new();
 
@@ -403,12 +403,11 @@ where
     /// Start the runtime
     pub fn run(&mut self) {
         self.backend.finalize();
-        match self.internal_run() {
-            Ok(()) => (),
-            Err(Error::Stop) => (),
-            Err(err) => {
-                self.show_error(err);
-                self.run();
+        loop {
+            match self.internal_run() {
+                Ok(()) => (),
+                Err(Error::Stop) => return,
+                Err(err) => self.show_error(err),
             }
         }
     }
@@ -418,7 +417,7 @@ where
     // 2 - Selects the first [Component] and calls [Component::on_focus] on it
     // 3 - Repeatedly calls [Self::tick] until [REBUILD] is set to true or an error occurs. Using the [Error::Stop] breaks the main loop.
     // 4 - Resets using [Self::reset]
-    // 5 - Recursively calls [Self::internal_run]. 
+    // 5 - Recursively calls [Self::internal_run].
     // TODO: We should move this into a loop in [Self::run].
     fn internal_run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
@@ -478,8 +477,7 @@ where
             fps_now = Instant::now();
         }
 
-        self.reset(tree, &mut states)?;
-        self.internal_run()
+        self.reset(tree, &mut states)
     }
 
     pub fn show_error(&mut self, err: Error) {
@@ -547,7 +545,7 @@ where
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
     ) -> Result<()> {
-        // Pull and keep consuming events while there are events present in the queue. 
+        // Pull and keep consuming events while there are events present in the queue.
         let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events);
 
         // Clear the text buffer
