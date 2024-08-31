@@ -38,28 +38,24 @@ pub struct TuiBackendBuilder {
 }
 
 impl TuiBackendBuilder {
-    // Note: This will only apply when TuiBackend::finalize is called.
     /// Enable an alternative screen. When using this with stdout it means the output will not persist once the program exits. This won't apply until Runtime::run is called.
     pub fn enable_alt_screen(mut self) -> Self {
         self.enable_alt_screen = true;
         self
     }
     
-    // Note: This will only apply when TuiBackend::finalize is called.
     /// Enable mouse support. This won't apply until Runtime::run is called.
     pub fn enable_mouse(mut self) -> Self {
         self.enable_mouse = true;
         self
     }
     
-    // Note: This will only apply when TuiBackend::finalize is called.
-    /// Enable raw mode: input will not be forwarded to the screen. This won't apply until Runtime::run is called.
+    /// When raw mode is enabled, every key press is sent to the terminal. If raw mode is not enabled, the return key has to be pressed to send characters to the terminal. This won't apply until Runtime::run is called.
     pub fn enable_raw_mode(mut self) -> Self {
         self.enable_raw_mode = true;
         self
     }
     
-    // Note: This will only apply when TuiBackend::finalize is called.
     /// Hide the text cursor. This won't apply until Runtime::run is called.
     pub fn hide_cursor(mut self) -> Self {
         self.hide_cursor = true;
