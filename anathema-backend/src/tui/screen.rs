@@ -39,7 +39,7 @@ impl Screen {
 
     /// Enable mouse support
     pub(super) fn enable_mouse(mut output: impl Write) -> Result<()> {
-        output.execute(EnableMouseCapture)?;
+        output.queue(EnableMouseCapture)?;
         Ok(())
     }
 
