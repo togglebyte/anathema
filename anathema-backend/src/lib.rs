@@ -12,7 +12,6 @@ pub mod tui;
 pub trait Backend {
     fn size(&self) -> Size;
 
-    /// When [Backend::next_event] returns [Event::Stop], this function will be called to make sure the Backend wants anathema exit.
     fn quit_test(&self, event: Event) -> bool;
 
     fn next_event(&mut self, timeout: Duration) -> Option<Event>;
