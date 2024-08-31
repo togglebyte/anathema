@@ -577,7 +577,7 @@ mod test {
         let mut tree = Tree::empty();
         let key = tree.insert(root_node()).commit_child(0).unwrap();
         tree.insert(root_node()).commit_child(1);
-        tree.with_value(key, |_path, _value, tree| {
+        tree.with_value_mut(key, |_path, _value, tree| {
             // The value is already checked out
             assert!(tree.get_ref_by_id(key).is_none());
         });

@@ -239,7 +239,7 @@ impl<'rt, T> DerefMut for Context<'rt, T> {
     }
 }
 
-pub struct LoLCtx<'state, 'tree, 'bp> {
+pub struct AnyEventCtx<'state, 'tree, 'bp> {
     pub state: Option<&'state mut dyn AnyState>,
     pub elements: Elements<'tree, 'bp>,
     pub context: UntypedContext<'tree>,
@@ -250,9 +250,7 @@ pub struct LoLCtx<'state, 'tree, 'bp> {
 pub struct UntypedContext<'rt> {
     pub emitter: &'rt Emitter,
     pub viewport: Viewport,
-    // pub assoc_events: &'rt mut AssociatedEvents,
     pub strings: &'rt Strings,
-    // pub assoc_functions: &'rt [(StringId, StringId)],
 }
 
 pub struct ComponentContext<'rt> {
@@ -420,19 +418,19 @@ pub enum ComponentKind {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, ctx: LoLCtx<'_, '_, '_>, ev: Event) -> Event;
+    fn any_event(&mut self, ctx: AnyEventCtx<'_, '_, '_>, ev: Event) -> Event;
 
-    fn any_message(&mut self, message: Box<dyn Any>, ctx: LoLCtx<'_, '_, '_>);
+    fn any_message(&mut self, message: Box<dyn Any>, ctx: AnyEventCtx<'_, '_, '_>);
 
-    fn any_tick(&mut self, ctx: LoLCtx<'_, '_, '_>, dt: Duration);
+    fn any_tick(&mut self, ctx: AnyEventCtx<'_, '_, '_>, dt: Duration);
 
-    fn any_focus(&mut self, ctx: LoLCtx<'_, '_, '_>);
+    fn any_focus(&mut self, ctx: AnyEventCtx<'_, '_, '_>);
 
-    fn any_blur(&mut self, ctx: LoLCtx<'_, '_, '_>);
+    fn any_blur(&mut self, ctx: AnyEventCtx<'_, '_, '_>);
 
-    fn any_resize(&mut self, ctx: LoLCtx<'_, '_, '_>);
+    fn any_resize(&mut self, ctx: AnyEventCtx<'_, '_, '_>);
 
-    fn any_receive(&mut self, ctx: LoLCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>);
+    fn any_receive(&mut self, ctx: AnyEventCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>);
 
     fn accept_focus_any(&self) -> bool;
 }
@@ -442,7 +440,7 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, ctx: LoLCtx<'_, '_, '_>, event: Event) -> Event {
+    fn any_event(&mut self, ctx: AnyEventCtx<'_, '_, '_>, event: Event) -> Event {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
@@ -450,10 +448,8 @@ where
         let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
-
             Event::Key(ev) => self.on_key(ev, state, ctx.elements, context),
             Event::Mouse(ev) => self.on_mouse(ev, state, ctx.elements, context),
-
             Event::Resize(_, _) | Event::Noop | Event::Stop => (),
         }
         event
@@ -463,7 +459,7 @@ where
         self.accept_focus()
     }
 
-    fn any_message(&mut self, message: Box<dyn Any>, ctx: LoLCtx<'_, '_, '_>) {
+    fn any_message(&mut self, message: Box<dyn Any>, ctx: AnyEventCtx<'_, '_, '_>) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
@@ -473,7 +469,7 @@ where
         self.message(*message, state, ctx.elements, context);
     }
 
-    fn any_focus(&mut self, ctx: LoLCtx<'_, '_, '_>) {
+    fn any_focus(&mut self, ctx: AnyEventCtx<'_, '_, '_>) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
@@ -482,7 +478,7 @@ where
         self.on_focus(state, ctx.elements, context);
     }
 
-    fn any_blur(&mut self, ctx: LoLCtx<'_, '_, '_>) {
+    fn any_blur(&mut self, ctx: AnyEventCtx<'_, '_, '_>) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
@@ -491,7 +487,7 @@ where
         self.on_blur(state, ctx.elements, context);
     }
 
-    fn any_tick(&mut self, ctx: LoLCtx<'_, '_, '_>, dt: Duration) {
+    fn any_tick(&mut self, ctx: AnyEventCtx<'_, '_, '_>, dt: Duration) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
@@ -500,7 +496,7 @@ where
         self.tick(state, ctx.elements, context, dt);
     }
 
-    fn any_resize(&mut self, ctx: LoLCtx<'_, '_, '_>) {
+    fn any_resize(&mut self, ctx: AnyEventCtx<'_, '_, '_>) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
@@ -509,7 +505,7 @@ where
         self.resize(state, ctx.elements, context);
     }
 
-    fn any_receive(&mut self, ctx: LoLCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>) {
+    fn any_receive(&mut self, ctx: AnyEventCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
