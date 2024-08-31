@@ -175,6 +175,8 @@ impl Backend for TuiBackend {
         let _ = Screen::show_cursor(&mut self.output);
 
         if self.hide_cursor {
+            // This is to fix an issue with Windows cmd.exe
+            let _ = Screen::show_cursor(&mut self.output);
             let _ = Screen::hide_cursor(&mut self.output);
         }
 
