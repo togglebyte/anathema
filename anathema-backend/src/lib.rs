@@ -18,6 +18,7 @@ pub trait Backend {
 
     fn resize(&mut self, new_size: Size);
 
+    /// Paint the widgets
     fn paint<'bp>(
         &mut self,
         element: &mut Element<'bp>,
@@ -28,9 +29,12 @@ pub trait Backend {
         ignore_floats: bool,
     );
 
+    /// Publish the changes to the Buffer to the Screen.
     fn render(&mut self);
 
+    /// Clear the internal buffer entirely. This should not change the screen.
     fn clear(&mut self);
 
+    /// Finalizes the backend. This is called when the runtime starts.
     fn finalize(&mut self) {}
 }

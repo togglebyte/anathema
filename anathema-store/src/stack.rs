@@ -29,7 +29,7 @@ impl<T> Entry<T> {
 }
 
 /// Allocate memory but never free it until the entire `Stack` is dropped.
-/// Items popped from the stack are marked as `Empty` so the memory is resused.
+/// Items popped from the stack are marked as `Empty` so the memory is reused.
 #[derive(Debug, Default)]
 pub struct Stack<T> {
     inner: Vec<Entry<T>>,
