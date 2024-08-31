@@ -1,0 +1,6 @@
+for value in messages
+    text value
+
+padding [top: 1]
+    text "Received messages"
+
