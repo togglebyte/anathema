@@ -1,8 +1,10 @@
 use anathema::backend::tui::TuiBackend;
-use anathema::component::{Component, ComponentId};
+use anathema::component::{Component, ComponentId, MouseEvent};
 use anathema::runtime::Runtime;
 use anathema::state::{List, State, Value};
 use anathema::templates::Document;
+use anathema::widgets::components::Context;
+use anathema::widgets::Elements;
 
 pub struct Index {
     recipient: ComponentId<String>,
@@ -20,21 +22,20 @@ impl Component for Index {
 
     fn on_mouse(
         &mut self,
-        mouse: anathema::component::MouseEvent,
+        mouse: MouseEvent,
         _state: &mut Self::State,
-        mut elements: anathema::widgets::Elements<'_, '_>,
-        context: anathema::prelude::Context<'_, Self::State>,
+        mut elements: Elements<'_, '_>,
+        context: Context<'_, Self::State>,
     ) {
         if mouse.lsb_down() {
             elements
                 .at_position(mouse.pos())
                 .by_attribute("id", "button")
                 .first(|_, _| {
-                    // Anathema's context exposes the emitter for us, so we can send
-                    // messages that way.
-                    _ = context
+                    context
                         .emitter
-                        .emit(self.recipient, "hey look, thats a message!".into());
+                        .emit(self.recipient, "hey look, thats a message!".into())
+                        .unwrap();
                 });
         }
     }
@@ -53,14 +54,12 @@ impl Component for Messages {
     type Message = String;
     type State = MessagesState;
 
-    // Anathema's runtime handles sending the messages to the right recipient
-    // so we only need to handle what to do when we receive a message.
     fn message(
         &mut self,
         message: Self::Message,
         state: &mut Self::State,
-        _: anathema::widgets::Elements<'_, '_>,
-        _: anathema::prelude::Context<'_, Self::State>,
+        _: Elements<'_, '_>,
+        _: Context<'_, Self::State>,
     ) {
         if state.messages.len() > 20 {
             state.messages.pop_front();
@@ -84,11 +83,16 @@ fn main() {
     let mut runtime = Runtime::builder(doc, backend);
 
     let recipient = runtime
-        .register_default::<Messages>("messages", "templates/messages.aml")
+        .register_default::<Messages>("messages", "examples/templates/message-passing/messages.aml")
         .expect("failed to register messages component");
 
     runtime
-        .register_component("index", "templates/message_passing.aml", Index::new(recipient), ())
+        .register_component(
+            "index",
+            "examples/templates/message-passing/message_passing.aml",
+            Index::new(recipient),
+            (),
+        )
         .expect("failed to register index component");
 
     runtime.finish().unwrap().run();

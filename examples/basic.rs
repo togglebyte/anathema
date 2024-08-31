@@ -5,7 +5,7 @@ use anathema::runtime::Runtime;
 use anathema::templates::Document;
 
 fn main() {
-    let template = read_to_string("examples/templates/basic.aml").unwrap();
+    let template = read_to_string("examples/templates/basic/basic.aml").unwrap();
 
     let doc = Document::new(template);
 

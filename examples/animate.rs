@@ -58,7 +58,7 @@ fn main() {
     runtime
         .register_component(
             "main",
-            "examples/templates/animate.aml",
+            "examples/templates/animate/animate.aml",
             C { val: 0.0 },
             Num {
                 x: 0.0.into(),

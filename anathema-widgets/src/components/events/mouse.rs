@@ -15,7 +15,18 @@ impl MouseEvent {
 
     /// Returns true if the left mouse button is down
     pub fn lsb_down(&self) -> bool {
-        matches!(self.state, MouseState::Down(MouseButton::Left))
+        matches!(
+            self.state,
+            MouseState::Down(MouseButton::Left) | MouseState::Drag(MouseButton::Left)
+        )
+    }
+
+    /// Returns true if the right mouse button is down
+    pub fn rsb_down(&self) -> bool {
+        matches!(
+            self.state,
+            MouseState::Down(MouseButton::Right) | MouseState::Drag(MouseButton::Right)
+        )
     }
 
     /// Returns true if the left mouse button is released
