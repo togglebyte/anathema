@@ -43,19 +43,19 @@ impl TuiBackendBuilder {
         self.enable_alt_screen = true;
         self
     }
-    
+
     /// Enable mouse support. This won't apply until Runtime::run is called.
     pub fn enable_mouse(mut self) -> Self {
         self.enable_mouse = true;
         self
     }
-    
+
     /// When raw mode is enabled, every key press is sent to the terminal. If raw mode is not enabled, the return key has to be pressed to send characters to the terminal. This won't apply until Runtime::run is called.
     pub fn enable_raw_mode(mut self) -> Self {
         self.enable_raw_mode = true;
         self
     }
-    
+
     /// Hide the text cursor. This won't apply until Runtime::run is called.
     pub fn hide_cursor(mut self) -> Self {
         self.hide_cursor = true;
