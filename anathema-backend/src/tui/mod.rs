@@ -38,9 +38,9 @@ pub struct TuiBackendBuilder {
 }
 
 impl TuiBackendBuilder {
-    /// Enable an alternative screen. 
-    /// When using this with stdout it means the output will not persist 
-    /// once the program exits. 
+    /// Enable an alternative screen.
+    /// When using this with stdout it means the output will not persist
+    /// once the program exits.
     pub fn enable_alt_screen(mut self) -> Self {
         self.enable_alt_screen = true;
         self
@@ -52,8 +52,8 @@ impl TuiBackendBuilder {
         self
     }
 
-    /// When raw mode is enabled, every key press is sent to the terminal. 
-    /// If raw mode is not enabled, the return key has to be pressed to 
+    /// When raw mode is enabled, every key press is sent to the terminal.
+    /// If raw mode is not enabled, the return key has to be pressed to
     /// send characters to the terminal.
     pub fn enable_raw_mode(mut self) -> Self {
         self.enable_raw_mode = true;
