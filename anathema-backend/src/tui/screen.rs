@@ -27,7 +27,7 @@ impl Screen {
 
     /// Show the cursor
     pub(super) fn show_cursor(mut output: impl Write) -> Result<()> {
-        output.execute(cursor::Show)?;
+        output.queue(cursor::Show)?;
         Ok(())
     }
 
