@@ -59,6 +59,9 @@ pub struct RuntimeBuilder<T> {
 }
 
 impl<T> RuntimeBuilder<T> {
+    /// Registers a [Component] with the runtime. This returns a unique [ComponentId] that can be used to send messages to the component.
+    /// A component can only be used once in a template, even if it wouldn't actually be displayed in the end.
+    /// If you want multiple occurrences, register it as a prototype instead, see [RuntimeBuilder::register_prototype], it is basically a drop-in replacement
     pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
@@ -72,6 +75,10 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
+    /// Registers a [Component] as a prototype to the [Runtime], which allows the usage of multiple instances of the component in the templates.
+    /// This is useful if you want to reuse the component (Such as an input or button component) or if you use your component in if-blocks or for loops.
+    /// If you don't need that, consider using [RuntimeBuilder::register_component] or [RuntimeBuilder::register_default] instead.
+    /// Unlike when registering a component, this won't return a [ComponentId] because there's no meaningful way to express which component the message would go to.
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
@@ -90,6 +97,10 @@ impl<T> RuntimeBuilder<T> {
         Ok(())
     }
 
+    /// Registers a [Component] with the runtime. This returns a unique [ComponentId] that can be used to send messages to the component.
+    /// Uses the [Default::default] implementation for the [Component] and [Component::State].
+    /// A component can only be used once in a template, even if it wouldn't actually be displayed in the end.
+    /// If you want multiple occurrences, register it as a prototype instead, see [RuntimeBuilder::register_prototype], it is basically a drop-in replacement
     pub fn register_default<C>(
         &mut self,
         ident: impl Into<String>,
@@ -106,6 +117,7 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
+    /// Returns the Runtime [Emitter] to emit messages to components
     pub fn emitter(&self) -> Emitter {
         self.emitter.clone()
     }
@@ -140,6 +152,8 @@ impl<T> RuntimeBuilder<T> {
         Ok(watcher)
     }
 
+    /// Builds the [Runtime]. This will remove the ability to add new components or prototypes.
+    /// Fails if compiling the [Document] or creating the file watcher fails.
     pub fn finish(mut self) -> Result<Runtime<T>>
     where
         T: Backend,
@@ -243,6 +257,7 @@ where
         Self::builder(document, backend)
     }
 
+    /// Creates a [RuntimeBuilder] based on the [Document] and [Backend]. Hot Reloading is configured on the [Document]
     pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
         let mut factory = Factory::new();
 
