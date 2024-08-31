@@ -36,7 +36,7 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext,
     Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
