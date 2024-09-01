@@ -1,0 +1,14 @@
+vstack [background: #282727]
+    expand [factor: 7]
+        border
+            vstack
+                expand
+                @messages
+
+    expand [factor: 3]
+        border [background: #393836]
+            vstack
+                align [alignment: "center"]
+                    border [background: #658594, id: "button"]
+                        padding [top: 2, bottom: 2, left: 5, right: 5]
+                            text "Send a message"
