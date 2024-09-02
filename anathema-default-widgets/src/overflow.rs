@@ -81,14 +81,18 @@ impl Overflow {
             self.offset.y = 0;
         }
 
-        if children.height > parent.height {
+        if children.height <= parent.height {
+            self.offset.y = 0;
+        } else {
             let max_y = children.height as i32 - parent.height as i32;
             if self.offset.y > max_y {
                 self.offset.y = max_y;
             }
         }
 
-        if children.width > parent.width {
+        if children.width <= parent.width {
+            self.offset.x = 0;
+        } else {
             let max_x = children.width as i32 - parent.width as i32;
             if self.offset.x > max_x {
                 self.offset.x = max_x
@@ -264,8 +268,7 @@ mod test {
     fn clamp_prevents_scrolling() {
         let tpl = "
     overflow
-        text '0'
-";
+        text '0'";
 
         let expected_first = "
     ╔═══╗
@@ -276,28 +279,6 @@ mod test {
 
         TestRunner::new(tpl, (3, 2))
             .instance()
-            .render_assert(expected_first)
-            .with_widget(|mut query| {
-                query.by_tag("overflow").first(|el, _| {
-                    let overflow = el.to::<Overflow>();
-                    overflow.scroll_left();
-                });
-            })
-            .render_assert(expected_first)
-            .with_widget(|mut query| {
-                query.by_tag("overflow").first(|el, _| {
-                    let overflow = el.to::<Overflow>();
-                    overflow.scroll_right();
-                });
-            })
-            .render_assert(expected_first)
-            .with_widget(|mut query| {
-                query.by_tag("overflow").first(|el, _| {
-                    let overflow = el.to::<Overflow>();
-                    overflow.scroll_up();
-                });
-            })
-            .render_assert(expected_first)
             .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();

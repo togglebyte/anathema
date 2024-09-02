@@ -104,7 +104,7 @@ impl<T> RuntimeBuilder<T> {
     /// implements default.
     ///
     /// This is a shortcut for calling
-    /// ```norun
+    /// ```ignore
     /// runtime.register_component(
     ///     "name",
     ///     "template.aml",
