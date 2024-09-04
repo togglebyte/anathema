@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Rect, Size};
 
 use crate::container::Container;
 use crate::layout::text::StringSession;
@@ -54,6 +54,10 @@ impl<'bp> Element<'bp> {
 
     pub fn size(&self) -> Size {
         self.container.size
+    }
+
+    pub fn inner_bounds(&self) -> Rect {
+        self.container.inner_bounds
     }
 
     /// Get a mutable reference to the underlying widget of the given type

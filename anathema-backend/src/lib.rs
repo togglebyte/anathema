@@ -84,7 +84,10 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
                 match parent {
                     None => break (Pos::ZERO, self.constraints),
                     Some(p) => match self.tree.get_ref_by_path(p) {
-                        Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
+                        Some(WidgetKind::Element(el)) => {
+                            let bounds = el.inner_bounds();
+                            break (bounds.start, Constraints::from(bounds));
+                        }
                         _ => parent = p.parent(),
                     },
                 }

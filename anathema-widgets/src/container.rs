@@ -1,4 +1,4 @@
-use anathema_geometry::{LocalPos, Pos, Size};
+use anathema_geometry::{LocalPos, Pos, Rect, Size};
 
 use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
@@ -12,6 +12,7 @@ pub struct Container {
     pub id: WidgetId,
     pub size: Size,
     pub pos: Pos,
+    pub inner_bounds: Rect,
 }
 
 impl Container {
@@ -44,6 +45,7 @@ impl Container {
             viewport,
         };
         self.inner.any_position(children, self.id, attribute_storage, ctx);
+        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.size);
     }
 
     pub fn paint<'bp>(

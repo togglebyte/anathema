@@ -1,3 +1,5 @@
+use anathema_geometry::Rect;
+
 use crate::layout::Size;
 
 /// `Constraints` are used to ensure that a widget doesn't size it self outside of a set of given bounds.
@@ -188,6 +190,14 @@ impl Constraints {
 impl From<Size> for Constraints {
     fn from(value: Size) -> Self {
         Self::new(value.width, value.height)
+    }
+}
+
+impl From<Rect> for Constraints {
+    fn from(value: Rect) -> Self {
+        let width = value.end.x - value.start.x;
+        let height = value.end.y - value.start.y;
+        Self::new(width as usize, height as usize)
     }
 }
 
