@@ -131,6 +131,10 @@ where
         self.0.iter().map(|(_, (k, v))| (k, v))
     }
 
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut K, &mut V)> + '_ {
+        self.0.iter_mut().map(|(_, (k, v))| (k, v))
+    }
+
     /// Get a value ref by the value index instead of the key
     pub fn get_with_index(&self, idx: SmallIndex) -> Option<&V> {
         self.0.get(idx).map(|(_, v)| v)

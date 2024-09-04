@@ -10,7 +10,9 @@ use anathema_templates::WidgetComponentId;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
+use crate::expressions::Either;
 use crate::layout::Viewport;
+use crate::nodes::ExternalState;
 use crate::widget::Parent;
 use crate::Elements;
 
@@ -223,6 +225,12 @@ impl<'rt, T: 'static> Context<'rt, T> {
             .emit(recipient, value)
             .expect("this will not fail unless the runtime is droped")
     }
+
+    /// Get a value from external state
+    pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
+        let val = self.component_ctx.external_state?.get(key);
+        val.and_then(|(_, val)| val.load_common_val())
+    }
 }
 
 impl<'rt, T> Deref for Context<'rt, T> {
@@ -258,6 +266,7 @@ pub struct ComponentContext<'rt> {
     pub state_id: StateId,
     pub assoc_functions: &'rt [(StringId, StringId)],
     pub assoc_events: &'rt mut AssociatedEvents,
+    external_state: Option<&'rt ExternalState<'rt>>,
 }
 
 impl<'rt> ComponentContext<'rt> {
@@ -266,12 +275,14 @@ impl<'rt> ComponentContext<'rt> {
         parent: Option<WidgetComponentId>,
         assoc_functions: &'rt [(StringId, StringId)],
         assoc_events: &'rt mut AssociatedEvents,
+        external_state: Option<&'rt ExternalState<'rt>>,
     ) -> Self {
         Self {
             parent: parent.map(Into::into),
             state_id,
             assoc_functions,
             assoc_events,
+            external_state,
         }
     }
 }

@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use anathema_state::StateId;
+use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::WidgetComponentId;
@@ -9,14 +8,14 @@ use crate::components::{AnyComponent, ComponentKind};
 use crate::expressions::EvalValue;
 use crate::{Value, ValueIndex};
 
-type ExternalState<'bp> = HashMap<(&'bp str, ValueIndex), Value<'bp, EvalValue<'bp>>>;
+pub type ExternalState<'bp> = SmallMap<&'bp str, (ValueIndex, Value<'bp, EvalValue<'bp>>)>;
 
 #[derive(Debug)]
 pub struct Component<'bp> {
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
-    pub(crate) external_state: Option<ExternalState<'bp>>,
+    pub external_state: Option<ExternalState<'bp>>,
     pub component_id: WidgetComponentId,
     pub parent: Option<WidgetComponentId>,
     pub kind: ComponentKind,
