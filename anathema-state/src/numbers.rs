@@ -5,7 +5,7 @@
 //!
 //! Note: If either the `lhs` or the `rhs` is a float then the entire
 //! number has to be treated as a float
-use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::{i16, i8, isize, f32, f64, ops::{Add, Div, Mul, Neg, Rem, Sub}};
 
 use crate::{CommonVal, State};
 
@@ -62,6 +62,24 @@ impl Number {
 
     pub fn is_float(&self) -> bool {
         matches!(self, Self::F64(_) | Self::F32(_))
+    }
+
+    pub fn as_uint(self) -> usize {
+        match self {
+            Self::Usize(n) => n as usize,
+            Self::Isize(n @ 0..isize::MAX) => n as usize,
+            Self::U64(n) => n as usize,
+            Self::I64(n @ 0..=i64::MAX) => n as usize,
+            Self::U32(n) => n as usize,
+            Self::I32(n @ 0..=i32::MAX) => n as usize,
+            Self::U16(n) => n as usize,
+            Self::I16(n @ 0..=i16::MAX) => n as usize,
+            Self::U8(n) => n as usize,
+            Self::I8(n @ 0..=i8::MAX) => n as usize,
+            Self::F64(n @ 0.0..=f64::MAX) => n as usize,
+            Self::F32(n @ 0.0..=f32::MAX) => n as usize,
+            _ => 0
+        }
     }
 }
 

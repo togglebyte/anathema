@@ -31,19 +31,19 @@ impl Stack {
     ) -> Size {
         let attributes = ctx.attribs.get(id);
 
-        if let Some(width) = attributes.get(MIN_WIDTH) {
+        if let Some(width) = attributes.get_usize(MIN_WIDTH) {
             constraints.min_width = width;
         }
 
-        if let Some(height) = attributes.get(MIN_HEIGHT) {
+        if let Some(height) = attributes.get_usize(MIN_HEIGHT) {
             constraints.min_height = height;
         }
 
-        if let Some(width) = attributes.get(WIDTH) {
+        if let Some(width) = attributes.get_usize(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get(HEIGHT) {
+        if let Some(height) = attributes.get_usize(HEIGHT) {
             constraints.make_height_tight(height);
         }
 

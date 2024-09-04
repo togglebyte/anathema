@@ -419,12 +419,12 @@ impl Widget for Border {
         self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
-            min_width: attributes.get(MIN_WIDTH),
-            min_height: attributes.get(MIN_HEIGHT),
-            max_width: attributes.get(MAX_WIDTH),
-            max_height: attributes.get(MAX_HEIGHT),
-            height: attributes.get_int(HEIGHT).map(|n| n as usize),
-            width: attributes.get_int(WIDTH).map(|n| n as usize),
+            min_width: attributes.get_usize(MIN_WIDTH),
+            min_height: attributes.get_usize(MIN_HEIGHT),
+            max_width: attributes.get_usize(MAX_WIDTH),
+            max_height: attributes.get_usize(MAX_HEIGHT),
+            height: attributes.get_usize(HEIGHT).map(|n| n as usize),
+            width: attributes.get_usize(WIDTH).map(|n| n as usize),
             border_size: self.border_size(self.sides),
         };
 
