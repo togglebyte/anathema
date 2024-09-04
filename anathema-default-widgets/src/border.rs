@@ -423,8 +423,8 @@ impl Widget for Border {
             min_height: attributes.get_usize(MIN_HEIGHT),
             max_width: attributes.get_usize(MAX_WIDTH),
             max_height: attributes.get_usize(MAX_HEIGHT),
-            height: attributes.get_usize(HEIGHT).map(|n| n as usize),
-            width: attributes.get_usize(WIDTH).map(|n| n as usize),
+            height: attributes.get_usize(HEIGHT),
+            width: attributes.get_usize(WIDTH),
             border_size: self.border_size(self.sides),
         };
 
