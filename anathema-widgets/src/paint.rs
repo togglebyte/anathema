@@ -5,7 +5,6 @@ use anathema_state::Hex;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use unicode_width::UnicodeWidthChar;
 
-use crate::layout::text::StringSession;
 use crate::layout::Display;
 use crate::nodes::element::Element;
 use crate::widget::WidgetRenderer;
@@ -70,13 +69,12 @@ pub fn paint<'bp>(
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
     attribute_storage: &AttributeStorage<'bp>,
-    text: &mut StringSession<'_>,
     ignore_floats: bool,
 ) {
     let filter = PaintFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
     let ctx = PaintCtx::new(surface, None);
-    element.paint(children, ctx, text, attribute_storage);
+    element.paint(children, ctx, attribute_storage);
 }
 
 #[derive(Debug, Copy, Clone)]

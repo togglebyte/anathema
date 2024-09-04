@@ -4,7 +4,6 @@ use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Rect, Size};
 use anathema_widgets::expressions::EvalValue;
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{
@@ -347,13 +346,13 @@ impl BorderSize {
 pub struct Border {
     /// The border style decides the characters
     /// to be used for each side of the border.
-    pub border_style: BorderStyle,
+    border_style: BorderStyle,
     /// Which sides of the border should be rendered.
-    pub sides: Sides,
+    sides: Sides,
     /// All the characters for the border, starting from the top left moving clockwise.
     /// This means the top-left corner is `edges[0]`, the top if `edges[1]` and the top right is
     /// `edges[2]` etc.
-    pub edges: [char; 8],
+    edges: [char; 8],
 }
 
 impl Border {
@@ -407,7 +406,7 @@ impl Widget for Border {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         self.sides = attributes
@@ -419,12 +418,12 @@ impl Widget for Border {
         self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
-            min_width: attributes.get(MIN_WIDTH),
-            min_height: attributes.get(MIN_HEIGHT),
-            max_width: attributes.get(MAX_WIDTH),
-            max_height: attributes.get(MAX_HEIGHT),
-            height: attributes.get_int(HEIGHT).map(|n| n as usize),
-            width: attributes.get_int(WIDTH).map(|n| n as usize),
+            min_width: attributes.get_usize(MIN_WIDTH),
+            min_height: attributes.get_usize(MIN_HEIGHT),
+            max_width: attributes.get_usize(MAX_WIDTH),
+            max_height: attributes.get_usize(MAX_HEIGHT),
+            height: attributes.get_usize(HEIGHT),
+            width: attributes.get_usize(WIDTH),
             border_size: self.border_size(self.sides),
         };
 
@@ -458,13 +457,12 @@ impl Widget for Border {
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
         let border_size = self.border_size(self.sides);
 
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
-            child.paint(children, ctx, text, attribute_storage);
+            child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())
         });
 

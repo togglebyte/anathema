@@ -15,34 +15,34 @@ impl Widget for Container {
         mut children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
 
         let attribs = ctx.attribs.get(id);
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get(WIDTH) {
-            constraints.make_width_tight(width as usize);
+        if let Some(width) = attribs.get_usize(WIDTH) {
+            constraints.make_width_tight(width);
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get(HEIGHT) {
-            constraints.make_height_tight(height as usize);
+        if let Some(height) = attribs.get_usize(HEIGHT) {
+            constraints.make_height_tight(height);
         }
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get(MIN_WIDTH) {
-            constraints.min_width = width as usize;
+        if let Some(width) = attribs.get_usize(MIN_WIDTH) {
+            constraints.min_width = width;
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get(MIN_HEIGHT) {
-            constraints.min_height = height as usize;
+        if let Some(height) = attribs.get_usize(MIN_HEIGHT) {
+            constraints.min_height = height;
         }
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get(MAX_WIDTH) {
-            constraints.set_max_width(width as usize);
+        if let Some(width) = attribs.get_usize(MAX_WIDTH) {
+            constraints.set_max_width(width);
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get(MAX_HEIGHT) {
-            constraints.set_max_height(height as usize);
+        if let Some(height) = attribs.get_usize(MAX_HEIGHT) {
+            constraints.set_max_height(height);
         }
 
         children.for_each(|child, children| {

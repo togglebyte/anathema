@@ -120,6 +120,8 @@ impl Evaluator for SingleEval {
             pos: Pos::ZERO,
             size: Size::ZERO,
             inner_bounds: Rect::ZERO,
+            needs_layout: true,
+            needs_position: false,
         };
 
         // Widget
@@ -382,6 +384,15 @@ impl Evaluator for ComponentEval {
         let widget_id = transaction
             .commit_child(WidgetKind::Component(comp_widget))
             .ok_or(Error::TreeTransactionFailed)?;
+
+        // Attributes
+        let mut attributes = Attributes::empty(widget_id);
+        for (key, expr) in input.attributes.iter() {
+            attributes.insert_with(ValueKey::Attribute(key), |value_index| {
+                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
+            });
+        }
+        ctx.attribute_storage.insert(widget_id, attributes);
 
         let path = tree.path(widget_id);
         ctx.components.push(path, widget_id, state_id, component_id);

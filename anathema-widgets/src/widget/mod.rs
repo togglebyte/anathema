@@ -10,13 +10,12 @@ use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::sorted::SortedList;
-use anathema_store::tree::{Tree, TreeForEach};
+use anathema_store::tree::{NodeWalker, Tree, TreeForEach};
 use anathema_templates::WidgetComponentId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
 pub use self::query::Elements;
-use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::paint::{CellAttributes, PaintCtx, PaintFilter, SizePos};
 use crate::WidgetKind;
@@ -134,6 +133,45 @@ impl FloatingWidgets {
     }
 }
 
+pub struct DirtyWidgets {
+    inner: Vec<WidgetId>,
+}
+
+impl DirtyWidgets {
+    pub fn empty() -> Self {
+        Self { inner: vec![] }
+    }
+
+    pub fn push(&mut self, widget_id: WidgetId) {
+        self.inner.push(widget_id);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
+    pub fn apply(&self, tree: &mut Tree<WidgetKind<'_>>) {
+        for id in &self.inner {
+            let path = tree.path(*id);
+            tree.apply_node_walker(&path, WidgetNeedsLayout);
+        }
+    }
+}
+
+struct WidgetNeedsLayout;
+
+impl NodeWalker<WidgetKind<'_>> for WidgetNeedsLayout {
+    fn apply(&mut self, widget: &mut WidgetKind<'_>) {
+        if let WidgetKind::Element(el) = widget {
+            el.container.needs_layout = true;
+        }
+    }
+}
+
 /// Parent in a component relationship
 #[derive(Debug, Copy, Clone)]
 pub struct Parent(pub WidgetComponentId);
@@ -199,7 +237,7 @@ pub trait AnyWidget {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size;
 
     fn any_position<'bp>(
@@ -216,12 +254,13 @@ pub trait AnyWidget {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     );
 
     fn any_floats(&self) -> bool;
 
     fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect;
+
+    fn any_needs_reflow(&self) -> bool;
 }
 
 impl<T: 'static + Widget> AnyWidget for T {
@@ -238,7 +277,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.layout(children, constraints, id, ctx)
     }
@@ -259,9 +298,8 @@ impl<T: 'static + Widget> AnyWidget for T {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
-        self.paint(children, id, attribute_storage, ctx, text)
+        self.paint(children, id, attribute_storage, ctx)
     }
 
     fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect {
@@ -270,6 +308,10 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_floats(&self) -> bool {
         self.floats()
+    }
+
+    fn any_needs_reflow(&self) -> bool {
+        self.needs_reflow()
     }
 }
 
@@ -285,7 +327,7 @@ pub trait Widget {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size;
 
     fn paint<'bp>(
@@ -294,12 +336,10 @@ pub trait Widget {
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        // TODO make a read-only version of the buffer as it shouldn't change on paint
-        text: &mut StringSession<'_>,
     ) {
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
-            child.paint(children, ctx, text, attribute_storage);
+            child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
         });
     }
@@ -318,6 +358,10 @@ pub trait Widget {
 
     fn inner_bounds(&self, pos: Pos, size: Size) -> Rect {
         Rect::from((pos, size))
+    }
+
+    fn needs_reflow(&self) -> bool {
+        false
     }
 }
 

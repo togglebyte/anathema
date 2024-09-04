@@ -1,6 +1,5 @@
 use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
@@ -158,16 +157,16 @@ impl Widget for Canvas {
         _children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribs.get(id);
 
-        if let Some(width @ 0..=i64::MAX) = attribs.get_int(WIDTH) {
-            constraints.set_max_width(width as usize);
+        if let Some(width) = attribs.get_usize(WIDTH) {
+            constraints.set_max_width(width);
         }
 
-        if let Some(height @ 0..=i64::MAX) = attribs.get_int(HEIGHT) {
-            constraints.set_max_height(height as usize);
+        if let Some(height) = attribs.get_usize(HEIGHT) {
+            constraints.set_max_height(height);
         }
 
         let size = constraints.max_size();
@@ -195,7 +194,6 @@ impl Widget for Canvas {
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        _text: &mut StringSession<'_>,
     ) {
         for (pos, c, style) in self.buffer.iter() {
             ctx.set_attributes(style, pos);

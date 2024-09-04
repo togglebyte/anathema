@@ -1,6 +1,5 @@
 use anathema_geometry::{LocalPos, Pos, Rect, Size};
 
-use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren};
@@ -13,6 +12,8 @@ pub struct Container {
     pub size: Size,
     pub pos: Pos,
     pub inner_bounds: Rect,
+    pub needs_layout: bool,
+    pub needs_position: bool,
 }
 
 impl Container {
@@ -20,8 +21,14 @@ impl Container {
         &mut self,
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
+        if !self.needs_layout {
+            return self.size;
+        }
+        self.needs_layout = false;
+        self.needs_position = true;
+
         self.size = self.inner.any_layout(children, constraints, self.id, ctx);
         // Floating widgets always report a zero size
         // as they should not affect their parents
@@ -38,6 +45,11 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
+        if !self.needs_position && pos == self.pos {
+            return;
+        }
+        self.needs_position = false;
+
         self.pos = pos;
         let ctx = PositionCtx {
             inner_size: self.size,
@@ -52,9 +64,11 @@ impl Container {
         &mut self,
         children: PaintChildren<'_, '_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
-        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
+        if self.needs_layout || self.needs_position {
+            return;
+        }
         let mut ctx = ctx.into_sized(self.size, self.pos);
         let region = ctx.create_region();
         ctx.set_clip_region(region);
@@ -69,6 +83,6 @@ impl Container {
             }
         }
 
-        self.inner.any_paint(children, self.id, attribute_storage, ctx, text)
+        self.inner.any_paint(children, self.id, attribute_storage, ctx)
     }
 }
