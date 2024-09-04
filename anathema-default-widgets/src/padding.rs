@@ -40,10 +40,22 @@ impl Widget for Padding {
         let mut size = Size::ZERO;
         let padding = attributes.get(PADDING).unwrap_or(0);
 
-        self.0.top = attributes.get(TOP).unwrap_or(padding);
-        self.0.right = attributes.get(RIGHT).unwrap_or(padding);
-        self.0.bottom = attributes.get(BOTTOM).unwrap_or(padding);
-        self.0.left = attributes.get(LEFT).unwrap_or(padding);
+        self.0.top = attributes
+            .get_usize(TOP)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
+        self.0.right = attributes
+            .get_usize(RIGHT)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
+        self.0.bottom = attributes
+            .get_usize(BOTTOM)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
+        self.0.left = attributes
+            .get_usize(LEFT)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
 
         let padding_size = self.0.size();
 
