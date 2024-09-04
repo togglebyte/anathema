@@ -162,7 +162,7 @@ impl Widget for Position {
                 VertEdge::Top(top) => ctx.pos.y += top as i32,
                 VertEdge::Bottom(bottom) => {
                     let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom as i32;
-                    ctx.pos.y = offset as i32;
+                    ctx.pos.y = offset;
                 }
             }
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
@@ -189,7 +189,6 @@ impl Widget for Position {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::testing::TestRunner;
 
     #[test]

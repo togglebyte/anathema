@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Rect, Size};
 use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
@@ -121,6 +121,7 @@ impl Evaluator for SingleEval {
             id: widget_id,
             pos: Pos::ZERO,
             size: Size::ZERO,
+            inner_bounds: Rect::ZERO,
         };
 
         // Widget
