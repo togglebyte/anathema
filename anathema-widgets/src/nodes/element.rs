@@ -2,7 +2,7 @@ use anathema_geometry::{Pos, Size};
 
 use crate::container::Container;
 use crate::layout::text::StringSession;
-use crate::layout::{Constraints, LayoutCtx};
+use crate::layout::{Constraints, LayoutCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{PaintChildren, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, WidgetId};
@@ -47,8 +47,9 @@ impl<'bp> Element<'bp> {
         children: PositionChildren<'_, '_, 'bp>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
+        viewport: Viewport,
     ) {
-        self.container.position(children, pos, attribute_storage);
+        self.container.position(children, pos, attribute_storage, viewport);
     }
 
     pub fn size(&self) -> Size {

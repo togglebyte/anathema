@@ -42,7 +42,7 @@ impl Widget for Row {
 
             let mut pos = ctx.pos;
             pos.y += y;
-            child.position(children, pos, attribute_storage);
+            child.position(children, pos, attribute_storage, ctx.viewport);
             ctx.pos.x += size.width as i32;
             ControlFlow::Continue(())
         });

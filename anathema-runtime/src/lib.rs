@@ -21,20 +21,19 @@ use std::fmt::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use anathema_backend::Backend;
+use anathema_backend::{Backend, WidgetCycle};
 use anathema_default_widgets::register_default_widgets;
-use anathema_geometry::Pos;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::{root_node, AsNodePath};
+use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
     AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::text::StringStorage;
-use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
     FloatingWidgets, Scope, WidgetKind, WidgetTree,
@@ -594,7 +593,7 @@ where
         //   there is no reason to perform a layout on the entire tree,
         //   and only the widget it self needs to be re-painted
         //
-        // Q) What about floating widgets?
+        // Q) What about loating widgets?
 
         self.apply_changes(globals, tree, states, attribute_storage);
 
@@ -609,57 +608,17 @@ where
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
-        let mut filter = LayoutFilter::new(true, attribute_storage);
-        tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            // Layout
-            // TODO: once the text buffer can be read-only for the paint
-            //       the context can be made outside of this closure.
-            //
-            //       That doesn't have as much of an impact here
-            //       as it will do when dealing with the floating widgets
-            let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
-            layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
-
-            // Position
-            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
-
-            // Paint
-            let mut string_session = self.string_storage.new_session();
-            self.backend
-                .paint(widget, children, values, &mut string_session, attribute_storage, true);
-        });
-
-        // Floating widgets
-        for widget_id in self.floating_widgets.iter() {
-            // Find the parent widget and get the position
-            // If no parent element is found assume Pos::ZERO
-            let mut parent = tree.path_ref(*widget_id).parent();
-            let (pos, constraints) = loop {
-                match parent {
-                    None => break (Pos::ZERO, self.constraints),
-                    Some(p) => match tree.get_ref_by_path(p) {
-                        Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
-                        _ => parent = p.parent(),
-                    },
-                }
-            };
-
-            tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx =
-                    LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
-
-                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
-
-                // Position
-                position_widget(pos, el, children, values, attribute_storage, true);
-
-                // Paint
-                let mut string_session = self.string_storage.new_session();
-                self.backend
-                    .paint(el, children, values, &mut string_session, attribute_storage, true);
-            });
-        }
+        let mut string_session = self.string_storage.new_session();
+        WidgetCycle::new(
+            &mut self.backend,
+            tree,
+            self.constraints,
+            attribute_storage,
+            &mut string_session,
+            &self.floating_widgets,
+            self.viewport,
+        )
+        .run();
 
         self.backend.render();
         self.backend.clear();

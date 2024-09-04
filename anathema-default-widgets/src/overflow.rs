@@ -178,7 +178,7 @@ impl Widget for Overflow {
         children.for_each(|node, children| {
             match direction {
                 Direction::Forward => {
-                    node.position(children, pos, attribute_storage);
+                    node.position(children, pos, attribute_storage, ctx.viewport);
                     match axis {
                         Axis::Horizontal => pos.x += node.size().width as i32,
                         Axis::Vertical => pos.y += node.size().height as i32,
@@ -189,7 +189,7 @@ impl Widget for Overflow {
                         Axis::Horizontal => pos.x -= node.size().width as i32,
                         Axis::Vertical => pos.y -= node.size().height as i32,
                     }
-                    node.position(children, pos, attribute_storage);
+                    node.position(children, pos, attribute_storage, ctx.viewport);
                 }
             }
 

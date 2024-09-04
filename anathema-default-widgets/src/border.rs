@@ -326,8 +326,8 @@ impl BorderSize {
         let left_width = self.left.max(self.top_left).max(self.bottom_left);
         let right_width = self.right.max(self.top_right).max(self.bottom_right);
 
-        let top = if self.top > 0 { 1 } else { 2 };
-        let bottom = if self.bottom > 0 { 1 } else { 2 };
+        let top = if self.top > 0 { 1 } else { 0 };
+        let bottom = if self.bottom > 0 { 1 } else { 0 };
 
         Size {
             width: (left_width + right_width) as usize,
@@ -450,7 +450,7 @@ impl Widget for Border {
                 ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as i32;
             }
 
-            child.position(children, ctx.pos, attribute_storage);
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

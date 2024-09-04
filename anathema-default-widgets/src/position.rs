@@ -145,22 +145,27 @@ impl Widget for Position {
         }
 
         children.for_each(|child, children| {
+            // let (pos, size) = match self.placement {
+            //     Placement::Relative => (ctx.pos, child.size()),
+            //     Placement::Absolute => (Pos::ZERO, ctx.viewport.size()),
+            // };
+
             match self.horz_edge {
                 HorzEdge::Left(left) => ctx.pos.x += left as i32,
                 HorzEdge::Right(right) => {
-                    let offset = ctx.inner_size.width - child.size().width - right as usize;
-                    ctx.pos.x = offset as i32;
+                    let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right as i32;
+                    ctx.pos.x = offset;
                 }
             }
 
             match self.vert_edge {
                 VertEdge::Top(top) => ctx.pos.y += top as i32,
-                VertEdge::Bottom(right) => {
-                    let offset = ctx.inner_size.width - child.size().width - right as usize;
-                    ctx.pos.x = offset as i32;
+                VertEdge::Bottom(bottom) => {
+                    let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom as i32;
+                    ctx.pos.y = offset as i32;
                 }
             }
-            child.position(children, ctx.pos, attribute_storage);
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }
@@ -179,5 +184,130 @@ impl Widget for Position {
             child.paint(children, ctx, text, attribute_storage);
             ControlFlow::Continue(())
         });
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::TestRunner;
+
+    #[test]
+    fn position_top_left() {
+        let tpl = "
+            position [top: 0, left: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║hi  ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_top() {
+        let tpl = "
+            position [top: 1]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║hi  ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_top_right() {
+        let tpl = "
+            position [top: 1, right: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║  hi║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_right() {
+        let tpl = "
+            position [right: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║  hi║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_bottom_right() {
+        let tpl = "
+            position [bottom: 0, right: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║  hi║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_bottom() {
+        let tpl = "
+            position [bottom: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║hi  ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_bottom_left() {
+        let tpl = "
+            position [bottom: 0, left: 1]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║ hi ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
     }
 }
