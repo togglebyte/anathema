@@ -142,7 +142,8 @@ impl<'bp> Attributes<'bp> {
 
     /// Get an unsigned integer regardless of how the value was stored.
     /// This will convert any state value of any numerical type
-    /// into a `u64`.
+    /// into a `usize`.
+    /// This will truncate any bits don't fit into a usize.
     pub fn get_usize(&self, key: &'bp str) -> Option<usize> {
         let key = ValueKey::Attribute(key);
 
