@@ -192,7 +192,7 @@ fn try_resolve_value<'bp>(
         WidgetKind::Iteration(_) => unreachable!(),
         WidgetKind::Component(component) => {
             let Some(state) = &mut component.external_state else { return Ok(()) };
-            for ((_, i), v) in state.iter_mut() {
+            for (_, (i, v)) in state.iter_mut() {
                 if *i == value_id.index() {
                     if let Some(expr) = v.expr {
                         *v = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);

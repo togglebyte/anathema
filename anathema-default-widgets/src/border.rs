@@ -2,7 +2,7 @@ use std::convert::Infallible;
 use std::fmt::Display;
 use std::ops::{ControlFlow, Deref};
 
-use anathema_geometry::{LocalPos, Size};
+use anathema_geometry::{LocalPos, Pos, Rect, Size};
 use anathema_widgets::expressions::EvalValue;
 use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
@@ -326,12 +326,9 @@ impl BorderSize {
         let left_width = self.left.max(self.top_left).max(self.bottom_left);
         let right_width = self.right.max(self.top_right).max(self.bottom_right);
 
-        let top = if self.top > 0 { 1 } else { 0 };
-        let bottom = if self.bottom > 0 { 1 } else { 0 };
-
         Size {
             width: (left_width + right_width) as usize,
-            height: (top + bottom) as usize,
+            height: (self.top + self.bottom) as usize,
         }
     }
 }
@@ -472,9 +469,6 @@ impl Widget for Border {
         });
 
         // Draw the border
-        let _width = ctx.local_size.width;
-        let _height = ctx.local_size.height;
-
         // Only draw corners if there are connecting sides:
         // e.g Sides::Left | Sides::Top
         //
@@ -492,11 +486,19 @@ impl Widget for Border {
 
         painter.paint(&mut paint);
     }
+
+    fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Rect {
+        let bs = self.border_size(self.sides);
+        pos.x += bs.top_left.max(bs.bottom_left).max(bs.left) as i32;
+        pos.y += bs.top as i32;
+        size.width = size
+            .width
+            .saturating_sub(bs.top_right.max(bs.bottom_right).max(bs.right) as usize);
+        size.height = size.height.saturating_sub(bs.bottom as usize);
+        Rect::from((pos, size))
+    }
 }
 
-//pub(crate) struct BorderFactory;
-
-//impl WidgetFactory for BorderFactory {
 pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
     let border_style: BorderStyle = attributes.get_ref(BORDER_STYLE).unwrap_or_default();
 

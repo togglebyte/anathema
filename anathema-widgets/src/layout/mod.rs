@@ -135,6 +135,7 @@ pub fn position_widget<'bp>(
     element.position(children, pos, attribute_storage, viewport);
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,

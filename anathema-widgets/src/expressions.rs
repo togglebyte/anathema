@@ -48,7 +48,7 @@ impl<'a> Either<'a> {
         }
     }
 
-    pub fn to_common(&self) -> Option<CommonVal<'_>> {
+    pub fn to_common(&'a self) -> Option<CommonVal<'a>> {
         match self {
             Either::Static(val) => Some(*val),
             Either::Dyn(state) => state.to_common(),

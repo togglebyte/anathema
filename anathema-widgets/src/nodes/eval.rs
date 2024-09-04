@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Rect, Size};
 use anathema_state::{AnyState, States, Value};
-use anathema_store::smallmap::SmallIndex;
+use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
 use anathema_templates::{Globals, WidgetComponentId};
 
@@ -121,6 +119,7 @@ impl Evaluator for SingleEval {
             id: widget_id,
             pos: Pos::ZERO,
             size: Size::ZERO,
+            inner_bounds: Rect::ZERO,
         };
 
         // Widget
@@ -355,11 +354,11 @@ impl Evaluator for ComponentEval {
 
         let external_state = match &input.state {
             Some(map) => {
-                let mut state_map = HashMap::new();
+                let mut state_map = SmallMap::empty();
                 for (i, (k, v)) in map.iter().enumerate() {
                     let idx: SmallIndex = (i as u8).into();
                     let val = eval(v, ctx.globals, ctx.scope, ctx.states, (transaction.node_id(), idx));
-                    state_map.insert((&**k, idx), val);
+                    state_map.set(&**k, (idx, val));
                 }
                 Some(state_map)
             }
@@ -397,7 +396,7 @@ impl Evaluator for ComponentEval {
 
             // Insert external state (if there is one)
             if let Some(state) = &component.external_state {
-                for ((k, _), v) in state.iter() {
+                for (k, (_, v)) in state.iter() {
                     let v = v.downgrade();
                     ctx.scope.scope_downgrade(k, v);
                 }
