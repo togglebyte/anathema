@@ -75,7 +75,7 @@ impl Stack {
         children.for_each(|node, children| {
             match direction {
                 Direction::Forward => {
-                    node.position(children, pos, attribute_storage);
+                    node.position(children, pos, attribute_storage, ctx.viewport);
 
                     match self.0 {
                         Axis::Horizontal => pos.x += node.size().width as i32,
@@ -88,7 +88,7 @@ impl Stack {
                         Axis::Vertical => pos.y -= node.size().height as i32,
                     }
 
-                    node.position(children, pos, attribute_storage);
+                    node.position(children, pos, attribute_storage, ctx.viewport);
                 }
             }
 

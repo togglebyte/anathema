@@ -53,7 +53,7 @@ impl Widget for Align {
                 Alignment::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
             };
 
-            child.position(children, ctx.pos + child_offset, attribute_storage);
+            child.position(children, ctx.pos + child_offset, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

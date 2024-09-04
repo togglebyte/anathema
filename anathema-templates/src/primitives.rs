@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use anathema_state::{CommonVal, Hex};
 
-/// Primitive values such as boolenas and integers.
+/// Primitive values such as booleans and integers.
 /// These values are all static and resolved at eval time.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Primitive {

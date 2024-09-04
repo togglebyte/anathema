@@ -1,7 +1,8 @@
 use anathema_backend::test::TestBackend;
-use anathema_backend::Backend;
+use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
+use anathema_store::tree::AsNodePath;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;
@@ -121,48 +122,18 @@ impl TestInstance<'_> {
         let constraints = Constraints::new(width as usize, height as usize);
 
         let attribute_storage = &self.attribute_storage;
+        let mut string_session = self.text.new_session();
 
-        let mut filter = LayoutFilter::new(true, attribute_storage);
-        self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), attribute_storage, &self.viewport);
-            layout_widget(widget, children, values, constraints, &mut layout_ctx, true);
-
-            // Position
-            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
-
-            // Paint
-            self.backend.paint(
-                widget,
-                children,
-                values,
-                &mut self.text.new_session(),
-                attribute_storage,
-                true,
-            );
-        });
-
-        // Paint floating widgets
-        for widget_id in self.floating_widgets.iter() {
-            self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
-
-                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
-
-                // Position
-                position_widget(Pos::ZERO, el, children, values, attribute_storage, true);
-
-                // Paint
-                self.backend.paint(
-                    el,
-                    children,
-                    values,
-                    &mut self.text.new_session(),
-                    attribute_storage,
-                    true,
-                );
-            });
-        }
+        WidgetCycle::new(
+            self.backend,
+            &mut self.tree,
+            constraints,
+            attribute_storage,
+            &mut string_session,
+            &self.floating_widgets,
+            self.viewport,
+        )
+        .run();
 
         self.backend.render();
 
