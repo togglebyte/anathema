@@ -189,7 +189,6 @@ impl Widget for Position {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::testing::TestRunner;
 
     #[test]
