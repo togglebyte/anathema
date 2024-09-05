@@ -624,6 +624,8 @@ where
         self.backend.clear();
 
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
+        eprintln!("{:?}", fps_now.elapsed());
+
         if sleep > 0 {
             std::thread::sleep(Duration::from_micros(sleep));
         }
