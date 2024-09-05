@@ -206,6 +206,15 @@ impl CellAttributes for Attributes<'_> {
         }
     }
 
+    fn get_color(&self, key: &str) -> Option<anathema_state::Color> {
+        let value = self.get_val(key)?;
+        let value = value.load_common_val()?;
+        match value.to_common()? {
+            CommonVal::Color(color) => Some(color),
+            _ => None,
+        }
+    }
+
     fn get_bool(&self, key: &str) -> bool {
         Attributes::get_bool(self, key)
     }

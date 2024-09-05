@@ -452,6 +452,7 @@ where
 
         // First build the tree
         let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree);
+
         match res {
             Ok(_) => (),
             Err(err) => {

@@ -1,7 +1,7 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_state::Hex;
+use anathema_state::{Color, Hex};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use unicode_width::UnicodeWidthChar;
 
@@ -16,6 +16,8 @@ pub trait CellAttributes {
     fn get_i64(&self, key: &str) -> Option<i64>;
 
     fn get_hex(&self, key: &str) -> Option<Hex>;
+
+    fn get_color(&self, key: &str) -> Option<Color>;
 
     fn get_bool(&self, key: &str) -> bool;
 }

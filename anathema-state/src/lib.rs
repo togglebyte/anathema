@@ -1,6 +1,7 @@
 pub use anathema_state_derive::State;
 use anathema_store::slab::Key;
 
+pub use crate::colors::{Color, FromColor};
 pub use crate::common::{CommonString, CommonVal};
 pub use crate::numbers::Number;
 pub use crate::states::{AnyState, State, StateId, States};
@@ -10,6 +11,7 @@ pub use crate::store::{
 };
 pub use crate::value::{List, Map, PendingValue, SharedState, Value, ValueRef};
 
+mod colors;
 mod common;
 mod numbers;
 mod states;
