@@ -29,7 +29,6 @@ macro_rules! out {
 
 pub struct TestCaseRunner<'bp, S> {
     _p: PhantomData<S>,
-
     globals: &'bp Globals,
     blueprint: &'bp Blueprint,
     factory: Factory,
@@ -68,7 +67,8 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
+            let mut string_session = self.text.new_session();
+            let mut layout_ctx = LayoutCtx::new(&mut string_session, &self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -78,13 +78,22 @@ where
                 true,
             );
 
-            position_widget(Pos::ZERO, widget, children, values, &self.attribute_storage, true);
+            position_widget(
+                Pos::ZERO,
+                widget,
+                children,
+                values,
+                &self.attribute_storage,
+                true,
+                self.viewport,
+            );
         });
 
         // Floating widgets
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
+            let mut string_session = self.text.new_session();
+            let mut layout_ctx = LayoutCtx::new(&mut string_session, &self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -94,7 +103,15 @@ where
                 true,
             );
 
-            position_widget(Pos::ZERO, widget, children, values, &self.attribute_storage, true);
+            position_widget(
+                Pos::ZERO,
+                widget,
+                children,
+                values,
+                &self.attribute_storage,
+                true,
+                self.viewport,
+            );
         });
     }
 
@@ -207,7 +224,8 @@ where
 
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
+            let mut string_session = self.text.new_session();
+            let mut layout_ctx = LayoutCtx::new(&mut string_session, &self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -302,11 +320,11 @@ impl Widget for TestWidget {
         mut children: anathema_widgets::PositionChildren<'_, '_, 'bp>,
         _attributes: anathema_widgets::WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        _ctx: anathema_widgets::layout::PositionCtx,
+        ctx: anathema_widgets::layout::PositionCtx,
     ) {
         let mut pos = Pos::ZERO;
         children.for_each(|node, children| {
-            node.position(children, pos, attribute_storage);
+            node.position(children, pos, attribute_storage, ctx.viewport);
             pos.y += node.size().height as i32;
 
             ControlFlow::Continue(())

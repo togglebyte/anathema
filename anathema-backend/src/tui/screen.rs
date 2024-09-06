@@ -21,19 +21,19 @@ pub struct Screen {
 impl Screen {
     /// Hide the cursor
     pub(super) fn hide_cursor(mut output: impl Write) -> Result<()> {
-        output.execute(cursor::Hide)?;
+        output.queue(cursor::Hide)?;
         Ok(())
     }
 
     /// Show the cursor
     pub(super) fn show_cursor(mut output: impl Write) -> Result<()> {
-        output.execute(cursor::Show)?;
+        output.queue(cursor::Show)?;
         Ok(())
     }
 
     /// Enable mouse support
     pub(super) fn enable_mouse(mut output: impl Write) -> Result<()> {
-        output.execute(EnableMouseCapture)?;
+        output.queue(EnableMouseCapture)?;
         Ok(())
     }
 

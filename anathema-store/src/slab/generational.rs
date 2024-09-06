@@ -33,6 +33,9 @@ impl From<usize> for Gen {
 /// A key is a combination of an index and a generation.
 /// To access a value using a key the value at the given index
 /// has to have a matching generation.
+///
+/// Bits 0..48: 48-bit key
+/// Bits 48..64 are the 16-bit generation
 #[derive(Copy, Clone, PartialEq, Hash, Eq)]
 pub struct Key(u64);
 

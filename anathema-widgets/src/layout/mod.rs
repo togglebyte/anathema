@@ -93,13 +93,13 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
 }
 
 pub struct LayoutCtx<'a, 'buf, 'bp> {
-    pub text: StringSession<'buf>,
+    pub text: &'a mut StringSession<'buf>,
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
 }
 
 impl<'a, 'buf, 'bp> LayoutCtx<'a, 'buf, 'bp> {
-    pub fn new(text: StringSession<'buf>, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
+    pub fn new(text: &'a mut StringSession<'buf>, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
         Self {
             text,
             attribs,
@@ -128,15 +128,18 @@ pub fn position_widget<'bp>(
     values: &mut TreeValues<WidgetKind<'bp>>,
     attribute_storage: &AttributeStorage<'bp>,
     ignore_floats: bool,
+    viewport: Viewport,
 ) {
     let filter = LayoutFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
-    element.position(children, pos, attribute_storage);
+    element.position(children, pos, attribute_storage, viewport);
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,
+    pub viewport: Viewport,
 }
 
 #[cfg(test)]

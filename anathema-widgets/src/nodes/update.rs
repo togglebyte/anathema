@@ -133,7 +133,7 @@ pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>,
         }
         WidgetKind::Component(component) => {
             if let Some(state) = &component.external_state {
-                for ((k, _), v) in state.iter() {
+                for (k, (_, v)) in state.iter() {
                     let v = v.downgrade();
                     scope.scope_downgrade(k, v);
                 }

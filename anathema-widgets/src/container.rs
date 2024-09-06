@@ -1,7 +1,7 @@
-use anathema_geometry::{LocalPos, Pos, Size};
+use anathema_geometry::{LocalPos, Pos, Rect, Size};
 
 use crate::layout::text::StringSession;
-use crate::layout::{Constraints, LayoutCtx, PositionCtx};
+use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
@@ -12,6 +12,7 @@ pub struct Container {
     pub id: WidgetId,
     pub size: Size,
     pub pos: Pos,
+    pub inner_bounds: Rect,
 }
 
 impl Container {
@@ -35,13 +36,16 @@ impl Container {
         children: PositionChildren<'_, '_, 'bp>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
+        viewport: Viewport,
     ) {
         self.pos = pos;
         let ctx = PositionCtx {
             inner_size: self.size,
             pos,
+            viewport,
         };
         self.inner.any_position(children, self.id, attribute_storage, ctx);
+        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.size);
     }
 
     pub fn paint<'bp>(

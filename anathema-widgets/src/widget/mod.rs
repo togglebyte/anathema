@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 
 pub type WidgetId = anathema_store::slab::Key;
 
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Rect, Size};
 use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallMap;
@@ -54,7 +54,7 @@ impl PartialEq for CompEntry {
 }
 
 pub struct Components {
-    tab_index: usize,
+    pub tab_index: usize,
     inner: SortedList<CompEntry>,
     comp_ids: SmallMap<WidgetComponentId, usize>,
 }
@@ -66,26 +66,6 @@ impl Components {
             inner: SortedList::empty(),
             comp_ids: SmallMap::empty(),
         }
-    }
-
-    pub fn next(&mut self) -> usize {
-        let prev = self.tab_index;
-        if self.tab_index == self.inner.len() - 1 {
-            self.tab_index = 0;
-        } else {
-            self.tab_index += 1;
-        }
-        prev
-    }
-
-    pub fn prev(&mut self) -> usize {
-        let prev = self.tab_index;
-        if self.tab_index == 0 {
-            self.tab_index = self.inner.len() - 1;
-        } else {
-            self.tab_index -= 1;
-        }
-        prev
     }
 
     pub fn push(&mut self, path: Box<[u16]>, widget_id: WidgetId, state_id: StateId, component_id: WidgetComponentId) {
@@ -240,6 +220,8 @@ pub trait AnyWidget {
     );
 
     fn any_floats(&self) -> bool;
+
+    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect;
 }
 
 impl<T: 'static + Widget> AnyWidget for T {
@@ -280,6 +262,10 @@ impl<T: 'static + Widget> AnyWidget for T {
         text: &mut StringSession<'_>,
     ) {
         self.paint(children, id, attribute_storage, ctx, text)
+    }
+
+    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect {
+        self.inner_bounds(pos, size)
     }
 
     fn any_floats(&self) -> bool {
@@ -328,6 +314,10 @@ pub trait Widget {
 
     fn floats(&self) -> bool {
         false
+    }
+
+    fn inner_bounds(&self, pos: Pos, size: Size) -> Rect {
+        Rect::from((pos, size))
     }
 }
 

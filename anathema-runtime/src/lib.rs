@@ -21,26 +21,26 @@ use std::fmt::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use anathema_backend::Backend;
+use anathema_backend::{Backend, WidgetCycle};
 use anathema_default_widgets::register_default_widgets;
-use anathema_geometry::Pos;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::{root_node, AsNodePath};
+use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
     AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::text::StringStorage;
-use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
-    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
+    FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
-use events::EventHandler;
+use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use tree::Tree;
 
 pub use crate::error::{Error, Result};
 
@@ -48,6 +48,7 @@ static REBUILD: AtomicBool = AtomicBool::new(false);
 
 mod error;
 mod events;
+mod tree;
 
 pub struct RuntimeBuilder<T> {
     document: Document,
@@ -59,6 +60,12 @@ pub struct RuntimeBuilder<T> {
 }
 
 impl<T> RuntimeBuilder<T> {
+    /// Registers a [Component] with the runtime.
+    /// This returns a unique [ComponentId] that is used to send messages to the component.
+    ///
+    /// A component can only be used once in a template.
+    /// If you want multiple instances, register the component as a prototype instead,
+    /// see [RuntimeBuilder::register_prototype].
     pub fn register_component<C: Component + 'static>(
         &mut self,
         ident: impl Into<String>,
@@ -72,6 +79,8 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
+    /// Registers a [Component] as a prototype with the [Runtime],
+    /// which allows for multiple instances of the component to exist the templates.
     pub fn register_prototype<FC, FS, C>(
         &mut self,
         ident: impl Into<String>,
@@ -90,6 +99,18 @@ impl<T> RuntimeBuilder<T> {
         Ok(())
     }
 
+    /// Registers a [Component] with the runtime as long as the component and the associated state
+    /// implements default.
+    ///
+    /// This is a shortcut for calling
+    /// ```ignore
+    /// runtime.register_component(
+    ///     "name",
+    ///     "template.aml",
+    ///     TheComponent::default(),
+    ///     TheComponent::State::default()
+    /// );
+    /// ```
     pub fn register_default<C>(
         &mut self,
         ident: impl Into<String>,
@@ -106,6 +127,7 @@ impl<T> RuntimeBuilder<T> {
         Ok(id.into())
     }
 
+    /// Returns an [Emitter] to send messages to components
     pub fn emitter(&self) -> Emitter {
         self.emitter.clone()
     }
@@ -140,6 +162,8 @@ impl<T> RuntimeBuilder<T> {
         Ok(watcher)
     }
 
+    /// Builds the [Runtime].
+    /// Fails if compiling the [Document] or creating the file watcher fails.
     pub fn finish(mut self) -> Result<Runtime<T>>
     where
         T: Backend,
@@ -243,6 +267,7 @@ where
         Self::builder(document, backend)
     }
 
+    /// Creates a [RuntimeBuilder] based on the [Document] and the [Backend].
     pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
         let mut factory = Factory::new();
 
@@ -306,13 +331,6 @@ where
             return;
         }
 
-        // use std::io::Write;
-        // let mut file = std::fs::OpenOptions::new()
-        //     .append(true)
-        //     .write(true)
-        //     .open("/tmp/log.lol").unwrap();
-        // file.write(format!("{}\n", self.changes.len()).as_bytes()).unwrap();
-
         let mut scope = Scope::new();
         self.changes.drain().rev().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
@@ -337,6 +355,7 @@ where
         });
     }
 
+    // Handles component messages for (ideally) at most half of a tick
     fn handle_messages<'bp>(
         &mut self,
         fps_now: Instant,
@@ -346,37 +365,28 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         assoc_events: &mut AssociatedEvents,
     ) -> Duration {
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &mut self.document.strings,
+        };
+
+        let mut event_ctx = EventCtx {
+            components: &mut self.components,
+            states,
+            attribute_storage,
+            assoc_events,
+            context,
+        };
+
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some((widget_id, state_id)) = self
+            if let Some((widget_id, state_id)) = event_ctx
                 .components
                 .get_by_component_id(msg.recipient())
                 .map(|e| (e.widget_id, e.state_id))
             {
-                tree.with_value_mut(widget_id, |path, widget, tree| {
-                    let WidgetKind::Component(component) = widget else { return };
-                    let state = states.get_mut(state_id);
-
-                    let parent = component
-                        .parent
-                        .and_then(|parent| self.components.get_by_component_id(parent))
-                        .map(|parent| parent.component_id.into());
-
-                    let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                    let elements = Elements::new(node.children(), values, attribute_storage);
-
-                    let context = UntypedContext {
-                        emitter: &self.emitter,
-                        viewport: self.viewport,
-                        assoc_events,
-                        state_id,
-                        parent,
-                        strings: &mut self.document.strings,
-                        assoc_functions: component.assoc_functions,
-                    };
-
-                    component
-                        .dyn_component
-                        .any_message(msg.payload(), state, elements, context);
+                tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| {
+                    a.any_message(msg.payload(), b)
                 });
             }
 
@@ -389,18 +399,25 @@ where
         fps_now.elapsed()
     }
 
+    /// Start the runtime
     pub fn run(&mut self) {
         self.backend.finalize();
-        match self.internal_run() {
-            Ok(()) => (),
-            Err(Error::Stop) => (),
-            Err(err) => {
-                self.show_error(err);
-                self.run();
+        loop {
+            match self.internal_run() {
+                Ok(()) => (),
+                Err(Error::Stop) => return,
+                Err(err) => self.show_error(err),
             }
         }
     }
 
+    // 1 - Tries to build the tree
+    // TODO: step 2 is not implemented yet
+    // 2 - Selects the first [Component] and calls [Component::on_focus] on it
+    // 3 - Repeatedly calls [Self::tick] until [REBUILD] is set to true or an error occurs. Using the [Error::Stop] breaks the main loop.
+    // 4 - Resets using [Self::reset]
+    // 5 - Recursively calls [Self::internal_run].
+    // TODO: We should move this into a loop in [Self::run].
     fn internal_run(&mut self) -> Result<()> {
         let mut fps_now = Instant::now();
         let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
@@ -437,31 +454,7 @@ where
             }
         }
 
-        // Select the first widget
-        if let Some((widget_id, state_id)) = self.components.current() {
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(state_id);
-
-                let parent = component
-                    .parent
-                    .and_then(|parent| self.components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
-
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, &mut attribute_storage);
-                let context = UntypedContext {
-                    emitter: &self.emitter,
-                    viewport: self.viewport,
-                    assoc_events: &mut assoc_events,
-                    state_id,
-                    parent,
-                    strings: &mut self.document.strings,
-                    assoc_functions: component.assoc_functions,
-                };
-                component.dyn_component.any_focus(state, elements, context);
-            });
-        }
+        // TODO: try to set focus on the first available component
 
         let mut dt = Instant::now();
         loop {
@@ -483,8 +476,7 @@ where
             fps_now = Instant::now();
         }
 
-        self.reset(tree, &mut states)?;
-        self.internal_run()
+        self.reset(tree, &mut states)
     }
 
     pub fn show_error(&mut self, err: Error) {
@@ -508,6 +500,10 @@ where
         self.globals = globals;
     }
 
+    // Resets the Runtime:
+    // * Reloads all components
+    // * Moves all the components from the tree back to the registry.
+    // * Recompiles the document
     fn reset(&mut self, tree: WidgetTree<'_>, states: &mut States) -> Result<()> {
         clear_all_futures();
         clear_all_changes();
@@ -518,10 +514,10 @@ where
         self.string_storage = StringStorage::new();
 
         // The only way we can get here is if we break the loop
-        // as a result of the hot_reload triggering.
+        // as a result of the hot_reload triggering or when building the first tree fails.
         self.document.reload_templates()?;
 
-        // move all components from the tree back to the registry.
+        // Move all components from the tree back to the registry.
         for (_, widget) in tree.values().into_iter() {
             let WidgetKind::Component(comp) = widget else { continue };
             let ComponentKind::Instance = comp.kind else { continue };
@@ -548,13 +544,28 @@ where
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
     ) -> Result<()> {
-        // Pull and keep consuming events while there are events present
-        // in the queu. The time used to pull events should be subtracted
-        // from the poll duration of self.events.poll
+        // Pull and keep consuming events while there are events present in the queue.
         let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events);
 
         // Clear the text buffer
         self.string_storage.clear();
+
+        // Call the `tick` function on all components
+        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
+
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &self.document.strings,
+        };
+
+        let mut event_ctx = EventCtx {
+            components: &mut self.components,
+            states,
+            attribute_storage,
+            assoc_events,
+            context,
+        };
 
         self.event_handler.handle(
             poll_duration,
@@ -562,18 +573,11 @@ where
             sleep_micros,
             &mut self.backend,
             &mut self.viewport,
-            &self.emitter,
             tree,
-            &mut self.components,
-            states,
-            attribute_storage,
             &mut self.constraints,
-            assoc_events,
-            &self.document.strings,
+            &mut event_ctx,
         )?;
 
-        // Call the `tick` function on all components
-        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
         *dt = Instant::now();
 
         self.apply_futures(globals, tree, states, attribute_storage);
@@ -589,12 +593,11 @@ where
         //   there is no reason to perform a layout on the entire tree,
         //   and only the widget it self needs to be re-painted
         //
-        // Q) What about floating widgets?
+        // Q) What about loating widgets?
 
         self.apply_changes(globals, tree, states, attribute_storage);
 
         // Cleanup removed attributes from widgets.
-        // Not all widgets has attributes, only `Element`s.
         for key in tree.drain_removed() {
             attribute_storage.try_remove(key);
             self.floating_widgets.try_remove(key);
@@ -605,57 +608,17 @@ where
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
-        let mut filter = LayoutFilter::new(true, attribute_storage);
-        tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            // Layout
-            // TODO: once the text buffer can be read-only for the paint
-            //       the context can be made outside of this closure.
-            //
-            //       That doesn't have as much of an impact here
-            //       as it will do when dealing with the floating widgets
-            let mut layout_ctx = LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
-            layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
-
-            // Position
-            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
-
-            // Paint
-            let mut string_session = self.string_storage.new_session();
-            self.backend
-                .paint(widget, children, values, &mut string_session, attribute_storage, true);
-        });
-
-        // Floating widgets
-        for widget_id in self.floating_widgets.iter() {
-            // Find the parent widget and get the position
-            // If no parent element is found assume Pos::ZERO
-            let mut parent = tree.path_ref(*widget_id).parent();
-            let (pos, constraints) = loop {
-                match parent {
-                    None => break (Pos::ZERO, self.constraints),
-                    Some(p) => match tree.get_ref_by_path(p) {
-                        Some(WidgetKind::Element(el)) => break (el.get_pos(), Constraints::from(el.size())),
-                        _ => parent = p.parent(),
-                    },
-                }
-            };
-
-            tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx =
-                    LayoutCtx::new(self.string_storage.new_session(), attribute_storage, &self.viewport);
-
-                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
-
-                // Position
-                position_widget(pos, el, children, values, attribute_storage, true);
-
-                // Paint
-                let mut string_session = self.string_storage.new_session();
-                self.backend
-                    .paint(el, children, values, &mut string_session, attribute_storage, true);
-            });
-        }
+        let mut string_session = self.string_storage.new_session();
+        WidgetCycle::new(
+            &mut self.backend,
+            tree,
+            self.constraints,
+            attribute_storage,
+            &mut string_session,
+            &self.floating_widgets,
+            self.viewport,
+        )
+        .run();
 
         self.backend.render();
         self.backend.clear();
@@ -676,36 +639,27 @@ where
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
     ) {
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &self.document.strings,
+        };
+
         for i in 0..self.components.len() {
             let (widget_id, state_id) = self
                 .components
                 .get(i)
                 .expect("the components can not change as a result of this step");
 
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
-                let state = states.get_mut(state_id);
+            let mut event_ctx = EventCtx {
+                components: &mut self.components,
+                states,
+                attribute_storage,
+                assoc_events,
+                context,
+            };
 
-                let parent = component
-                    .parent
-                    .and_then(|parent| self.components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
-
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-
-                let context = UntypedContext {
-                    emitter: &self.emitter,
-                    viewport: self.viewport,
-                    assoc_events,
-                    state_id,
-                    parent,
-                    strings: &mut self.document.strings,
-                    assoc_functions: component.assoc_functions,
-                };
-
-                component.dyn_component.any_tick(state, elements, context, dt);
-            });
+            tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| a.any_tick(b, dt));
         }
     }
 }
