@@ -176,5 +176,13 @@ mod test {
         assert_eq!(Color::from_str("lightmagenta").unwrap(), Color::LightMagenta);
         assert_eq!(Color::from_str("lightcyan").unwrap(), Color::LightCyan);
         assert_eq!(Color::from_str("white").unwrap(), Color::White);
+        assert_eq!(Color::from_str("#242424").unwrap(), Color::Rgb(36, 36, 36));
+        assert_eq!(Color::from_str("10").unwrap(), Color::AnsiVal(10));
+    }
+
+    #[test]
+    fn to_string() {
+        assert_eq!(Color::from_str("#242424").unwrap().to_string(), "#242424");
+        assert_eq!(Color::from_str("10").unwrap().to_string(), "10");
     }
 }

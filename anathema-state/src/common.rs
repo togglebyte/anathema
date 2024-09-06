@@ -281,4 +281,20 @@ mod test {
         let s = common_val.to_common_str();
         assert!(matches!(s, CommonString::Owned(_)));
     }
+
+    #[test]
+    fn color_to_common() {
+        let sub = Subscriber::ZERO;
+
+        let value = Value::new(Color::Rgb(36, 36, 36));
+        let value_ref = value.value_ref(sub);
+        let state = value_ref.as_state().unwrap();
+        let common_val = state.to_common().unwrap();
+        let s = common_val.to_common_str();
+        assert!(matches!(s, CommonString::Owned(_)));
+
+        let value = CommonVal::Color(Color::Grey);
+        let color = value.to_color().unwrap();
+        assert_eq!(color, Color::Grey);
+    }
 }

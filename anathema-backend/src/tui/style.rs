@@ -356,3 +356,23 @@ bitflags::bitflags! {
         const INVERSE =     0b0100_0000;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merging_styles() {
+        let mut right = Style::new();
+        right.set_fg(Color::Green);
+        right.set_bg(Color::Blue);
+
+        let mut left = Style::new();
+        left.set_fg(Color::Red);
+
+        left.merge(right);
+
+        assert_eq!(left.fg.unwrap(), Color::Red);
+        assert_eq!(left.bg.unwrap(), Color::Blue);
+    }
+}
