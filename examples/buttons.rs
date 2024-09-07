@@ -82,7 +82,7 @@ fn main() {
     runtime
         .register_component(
             "main",
-            "examples/templates/buttons.aml",
+            "examples/templates/buttons/buttons.aml",
             App,
             AppState { number: 0.into() },
         )
@@ -90,7 +90,7 @@ fn main() {
     runtime
         .register_prototype(
             "button",
-            "examples/templates/button.aml",
+            "examples/templates/buttons/button.aml",
             move || Button,
             || ButtonState {
                 caption: String::from("lark").into(),
