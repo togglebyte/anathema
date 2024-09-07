@@ -78,6 +78,7 @@ pub enum ProcessResult {
 }
 
 /// A shared storage of byte, layout and line data for string layout.
+#[derive(Debug)]
 pub struct StringStorage {
     // All the bytes that makes up all the strings.
     bytes: Buffer<u8>,

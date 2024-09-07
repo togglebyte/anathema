@@ -36,6 +36,7 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
+puffin = "0.19.1"
 
 [workspace]
 members = [

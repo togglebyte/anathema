@@ -8,6 +8,7 @@ pub use crossterm::event::{
 };
 
 /// Event listener
+#[derive(Debug)]
 pub struct Events;
 
 impl Events {

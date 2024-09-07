@@ -15,7 +15,7 @@ use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
 use crossterm::terminal::size;
 pub use screen::Screen;
 
-pub use self::buffer::Buffer;
+pub use self::buffer::{Buffer, Cell, CellState};
 use self::events::Events;
 pub use self::style::{Attributes, Color, Style};
 use crate::Backend;
@@ -88,6 +88,7 @@ impl TuiBackendBuilder {
 }
 
 /// Terminal backend
+#[derive(Debug)]
 pub struct TuiBackend {
     /// Stop the runtime if Ctrl+c was pressed.
     pub quit_on_ctrl_c: bool,

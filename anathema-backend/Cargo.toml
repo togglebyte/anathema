@@ -12,6 +12,7 @@ anathema-templates = { path = "../anathema-templates" }
 crossterm = { workspace = true }
 unicode-width = { workspace = true }
 bitflags = { workspace = true }
+puffin = { workspace = true }
 
 [lints]
 workspace = true

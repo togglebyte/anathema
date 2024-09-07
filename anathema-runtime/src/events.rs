@@ -11,6 +11,7 @@ use anathema_widgets::{AttributeStorage, Components, WidgetTree};
 use crate::error::{Error, Result};
 use crate::tree::Tree;
 
+#[derive(Debug)]
 pub(super) struct EventHandler;
 
 impl EventHandler {
@@ -107,6 +108,7 @@ impl EventHandler {
 
 // TODO: rename this, it has nothing to do with the events,
 // but rather calling functions on dyn components
+#[derive(Debug)]
 pub(crate) struct EventCtx<'a, 'rt, 'bp> {
     pub components: &'a mut Components,
     pub states: &'a mut States,

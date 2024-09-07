@@ -8,26 +8,35 @@ use unicode_width::UnicodeWidthChar;
 
 use super::{LocalPos, Style};
 
+/// A cell in the buffer
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) struct Cell {
-    pub(crate) style: Style,
-    pub(crate) state: CellState,
+pub struct Cell {
+    /// The style for a given cell
+    pub style: Style,
+    /// The state of the cell
+    pub state: CellState,
+    /// Should the cell be redrawn
+    pub dirty: bool,
 }
 
 impl Cell {
-    pub(crate) fn empty() -> Self {
+    /// Create a an empty cell with a reset style
+    pub fn empty() -> Self {
         // It's important to reset the colours as there
         // might be residual colors from previous draw.
         Self {
-            style: Style::reset(),
+            style: Style::new(),
             state: CellState::Empty,
+            dirty: false,
         }
     }
 
-    pub(crate) fn reset() -> Self {
+    /// Create an empty cell
+    pub fn reset() -> Self {
         Self {
             style: Style::reset(),
             state: CellState::Occupied(' '),
+            dirty: false,
         }
     }
 
@@ -35,20 +44,60 @@ impl Cell {
         Self {
             style,
             state: CellState::Continuation,
+            dirty: false,
         }
     }
 
-    pub(crate) fn new(c: char, style: Style) -> Self {
+    /// Create a new cell with a given character and style
+    pub fn new(c: char, style: Style) -> Self {
         Self {
             style,
             state: CellState::Occupied(c),
+            dirty: false,
         }
+    }
+
+    /// Merge two cells
+    pub fn merge(&mut self, new: Cell) {
+        match (&mut self.state, new.state) {
+            // Clear
+            (CellState::Empty, new) => self.state = new,
+            (_, CellState::Empty) => self.state = CellState::Empty,
+
+            // Replace
+            (CellState::Occupied(current), CellState::Occupied(new)) => *current = new,
+
+            (CellState::Occupied(_), CellState::Continuation) => todo!(),
+            (CellState::Continuation, CellState::Occupied(_)) => todo!(),
+
+            // Noop
+            (CellState::Continuation, CellState::Continuation) => (),
+        }
+
+        self.style.merge(new.style);
+    }
+
+    /// Make this private
+    pub fn write(&self, output: &mut impl Write) -> Result<()> {
+        // self.style.write(output)?;
+        match self.state {
+            CellState::Empty => output.queue(Print(' '))?,
+            CellState::Occupied(c) => output.queue(Print(c))?,
+            CellState::Continuation => return Ok(()),
+        };
+        Ok(())
+    }
+}
+
+impl Default for Cell {
+    fn default() -> Self {
+        Self::reset()
     }
 }
 
 /// Represent the state of a cell inside a [`Buffer`].
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) enum CellState {
+pub enum CellState {
     /// Empty
     Empty,
     /// Occupied by a certain character
@@ -68,8 +117,13 @@ pub(crate) enum CellState {
 /// grid.
 #[derive(Debug, Clone)]
 pub struct Buffer {
-    size: Size,
-    pub(crate) inner: Box<[Cell]>,
+    /// TODO: make private
+    pub size: Size,
+    /// TODO: make private
+    pub cells: Box<[Cell]>,
+    /// TODO: make private
+    pub changes: Vec<usize>,
+    pub(crate) prev_changes: Vec<usize>,
 }
 
 impl Buffer {
@@ -77,17 +131,15 @@ impl Buffer {
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::empty(); size.width * size.height].into_boxed_slice(),
+            cells: vec![Cell::reset(); size.width * size.height].into_boxed_slice(),
             size,
-        }
-    }
 
-    /// Create a new buffer with reset cells
-    pub(crate) fn reset(size: impl Into<Size>) -> Self {
-        let size = size.into();
-        Self {
-            inner: vec![Cell::reset(); size.width * size.height].into_boxed_slice(),
-            size,
+            // 1. Cells present in `changes` should be drawn
+            // 2. Cells present in `prev_changes` but not in `changes` should be removed
+            // 3. Swap `changes` and `prev_changes`
+            // 4. Clear changes
+            changes: vec![],
+            prev_changes: vec![],
         }
     }
 
@@ -115,17 +167,25 @@ impl Buffer {
         }
 
         self.size = size;
-        self.inner = new_buf.inner;
+        self.cells = new_buf.cells;
     }
 
     /// Put a character with a style at a given position.
+    ///
+    /// If the character is wider than one cell a continuation
+    /// cell will be inserted next to it (assuming it can fit).
     pub fn put_char(&mut self, c: char, pos: LocalPos) {
         let style = match self.get(pos) {
             Some((_, style)) => *style,
             None => Style::new(),
         };
+
         let cell = Cell::new(c, style);
         self.put(cell, pos);
+
+        if let Some(2..) = c.width() {
+            self.put(Cell::continuation(cell.style), LocalPos::new(pos.x + 1, pos.y));
+        }
     }
 
     /// Update the attributes at a given cell.
@@ -136,27 +196,18 @@ impl Buffer {
         }
 
         let index = pos.to_index(self.size.width);
-        let cell = &mut self.inner[index];
-
-        if let fg @ Some(_) = style.fg {
-            cell.style.fg = fg;
-        }
-
-        if let bg @ Some(_) = style.bg {
-            cell.style.bg = bg;
-        }
-
-        cell.style.attributes |= style.attributes;
-
-        if let CellState::Empty = cell.state {
-            cell.state = CellState::Occupied(' ');
-        }
+        let mut cell = self.cells[index];
+        cell.style.merge(style);
+        self.put(cell, pos);
     }
 
     /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get(&self, pos: LocalPos) -> Option<(&char, &Style)> {
-        let index = self.index(pos);
-        let cell = self.inner.get(index)?;
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+        let index = pos.to_index(self.size.width);
+        let cell = &self.cells[index];
         match &cell.state {
             CellState::Occupied(c) => Some((c, &cell.style)),
             _ => None,
@@ -165,8 +216,11 @@ impl Buffer {
 
     /// Get a mutable reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get_mut(&mut self, pos: LocalPos) -> Option<(&mut char, &mut Style)> {
-        let index = self.index(pos);
-        let cell = self.inner.get_mut(index)?;
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+        let index = pos.to_index(self.size.width);
+        let cell = &mut self.cells[index];
         match &mut cell.state {
             CellState::Occupied(c) => Some((c, &mut cell.style)),
             _ => None,
@@ -174,62 +228,42 @@ impl Buffer {
     }
 
     /// Empty a cell at a given position
-    pub fn empty(&mut self, pos: LocalPos) {
-        let index = self.index(pos);
-        self.inner[index] = Cell::empty();
+    pub fn remove(&mut self, pos: LocalPos) {
+        // if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        //     return;
+        // }
+        // let index = pos.to_index(self.size.width);
+        // self.cells[index] = Cell::reset();
     }
 
-    /// An iterator over all the rows in the buffer
-    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = Option<(char, Style)>> + '_> {
-        self.cell_lines().map(|chunk| {
-            chunk.iter().map(|cell| match cell.state {
-                CellState::Occupied(c) => Some((c, cell.style)),
-                _ => None,
-            })
-        })
-    }
+    // /// An iterator over all the rows in the buffer
+    // pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = Option<(char, Style)>> + '_> {
+    //     self.cell_lines().map(|chunk| {
+    //         chunk.iter().map(|cell| match cell.state {
+    //             CellState::Occupied(c) => Some((c, cell.style)),
+    //             _ => None,
+    //         })
+    //     })
+    // }
 
-    fn index(&self, pos: LocalPos) -> usize {
-        pos.y as usize * self.size.width + pos.x as usize
-    }
-
-    fn put(&mut self, mut cell: Cell, pos: LocalPos) {
-        let index = self.index(pos);
-
-        if let CellState::Occupied(c) = cell.state {
-            // If this is a unicode char that is wider than one cell,
-            // add a continuation cell if it fits, this way if we overwrite it
-            // we can set the continuation cell to `Empty`.
-            if pos.x < self.size.width as u16 {
-                if let Some(2..) = c.width() {
-                    self.put(Cell::continuation(cell.style), LocalPos::new(pos.x + 1, pos.y));
-                }
-            }
+    fn put(&mut self, new_cell: Cell, pos: LocalPos) {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return;
         }
+        let index = pos.to_index(self.size.width);
+        let cell = &mut self.cells[index];
+        cell.merge(new_cell);
 
-        let current = &mut self.inner[index];
-        cell.style.merge(current.style);
-
-        match (&mut current.state, cell.state) {
-            // Merge the styles
-            (CellState::Occupied(ref mut current_char), CellState::Occupied(new_char)) => {
-                *current_char = new_char;
-                current.style.attributes |= cell.style.attributes;
-
-                if let Some(col) = cell.style.fg {
-                    current.style.fg = Some(col);
-                }
-
-                if let Some(col) = cell.style.bg {
-                    current.style.bg = Some(col);
-                }
-            }
-            _ => *current = cell,
+        if cell.dirty {
+            return;
         }
+        cell.dirty = true;
+
+        self.changes.push(index);
     }
 
     fn cell_lines(&self) -> impl Iterator<Item = &[Cell]> {
-        self.inner.chunks(self.size.width)
+        self.cells.chunks(self.size.width)
     }
 }
 
@@ -237,7 +271,7 @@ impl Buffer {
 impl Buffer {
     fn cell_at(&self, x: usize, y: usize) -> Cell {
         let index = y * self.size.width + x;
-        self.inner[index]
+        self.cells[index]
     }
 
     pub fn char_at(&self, x: usize, y: usize) -> char {
@@ -249,8 +283,9 @@ impl Buffer {
     }
 }
 
+/// Represent a change between two buffers
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum Change {
+pub enum Change {
     Remove,
     Insert(char),
 }
@@ -264,73 +299,74 @@ impl Change {
     }
 }
 
-pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
-    let mut previous_style = None;
+// /// Diff two buffers and write the changes into an external change buffer
+// pub fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
+//     let mut previous_style = None;
 
-    for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
-        for (x, (old_cell, new_cell)) in old_line.iter().zip(new_line).enumerate() {
-            let x = x as u16;
-            let y = y as u16;
+//     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
+//         for (x, (old_cell, new_cell)) in old_line.iter().zip(new_line).enumerate() {
+//             let x = x as u16;
+//             let y = y as u16;
 
-            if old_cell == new_cell {
-                continue;
-            }
+//             if old_cell == new_cell {
+//                 continue;
+//             }
 
-            let style = match previous_style {
-                Some(previous) => (previous != new_cell.style).then_some(new_cell.style),
-                None => Some(new_cell.style),
-            };
+//             let style = match previous_style {
+//                 Some(previous) => (previous != new_cell.style).then_some(new_cell.style),
+//                 None => Some(new_cell.style),
+//             };
 
-            previous_style = Some(new_cell.style);
+//             previous_style = Some(new_cell.style);
 
-            let change = match new_cell.state {
-                CellState::Empty => Change::Remove,
-                CellState::Continuation => continue,
-                CellState::Occupied(c) => Change::Insert(c),
-            };
+//             let change = match new_cell.state {
+//                 CellState::Empty => Change::Remove,
+//                 CellState::Continuation => continue,
+//                 CellState::Occupied(c) => Change::Insert(c),
+//             };
 
-            changes.push((LocalPos::new(x, y), style, change));
-        }
-    }
+//             changes.push((LocalPos::new(x, y), style, change));
+//         }
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-// -----------------------------------------------------------------------------
-//     - Draw changes -
-// -----------------------------------------------------------------------------
-pub(crate) fn draw_changes(mut w: impl Write, changes: &Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
-    let mut last_y = None;
-    let mut next_cell_x = None;
+// // -----------------------------------------------------------------------------
+// //     - Draw changes -
+// // -----------------------------------------------------------------------------
+// pub(crate) fn draw_changes(mut w: impl Write, changes: &Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
+//     let mut last_y = None;
+//     let mut next_cell_x = None;
 
-    for (screen_pos, style, change) in changes {
-        // Cursor movement
-        let should_move = match (last_y, next_cell_x) {
-            (Some(last_y), Some(next_x)) => screen_pos.y > last_y || next_x != screen_pos.x,
-            _ => true,
-        };
+//     for (screen_pos, style, change) in changes {
+//         // Cursor movement
+//         let should_move = match (last_y, next_cell_x) {
+//             (Some(last_y), Some(next_x)) => screen_pos.y > last_y || next_x != screen_pos.x,
+//             _ => true,
+//         };
 
-        if should_move {
-            w.queue(cursor::MoveTo(screen_pos.x, screen_pos.y))?;
-        }
+//         if should_move {
+//             w.queue(cursor::MoveTo(screen_pos.x, screen_pos.y))?;
+//         }
 
-        last_y = Some(screen_pos.y);
-        next_cell_x = Some(screen_pos.x + change.width() as u16);
+//         last_y = Some(screen_pos.y);
+//         next_cell_x = Some(screen_pos.x + change.width() as u16);
 
-        // Apply style
-        if let Some(style) = style {
-            style.write(&mut w)?;
-        }
+//         // Apply style
+//         if let Some(style) = style {
+//             style.write(&mut w)?;
+//         }
 
-        // Draw changes
-        match change {
-            Change::Insert(c) => w.queue(Print(c))?,
-            Change::Remove => w.queue(Print(' '))?,
-        };
-    }
+//         // Draw changes
+//         match change {
+//             Change::Insert(c) => w.queue(Print(c))?,
+//             Change::Remove => w.queue(Print(' '))?,
+//         };
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod test {
@@ -345,12 +381,12 @@ mod test {
         let mut changes = vec![];
 
         let mut old_buffer = Buffer::new((5u16, 3));
-        old_buffer.inner[0] = Cell::new('O', Style::reset());
-        old_buffer.inner[1] = Cell::new('V', Style::reset());
+        old_buffer.cells[0] = Cell::new('O', Style::reset());
+        old_buffer.cells[1] = Cell::new('V', Style::reset());
 
         let mut new_buffer = Buffer::new((5u16, 3));
-        new_buffer.inner[0] = Cell::new('C', Style::reset());
-        new_buffer.inner[2] = Cell::new('N', Style::reset());
+        new_buffer.cells[0] = Cell::new('C', Style::reset());
+        new_buffer.cells[2] = Cell::new('N', Style::reset());
 
         diff(&old_buffer, &new_buffer, &mut changes).unwrap();
 
@@ -366,13 +402,13 @@ mod test {
     #[test]
     fn resize() {
         let mut buffer = Buffer::new((2u16, 2));
-        buffer.inner[0] = Cell::new('1', Style::reset());
-        buffer.inner[1] = Cell::new('2', Style::reset());
-        buffer.inner[2] = Cell::new('3', Style::reset());
-        buffer.inner[3] = Cell::new('4', Style::reset());
+        buffer.cells[0] = Cell::new('1', Style::reset());
+        buffer.cells[1] = Cell::new('2', Style::reset());
+        buffer.cells[2] = Cell::new('3', Style::reset());
+        buffer.cells[3] = Cell::new('4', Style::reset());
 
         buffer.resize(Size::new(1, 2));
-        assert_eq!(buffer.inner[0], Cell::new('1', Style::reset()));
-        assert_eq!(buffer.inner[1], Cell::new('3', Style::reset()));
+        assert_eq!(buffer.cells[0], Cell::new('1', Style::reset()));
+        assert_eq!(buffer.cells[1], Cell::new('3', Style::reset()));
     }
 }

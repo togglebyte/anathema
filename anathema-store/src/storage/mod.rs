@@ -2,6 +2,7 @@ use crate::slab::Slab;
 
 pub mod strings;
 
+#[derive(Debug)]
 pub struct Storage<I, K, V>(Slab<I, (K, V)>);
 
 /// Simple storage backed by a slab, prevents duplicate values

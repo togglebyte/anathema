@@ -26,8 +26,20 @@ enum ComponentType {
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
+impl std::fmt::Debug for ComponentType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut f = f.debug_tuple("ComponentType");
+        match self {
+            ComponentType::Component(_, _) => f.field(&"Component"),
+            ComponentType::Prototype(_, _) => f.field(&"Prototype"),
+        };
+        f.finish()
+    }
+}
+
 /// Store component factories.
 /// This is how components are created.
+#[derive(Debug)]
 pub struct ComponentRegistry(Slab<WidgetComponentId, ComponentType>);
 
 impl ComponentRegistry {
@@ -226,7 +238,7 @@ impl<'rt, T: 'static> Context<'rt, T> {
             .expect("this will not fail unless the runtime is droped")
     }
 
-    /// Get a value from external state
+    /// Get a value from external state.
     pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
         let val = self.component_ctx.external_state?.get(key);
         val.and_then(|(_, val)| val.load_common_val())
@@ -254,7 +266,7 @@ pub struct AnyEventCtx<'state, 'tree, 'bp> {
     pub component_ctx: ComponentContext<'tree>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct UntypedContext<'rt> {
     pub emitter: &'rt Emitter,
     pub viewport: Viewport,
@@ -294,9 +306,21 @@ pub struct AssociatedEvent {
     pub f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_> + 'static>,
 }
 
+impl std::fmt::Debug for AssociatedEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AssociatedEvents")
+            .field("state", &self.state)
+            .field("parent", &self.parent)
+            .field("external", &self.external)
+            .field("f", &format!("<dyn FnMut>"))
+            .finish()
+    }
+}
+
 // The reason the component can not have access
 // to the children during this event is because the parent is borrowing from the childs
 // state while this is happening.
+#[derive(Debug)]
 pub struct AssociatedEvents {
     inner: Vec<AssociatedEvent>,
 }

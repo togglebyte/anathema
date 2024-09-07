@@ -14,6 +14,7 @@ anathema-templates = { path = "../anathema-templates" }
 anathema-widgets = { path = "../anathema-widgets" }
 flume = { workspace = true }
 notify = { workspace = true }
+puffin = { workspace = true }
 
 [lints]
 workspace = true

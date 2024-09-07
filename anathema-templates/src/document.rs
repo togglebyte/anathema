@@ -19,6 +19,7 @@ use crate::{Globals, Lexer};
 /// # use anathema_templates::Document;
 /// let mut doc = Document::new("text 'I am a widget'");
 /// ```
+#[derive(Debug)]
 pub struct Document {
     template: String,
     pub strings: Strings,

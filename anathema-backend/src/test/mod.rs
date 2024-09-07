@@ -9,6 +9,7 @@ use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
 
 use crate::Backend;
 
+#[derive(Debug)]
 pub struct TestBackend {
     pub surface: TestSurface,
     pub output: String,
@@ -70,6 +71,7 @@ impl Backend for TestBackend {
     }
 }
 
+#[derive(Debug)]
 pub struct TestSurface {
     size: Size,
     buffer: Vec<char>,

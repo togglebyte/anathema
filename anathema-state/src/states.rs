@@ -111,6 +111,12 @@ impl<T: State> AnyState for T {
     }
 }
 
+impl std::fmt::Debug for dyn AnyState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("<dyn AnyState>")
+    }
+}
+
 pub trait State: 'static {
     /// Try to get the value from the state.
     /// If the value exists: subscribe to the value with the key and return
@@ -329,6 +335,7 @@ impl_str_state!(&'static str);
 impl_str_state!(Box<str>);
 impl_str_state!(Rc<str>);
 
+#[derive(Debug)]
 pub struct States {
     inner: Slab<StateId, Box<dyn AnyState>>,
 }

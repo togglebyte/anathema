@@ -10,7 +10,7 @@ use anathema_widgets::{AttributeStorage, Element, FloatingWidgets, WidgetKind, W
 pub mod test;
 pub mod tui;
 
-pub trait Backend {
+pub trait Backend: std::fmt::Debug {
     fn size(&self) -> Size;
 
     fn quit_test(&self, event: Event) -> bool;

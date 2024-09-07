@@ -63,52 +63,21 @@ pub struct Style {
     pub attributes: Attributes,
 }
 
-impl CellAttributes for Style {
-    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
-        match key {
-            "foreground" => self.fg.map(|c| f(color_to_string(c))),
-            "background" => self.bg.map(|c| f(color_to_string(c))),
-            _ => None,
-        };
-    }
-
-    fn get_i64(&self, _key: &str) -> Option<i64> {
-        None
-    }
-
-    fn get_hex(&self, key: &str) -> Option<Hex> {
-        let colour = match key {
-            "foreground" => self.fg,
-            "background" => self.bg,
-            _ => return None,
-        };
-
-        match colour {
-            Some(Color::Rgb { r, g, b }) => Some(Hex::from((r, g, b))),
-            None | Some(_) => None,
-        }
-    }
-
-    fn get_bool(&self, key: &str) -> bool {
-        match key {
-            "bold" => self.attributes.contains(Attributes::BOLD),
-            "dim" => self.attributes.contains(Attributes::DIM),
-            "italic" => self.attributes.contains(Attributes::ITALIC),
-            "underline" => self.attributes.contains(Attributes::UNDERLINED),
-            "crossed-out" => self.attributes.contains(Attributes::CROSSED_OUT),
-            "overline" => self.attributes.contains(Attributes::OVERLINED),
-            "inverse" => self.attributes.contains(Attributes::INVERSE),
-            _ => false,
-        }
-    }
-}
-
 impl Style {
     /// Create a new instance of a `Style`:
     pub const fn new() -> Self {
         Self {
             fg: None,
             bg: None,
+            attributes: Attributes::empty(),
+        }
+    }
+
+    /// Create a new instance of a `Style`:
+    pub const fn from_col(fg: Color, bg: Color) -> Self {
+        Self {
+            fg: Some(fg),
+            bg: Some(bg),
             attributes: Attributes::empty(),
         }
     }
@@ -158,7 +127,8 @@ impl Style {
         style
     }
 
-    pub(crate) fn write(&self, w: &mut impl Write) -> Result<()> {
+    /// Write the style as bytes
+    pub fn write(&self, w: &mut impl Write) -> Result<()> {
         if let Some(fg) = self.fg {
             w.queue(SetForegroundColor(fg))?;
         }
@@ -298,18 +268,56 @@ impl Style {
     }
 
     /// Merge two styles:
-    /// if `self` has no foreground the foreground from the other style is copied to self.
-    /// if `self` has no background the background from the other style is copied to self.
     pub fn merge(&mut self, other: Style) {
-        if let (None, Some(fg)) = (self.fg, other.fg) {
-            self.fg = Some(fg);
+        if let fg @ Some(_) = other.fg {
+            self.fg = fg;
         }
 
-        if let (None, Some(bg)) = (self.bg, other.bg) {
-            self.bg = Some(bg);
+        if let bg @ Some(_) = other.bg {
+            self.bg = bg;
         }
 
         self.attributes |= other.attributes;
+    }
+}
+
+impl CellAttributes for Style {
+    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
+        match key {
+            "foreground" => self.fg.map(|c| f(color_to_string(c))),
+            "background" => self.bg.map(|c| f(color_to_string(c))),
+            _ => None,
+        };
+    }
+
+    fn get_i64(&self, _key: &str) -> Option<i64> {
+        None
+    }
+
+    fn get_hex(&self, key: &str) -> Option<Hex> {
+        let colour = match key {
+            "foreground" => self.fg,
+            "background" => self.bg,
+            _ => return None,
+        };
+
+        match colour {
+            Some(Color::Rgb { r, g, b }) => Some(Hex::from((r, g, b))),
+            None | Some(_) => None,
+        }
+    }
+
+    fn get_bool(&self, key: &str) -> bool {
+        match key {
+            "bold" => self.attributes.contains(Attributes::BOLD),
+            "dim" => self.attributes.contains(Attributes::DIM),
+            "italic" => self.attributes.contains(Attributes::ITALIC),
+            "underline" => self.attributes.contains(Attributes::UNDERLINED),
+            "crossed-out" => self.attributes.contains(Attributes::CROSSED_OUT),
+            "overline" => self.attributes.contains(Attributes::OVERLINED),
+            "inverse" => self.attributes.contains(Attributes::INVERSE),
+            _ => false,
+        }
     }
 }
 

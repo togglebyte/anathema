@@ -4,18 +4,18 @@ use anathema_geometry::{Pos, Size};
 use anathema_widgets::paint::CellAttributes;
 use anathema_widgets::WidgetRenderer;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
+use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, ExecutableCommand, QueueableCommand};
+use unicode_width::UnicodeWidthChar;
 
-use super::buffer::{diff, draw_changes, Buffer, Change};
-use super::{LocalPos, Style};
+use super::buffer::{Buffer, Change};
+use super::{Cell, LocalPos, Style};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
+#[derive(Debug)]
 pub struct Screen {
-    // This is pub(crate) for testing purposes
-    pub(crate) new_buffer: Buffer,
-    old_buffer: Buffer,
-    changes: Vec<(LocalPos, Option<Style>, Change)>,
+    pub(crate) buffer: Buffer,
 }
 
 impl Screen {
@@ -44,9 +44,7 @@ impl Screen {
         let size: Size = size.into();
 
         Self {
-            old_buffer: Buffer::new(size),
-            new_buffer: Buffer::new(size),
-            changes: vec![],
+            buffer: Buffer::new(size),
         }
     }
 
@@ -54,8 +52,7 @@ impl Screen {
     /// This will empty the underlying buffers so everything will have
     /// to be redrawn.
     pub(super) fn resize(&mut self, new_size: Size) {
-        self.old_buffer = Buffer::new(new_size);
-        self.new_buffer = Buffer::reset(new_size);
+        self.buffer.resize(new_size);
     }
 
     /// Erase the entire buffer by writing empty cells
@@ -71,37 +68,115 @@ impl Screen {
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                self.new_buffer.empty(LocalPos::new(x, y));
+                self.buffer.remove(LocalPos::new(x, y));
             }
         }
     }
 
     /// Put a char at the given screen position, with a given style.
-    /// If the screen position is outside the [`Buffer`]s size then this is
-    /// out of bounds and will panic.
     pub(crate) fn paint_glyph(&mut self, c: char, pos: LocalPos) {
-        self.new_buffer.put_char(c, pos);
+        self.buffer.put_char(c, pos);
     }
 
     pub(crate) fn update_cell(&mut self, style: Style, pos: LocalPos) {
-        self.new_buffer.update_cell(style, pos);
+        self.buffer.update_cell(style, pos);
     }
 
     /// Draw the changes to the screen
-    pub(crate) fn render(&mut self, mut output: impl Write) -> Result<()> {
-        diff(&self.old_buffer, &self.new_buffer, &mut self.changes)?;
+    pub(crate) fn render(&mut self, mut output: impl Write + std::fmt::Debug) -> Result<()> {
+        let size = self.size();
+        self.buffer.changes.sort();
 
-        if self.changes.is_empty() {
-            return Ok(());
+        {
+            for index in &self.buffer.changes {
+                puffin::profile_scope!("apply change");
+                let cell = std::mem::take(&mut self.buffer.cells[*index]);
+                let c = match cell.state {
+                    super::CellState::Empty => ' ',
+                    super::CellState::Occupied(c) => c,
+                    super::CellState::Continuation => continue,
+                };
+
+                let pos = LocalPos::from((*index, size));
+                output.queue(cursor::MoveTo(pos.x, pos.y))?;
+                {
+                    cell.write(&mut output)?;
+                }
+            }
         }
 
-        draw_changes(&mut output, &self.changes)?;
+        let mut src = self.buffer.changes.as_slice();
+        let mut offset = 0;
+        for index in self.buffer.prev_changes.drain(..) {
+            match src[offset..].binary_search(&index) {
+                Ok(idx) => offset = idx,
+                Err(idx) => {
+                    offset = idx;
+                    let pos = LocalPos::from((index, size));
+                    output.queue(cursor::MoveTo(pos.x, pos.y))?;
+                    Cell::reset().write(&mut output)?;
+                }
+            }
+        }
 
-        self.changes.clear();
+        std::mem::swap(&mut self.buffer.prev_changes, &mut self.buffer.changes);
+
+        // self.buffer.changes.swap();
+
+        // self.buffer.changes.sort();
+
+        // let size = self.size();
+        // let mut last_pos = LocalPos::ZERO;
+
+        // for index in &self.buffer.changes {
+        //     let cell = &mut self.buffer.cells[*index];
+        //     cell.dirty = false;
+        //     let c = match cell.state {
+        //         super::CellState::Empty => ' ',
+        //         super::CellState::Occupied(c) => c,
+        //         super::CellState::Continuation => continue,
+        //     };
+
+        //     let pos = LocalPos::from((*index, size));
+        //     last_pos.x += c.width().unwrap_or(0) as u16;
+
+        //     if last_pos.x != pos.x || last_pos.y != pos.y {
+        //         output.queue(cursor::MoveTo(pos.x, pos.y))?;
+        //     }
+        //     last_pos = pos;
+
+        //     cell.write(&mut output);
+        // }
+
+        // if self.buffer.changes != self.buffer.prev_changes {
+        //     let mut comp = self.buffer.changes.as_slice();
+        //     for index in self.buffer.prev_changes.drain(..) {
+        //         match comp.binary_search(&index) {
+        //             Ok(idx) => comp = &comp[idx..],
+        //             Err(idx) => {
+        //                 // Remove this value
+        //                 comp = &comp[idx..];
+
+        //                 let cell = &mut self.buffer.cells[index];
+        //                 *cell = Cell::reset();
+
+        //                 let pos = LocalPos::from((index, size));
+        //                 // last_pos.x += c.width().unwrap_or(0) as u16;
+
+        //                 // if last_pos.x != pos.x || last_pos.y != pos.y {
+        //                 output.queue(cursor::MoveTo(pos.x, pos.y))?;
+        //                 // }
+        //                 // last_pos = pos;
+
+        //                 cell.write(&mut output)?;
+        //             }
+        //         }
+        //     }
+        // }
+
+        // std::mem::swap(&mut self.buffer.changes, &mut self.buffer.prev_changes);
 
         output.flush()?;
-
-        self.old_buffer = self.new_buffer.clone();
 
         Ok(())
     }
@@ -150,7 +225,7 @@ impl WidgetRenderer for Screen {
     }
 
     fn size(&self) -> Size {
-        self.new_buffer.size()
+        self.buffer.size()
     }
 }
 
@@ -180,7 +255,7 @@ mod test {
         screen.render(&mut render_output).unwrap();
 
         let expected = Cell::new('x', Style::reset());
-        let actual = screen.new_buffer.inner[0];
+        let actual = screen.new_buffer.cells[0];
         assert_eq!(expected, actual);
     }
 
@@ -194,9 +269,9 @@ mod test {
         screen.erase_region(LocalPos::new(1, 1), Size::new(1, 1));
         screen.render(&mut render_output).unwrap();
 
-        let top_left = screen.new_buffer.inner[0];
+        let top_left = screen.new_buffer.cells[0];
         assert_eq!(Cell::new('0', Style::reset()), top_left);
-        let bottom_right = screen.new_buffer.inner[3];
+        let bottom_right = screen.new_buffer.cells[3];
         assert_eq!(Cell::empty(), bottom_right);
     }
 

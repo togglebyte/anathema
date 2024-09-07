@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 
 use super::Storage;
 
+#[derive(Debug)]
 pub struct Strings {
     inner: Storage<StringId, String, ()>,
 }

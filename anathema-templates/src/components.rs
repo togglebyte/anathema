@@ -72,6 +72,7 @@ impl From<&str> for SourceKind {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum ComponentSource {
     File { path: PathBuf, template: String },
     InMemory(String),
@@ -99,6 +100,7 @@ impl From<usize> for WidgetComponentId {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ComponentTemplates {
     dependencies: Stack<WidgetComponentId>,
     components: Storage<WidgetComponentId, String, ComponentSource>,

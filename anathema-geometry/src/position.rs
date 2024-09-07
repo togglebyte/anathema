@@ -162,6 +162,17 @@ impl From<(u16, u16)> for LocalPos {
     }
 }
 
+impl From<(usize, Size)> for LocalPos {
+    fn from((index, size): (usize, Size)) -> Self {
+        let y = index / size.width;
+        let x = index % size.width;
+        Self {
+            x: x as u16,
+            y: y as u16,
+        }
+    }
+}
+
 impl TryFrom<Pos> for LocalPos {
     type Error = ();
 

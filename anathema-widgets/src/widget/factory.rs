@@ -6,6 +6,16 @@ use crate::Attributes;
 
 pub struct Factory(HashMap<Box<str>, Box<dyn Fn(&Attributes<'_>) -> Box<dyn AnyWidget>>>);
 
+impl std::fmt::Debug for Factory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut f = f.debug_tuple("Factory");
+        for key in self.0.keys() {
+            f.field(key);
+        }
+        f.finish()
+    }
+}
+
 impl Factory {
     pub fn new() -> Self {
         Self(HashMap::new())

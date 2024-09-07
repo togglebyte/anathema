@@ -213,6 +213,7 @@ impl<T> RuntimeBuilder<T> {
 /// let document = Document::new("border");
 /// let mut runtime = Runtime::new(document, backend).finish().unwrap();
 /// ```
+#[derive(Debug)]
 pub struct Runtime<T> {
     pub fps: u16,
 
@@ -544,14 +545,23 @@ where
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
     ) -> Result<()> {
+        puffin::GlobalProfiler::lock().new_frame();
+        puffin::profile_scope!("tick");
+
         // Pull and keep consuming events while there are events present in the queue.
-        let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events);
+        let poll_duration = {
+            puffin::profile_scope!("handle messages");
+            self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events)
+        };
 
         // Clear the text buffer
         self.string_storage.clear();
 
         // Call the `tick` function on all components
-        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
+        {
+            puffin::profile_scope!("tick components");
+            self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
+        }
 
         let context = UntypedContext {
             emitter: &self.emitter,
@@ -567,20 +577,25 @@ where
             context,
         };
 
-        self.event_handler.handle(
-            poll_duration,
-            fps_now,
-            sleep_micros,
-            &mut self.backend,
-            &mut self.viewport,
-            tree,
-            &mut self.constraints,
-            &mut event_ctx,
-        )?;
-
+        {
+            puffin::profile_scope!("handle events");
+            self.event_handler.handle(
+                poll_duration,
+                fps_now,
+                sleep_micros,
+                &mut self.backend,
+                &mut self.viewport,
+                tree,
+                &mut self.constraints,
+                &mut event_ctx,
+            )?;
+        }
         *dt = Instant::now();
 
-        self.apply_futures(globals, tree, states, attribute_storage);
+        {
+            puffin::profile_scope!("apply futures");
+            self.apply_futures(globals, tree, states, attribute_storage);
+        }
 
         // TODO
         // Instead of draining the changes when applying
@@ -595,37 +610,47 @@ where
         //
         // Q) What about loating widgets?
 
-        self.apply_changes(globals, tree, states, attribute_storage);
+        {
+            puffin::profile_scope!("apply changes");
+            self.apply_changes(globals, tree, states, attribute_storage);
+        }
 
-        // Cleanup removed attributes from widgets.
-        for key in tree.drain_removed() {
-            attribute_storage.try_remove(key);
-            self.floating_widgets.try_remove(key);
-            // TODO: this function is rubbish and has to be rewritten
-            self.components.dodgy_remove(key);
+        {
+            puffin::profile_scope!("drain / remove");
+            // Cleanup removed attributes from widgets.
+            for key in tree.drain_removed() {
+                attribute_storage.try_remove(key);
+                self.floating_widgets.try_remove(key);
+                // TODO: this function is rubbish and has to be rewritten
+                self.components.dodgy_remove(key);
+            }
         }
 
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
         let mut string_session = self.string_storage.new_session();
-        WidgetCycle::new(
-            &mut self.backend,
-            tree,
-            self.constraints,
-            attribute_storage,
-            &mut string_session,
-            &self.floating_widgets,
-            self.viewport,
-        )
-        .run();
+        {
+            puffin::profile_scope!("layout / position / paint");
+            WidgetCycle::new(
+                &mut self.backend,
+                tree,
+                self.constraints,
+                attribute_storage,
+                &mut string_session,
+                &self.floating_widgets,
+                self.viewport,
+            )
+            .run();
+        }
 
-        self.backend.render();
+        {
+            puffin::profile_scope!("render");
+            self.backend.render();
+        }
         self.backend.clear();
 
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
-        eprintln!("{:?}", fps_now.elapsed());
-
         if sleep > 0 {
             std::thread::sleep(Duration::from_micros(sleep));
         }

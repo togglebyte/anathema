@@ -53,6 +53,7 @@ impl PartialEq for CompEntry {
     }
 }
 
+#[derive(Debug)]
 pub struct Components {
     pub tab_index: usize,
     inner: SortedList<CompEntry>,
@@ -114,6 +115,7 @@ impl Components {
     }
 }
 
+#[derive(Debug)]
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
 
 impl FloatingWidgets {
