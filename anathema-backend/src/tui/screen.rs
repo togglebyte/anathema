@@ -3,9 +3,9 @@ use std::io::{Result, Write};
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::paint::CellAttributes;
 use anathema_widgets::WidgetRenderer;
-use crossterm::event::EnableMouseCapture;
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{cursor, ExecutableCommand};
+use crossterm::{cursor, ExecutableCommand, QueueableCommand};
 
 use super::buffer::{diff, draw_changes, Buffer, Change};
 use super::{LocalPos, Style};
@@ -131,7 +131,7 @@ impl Screen {
         disable_raw_mode()?;
         output.execute(LeaveAlternateScreen)?;
         #[cfg(not(target_os = "windows"))]
-        output.execute(crossterm::event::DisableMouseCapture)?;
+        output.execute(DisableMouseCapture)?;
         output.execute(cursor::Show)?;
         Ok(())
     }
