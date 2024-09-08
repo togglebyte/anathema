@@ -31,6 +31,10 @@ impl Component for App {
             *state.number.to_mut() -= 1;
         }
     }
+
+    fn accept_focus(&self) -> bool {
+        false
+    }
 }
 
 struct Button;
@@ -79,6 +83,7 @@ fn main() {
         .unwrap();
 
     let mut runtime = Runtime::builder(doc, backend);
+
     runtime
         .register_component(
             "main",
@@ -87,6 +92,7 @@ fn main() {
             AppState { number: 0.into() },
         )
         .unwrap();
+
     runtime
         .register_prototype(
             "button",

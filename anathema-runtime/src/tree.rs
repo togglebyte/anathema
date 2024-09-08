@@ -29,10 +29,6 @@ impl<'bp> Tree<'bp> for WidgetTree<'bp> {
     {
         self.with_value_mut(widget_id, |path, widget, tree| {
             let WidgetKind::Component(component) = widget else { return None };
-            if !component.dyn_component.accept_focus_any() {
-                return None;
-            }
-
             let (node, values) = tree.get_node_by_path(path)?;
             let elements = Elements::new(
                 node.children(),

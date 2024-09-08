@@ -57,14 +57,6 @@ impl From<(u8, u8, u8)> for Color {
     }
 }
 
-impl TryFrom<&str> for Color {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Hex::try_from(value).map(Into::into)
-    }
-}
-
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

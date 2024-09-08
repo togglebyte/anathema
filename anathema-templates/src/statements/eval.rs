@@ -123,14 +123,15 @@ impl Scope {
 
     fn eval_component(&mut self, component_id: WidgetComponentId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let parent = ctx.component_parent();
-        let attributes = self.eval_attributes(ctx)?;
 
         // Associated functions
         let assoc_functions = self.statements.take_assoc_functions();
 
-        let state = self.statements.take_value().map(|v| const_eval(v, ctx));
+        // Attributes
+        let attributes = self.eval_attributes(ctx)?;
 
         // State
+        let state = self.statements.take_value().map(|v| const_eval(v, ctx));
         let state = match state {
             Some(Expression::Map(map)) => Some(map),
             Some(_) => todo!("Invalid state: state has to be a map or nothing"),
@@ -250,6 +251,17 @@ mod test {
             vstack
                 @comp (a->b) { a: 1 }
                 @comp (a->b) { a: 2 }
+        ";
+
+        let mut doc = Document::new(src);
+        doc.add_component("comp", "node a".to_template()).unwrap();
+        let _ = doc.compile().unwrap();
+    }
+
+    #[test]
+    fn component_with_assoc_attrs_state() {
+        let src = "
+            @comp (a->b) [a: 1] { a: 1 }
         ";
 
         let mut doc = Document::new(src);

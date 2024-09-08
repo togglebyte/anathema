@@ -15,6 +15,8 @@ pub trait CellAttributes {
 
     fn get_i64(&self, key: &str) -> Option<i64>;
 
+    fn get_u8(&self, key: &str) -> Option<u8>;
+
     fn get_hex(&self, key: &str) -> Option<Hex>;
 
     fn get_color(&self, key: &str) -> Option<Color>;

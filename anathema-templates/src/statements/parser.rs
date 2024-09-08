@@ -338,12 +338,6 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         let component_id = self.components.insert_id(ident.to_owned());
         self.tokens.consume_indent();
 
-        if let Kind::Op(Operator::LParen) = self.tokens.peek_skip_indent() {}
-
-        // check for brackets,
-        // if there are brackets then parse the associated functions
-        // if not move to the next state
-
         self.next_state();
         Ok(Some(Statement::Component(component_id)))
     }

@@ -111,6 +111,7 @@ impl Buffer {
 pub struct Canvas {
     buffer: Buffer,
     pos: Pos,
+    is_dirty: bool,
 }
 
 impl Canvas {
@@ -120,6 +121,7 @@ impl Canvas {
     }
 
     pub fn put(&mut self, c: char, style: Style, pos: impl Into<LocalPos>) {
+        self.is_dirty = true;
         self.buffer.put(c, style, pos);
     }
 
@@ -132,12 +134,16 @@ impl Canvas {
 
     pub fn get_mut(&mut self, pos: impl Into<LocalPos>) -> Option<(&mut char, &mut Style)> {
         match self.buffer.get_mut(pos)? {
-            Cell::Occupied(c, style) => Some((c, style)),
+            Cell::Occupied(c, style) => {
+                self.is_dirty = true;
+                Some((c, style))
+            }
             Cell::Empty => None,
         }
     }
 
     pub fn erase(&mut self, pos: impl Into<LocalPos>) {
+        self.is_dirty = true;
         self.buffer.remove(pos)
     }
 }
@@ -147,6 +153,7 @@ impl Default for Canvas {
         Self {
             buffer: Buffer::new((32, 32).into()),
             pos: Pos::ZERO,
+            is_dirty: true,
         }
     }
 }
@@ -199,6 +206,10 @@ impl Widget for Canvas {
             ctx.set_attributes(style, pos);
             ctx.place_glyph(c, pos);
         }
+    }
+
+    fn needs_reflow(&self) -> bool {
+        self.is_dirty
     }
 }
 
