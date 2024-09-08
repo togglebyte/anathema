@@ -97,7 +97,7 @@ impl CellAttributes for Style {
     fn get_color(&self, key: &str) -> Option<Color> {
         match key {
             "foreground" => self.fg,
-            "background" => self.fg,
+            "background" => self.bg,
             _ => None,
         }
     }
