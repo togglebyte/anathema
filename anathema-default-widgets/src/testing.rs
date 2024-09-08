@@ -134,7 +134,7 @@ impl TestInstance<'_> {
                     &mut scope,
                     self.states,
                     self.component_registry,
-                    &change,
+                    change,
                     sub,
                     &path,
                     &mut self.tree,
