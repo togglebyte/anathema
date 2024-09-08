@@ -1,31 +1,36 @@
 use std::io::{Result, Write};
 
-use anathema_state::Hex;
+use anathema_state::{Color, Hex};
 use anathema_widgets::paint::CellAttributes;
-pub use crossterm::style::{Attribute as CrossAttrib, Color};
+pub use crossterm::style::{Attribute as CrossAttrib, Color as CrossColor};
 use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
 
-fn color_to_string(color: Color) -> &'static str {
-    match color {
-        Color::Reset => "reset",
-        Color::Black => "black",
-        Color::DarkGrey => "dark_grey",
-        Color::Red => "red",
-        Color::DarkRed => "dark_red",
-        Color::Green => "green",
-        Color::DarkGreen => "dark_green",
-        Color::Yellow => "yellow",
-        Color::DarkYellow => "dark_yellow",
-        Color::Blue => "blue",
-        Color::DarkBlue => "dark_blue",
-        Color::Magenta => "magenta",
-        Color::DarkMagenta => "dark_magenta",
-        Color::Cyan => "cyan",
-        Color::DarkCyan => "dark_cyan",
-        Color::White => "white",
-        Color::Grey => "grey",
-        _ => "",
+struct ColorWrapper(Color);
+
+impl From<ColorWrapper> for CrossColor {
+    fn from(color: ColorWrapper) -> CrossColor {
+        match color.0 {
+            Color::Reset => Self::Reset,
+            Color::Black => Self::Black,
+            Color::Red => Self::DarkRed,
+            Color::Green => Self::DarkGreen,
+            Color::Yellow => Self::DarkYellow,
+            Color::Blue => Self::DarkBlue,
+            Color::Magenta => Self::DarkMagenta,
+            Color::Cyan => Self::DarkCyan,
+            Color::Grey => Self::Grey,
+            Color::DarkGrey => Self::DarkGrey,
+            Color::LightRed => Self::Red,
+            Color::LightGreen => Self::Green,
+            Color::LightYellow => Self::Yellow,
+            Color::LightBlue => Self::Blue,
+            Color::LightMagenta => Self::Magenta,
+            Color::LightCyan => Self::Cyan,
+            Color::White => Self::White,
+            Color::Rgb(r, g, b) => Self::Rgb { r, g, b },
+            Color::AnsiVal(v) => Self::AnsiValue(v),
+        }
     }
 }
 
@@ -66,8 +71,8 @@ pub struct Style {
 impl CellAttributes for Style {
     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
         match key {
-            "foreground" => self.fg.map(|c| f(color_to_string(c))),
-            "background" => self.bg.map(|c| f(color_to_string(c))),
+            "foreground" => self.fg.map(|c| f(&c.to_string())),
+            "background" => self.bg.map(|c| f(&c.to_string())),
             _ => None,
         };
     }
@@ -84,8 +89,16 @@ impl CellAttributes for Style {
         };
 
         match colour {
-            Some(Color::Rgb { r, g, b }) => Some(Hex::from((r, g, b))),
+            Some(Color::Rgb(r, g, b)) => Some(Hex::from((r, g, b))),
             None | Some(_) => None,
+        }
+    }
+
+    fn get_color(&self, key: &str) -> Option<Color> {
+        match key {
+            "foreground" => self.fg,
+            "background" => self.bg,
+            _ => None,
         }
     }
 
@@ -127,6 +140,16 @@ impl Style {
             None => attributes.with_str("background", &mut |s| style.bg = Color::try_from(s).ok()),
         }
 
+        match attributes.get_color("foreground") {
+            Some(color) => style.fg = Some(color),
+            None => attributes.with_str("foreground", &mut |s| style.fg = Color::try_from(s).ok()),
+        }
+
+        match attributes.get_color("background") {
+            Some(color) => style.bg = Some(color),
+            None => attributes.with_str("background", &mut |s| style.bg = Color::try_from(s).ok()),
+        }
+
         if attributes.get_bool("bold") {
             style.attributes |= Attributes::BOLD;
         }
@@ -160,11 +183,11 @@ impl Style {
 
     pub(crate) fn write(&self, w: &mut impl Write) -> Result<()> {
         if let Some(fg) = self.fg {
-            w.queue(SetForegroundColor(fg))?;
+            w.queue(SetForegroundColor(ColorWrapper(fg).into()))?;
         }
 
         if let Some(bg) = self.bg {
-            w.queue(SetBackgroundColor(bg))?;
+            w.queue(SetBackgroundColor(ColorWrapper(bg).into()))?;
         }
 
         // Dim and bold are a special case, as they are both
@@ -331,5 +354,25 @@ bitflags::bitflags! {
         const OVERLINED =   0b0010_0000;
         /// Make the characters inverse (in supported output)
         const INVERSE =     0b0100_0000;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merging_styles() {
+        let mut right = Style::new();
+        right.set_fg(Color::Green);
+        right.set_bg(Color::Blue);
+
+        let mut left = Style::new();
+        left.set_fg(Color::Red);
+
+        left.merge(right);
+
+        assert_eq!(left.fg.unwrap(), Color::Red);
+        assert_eq!(left.bg.unwrap(), Color::Blue);
     }
 }
