@@ -35,7 +35,7 @@ pub enum Color {
     Rgb(u8, u8, u8),
     /// 8bit color.
     ///
-    /// See [256 colorts](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit)
+    /// See [256 colors](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit)
     AnsiVal(u8),
 }
 
