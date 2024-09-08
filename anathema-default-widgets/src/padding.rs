@@ -34,7 +34,7 @@ impl Widget for Padding {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let mut size = Size::ZERO;
@@ -99,8 +99,6 @@ impl Widget for Padding {
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: anathema_widgets::paint::PaintCtx<'_, anathema_widgets::paint::SizePos>,
-        // TODO make a read-only version of the buffer as it shouldn't change on paint
-        text: &mut anathema_widgets::layout::text::StringSession<'_>,
     ) {
         children.for_each(|child, children| {
             let mut ctx = ctx.to_unsized();
@@ -110,7 +108,7 @@ impl Widget for Padding {
                 clip.to.x -= self.0.right as i32;
                 clip.to.y -= self.0.bottom as i32;
             }
-            child.paint(children, ctx, text, attribute_storage);
+            child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())
         });
     }

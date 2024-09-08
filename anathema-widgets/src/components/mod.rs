@@ -1,4 +1,6 @@
 use std::any::Any;
+use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
@@ -220,6 +222,7 @@ impl<'rt, T: 'static> Context<'rt, T> {
         );
     }
 
+    /// Send a message to a given component
     pub fn emit<M: 'static + Send + Sync>(&self, recipient: ComponentId<M>, value: M) {
         self.emitter
             .emit(recipient, value)
@@ -230,6 +233,12 @@ impl<'rt, T: 'static> Context<'rt, T> {
     pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
         let val = self.component_ctx.external_state?.get(key);
         val.and_then(|(_, val)| val.load_common_val())
+    }
+
+    /// Queue a focus call to a component that might have
+    /// an attribute matching the key and value pair
+    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal<'static>>) {
+        self.component_ctx.focus_queue.push(key.into(), value.into());
     }
 }
 
@@ -266,6 +275,7 @@ pub struct ComponentContext<'rt> {
     pub state_id: StateId,
     pub assoc_functions: &'rt [(StringId, StringId)],
     pub assoc_events: &'rt mut AssociatedEvents,
+    focus_queue: &'rt mut FocusQueue<'static>,
     external_state: Option<&'rt ExternalState<'rt>>,
 }
 
@@ -275,6 +285,7 @@ impl<'rt> ComponentContext<'rt> {
         parent: Option<WidgetComponentId>,
         assoc_functions: &'rt [(StringId, StringId)],
         assoc_events: &'rt mut AssociatedEvents,
+        focus_queue: &'rt mut FocusQueue<'static>,
         external_state: Option<&'rt ExternalState<'rt>>,
     ) -> Self {
         Self {
@@ -282,6 +293,7 @@ impl<'rt> ComponentContext<'rt> {
             state_id,
             assoc_functions,
             assoc_events,
+            focus_queue,
             external_state,
         }
     }
@@ -295,8 +307,8 @@ pub struct AssociatedEvent {
 }
 
 // The reason the component can not have access
-// to the children during this event is because the parent is borrowing from the childs
-// state while this is happening.
+// to the children during this event is because the parent is borrowing from the
+// child's state while this is happening.
 pub struct AssociatedEvents {
     inner: Vec<AssociatedEvent>,
 }
@@ -323,6 +335,26 @@ impl AssociatedEvents {
 
     pub fn next(&mut self) -> Option<AssociatedEvent> {
         self.inner.pop()
+    }
+}
+
+pub struct FocusQueue<'rt> {
+    focus_queue: VecDeque<(Cow<'static, str>, CommonVal<'rt>)>,
+}
+
+impl<'rt> FocusQueue<'rt> {
+    pub fn new() -> Self {
+        Self {
+            focus_queue: VecDeque::new(),
+        }
+    }
+
+    pub(crate) fn push(&mut self, key: Cow<'static, str>, value: CommonVal<'rt>) {
+        self.focus_queue.push_back((key, value));
+    }
+
+    pub fn pop(&mut self) -> Option<(Cow<'static, str>, CommonVal<'rt>)> {
+        self.focus_queue.pop_front()
     }
 }
 

@@ -21,6 +21,7 @@ impl<'a, 'filter, T, Fil> TreeForEach<'a, 'filter, T, Fil> {
         self.inner_for_each(&mut f);
     }
 
+    /// Apply to the first element that matches the filter
     pub fn first<F>(&mut self, f: &mut F)
     where
         F: FnMut(&mut Fil::Output, &[Node], &mut TreeValues<T>),

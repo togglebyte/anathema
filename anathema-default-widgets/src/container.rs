@@ -15,7 +15,7 @@ impl Widget for Container {
         mut children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
 

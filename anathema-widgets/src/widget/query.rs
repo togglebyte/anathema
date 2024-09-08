@@ -6,7 +6,7 @@ use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{apply_visitor, Node, TreeValues};
 
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
+use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetId, WidgetKind};
 
 // -----------------------------------------------------------------------------
 //   - Elements -
@@ -15,6 +15,7 @@ pub struct Elements<'tree, 'bp> {
     nodes: &'tree [Node],
     widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
     attributes: &'tree mut AttributeStorage<'bp>,
+    dirty_widgets: &'tree mut DirtyWidgets,
 }
 
 impl<'tree, 'bp> Elements<'tree, 'bp> {
@@ -22,11 +23,13 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         nodes: &'tree [Node],
         widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
+        dirty_widgets: &'tree mut DirtyWidgets,
     ) -> Self {
         Self {
             nodes,
             widgets,
             attributes: attribute_storage,
+            dirty_widgets,
         }
     }
 
@@ -100,6 +103,7 @@ where
             f,
             continuous,
             attributes: self.elements.attributes,
+            dirty_widgets: self.elements.dirty_widgets,
         };
 
         apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
@@ -214,52 +218,27 @@ pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
     f: F,
     continuous: bool,
     attributes: &'tag mut AttributeStorage<'bp>,
+    dirty_widgets: &'tag mut DirtyWidgets,
 }
-
-// impl QueryRun {
-//     pub fn each<F>(self, f: F)
-//     where
-//         F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
-//     {
-//         let mut run = QueryRun {
-//             arg: self.arg,
-//             p: PhantomData,
-//             f,
-//             continuous: true,
-//             attributes: self.widgets.attributes,
-//         };
-
-//         apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
-//     }
-
-//     pub fn first(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>)) {
-//         let mut run = QueryRun {
-//             arg: self.arg,
-//             p: PhantomData,
-//             f,
-//             continuous: false,
-//             attributes: self.widgets.attributes,
-//         };
-
-//         apply_visitor(self.widgets.nodes, self.widgets.widgets, &mut run);
-//     }
-// }
 
 impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'bp, 'tag, T, F>
 where
     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
-    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], _widget_id: WidgetId) -> ControlFlow<bool> {
+    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
         if let WidgetKind::Element(el) = value {
             if self.filter.filter(el, self.attributes) {
                 let attributes = self.attributes.get_mut(el.id());
                 (self.f)(el, attributes);
+
+                if el.container.inner.any_needs_reflow() {
+                    self.dirty_widgets.push(widget_id);
+                }
+
                 if !self.continuous {
                     return ControlFlow::Break(false);
                 }
             }
-
-            return ControlFlow::Continue(());
         }
 
         ControlFlow::Continue(())

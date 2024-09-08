@@ -21,7 +21,7 @@ impl BorderLayout {
         &mut self,
         mut children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
 

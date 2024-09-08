@@ -15,7 +15,7 @@ impl Widget for Align {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         children.for_each(|widget, children| {
             let _ = widget.layout(children, constraints, ctx);

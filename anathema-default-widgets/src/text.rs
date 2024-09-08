@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
 use anathema_state::CommonVal;
-use anathema_widgets::layout::text::{LayoutKey, ProcessResult, Segment, StringSession};
+use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
@@ -68,7 +68,7 @@ impl TryFrom<CommonVal<'_>> for TextAlignment {
 /// A `Text` widget will be as wide as its text.
 #[derive(Debug, Default)]
 pub struct Text {
-    text_key: LayoutKey,
+    strings: Strings,
 }
 
 impl Widget for Text {
@@ -77,17 +77,17 @@ impl Widget for Text {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let wrap = attributes.get(WRAP).unwrap_or_default();
-
-        let mut layout = ctx.text.new_layout(constraints.max_size(), wrap);
-        layout.set_style(id);
+        let size = constraints.max_size();
+        self.strings = Strings::new(size, wrap);
+        self.strings.set_style(id);
 
         // Layout text
         attributes.value().map(|value| {
-            value.str_iter(|s| match layout.add_str(s) {
+            value.str_iter(|s| match self.strings.add_str(s) {
                 ProcessResult::Break => ControlFlow::Break(()),
                 ProcessResult::Continue => ControlFlow::Continue(()),
             })
@@ -98,11 +98,11 @@ impl Widget for Text {
             let Some(_span) = child.try_to_ref::<Span>() else {
                 return ControlFlow::Continue(());
             };
-            layout.set_style(child.id());
+            self.strings.set_style(child.id());
 
             let attributes = ctx.attribs.get(child.id());
             if let Some(text) = attributes.value() {
-                text.str_iter(|s| match layout.add_str(s) {
+                text.str_iter(|s| match self.strings.add_str(s) {
                     ProcessResult::Break => ControlFlow::Break(()),
                     ProcessResult::Continue => ControlFlow::Continue(()),
                 })?;
@@ -113,11 +113,7 @@ impl Widget for Text {
             }
         });
 
-        let (key, size) = layout.finish();
-
-        self.text_key = key;
-
-        size
+        self.strings.finish()
     }
 
     fn paint<'bp>(
@@ -126,9 +122,8 @@ impl Widget for Text {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
-        let lines = text.lines(self.text_key);
+        let lines = self.strings.lines();
         let alignment = attribute_storage.get(id).get(TEXT_ALIGN).unwrap_or_default();
 
         let mut pos = LocalPos::ZERO;
@@ -186,7 +181,7 @@ impl Widget for Span {
         _: LayoutChildren<'_, '_, 'bp>,
         _: Constraints,
         _: WidgetId,
-        _: &mut LayoutCtx<'_, '_, 'bp>,
+        _: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         // Everything is handled by the parent text
         panic!("this should never be called");

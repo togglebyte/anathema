@@ -27,7 +27,7 @@ impl Stack {
         children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
 

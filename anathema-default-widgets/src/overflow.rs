@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
@@ -20,10 +19,13 @@ pub struct Overflow {
     inner_size: Size,
 
     direction: Direction,
+    is_dirty: bool,
 }
 
 impl Overflow {
     pub fn scroll(&mut self, direction: Direction, amount: Pos) {
+        self.is_dirty = true;
+
         match (self.direction, direction) {
             (Direction::Forward, Direction::Forward) => self.offset += amount,
             (Direction::Forward, Direction::Backward) => self.offset -= amount,
@@ -107,7 +109,7 @@ impl Widget for Overflow {
         children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
@@ -203,15 +205,18 @@ impl Widget for Overflow {
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
         let region = ctx.create_region();
         children.for_each(|widget, children| {
             ctx.set_clip_region(region);
             let ctx = ctx.to_unsized();
-            widget.paint(children, ctx, text, attribute_storage);
+            widget.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
         });
+    }
+
+    fn needs_reflow(&self) -> bool {
+        self.is_dirty
     }
 }
 

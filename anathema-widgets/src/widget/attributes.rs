@@ -18,10 +18,12 @@ impl<'bp> AttributeStorage<'bp> {
         Self(SecondaryMap::empty())
     }
 
+    /// Get a reference to attributes by widget id
     pub fn get(&self, id: WidgetId) -> &Attributes<'bp> {
         self.0.get(id).map(|(_, a)| a).expect("every element has attributes")
     }
 
+    /// Get a mutable reference to attributes by widget id
     pub fn get_mut(&mut self, id: WidgetId) -> &mut Attributes<'bp> {
         self.0
             .get_mut(id)
@@ -29,10 +31,14 @@ impl<'bp> AttributeStorage<'bp> {
             .expect("every element has attributes")
     }
 
+    /// Insert attributes for a given widget.
+    ///
+    /// This will overwrite any existing attributes at that location
     pub fn insert(&mut self, widget_id: WidgetId, attribs: Attributes<'bp>) {
         self.0.insert(widget_id, (widget_id.gen(), attribs))
     }
 
+    /// Try to remove attributes for a specific widget
     pub fn try_remove(&mut self, id: WidgetId) {
         let _ = self.0.remove_if(id, |(current_gen, _)| *current_gen == id.gen());
     }

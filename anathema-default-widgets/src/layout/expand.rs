@@ -48,7 +48,7 @@ pub fn layout_all_expansions<'bp>(
     nodes: &mut LayoutChildren<'_, '_, 'bp>,
     constraints: Constraints,
     axis: Axis,
-    ctx: &mut LayoutCtx<'_, '_, 'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> Size {
     let mut factors = vec![];
 

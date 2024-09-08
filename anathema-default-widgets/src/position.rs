@@ -2,7 +2,6 @@ use std::ops::ControlFlow;
 
 use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
@@ -76,7 +75,7 @@ impl Widget for Position {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribs.get(id);
         self.placement = attribs.get(PLACEMENT).unwrap_or_default();
@@ -176,12 +175,11 @@ impl Widget for Position {
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
         children.for_each(|child, children| {
             let mut ctx = ctx.to_unsized();
             ctx.clip = None;
-            child.paint(children, ctx, text, attribute_storage);
+            child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
         });
     }
