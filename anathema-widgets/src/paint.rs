@@ -1,11 +1,10 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_state::Hex;
+use anathema_state::{Color, Hex};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use unicode_width::UnicodeWidthChar;
 
-use crate::layout::text::StringSession;
 use crate::layout::Display;
 use crate::nodes::element::Element;
 use crate::widget::WidgetRenderer;
@@ -16,7 +15,11 @@ pub trait CellAttributes {
 
     fn get_i64(&self, key: &str) -> Option<i64>;
 
+    fn get_u8(&self, key: &str) -> Option<u8>;
+
     fn get_hex(&self, key: &str) -> Option<Hex>;
+
+    fn get_color(&self, key: &str) -> Option<Color>;
 
     fn get_bool(&self, key: &str) -> bool;
 }
@@ -70,13 +73,12 @@ pub fn paint<'bp>(
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
     attribute_storage: &AttributeStorage<'bp>,
-    text: &mut StringSession<'_>,
     ignore_floats: bool,
 ) {
     let filter = PaintFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
     let ctx = PaintCtx::new(surface, None);
-    element.paint(children, ctx, text, attribute_storage);
+    element.paint(children, ctx, attribute_storage);
 }
 
 #[derive(Debug, Copy, Clone)]

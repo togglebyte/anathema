@@ -46,7 +46,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
         Ok(())
     }
 
-    fn parent(&mut self, parent: &WidgetKind<'bp>, children: &[u16]) {
+    fn parent(&mut self, parent: &mut WidgetKind<'bp>, children: &[u16]) {
         scope_value(parent, self.scope, children);
     }
 }
@@ -163,7 +163,7 @@ fn try_resolve_value<'bp>(
                     .ok_or(Error::TreeTransactionFailed)?;
 
                 // Scope the iteration value
-                tree.with_value(iter_id, |parent, widget, tree| {
+                tree.with_value_mut(iter_id, |parent, widget, tree| {
                     let WidgetKind::Iteration(iter) = widget else { unreachable!() };
                     ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
@@ -192,7 +192,7 @@ fn try_resolve_value<'bp>(
         WidgetKind::Iteration(_) => unreachable!(),
         WidgetKind::Component(component) => {
             let Some(state) = &mut component.external_state else { return Ok(()) };
-            for ((_, i), v) in state.iter_mut() {
+            for (_, (i, v)) in state.iter_mut() {
                 if *i == value_id.index() {
                     if let Some(expr) = v.expr {
                         *v = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);

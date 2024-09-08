@@ -15,7 +15,7 @@ impl Widget for Align {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         children.for_each(|widget, children| {
             let _ = widget.layout(children, constraints, ctx);
@@ -53,7 +53,7 @@ impl Widget for Align {
                 Alignment::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
             };
 
-            child.position(children, ctx.pos + child_offset, attribute_storage);
+            child.position(children, ctx.pos + child_offset, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

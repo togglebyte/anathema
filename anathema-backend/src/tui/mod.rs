@@ -3,14 +3,13 @@
 //! It uses two buffers and only draws the diffs from top left to bottom right, making it less
 //! likely to flicker when moving the cursor etc.
 #![deny(missing_docs)]
-use std::io::Stdout;
+use std::io::{Stdout, Write};
 use std::ops::Add;
 use std::time::Duration;
 
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
 use crossterm::terminal::size;
 pub use screen::Screen;
@@ -38,31 +37,35 @@ pub struct TuiBackendBuilder {
 }
 
 impl TuiBackendBuilder {
-    /// Enable alt screen
+    /// Enable an alternative screen.
+    /// When using this with stdout it means the output will not persist
+    /// once the program exits.
     pub fn enable_alt_screen(mut self) -> Self {
         self.enable_alt_screen = true;
         self
     }
 
-    /// Enable mouse support
+    /// Enable mouse support.
     pub fn enable_mouse(mut self) -> Self {
         self.enable_mouse = true;
         self
     }
 
-    /// Enable raw mode
+    /// When raw mode is enabled, every key press is sent to the terminal.
+    /// If raw mode is not enabled, the return key has to be pressed to
+    /// send characters to the terminal.
     pub fn enable_raw_mode(mut self) -> Self {
         self.enable_raw_mode = true;
         self
     }
 
-    /// Hide the cursor (not the mouse cursor)
+    /// Hide the text cursor.
     pub fn hide_cursor(mut self) -> Self {
         self.hide_cursor = true;
         self
     }
 
-    /// Consume self and create the tui backend
+    /// Consume self and create the tui backend.
     pub fn finish(self) -> Result<TuiBackend, std::io::Error> {
         let size = size()?;
         let screen = Screen::new(size);
@@ -85,7 +88,7 @@ impl TuiBackendBuilder {
 
 /// Terminal backend
 pub struct TuiBackend {
-    /// Stop the runtime if Ctrl+c was pressed
+    /// Stop the runtime if Ctrl+c was pressed.
     pub quit_on_ctrl_c: bool,
     screen: Screen,
     output: Stdout,
@@ -99,7 +102,7 @@ pub struct TuiBackend {
 }
 
 impl TuiBackend {
-    /// Create a new instance of the tui backend
+    /// Create a new instance of the tui backend.
     pub fn builder() -> TuiBackendBuilder {
         let output = std::io::stdout();
 
@@ -114,7 +117,7 @@ impl TuiBackend {
         }
     }
 
-    /// Disable raw mode
+    /// Disable raw mode.
     pub fn disable_raw_mode(self) -> Self {
         let _ = Screen::disable_raw_mode();
         self
@@ -146,7 +149,6 @@ impl Backend for TuiBackend {
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
-        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     ) {
@@ -156,7 +158,6 @@ impl Backend for TuiBackend {
             children,
             values,
             attribute_storage,
-            text,
             ignore_floats,
         );
         // TODO: decide if we need `paint` to return a Result or not
@@ -172,6 +173,8 @@ impl Backend for TuiBackend {
 
     fn finalize(&mut self) {
         if self.hide_cursor {
+            // This is to fix an issue with Windows cmd.exe
+            let _ = Screen::show_cursor(&mut self.output);
             let _ = Screen::hide_cursor(&mut self.output);
         }
 
@@ -186,6 +189,8 @@ impl Backend for TuiBackend {
         if self.enable_mouse {
             let _ = Screen::enable_mouse(&mut self.output);
         }
+
+        let _ = self.output.flush();
     }
 }
 

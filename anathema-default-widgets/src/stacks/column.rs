@@ -21,7 +21,7 @@ impl Widget for Column {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.0.layout(children, constraints, id, ctx)
     }
@@ -43,7 +43,7 @@ impl Widget for Column {
             let mut pos = ctx.pos;
             pos.x += x;
 
-            child.position(children, pos, attribute_storage);
+            child.position(children, pos, attribute_storage, ctx.viewport);
             ctx.pos.y += size.height as i32;
             ControlFlow::Continue(())
         });

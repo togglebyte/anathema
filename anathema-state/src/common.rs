@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use std::ops::Deref;
 
-use crate::{Hex, Number};
+use crate::{Color, Hex, Number};
 
 /// A string that is either owned or borrowed.
 /// This is not the same as Cow<T> as Cow allows the underlying value
@@ -48,6 +48,7 @@ pub enum CommonVal<'frame> {
     Int(i64),
     Float(f64),
     Hex(Hex),
+    Color(Color),
     Str(&'frame str),
 }
 
@@ -82,6 +83,13 @@ impl<'frame> CommonVal<'frame> {
             _ => None,
         }
     }
+
+    pub fn to_color(&self) -> Option<Color> {
+        match self {
+            Self::Color(color) => Some(*color),
+            _ => None,
+        }
+    }
 }
 
 impl Display for CommonVal<'_> {
@@ -92,6 +100,7 @@ impl Display for CommonVal<'_> {
             CommonVal::Int(val) => write!(f, "{val}"),
             CommonVal::Float(val) => write!(f, "{val:.4}"),
             CommonVal::Hex(Hex { r, g, b }) => write!(f, "r: {r}, g: {g}, b: {b}"),
+            CommonVal::Color(val) => write!(f, "{val}"),
             CommonVal::Str(val) => write!(f, "{val}"),
         }
     }
@@ -115,6 +124,12 @@ impl From<(u8, u8, u8)> for CommonVal<'_> {
 impl From<Hex> for CommonVal<'_> {
     fn from(value: Hex) -> Self {
         CommonVal::Hex(value)
+    }
+}
+
+impl From<Color> for CommonVal<'_> {
+    fn from(value: Color) -> Self {
+        CommonVal::Color(value)
     }
 }
 
@@ -265,5 +280,21 @@ mod test {
         let common_val = state.to_common().unwrap();
         let s = common_val.to_common_str();
         assert!(matches!(s, CommonString::Owned(_)));
+    }
+
+    #[test]
+    fn color_to_common() {
+        let sub = Subscriber::ZERO;
+
+        let value = Value::new(Color::Rgb(36, 36, 36));
+        let value_ref = value.value_ref(sub);
+        let state = value_ref.as_state().unwrap();
+        let common_val = state.to_common().unwrap();
+        let s = common_val.to_common_str();
+        assert!(matches!(s, CommonString::Owned(_)));
+
+        let value = CommonVal::Color(Color::Grey);
+        let color = value.to_color().unwrap();
+        assert_eq!(color, Color::Grey);
     }
 }

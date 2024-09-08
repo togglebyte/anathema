@@ -3,13 +3,13 @@ use std::time::{Duration, Instant};
 use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, States};
-use anathema_store::storage::strings::Strings;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{AssociatedEvents, Emitter, UntypedContext};
+use anathema_widgets::components::{AssociatedEvents, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Components, Elements, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
+use crate::tree::Tree;
 
 pub(super) struct EventHandler;
 
@@ -21,56 +21,19 @@ impl EventHandler {
         sleep_micros: u128,
         backend: &mut impl Backend,
         viewport: &mut Viewport,
-        emitter: &Emitter,
         tree: &mut WidgetTree<'bp>,
-        components: &mut Components,
-        states: &mut States,
-        attribute_storage: &mut AttributeStorage<'bp>,
         constraints: &mut Constraints,
-        assoc_events: &mut AssociatedEvents,
-        strings: &Strings,
+        event_ctx: &mut EventCtx<'_, '_, 'bp>,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let Some(event) = global_event(
-                backend,
-                components,
-                event,
-                tree,
-                states,
-                attribute_storage,
-                emitter,
-                *viewport,
-                assoc_events,
-                strings,
-            ) else {
+            let Some(event) = global_event(event_ctx, backend, tree, event) else {
                 return Ok(());
             };
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
-                if let Some((widget_id, state_id)) = components.current() {
-                    tree.with_value_mut(widget_id, |path, widget, tree| {
-                        let WidgetKind::Component(component) = widget else { return };
-                        let state = states.get_mut(state_id);
-
-                        let parent = component
-                            .parent
-                            .and_then(|parent| components.get_by_component_id(parent))
-                            .map(|parent| parent.component_id.into());
-
-                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                        let elements = Elements::new(node.children(), values, attribute_storage);
-                        let context = UntypedContext {
-                            emitter,
-                            viewport: *viewport,
-                            assoc_events,
-                            state_id,
-                            parent,
-                            strings,
-                            assoc_functions: component.assoc_functions,
-                        };
-                        component.dyn_component.any_event(event, state, elements, context);
-                    });
+                if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
                 }
             }
 
@@ -82,34 +45,18 @@ impl EventHandler {
                     constraints.set_max_width(size.width);
                     constraints.set_max_height(size.height);
 
+                    // Remember to update the viewport on the context
+                    event_ctx.context.viewport = *viewport;
+
                     // Notify all components of the resize
-                    let len = components.len();
+                    let len = event_ctx.components.len();
                     for i in 0..len {
-                        let (widget_id, state_id) =
-                            components.get(i).expect("components can not change during this call");
+                        let (widget_id, state_id) = event_ctx
+                            .components
+                            .get(i)
+                            .expect("components can not change during this call");
 
-                        tree.with_value_mut(widget_id, |path, widget, tree| {
-                            let WidgetKind::Component(component) = widget else { return };
-                            let state = states.get_mut(state_id);
-
-                            let parent = component
-                                .parent
-                                .and_then(|parent| components.get_by_component_id(parent))
-                                .map(|parent| parent.component_id.into());
-
-                            let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                            let elements = Elements::new(node.children(), values, attribute_storage);
-                            let context = UntypedContext {
-                                emitter,
-                                viewport: *viewport,
-                                assoc_events,
-                                state_id,
-                                parent,
-                                strings,
-                                assoc_functions: component.assoc_functions,
-                            };
-                            component.dyn_component.any_resize(state, elements, context);
-                        });
+                        tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_resize(ctx));
                     }
                 }
                 Event::Blur => (),
@@ -126,44 +73,77 @@ impl EventHandler {
             // -----------------------------------------------------------------------------
             //   - Drain associated events -
             // -----------------------------------------------------------------------------
-            while let Some(mut event) = assoc_events.next() {
-                states.with_mut(event.state, |state, states| {
+            while let Some(mut event) = event_ctx.assoc_events.next() {
+                event_ctx.states.with_mut(event.state, |state, states| {
                     let common_val = (event.f)(state);
                     let Some(common_val) = common_val.to_common() else { return };
-                    let Some(entry) = components.get_by_component_id(event.parent.into()) else {
+                    let Some(entry) = event_ctx.components.get_by_component_id(event.parent.into()) else {
                         return;
                     };
 
                     let (widget_id, state_id) = (entry.widget_id, entry.state_id);
-                    tree.with_value_mut(widget_id, |path, widget, tree| {
-                        let WidgetKind::Component(component) = widget else { return };
 
+                    let strings = event_ctx.context.strings;
+
+                    let mut event_ctx = EventCtx {
+                        states,
+                        components: event_ctx.components,
+                        attribute_storage: event_ctx.attribute_storage,
+                        assoc_events: event_ctx.assoc_events,
+                        focus_queue: event_ctx.focus_queue,
+                        context: event_ctx.context,
+                        dirty_widgets: event_ctx.dirty_widgets,
+                    };
+
+                    tree.with_component(widget_id, state_id, &mut event_ctx, |comp, ctx| {
                         let event_ident = strings.get_ref_unchecked(event.external);
-
-                        let state = states.get_mut(state_id);
-
-                        let parent = component
-                            .parent
-                            .and_then(|parent| components.get_by_component_id(parent))
-                            .map(|parent| parent.component_id.into());
-
-                        let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                        let elements = Elements::new(node.children(), values, attribute_storage);
-                        let context = UntypedContext {
-                            emitter,
-                            viewport: *viewport,
-                            assoc_events,
-                            state_id,
-                            parent,
-                            strings,
-                            assoc_functions: component.assoc_functions,
-                        };
-
-                        component
-                            .dyn_component
-                            .any_receive(state, event_ident, common_val, elements, context);
+                        comp.any_receive(ctx, event_ident, common_val)
                     });
                 })
+            }
+        }
+
+        // -----------------------------------------------------------------------------
+        //   - Drain focus queue -
+        // -----------------------------------------------------------------------------
+        while let Some((key, value)) = event_ctx.focus_queue.pop() {
+            let len = event_ctx.components.len();
+            for i in 0..len {
+                let (widget_id, state_id) = event_ctx
+                    .components
+                    .get(i)
+                    .expect("components can not change during this call");
+
+                let found = tree.with_value_mut(widget_id, |_, widget, _| {
+                    let WidgetKind::Component(component) = widget else { unreachable!() };
+
+                    let attribs = event_ctx.attribute_storage.get(widget_id);
+                    let Some(val) = attribs.get_val(&key) else { return false };
+                    let Some(either) = val.load_common_val() else { return false };
+                    let Some(cv) = either.to_common() else { return false };
+                    if value != cv {
+                        return false;
+                    }
+
+                    if !component.dyn_component.accept_focus_any() {
+                        return false;
+                    }
+
+                    true
+                });
+
+                // -----------------------------------------------------------------------------
+                //   - Blur -
+                // -----------------------------------------------------------------------------
+                if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+                }
+
+                if found {
+                    event_ctx.components.tab_index = i;
+                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+                    break;
+                }
             }
         }
 
@@ -171,22 +151,30 @@ impl EventHandler {
     }
 }
 
-pub fn global_event<'bp, T: Backend>(
+// TODO: rename this, it has nothing to do with the events,
+// but rather calling functions on dyn components
+pub(crate) struct EventCtx<'a, 'rt, 'bp> {
+    pub dirty_widgets: &'a mut DirtyWidgets,
+    pub components: &'a mut Components,
+    pub states: &'a mut States,
+    pub attribute_storage: &'a mut AttributeStorage<'bp>,
+    pub assoc_events: &'a mut AssociatedEvents,
+    pub focus_queue: &'a mut FocusQueue<'static>,
+    pub context: UntypedContext<'rt>,
+}
+
+fn global_event<'bp, T: Backend>(
+    event_ctx: &mut EventCtx<'_, '_, 'bp>,
     backend: &mut T,
-    components: &mut Components,
-    event: Event,
     tree: &mut WidgetTree<'bp>,
-    states: &mut States,
-    attribute_storage: &mut AttributeStorage<'bp>,
-    emitter: &Emitter,
-    viewport: Viewport,
-    assoc_events: &mut AssociatedEvents,
-    strings: &Strings,
+    event: Event,
 ) -> Option<Event> {
     // -----------------------------------------------------------------------------
     //   - Ctrl-c to quite -
     //   This should be on by default.
     //   Give it a good name
+    //
+    //   TODO: Do away with this thing once we add a global event handler
     // -----------------------------------------------------------------------------
     if backend.quit_test(event) {
         return Some(Event::Stop);
@@ -201,60 +189,66 @@ pub fn global_event<'bp, T: Backend>(
         ..
     }) = event
     {
-        let prev = match code {
-            KeyCode::Tab => components.next(),
-            KeyCode::BackTab => components.prev(),
+        enum Dir {
+            F,
+            B,
+        }
+
+        let index = event_ctx.components.tab_index;
+        let dir = match code {
+            KeyCode::Tab => Dir::F,
+            KeyCode::BackTab => Dir::B,
             _ => return Some(event),
         };
 
-        if let Some((widget_id, state_id)) = components.get(prev) {
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
+        loop {
+            // -----------------------------------------------------------------------------
+            //   - Blur -
+            // -----------------------------------------------------------------------------
+            if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+            }
 
-                let parent = component
-                    .parent
-                    .and_then(|parent| components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
+            // -----------------------------------------------------------------------------
+            //   - Change index -
+            // -----------------------------------------------------------------------------
+            match dir {
+                Dir::F => {
+                    event_ctx.components.tab_index += 1;
+                    if event_ctx.components.tab_index >= event_ctx.components.len() {
+                        event_ctx.components.tab_index = 0;
+                    }
+                }
+                Dir::B => match event_ctx.components.tab_index >= 1 {
+                    true => event_ctx.components.tab_index -= 1,
+                    false => event_ctx.components.tab_index = event_ctx.components.len() - 1,
+                },
+            }
 
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = states.get_mut(state_id);
-                let context = UntypedContext {
-                    emitter,
-                    viewport,
-                    assoc_events,
-                    state_id,
-                    parent,
-                    strings,
-                    assoc_functions: component.assoc_functions,
-                };
-                component.dyn_component.any_blur(state, elements, context);
-            });
-        }
+            if index == event_ctx.components.tab_index {
+                break;
+            }
 
-        if let Some((widget_id, state_id)) = components.current() {
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
+            // -----------------------------------------------------------------------------
+            //   - Focus -
+            // -----------------------------------------------------------------------------
+            if let Some((widget_id, state_id)) = event_ctx.components.current() {
+                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
 
-                let parent = component
-                    .parent
-                    .and_then(|parent| components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
+                let cont = tree
+                    .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
+                        if !comp.accept_focus_any() {
+                            return true;
+                        }
+                        comp.any_focus(ctx);
+                        false
+                    })
+                    .unwrap_or(true);
 
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = states.get_mut(state_id);
-                let context = UntypedContext {
-                    emitter,
-                    viewport,
-                    assoc_events,
-                    state_id,
-                    parent,
-                    strings,
-                    assoc_functions: component.assoc_functions,
-                };
-                component.dyn_component.any_focus(state, elements, context);
-            });
+                if !cont {
+                    break;
+                }
+            }
         }
 
         return None;
@@ -262,30 +256,13 @@ pub fn global_event<'bp, T: Backend>(
 
     // Mouse events are global
     if let Event::Mouse(_) = event {
-        for i in 0..components.len() {
-            let (widget_id, state_id) = components.get(i).expect("components can not change during this call");
-            tree.with_value_mut(widget_id, |path, widget, tree| {
-                let WidgetKind::Component(component) = widget else { return };
+        for i in 0..event_ctx.components.len() {
+            let (widget_id, state_id) = event_ctx
+                .components
+                .get(i)
+                .expect("components can not change during this call");
 
-                let parent = component
-                    .parent
-                    .and_then(|parent| components.get_by_component_id(parent))
-                    .map(|parent| parent.component_id.into());
-
-                let Some((node, values)) = tree.get_node_by_path(path) else { return };
-                let elements = Elements::new(node.children(), values, attribute_storage);
-                let state = states.get_mut(state_id);
-                let context = UntypedContext {
-                    emitter,
-                    viewport,
-                    assoc_events,
-                    state_id,
-                    parent,
-                    strings,
-                    assoc_functions: component.assoc_functions,
-                };
-                let _ = component.dyn_component.any_event(event, state, elements, context);
-            });
+            tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
         }
     }
 

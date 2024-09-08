@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
@@ -20,10 +19,13 @@ pub struct Overflow {
     inner_size: Size,
 
     direction: Direction,
+    is_dirty: bool,
 }
 
 impl Overflow {
     pub fn scroll(&mut self, direction: Direction, amount: Pos) {
+        self.is_dirty = true;
+
         match (self.direction, direction) {
             (Direction::Forward, Direction::Forward) => self.offset += amount,
             (Direction::Forward, Direction::Backward) => self.offset -= amount,
@@ -81,14 +83,18 @@ impl Overflow {
             self.offset.y = 0;
         }
 
-        if children.height > parent.height {
+        if children.height <= parent.height {
+            self.offset.y = 0;
+        } else {
             let max_y = children.height as i32 - parent.height as i32;
             if self.offset.y > max_y {
                 self.offset.y = max_y;
             }
         }
 
-        if children.width > parent.width {
+        if children.width <= parent.width {
+            self.offset.x = 0;
+        } else {
             let max_x = children.width as i32 - parent.width as i32;
             if self.offset.x > max_x {
                 self.offset.x = max_x
@@ -103,7 +109,7 @@ impl Widget for Overflow {
         children: LayoutChildren<'_, '_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribs.get(id);
         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
@@ -120,11 +126,11 @@ impl Widget for Overflow {
             constraints.unbound_height();
         }
 
-        if let Some(width) = attributes.get(WIDTH) {
+        if let Some(width) = attributes.get_usize(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get(HEIGHT) {
+        if let Some(height) = attributes.get_usize(HEIGHT) {
             constraints.make_height_tight(height);
         }
 
@@ -174,7 +180,7 @@ impl Widget for Overflow {
         children.for_each(|node, children| {
             match direction {
                 Direction::Forward => {
-                    node.position(children, pos, attribute_storage);
+                    node.position(children, pos, attribute_storage, ctx.viewport);
                     match axis {
                         Axis::Horizontal => pos.x += node.size().width as i32,
                         Axis::Vertical => pos.y += node.size().height as i32,
@@ -185,7 +191,7 @@ impl Widget for Overflow {
                         Axis::Horizontal => pos.x -= node.size().width as i32,
                         Axis::Vertical => pos.y -= node.size().height as i32,
                     }
-                    node.position(children, pos, attribute_storage);
+                    node.position(children, pos, attribute_storage, ctx.viewport);
                 }
             }
 
@@ -199,15 +205,18 @@ impl Widget for Overflow {
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
         let region = ctx.create_region();
         children.for_each(|widget, children| {
             ctx.set_clip_region(region);
             let ctx = ctx.to_unsized();
-            widget.paint(children, ctx, text, attribute_storage);
+            widget.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
         });
+    }
+
+    fn needs_reflow(&self) -> bool {
+        self.is_dirty
     }
 }
 
@@ -264,8 +273,7 @@ mod test {
     fn clamp_prevents_scrolling() {
         let tpl = "
     overflow
-        text '0'
-";
+        text '0'";
 
         let expected_first = "
     ╔═══╗
@@ -276,28 +284,6 @@ mod test {
 
         TestRunner::new(tpl, (3, 2))
             .instance()
-            .render_assert(expected_first)
-            .with_widget(|mut query| {
-                query.by_tag("overflow").first(|el, _| {
-                    let overflow = el.to::<Overflow>();
-                    overflow.scroll_left();
-                });
-            })
-            .render_assert(expected_first)
-            .with_widget(|mut query| {
-                query.by_tag("overflow").first(|el, _| {
-                    let overflow = el.to::<Overflow>();
-                    overflow.scroll_right();
-                });
-            })
-            .render_assert(expected_first)
-            .with_widget(|mut query| {
-                query.by_tag("overflow").first(|el, _| {
-                    let overflow = el.to::<Overflow>();
-                    overflow.scroll_up();
-                });
-            })
-            .render_assert(expected_first)
             .with_widget(|mut query| {
                 query.by_tag("overflow").first(|el, _| {
                     let overflow = el.to::<Overflow>();

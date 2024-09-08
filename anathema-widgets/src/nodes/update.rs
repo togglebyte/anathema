@@ -28,6 +28,10 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
     type Output = Result<()>;
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
+        if let WidgetKind::Element(el) = node {
+            el.container.needs_layout = true;
+        }
+
         scope_value(node, self.scope, &[]);
         let mut ctx = EvalContext::new(
             self.globals,
@@ -44,7 +48,10 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
         Ok(())
     }
 
-    fn parent(&mut self, parent: &WidgetKind<'bp>, children: &[u16]) {
+    fn parent(&mut self, parent: &mut WidgetKind<'bp>, children: &[u16]) {
+        if let WidgetKind::Element(el) = parent {
+            el.container.needs_layout = true;
+        }
         scope_value(parent, self.scope, children);
     }
 }
@@ -133,7 +140,7 @@ pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>,
         }
         WidgetKind::Component(component) => {
             if let Some(state) = &component.external_state {
-                for ((k, _), v) in state.iter() {
+                for (k, (_, v)) in state.iter() {
                     let v = v.downgrade();
                     scope.scope_downgrade(k, v);
                 }

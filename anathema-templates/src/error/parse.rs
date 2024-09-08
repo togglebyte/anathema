@@ -75,9 +75,14 @@ impl Display for ParseError {
             let mark = if self.line == no { "-> " } else { "   " };
             let mark_line = format!("{mark}{no}");
             writeln!(f, "{mark_line} {line}")?;
-            if self.line == no {
-                writeln!(f, "{:_<width$}|", "_", width = self.col + mark_line.len())?;
-            }
+
+            // TODO:
+            // This has a bug, it "points" to the wrong value.
+            // This is most likely because the offsets are wrong.
+            //
+            // if self.line == no {
+            //     writeln!(f, "{:_<width$}|", "_", width = self.col + mark_line.len())?;
+            // }
         }
 
         Ok(())

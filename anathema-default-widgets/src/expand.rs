@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
@@ -17,7 +16,7 @@ impl Widget for Expand {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = single_layout(children, constraints, ctx);
 
@@ -42,7 +41,7 @@ impl Widget for Expand {
         ctx: PositionCtx,
     ) {
         children.for_each(|node, children| {
-            node.position(children, ctx.pos, attribute_storage);
+            node.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }
@@ -53,7 +52,6 @@ impl Widget for Expand {
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
         let attributes = attribute_storage.get(id);
         if let Some(fill) = attributes.get_val("fill") {
@@ -81,7 +79,7 @@ impl Widget for Expand {
 
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
-            child.paint(children, ctx, text, attribute_storage);
+            child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())
         });
     }

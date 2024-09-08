@@ -13,7 +13,7 @@ impl Widget for ZStack {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
         children.for_each(|child, children| {
@@ -33,7 +33,7 @@ impl Widget for ZStack {
         ctx: PositionCtx,
     ) {
         children.for_each(|child, children| {
-            child.position(children, ctx.pos, attribute_storage);
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Continue(())
         });
     }

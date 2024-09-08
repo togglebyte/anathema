@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Rect, Size};
 use anathema_state::{AnyState, States, Value};
-use anathema_store::smallmap::SmallIndex;
+use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
 use anathema_templates::{Globals, WidgetComponentId};
 
@@ -121,6 +119,9 @@ impl Evaluator for SingleEval {
             id: widget_id,
             pos: Pos::ZERO,
             size: Size::ZERO,
+            inner_bounds: Rect::ZERO,
+            needs_layout: true,
+            needs_position: false,
         };
 
         // Widget
@@ -161,7 +162,7 @@ impl ForLoopEval {
                 .ok_or(Error::TreeTransactionFailed)?;
 
             // Scope the iteration value
-            tree.with_value(iter_id, |parent, widget, tree| {
+            tree.with_value_mut(iter_id, |parent, widget, tree| {
                 let WidgetKind::Iteration(iter) = widget else { unreachable!() };
                 ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
@@ -201,7 +202,7 @@ impl Evaluator for ForLoopEval {
 
         let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
 
-        tree.with_value(for_loop_id, move |parent, widget, tree| {
+        tree.with_value_mut(for_loop_id, move |parent, widget, tree| {
             let WidgetKind::For(for_loop) = widget else { unreachable!() };
             self.eval_body(for_loop, ctx, parent, tree)?;
             Ok(())
@@ -228,7 +229,7 @@ impl Evaluator for ControlFlowEval {
         let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         let parent = tree.path(for_loop_id);
 
-        tree.with_value(for_loop_id, move |parent, _widget, tree| {
+        tree.with_value_mut(for_loop_id, move |parent, _widget, tree| {
             IfEval.eval(&control_flow.if_node, ctx, parent, tree)?;
             control_flow
                 .elses
@@ -355,11 +356,11 @@ impl Evaluator for ComponentEval {
 
         let external_state = match &input.state {
             Some(map) => {
-                let mut state_map = HashMap::new();
+                let mut state_map = SmallMap::empty();
                 for (i, (k, v)) in map.iter().enumerate() {
                     let idx: SmallIndex = (i as u8).into();
                     let val = eval(v, ctx.globals, ctx.scope, ctx.states, (transaction.node_id(), idx));
-                    state_map.insert((&**k, idx), val);
+                    state_map.set(&**k, (idx, val));
                 }
                 Some(state_map)
             }
@@ -384,10 +385,19 @@ impl Evaluator for ComponentEval {
             .commit_child(WidgetKind::Component(comp_widget))
             .ok_or(Error::TreeTransactionFailed)?;
 
+        // Attributes
+        let mut attributes = Attributes::empty(widget_id);
+        for (key, expr) in input.attributes.iter() {
+            attributes.insert_with(ValueKey::Attribute(key), |value_index| {
+                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
+            });
+        }
+        ctx.attribute_storage.insert(widget_id, attributes);
+
         let path = tree.path(widget_id);
         ctx.components.push(path, widget_id, state_id, component_id);
 
-        tree.with_value(widget_id, move |parent, widget, tree| {
+        tree.with_value_mut(widget_id, move |parent, widget, tree| {
             let WidgetKind::Component(component) = widget else { unreachable!() };
             ctx.scope.push();
 
@@ -397,7 +407,7 @@ impl Evaluator for ComponentEval {
 
             // Insert external state (if there is one)
             if let Some(state) = &component.external_state {
-                for ((k, _), v) in state.iter() {
+                for (k, (_, v)) in state.iter() {
                     let v = v.downgrade();
                     ctx.scope.scope_downgrade(k, v);
                 }

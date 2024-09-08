@@ -5,6 +5,7 @@ pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
 pub use self::transactions::InsertTransaction;
 use self::visitor::NodeVisitor;
+pub use self::walker::NodeWalker;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
 
@@ -13,6 +14,7 @@ mod nodepath;
 mod pathfinder;
 mod transactions;
 pub mod visitor;
+mod walker;
 
 pub type TreeValues<T> = GenSlab<(Box<[u16]>, T)>;
 
@@ -211,25 +213,29 @@ impl<T> Tree<T> {
 
     /// Perform a given operation (`F`) on a reference to a value in the tree
     /// while still haveing mutable access to the rest of the tree.
-    pub fn with_value<F, R>(&mut self, value_id: ValueId, mut f: F) -> R
+    pub fn with_value<F, R>(&self, value_id: ValueId, mut f: F) -> Option<R>
     where
-        F: FnMut(&[u16], &T, &mut Self) -> R,
+        F: FnMut(&[u16], &T, &Self) -> R,
     {
-        let ticket = self.values.checkout(value_id);
-        let ret = f(&ticket.value.0, &ticket.value.1, self);
-        self.values.restore(ticket);
-        ret
+        let value = self.values.get(value_id)?;
+        let ret = f(&value.0, &value.1, self);
+        Some(ret)
     }
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the rest of the tree.
-    pub fn with_value_mut<F>(&mut self, value_id: ValueId, f: F)
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the value is already checked out
+    pub fn with_value_mut<F, V>(&mut self, value_id: ValueId, f: F) -> V
     where
-        F: FnOnce(&[u16], &mut T, &mut Self),
+        F: FnOnce(&[u16], &mut T, &mut Self) -> V,
     {
         let mut ticket = self.values.checkout(value_id);
-        f(&ticket.value.0, &mut ticket.value.1, self);
+        let value = f(&ticket.value.0, &mut ticket.value.1, self);
         self.values.restore(ticket);
+        value
     }
 
     /// Get mutable access to a node value along with the children
@@ -280,12 +286,17 @@ impl<T> Tree<T> {
         Some(())
     }
 
-    /// Apply the `PathFinder`.
+    /// Apply the [`PathFinder`].
     pub fn apply_path_finder(&mut self, node_path: &[u16], path_finder: impl PathFinder<T>) {
         apply_path_finder(self, node_path, path_finder);
     }
 
-    /// Apply a node visitor, depth first
+    /// Apply the [`NodeWalker`].
+    pub fn apply_node_walker(&mut self, path: &[u16], walker: impl NodeWalker<T>) {
+        apply_walker(&self.layout, &mut self.values, path, walker)
+    }
+
+    /// Apply a [`NodeVisitor`], depth first
     pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
         apply_visitor(&self.layout, &mut self.values, visitor);
     }
@@ -303,6 +314,7 @@ impl<T> Tree<T> {
 fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &[u16], mut path_finder: impl PathFinder<T>) {
     let mut path: &[u16] = node_path;
     let mut nodes: &[_] = &tree.layout.inner;
+    let values = &mut tree.values;
 
     loop {
         match path {
@@ -322,10 +334,61 @@ fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &[u16], mut path_finder: 
                 }
                 path = sub_path;
                 let node = &nodes[index];
-                let parent = tree
-                    .get_ref_by_id(node.value())
+
+                let node_id = node.value();
+
+                let parent = values
+                    .get_mut(node_id)
+                    .map(|(_, val)| val)
                     .expect("a node always has a matching value");
+
                 path_finder.parent(parent, sub_path);
+                nodes = node.children();
+            }
+        }
+    }
+}
+
+pub fn apply_walker<T>(
+    mut nodes: &[Node],
+    values: &mut GenSlab<(Box<[u16]>, T)>,
+    mut path: &[u16],
+    mut walker: impl NodeWalker<T>,
+) {
+    loop {
+        match path {
+            [] => break,
+            [i] => {
+                // Found the node
+
+                let index = *i as usize;
+                let node = &nodes[index];
+                let node_id = node.value();
+
+                let value = values
+                    .get_mut(node_id)
+                    .map(|(_, val)| val)
+                    .expect("a node always has a matching value");
+
+                walker.apply(value);
+                break;
+            }
+            [i, sub_path @ ..] => {
+                let index = *i as usize;
+                if index >= nodes.len() {
+                    break;
+                }
+                path = sub_path;
+                let node = &nodes[index];
+
+                let node_id = node.value();
+
+                let parent = values
+                    .get_mut(node_id)
+                    .map(|(_, val)| val)
+                    .expect("a node always has a matching value");
+
+                walker.apply(parent);
                 nodes = node.children();
             }
         }
@@ -339,7 +402,7 @@ pub fn apply_visitor<T>(
 ) -> ControlFlow<bool> {
     for node in children {
         if let Some((path, value)) = values.get_mut(node.value()) {
-            if let ControlFlow::Break(stop_propagation) = visitor.visit(value, path, node.value()) {
+            if let ControlFlow::Break(stop_propagation) = visitor.visit(value, &*path, node.value()) {
                 if stop_propagation {
                     return ControlFlow::Break(true);
                 }
@@ -577,7 +640,7 @@ mod test {
         let mut tree = Tree::empty();
         let key = tree.insert(root_node()).commit_child(0).unwrap();
         tree.insert(root_node()).commit_child(1);
-        tree.with_value(key, |_path, _value, tree| {
+        tree.with_value_mut(key, |_path, _value, tree| {
             // The value is already checked out
             assert!(tree.get_ref_by_id(key).is_none());
         });

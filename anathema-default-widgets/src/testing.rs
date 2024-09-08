@@ -1,15 +1,15 @@
+use anathema::{drain_changes, Changes};
 use anathema_backend::test::TestBackend;
-use anathema_backend::Backend;
-use anathema_geometry::{Pos, Size};
+use anathema_backend::{Backend, WidgetCycle};
+use anathema_geometry::Size;
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::layout::text::StringStorage;
-use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, AttributeStorage, Components, Elements, EvalContext, Factory, FloatingWidgets, Scope, WidgetKind,
-    WidgetRenderer as _, WidgetTree,
+    eval_blueprint, update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory,
+    FloatingWidgets, Scope, WidgetRenderer as _, WidgetTree,
 };
 
 use crate::register_default_widgets;
@@ -21,6 +21,7 @@ pub struct TestRunner {
     backend: TestBackend,
     blueprint: Blueprint,
     globals: Globals,
+    components: Components,
 }
 
 impl TestRunner {
@@ -28,7 +29,7 @@ impl TestRunner {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
 
-        let mut components = ComponentRegistry::new();
+        let mut component_registry = ComponentRegistry::new();
         let mut states = States::new();
         states.insert(Box::new(TestState::new()));
 
@@ -45,7 +46,7 @@ impl TestRunner {
         ";
         let mut doc = Document::new(root);
         let main = doc.add_component("main", src.to_template()).unwrap();
-        components.add_component(main.into(), (), ());
+        component_registry.add_component(main.into(), (), ());
 
         let (blueprint, globals) = doc.compile().unwrap();
 
@@ -53,9 +54,10 @@ impl TestRunner {
             factory,
             backend: TestBackend::new(size),
             states,
-            component_registry: components,
+            component_registry,
             blueprint,
             globals,
+            components: Components::new(),
         }
     }
 
@@ -63,7 +65,6 @@ impl TestRunner {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
-        let mut components = Components::new();
         let viewport = Viewport::new(self.backend.surface.size());
 
         let mut scope = Scope::new();
@@ -76,7 +77,7 @@ impl TestRunner {
             &mut self.component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
-            &mut components,
+            &mut self.components,
         );
 
         eval_blueprint(&self.blueprint, &mut ctx, &[], &mut tree).unwrap();
@@ -84,11 +85,16 @@ impl TestRunner {
         TestInstance {
             states: &mut self.states,
             backend: &mut self.backend,
+            globals: &self.globals,
             floating_widgets,
             tree,
             attribute_storage,
-            text: StringStorage::new(),
             viewport,
+            dirty_widgets: DirtyWidgets::empty(),
+            factory: &self.factory,
+            component_registry: &mut self.component_registry,
+            components: &mut self.components,
+            changes: Changes::empty(),
         }
     }
 }
@@ -97,10 +103,15 @@ pub struct TestInstance<'bp> {
     tree: WidgetTree<'bp>,
     attribute_storage: AttributeStorage<'bp>,
     floating_widgets: FloatingWidgets,
-    text: StringStorage,
     states: &'bp mut States,
+    globals: &'bp Globals,
     backend: &'bp mut TestBackend,
     viewport: Viewport,
+    dirty_widgets: DirtyWidgets,
+    factory: &'bp Factory,
+    component_registry: &'bp mut ComponentRegistry,
+    components: &'bp mut Components,
+    changes: Changes,
 }
 
 impl TestInstance<'_> {
@@ -111,6 +122,29 @@ impl TestInstance<'_> {
         let state = self.states.get_mut(StateId::ZERO).unwrap();
         let state = state.to_any_mut().downcast_mut::<TestState>().unwrap();
         f(state);
+
+        let mut scope = Scope::new();
+        drain_changes(&mut self.changes);
+        self.changes.iter().for_each(|(sub, change)| {
+            sub.iter().for_each(|sub| {
+                let Some(path): Option<Box<_>> = self.tree.try_path_ref(sub).map(Into::into) else { return };
+                update_tree(
+                    self.globals,
+                    self.factory,
+                    &mut scope,
+                    self.states,
+                    self.component_registry,
+                    change,
+                    sub,
+                    &path,
+                    &mut self.tree,
+                    &mut self.attribute_storage,
+                    &mut self.floating_widgets,
+                    self.components,
+                );
+            })
+        });
+
         self
     }
 
@@ -122,54 +156,20 @@ impl TestInstance<'_> {
 
         let attribute_storage = &self.attribute_storage;
 
-        let mut filter = LayoutFilter::new(true, attribute_storage);
-        self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(self.text.new_session(), attribute_storage, &self.viewport);
-            layout_widget(widget, children, values, constraints, &mut layout_ctx, true);
-
-            // Position
-            position_widget(Pos::ZERO, widget, children, values, attribute_storage, true);
-
-            // Paint
-            self.backend.paint(
-                widget,
-                children,
-                values,
-                &mut self.text.new_session(),
-                attribute_storage,
-                true,
-            );
-        });
-
-        // Paint floating widgets
-        for widget_id in self.floating_widgets.iter() {
-            self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(self.text.new_session(), &self.attribute_storage, &self.viewport);
-
-                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
-
-                // Position
-                position_widget(Pos::ZERO, el, children, values, attribute_storage, true);
-
-                // Paint
-                self.backend.paint(
-                    el,
-                    children,
-                    values,
-                    &mut self.text.new_session(),
-                    attribute_storage,
-                    true,
-                );
-            });
-        }
+        WidgetCycle::new(
+            self.backend,
+            &mut self.tree,
+            constraints,
+            attribute_storage,
+            &self.floating_widgets,
+            self.viewport,
+        )
+        .run();
 
         self.backend.render();
 
         let actual = std::mem::take(&mut self.backend.output);
         let actual = actual.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");
-
-        self.text.clear();
 
         eprintln!("{actual}");
 
@@ -188,8 +188,14 @@ impl TestInstance<'_> {
         let path = [0, 0, 0];
 
         let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
-        let elements = Elements::new(node.children(), values, &mut self.attribute_storage);
+        let elements = Elements::new(
+            node.children(),
+            values,
+            &mut self.attribute_storage,
+            &mut self.dirty_widgets,
+        );
         f(elements);
+        self.dirty_widgets.apply(&mut self.tree);
         self
     }
 }

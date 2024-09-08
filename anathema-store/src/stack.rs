@@ -29,7 +29,7 @@ impl<T> Entry<T> {
 }
 
 /// Allocate memory but never free it until the entire `Stack` is dropped.
-/// Items popped from the stack are marked as `Empty` so the memory is resused.
+/// Items popped from the stack are marked as `Empty` so the memory is reused.
 #[derive(Debug, Default)]
 pub struct Stack<T> {
     inner: Vec<Entry<T>>,
@@ -108,12 +108,12 @@ impl<T> Stack<T> {
     }
 
     /// Create an iterator over the values on the stack
-    pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> + '_ {
         self.inner[..self.len].iter().filter_map(Entry::to_value_ref)
     }
 
     /// Create an iterator over the values on the stack
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
+    pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = &mut T> + '_ {
         self.inner[..self.len].iter_mut().filter_map(Entry::to_value_mut)
     }
 

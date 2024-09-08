@@ -1,10 +1,39 @@
 use std::io::{Result, Write};
+use std::str::FromStr;
 
-use anathema_state::Hex;
+use anathema_state::{Color, Hex};
 use anathema_widgets::paint::CellAttributes;
-pub use crossterm::style::Attribute as CrossAttrib;
-use crossterm::style::{Color, SetAttribute, SetBackgroundColor, SetForegroundColor};
+pub use crossterm::style::{Attribute as CrossAttrib, Color as CTColor};
+use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
+
+struct ColorWrapper(Color);
+
+impl From<ColorWrapper> for CTColor {
+    fn from(color: ColorWrapper) -> CTColor {
+        match color.0 {
+            Color::Reset => Self::Reset,
+            Color::Black => Self::Black,
+            Color::Red => Self::DarkRed,
+            Color::Green => Self::DarkGreen,
+            Color::Yellow => Self::DarkYellow,
+            Color::Blue => Self::DarkBlue,
+            Color::Magenta => Self::DarkMagenta,
+            Color::Cyan => Self::DarkCyan,
+            Color::Grey => Self::Grey,
+            Color::DarkGrey => Self::DarkGrey,
+            Color::LightRed => Self::Red,
+            Color::LightGreen => Self::Green,
+            Color::LightYellow => Self::Yellow,
+            Color::LightBlue => Self::Blue,
+            Color::LightMagenta => Self::Magenta,
+            Color::LightCyan => Self::Cyan,
+            Color::White => Self::White,
+            Color::Rgb(r, g, b) => Self::Rgb { r, g, b },
+            Color::AnsiVal(v) => Self::AnsiValue(v),
+        }
+    }
+}
 
 /// The style for a cell in a [`crate::Buffer`]
 /// A style is applied to ever single cell in a [`crate::Buffer`].
@@ -40,6 +69,43 @@ pub struct Style {
     pub attributes: Attributes,
 }
 
+impl CellAttributes for Style {
+    fn get_hex(&self, _: &str) -> Option<Hex> {
+        None
+    }
+
+    fn get_color(&self, key: &str) -> Option<Color> {
+        match key {
+            "foreground" => self.fg,
+            "background" => self.bg,
+            _ => None,
+        }
+    }
+
+    fn get_i64(&self, _key: &str) -> Option<i64> {
+        None
+    }
+
+    fn get_u8(&self, _key: &str) -> Option<u8> {
+        None
+    }
+
+    fn with_str(&self, _: &str, _: &mut dyn FnMut(&str)) {}
+
+    fn get_bool(&self, key: &str) -> bool {
+        match key {
+            "bold" => self.attributes.contains(Attributes::BOLD),
+            "dim" => self.attributes.contains(Attributes::DIM),
+            "italic" => self.attributes.contains(Attributes::ITALIC),
+            "underline" => self.attributes.contains(Attributes::UNDERLINED),
+            "crossed-out" => self.attributes.contains(Attributes::CROSSED_OUT),
+            "overline" => self.attributes.contains(Attributes::OVERLINED),
+            "inverse" => self.attributes.contains(Attributes::INVERSE),
+            _ => false,
+        }
+    }
+}
+
 impl Style {
     /// Create a new instance of a `Style`:
     pub const fn new() -> Self {
@@ -54,14 +120,26 @@ impl Style {
     pub fn from_cell_attribs(attributes: &dyn CellAttributes) -> Self {
         let mut style = Self::new();
 
-        match attributes.get_hex("foreground") {
-            Some(Hex { r, g, b }) => style.fg = Some(Color::from((r, g, b))),
-            None => attributes.with_str("foreground", &mut |s| style.fg = Color::try_from(s).ok()),
+        match attributes.get_color("foreground") {
+            Some(color) => style.fg = Some(color),
+            None => match attributes.get_hex("foreground") {
+                Some(Hex { r, g, b }) => style.fg = Some(Color::from((r, g, b))),
+                None => match attributes.get_u8("foreground") {
+                    Some(ansi) => style.fg = Some(Color::AnsiVal(ansi)),
+                    None => attributes.with_str("foreground", &mut |s| style.fg = Color::from_str(s).ok()),
+                },
+            },
         }
 
-        match attributes.get_hex("background") {
-            Some(Hex { r, g, b }) => style.bg = Some(Color::from((r, g, b))),
-            None => attributes.with_str("background", &mut |s| style.bg = Color::try_from(s).ok()),
+        match attributes.get_color("background") {
+            Some(color) => style.bg = Some(color),
+            None => match attributes.get_hex("background") {
+                Some(Hex { r, g, b }) => style.bg = Some(Color::from((r, g, b))),
+                None => match attributes.get_u8("background") {
+                    Some(ansi) => style.bg = Some(Color::AnsiVal(ansi)),
+                    None => attributes.with_str("background", &mut |s| style.bg = Color::from_str(s).ok()),
+                },
+            },
         }
 
         if attributes.get_bool("bold") {
@@ -97,11 +175,11 @@ impl Style {
 
     pub(crate) fn write(&self, w: &mut impl Write) -> Result<()> {
         if let Some(fg) = self.fg {
-            w.queue(SetForegroundColor(fg))?;
+            w.queue(SetForegroundColor(ColorWrapper(fg).into()))?;
         }
 
         if let Some(bg) = self.bg {
-            w.queue(SetBackgroundColor(bg))?;
+            w.queue(SetBackgroundColor(ColorWrapper(bg).into()))?;
         }
 
         // Dim and bold are a special case, as they are both
@@ -268,5 +346,25 @@ bitflags::bitflags! {
         const OVERLINED =   0b0010_0000;
         /// Make the characters inverse (in supported output)
         const INVERSE =     0b0100_0000;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merging_styles() {
+        let mut right = Style::new();
+        right.set_fg(Color::Green);
+        right.set_bg(Color::Blue);
+
+        let mut left = Style::new();
+        left.set_fg(Color::Red);
+
+        left.merge(right);
+
+        assert_eq!(left.fg.unwrap(), Color::Red);
+        assert_eq!(left.bg.unwrap(), Color::Blue);
     }
 }

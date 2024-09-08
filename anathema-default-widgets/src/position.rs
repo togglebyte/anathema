@@ -2,7 +2,6 @@ use std::ops::ControlFlow;
 
 use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
@@ -76,7 +75,7 @@ impl Widget for Position {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribs.get(id);
         self.placement = attribs.get(PLACEMENT).unwrap_or_default();
@@ -145,22 +144,27 @@ impl Widget for Position {
         }
 
         children.for_each(|child, children| {
+            // let (pos, size) = match self.placement {
+            //     Placement::Relative => (ctx.pos, child.size()),
+            //     Placement::Absolute => (Pos::ZERO, ctx.viewport.size()),
+            // };
+
             match self.horz_edge {
                 HorzEdge::Left(left) => ctx.pos.x += left as i32,
                 HorzEdge::Right(right) => {
-                    let offset = ctx.inner_size.width - child.size().width - right as usize;
-                    ctx.pos.x = offset as i32;
+                    let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right as i32;
+                    ctx.pos.x = offset;
                 }
             }
 
             match self.vert_edge {
                 VertEdge::Top(top) => ctx.pos.y += top as i32,
-                VertEdge::Bottom(right) => {
-                    let offset = ctx.inner_size.width - child.size().width - right as usize;
-                    ctx.pos.x = offset as i32;
+                VertEdge::Bottom(bottom) => {
+                    let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom as i32;
+                    ctx.pos.y = offset;
                 }
             }
-            child.position(children, ctx.pos, attribute_storage);
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }
@@ -171,13 +175,136 @@ impl Widget for Position {
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
-        text: &mut StringSession<'_>,
     ) {
         children.for_each(|child, children| {
             let mut ctx = ctx.to_unsized();
             ctx.clip = None;
-            child.paint(children, ctx, text, attribute_storage);
+            child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
         });
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::testing::TestRunner;
+
+    #[test]
+    fn position_top_left() {
+        let tpl = "
+            position [top: 0, left: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║hi  ║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_top() {
+        let tpl = "
+            position [top: 1]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║hi  ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_top_right() {
+        let tpl = "
+            position [top: 1, right: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║  hi║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_right() {
+        let tpl = "
+            position [right: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║  hi║
+            ║    ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_bottom_right() {
+        let tpl = "
+            position [bottom: 0, right: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║  hi║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_bottom() {
+        let tpl = "
+            position [bottom: 0]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║hi  ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
+    }
+
+    #[test]
+    fn position_bottom_left() {
+        let tpl = "
+            position [bottom: 0, left: 1]
+                text 'hi'
+            ";
+
+        let expected = "
+            ╔════╗
+            ║    ║
+            ║ hi ║
+            ╚════╝
+        ";
+
+        TestRunner::new(tpl, (4, 2)).instance().render_assert(expected);
     }
 }

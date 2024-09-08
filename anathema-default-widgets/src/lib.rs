@@ -31,7 +31,7 @@ pub(crate) const LEFT: &str = "left";
 
 pub use alignment::Align;
 pub use border::Border;
-pub use canvas::{Canvas, CanvasAttribs};
+pub use canvas::Canvas;
 pub use expand::Expand;
 pub use overflow::Overflow;
 pub use padding::Padding;
