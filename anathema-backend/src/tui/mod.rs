@@ -10,14 +10,13 @@ use std::time::Duration;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
 use crossterm::terminal::size;
 pub use screen::Screen;
 
 pub use self::buffer::Buffer;
 use self::events::Events;
-pub use self::style::{Attributes, Color, Style};
+pub use self::style::{Attributes, Style};
 use crate::Backend;
 
 mod buffer;
@@ -150,7 +149,6 @@ impl Backend for TuiBackend {
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
-        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     ) {
@@ -160,7 +158,6 @@ impl Backend for TuiBackend {
             children,
             values,
             attribute_storage,
-            text,
             ignore_floats,
         );
         // TODO: decide if we need `paint` to return a Result or not

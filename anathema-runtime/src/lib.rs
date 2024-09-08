@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------
+// ------------------
 //   - Runtime -
 //   1. Creating the initial widget tree
 //   2. Runtime loop      <--------------------------------+
@@ -30,13 +30,13 @@ use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
-    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
+    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, FocusQueue, UntypedContext,
+    ViewMessage,
 };
-use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
-    FloatingWidgets, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
+    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -192,10 +192,10 @@ impl<T> RuntimeBuilder<T> {
             component_registry: self.component_registry,
             globals,
             document: self.document,
-            string_storage: StringStorage::new(),
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
             components: Components::new(),
+            dirty_widgets: DirtyWidgets::empty(),
             event_handler: EventHandler,
         };
 
@@ -236,11 +236,11 @@ pub struct Runtime<T> {
     // * Event handling
     event_handler: EventHandler,
     // * Layout
-    string_storage: StringStorage,
     // * Event handling
     constraints: Constraints,
     // * Event handling
     components: Components,
+    dirty_widgets: DirtyWidgets,
     // tab_indices: TabIndices,
 
     // -----------------------------------------------------------------------------
@@ -297,6 +297,10 @@ where
     ) {
         drain_futures(&mut self.future_values);
 
+        if self.future_values.is_empty() {
+            return;
+        }
+
         let mut scope = Scope::new();
         self.future_values.drain().rev().for_each(|sub| {
             scope.clear();
@@ -332,7 +336,7 @@ where
         }
 
         let mut scope = Scope::new();
-        self.changes.drain().rev().for_each(|(sub, change)| {
+        self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
                 scope.clear();
                 let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
@@ -343,7 +347,7 @@ where
                     &mut scope,
                     states,
                     &mut self.component_registry,
-                    &change,
+                    change,
                     sub,
                     &path,
                     tree,
@@ -364,6 +368,7 @@ where
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
         assoc_events: &mut AssociatedEvents,
+        focus_queue: &mut FocusQueue<'static>,
     ) -> Duration {
         let context = UntypedContext {
             emitter: &self.emitter,
@@ -373,9 +378,11 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
+            dirty_widgets: &mut self.dirty_widgets,
             states,
             attribute_storage,
             assoc_events,
+            focus_queue,
             context,
         };
 
@@ -424,10 +431,12 @@ where
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut assoc_events = AssociatedEvents::new();
+        let mut focus_queue = FocusQueue::new();
 
         let mut states = States::new();
         let mut scope = Scope::new();
         let globals = self.globals.take();
+
         let mut ctx = EvalContext::new(
             &globals,
             &self.factory,
@@ -443,6 +452,7 @@ where
 
         // First build the tree
         let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree);
+
         match res {
             Ok(_) => (),
             Err(err) => {
@@ -457,6 +467,20 @@ where
         // TODO: try to set focus on the first available component
 
         let mut dt = Instant::now();
+
+        // Initial layout, position and paint
+        WidgetCycle::new(
+            &mut self.backend,
+            &mut tree,
+            self.constraints,
+            &attribute_storage,
+            &self.floating_widgets,
+            self.viewport,
+        )
+        .run();
+        self.backend.render();
+        self.backend.clear();
+
         loop {
             self.tick(
                 fps_now,
@@ -467,6 +491,7 @@ where
                 &mut attribute_storage,
                 &globals,
                 &mut assoc_events,
+                &mut focus_queue,
             )?;
 
             if REBUILD.swap(false, Ordering::Relaxed) {
@@ -511,7 +536,6 @@ where
 
         self.components = Components::new();
         self.floating_widgets = FloatingWidgets::empty();
-        self.string_storage = StringStorage::new();
 
         // The only way we can get here is if we break the loop
         // as a result of the hot_reload triggering or when building the first tree fails.
@@ -533,7 +557,7 @@ where
         Ok(())
     }
 
-    pub fn tick<'bp>(
+    fn tick<'bp>(
         &mut self,
         fps_now: Instant,
         dt: &mut Instant,
@@ -543,15 +567,24 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
+        focus_queue: &mut FocusQueue<'static>,
     ) -> Result<()> {
-        // Pull and keep consuming events while there are events present in the queue.
-        let poll_duration = self.handle_messages(fps_now, sleep_micros, tree, states, attribute_storage, assoc_events);
-
         // Clear the text buffer
-        self.string_storage.clear();
+        // self.string_storage.clear();
+
+        // Pull and keep consuming events while there are events present in the queue.
+        let poll_duration = self.handle_messages(
+            fps_now,
+            sleep_micros,
+            tree,
+            states,
+            attribute_storage,
+            assoc_events,
+            focus_queue,
+        );
 
         // Call the `tick` function on all components
-        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events);
+        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events, focus_queue);
 
         let context = UntypedContext {
             emitter: &self.emitter,
@@ -561,10 +594,12 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
+            dirty_widgets: &mut self.dirty_widgets,
             states,
             attribute_storage,
             assoc_events,
             context,
+            focus_queue,
         };
 
         self.event_handler.handle(
@@ -582,20 +617,13 @@ where
 
         self.apply_futures(globals, tree, states, attribute_storage);
 
-        // TODO
-        // Instead of draining the changes when applying
-        // the changes, we can keep the changes and use them in the
-        // subsequent update / position / paint sequence
-        //
-        // Store the size and constraint on a widget
-        //
-        // * If the widget changes but the size remains the same then
-        //   there is no reason to perform a layout on the entire tree,
-        //   and only the widget it self needs to be re-painted
-        //
-        // Q) What about loating widgets?
-
         self.apply_changes(globals, tree, states, attribute_storage);
+
+        // -----------------------------------------------------------------------------
+        //   - Update dirty widgets -
+        //   Mark dirty widgets for redraw, along with their parents
+        // -----------------------------------------------------------------------------
+        self.dirty_widgets.apply(tree);
 
         // Cleanup removed attributes from widgets.
         for key in tree.drain_removed() {
@@ -608,20 +636,23 @@ where
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
-        let mut string_session = self.string_storage.new_session();
-        WidgetCycle::new(
-            &mut self.backend,
-            tree,
-            self.constraints,
-            attribute_storage,
-            &mut string_session,
-            &self.floating_widgets,
-            self.viewport,
-        )
-        .run();
+        let needs_reflow = !self.changes.is_empty() || !self.dirty_widgets.is_empty();
+        if needs_reflow {
+            let mut cycle = WidgetCycle::new(
+                &mut self.backend,
+                tree,
+                self.constraints,
+                attribute_storage,
+                &self.floating_widgets,
+                self.viewport,
+            );
+            cycle.run();
 
-        self.backend.render();
-        self.backend.clear();
+            self.backend.render();
+            self.backend.clear();
+            self.changes.clear();
+            self.dirty_widgets.clear();
+        }
 
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
         if sleep > 0 {
@@ -638,6 +669,7 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
+        focus_queue: &mut FocusQueue<'static>,
     ) {
         let context = UntypedContext {
             emitter: &self.emitter,
@@ -653,9 +685,11 @@ where
 
             let mut event_ctx = EventCtx {
                 components: &mut self.components,
+                dirty_widgets: &mut self.dirty_widgets,
                 states,
                 attribute_storage,
                 assoc_events,
+                focus_queue,
                 context,
             };
 

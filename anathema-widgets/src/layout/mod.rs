@@ -5,7 +5,6 @@ use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
-use self::text::StringSession;
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, WidgetId, WidgetKind};
 
@@ -92,19 +91,14 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
     }
 }
 
-pub struct LayoutCtx<'a, 'buf, 'bp> {
-    pub text: &'a mut StringSession<'buf>,
+pub struct LayoutCtx<'a, 'bp> {
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
 }
 
-impl<'a, 'buf, 'bp> LayoutCtx<'a, 'buf, 'bp> {
-    pub fn new(text: &'a mut StringSession<'buf>, attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
-        Self {
-            text,
-            attribs,
-            viewport,
-        }
+impl<'a, 'bp> LayoutCtx<'a, 'bp> {
+    pub fn new(attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport) -> Self {
+        Self { attribs, viewport }
     }
 }
 
@@ -113,7 +107,7 @@ pub fn layout_widget<'bp>(
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
     constraints: Constraints,
-    ctx: &mut LayoutCtx<'_, '_, 'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
     ignore_floats: bool,
 ) {
     let filter = LayoutFilter::new(ignore_floats, ctx.attribs);

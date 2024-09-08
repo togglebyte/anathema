@@ -19,7 +19,7 @@ impl Widget for VStack {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         attributes: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.0.layout(children, constraints, attributes, ctx)
     }

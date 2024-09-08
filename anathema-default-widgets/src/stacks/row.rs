@@ -21,7 +21,7 @@ impl Widget for Row {
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.0.layout(children, constraints, id, ctx)
     }

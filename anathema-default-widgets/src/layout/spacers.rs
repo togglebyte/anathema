@@ -15,7 +15,7 @@ pub fn layout_all_spacers<'bp>(
     nodes: &mut LayoutChildren<'_, '_, 'bp>,
     mut constraints: Constraints,
     axis: Axis,
-    ctx: &mut LayoutCtx<'_, '_, 'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> Size {
     let mut final_size = Size::ZERO;
     let mut count = 0;

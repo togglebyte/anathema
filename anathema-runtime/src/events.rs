@@ -4,9 +4,9 @@ use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{AssociatedEvents, UntypedContext};
+use anathema_widgets::components::{AssociatedEvents, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Components, WidgetTree};
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;
@@ -90,7 +90,9 @@ impl EventHandler {
                         components: event_ctx.components,
                         attribute_storage: event_ctx.attribute_storage,
                         assoc_events: event_ctx.assoc_events,
+                        focus_queue: event_ctx.focus_queue,
                         context: event_ctx.context,
+                        dirty_widgets: event_ctx.dirty_widgets,
                     };
 
                     tree.with_component(widget_id, state_id, &mut event_ctx, |comp, ctx| {
@@ -101,6 +103,50 @@ impl EventHandler {
             }
         }
 
+        // -----------------------------------------------------------------------------
+        //   - Drain focus queue -
+        // -----------------------------------------------------------------------------
+        while let Some((key, value)) = event_ctx.focus_queue.pop() {
+            let len = event_ctx.components.len();
+            for i in 0..len {
+                let (widget_id, state_id) = event_ctx
+                    .components
+                    .get(i)
+                    .expect("components can not change during this call");
+
+                let found = tree.with_value_mut(widget_id, |_, widget, _| {
+                    let WidgetKind::Component(component) = widget else { unreachable!() };
+
+                    let attribs = event_ctx.attribute_storage.get(widget_id);
+                    let Some(val) = attribs.get_val(&key) else { return false };
+                    let Some(either) = val.load_common_val() else { return false };
+                    let Some(cv) = either.to_common() else { return false };
+                    if value != cv {
+                        return false;
+                    }
+
+                    if !component.dyn_component.accept_focus_any() {
+                        return false;
+                    }
+
+                    true
+                });
+
+                // -----------------------------------------------------------------------------
+                //   - Blur -
+                // -----------------------------------------------------------------------------
+                if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+                }
+
+                if found {
+                    event_ctx.components.tab_index = i;
+                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -108,10 +154,12 @@ impl EventHandler {
 // TODO: rename this, it has nothing to do with the events,
 // but rather calling functions on dyn components
 pub(crate) struct EventCtx<'a, 'rt, 'bp> {
+    pub dirty_widgets: &'a mut DirtyWidgets,
     pub components: &'a mut Components,
     pub states: &'a mut States,
     pub attribute_storage: &'a mut AttributeStorage<'bp>,
     pub assoc_events: &'a mut AssociatedEvents,
+    pub focus_queue: &'a mut FocusQueue<'static>,
     pub context: UntypedContext<'rt>,
 }
 

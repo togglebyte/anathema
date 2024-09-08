@@ -6,7 +6,7 @@ pub use {
     anathema_runtime as runtime,                 // runtime
     anathema_state as state,                     // state
     anathema_state_derive as derive,             // derive
-    anathema_store as store,                     // templates
+    anathema_store as store,                     // store
     anathema_templates as templates,             // templates
     anathema_widgets as widgets,                 // wigets
 };

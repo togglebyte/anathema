@@ -3,7 +3,6 @@ use std::time::Duration;
 use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::text::StringSession;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{AttributeStorage, Element, FloatingWidgets, WidgetKind, WidgetTree};
 
@@ -25,7 +24,6 @@ pub trait Backend {
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
-        text: &mut StringSession<'_>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     );
@@ -48,7 +46,6 @@ pub struct WidgetCycle<'rt, 'bp, T> {
     tree: &'rt mut WidgetTree<'bp>,
     constraints: Constraints,
     attribute_storage: &'rt AttributeStorage<'bp>,
-    string_session: &'rt mut StringSession<'rt>,
     floating_widgets: &'rt FloatingWidgets,
     viewport: Viewport,
 }
@@ -59,7 +56,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         tree: &'rt mut WidgetTree<'bp>,
         constraints: Constraints,
         attribute_storage: &'rt AttributeStorage<'bp>,
-        string_session: &'rt mut StringSession<'rt>,
         floating_widgets: &'rt FloatingWidgets,
         viewport: Viewport,
     ) -> Self {
@@ -68,7 +64,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             tree,
             constraints,
             attribute_storage,
-            string_session,
             floating_widgets,
             viewport,
         }
@@ -95,7 +90,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(self.string_session, self.attribute_storage, &self.viewport);
+                let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
@@ -103,8 +98,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
                 position_widget(pos, el, children, values, self.attribute_storage, true, self.viewport);
 
                 // Paint
-                self.backend
-                    .paint(el, children, values, self.string_session, self.attribute_storage, true);
+                self.backend.paint(el, children, values, self.attribute_storage, true);
             });
         }
     }
@@ -118,7 +112,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             //
             //       That doesn't have as much of an impact here
             //       as it will do when dealing with the floating widgets
-            let mut layout_ctx = LayoutCtx::new(self.string_session, self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport);
             layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
             // Position
@@ -133,14 +127,8 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             );
 
             // Paint
-            self.backend.paint(
-                widget,
-                children,
-                values,
-                self.string_session,
-                self.attribute_storage,
-                true,
-            );
+            self.backend
+                .paint(widget, children, values, self.attribute_storage, true);
         });
 
         self.floating();

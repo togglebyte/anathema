@@ -46,7 +46,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
         Ok(())
     }
 
-    fn parent(&mut self, parent: &WidgetKind<'bp>, children: &[u16]) {
+    fn parent(&mut self, parent: &mut WidgetKind<'bp>, children: &[u16]) {
         scope_value(parent, self.scope, children);
     }
 }

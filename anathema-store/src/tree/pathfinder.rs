@@ -5,5 +5,5 @@ pub trait PathFinder<V> {
 
     fn apply(&mut self, node: &mut V, path: &[u16], tree: &mut Tree<V>) -> Self::Output;
 
-    fn parent(&mut self, parent: &V, children: &[u16]);
+    fn parent(&mut self, parent: &mut V, children: &[u16]);
 }

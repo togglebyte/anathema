@@ -1,7 +1,6 @@
 use anathema_geometry::{Pos, Rect, Size};
 
 use crate::container::Container;
-use crate::layout::text::StringSession;
 use crate::layout::{Constraints, LayoutCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{PaintChildren, PositionChildren};
@@ -26,19 +25,9 @@ impl<'bp> Element<'bp> {
         &mut self,
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.container.layout(children, constraints, ctx)
-    }
-
-    pub fn paint(
-        &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
-        ctx: PaintCtx<'_, Unsized>,
-        text: &mut StringSession<'_>,
-        attribute_storage: &AttributeStorage<'bp>,
-    ) {
-        self.container.paint(children, ctx, text, attribute_storage)
     }
 
     /// Position the element
@@ -50,6 +39,16 @@ impl<'bp> Element<'bp> {
         viewport: Viewport,
     ) {
         self.container.position(children, pos, attribute_storage, viewport);
+    }
+
+    /// Draw an element to the surface
+    pub fn paint(
+        &mut self,
+        children: PaintChildren<'_, '_, 'bp>,
+        ctx: PaintCtx<'_, Unsized>,
+        attribute_storage: &AttributeStorage<'bp>,
+    ) {
+        self.container.paint(children, ctx, attribute_storage)
     }
 
     pub fn size(&self) -> Size {

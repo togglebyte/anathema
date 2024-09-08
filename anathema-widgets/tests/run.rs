@@ -6,11 +6,10 @@ use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State,
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::layout::text::StringStorage;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, Elements, EvalContext,
-    Factory, FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, Elements,
+    EvalContext, Factory, FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]
@@ -34,8 +33,8 @@ pub struct TestCaseRunner<'bp, S> {
     factory: Factory,
     tree: WidgetTree<'bp>,
     attribute_storage: AttributeStorage<'bp>,
+    dirty_widgets: DirtyWidgets,
     floating_widgets: FloatingWidgets,
-    text: StringStorage,
     states: States,
     component_registry: ComponentRegistry,
     future_values: FutureValues,
@@ -67,8 +66,7 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut string_session = self.text.new_session();
-            let mut layout_ctx = LayoutCtx::new(&mut string_session, &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -92,8 +90,7 @@ where
         // Floating widgets
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut string_session = self.text.new_session();
-            let mut layout_ctx = LayoutCtx::new(&mut string_session, &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -188,7 +185,12 @@ where
         let state = self.states.get_mut(state_id).unwrap();
 
         let Some((node, values)) = self.tree.get_node_by_path(&[0]) else { return self };
-        let elements = Elements::new(node.children(), values, &mut self.attribute_storage);
+        let elements = Elements::new(
+            node.children(),
+            values,
+            &mut self.attribute_storage,
+            &mut self.dirty_widgets,
+        );
 
         let state = state.to_any_mut().downcast_mut().unwrap();
         f(state, elements);
@@ -224,8 +226,7 @@ where
 
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut string_session = self.text.new_session();
-            let mut layout_ctx = LayoutCtx::new(&mut string_session, &self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport);
             layout_widget(
                 widget,
                 children,
@@ -274,7 +275,6 @@ impl TestCase {
             globals: &self.globals,
             blueprint: &self.blueprint,
             tree,
-            text: StringStorage::new(),
             states,
             component_registry: components,
             factory,
@@ -284,6 +284,7 @@ impl TestCase {
             floating_widgets: FloatingWidgets::empty(),
             viewport: Viewport::new((1, 1)),
             components: Components::new(),
+            dirty_widgets: DirtyWidgets::empty(),
         };
 
         runner.exec();
@@ -300,7 +301,7 @@ impl Widget for TestWidget {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _attributs: anathema_widgets::WidgetId,
-        ctx: &mut LayoutCtx<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::new(1, 1);
 
