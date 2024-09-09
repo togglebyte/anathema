@@ -141,6 +141,7 @@ impl<T: GlobalEvents> EventHandler<T> {
                     })
                     .unwrap_or(false);
                 if !cont {
+                    event_ctx.components.tab_index = i;
                     break;
                 }
             }
