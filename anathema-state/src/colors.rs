@@ -10,8 +10,9 @@ pub trait FromColor {
 /// Representation of terminal colors, following the ANSI spec
 ///
 /// [ANSI color table](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum Color {
+    #[default]
     Reset,
     Black,
     Red,

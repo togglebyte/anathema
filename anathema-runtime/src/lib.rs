@@ -42,6 +42,7 @@ use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tree::Tree;
 
+pub use self::events::{GlobalContext, GlobalEvents};
 pub use crate::error::{Error, Result};
 
 static REBUILD: AtomicBool = AtomicBool::new(false);
@@ -50,16 +51,17 @@ mod error;
 mod events;
 mod tree;
 
-pub struct RuntimeBuilder<T> {
+pub struct RuntimeBuilder<T, G> {
     document: Document,
     component_registry: ComponentRegistry,
     backend: T,
     factory: Factory,
     message_receiver: flume::Receiver<ViewMessage>,
     emitter: Emitter,
+    global_events: G,
 }
 
-impl<T> RuntimeBuilder<T> {
+impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
     /// Registers a [Component] with the runtime.
     /// This returns a unique [ComponentId] that is used to send messages to the component.
     ///
@@ -77,6 +79,18 @@ impl<T> RuntimeBuilder<T> {
         let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_component(id, component, state);
         Ok(id.into())
+    }
+
+    pub fn global_events<U>(self, global_events: U) -> RuntimeBuilder<T, U> {
+        RuntimeBuilder {
+            document: self.document,
+            component_registry: self.component_registry,
+            backend: self.backend,
+            factory: self.factory,
+            message_receiver: self.message_receiver,
+            emitter: self.emitter,
+            global_events,
+        }
     }
 
     /// Registers a [Component] as a prototype with the [Runtime],
@@ -164,7 +178,7 @@ impl<T> RuntimeBuilder<T> {
 
     /// Builds the [Runtime].
     /// Fails if compiling the [Document] or creating the file watcher fails.
-    pub fn finish(mut self) -> Result<Runtime<T>>
+    pub fn finish(mut self) -> Result<Runtime<T, G>>
     where
         T: Backend,
     {
@@ -196,7 +210,7 @@ impl<T> RuntimeBuilder<T> {
             floating_widgets: FloatingWidgets::empty(),
             components: Components::new(),
             dirty_widgets: DirtyWidgets::empty(),
-            event_handler: EventHandler,
+            event_handler: EventHandler::new(self.global_events),
         };
 
         Ok(inst)
@@ -211,9 +225,9 @@ impl<T> RuntimeBuilder<T> {
 /// # use anathema_backend::test::TestBackend;
 /// # let backend = TestBackend::new((10, 10));
 /// let document = Document::new("border");
-/// let mut runtime = Runtime::new(document, backend).finish().unwrap();
+/// let mut runtime = Runtime::builder(document, backend).finish().unwrap();
 /// ```
-pub struct Runtime<T> {
+pub struct Runtime<T, G> {
     pub fps: u16,
 
     _watcher: Option<RecommendedWatcher>,
@@ -234,7 +248,7 @@ pub struct Runtime<T> {
     // * Layout (immutable)
     viewport: Viewport,
     // * Event handling
-    event_handler: EventHandler,
+    event_handler: EventHandler<G>,
     // * Layout
     // * Event handling
     constraints: Constraints,
@@ -257,18 +271,12 @@ pub struct Runtime<T> {
     floating_widgets: FloatingWidgets,
 }
 
-impl<T> Runtime<T>
+impl<T> Runtime<T, ()>
 where
     T: Backend,
 {
-    #[deprecated(note = "use the `builder` function instead")]
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(document: Document, backend: T) -> RuntimeBuilder<T> {
-        Self::builder(document, backend)
-    }
-
     /// Creates a [RuntimeBuilder] based on the [Document] and the [Backend].
-    pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T> {
+    pub fn builder(document: Document, backend: T) -> RuntimeBuilder<T, ()> {
         let mut factory = Factory::new();
 
         let (message_sender, message_receiver) = flume::unbounded();
@@ -281,9 +289,16 @@ where
             factory,
             emitter: message_sender.into(),
             message_receiver,
+            global_events: (),
         }
     }
+}
 
+impl<T, G> Runtime<T, G>
+where
+    T: Backend,
+    G: GlobalEvents,
+{
     pub fn emitter(&self) -> Emitter {
         self.emitter.clone()
     }
@@ -419,7 +434,6 @@ where
     }
 
     // 1 - Tries to build the tree
-    // TODO: step 2 is not implemented yet
     // 2 - Selects the first [Component] and calls [Component::on_focus] on it
     // 3 - Repeatedly calls [Self::tick] until [REBUILD] is set to true or an error occurs. Using the [Error::Stop] breaks the main loop.
     // 4 - Resets using [Self::reset]
@@ -464,8 +478,6 @@ where
             }
         }
 
-        // TODO: try to set focus on the first available component
-
         let mut dt = Instant::now();
 
         // Initial layout, position and paint
@@ -480,6 +492,25 @@ where
         .run();
         self.backend.render();
         self.backend.clear();
+
+        // Try to set focus on the first available component
+        let context = UntypedContext {
+            emitter: &self.emitter,
+            viewport: self.viewport,
+            strings: &self.document.strings,
+        };
+
+        let mut event_ctx = EventCtx {
+            components: &mut self.components,
+            dirty_widgets: &mut self.dirty_widgets,
+            states: &mut states,
+            attribute_storage: &mut attribute_storage,
+            assoc_events: &mut assoc_events,
+            context,
+            focus_queue: &mut focus_queue,
+        };
+
+        self.event_handler.set_initial_focus(&mut tree, &mut event_ctx);
 
         loop {
             self.tick(

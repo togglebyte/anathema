@@ -222,17 +222,17 @@ impl<'rt, T: 'static> Context<'rt, T> {
         );
     }
 
+    /// Get a value from external state
+    pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
+        let val = self.component_ctx.external_state?.get(key);
+        val.and_then(|(_, val)| val.load_common_val())
+    }
+
     /// Send a message to a given component
     pub fn emit<M: 'static + Send + Sync>(&self, recipient: ComponentId<M>, value: M) {
         self.emitter
             .emit(recipient, value)
             .expect("this will not fail unless the runtime is droped")
-    }
-
-    /// Get a value from external state
-    pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
-        let val = self.component_ctx.external_state?.get(key);
-        val.and_then(|(_, val)| val.load_common_val())
     }
 
     /// Queue a focus call to a component that might have
@@ -349,7 +349,7 @@ impl<'rt> FocusQueue<'rt> {
         }
     }
 
-    pub(crate) fn push(&mut self, key: Cow<'static, str>, value: CommonVal<'rt>) {
+    pub fn push(&mut self, key: Cow<'static, str>, value: CommonVal<'rt>) {
         self.focus_queue.push_back((key, value));
     }
 
@@ -475,7 +475,7 @@ pub trait AnyComponent {
 
     fn any_receive(&mut self, ctx: AnyEventCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>);
 
-    fn accept_focus_any(&self) -> bool;
+    fn any_accept_focus(&self) -> bool;
 }
 
 impl<T> AnyComponent for T
@@ -498,7 +498,7 @@ where
         event
     }
 
-    fn accept_focus_any(&self) -> bool {
+    fn any_accept_focus(&self) -> bool {
         self.accept_focus()
     }
 

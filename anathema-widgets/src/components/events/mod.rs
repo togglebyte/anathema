@@ -27,4 +27,11 @@ impl Event {
     pub fn is_mouse_event(&self) -> bool {
         matches!(self, Self::Mouse(_))
     }
+
+    pub fn get_char(&self) -> Option<char> {
+        match self {
+            Self::Key(event) => event.get_char(),
+            _ => None,
+        }
+    }
 }
