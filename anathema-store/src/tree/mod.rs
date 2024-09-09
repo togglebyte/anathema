@@ -42,6 +42,11 @@ impl<T> Tree<T> {
         self.values
     }
 
+    /// Split the tree into values and structure
+    pub fn split(&mut self) -> (&Nodes, &mut TreeValues<T>) {
+        (&self.layout, &mut self.values)
+    }
+
     /// Give a capacity to the underlying value store.
     /// This will not affect the storage of the layout.
     pub fn with_capacity(cap: usize) -> Self {

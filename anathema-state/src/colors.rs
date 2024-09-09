@@ -10,8 +10,9 @@ pub trait FromColor {
 /// Representation of terminal colors, following the ANSI spec
 ///
 /// [ANSI color table](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum Color {
+    #[default]
     Reset,
     Black,
     Red,
@@ -68,8 +69,8 @@ impl fmt::Display for Color {
             Self::Blue => write!(f, "Blue"),
             Self::Magenta => write!(f, "Magenta"),
             Self::Cyan => write!(f, "Cyan"),
-            Self::Grey => write!(f, "Gray"),
-            Self::DarkGrey => write!(f, "DarkGray"),
+            Self::Grey => write!(f, "Grey"),
+            Self::DarkGrey => write!(f, "DarkGrey"),
             Self::LightRed => write!(f, "LightRed"),
             Self::LightGreen => write!(f, "LightGreen"),
             Self::LightYellow => write!(f, "LightYellow"),
@@ -109,14 +110,14 @@ impl FromStr for Color {
             "blue" => Self::Blue,
             "magenta" => Self::Magenta,
             "cyan" => Self::Cyan,
-            "gray" => Self::Grey,
-            "darkgray" => Self::DarkGrey,
-            "lightred" => Self::LightRed,
-            "lightgreen" => Self::LightGreen,
-            "lightyellow" => Self::LightYellow,
-            "lightblue" => Self::LightBlue,
-            "lightmagenta" => Self::LightMagenta,
-            "lightcyan" => Self::LightCyan,
+            "grey" => Self::Grey,
+            "dark_grey" => Self::DarkGrey,
+            "light_red" => Self::LightRed,
+            "light_green" => Self::LightGreen,
+            "light_yellow" => Self::LightYellow,
+            "light_blue" => Self::LightBlue,
+            "light_magenta" => Self::LightMagenta,
+            "light_cyan" => Self::LightCyan,
             "white" => Self::White,
             _ => {
                 if let Ok(ansi_value) = s.parse::<u8>() {
@@ -159,14 +160,14 @@ mod test {
         assert_eq!(Color::from_str("blue").unwrap(), Color::Blue);
         assert_eq!(Color::from_str("magenta").unwrap(), Color::Magenta);
         assert_eq!(Color::from_str("cyan").unwrap(), Color::Cyan);
-        assert_eq!(Color::from_str("gray").unwrap(), Color::Grey);
-        assert_eq!(Color::from_str("darkgray").unwrap(), Color::DarkGrey);
-        assert_eq!(Color::from_str("lightred").unwrap(), Color::LightRed);
-        assert_eq!(Color::from_str("lightgreen").unwrap(), Color::LightGreen);
-        assert_eq!(Color::from_str("lightyellow").unwrap(), Color::LightYellow);
-        assert_eq!(Color::from_str("lightblue").unwrap(), Color::LightBlue);
-        assert_eq!(Color::from_str("lightmagenta").unwrap(), Color::LightMagenta);
-        assert_eq!(Color::from_str("lightcyan").unwrap(), Color::LightCyan);
+        assert_eq!(Color::from_str("grey").unwrap(), Color::Grey);
+        assert_eq!(Color::from_str("dark_grey").unwrap(), Color::DarkGrey);
+        assert_eq!(Color::from_str("light_red").unwrap(), Color::LightRed);
+        assert_eq!(Color::from_str("light_green").unwrap(), Color::LightGreen);
+        assert_eq!(Color::from_str("light_yellow").unwrap(), Color::LightYellow);
+        assert_eq!(Color::from_str("light_blue").unwrap(), Color::LightBlue);
+        assert_eq!(Color::from_str("light_magenta").unwrap(), Color::LightMagenta);
+        assert_eq!(Color::from_str("light_cyan").unwrap(), Color::LightCyan);
         assert_eq!(Color::from_str("white").unwrap(), Color::White);
         assert_eq!(Color::from_str("#242424").unwrap(), Color::Rgb(36, 36, 36));
         assert_eq!(Color::from_str("10").unwrap(), Color::AnsiVal(10));
