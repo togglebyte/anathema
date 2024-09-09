@@ -12,8 +12,6 @@ pub mod tui;
 pub trait Backend {
     fn size(&self) -> Size;
 
-    fn quit_test(&self, event: Event) -> bool;
-
     fn next_event(&mut self, timeout: Duration) -> Option<Event>;
 
     fn resize(&mut self, new_size: Size);
