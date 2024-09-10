@@ -129,13 +129,6 @@ impl Backend for TuiBackend {
         self.screen.size()
     }
 
-    fn quit_test(&self, event: Event) -> bool {
-        match event {
-            Event::Stop => self.quit_on_ctrl_c,
-            _ => false,
-        }
-    }
-
     fn next_event(&mut self, timeout: Duration) -> Option<Event> {
         self.events.poll(timeout)
     }

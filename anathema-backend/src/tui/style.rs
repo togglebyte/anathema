@@ -1,15 +1,16 @@
 use std::io::{Result, Write};
+use std::str::FromStr;
 
 use anathema_state::{Color, Hex};
 use anathema_widgets::paint::CellAttributes;
-pub use crossterm::style::{Attribute as CrossAttrib, Color as CrossColor};
+pub use crossterm::style::{Attribute as CrossAttrib, Color as CTColor};
 use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
 
 struct ColorWrapper(Color);
 
-impl From<ColorWrapper> for CrossColor {
-    fn from(color: ColorWrapper) -> CrossColor {
+impl From<ColorWrapper> for CTColor {
+    fn from(color: ColorWrapper) -> CTColor {
         match color.0 {
             Color::Reset => Self::Reset,
             Color::Black => Self::Black,
@@ -69,29 +70,8 @@ pub struct Style {
 }
 
 impl CellAttributes for Style {
-    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
-        match key {
-            "foreground" => self.fg.map(|c| f(&c.to_string())),
-            "background" => self.bg.map(|c| f(&c.to_string())),
-            _ => None,
-        };
-    }
-
-    fn get_i64(&self, _key: &str) -> Option<i64> {
+    fn get_hex(&self, _: &str) -> Option<Hex> {
         None
-    }
-
-    fn get_hex(&self, key: &str) -> Option<Hex> {
-        let colour = match key {
-            "foreground" => self.fg,
-            "background" => self.bg,
-            _ => return None,
-        };
-
-        match colour {
-            Some(Color::Rgb(r, g, b)) => Some(Hex::from((r, g, b))),
-            None | Some(_) => None,
-        }
     }
 
     fn get_color(&self, key: &str) -> Option<Color> {
@@ -101,6 +81,16 @@ impl CellAttributes for Style {
             _ => None,
         }
     }
+
+    fn get_i64(&self, _key: &str) -> Option<i64> {
+        None
+    }
+
+    fn get_u8(&self, _key: &str) -> Option<u8> {
+        None
+    }
+
+    fn with_str(&self, _: &str, _: &mut dyn FnMut(&str)) {}
 
     fn get_bool(&self, key: &str) -> bool {
         match key {
@@ -130,24 +120,26 @@ impl Style {
     pub fn from_cell_attribs(attributes: &dyn CellAttributes) -> Self {
         let mut style = Self::new();
 
-        match attributes.get_hex("foreground") {
-            Some(Hex { r, g, b }) => style.fg = Some(Color::from((r, g, b))),
-            None => attributes.with_str("foreground", &mut |s| style.fg = Color::try_from(s).ok()),
-        }
-
-        match attributes.get_hex("background") {
-            Some(Hex { r, g, b }) => style.bg = Some(Color::from((r, g, b))),
-            None => attributes.with_str("background", &mut |s| style.bg = Color::try_from(s).ok()),
-        }
-
         match attributes.get_color("foreground") {
             Some(color) => style.fg = Some(color),
-            None => attributes.with_str("foreground", &mut |s| style.fg = Color::try_from(s).ok()),
+            None => match attributes.get_hex("foreground") {
+                Some(Hex { r, g, b }) => style.fg = Some(Color::from((r, g, b))),
+                None => match attributes.get_u8("foreground") {
+                    Some(ansi) => style.fg = Some(Color::AnsiVal(ansi)),
+                    None => attributes.with_str("foreground", &mut |s| style.fg = Color::from_str(s).ok()),
+                },
+            },
         }
 
         match attributes.get_color("background") {
             Some(color) => style.bg = Some(color),
-            None => attributes.with_str("background", &mut |s| style.bg = Color::try_from(s).ok()),
+            None => match attributes.get_hex("background") {
+                Some(Hex { r, g, b }) => style.bg = Some(Color::from((r, g, b))),
+                None => match attributes.get_u8("background") {
+                    Some(ansi) => style.bg = Some(Color::AnsiVal(ansi)),
+                    None => attributes.with_str("background", &mut |s| style.bg = Color::from_str(s).ok()),
+                },
+            },
         }
 
         if attributes.get_bool("bold") {

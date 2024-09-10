@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[cfg(not(target_os = "windows"))]
 use anathema_debug::DebugWriter;
 use anathema_store::slab::Slab;
 
@@ -370,12 +371,14 @@ impl From<Variables> for HashMap<Rc<str>, Expression> {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub struct ScopeDebug<'a> {
     level: usize,
     scope: &'a Scope,
     store: &'a Slab<VarId, Expression>,
 }
 
+#[cfg(not(target_os = "windows"))]
 impl DebugWriter for ScopeDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
         let indent = " ".repeat(self.level * 4);
@@ -404,8 +407,10 @@ impl DebugWriter for ScopeDebug<'_> {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub struct VariablesDebug<'a>(pub(crate) &'a Variables);
 
+#[cfg(not(target_os = "windows"))]
 impl DebugWriter for VariablesDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
         ScopeDebug {

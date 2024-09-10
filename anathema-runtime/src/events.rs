@@ -1,19 +1,153 @@
+use std::borrow::Cow;
 use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
 use anathema_geometry::Size;
-use anathema_state::{AnyState, States};
+use anathema_state::{AnyState, CommonVal, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{AssociatedEvents, FocusQueue, UntypedContext};
+use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;
 
-pub(super) struct EventHandler;
+// -----------------------------------------------------------------------------
+//   - Ctrl-c quit test -
+// -----------------------------------------------------------------------------
+fn is_ctrl_c(event: Event) -> bool {
+    matches!(
+        event,
+        Event::Key(KeyEvent {
+            ctrl: true,
+            code: KeyCode::Char('c'),
+            ..
+        }),
+    )
+}
 
-impl EventHandler {
+// If the event is tab/back tab then the event is consumed
+fn tab<'bp>(event_ctx: &mut EventCtx<'_, '_, 'bp>, tree: &mut WidgetTree<'bp>, event: Event) -> Option<Event> {
+    // -----------------------------------------------------------------------------
+    //   - Handle tabbing between components -
+    // -----------------------------------------------------------------------------
+    if let Event::Key(KeyEvent {
+        code,
+        state: KeyState::Press,
+        ..
+    }) = event
+    {
+        enum Dir {
+            F,
+            B,
+        }
+
+        let index = event_ctx.components.tab_index;
+        let dir = match code {
+            KeyCode::Tab => Dir::F,
+            KeyCode::BackTab => Dir::B,
+            _ => return Some(event),
+        };
+
+        loop {
+            // -----------------------------------------------------------------------------
+            //   - Blur -
+            // -----------------------------------------------------------------------------
+            if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+            }
+
+            // -----------------------------------------------------------------------------
+            //   - Change index -
+            // -----------------------------------------------------------------------------
+            match dir {
+                Dir::F => {
+                    event_ctx.components.tab_index += 1;
+                    if event_ctx.components.tab_index >= event_ctx.components.len() {
+                        event_ctx.components.tab_index = 0;
+                    }
+                }
+                Dir::B => match event_ctx.components.tab_index >= 1 {
+                    true => event_ctx.components.tab_index -= 1,
+                    false => event_ctx.components.tab_index = event_ctx.components.len() - 1,
+                },
+            }
+
+            if index == event_ctx.components.tab_index {
+                break;
+            }
+
+            // -----------------------------------------------------------------------------
+            //   - Focus -
+            // -----------------------------------------------------------------------------
+            if let Some((widget_id, state_id)) = event_ctx.components.current() {
+                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+
+                let cont = tree
+                    .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
+                        if !comp.any_accept_focus() {
+                            return true;
+                        }
+                        comp.any_focus(ctx);
+                        false
+                    })
+                    .unwrap_or(true);
+
+                if !cont {
+                    break;
+                }
+            }
+        }
+
+        return None;
+    }
+
+    // Mouse events are global
+    if let Event::Mouse(_) = event {
+        for i in 0..event_ctx.components.len() {
+            let (widget_id, state_id) = event_ctx
+                .components
+                .get(i)
+                .expect("components can not change during this call");
+
+            tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
+        }
+    }
+
+    Some(event)
+}
+
+pub(super) struct EventHandler<T> {
+    global: T,
+}
+
+impl<T: GlobalEvents> EventHandler<T> {
+    pub fn new(global: T) -> Self {
+        Self { global }
+    }
+
+    pub(super) fn set_initial_focus<'bp>(&mut self, tree: &mut WidgetTree<'bp>, event_ctx: &mut EventCtx<'_, '_, 'bp>) {
+        // Find the first widget that accepts focus, if no widget accepts focus then move on
+        for i in 0..event_ctx.components.len() {
+            if let Some((widget_id, state_id)) = event_ctx.components.get(i) {
+                let cont = tree
+                    .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
+                        if comp.any_accept_focus() {
+                            comp.any_focus(ctx);
+                            false
+                        } else {
+                            true
+                        }
+                    })
+                    .unwrap_or(false);
+                if !cont {
+                    event_ctx.components.tab_index = i;
+                    break;
+                }
+            }
+        }
+    }
+
     pub(super) fn handle<'bp>(
         &mut self,
         poll_duration: Duration,
@@ -26,9 +160,29 @@ impl EventHandler {
         event_ctx: &mut EventCtx<'_, '_, 'bp>,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let Some(event) = global_event(event_ctx, backend, tree, event) else {
-                return Ok(());
+            let event = match self.global.enable_tab_navigation() {
+                false => event,
+                true => match tab(event_ctx, tree, event) {
+                    None => return Ok(()),
+                    Some(ev) => ev,
+                },
             };
+
+            let (nodes, values) = tree.split();
+            let mut elements = Elements::new(nodes, values, event_ctx.attribute_storage, event_ctx.dirty_widgets);
+            let mut global_ctx = GlobalContext {
+                focus_queue: event_ctx.focus_queue,
+                emitter: event_ctx.context.emitter,
+            };
+
+            let event = match is_ctrl_c(event) {
+                true => self.global.ctrl_c(event, &mut elements, &mut global_ctx),
+                false => Some(event),
+            };
+
+            let Some(event) = event else { return Ok(()) };
+            let event = self.global.handle(event, &mut elements, &mut global_ctx);
+            let Some(event) = event else { return Ok(()) };
 
             // Ignore mouse events, as they are handled by global event
             if !event.is_mouse_event() {
@@ -59,8 +213,7 @@ impl EventHandler {
                         tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_resize(ctx));
                     }
                 }
-                Event::Blur => (),
-                Event::Focus => (),
+                Event::Blur | Event::Focus => (),
                 Event::Stop => return Err(Error::Stop),
                 _ => {}
             }
@@ -125,7 +278,7 @@ impl EventHandler {
                         return false;
                     }
 
-                    if !component.dyn_component.accept_focus_any() {
+                    if !component.dyn_component.any_accept_focus() {
                         return false;
                     }
 
@@ -163,108 +316,41 @@ pub(crate) struct EventCtx<'a, 'rt, 'bp> {
     pub context: UntypedContext<'rt>,
 }
 
-fn global_event<'bp, T: Backend>(
-    event_ctx: &mut EventCtx<'_, '_, 'bp>,
-    backend: &mut T,
-    tree: &mut WidgetTree<'bp>,
-    event: Event,
-) -> Option<Event> {
-    // -----------------------------------------------------------------------------
-    //   - Ctrl-c to quite -
-    //   This should be on by default.
-    //   Give it a good name
-    //
-    //   TODO: Do away with this thing once we add a global event handler
-    // -----------------------------------------------------------------------------
-    if backend.quit_test(event) {
-        return Some(Event::Stop);
+pub struct GlobalContext<'rt> {
+    emitter: &'rt Emitter,
+    focus_queue: &'rt mut FocusQueue<'static>,
+}
+
+impl<'rt> GlobalContext<'rt> {
+    /// Send a message to a given component
+    pub fn emit<M: 'static + Send + Sync>(&self, recipient: ComponentId<M>, value: M) {
+        self.emitter
+            .emit(recipient, value)
+            .expect("this will not fail unless the runtime is droped")
     }
 
-    // -----------------------------------------------------------------------------
-    //   - Handle tabbing between components -
-    // -----------------------------------------------------------------------------
-    if let Event::Key(KeyEvent {
-        code,
-        state: KeyState::Press,
-        ..
-    }) = event
-    {
-        enum Dir {
-            F,
-            B,
-        }
+    /// Queue a focus call to a component that might have
+    /// an attribute matching the key and value pair
+    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal<'static>>) {
+        self.focus_queue.push(key.into(), value.into());
+    }
+}
 
-        let index = event_ctx.components.tab_index;
-        let dir = match code {
-            KeyCode::Tab => Dir::F,
-            KeyCode::BackTab => Dir::B,
-            _ => return Some(event),
-        };
+pub trait GlobalEvents {
+    fn handle(&mut self, event: Event, elements: &mut Elements<'_, '_>, ctx: &mut GlobalContext<'_>) -> Option<Event>;
 
-        loop {
-            // -----------------------------------------------------------------------------
-            //   - Blur -
-            // -----------------------------------------------------------------------------
-            if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
-                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
-            }
-
-            // -----------------------------------------------------------------------------
-            //   - Change index -
-            // -----------------------------------------------------------------------------
-            match dir {
-                Dir::F => {
-                    event_ctx.components.tab_index += 1;
-                    if event_ctx.components.tab_index >= event_ctx.components.len() {
-                        event_ctx.components.tab_index = 0;
-                    }
-                }
-                Dir::B => match event_ctx.components.tab_index >= 1 {
-                    true => event_ctx.components.tab_index -= 1,
-                    false => event_ctx.components.tab_index = event_ctx.components.len() - 1,
-                },
-            }
-
-            if index == event_ctx.components.tab_index {
-                break;
-            }
-
-            // -----------------------------------------------------------------------------
-            //   - Focus -
-            // -----------------------------------------------------------------------------
-            if let Some((widget_id, state_id)) = event_ctx.components.current() {
-                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
-
-                let cont = tree
-                    .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
-                        if !comp.accept_focus_any() {
-                            return true;
-                        }
-                        comp.any_focus(ctx);
-                        false
-                    })
-                    .unwrap_or(true);
-
-                if !cont {
-                    break;
-                }
-            }
-        }
-
-        return None;
+    /// Return `None` here to stop propagating the event and close down the runtime
+    fn ctrl_c(&mut self, event: Event, _: &mut Elements<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
+        Some(event)
     }
 
-    // Mouse events are global
-    if let Event::Mouse(_) = event {
-        for i in 0..event_ctx.components.len() {
-            let (widget_id, state_id) = event_ctx
-                .components
-                .get(i)
-                .expect("components can not change during this call");
-
-            tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
-        }
+    fn enable_tab_navigation(&mut self) -> bool {
+        true
     }
+}
 
-    Some(event)
+impl GlobalEvents for () {
+    fn handle(&mut self, event: Event, _: &mut Elements<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
+        Some(event)
+    }
 }

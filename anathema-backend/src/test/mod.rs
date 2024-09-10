@@ -28,10 +28,6 @@ impl Backend for TestBackend {
         self.surface.size
     }
 
-    fn quit_test(&self, event: Event) -> bool {
-        matches!(event, Event::Stop)
-    }
-
     fn next_event(&mut self, _timeout: std::time::Duration) -> Option<Event> {
         None
     }

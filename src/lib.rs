@@ -13,14 +13,13 @@ pub use {
 
 pub mod prelude {
     pub use crate::backend::tui::TuiBackend;
-    pub use crate::runtime::Runtime;
+    pub use crate::runtime::{GlobalContext, GlobalEvents, Runtime};
     pub use crate::templates::{Document, SourceKind, ToSourceKind, WidgetComponentId};
     pub use crate::widgets::components::Context;
 }
-
 pub mod component {
-    pub use crate::state::{CommonVal, List, Map, State, Value};
-    pub use crate::widgets::components::events::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseState};
-    pub use crate::widgets::components::{Component, ComponentId, Emitter};
+    pub use crate::state::{Color, CommonVal, List, Map, State, Value};
+    pub use crate::widgets::components::events::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseState};
+    pub use crate::widgets::components::{Component, ComponentId, Context, Emitter};
     pub use crate::widgets::Elements;
 }

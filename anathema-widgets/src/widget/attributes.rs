@@ -197,6 +197,10 @@ impl CellAttributes for Attributes<'_> {
         self.get_int(key)
     }
 
+    fn get_u8(&self, key: &str) -> Option<u8> {
+        self.get_int(key).map(|i| i as u8)
+    }
+
     fn get_hex(&self, key: &str) -> Option<anathema_state::Hex> {
         let value = self.get_val(key)?;
         let value = value.load_common_val()?;
