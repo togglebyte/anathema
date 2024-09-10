@@ -30,10 +30,10 @@ impl Buffer {
     fn put(&mut self, c: char, style: Style, pos: impl Into<LocalPos>) {
         let pos = pos.into();
 
-        let index = pos.to_index(self.size.width);
-        if index >= self.positions.len() {
-            return;
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return
         }
+        let index = pos.to_index(self.size.width);
 
         let mut cell = Cell::Occupied(c, style);
         std::mem::swap(&mut self.positions[index], &mut cell);
