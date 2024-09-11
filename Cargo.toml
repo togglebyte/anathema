@@ -1,7 +1,7 @@
 [package]
 name = "anathema"
 edition = "2021"
-version = "0.3.0"
+version = "0.2.0"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
 keywords = ["tui", "terminal", "widgets", "ui"]
@@ -27,7 +27,7 @@ anathema-geometry = { path = "./anathema-geometry" }
 workspace = true
 
 [workspace.package]
-version = "0.3.0"
+version = "0.2.0"
 edition = "2021"
 
 [workspace.dependencies]
@@ -36,6 +36,7 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
+finl_unicode = "1.2"
 
 [workspace]
 members = [

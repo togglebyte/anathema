@@ -9,7 +9,7 @@ use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, Elements,
-    EvalContext, Factory, FloatingWidgets, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
+    EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]
@@ -41,6 +41,7 @@ pub struct TestCaseRunner<'bp, S> {
     changes: Changes,
     viewport: Viewport,
     components: Components,
+    glyph_map: GlyphMap,
 }
 
 impl<'bp, S> TestCaseRunner<'bp, S>
@@ -66,7 +67,7 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
             layout_widget(
                 widget,
                 children,
@@ -90,7 +91,7 @@ where
         // Floating widgets
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
             layout_widget(
                 widget,
                 children,
@@ -226,7 +227,7 @@ where
 
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
             layout_widget(
                 widget,
                 children,
@@ -285,6 +286,7 @@ impl TestCase {
             viewport: Viewport::new((1, 1)),
             components: Components::new(),
             dirty_widgets: DirtyWidgets::empty(),
+            glyph_map: GlyphMap::empty(),
         };
 
         runner.exec();

@@ -1,15 +1,12 @@
-use std::convert::Infallible;
-use std::fmt::Display;
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Rect, Size};
 use anathema_widgets::expressions::EvalValue;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::paint::{PaintCtx, SizePos};
+use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{
     AnyWidget, AttributeStorage, Attributes, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId,
 };
-use unicode_width::UnicodeWidthChar;
 
 use crate::layout::border::BorderLayout;
 use crate::layout::Axis;
@@ -87,8 +84,27 @@ impl From<&str> for Sides {
 // -----------------------------------------------------------------------------
 //   - Border types -
 // -----------------------------------------------------------------------------
-pub const DEFAULT_SLIM_EDGES: [char; 8] = ['┌', '─', '┐', '│', '┘', '─', '└', '│'];
-pub const DEFAULT_THICK_EDGES: [char; 8] = ['╔', '═', '╗', '║', '╝', '═', '╚', '║'];
+pub const DEFAULT_SLIM_EDGES: [Glyph; 8] = [
+    Glyph::from_char('┌', 1),
+    Glyph::from_char('─', 1),
+    Glyph::from_char('┐', 1),
+    Glyph::from_char('│', 1),
+    Glyph::from_char('┘', 1),
+    Glyph::from_char('─', 1),
+    Glyph::from_char('└', 1),
+    Glyph::from_char('│', 1),
+];
+
+pub const DEFAULT_THICK_EDGES: [Glyph; 8] = [
+    Glyph::from_char('╔', 1),
+    Glyph::from_char('═', 1),
+    Glyph::from_char('╗', 1),
+    Glyph::from_char('║', 1),
+    Glyph::from_char('╝', 1),
+    Glyph::from_char('═', 1),
+    Glyph::from_char('╚', 1),
+    Glyph::from_char('║', 1),
+];
 
 /// The style of the border.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -111,57 +127,26 @@ pub enum BorderStyle {
     /// 7hello3
     /// 6555554
     /// ```
-    Custom(String),
+    Custom([Glyph; 8]),
 }
 
 impl BorderStyle {
-    pub fn edges(&self) -> [char; 8] {
+    pub fn edges(&self) -> [Glyph; 8] {
         match self {
             BorderStyle::Thin => DEFAULT_SLIM_EDGES,
             BorderStyle::Thick => DEFAULT_THICK_EDGES,
-            BorderStyle::Custom(edge_string) => {
-                let mut edges = [' '; 8];
-                for (i, c) in edge_string.chars().take(8).enumerate() {
-                    edges[i] = c;
-                }
-                edges
-            }
+            BorderStyle::Custom(edges) => *edges,
         }
-    }
-}
-
-impl Display for BorderStyle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Thin => write!(f, "thin"),
-            Self::Thick => write!(f, "thick"),
-            Self::Custom(s) => write!(f, "{s}"),
-        }
-    }
-}
-
-impl TryFrom<&EvalValue<'_>> for BorderStyle {
-    type Error = Infallible;
-
-    fn try_from(value: &EvalValue<'_>) -> Result<Self, Self::Error> {
-        let mut style = None::<BorderStyle>;
-        value.str_for_each(|s| match s {
-            "thin" => style = Some(BorderStyle::Thin),
-            "thick" => style = Some(BorderStyle::Thick),
-            custom => style = Some(BorderStyle::Custom(custom.into())),
-        });
-
-        Ok(style.unwrap_or_default())
     }
 }
 
 struct Brush {
-    glyph: char,
+    glyph: Glyph,
     width: u8,
 }
 
 impl Brush {
-    pub fn new(glyph: char, width: u8) -> Self {
+    pub fn new(glyph: Glyph, width: u8) -> Self {
         Self { width, glyph }
     }
 }
@@ -189,7 +174,7 @@ impl Line {
 
     fn draw<F>(&self, f: &mut F)
     where
-        F: FnMut(LocalPos, char),
+        F: FnMut(LocalPos, Glyph),
     {
         let mut pos = self.start;
         let mut end = self.end;
@@ -240,7 +225,7 @@ impl Line {
 }
 
 impl BorderPainter {
-    fn new(glyphs: &[char; 8], border_size: BorderSize, size: Size) -> Self {
+    fn new(glyphs: &[Glyph; 8], border_size: BorderSize, size: Size) -> Self {
         let mut height = size.height;
 
         let top = Line {
@@ -296,14 +281,14 @@ impl BorderPainter {
         }
     }
 
-    fn paint<F>(&mut self, f: &mut F)
+    fn paint<F>(&mut self, mut f: F)
     where
-        F: FnMut(LocalPos, char),
+        F: FnMut(LocalPos, Glyph),
     {
-        self.top.draw(f);
-        self.bottom.draw(f);
-        self.left.draw(f);
-        self.right.draw(f);
+        self.top.draw(&mut f);
+        self.bottom.draw(&mut f);
+        self.left.draw(&mut f);
+        self.right.draw(&mut f);
     }
 }
 
@@ -352,7 +337,7 @@ pub struct Border {
     /// All the characters for the border, starting from the top left moving clockwise.
     /// This means the top-left corner is `edges[0]`, the top if `edges[1]` and the top right is
     /// `edges[2]` etc.
-    edges: [char; 8],
+    edges: [Glyph; 8],
 }
 
 impl Border {
@@ -365,35 +350,35 @@ impl Border {
         let mut border_size = BorderSize::default();
 
         if sides.contains(Sides::LEFT | Sides::TOP) {
-            border_size.top_left = self.edges[BORDER_EDGE_TOP_LEFT].width().unwrap_or(0) as u8;
+            border_size.top_left = self.edges[BORDER_EDGE_TOP_LEFT].width() as u8;
         }
 
         if sides.contains(Sides::LEFT | Sides::BOTTOM) {
-            border_size.bottom_left = self.edges[BORDER_EDGE_BOTTOM_LEFT].width().unwrap_or(0) as u8;
+            border_size.bottom_left = self.edges[BORDER_EDGE_BOTTOM_LEFT].width() as u8;
         }
 
         if sides.contains(Sides::RIGHT | Sides::BOTTOM) {
-            border_size.bottom_right = self.edges[BORDER_EDGE_BOTTOM_RIGHT].width().unwrap_or(0) as u8;
+            border_size.bottom_right = self.edges[BORDER_EDGE_BOTTOM_RIGHT].width() as u8;
         }
 
         if sides.contains(Sides::RIGHT | Sides::TOP) {
-            border_size.top_right = self.edges[BORDER_EDGE_TOP_RIGHT].width().unwrap_or(0) as u8;
+            border_size.top_right = self.edges[BORDER_EDGE_TOP_RIGHT].width() as u8;
         }
 
         if sides.contains(Sides::LEFT) {
-            border_size.left = self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as u8;
+            border_size.left = self.edges[BORDER_EDGE_LEFT].width() as u8;
         }
 
         if sides.contains(Sides::RIGHT) {
-            border_size.right = self.edges[BORDER_EDGE_RIGHT].width().unwrap_or(0) as u8;
+            border_size.right = self.edges[BORDER_EDGE_RIGHT].width() as u8;
         }
 
         if sides.contains(Sides::TOP) {
-            border_size.top = self.edges[BORDER_EDGE_TOP].width().unwrap_or(0) as u8;
+            border_size.top = self.edges[BORDER_EDGE_TOP].width() as u8;
         }
 
         if sides.contains(Sides::BOTTOM) {
-            border_size.bottom = self.edges[BORDER_EDGE_BOTTOM].width().unwrap_or(0) as u8;
+            border_size.bottom = self.edges[BORDER_EDGE_BOTTOM].width() as u8;
         }
 
         border_size
@@ -414,7 +399,36 @@ impl Widget for Border {
             .and_then(|s| Sides::try_from(s.deref()).ok())
             .unwrap_or_default();
 
-        self.border_style = attributes.get_ref(BORDER_STYLE).unwrap_or_default();
+        self.border_style = match attributes.get_val(BORDER_STYLE) {
+            None => BorderStyle::Thin,
+            Some(val) => {
+                let mut edges = DEFAULT_SLIM_EDGES;
+                let mut index = 0;
+
+                val.str_iter(|s| {
+                    match s {
+                        "thin" => return ControlFlow::Break(()),
+                        "thick" => {
+                            edges = BorderStyle::Thick.edges();
+                            return ControlFlow::Break(());
+                        }
+                        _ => (),
+                    }
+
+                    let mut glyphs = Glyphs::new(s);
+                    while let Some(g) = glyphs.next(ctx.glyph_map) {
+                        edges[index] = g;
+                        index += 1;
+                        if index >= 8 {
+                            break;
+                        };
+                    }
+
+                    ControlFlow::Break(())
+                });
+                BorderStyle::Custom(edges)
+            }
+        };
         self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
@@ -443,7 +457,7 @@ impl Widget for Border {
             }
 
             if self.sides.contains(Sides::LEFT) {
-                ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width().unwrap_or(0) as i32;
+                ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width() as i32;
             }
 
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
@@ -478,11 +492,11 @@ impl Widget for Border {
         }
 
         let mut painter = BorderPainter::new(&self.edges, border_size, ctx.local_size);
-        let mut paint = |pos, glyph| {
+        let paint = |pos, glyph| {
             ctx.place_glyph(glyph, pos);
         };
 
-        painter.paint(&mut paint);
+        painter.paint(paint);
     }
 
     fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Rect {
@@ -498,8 +512,6 @@ impl Widget for Border {
 }
 
 pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-    let border_style: BorderStyle = attributes.get_ref(BORDER_STYLE).unwrap_or_default();
-
     let sides = attributes
         .get_val("sides")
         .and_then(|s| Sides::try_from(s.deref()).ok())
@@ -507,9 +519,10 @@ pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
 
     let text = Border {
         sides,
-        edges: border_style.edges(),
-        border_style,
+        edges: DEFAULT_SLIM_EDGES,
+        border_style: BorderStyle::Thin,
     };
+
     Box::new(text)
 }
 //}

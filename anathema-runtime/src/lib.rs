@@ -36,7 +36,7 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
-    Factory, FloatingWidgets, Scope, WidgetKind, WidgetTree,
+    Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -81,7 +81,9 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
         Ok(id.into())
     }
 
-    pub fn global_events<U>(self, global_events: U) -> RuntimeBuilder<T, U> {
+    /// Set the global event handler.
+    /// For more information see [`GlobalEvents`].
+    pub fn set_global_event_handler<U>(self, global_events: U) -> RuntimeBuilder<T, U> {
         RuntimeBuilder {
             document: self.document,
             component_registry: self.component_registry,
@@ -201,6 +203,7 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
             blueprint,
             factory: self.factory,
             future_values: FutureValues::empty(),
+            glyph_map: GlyphMap::empty(),
 
             changes: Changes::empty(),
             component_registry: self.component_registry,
@@ -237,6 +240,7 @@ pub struct Runtime<T, G> {
     factory: Factory,
     globals: Globals,
     document: Document,
+    glyph_map: GlyphMap,
 
     // -----------------------------------------------------------------------------
     //   - Mut during runtime -
@@ -484,13 +488,14 @@ where
         WidgetCycle::new(
             &mut self.backend,
             &mut tree,
+            &mut self.glyph_map,
             self.constraints,
             &attribute_storage,
             &self.floating_widgets,
             self.viewport,
         )
         .run();
-        self.backend.render();
+        self.backend.render(&mut self.glyph_map);
         self.backend.clear();
 
         // Try to set focus on the first available component
@@ -672,6 +677,7 @@ where
             let mut cycle = WidgetCycle::new(
                 &mut self.backend,
                 tree,
+                &mut self.glyph_map,
                 self.constraints,
                 attribute_storage,
                 &self.floating_widgets,
@@ -679,7 +685,7 @@ where
             );
             cycle.run();
 
-            self.backend.render();
+            self.backend.render(&mut self.glyph_map);
             self.backend.clear();
             self.changes.clear();
             self.dirty_widgets.clear();

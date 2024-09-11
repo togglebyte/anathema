@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::paint::{PaintCtx, SizePos};
+use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::{single_layout, Axis};
@@ -60,7 +60,8 @@ impl Widget for Expand {
                 loop {
                     let pos = LocalPos::new(used_width, y);
                     let controlflow = fill.str_iter(|s| {
-                        let Some(p) = ctx.place_glyphs(s, pos) else {
+                        let glyphs = Glyphs::new(s);
+                        let Some(p) = ctx.place_glyphs(glyphs, pos) else {
                             return ControlFlow::Break(());
                         };
                         used_width += p.x - used_width;

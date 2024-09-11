@@ -4,7 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
-use anathema_widgets::{AttributeStorage, Element, FloatingWidgets, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, Element, FloatingWidgets, GlyphMap, WidgetKind, WidgetTree};
 
 pub mod test;
 pub mod tui;
@@ -19,6 +19,7 @@ pub trait Backend {
     /// Paint the widgets
     fn paint<'bp>(
         &mut self,
+        glyph_map: &mut GlyphMap,
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
@@ -27,7 +28,7 @@ pub trait Backend {
     );
 
     /// Called by the runtime at the end of the frame.
-    fn render(&mut self);
+    fn render(&mut self, glyph_map: &mut GlyphMap);
 
     /// Clear is called immediately after `render` is called.
     fn clear(&mut self);
@@ -42,6 +43,7 @@ pub trait Backend {
 pub struct WidgetCycle<'rt, 'bp, T> {
     backend: &'rt mut T,
     tree: &'rt mut WidgetTree<'bp>,
+    glyph_map: &'rt mut GlyphMap,
     constraints: Constraints,
     attribute_storage: &'rt AttributeStorage<'bp>,
     floating_widgets: &'rt FloatingWidgets,
@@ -52,6 +54,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
     pub fn new(
         backend: &'rt mut T,
         tree: &'rt mut WidgetTree<'bp>,
+        glyph_map: &'rt mut GlyphMap,
         constraints: Constraints,
         attribute_storage: &'rt AttributeStorage<'bp>,
         floating_widgets: &'rt FloatingWidgets,
@@ -60,6 +63,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         Self {
             backend,
             tree,
+            glyph_map,
             constraints,
             attribute_storage,
             floating_widgets,
@@ -88,7 +92,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport);
+                let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
@@ -96,7 +100,8 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
                 position_widget(pos, el, children, values, self.attribute_storage, true, self.viewport);
 
                 // Paint
-                self.backend.paint(el, children, values, self.attribute_storage, true);
+                self.backend
+                    .paint(self.glyph_map, el, children, values, self.attribute_storage, true);
             });
         }
     }
@@ -110,7 +115,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             //
             //       That doesn't have as much of an impact here
             //       as it will do when dealing with the floating widgets
-            let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport);
+            let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
             layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
             // Position
@@ -126,7 +131,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
             // Paint
             self.backend
-                .paint(widget, children, values, self.attribute_storage, true);
+                .paint(self.glyph_map, widget, children, values, self.attribute_storage, true);
         });
 
         self.floating();

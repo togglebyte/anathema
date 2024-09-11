@@ -336,7 +336,11 @@ impl<'rt> GlobalContext<'rt> {
     }
 }
 
+/// A global event handler that receives all the events before they reach an individual component.
 pub trait GlobalEvents {
+    /// This is called for each event before the event reaches a component.
+    ///
+    /// If `None` is returned here the event will never reach a component.
     fn handle(&mut self, event: Event, elements: &mut Elements<'_, '_>, ctx: &mut GlobalContext<'_>) -> Option<Event>;
 
     /// Return `None` here to stop propagating the event and close down the runtime
@@ -344,6 +348,7 @@ pub trait GlobalEvents {
         Some(event)
     }
 
+    /// Return `false` here to disable using tab and backtab to cycle through component focus
     fn enable_tab_navigation(&mut self) -> bool {
         true
     }

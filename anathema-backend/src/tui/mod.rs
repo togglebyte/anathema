@@ -10,7 +10,7 @@ use std::time::Duration;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
+use anathema_widgets::{AttributeStorage, Element, GlyphMap, WidgetKind, WidgetRenderer};
 use crossterm::terminal::size;
 pub use screen::Screen;
 
@@ -139,6 +139,7 @@ impl Backend for TuiBackend {
 
     fn paint<'bp>(
         &mut self,
+        glyph_map: &mut GlyphMap,
         element: &mut Element<'bp>,
         children: &[Node],
         values: &mut TreeValues<WidgetKind<'bp>>,
@@ -147,6 +148,7 @@ impl Backend for TuiBackend {
     ) {
         anathema_widgets::paint::paint(
             &mut self.screen,
+            glyph_map,
             element,
             children,
             values,
@@ -156,8 +158,8 @@ impl Backend for TuiBackend {
         // TODO: decide if we need `paint` to return a Result or not
     }
 
-    fn render(&mut self) {
-        let _ = self.screen.render(&mut self.output);
+    fn render(&mut self, glyph_map: &mut GlyphMap) {
+        let _ = self.screen.render(&mut self.output, glyph_map);
     }
 
     fn clear(&mut self) {
