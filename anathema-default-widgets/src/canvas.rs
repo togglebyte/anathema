@@ -210,7 +210,7 @@ impl Widget for Canvas {
         }
     }
 
-    fn needs_reflow(&self) -> bool {
+    fn needs_reflow(&mut self) -> bool {
         self.is_dirty
     }
 }

@@ -215,8 +215,10 @@ impl Widget for Overflow {
         });
     }
 
-    fn needs_reflow(&self) -> bool {
-        self.is_dirty
+    fn needs_reflow(&mut self) -> bool {
+        let dirty = self.is_dirty;
+        self.is_dirty = false;
+        dirty
     }
 }
 

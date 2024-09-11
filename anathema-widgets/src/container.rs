@@ -1,4 +1,4 @@
-use anathema_geometry::{LocalPos, Pos, Rect, Size};
+use anathema_geometry::{LocalPos, Pos, Region, Size};
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
@@ -11,7 +11,7 @@ pub struct Container {
     pub id: WidgetId,
     pub size: Size,
     pub pos: Pos,
-    pub inner_bounds: Rect,
+    pub inner_bounds: Region,
     pub needs_layout: bool,
     pub needs_position: bool,
 }

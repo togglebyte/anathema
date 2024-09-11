@@ -4,7 +4,7 @@ use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_state::{Color, Hex};
 use anathema_store::indexmap::IndexMap;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use finl_unicode::grapheme_clusters::Graphemes;
+use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
@@ -19,7 +19,7 @@ pub struct Glyphs<'a> {
 
 impl<'a> Glyphs<'a> {
     pub fn new(src: &'a str) -> Self {
-        let inner = Graphemes::new(src);
+        let inner = src.graphemes(true);
         Self { inner }
     }
 

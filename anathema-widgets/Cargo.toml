@@ -11,7 +11,7 @@ anathema-store = { path = "../anathema-store" }
 anathema-templates = { path = "../anathema-templates" }
 flume = { workspace = true }
 unicode-width = { workspace = true }
-finl_unicode = { workspace = true }
+unicode-segmentation = "1.11.0"
 
 [lints]
 workspace = true

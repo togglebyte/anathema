@@ -1,6 +1,6 @@
 use std::ops::{ControlFlow, Deref};
 
-use anathema_geometry::{LocalPos, Pos, Rect, Size};
+use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_widgets::expressions::EvalValue;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
@@ -499,7 +499,7 @@ impl Widget for Border {
         painter.paint(paint);
     }
 
-    fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Rect {
+    fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Region {
         let bs = self.border_size(self.sides);
         pos.x += bs.top_left.max(bs.bottom_left).max(bs.left) as i32;
         pos.y += bs.top as i32;
@@ -507,7 +507,7 @@ impl Widget for Border {
             .width
             .saturating_sub(bs.top_right.max(bs.bottom_right).max(bs.right) as usize);
         size.height = size.height.saturating_sub(bs.bottom as usize);
-        Rect::from((pos, size))
+        Region::from((pos, size))
     }
 }
 
