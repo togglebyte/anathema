@@ -9,7 +9,7 @@ use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory,
-    FloatingWidgets, Scope, WidgetRenderer as _, WidgetTree,
+    FloatingWidgets, GlyphMap, Scope, WidgetRenderer as _, WidgetTree,
 };
 
 use crate::register_default_widgets;
@@ -95,6 +95,7 @@ impl TestRunner {
             component_registry: &mut self.component_registry,
             components: &mut self.components,
             changes: Changes::empty(),
+            glyph_map: GlyphMap::empty(),
         }
     }
 }
@@ -112,6 +113,7 @@ pub struct TestInstance<'bp> {
     component_registry: &'bp mut ComponentRegistry,
     components: &'bp mut Components,
     changes: Changes,
+    glyph_map: GlyphMap,
 }
 
 impl TestInstance<'_> {
@@ -159,6 +161,7 @@ impl TestInstance<'_> {
         WidgetCycle::new(
             self.backend,
             &mut self.tree,
+            &mut self.glyph_map,
             constraints,
             attribute_storage,
             &self.floating_widgets,
@@ -166,7 +169,7 @@ impl TestInstance<'_> {
         )
         .run();
 
-        self.backend.render();
+        self.backend.render(&mut self.glyph_map);
 
         let actual = std::mem::take(&mut self.backend.output);
         let actual = actual.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");

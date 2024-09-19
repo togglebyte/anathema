@@ -2,13 +2,92 @@ use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_state::{Color, Hex};
+use anathema_store::indexmap::IndexMap;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use unicode_width::UnicodeWidthChar;
+use finl_unicode::grapheme_clusters::Graphemes;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
 use crate::nodes::element::Element;
-use crate::widget::WidgetRenderer;
 use crate::{AttributeStorage, WidgetId, WidgetKind};
+
+pub type GlyphMap = IndexMap<GlyphIndex, String>;
+
+pub struct Glyphs<'a> {
+    inner: Graphemes<'a>,
+}
+
+impl<'a> Glyphs<'a> {
+    pub fn new(src: &'a str) -> Self {
+        let inner = Graphemes::new(src);
+        Self { inner }
+    }
+
+    pub fn next(&mut self, map: &mut GlyphMap) -> Option<Glyph> {
+        let g = self.inner.next()?;
+        let mut chars = g.chars();
+        let c = chars.next()?;
+
+        match chars.next() {
+            None => Glyph::Single(c, c.width().unwrap_or(0) as u8),
+            Some(_) => {
+                let width = g.width();
+                let glyph = map.insert(g.into());
+                Glyph::Cluster(glyph, width as u8)
+            }
+        }
+        .into()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Glyph {
+    Single(char, u8),
+    Cluster(GlyphIndex, u8),
+}
+
+impl Glyph {
+    pub fn space() -> Self {
+        Self::Single(' ', 1)
+    }
+
+    pub fn is_newline(&self) -> bool {
+        matches!(self, Self::Single('\n', _))
+    }
+
+    pub fn width(&self) -> usize {
+        match self {
+            Glyph::Single(_, width) | Glyph::Cluster(_, width) => *width as usize,
+        }
+    }
+
+    pub const fn from_char(c: char, width: u8) -> Self {
+        Self::Single(c, width)
+    }
+}
+
+pub trait WidgetRenderer {
+    fn draw_glyph(&mut self, glyph: Glyph, local_pos: Pos);
+
+    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos);
+
+    fn size(&self) -> Size;
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+pub struct GlyphIndex(u32);
+
+impl From<GlyphIndex> for usize {
+    fn from(value: GlyphIndex) -> Self {
+        value.0 as usize
+    }
+}
+
+impl From<usize> for GlyphIndex {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
+    }
+}
 
 pub trait CellAttributes {
     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
@@ -69,6 +148,7 @@ impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
 
 pub fn paint<'bp>(
     surface: &mut impl WidgetRenderer,
+    glyph_index: &mut GlyphMap,
     element: &mut Element<'bp>,
     children: &[Node],
     values: &mut TreeValues<WidgetKind<'bp>>,
@@ -77,7 +157,7 @@ pub fn paint<'bp>(
 ) {
     let filter = PaintFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
-    let ctx = PaintCtx::new(surface, None);
+    let ctx = PaintCtx::new(surface, None, glyph_index);
     element.paint(children, ctx, attribute_storage);
 }
 
@@ -107,6 +187,7 @@ pub struct PaintCtx<'surface, Size> {
     surface: &'surface mut dyn WidgetRenderer,
     pub clip: Option<Region>,
     pub(crate) state: Size,
+    glyph_map: &'surface mut GlyphMap,
 }
 
 impl<'surface> Deref for PaintCtx<'surface, SizePos> {
@@ -118,11 +199,16 @@ impl<'surface> Deref for PaintCtx<'surface, SizePos> {
 }
 
 impl<'surface> PaintCtx<'surface, Unsized> {
-    pub fn new(surface: &'surface mut dyn WidgetRenderer, clip: Option<Region>) -> Self {
+    pub fn new(
+        surface: &'surface mut dyn WidgetRenderer,
+        clip: Option<Region>,
+        glyph_map: &'surface mut GlyphMap,
+    ) -> Self {
         Self {
             surface,
             clip,
             state: Unsized,
+            glyph_map,
         }
     }
 
@@ -130,6 +216,7 @@ impl<'surface> PaintCtx<'surface, Unsized> {
     pub fn into_sized(self, size: Size, global_pos: Pos) -> PaintCtx<'surface, SizePos> {
         PaintCtx {
             surface: self.surface,
+            glyph_map: self.glyph_map,
             clip: self.clip,
             state: SizePos::new(size, global_pos),
         }
@@ -138,7 +225,7 @@ impl<'surface> PaintCtx<'surface, Unsized> {
 
 impl<'screen> PaintCtx<'screen, SizePos> {
     pub fn to_unsized(&mut self) -> PaintCtx<'_, Unsized> {
-        PaintCtx::new(self.surface, self.clip)
+        PaintCtx::new(self.surface, self.clip, self.glyph_map)
     }
 
     pub fn update(&mut self, new_size: Size, new_pos: Pos) {
@@ -203,9 +290,13 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         }
     }
 
-    pub fn place_glyphs(&mut self, s: &str, mut pos: LocalPos) -> Option<LocalPos> {
-        for c in s.chars() {
-            let p = self.place_glyph(c, pos)?;
+    pub fn to_glyphs<'a>(&mut self, s: &'a str) -> Glyphs<'a> {
+        Glyphs::new(s)
+    }
+
+    pub fn place_glyphs(&mut self, mut glyphs: Glyphs<'_>, mut pos: LocalPos) -> Option<LocalPos> {
+        while let Some(glyph) = glyphs.next(self.glyph_map) {
+            let p = self.place_glyph(glyph, pos)?;
             pos = p;
         }
         Some(pos)
@@ -233,8 +324,8 @@ impl<'screen> PaintCtx<'screen, SizePos> {
     // should be placed. This will (possibly) be offset if there is clipping available.
     //
     // The `output_pos` is the same as the `input_pos` unless clipping has been applied.
-    pub fn place_glyph(&mut self, c: char, input_pos: LocalPos) -> Option<LocalPos> {
-        let width = c.width().unwrap_or(0);
+    pub fn place_glyph(&mut self, glyph: Glyph, input_pos: LocalPos) -> Option<LocalPos> {
+        let width = glyph.width();
         let next = LocalPos {
             x: input_pos.x + width as u16,
             y: input_pos.y,
@@ -248,7 +339,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         }
 
         // 1. Newline (yes / no)
-        if c == '\n' {
+        if glyph.is_newline() {
             return self.newline(input_pos);
         }
 
@@ -262,7 +353,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
             Some(pos) => pos,
             None => return Some(next),
         };
-        self.surface.draw_glyph(c, screen_pos);
+        self.surface.draw_glyph(glyph, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)
         if input_pos.x >= self.local_size.width as u16 {

@@ -1,8 +1,9 @@
 use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::paint::{PaintCtx, SizePos};
+use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use unicode_width::UnicodeWidthChar;
 
 use crate::{HEIGHT, WIDTH};
 
@@ -31,7 +32,7 @@ impl Buffer {
         let pos = pos.into();
 
         if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
-            return
+            return;
         }
         let index = pos.to_index(self.size.width);
 
@@ -204,7 +205,8 @@ impl Widget for Canvas {
     ) {
         for (pos, c, style) in self.buffer.iter() {
             ctx.set_attributes(style, pos);
-            ctx.place_glyph(c, pos);
+            let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);
+            ctx.place_glyph(glyph, pos);
         }
     }
 

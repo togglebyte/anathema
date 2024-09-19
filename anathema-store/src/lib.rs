@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod indexmap;
 pub mod slab;
 pub mod smallmap;
 pub mod sorted;

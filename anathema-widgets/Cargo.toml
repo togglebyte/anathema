@@ -9,8 +9,9 @@ anathema-geometry = { path = "../anathema-geometry" }
 anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
 anathema-templates = { path = "../anathema-templates" }
-unicode-width = { workspace = true }
 flume = { workspace = true }
+unicode-width = { workspace = true }
+finl_unicode = { workspace = true }
 
 [lints]
 workspace = true

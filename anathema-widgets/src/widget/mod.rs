@@ -3,8 +3,6 @@ use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::ops::ControlFlow;
 
-pub type WidgetId = anathema_store::slab::Key;
-
 use anathema_geometry::{Pos, Rect, Size};
 use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
@@ -17,12 +15,14 @@ pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
 pub use self::query::Elements;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::paint::{CellAttributes, PaintCtx, PaintFilter, SizePos};
+use crate::paint::{PaintCtx, PaintFilter, SizePos};
 use crate::WidgetKind;
 
 mod attributes;
 mod factory;
 mod query;
+
+pub type WidgetId = anathema_store::slab::Key;
 
 #[derive(Debug)]
 pub struct CompEntry {
@@ -369,12 +369,4 @@ impl Debug for dyn Widget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "<dyn Widget>")
     }
-}
-
-pub trait WidgetRenderer {
-    fn draw_glyph(&mut self, c: char, local_pos: Pos);
-
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos);
-
-    fn size(&self) -> Size;
 }

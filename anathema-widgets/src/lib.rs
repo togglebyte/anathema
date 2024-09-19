@@ -3,10 +3,11 @@ pub use values::ValueIndex;
 
 pub use crate::nodes::eval::EvalContext;
 pub use crate::nodes::{eval_blueprint, try_resolve_future_values, update_tree, Element, Stringify, WidgetKind};
+pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::values::{Value, Values};
 pub use crate::widget::{
     AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Elements, Factory,
-    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetRenderer, WidgetTree,
+    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetTree,
 };
 
 pub mod components;
