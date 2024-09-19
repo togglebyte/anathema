@@ -176,11 +176,13 @@ impl<T: GlobalEvents> EventHandler<T> {
             };
 
             let event = match is_ctrl_c(event) {
-                true => self.global.ctrl_c(event, &mut elements, &mut global_ctx),
-                false => Some(event),
+                true => self
+                    .global
+                    .ctrl_c(Event::Stop, &mut elements, &mut global_ctx)
+                    .unwrap_or(event),
+                false => event,
             };
 
-            let Some(event) = event else { return Ok(()) };
             let event = self.global.handle(event, &mut elements, &mut global_ctx);
             let Some(event) = event else { return Ok(()) };
 
@@ -339,7 +341,7 @@ impl<'rt> GlobalContext<'rt> {
 pub trait GlobalEvents {
     fn handle(&mut self, event: Event, elements: &mut Elements<'_, '_>, ctx: &mut GlobalContext<'_>) -> Option<Event>;
 
-    /// Return `None` here to stop propagating the event and close down the runtime
+    /// Return `Some(event)` here to stop propagating the event and close down the runtime
     fn ctrl_c(&mut self, event: Event, _: &mut Elements<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
         Some(event)
     }

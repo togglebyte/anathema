@@ -23,12 +23,6 @@ impl Events {
                     CTEvent::Paste(_) => Event::Noop,
                     CTEvent::FocusGained => Event::Focus,
                     CTEvent::FocusLost => Event::Blur,
-                    CTEvent::Key(CTKeyEvent {
-                        kind: KeyEventKind::Press,
-                        code: CTKeyCode::Char('c'),
-                        modifiers: KeyModifiers::CONTROL,
-                        ..
-                    }) => Event::Stop,
                     CTEvent::Key(key_ev) => Event::Key(key_code_to_key_code(key_ev)),
                     CTEvent::Mouse(mouse_ev) => Event::Mouse(mouse_to_mouse(mouse_ev)),
                     CTEvent::Resize(width, height) => Event::Resize(width, height),
