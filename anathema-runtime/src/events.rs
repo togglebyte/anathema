@@ -12,20 +12,6 @@ use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, Wid
 use crate::error::{Error, Result};
 use crate::tree::Tree;
 
-// -----------------------------------------------------------------------------
-//   - Ctrl-c quit test -
-// -----------------------------------------------------------------------------
-fn is_ctrl_c(event: Event) -> bool {
-    matches!(
-        event,
-        Event::Key(KeyEvent {
-            ctrl: true,
-            code: KeyCode::Char('c'),
-            ..
-        }),
-    )
-}
-
 // If the event is tab/back tab then the event is consumed
 fn tab<'bp>(event_ctx: &mut EventCtx<'_, '_, 'bp>, tree: &mut WidgetTree<'bp>, event: Event) -> Option<Event> {
     // -----------------------------------------------------------------------------
@@ -173,14 +159,6 @@ impl<T: GlobalEvents> EventHandler<T> {
             let mut global_ctx = GlobalContext {
                 focus_queue: event_ctx.focus_queue,
                 emitter: event_ctx.context.emitter,
-            };
-
-            let event = match is_ctrl_c(event) {
-                true => self
-                    .global
-                    .ctrl_c(Event::Stop, &mut elements, &mut global_ctx)
-                    .unwrap_or(event),
-                false => event,
             };
 
             let event = self.global.handle(event, &mut elements, &mut global_ctx);
@@ -345,11 +323,6 @@ pub trait GlobalEvents {
     /// If `None` is returned here the event will never reach a component.
     fn handle(&mut self, event: Event, elements: &mut Elements<'_, '_>, ctx: &mut GlobalContext<'_>) -> Option<Event>;
 
-    /// Return `Some(event)` here to stop propagating the event and close down the runtime
-    fn ctrl_c(&mut self, event: Event, _: &mut Elements<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
-        Some(event)
-    }
-
     /// Return `false` here to disable using tab and backtab to cycle through component focus
     fn enable_tab_navigation(&mut self) -> bool {
         true
@@ -358,6 +331,13 @@ pub trait GlobalEvents {
 
 impl GlobalEvents for () {
     fn handle(&mut self, event: Event, _: &mut Elements<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
-        Some(event)
+        match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('c'),
+                ctrl: true,
+                state: KeyState::Press,
+            }) => Some(Event::Stop),
+            _ => Some(event),
+        }
     }
 }
