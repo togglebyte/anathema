@@ -296,8 +296,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
 
     pub fn place_glyphs(&mut self, mut glyphs: Glyphs<'_>, mut pos: LocalPos) -> Option<LocalPos> {
         while let Some(glyph) = glyphs.next(self.glyph_map) {
-            let p = self.place_glyph(glyph, pos)?;
-            pos = p;
+            pos = self.place_glyph(glyph, pos)?;
         }
         Some(pos)
     }

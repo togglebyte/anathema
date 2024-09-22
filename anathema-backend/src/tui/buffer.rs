@@ -173,12 +173,6 @@ impl Buffer {
         }
     }
 
-    /// Empty a cell at a given position
-    pub fn empty(&mut self, pos: LocalPos) {
-        let index = self.index(pos);
-        self.inner[index] = Cell::empty();
-    }
-
     /// An iterator over all the rows in the buffer
     pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = Option<(Glyph, Style)>> + '_> {
         self.cell_lines().map(|chunk| {
@@ -344,6 +338,8 @@ pub(crate) fn draw_changes(
         };
     }
 
+    w.queue(cursor::MoveTo(0, 0))?;
+    Style::reset().write(&mut w)?;
     Ok(())
 }
 

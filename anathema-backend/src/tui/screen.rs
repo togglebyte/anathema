@@ -71,7 +71,9 @@ impl Screen {
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                self.new_buffer.empty(LocalPos::new(x, y));
+                let Some((glyph, style)) = self.new_buffer.get_mut(LocalPos::new(x, y)) else { continue };
+                *glyph = Glyph::space();
+                *style = Style::reset();
             }
         }
     }

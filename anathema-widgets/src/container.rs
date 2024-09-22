@@ -2,9 +2,10 @@ use anathema_geometry::{LocalPos, Pos, Region, Size};
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
-use crate::widget::{AnyWidget, PositionChildren};
+use crate::widget::{AnyWidget, PositionChildren, WidgetNeeds};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
+/// Wraps a widget and retain some geometry for the widget
 #[derive(Debug)]
 pub struct Container {
     pub inner: Box<dyn AnyWidget>,
@@ -12,8 +13,7 @@ pub struct Container {
     pub size: Size,
     pub pos: Pos,
     pub inner_bounds: Region,
-    pub needs_layout: bool,
-    pub needs_position: bool,
+    pub needs: WidgetNeeds,
 }
 
 impl Container {
@@ -23,11 +23,10 @@ impl Container {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        if !self.needs_layout {
+        if !matches!(self.needs, WidgetNeeds::Layout) {
             return self.size;
         }
-        self.needs_layout = false;
-        self.needs_position = true;
+        self.needs = WidgetNeeds::Position;
 
         self.size = self.inner.any_layout(children, constraints, self.id, ctx);
         // Floating widgets always report a zero size
@@ -45,10 +44,10 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        if !self.needs_position && pos == self.pos {
+        if !matches!(self.needs, WidgetNeeds::Position) && pos == self.pos {
             return;
         }
-        self.needs_position = false;
+        self.needs = WidgetNeeds::Paint;
 
         self.pos = pos;
         let ctx = PositionCtx {
@@ -62,13 +61,15 @@ impl Container {
 
     pub fn paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        mut children: PaintChildren<'_, '_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        if self.needs_layout || self.needs_position {
+        if !matches!(self.needs, WidgetNeeds::Paint) {
             return;
         }
+        self.needs = WidgetNeeds::Nothing;
+
         let mut ctx = ctx.into_sized(self.size, self.pos);
         let region = ctx.create_region();
         ctx.set_clip_region(region);

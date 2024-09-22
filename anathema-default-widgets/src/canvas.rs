@@ -2,7 +2,7 @@ use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetNeeds};
 use unicode_width::UnicodeWidthChar;
 
 use crate::{HEIGHT, WIDTH};
@@ -210,8 +210,13 @@ impl Widget for Canvas {
         }
     }
 
-    fn needs_reflow(&mut self) -> bool {
-        self.is_dirty
+    fn needs(&mut self) -> WidgetNeeds {
+        if self.is_dirty {
+            self.is_dirty = false;
+            WidgetNeeds::Position
+        } else {
+            WidgetNeeds::Nothing
+        }
     }
 }
 
