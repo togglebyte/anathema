@@ -167,6 +167,10 @@ impl Buffer {
 
     /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get(&self, pos: LocalPos) -> Option<(&Glyph, &Style)> {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+
         let index = self.index(pos);
         let cell = self.inner.get(index)?;
         match &cell.state {
@@ -177,6 +181,10 @@ impl Buffer {
 
     /// Get a mutable reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get_mut(&mut self, pos: LocalPos) -> Option<(&mut Glyph, &mut Style)> {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+
         let index = self.index(pos);
         let cell = self.inner.get_mut(index)?;
         match &mut cell.state {
@@ -357,6 +365,10 @@ pub(crate) fn draw_changes(
 
 #[cfg(test)]
 mod test {
+    use anathema_state::Color;
+
+    use crate::tui;
+
     use super::*;
 
     #[test]
@@ -401,57 +413,56 @@ mod test {
 
     #[test]
     fn update_cell_checks_range() {
-        let mut under_test = Buffer::new((1, 1));
+        let mut under_test = Buffer::new((1, 2));
 
-        let mut local_pos = LocalPos::new(0, 0);
-        assert!(under_test.get(local_pos).is_none());
-        under_test.update_cell(Style::reset(), local_pos);
-        assert!(under_test.get(local_pos).is_some());
+        let valid_pos = LocalPos::new(0, 1);
+        under_test.put_glyph(Glyph::from_char('1', 1), valid_pos);
+        under_test.put_glyph(Glyph::from_char('2', 1), valid_pos);
 
-        local_pos = LocalPos::new(1, 0);
-        assert!(under_test.get(local_pos).is_none());
-        under_test.update_cell(Style::reset(), local_pos);
-        assert!(under_test.get(local_pos).is_none());
+        let invalid_local_pos = LocalPos::new(1, 0);
+        let new_style = Style {
+            fg: Some(Color::Red),
+            bg: None,
+            attributes: tui::Attributes::empty(),
+        };
+        under_test.update_cell(new_style, invalid_local_pos);
+
+        assert_eq!(under_test.get(valid_pos).unwrap().1.clone(), Style::reset());
     }
 
     #[test]
     fn put_glyph_checks_range() {
-        let mut under_test = Buffer::new((1, 1));
+        let mut under_test = Buffer::new((1, 2));
 
-        let mut local_pos = LocalPos::new(0, 0);
-        assert!(under_test.get(local_pos).is_none());
-        under_test.put_glyph(Glyph::from_char('1', 1), local_pos);
-        assert!(under_test.get(local_pos).is_some());
+        let valid_pos = LocalPos::new(0, 1);
+        under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 1));
+        under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 2));
 
-        local_pos = LocalPos::new(1, 0);
-        assert!(under_test.get(local_pos).is_none());
-        under_test.put_glyph(Glyph::from_char('1', 1), local_pos);
-        assert!(under_test.get(local_pos).is_none());
+        let invalid_local_pos = LocalPos::new(1, 0);
+        under_test.put_glyph(Glyph::from_char('3', 1), invalid_local_pos);
+
+        assert_eq!(under_test.get(valid_pos).unwrap().0.clone(), Glyph::from_char('1', 1));
     }
 
     #[test]
     fn get_checks_range() {
-        let mut under_test = Buffer::new((1, 1));
+        let mut under_test = Buffer::new((1, 2));
 
-        let mut local_pos = LocalPos::new(0, 0);
-        under_test.put_glyph(Glyph::from_char('1', 1), local_pos);
+        under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 1));
+        under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 2));
 
-        assert!(under_test.get(local_pos).is_some());
-
-        local_pos = LocalPos::new(1, 0);
-        assert_eq!(under_test.get(local_pos), None);
+        let invalid_pos = LocalPos::new(1, 0);
+        assert_eq!(under_test.get(invalid_pos), None);
     }
 
     #[test]
     fn get_mut_checks_range() {
-        let mut under_test = Buffer::new((1, 1));
+        let mut under_test = Buffer::new((1, 2));
 
-        let mut local_pos = LocalPos::new(0, 0);
-        under_test.put_glyph(Glyph::from_char('1', 1), local_pos);
+        under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 1));
+        under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 2));
 
-        assert!(under_test.get_mut(local_pos).is_some());
-
-        local_pos = LocalPos::new(1, 0);
-        assert_eq!(under_test.get_mut(local_pos), None);
+        let invalid_pos = LocalPos::new(1, 0);
+        assert_eq!(under_test.get_mut(invalid_pos), None);
     }
 }
