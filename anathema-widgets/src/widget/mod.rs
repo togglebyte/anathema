@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Rect, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallMap;
@@ -258,9 +258,9 @@ pub trait AnyWidget {
 
     fn any_floats(&self) -> bool;
 
-    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect;
+    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Region;
 
-    fn any_needs_reflow(&self) -> bool;
+    fn any_needs_reflow(&mut self) -> bool;
 }
 
 impl<T: 'static + Widget> AnyWidget for T {
@@ -302,7 +302,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         self.paint(children, id, attribute_storage, ctx)
     }
 
-    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect {
+    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Region {
         self.inner_bounds(pos, size)
     }
 
@@ -310,7 +310,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         self.floats()
     }
 
-    fn any_needs_reflow(&self) -> bool {
+    fn any_needs_reflow(&mut self) -> bool {
         self.needs_reflow()
     }
 }
@@ -356,11 +356,11 @@ pub trait Widget {
         false
     }
 
-    fn inner_bounds(&self, pos: Pos, size: Size) -> Rect {
-        Rect::from((pos, size))
+    fn inner_bounds(&self, pos: Pos, size: Size) -> Region {
+        Region::from((pos, size))
     }
 
-    fn needs_reflow(&self) -> bool {
+    fn needs_reflow(&mut self) -> bool {
         false
     }
 }

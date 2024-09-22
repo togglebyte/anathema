@@ -175,7 +175,7 @@ mod test {
     fn render() {
         // Render a character
         let mut render_output = vec![];
-        let mut glyph_map = GlyphMap::empty();
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
         screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::ZERO);
         screen.render(&mut render_output, &glyph_map).unwrap();
@@ -189,7 +189,7 @@ mod test {
     fn erase_region() {
         // Erase a whole region, leaving all cells `empty`
         let mut render_output = vec![];
-        let mut glyph_map = GlyphMap::empty();
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(2, 2));
         screen.render(&mut render_output, &glyph_map).unwrap();
 
@@ -206,7 +206,7 @@ mod test {
     #[should_panic(expected = "index out of bounds: the len is 1 but the index is 4")]
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
-        let mut glyph_map = GlyphMap::empty();
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
         screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::new(2, 2));
         screen.render(&mut vec![], &glyph_map).unwrap();

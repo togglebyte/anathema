@@ -55,7 +55,7 @@ pub struct RuntimeBuilder<T, G> {
     document: Document,
     component_registry: ComponentRegistry,
     backend: T,
-    factory: Factory,
+    pub factory: Factory,
     message_receiver: flume::Receiver<ViewMessage>,
     emitter: Emitter,
     global_events: G,
@@ -232,12 +232,12 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
 /// ```
 pub struct Runtime<T, G> {
     pub fps: u16,
+    pub factory: Factory,
 
     _watcher: Option<RecommendedWatcher>,
     message_receiver: flume::Receiver<ViewMessage>,
     emitter: Emitter,
     blueprint: Blueprint,
-    factory: Factory,
     globals: Globals,
     document: Document,
     glyph_map: GlyphMap,

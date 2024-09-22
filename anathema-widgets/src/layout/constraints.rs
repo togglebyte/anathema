@@ -1,4 +1,4 @@
-use anathema_geometry::Rect;
+use anathema_geometry::Region;
 
 use crate::layout::Size;
 
@@ -193,10 +193,10 @@ impl From<Size> for Constraints {
     }
 }
 
-impl From<Rect> for Constraints {
-    fn from(value: Rect) -> Self {
-        let width = value.end.x - value.start.x;
-        let height = value.end.y - value.start.y;
+impl From<Region> for Constraints {
+    fn from(value: Region) -> Self {
+        let width = value.to.x - value.from.x;
+        let height = value.to.y - value.from.y;
         Self::new(width as usize, height as usize)
     }
 }

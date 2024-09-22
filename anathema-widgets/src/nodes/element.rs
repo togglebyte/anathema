@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Rect, Size};
+use anathema_geometry::{Pos, Region, Size};
 
 use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, Viewport};
@@ -55,7 +55,8 @@ impl<'bp> Element<'bp> {
         self.container.size
     }
 
-    pub fn inner_bounds(&self) -> Rect {
+    /// Inner bounds in global space
+    pub fn inner_bounds(&self) -> Region {
         self.container.inner_bounds
     }
 

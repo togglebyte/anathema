@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Rect, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
@@ -119,7 +119,7 @@ impl Evaluator for SingleEval {
             id: widget_id,
             pos: Pos::ZERO,
             size: Size::ZERO,
-            inner_bounds: Rect::ZERO,
+            inner_bounds: Region::ZERO,
             needs_layout: true,
             needs_position: false,
         };
