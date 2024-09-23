@@ -34,7 +34,7 @@ impl Backend for TestBackend {
         None
     }
 
-    fn resize(&mut self, _new_size: Size) {
+    fn resize(&mut self, _new_size: Size, _: &mut GlyphMap) {
         todo!()
     }
 

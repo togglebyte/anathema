@@ -22,7 +22,28 @@ mod attributes;
 mod factory;
 mod query;
 
+pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
+pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, PaintFilter<'frame, 'bp>>;
 pub type WidgetId = anathema_store::slab::Key;
+
+/// Represent the needs of a widget.
+#[derive(Debug, Copy, Clone)]
+#[repr(u8)]
+pub enum WidgetNeeds {
+    Paint = 0,
+    Position = 1,
+    Layout = 2,
+}
+
+impl WidgetNeeds {
+    pub(crate) fn update(&mut self, new: Self) {
+        if (*self as u8) < new as u8 {
+            *self = new;
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct CompEntry {
@@ -134,7 +155,7 @@ impl FloatingWidgets {
 }
 
 pub struct DirtyWidgets {
-    inner: Vec<WidgetId>,
+    inner: Vec<(WidgetId, WidgetNeeds)>,
 }
 
 impl DirtyWidgets {
@@ -142,8 +163,8 @@ impl DirtyWidgets {
         Self { inner: vec![] }
     }
 
-    pub fn push(&mut self, widget_id: WidgetId) {
-        self.inner.push(widget_id);
+    pub fn push(&mut self, widget_id: WidgetId, needs: WidgetNeeds) {
+        self.inner.push((widget_id, needs));
     }
 
     pub fn is_empty(&self) -> bool {
@@ -155,19 +176,19 @@ impl DirtyWidgets {
     }
 
     pub fn apply(&self, tree: &mut Tree<WidgetKind<'_>>) {
-        for id in &self.inner {
+        for (id, needs) in &self.inner {
             let path = tree.path(*id);
-            tree.apply_node_walker(&path, WidgetNeedsLayout);
+            tree.apply_node_walker(&path, UpdateWidgetNeeds(*needs));
         }
     }
 }
 
-struct WidgetNeedsLayout;
+struct UpdateWidgetNeeds(WidgetNeeds);
 
-impl NodeWalker<WidgetKind<'_>> for WidgetNeedsLayout {
+impl NodeWalker<WidgetKind<'_>> for UpdateWidgetNeeds {
     fn apply(&mut self, widget: &mut WidgetKind<'_>) {
         if let WidgetKind::Element(el) = widget {
-            el.container.needs_layout = true;
+            el.container.needs.update(self.0);
         }
     }
 }
@@ -204,11 +225,6 @@ impl ComponentParents {
         self.0.get(child).copied()
     }
 }
-
-pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
-pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, PaintFilter<'frame, 'bp>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub enum ValueKey<'bp> {
@@ -260,7 +276,7 @@ pub trait AnyWidget {
 
     fn any_inner_bounds(&self, pos: Pos, size: Size) -> Region;
 
-    fn any_needs_reflow(&mut self) -> bool;
+    fn any_needs(&mut self) -> WidgetNeeds;
 }
 
 impl<T: 'static + Widget> AnyWidget for T {
@@ -310,8 +326,8 @@ impl<T: 'static + Widget> AnyWidget for T {
         self.floats()
     }
 
-    fn any_needs_reflow(&mut self) -> bool {
-        self.needs_reflow()
+    fn any_needs(&mut self) -> WidgetNeeds {
+        self.needs()
     }
 }
 
@@ -360,8 +376,8 @@ pub trait Widget {
         Region::from((pos, size))
     }
 
-    fn needs_reflow(&mut self) -> bool {
-        false
+    fn needs(&mut self) -> WidgetNeeds {
+        WidgetNeeds::Paint
     }
 }
 

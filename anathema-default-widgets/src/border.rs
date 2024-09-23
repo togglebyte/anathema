@@ -419,7 +419,7 @@ impl Widget for Border {
                     while let Some(g) = glyphs.next(ctx.glyph_map) {
                         edges[index] = g;
                         index += 1;
-                        if index >= 8 {
+                        if index >= DEFAULT_SLIM_EDGES.len() {
                             break;
                         };
                     }

@@ -142,15 +142,8 @@ impl Widget for Text {
                 match entry {
                     Segment::Str(s) => {
                         let glyphs = Glyphs::new(s);
-
-                        //                         for c in s.chars() {
-                        //                             if let Some(new_pos) = ctx.place_glyph(Glyph::from_char(c, 1), pos) {
-                        //                                 ctx.set_attributes(style, (x, pos.y).into());
-                        //                                 pos = new_pos;
-                        //                             }
-                        //                         }
                         if let Some(new_pos) = ctx.place_glyphs(glyphs, pos) {
-                            // NOTE:
+                            // TODO: make this better... Somehow
                             // This isn't very nice, but it works for now.
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.

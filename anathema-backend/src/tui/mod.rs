@@ -3,7 +3,8 @@
 //! It uses two buffers and only draws the diffs from top left to bottom right, making it less
 //! likely to flicker when moving the cursor etc.
 #![deny(missing_docs)]
-use std::io::{Stdout, Write};
+use std::fs::File;
+use std::io::{BufWriter, Stdout, Write};
 use std::ops::Add;
 use std::time::Duration;
 
@@ -11,7 +12,8 @@ use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::{AttributeStorage, Element, GlyphMap, WidgetKind, WidgetRenderer};
-use crossterm::terminal::size;
+use crossterm::execute;
+use crossterm::terminal::{size, BeginSynchronizedUpdate, EndSynchronizedUpdate};
 pub use screen::Screen;
 
 pub use self::buffer::Buffer;
@@ -25,9 +27,28 @@ pub mod events;
 mod screen;
 mod style;
 
+fn output() -> (Stdout, File) {
+    let output = std::io::stdout();
+
+    #[cfg(not(windows))]
+    use std::os::fd::AsFd as _;
+    #[cfg(windows)]
+    use std::os::windows::io::AsHandle as _;
+
+    #[cfg(windows)]
+    let owned = output.as_handle().try_clone_to_owned().expect("ownable handle");
+
+    #[cfg(not(windows))]
+    let owned = output.as_fd().try_clone_to_owned().expect("ownable fd");
+
+    let file = File::from(owned);
+    (output, file)
+}
+
 /// Backend builder for a tui backend.
 pub struct TuiBackendBuilder {
-    output: Stdout,
+    _stdout: Stdout,
+    output: File,
     quit_on_ctrl_c: bool,
 
     hide_cursor: bool,
@@ -73,7 +94,8 @@ impl TuiBackendBuilder {
         let backend = TuiBackend {
             quit_on_ctrl_c: self.quit_on_ctrl_c,
             screen,
-            output: self.output,
+            _stdout: self._stdout,
+            output: BufWriter::new(self.output),
             events: Events,
 
             hide_cursor: self.hide_cursor,
@@ -91,7 +113,8 @@ pub struct TuiBackend {
     /// Stop the runtime if Ctrl+c was pressed.
     pub quit_on_ctrl_c: bool,
     screen: Screen,
-    output: Stdout,
+    _stdout: Stdout,
+    output: BufWriter<File>,
     events: Events,
 
     // Settings
@@ -104,9 +127,10 @@ pub struct TuiBackend {
 impl TuiBackend {
     /// Create a new instance of the tui backend.
     pub fn builder() -> TuiBackendBuilder {
-        let output = std::io::stdout();
+        let (_stdout, output) = output();
 
         TuiBackendBuilder {
+            _stdout,
             output,
             quit_on_ctrl_c: true,
 
@@ -133,7 +157,14 @@ impl Backend for TuiBackend {
         self.events.poll(timeout)
     }
 
-    fn resize(&mut self, new_size: Size) {
+    fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap) {
+        // paint empty reset cells first
+        self.clear();
+
+        // render
+        self.render(glyph_map);
+
+        // resize
         self.screen.resize(new_size);
     }
 
@@ -159,7 +190,9 @@ impl Backend for TuiBackend {
     }
 
     fn render(&mut self, glyph_map: &mut GlyphMap) {
+        let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
         let _ = self.screen.render(&mut self.output, glyph_map);
+        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
     }
 
     fn clear(&mut self) {

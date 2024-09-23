@@ -1,6 +1,9 @@
+use std::ops::ControlFlow;
+
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::paint::{PaintCtx, SizePos};
+use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use super::Stack;
 use crate::layout::Axis;
@@ -32,6 +35,20 @@ impl Widget for VStack {
         ctx: PositionCtx,
     ) {
         self.0.position(children, attributes, attribute_storage, ctx)
+    }
+
+    fn paint<'bp>(
+        &mut self,
+        mut children: PaintChildren<'_, '_, 'bp>,
+        _id: WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        mut ctx: PaintCtx<'_, SizePos>,
+    ) {
+        children.for_each(|child, children| {
+            let ctx = ctx.to_unsized();
+            child.paint(children, ctx, attribute_storage);
+            ControlFlow::Continue(())
+        });
     }
 }
 
@@ -158,6 +175,8 @@ mod test {
             ╚══════╝
         ";
 
-        TestRunner::new(tpl, (6, 2)).instance().render_assert(expected);
+        let mut runner = TestRunner::new(tpl, (6, 2));
+        let mut runner = runner.instance();
+        runner.render_assert(expected);
     }
 }
