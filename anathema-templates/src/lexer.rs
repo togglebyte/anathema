@@ -103,6 +103,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             ('%', _) => Ok(Kind::Op(Operator::Mod).to_token(index)),
             ('>', _) => Ok(Kind::Op(Operator::GreaterThan).to_token(index)),
             ('<', _) => Ok(Kind::Op(Operator::LessThan).to_token(index)),
+            ('?', _) => Ok(Kind::Op(Operator::Either).to_token(index)),
             ('=', _) => Ok(Kind::Equal.to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
             ('@', _) => Ok(Kind::Component.to_token(index)),
@@ -493,5 +494,11 @@ mod test {
     fn association() {
         let decl = token_kind("->");
         assert_eq!(decl, Kind::Op(Operator::Association));
+    }
+
+    #[test]
+    fn either() {
+        let decl = token_kind("?");
+        assert_eq!(decl, Kind::Op(Operator::Either));
     }
 }

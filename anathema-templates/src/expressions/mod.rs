@@ -50,6 +50,9 @@ pub enum Expression {
     // Operations
     Op(Box<Self>, Box<Self>, Op),
 
+    // Either
+    Either(Box<Self>, Box<Self>),
+
     // Function call
     Call { fun: Box<Self>, args: Box<[Self]> },
 }
@@ -91,6 +94,7 @@ impl Display for Expression {
                 };
                 write!(f, "{lhs} {op} {rhs}")
             }
+            Self::Either(lhs, rhs) => write!(f, "{lhs} ? {rhs}"),
             Self::List(list) => {
                 write!(
                     f,

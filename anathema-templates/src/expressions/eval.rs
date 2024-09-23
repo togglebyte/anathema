@@ -72,6 +72,10 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                 };
                 Expression::Equality(eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into(), equality)
             }
+            Operator::Either => {
+                let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());
+                Expression::Either(lhs, rhs)
+            }
             _ => return Err(ParseErrorKind::InvalidToken { expected: "" }),
         },
         Expr::Unary { op, expr } => {

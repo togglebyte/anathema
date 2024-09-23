@@ -147,6 +147,10 @@ impl ComponentTemplates {
                 // written to the component storage since the component
                 // was removed.
                 let new_id = self.components.insert(key, component_src);
+
+                // If this assertion fails it means this is a component
+                // that was never registered. This should probably
+                // return an error stating so instead
                 assert_eq!(parent_id, new_id);
                 ret
             }

@@ -52,7 +52,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Expr
 
     let expr = expr.into();
     match expr {
-        expr @ (E::Primitive(_) | E::Str(_)) => expr,
+        expr @ (E::Primitive(_) | E::Str(_) | E::Either(..)) => expr,
         E::Not(expr) => E::Not(ce!(*expr)),
         E::Negative(expr) => E::Negative(ce!(*expr)),
         E::Equality(lhs, rhs, eq) => E::Equality(ce!(*lhs), ce!(*rhs), eq),
