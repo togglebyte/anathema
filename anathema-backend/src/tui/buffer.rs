@@ -418,13 +418,12 @@ mod test {
         under_test.put_glyph(Glyph::from_char('1', 1), valid_pos);
         under_test.put_glyph(Glyph::from_char('2', 1), valid_pos);
 
-        let invalid_local_pos = LocalPos::new(1, 0);
         let new_style = Style {
             fg: Some(Color::Red),
             bg: None,
             attributes: tui::Attributes::empty(),
         };
-        under_test.update_cell(new_style, invalid_local_pos);
+        under_test.update_cell(new_style, LocalPos::new(1, 0));
 
         assert_eq!(under_test.get(valid_pos).unwrap().1.clone(), Style::reset());
     }
@@ -433,14 +432,14 @@ mod test {
     fn put_glyph_checks_range() {
         let mut under_test = Buffer::new((1, 2));
 
-        let valid_pos = LocalPos::new(0, 1);
         under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 1));
         under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 2));
+        under_test.put_glyph(Glyph::from_char('3', 1), LocalPos::new(1, 0));
 
-        let invalid_local_pos = LocalPos::new(1, 0);
-        under_test.put_glyph(Glyph::from_char('3', 1), invalid_local_pos);
-
-        assert_eq!(under_test.get(valid_pos).unwrap().0.clone(), Glyph::from_char('1', 1));
+        assert_eq!(
+            under_test.get(LocalPos::new(0, 1)).unwrap().0.clone(),
+            Glyph::from_char('1', 1)
+        );
     }
 
     #[test]
@@ -450,8 +449,7 @@ mod test {
         under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 1));
         under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 2));
 
-        let invalid_pos = LocalPos::new(1, 0);
-        assert_eq!(under_test.get(invalid_pos), None);
+        assert_eq!(under_test.get(LocalPos::new(1, 0)), None);
     }
 
     #[test]
@@ -461,7 +459,6 @@ mod test {
         under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 1));
         under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 2));
 
-        let invalid_pos = LocalPos::new(1, 0);
-        assert_eq!(under_test.get_mut(invalid_pos), None);
+        assert_eq!(under_test.get_mut(LocalPos::new(1, 0)), None);
     }
 }
