@@ -512,13 +512,4 @@ mod test {
     fn limited_space() {
         test_layout(Size::new(58, 0), &["meh"], "", Wrap::Normal);
     }
-
-    #[test]
-    fn lookup_pos() {
-        let mut strings = Strings::new(Size::new(3, 3), Wrap::Normal);
-        strings.add_str("abcdef");
-        strings.finish();
-
-        let pos = strings.lookup_pos(0).unwrap();
-    }
 }

@@ -4,7 +4,7 @@ use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_state::{Color, Hex};
 use anathema_store::indexmap::IndexMap;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use finl_unicode::grapheme_clusters::Graphemes;
+use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
@@ -19,7 +19,7 @@ pub struct Glyphs<'a> {
 
 impl<'a> Glyphs<'a> {
     pub fn new(src: &'a str) -> Self {
-        let inner = Graphemes::new(src);
+        let inner = src.graphemes(true);
         Self { inner }
     }
 
@@ -296,8 +296,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
 
     pub fn place_glyphs(&mut self, mut glyphs: Glyphs<'_>, mut pos: LocalPos) -> Option<LocalPos> {
         while let Some(glyph) = glyphs.next(self.glyph_map) {
-            let p = self.place_glyph(glyph, pos)?;
-            pos = p;
+            pos = self.place_glyph(glyph, pos)?;
         }
         Some(pos)
     }
@@ -348,11 +347,13 @@ impl<'screen> PaintCtx<'screen, SizePos> {
             return None;
         }
 
-        // 3. Place the char
+        // 3. Find position on the screen
         let screen_pos = match self.translate_to_global(input_pos) {
             Some(pos) => pos,
             None => return Some(next),
         };
+
+        // 4. Place the char
         self.surface.draw_glyph(glyph, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)

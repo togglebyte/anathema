@@ -52,10 +52,10 @@ mod events;
 mod tree;
 
 pub struct RuntimeBuilder<T, G> {
+    pub factory: Factory,
     document: Document,
     component_registry: ComponentRegistry,
     backend: T,
-    factory: Factory,
     message_receiver: flume::Receiver<ViewMessage>,
     emitter: Emitter,
     global_events: G,
@@ -232,12 +232,12 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
 /// ```
 pub struct Runtime<T, G> {
     pub fps: u16,
+    pub factory: Factory,
 
     _watcher: Option<RecommendedWatcher>,
     message_receiver: flume::Receiver<ViewMessage>,
     emitter: Emitter,
     blueprint: Blueprint,
-    factory: Factory,
     globals: Globals,
     document: Document,
     glyph_map: GlyphMap,
@@ -647,6 +647,7 @@ where
             tree,
             &mut self.constraints,
             &mut event_ctx,
+            &mut self.glyph_map,
         )?;
 
         *dt = Instant::now();
@@ -665,7 +666,7 @@ where
         for key in tree.drain_removed() {
             attribute_storage.try_remove(key);
             self.floating_widgets.try_remove(key);
-            // TODO: this function is rubbish and has to be rewritten
+            // TODO: this function is rubbish and has to be rewritten.
             self.components.dodgy_remove(key);
         }
 

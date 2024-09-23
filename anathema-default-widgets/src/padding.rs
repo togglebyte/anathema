@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Rect, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
 
@@ -113,12 +113,12 @@ impl Widget for Padding {
         });
     }
 
-    fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Rect {
+    fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Region {
         pos.x += self.0.left as i32;
         pos.y += self.0.top as i32;
         size.width = size.width.saturating_sub(self.0.right as usize);
         size.height = size.height.saturating_sub(self.0.bottom as usize);
-        Rect::from((pos, size))
+        Region::from((pos, size))
     }
 }
 

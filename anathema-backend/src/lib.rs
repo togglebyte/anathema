@@ -14,7 +14,7 @@ pub trait Backend {
 
     fn next_event(&mut self, timeout: Duration) -> Option<Event>;
 
-    fn resize(&mut self, new_size: Size);
+    fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap);
 
     /// Paint the widgets
     fn paint<'bp>(
@@ -83,7 +83,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
                     Some(p) => match self.tree.get_ref_by_path(p) {
                         Some(WidgetKind::Element(el)) => {
                             let bounds = el.inner_bounds();
-                            break (bounds.start, Constraints::from(bounds));
+                            break (bounds.from, Constraints::from(bounds));
                         }
                         _ => parent = p.parent(),
                     },
@@ -110,11 +110,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         let mut filter = LayoutFilter::new(true, self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             // Layout
-            // TODO: once the text buffer can be read-only for the paint
-            //       the context can be made outside of this closure.
-            //
-            //       That doesn't have as much of an impact here
-            //       as it will do when dealing with the floating widgets
             let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
             layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 

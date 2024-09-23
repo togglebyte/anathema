@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Rect, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
@@ -13,7 +13,7 @@ use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
-use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
+use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
@@ -119,9 +119,8 @@ impl Evaluator for SingleEval {
             id: widget_id,
             pos: Pos::ZERO,
             size: Size::ZERO,
-            inner_bounds: Rect::ZERO,
-            needs_layout: true,
-            needs_position: false,
+            inner_bounds: Region::ZERO,
+            needs: WidgetNeeds::Layout,
         };
 
         // Widget

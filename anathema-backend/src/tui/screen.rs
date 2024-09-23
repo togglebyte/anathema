@@ -71,7 +71,9 @@ impl Screen {
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                self.new_buffer.empty(LocalPos::new(x, y));
+                let Some((glyph, style)) = self.new_buffer.get_mut(LocalPos::new(x, y)) else { continue };
+                *glyph = Glyph::space();
+                *style = Style::reset();
             }
         }
     }
@@ -175,7 +177,7 @@ mod test {
     fn render() {
         // Render a character
         let mut render_output = vec![];
-        let mut glyph_map = GlyphMap::empty();
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
         screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::ZERO);
         screen.render(&mut render_output, &glyph_map).unwrap();
@@ -189,7 +191,7 @@ mod test {
     fn erase_region() {
         // Erase a whole region, leaving all cells `empty`
         let mut render_output = vec![];
-        let mut glyph_map = GlyphMap::empty();
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(2, 2));
         screen.render(&mut render_output, &glyph_map).unwrap();
 
@@ -199,14 +201,14 @@ mod test {
         let top_left = screen.new_buffer.inner[0];
         assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), top_left);
         let bottom_right = screen.new_buffer.inner[3];
-        assert_eq!(Cell::empty(), bottom_right);
+        assert_eq!(Cell::space(), bottom_right);
     }
 
     #[test]
     #[should_panic(expected = "index out of bounds: the len is 1 but the index is 4")]
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
-        let mut glyph_map = GlyphMap::empty();
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
         screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::new(2, 2));
         screen.render(&mut vec![], &glyph_map).unwrap();

@@ -143,7 +143,7 @@ impl Widget for Text {
                     Segment::Str(s) => {
                         let glyphs = Glyphs::new(s);
                         if let Some(new_pos) = ctx.place_glyphs(glyphs, pos) {
-                            // NOTE:
+                            // TODO: make this better... Somehow
                             // This isn't very nice, but it works for now.
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.

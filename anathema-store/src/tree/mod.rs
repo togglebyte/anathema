@@ -1,4 +1,4 @@
-use std::ops::{ControlFlow, Deref};
+use std::ops::Deref;
 
 pub use self::iter::{TreeFilter, TreeForEach};
 pub use self::nodepath::{new_node_path, root_node, AsNodePath};
@@ -297,13 +297,13 @@ impl<T> Tree<T> {
     }
 
     /// Apply the [`NodeWalker`].
-    pub fn apply_node_walker(&mut self, path: &[u16], walker: impl NodeWalker<T>) {
-        apply_walker(&self.layout, &mut self.values, path, walker)
+    pub fn apply_node_walker(&mut self, path: &[u16], mut walker: impl NodeWalker<T>) {
+        walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
     }
 
     /// Apply a [`NodeVisitor`], depth first
     pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
-        apply_visitor(&self.layout, &mut self.values, visitor);
+        visitor::apply_visitor(&self.layout, &mut self.values, visitor);
     }
 
     /// Split the tree giving access to the layout and the values.
@@ -352,76 +352,6 @@ fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &[u16], mut path_finder: 
             }
         }
     }
-}
-
-pub fn apply_walker<T>(
-    mut nodes: &[Node],
-    values: &mut GenSlab<(Box<[u16]>, T)>,
-    mut path: &[u16],
-    mut walker: impl NodeWalker<T>,
-) {
-    loop {
-        match path {
-            [] => break,
-            [i] => {
-                // Found the node
-
-                let index = *i as usize;
-                let node = &nodes[index];
-                let node_id = node.value();
-
-                let value = values
-                    .get_mut(node_id)
-                    .map(|(_, val)| val)
-                    .expect("a node always has a matching value");
-
-                walker.apply(value);
-                break;
-            }
-            [i, sub_path @ ..] => {
-                let index = *i as usize;
-                if index >= nodes.len() {
-                    break;
-                }
-                path = sub_path;
-                let node = &nodes[index];
-
-                let node_id = node.value();
-
-                let parent = values
-                    .get_mut(node_id)
-                    .map(|(_, val)| val)
-                    .expect("a node always has a matching value");
-
-                walker.apply(parent);
-                nodes = node.children();
-            }
-        }
-    }
-}
-
-pub fn apply_visitor<T>(
-    children: &[Node],
-    values: &mut GenSlab<(Box<[u16]>, T)>,
-    visitor: &mut impl NodeVisitor<T>,
-) -> ControlFlow<bool> {
-    for node in children {
-        if let Some((path, value)) = values.get_mut(node.value()) {
-            if let ControlFlow::Break(stop_propagation) = visitor.visit(value, &*path, node.value()) {
-                if stop_propagation {
-                    return ControlFlow::Break(true);
-                }
-
-                break;
-            }
-
-            visitor.push();
-            apply_visitor(&node.children, values, visitor)?;
-            visitor.pop();
-        }
-    }
-
-    ControlFlow::Continue(())
 }
 
 #[derive(Debug)]
