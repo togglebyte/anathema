@@ -35,6 +35,7 @@ pub enum Operator {
     Comma,
     Colon,
     Association,
+    Either,
 }
 
 impl Display for Operator {
@@ -69,6 +70,7 @@ impl Display for Operator {
             Self::LCurly => write!(f, "{{"),
             Self::RCurly => write!(f, "}}"),
             Self::Association => write!(f, "->"),
+            Self::Either => write!(f, "?"),
         }
     }
 }

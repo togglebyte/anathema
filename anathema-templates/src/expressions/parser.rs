@@ -30,7 +30,7 @@ fn get_precedence(op: Operator) -> u8 {
             prec::LOGICAL
         }
         Operator::EqualEqual | Operator::NotEqual => prec::EQUALITY,
-        Operator::Or | Operator::And => prec::CONDITIONAL,
+        Operator::Or | Operator::And | Operator::Either => prec::CONDITIONAL,
 
         _ => prec::INITIAL,
     }
@@ -96,8 +96,6 @@ pub(crate) fn parse_expr(tokens: &mut Tokens, strings: &Strings) -> Result<Expre
     eval(expr, strings)
 }
 
-// TODO: add error handling here,
-//       as some of these experssions can fail
 fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Result<Expr, ParseErrorKind> {
     let mut left = match tokens.next_no_indent() {
         Kind::Op(Operator::LBracket) => parse_collection(tokens)?,
@@ -372,14 +370,19 @@ mod test {
     #[test]
     fn and() {
         let input = "1 == 2 && 3 == 4";
-        let _output = parse(input);
         assert_eq!(parse(input), "(&& (== 1 2) (== 3 4))");
     }
 
     #[test]
     fn not() {
         let input = "1 != 2 && 3 != 4";
-        let _output = parse(input);
         assert_eq!(parse(input), "(&& (!= 1 2) (!= 3 4))");
+    }
+
+    #[test]
+    fn either() {
+        let input = "a ? b ? c";
+        let actual = parse(input);
+        assert_eq!(actual, "(? (? <sid 0> <sid 1>) <sid 2>)");
     }
 }
