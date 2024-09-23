@@ -460,7 +460,7 @@ impl Widget for Border {
                 ctx.pos.x += self.edges[BORDER_EDGE_LEFT].width() as i32;
             }
 
-            child.position(children, ctx, attribute_storage, ctx.viewport);
+            child.position(children, ctx, ctx.pos, attribute_storage, ctx.viewport);
 
             ControlFlow::Break(())
         });

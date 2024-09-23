@@ -40,9 +40,9 @@ impl Widget for Column {
             let child_width = size.width as i32;
             let x = x_offset - child_width / 2;
 
-            ctx.pos.x += x;
-
-            child.position(children, ctx, attribute_storage, ctx.viewport);
+            let mut pos = ctx.pos;
+            pos.x += x;
+            child.position(children, ctx, pos, attribute_storage, ctx.viewport);
             ctx.pos.y += size.height as i32;
             ControlFlow::Continue(())
         });

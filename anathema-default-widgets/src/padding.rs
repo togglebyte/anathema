@@ -88,7 +88,7 @@ impl Widget for Padding {
             ctx.pos.y += self.0.top as i32;
             ctx.pos.x += self.0.left as i32;
 
-            child.position(children, ctx, attribute_storage, ctx.viewport);
+            child.position(children, ctx, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

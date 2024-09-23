@@ -40,10 +40,11 @@ impl<'bp> Element<'bp> {
         &mut self,
         children: PositionChildren<'_, '_, 'bp>,
         ctx: PositionCtx,
+        pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        self.container.position(children, ctx, attribute_storage, viewport);
+        self.container.position(children, ctx, pos, attribute_storage, viewport);
         let region = Region::from((self.get_pos(), self.size()));
         if ctx.clip.intersects(&region) {
             self.visible = true;

@@ -137,7 +137,7 @@ pub fn position_widget<'bp>(
         viewport,
         clip: Region::from((pos, viewport.size)),
     };
-    element.position(children, ctx, attribute_storage, viewport);
+    element.position(children, ctx, pos, attribute_storage, viewport);
 }
 
 #[derive(Debug, Copy, Clone)]

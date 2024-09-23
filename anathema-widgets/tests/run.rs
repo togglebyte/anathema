@@ -327,7 +327,7 @@ impl Widget for TestWidget {
     ) {
         ctx.pos = Pos::ZERO;
         children.for_each(|node, children| {
-            node.position(children, ctx, attribute_storage, ctx.viewport);
+            node.position(children, ctx, ctx.pos, attribute_storage, ctx.viewport);
             ctx.pos.y += node.size().height as i32;
 
             ControlFlow::Continue(())

@@ -59,35 +59,36 @@ impl Stack {
         mut children: PositionChildren<'_, '_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        mut ctx: PositionCtx,
+        ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let direction = attributes.get(DIRECTION).unwrap_or_default();
+        let mut pos = ctx.pos;
 
         if let Direction::Backward = direction {
             match self.0 {
-                Axis::Horizontal => ctx.pos.x += ctx.inner_size.width as i32,
-                Axis::Vertical => ctx.pos.y += ctx.inner_size.height as i32,
+                Axis::Horizontal => pos.x += ctx.inner_size.width as i32,
+                Axis::Vertical => pos.y += ctx.inner_size.height as i32,
             }
         }
 
         children.for_each(|node, children| {
             match direction {
                 Direction::Forward => {
-                    node.position(children, ctx, attribute_storage, ctx.viewport);
+                    node.position(children, ctx, pos, attribute_storage, ctx.viewport);
 
                     match self.0 {
-                        Axis::Horizontal => ctx.pos.x += node.size().width as i32,
-                        Axis::Vertical => ctx.pos.y += node.size().height as i32,
+                        Axis::Horizontal => pos.x += node.size().width as i32,
+                        Axis::Vertical => pos.y += node.size().height as i32,
                     }
                 }
                 Direction::Backward => {
                     match self.0 {
-                        Axis::Horizontal => ctx.pos.x += node.size().width as i32,
-                        Axis::Vertical => ctx.pos.y -= node.size().height as i32,
+                        Axis::Horizontal => pos.x += node.size().width as i32,
+                        Axis::Vertical => pos.y -= node.size().height as i32,
                     }
 
-                    node.position(children, ctx, attribute_storage, ctx.viewport);
+                    node.position(children, ctx, pos, attribute_storage, ctx.viewport);
                 }
             }
 

@@ -54,7 +54,7 @@ impl Widget for Align {
             };
 
             ctx.pos += child_offset;
-            child.position(children, ctx, attribute_storage, ctx.viewport);
+            child.position(children, ctx, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }
