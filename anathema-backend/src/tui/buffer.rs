@@ -24,6 +24,14 @@ impl Cell {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn space() -> Self {
+        Self {
+            style: Style::reset(),
+            state: CellState::Occupied(Glyph::space()),
+        }
+    }
+
     pub(crate) fn reset() -> Self {
         Self {
             style: Style::reset(),
@@ -171,12 +179,6 @@ impl Buffer {
             CellState::Occupied(c) => Some((c, &mut cell.style)),
             _ => None,
         }
-    }
-
-    /// Empty a cell at a given position
-    pub fn empty(&mut self, pos: LocalPos) {
-        let index = self.index(pos);
-        self.inner[index] = Cell::empty();
     }
 
     /// An iterator over all the rows in the buffer
@@ -344,6 +346,8 @@ pub(crate) fn draw_changes(
         };
     }
 
+    w.queue(cursor::MoveTo(0, 0))?;
+    Style::reset().write(&mut w)?;
     Ok(())
 }
 

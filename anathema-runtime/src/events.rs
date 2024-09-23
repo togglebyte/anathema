@@ -7,7 +7,7 @@ use anathema_state::{AnyState, CommonVal, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;
@@ -158,6 +158,7 @@ impl<T: GlobalEvents> EventHandler<T> {
         tree: &mut WidgetTree<'bp>,
         constraints: &mut Constraints,
         event_ctx: &mut EventCtx<'_, '_, 'bp>,
+        glyph_map: &mut GlyphMap,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
             let event = match self.global.enable_tab_navigation() {
@@ -193,8 +194,20 @@ impl<T: GlobalEvents> EventHandler<T> {
 
             match event {
                 Event::Resize(width, height) => {
+                    // Reset needs_layout for all the nodes
+                    // TODO: this is awful, we can't just push a random widget id in there so it's not empty
+                    // event_ctx.dirty_widgets.push(WidgetId::ZERO, WidgetNeeds::Layout)
+                    let (nodes, elements) = tree.split();
+                    anathema_widgets::layout::reset_layout(
+                        nodes,
+                        elements,
+                        event_ctx.attribute_storage,
+                        event_ctx.dirty_widgets,
+                    );
+
+                    // Resize the backend
                     let size = Size::from((width, height));
-                    backend.resize(size);
+                    backend.resize(size, glyph_map);
                     viewport.resize(size);
                     constraints.set_max_width(size.width);
                     constraints.set_max_height(size.height);
