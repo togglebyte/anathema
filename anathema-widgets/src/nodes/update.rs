@@ -139,11 +139,9 @@ pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>,
             scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
         }
         WidgetKind::Component(component) => {
-            if let Some(state) = &component.external_state {
-                for (k, (_, v)) in state.iter() {
-                    let v = v.downgrade();
-                    scope.scope_downgrade(k, v);
-                }
+            for (k, (_, v)) in component.attributes.iter() {
+                let v = v.downgrade();
+                scope.scope_downgrade(k, v);
             }
             // Insert internal state
             let state_id = component.state_id();

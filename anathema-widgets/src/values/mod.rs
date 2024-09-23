@@ -133,15 +133,14 @@ impl<'bp> Collection<'bp> {
 
     pub(crate) fn scope(&self, scope: &mut Scope<'bp>, binding: &'bp str, index: usize) {
         match self {
-            Collection::Static(expressions) => {
-                let downgrade = expressions[index].downgrade();
+            Collection::Static(values) => {
+                let downgrade = values[index].downgrade();
                 scope.scope_downgrade(binding, downgrade);
             }
             Collection::Dyn(value_ref) => {
-                let value = value_ref
-                    .as_state()
-                    .and_then(|state| state.state_lookup(index.into()))
-                    .unwrap(); // TODO: unwrap...
+                let Some(value) = value_ref.as_state().and_then(|state| state.state_lookup(index.into())) else {
+                    return;
+                };
                 scope.scope_pending(binding, value)
             }
             Collection::Index(collection, _) => collection.scope(scope, binding, index),

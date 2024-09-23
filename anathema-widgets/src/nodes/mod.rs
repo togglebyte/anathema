@@ -1,6 +1,6 @@
 use anathema_templates::blueprints::Blueprint;
 
-pub use self::component::ExternalState;
+pub use self::component::ComponentAttributes;
 pub use self::element::Element;
 use self::eval::{ComponentEval, ControlFlowEval, EvalContext, Evaluator, ForLoopEval, SingleEval};
 pub use self::future::try_resolve_future_values;

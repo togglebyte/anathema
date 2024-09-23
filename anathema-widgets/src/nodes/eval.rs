@@ -1,12 +1,12 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
-use anathema_store::smallmap::{SmallIndex, SmallMap};
+use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
 use anathema_templates::{Globals, WidgetComponentId};
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
-use super::{component, controlflow};
+use super::{component, controlflow, ComponentAttributes};
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::Container;
 use crate::error::{Error, Result};
@@ -353,18 +353,12 @@ impl Evaluator for ComponentEval {
     ) -> Result<()> {
         let transaction = tree.insert(parent);
 
-        let external_state = match &input.state {
-            Some(map) => {
-                let mut state_map = SmallMap::empty();
-                for (i, (k, v)) in map.iter().enumerate() {
-                    let idx: SmallIndex = (i as u8).into();
-                    let val = eval(v, ctx.globals, ctx.scope, ctx.states, (transaction.node_id(), idx));
-                    state_map.set(&**k, (idx, val));
-                }
-                Some(state_map)
-            }
-            None => None,
-        };
+        let mut attributes = ComponentAttributes::empty();
+        for (i, (k, v)) in input.attributes.iter().enumerate() {
+            let idx: SmallIndex = (i as u8).into();
+            let val = eval(v, ctx.globals, ctx.scope, ctx.states, (transaction.node_id(), idx));
+            attributes.set(&**k, (idx, val));
+        }
 
         let component_id = usize::from(input.id).into();
         let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
@@ -373,7 +367,7 @@ impl Evaluator for ComponentEval {
             &input.body,
             component,
             state_id,
-            external_state,
+            attributes,
             component_id,
             kind,
             &input.assoc_functions,
@@ -383,15 +377,6 @@ impl Evaluator for ComponentEval {
         let widget_id = transaction
             .commit_child(WidgetKind::Component(comp_widget))
             .ok_or(Error::TreeTransactionFailed)?;
-
-        // Attributes
-        let mut attributes = Attributes::empty(widget_id);
-        for (key, expr) in input.attributes.iter() {
-            attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
-            });
-        }
-        ctx.attribute_storage.insert(widget_id, attributes);
 
         let path = tree.path(widget_id);
         ctx.components.push(path, widget_id, state_id, component_id);
@@ -404,12 +389,12 @@ impl Evaluator for ComponentEval {
             let state_id = component.state_id();
             ctx.scope.insert_state(state_id);
 
+            // Expose attributes to the template
+
             // Insert external state (if there is one)
-            if let Some(state) = &component.external_state {
-                for (k, (_, v)) in state.iter() {
-                    let v = v.downgrade();
-                    ctx.scope.scope_downgrade(k, v);
-                }
+            for (k, (_, v)) in component.attributes.iter() {
+                let v = v.downgrade();
+                ctx.scope.scope_downgrade(k, v);
             }
 
             for bp in &input.body {

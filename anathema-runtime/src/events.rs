@@ -263,8 +263,7 @@ impl<T: GlobalEvents> EventHandler<T> {
                 let found = tree.with_value_mut(widget_id, |_, widget, _| {
                     let WidgetKind::Component(component) = widget else { unreachable!() };
 
-                    let attribs = event_ctx.attribute_storage.get(widget_id);
-                    let Some(val) = attribs.get_val(&key) else { return false };
+                    let Some((_, val)) = component.attributes.get(&*key) else { return false };
                     let Some(either) = val.load_common_val() else { return false };
                     let Some(cv) = either.to_common() else { return false };
                     if value != cv {

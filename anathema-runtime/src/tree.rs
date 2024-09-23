@@ -44,7 +44,7 @@ impl<'bp> Tree<'bp> for WidgetTree<'bp> {
                 component.assoc_functions,
                 event_ctx.assoc_events,
                 event_ctx.focus_queue,
-                component.external_state.as_ref(),
+                &component.attributes,
             );
 
             let event_ctx = AnyEventCtx {
