@@ -128,9 +128,10 @@ impl Buffer {
 
     /// Put a character with a style at a given position.
     pub fn put_glyph(&mut self, glyph: Glyph, pos: LocalPos) {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
-            return;
-        }
+        assert!(
+            (pos.x as usize) < self.size.width && (pos.y as usize) < self.size.height,
+            "position out of bounds"
+        );
 
         let style = match self.get(pos) {
             Some((_, style)) => *style,
@@ -429,19 +430,13 @@ mod test {
     }
 
     #[test]
+    #[should_panic(expected = "position out of bounds")]
     fn put_glyph_checks_range() {
         let mut under_test = Buffer::new((1, 2));
 
         under_test.put_glyph(Glyph::from_char('x', 1), LocalPos::new(0, 0));
         under_test.put_glyph(Glyph::from_char('x', 1), LocalPos::new(0, 1));
         under_test.put_glyph(Glyph::from_char('o', 1), LocalPos::new(1, 0));
-
-        for cell in under_test.inner.iter() {
-            match cell.state {
-                CellState::Occupied(c) => assert_eq!(c, Glyph::from_char('x', 1)),
-                _ => panic!("Should have original char"),
-            }
-        }
     }
 
     #[test]
