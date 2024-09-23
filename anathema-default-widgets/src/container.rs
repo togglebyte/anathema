@@ -64,7 +64,7 @@ impl Widget for Container {
         ctx: PositionCtx,
     ) {
         children.for_each(|child, children| {
-            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            child.position(children, ctx, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

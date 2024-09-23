@@ -136,7 +136,8 @@ impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
                 .get::<Display>("display")
                 .unwrap_or_default()
             {
-                Display::Show => ControlFlow::Continue(Some(el)),
+                Display::Show if el.is_visible() => ControlFlow::Continue(Some(el)),
+                Display::Show => ControlFlow::Continue(None),
                 Display::Hide | Display::Exclude => ControlFlow::Continue(None),
             },
             WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),

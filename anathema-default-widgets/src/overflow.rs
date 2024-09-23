@@ -152,12 +152,11 @@ impl Widget for Overflow {
         mut children: PositionChildren<'_, '_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let direction = attributes.get(DIRECTION).unwrap_or_default();
         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
-        let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset
         match attributes.get(CLAMP) {
@@ -167,31 +166,31 @@ impl Widget for Overflow {
 
         if let Direction::Backward = direction {
             match axis {
-                Axis::Horizontal => pos.x += ctx.inner_size.width as i32,
-                Axis::Vertical => pos.y += ctx.inner_size.height as i32,
+                Axis::Horizontal => ctx.pos.x += ctx.inner_size.width as i32,
+                Axis::Vertical => ctx.pos.y += ctx.inner_size.height as i32,
             }
         }
 
-        let mut pos = match direction {
-            Direction::Forward => pos - self.offset,
-            Direction::Backward => pos + self.offset,
+        ctx.pos = match direction {
+            Direction::Forward => ctx.pos - self.offset,
+            Direction::Backward => ctx.pos + self.offset,
         };
 
         children.for_each(|node, children| {
             match direction {
                 Direction::Forward => {
-                    node.position(children, pos, attribute_storage, ctx.viewport);
+                    node.position(children, ctx, attribute_storage, ctx.viewport);
                     match axis {
-                        Axis::Horizontal => pos.x += node.size().width as i32,
-                        Axis::Vertical => pos.y += node.size().height as i32,
+                        Axis::Horizontal => ctx.pos.x += node.size().width as i32,
+                        Axis::Vertical => ctx.pos.y += node.size().height as i32,
                     }
                 }
                 Direction::Backward => {
                     match axis {
-                        Axis::Horizontal => pos.x -= node.size().width as i32,
-                        Axis::Vertical => pos.y -= node.size().height as i32,
+                        Axis::Horizontal => ctx.pos.x -= node.size().width as i32,
+                        Axis::Vertical => ctx.pos.y -= node.size().height as i32,
                     }
-                    node.position(children, pos, attribute_storage, ctx.viewport);
+                    node.position(children, ctx, attribute_storage, ctx.viewport);
                 }
             }
 

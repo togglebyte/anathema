@@ -40,9 +40,8 @@ impl Widget for Row {
             let child_height = size.height as i32;
             let y = y_offset - child_height / 2;
 
-            let mut pos = ctx.pos;
-            pos.y += y;
-            child.position(children, pos, attribute_storage, ctx.viewport);
+            ctx.pos.y += y;
+            child.position(children, ctx, attribute_storage, ctx.viewport);
             ctx.pos.x += size.width as i32;
             ControlFlow::Continue(())
         });

@@ -1,7 +1,7 @@
 use anathema_geometry::{Pos, Region, Size};
 
 use crate::container::Container;
-use crate::layout::{Constraints, LayoutCtx, Viewport};
+use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
 use crate::widget::{PaintChildren, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, WidgetId};
@@ -10,6 +10,7 @@ use crate::{AttributeStorage, LayoutChildren, WidgetId};
 pub struct Element<'bp> {
     pub ident: &'bp str,
     pub(crate) container: Container,
+    visible: bool,
 }
 
 impl<'bp> Element<'bp> {
@@ -18,7 +19,11 @@ impl<'bp> Element<'bp> {
     }
 
     pub(crate) fn new(ident: &'bp str, container: Container) -> Self {
-        Self { ident, container }
+        Self {
+            ident,
+            container,
+            visible: false,
+        }
     }
 
     pub fn layout(
@@ -34,11 +39,15 @@ impl<'bp> Element<'bp> {
     pub fn position(
         &mut self,
         children: PositionChildren<'_, '_, 'bp>,
-        pos: Pos,
+        ctx: PositionCtx,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        self.container.position(children, pos, attribute_storage, viewport);
+        self.container.position(children, ctx, attribute_storage, viewport);
+        let region = Region::from((self.get_pos(), self.size()));
+        if ctx.clip.intersects(&region) {
+            self.visible = true;
+        }
     }
 
     /// Draw an element to the surface
@@ -91,5 +100,9 @@ impl<'bp> Element<'bp> {
     /// Get the position of the container
     pub fn get_pos(&self) -> Pos {
         self.container.pos
+    }
+
+    pub fn is_visible(&self) -> bool {
+        self.visible
     }
 }

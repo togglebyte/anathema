@@ -30,7 +30,7 @@ impl Widget for Align {
         mut children: PositionChildren<'_, '_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let alignment = attributes.get(ALIGNMENT).unwrap_or_default();
@@ -53,7 +53,8 @@ impl Widget for Align {
                 Alignment::Centre => Pos::new(width / 2 - child_width / 2, height / 2 - child_height / 2),
             };
 
-            child.position(children, ctx.pos + child_offset, attribute_storage, ctx.viewport);
+            ctx.pos += child_offset;
+            child.position(children, ctx, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

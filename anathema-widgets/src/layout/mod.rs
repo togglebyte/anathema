@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
@@ -131,7 +131,13 @@ pub fn position_widget<'bp>(
 ) {
     let filter = LayoutFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
-    element.position(children, pos, attribute_storage, viewport);
+    let ctx = PositionCtx {
+        inner_size: viewport.size,
+        pos,
+        viewport,
+        clip: Region::from((pos, viewport.size)),
+    };
+    element.position(children, ctx, attribute_storage, viewport);
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -139,6 +145,13 @@ pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,
     pub viewport: Viewport,
+    pub clip: Region,
+}
+
+impl PositionCtx {
+    pub fn set_clip_region(&mut self, region: Region) {
+        self.clip = self.clip.intersect_with(&region);
+    }
 }
 
 pub fn reset_layout<'bp>(

@@ -33,7 +33,7 @@ impl Widget for ZStack {
         ctx: PositionCtx,
     ) {
         children.for_each(|child, children| {
-            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            child.position(children, ctx, attribute_storage, ctx.viewport);
             ControlFlow::Continue(())
         });
     }

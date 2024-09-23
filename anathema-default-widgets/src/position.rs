@@ -164,7 +164,7 @@ impl Widget for Position {
                     ctx.pos.y = offset;
                 }
             }
-            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            child.position(children, ctx, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }

@@ -33,6 +33,7 @@ impl Container {
         self.size = self.inner.any_layout(children, constraints, self.id, ctx);
         // Floating widgets always report a zero size
         // as they should not affect their parents
+
         match self.inner.any_floats() {
             true => Size::ZERO,
             false => self.size,
@@ -42,21 +43,19 @@ impl Container {
     pub fn position<'bp>(
         &mut self,
         children: PositionChildren<'_, '_, 'bp>,
-        pos: Pos,
+        mut ctx: PositionCtx,
         attribute_storage: &AttributeStorage<'bp>,
-        viewport: Viewport,
+        _viewport: Viewport,
     ) {
         if !matches!(self.needs, WidgetNeeds::Position) {
             return;
         }
         self.needs = WidgetNeeds::Paint;
 
-        self.pos = pos;
-        let ctx = PositionCtx {
-            inner_size: self.size,
-            pos,
-            viewport,
-        };
+        self.pos = ctx.pos;
+
+        ctx.set_clip_region(Region::from((ctx.pos, self.size)));
+
         self.inner.any_position(children, self.id, attribute_storage, ctx);
         self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.size);
     }

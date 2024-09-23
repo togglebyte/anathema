@@ -323,12 +323,12 @@ impl Widget for TestWidget {
         mut children: anathema_widgets::PositionChildren<'_, '_, 'bp>,
         _attributes: anathema_widgets::WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: anathema_widgets::layout::PositionCtx,
+        mut ctx: anathema_widgets::layout::PositionCtx,
     ) {
-        let mut pos = Pos::ZERO;
+        ctx.pos = Pos::ZERO;
         children.for_each(|node, children| {
-            node.position(children, pos, attribute_storage, ctx.viewport);
-            pos.y += node.size().height as i32;
+            node.position(children, ctx, attribute_storage, ctx.viewport);
+            ctx.pos.y += node.size().height as i32;
 
             ControlFlow::Continue(())
         });

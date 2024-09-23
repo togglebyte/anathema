@@ -41,7 +41,7 @@ impl Widget for Expand {
         ctx: PositionCtx,
     ) {
         children.for_each(|node, children| {
-            node.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            node.position(children, ctx, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
     }
