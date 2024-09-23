@@ -43,7 +43,12 @@ impl Buffer {
     }
 
     fn get(&self, pos: impl Into<LocalPos>) -> Option<&Cell> {
-        let index = pos.into().to_index(self.size.width);
+        let pos = pos.into();
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+
+        let index = pos.to_index(self.size.width);
         match self.positions.get(index)? {
             cell @ Cell::Occupied(..) => Some(cell),
             Cell::Empty => None,
@@ -51,7 +56,12 @@ impl Buffer {
     }
 
     fn get_mut(&mut self, pos: impl Into<LocalPos>) -> Option<&mut Cell> {
-        let index = pos.into().to_index(self.size.width);
+        let pos = pos.into();
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+
+        let index = pos.to_index(self.size.width);
         match self.positions.get_mut(index)? {
             cell @ Cell::Occupied(..) => Some(cell),
             Cell::Empty => None,
@@ -59,7 +69,12 @@ impl Buffer {
     }
 
     fn remove(&mut self, pos: impl Into<LocalPos>) {
-        let index = pos.into().to_index(self.size.width);
+        let pos = pos.into();
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return;
+        }
+
+        let index = pos.to_index(self.size.width);
         if index < self.positions.len() {
             let mut cell = Cell::Empty;
             std::mem::swap(&mut self.positions[index], &mut cell);
@@ -253,5 +268,69 @@ mod test {
         assert!(canvas.get((0, 0)).is_some());
         canvas.erase((0, 0));
         assert!(canvas.get((0, 0)).is_none());
+    }
+
+    #[test]
+    fn put_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+        under_test.put('o', Style::reset(), LocalPos::new(1, 0));
+
+        for cell in under_test.buffer.positions {
+            match cell {
+                Cell::Empty => panic!("Should not be empty"),
+                Cell::Occupied(c, _) => assert_eq!(c, 'x'),
+            }
+        }
+    }
+
+    #[test]
+    fn get_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+
+        assert!(under_test.get(LocalPos::new(1, 0)).is_none());
+    }
+
+    #[test]
+    fn get_mut_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+
+        assert!(under_test.get_mut(LocalPos::new(1, 0)).is_none());
+    }
+
+    #[test]
+    fn remove_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+        under_test.erase(LocalPos::new(1, 0));
+
+        for cell in under_test.buffer.positions {
+            match cell {
+                Cell::Empty => panic!("Should not be empty"),
+                Cell::Occupied(c, _) => assert_eq!(c, 'x'),
+            }
+        }
     }
 }
