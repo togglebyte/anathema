@@ -367,9 +367,8 @@ pub(crate) fn draw_changes(
 mod test {
     use anathema_state::Color;
 
-    use crate::tui;
-
     use super::*;
+    use crate::tui;
 
     #[test]
     fn changes() {
