@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{LocalPos, Size};
+use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
+use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::{single_layout, Axis};
@@ -49,35 +49,10 @@ impl Widget for Expand {
     fn paint<'bp>(
         &mut self,
         mut children: PaintChildren<'_, '_, 'bp>,
-        id: WidgetId,
+        _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        let attributes = attribute_storage.get(id);
-        if let Some(fill) = attributes.get_val("fill") {
-            for y in 0..ctx.local_size.height as u16 {
-                let mut used_width = 0;
-                loop {
-                    let pos = LocalPos::new(used_width, y);
-                    let controlflow = fill.str_iter(|s| {
-                        let glyphs = Glyphs::new(s);
-                        let Some(p) = ctx.place_glyphs(glyphs, pos) else {
-                            return ControlFlow::Break(());
-                        };
-                        used_width += p.x - used_width;
-                        match used_width >= ctx.local_size.width as u16 {
-                            true => ControlFlow::Break(()),
-                            false => ControlFlow::Continue(()),
-                        }
-                    });
-
-                    if let ControlFlow::Break(()) = controlflow {
-                        break;
-                    }
-                }
-            }
-        }
-
         children.for_each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);

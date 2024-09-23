@@ -1,7 +1,9 @@
+use std::ops::ControlFlow;
+
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
-use crate::paint::{PaintCtx, Unsized};
+use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren, WidgetNeeds};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
@@ -80,6 +82,31 @@ impl Container {
             for x in 0..self.size.width as u16 {
                 let pos = LocalPos::new(x, y);
                 ctx.set_attributes(attrs, pos);
+            }
+        }
+
+        let attributes = attribute_storage.get(self.id);
+        if let Some(fill) = attributes.get_val("fill") {
+            for y in 0..ctx.local_size.height as u16 {
+                let mut used_width = 0;
+                loop {
+                    let pos = LocalPos::new(used_width, y);
+                    let controlflow = fill.str_iter(|s| {
+                        let glyphs = Glyphs::new(s);
+                        let Some(p) = ctx.place_glyphs(glyphs, pos) else {
+                            return ControlFlow::Break(());
+                        };
+                        used_width += p.x - used_width;
+                        match used_width >= ctx.local_size.width as u16 {
+                            true => ControlFlow::Break(()),
+                            false => ControlFlow::Continue(()),
+                        }
+                    });
+
+                    if let ControlFlow::Break(()) = controlflow {
+                        break;
+                    }
+                }
             }
         }
 
