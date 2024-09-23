@@ -128,6 +128,10 @@ impl Buffer {
 
     /// Put a character with a style at a given position.
     pub fn put_glyph(&mut self, glyph: Glyph, pos: LocalPos) {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return;
+        }
+
         let style = match self.get(pos) {
             Some((_, style)) => *style,
             None => Style::new(),
@@ -163,6 +167,10 @@ impl Buffer {
 
     /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get(&self, pos: LocalPos) -> Option<(&Glyph, &Style)> {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+
         let index = self.index(pos);
         let cell = self.inner.get(index)?;
         match &cell.state {
@@ -173,6 +181,10 @@ impl Buffer {
 
     /// Get a mutable reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get_mut(&mut self, pos: LocalPos) -> Option<(&mut Glyph, &mut Style)> {
+        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+            return None;
+        }
+
         let index = self.index(pos);
         let cell = self.inner.get_mut(index)?;
         match &mut cell.state {
@@ -353,7 +365,10 @@ pub(crate) fn draw_changes(
 
 #[cfg(test)]
 mod test {
+    use anathema_state::Color;
+
     use super::*;
+    use crate::tui;
 
     #[test]
     fn changes() {
@@ -393,5 +408,59 @@ mod test {
         buffer.resize(Size::new(1, 2));
         assert_eq!(buffer.inner[0], Cell::new(Glyph::from_char('1', 1), Style::reset()));
         assert_eq!(buffer.inner[1], Cell::new(Glyph::from_char('3', 1), Style::reset()));
+    }
+
+    #[test]
+    fn update_cell_checks_range() {
+        let mut under_test = Buffer::new((1, 2));
+
+        let valid_pos = LocalPos::new(0, 1);
+        under_test.put_glyph(Glyph::from_char('1', 1), valid_pos);
+        under_test.put_glyph(Glyph::from_char('2', 1), valid_pos);
+
+        let new_style = Style {
+            fg: Some(Color::Red),
+            bg: None,
+            attributes: tui::Attributes::empty(),
+        };
+        under_test.update_cell(new_style, LocalPos::new(1, 0));
+
+        assert_eq!(under_test.get(valid_pos).unwrap().1.clone(), Style::reset());
+    }
+
+    #[test]
+    fn put_glyph_checks_range() {
+        let mut under_test = Buffer::new((1, 2));
+
+        under_test.put_glyph(Glyph::from_char('x', 1), LocalPos::new(0, 0));
+        under_test.put_glyph(Glyph::from_char('x', 1), LocalPos::new(0, 1));
+        under_test.put_glyph(Glyph::from_char('o', 1), LocalPos::new(1, 0));
+
+        for cell in under_test.inner.iter() {
+            match cell.state {
+                CellState::Occupied(c) => assert_eq!(c, Glyph::from_char('x', 1)),
+                _ => panic!("Should have original char"),
+            }
+        }
+    }
+
+    #[test]
+    fn get_checks_range() {
+        let mut under_test = Buffer::new((1, 2));
+
+        under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 0));
+        under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 1));
+
+        assert_eq!(under_test.get(LocalPos::new(1, 0)), None);
+    }
+
+    #[test]
+    fn get_mut_checks_range() {
+        let mut under_test = Buffer::new((1, 2));
+
+        under_test.put_glyph(Glyph::from_char('1', 1), LocalPos::new(0, 0));
+        under_test.put_glyph(Glyph::from_char('2', 1), LocalPos::new(0, 1));
+
+        assert_eq!(under_test.get_mut(LocalPos::new(1, 0)), None);
     }
 }
