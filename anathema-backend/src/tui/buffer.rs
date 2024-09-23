@@ -24,6 +24,14 @@ impl Cell {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn space() -> Self {
+        Self {
+            style: Style::reset(),
+            state: CellState::Occupied(Glyph::space()),
+        }
+    }
+
     pub(crate) fn reset() -> Self {
         Self {
             style: Style::reset(),

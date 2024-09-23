@@ -2,8 +2,9 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region};
 use anathema_state::CommonVal;
+pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{apply_visitor, Node, TreeValues};
+use anathema_store::tree::{Node, TreeValues};
 
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetId, WidgetKind, WidgetNeeds};
@@ -232,7 +233,7 @@ where
                 (self.f)(el, attributes);
 
                 match el.container.inner.any_needs() {
-                    WidgetNeeds::Nothing => (),
+                    WidgetNeeds::Paint => (),
                     needs => self.dirty_widgets.push(widget_id, needs),
                 }
 

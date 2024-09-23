@@ -7,9 +7,7 @@ use anathema_state::{AnyState, CommonVal, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{
-    AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetId, WidgetKind, WidgetTree,
-};
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;

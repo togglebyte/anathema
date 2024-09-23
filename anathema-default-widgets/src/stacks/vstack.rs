@@ -175,6 +175,8 @@ mod test {
             ╚══════╝
         ";
 
-        TestRunner::new(tpl, (6, 2)).instance().render_assert(expected);
+        let mut runner = TestRunner::new(tpl, (6, 2));
+        let mut runner = runner.instance();
+        runner.render_assert(expected);
     }
 }

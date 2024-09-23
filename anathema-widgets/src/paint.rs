@@ -347,11 +347,13 @@ impl<'screen> PaintCtx<'screen, SizePos> {
             return None;
         }
 
-        // 3. Place the char
+        // 3. Find position on the screen
         let screen_pos = match self.translate_to_global(input_pos) {
             Some(pos) => pos,
             None => return Some(next),
         };
+
+        // 4. Place the char
         self.surface.draw_glyph(glyph, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)

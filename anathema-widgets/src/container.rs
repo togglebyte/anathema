@@ -44,7 +44,7 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        if !matches!(self.needs, WidgetNeeds::Position) && pos == self.pos {
+        if !matches!(self.needs, WidgetNeeds::Position) {
             return;
         }
         self.needs = WidgetNeeds::Paint;
@@ -61,14 +61,13 @@ impl Container {
 
     pub fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        children: PaintChildren<'_, '_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
         if !matches!(self.needs, WidgetNeeds::Paint) {
             return;
         }
-        self.needs = WidgetNeeds::Nothing;
 
         let mut ctx = ctx.into_sized(self.size, self.pos);
         let region = ctx.create_region();

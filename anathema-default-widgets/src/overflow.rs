@@ -221,7 +221,7 @@ impl Widget for Overflow {
             self.is_dirty = false;
             WidgetNeeds::Position
         } else {
-            WidgetNeeds::Nothing
+            WidgetNeeds::Paint
         }
     }
 }

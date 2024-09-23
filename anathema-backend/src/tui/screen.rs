@@ -201,7 +201,7 @@ mod test {
         let top_left = screen.new_buffer.inner[0];
         assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), top_left);
         let bottom_right = screen.new_buffer.inner[3];
-        assert_eq!(Cell::empty(), bottom_right);
+        assert_eq!(Cell::space(), bottom_right);
     }
 
     #[test]

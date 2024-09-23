@@ -148,7 +148,7 @@ pub fn reset_layout<'bp>(
     dirty_widgets: &mut DirtyWidgets,
 ) {
     let filter = LayoutFilter::new(true, attribute_storage);
-    let mut children = TreeForEach::new(children, values, &filter);
+    let children = TreeForEach::new(children, values, &filter);
     inner_reset_layout(children, dirty_widgets);
 }
 

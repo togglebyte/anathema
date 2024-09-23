@@ -30,11 +30,19 @@ pub type WidgetId = anathema_store::slab::Key;
 
 /// Represent the needs of a widget.
 #[derive(Debug, Copy, Clone)]
+#[repr(u8)]
 pub enum WidgetNeeds {
-    Nothing,
-    Layout,
-    Position,
-    Paint,
+    Paint = 0,
+    Position = 1,
+    Layout = 2,
+}
+
+impl WidgetNeeds {
+    pub(crate) fn update(&mut self, new: Self) {
+        if (*self as u8) < new as u8 {
+            *self = new;
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -170,17 +178,17 @@ impl DirtyWidgets {
     pub fn apply(&self, tree: &mut Tree<WidgetKind<'_>>) {
         for (id, needs) in &self.inner {
             let path = tree.path(*id);
-            tree.apply_node_walker(&path, WidgetNeedsLayout(*needs));
+            tree.apply_node_walker(&path, UpdateWidgetNeeds(*needs));
         }
     }
 }
 
-struct WidgetNeedsLayout(WidgetNeeds);
+struct UpdateWidgetNeeds(WidgetNeeds);
 
-impl NodeWalker<WidgetKind<'_>> for WidgetNeedsLayout {
+impl NodeWalker<WidgetKind<'_>> for UpdateWidgetNeeds {
     fn apply(&mut self, widget: &mut WidgetKind<'_>) {
         if let WidgetKind::Element(el) = widget {
-            el.container.needs = self.0;
+            el.container.needs.update(self.0);
         }
     }
 }
@@ -369,7 +377,7 @@ pub trait Widget {
     }
 
     fn needs(&mut self) -> WidgetNeeds {
-        WidgetNeeds::Nothing
+        WidgetNeeds::Paint
     }
 }
 

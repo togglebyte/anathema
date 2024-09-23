@@ -97,7 +97,6 @@ impl TuiBackendBuilder {
             _stdout: self._stdout,
             output: BufWriter::new(self.output),
             events: Events,
-            glyph_map: GlyphMap::empty(),
 
             hide_cursor: self.hide_cursor,
             enable_raw_mode: self.enable_raw_mode,
@@ -115,9 +114,8 @@ pub struct TuiBackend {
     pub quit_on_ctrl_c: bool,
     screen: Screen,
     _stdout: Stdout,
-    output: BufWriter<File>, 
+    output: BufWriter<File>,
     events: Events,
-    glyph_map: GlyphMap,
 
     // Settings
     hide_cursor: bool,
@@ -192,9 +190,9 @@ impl Backend for TuiBackend {
     }
 
     fn render(&mut self, glyph_map: &mut GlyphMap) {
-        // let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
+        let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
         let _ = self.screen.render(&mut self.output, glyph_map);
-        // let _ = execute!(&mut self.output, EndSynchronizedUpdate);
+        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
     }
 
     fn clear(&mut self) {
