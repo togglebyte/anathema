@@ -30,6 +30,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
         scope_value(node, self.scope, &[]);
+
         let mut ctx = EvalContext::new(
             self.globals,
             self.factory,
@@ -191,8 +192,7 @@ fn try_resolve_value<'bp>(
         WidgetKind::ControlFlow(_) => unreachable!(),
         WidgetKind::Iteration(_) => unreachable!(),
         WidgetKind::Component(component) => {
-            let Some(state) = &mut component.external_state else { return Ok(()) };
-            for (_, (i, v)) in state.iter_mut() {
+            for (_, (i, v)) in component.attributes.iter_mut() {
                 if *i == value_id.index() {
                     if let Some(expr) = v.expr {
                         *v = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);

@@ -128,7 +128,10 @@ impl Buffer {
 
     /// Put a character with a style at a given position.
     pub fn put_glyph(&mut self, glyph: Glyph, pos: LocalPos) {
-        assert!((pos.x as usize) < self.size.width && (pos.y as usize) < self.size.height, "position out of bounds");
+        assert!(
+            (pos.x as usize) < self.size.width && (pos.y as usize) < self.size.height,
+            "position out of bounds"
+        );
 
         let style = match self.get(pos) {
             Some((_, style)) => *style,

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use anathema_store::smallmap::SmallMap;
@@ -44,7 +43,6 @@ pub struct Component {
     pub id: WidgetComponentId,
     pub body: Vec<Blueprint>,
     pub attributes: SmallMap<Rc<str>, Expression>,
-    pub state: Option<Rc<HashMap<Rc<str>, Expression>>>,
     pub assoc_functions: Vec<(StringId, StringId)>,
     pub parent: Option<WidgetComponentId>,
 }

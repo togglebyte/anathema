@@ -8,14 +8,14 @@ use crate::components::{AnyComponent, ComponentKind};
 use crate::expressions::EvalValue;
 use crate::{Value, ValueIndex};
 
-pub type ExternalState<'bp> = SmallMap<&'bp str, (ValueIndex, Value<'bp, EvalValue<'bp>>)>;
+pub type ComponentAttributes<'bp> = SmallMap<&'bp str, (ValueIndex, Value<'bp, EvalValue<'bp>>)>;
 
 #[derive(Debug)]
 pub struct Component<'bp> {
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
-    pub external_state: Option<ExternalState<'bp>>,
+    pub attributes: ComponentAttributes<'bp>,
     pub component_id: WidgetComponentId,
     pub parent: Option<WidgetComponentId>,
     pub kind: ComponentKind,
@@ -27,7 +27,7 @@ impl<'bp> Component<'bp> {
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
-        external_state: Option<ExternalState<'bp>>,
+        attributes: ComponentAttributes<'bp>,
         component_id: WidgetComponentId,
         kind: ComponentKind,
         assoc_functions: &'bp [(StringId, StringId)],
@@ -37,7 +37,7 @@ impl<'bp> Component<'bp> {
             body,
             dyn_component,
             state_id,
-            external_state,
+            attributes,
             component_id,
             kind,
             assoc_functions,

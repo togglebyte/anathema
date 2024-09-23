@@ -130,14 +130,6 @@ impl Scope {
         // Attributes
         let attributes = self.eval_attributes(ctx)?;
 
-        // State
-        let state = self.statements.take_value().map(|v| const_eval(v, ctx));
-        let state = match state {
-            Some(Expression::Map(map)) => Some(map),
-            Some(_) => todo!("Invalid state: state has to be a map or nothing"),
-            None => None,
-        };
-
         // Slots
         let mut slots = SmallMap::empty();
         let mut scope = self.statements.take_scope();
@@ -155,7 +147,6 @@ impl Scope {
             id: component_id,
             body,
             attributes,
-            state,
             assoc_functions,
             parent,
         };
@@ -214,7 +205,7 @@ mod test {
 
     #[test]
     fn eval_component() {
-        let src = "@comp {a: 1}";
+        let src = "@comp [a: 1]";
         let comp_src = "node a + 2";
 
         let mut doc = Document::new(src);
@@ -249,8 +240,8 @@ mod test {
     fn eval_two_identical_components() {
         let src = "
             vstack
-                @comp (a->b) { a: 1 }
-                @comp (a->b) { a: 2 }
+                @comp (a->b) [ a: 1 ]
+                @comp (a->b) [ a: 2 ]
         ";
 
         let mut doc = Document::new(src);
@@ -261,7 +252,7 @@ mod test {
     #[test]
     fn component_with_assoc_attrs_state() {
         let src = "
-            @comp (a->b) [a: 1] { a: 1 }
+            @comp (a->b) [a: 1]
         ";
 
         let mut doc = Document::new(src);

@@ -14,7 +14,7 @@ use flume::SendError;
 use self::events::{Event, KeyEvent, MouseEvent};
 use crate::expressions::Either;
 use crate::layout::Viewport;
-use crate::nodes::ExternalState;
+use crate::nodes::ComponentAttributes;
 use crate::widget::Parent;
 use crate::Elements;
 
@@ -224,7 +224,7 @@ impl<'rt, T: 'static> Context<'rt, T> {
 
     /// Get a value from external state
     pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
-        let val = self.component_ctx.external_state?.get(key);
+        let val = self.component_ctx.attributes.get(key);
         val.and_then(|(_, val)| val.load_common_val())
     }
 
@@ -276,7 +276,7 @@ pub struct ComponentContext<'rt> {
     pub assoc_functions: &'rt [(StringId, StringId)],
     pub assoc_events: &'rt mut AssociatedEvents,
     focus_queue: &'rt mut FocusQueue<'static>,
-    external_state: Option<&'rt ExternalState<'rt>>,
+    attributes: &'rt ComponentAttributes<'rt>,
 }
 
 impl<'rt> ComponentContext<'rt> {
@@ -286,7 +286,7 @@ impl<'rt> ComponentContext<'rt> {
         assoc_functions: &'rt [(StringId, StringId)],
         assoc_events: &'rt mut AssociatedEvents,
         focus_queue: &'rt mut FocusQueue<'static>,
-        external_state: Option<&'rt ExternalState<'rt>>,
+        attributes: &'rt ComponentAttributes<'rt>,
     ) -> Self {
         Self {
             parent: parent.map(Into::into),
@@ -294,7 +294,7 @@ impl<'rt> ComponentContext<'rt> {
             assoc_functions,
             assoc_events,
             focus_queue,
-            external_state,
+            attributes,
         }
     }
 }
