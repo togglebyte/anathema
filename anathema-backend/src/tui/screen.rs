@@ -205,16 +205,12 @@ mod test {
     }
 
     #[test]
+    #[should_panic(expected = "position out of bounds")]
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
         let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::new(2, 2));
+        screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::new(3, 0));
         screen.render(&mut vec![], &glyph_map).unwrap();
-
-        // Check no content was overwritten
-        for ele in screen.new_buffer.inner {
-            assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), ele)
-        }
     }
 }
