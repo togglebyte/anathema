@@ -129,9 +129,8 @@ impl<'bp> Attributes<'bp> {
         self.get_val(key).and_then(|s| T::try_from(s.deref()).ok())
     }
 
-    pub fn get_val(&self, key: &'bp str) -> Option<&Value<'bp, EvalValue<'bp>>> {
-        let key = ValueKey::Attribute(key);
-        self.values.get(&key)
+    pub fn get_val(&self, key: &str) -> Option<&Value<'bp, EvalValue<'bp>>> {
+        self.values.get(key)
     }
 
     /// Get an integer regardless of how the value was stored.

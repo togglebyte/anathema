@@ -1,7 +1,8 @@
 use std::fmt::{self, Debug, Write};
 
 use anathema_debug::DebugWriter;
-use anathema_state::{Path, PendingValue, StateId, States};
+use anathema_state::{AnyState, Path, PendingValue, StateId, States};
+use anathema_templates::WidgetComponentId;
 
 use crate::expressions::{Downgraded, EvalValue};
 use crate::values::ValueId;
@@ -29,6 +30,7 @@ enum Entry<'bp> {
     Downgraded(Path<'bp>, Downgraded<'bp>),
     Pending(Path<'bp>, PendingValue),
     State(StateId),
+    ComponentAttributes(WidgetComponentId),
     /// This is marking the entry as free, and another entry can be written here.
     /// This is not indicative of a missing value
     #[default]
@@ -44,6 +46,13 @@ impl<'bp> Entry<'bp> {
             _ => None,
         }
     }
+
+    fn is_state(&self) -> bool {
+        match self {
+            Self::State(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Debug for Entry<'_> {
@@ -53,6 +62,7 @@ impl Debug for Entry<'_> {
             Entry::Pending(path, pending_value) => f.debug_tuple("Pending").field(path).field(pending_value).finish(),
             Entry::Downgraded(path, value) => f.debug_tuple("Downgraded").field(path).field(value).finish(),
             Entry::State(state) => f.debug_tuple("State").field(&state).finish(),
+            Entry::ComponentAttributes(component_id) => f.debug_tuple("ComponentAttributes").field(&component_id).finish(),
             Entry::Empty => f.debug_tuple("Empty").finish(),
         }
     }
@@ -137,15 +147,45 @@ impl<'bp> Scope<'bp> {
                 Entry::Downgraded(_, downgrade) => break Some(downgrade.upgrade(lookup.id)),
 
                 // State value
-                &Entry::State(state_id) => {
-                    let state = states.get(state_id)?;
-                    if let Some(value) = state.state_get(lookup.path, lookup.id) {
-                        break Some(EvalValue::Dyn(value));
-                    }
-                }
+                // &Entry::State(state_id) => {
+                //     let state = states.get(state_id)?;
+                //     if let Some(value) = state.state_get(lookup.path, lookup.id) {
+                //         break Some(EvalValue::Dyn(value));
+                //     }
+                // }
                 _ => continue,
             }
         }
+    }
+
+    // There is always a state for each component
+    // (if no explicit state is given a unit is assumed)
+    //
+    // This is not entirely correct given that the root template
+    // has no component, perhaps this should change so there is always
+    // a component in the root.
+    pub(crate) fn get_state(&self, states: &States) -> EvalValue<'bp> {
+        self.storage
+            .iter()
+            .rev()
+            .find_map(|e| match e {
+                Entry::State(state) => Some(EvalValue::State(*state)),
+                _ => None,
+            })
+            // Note that this `expect` is false until we force a root component
+            .expect("there should always be at least one state entry")
+    }
+
+    pub(crate) fn get_component_attributes(&self) -> EvalValue<'bp> {
+        self.storage
+            .iter()
+            .rev()
+            .find_map(|e| match e {
+                Entry::ComponentAttributes(component_id) => Some(EvalValue::ComponentAttributes(*component_id)),
+                _ => None,
+            })
+            // Note that this `expect` is false until we force a root component
+            .expect("there should always be at least one state entry")
     }
 
     /// Get can never return an eval value that is downgraded or pending
@@ -184,6 +224,11 @@ impl<'bp> Scope<'bp> {
 
     pub(crate) fn scope_pending(&mut self, key: &'bp str, iter_value: PendingValue) {
         let entry = Entry::Pending(Path::from(key), iter_value);
+        self.insert_entry(entry);
+    }
+
+    pub(crate) fn scope_component_attributes(&mut self, component_id: WidgetComponentId) {
+        let entry = Entry::ComponentAttributes(component_id);
         self.insert_entry(entry);
     }
 

@@ -15,6 +15,7 @@ mod container;
 pub mod debug;
 pub mod error;
 pub mod expressions;
+pub mod expressions2;
 pub mod layout;
 mod nodes;
 pub mod paint;

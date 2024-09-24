@@ -30,8 +30,8 @@ use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
-    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, FocusQueue, UntypedContext,
-    ViewMessage,
+    AssociatedEvents, Component, ComponentAttributeCollection, ComponentId, ComponentKind, ComponentRegistry, Emitter,
+    FocusQueue, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
@@ -312,6 +312,7 @@ where
         globals: &'bp Globals,
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
+        component_attributes: &mut ComponentAttributeCollection<'bp>,
         attribute_storage: &mut AttributeStorage<'bp>,
     ) {
         drain_futures(&mut self.future_values);
@@ -330,6 +331,7 @@ where
                 &self.factory,
                 &mut scope,
                 states,
+                component_attributes,
                 &mut self.component_registry,
                 sub,
                 &path,
@@ -346,6 +348,7 @@ where
         globals: &'bp Globals,
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
+        component_attributes: &mut ComponentAttributeCollection<'bp>,
         attribute_storage: &mut AttributeStorage<'bp>,
     ) {
         drain_changes(&mut self.changes);
@@ -365,6 +368,7 @@ where
                     &self.factory,
                     &mut scope,
                     states,
+                    component_attributes,
                     &mut self.component_registry,
                     change,
                     sub,
@@ -385,6 +389,7 @@ where
         sleep_micros: u128,
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
+        component_attributes: &mut ComponentAttributeCollection<'bp>,
         attribute_storage: &mut AttributeStorage<'bp>,
         assoc_events: &mut AssociatedEvents,
         focus_queue: &mut FocusQueue<'static>,
@@ -399,6 +404,7 @@ where
             components: &mut self.components,
             dirty_widgets: &mut self.dirty_widgets,
             states,
+            component_attributes,
             attribute_storage,
             assoc_events,
             focus_queue,
@@ -452,6 +458,7 @@ where
         let mut focus_queue = FocusQueue::new();
 
         let mut states = States::new();
+        let mut component_attributes = ComponentAttributeCollection::empty();
         let mut scope = Scope::new();
         let globals = self.globals.take();
 
@@ -460,6 +467,7 @@ where
             &self.factory,
             &mut scope,
             &mut states,
+            &mut component_attributes,
             &mut self.component_registry,
             &mut attribute_storage,
             &mut self.floating_widgets,
@@ -492,6 +500,7 @@ where
             self.constraints,
             &attribute_storage,
             &self.floating_widgets,
+            &states,
             self.viewport,
         )
         .run();
@@ -509,6 +518,7 @@ where
             components: &mut self.components,
             dirty_widgets: &mut self.dirty_widgets,
             states: &mut states,
+            component_attributes: &mut component_attributes,
             attribute_storage: &mut attribute_storage,
             assoc_events: &mut assoc_events,
             context,
@@ -524,6 +534,7 @@ where
                 sleep_micros,
                 &mut tree,
                 &mut states,
+                &mut component_attributes,
                 &mut attribute_storage,
                 &globals,
                 &mut assoc_events,
@@ -600,6 +611,7 @@ where
         sleep_micros: u128,
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
+        component_attributes: &mut ComponentAttributeCollection<'bp>,
         attribute_storage: &mut AttributeStorage<'bp>,
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
@@ -614,13 +626,22 @@ where
             sleep_micros,
             tree,
             states,
+            component_attributes,
             attribute_storage,
             assoc_events,
             focus_queue,
         );
 
         // Call the `tick` function on all components
-        self.tick_components(tree, states, attribute_storage, dt.elapsed(), assoc_events, focus_queue);
+        self.tick_components(
+            tree,
+            states,
+            component_attributes,
+            attribute_storage,
+            dt.elapsed(),
+            assoc_events,
+            focus_queue,
+        );
 
         let context = UntypedContext {
             emitter: &self.emitter,
@@ -632,6 +653,7 @@ where
             components: &mut self.components,
             dirty_widgets: &mut self.dirty_widgets,
             states,
+            component_attributes,
             attribute_storage,
             assoc_events,
             context,
@@ -652,9 +674,8 @@ where
 
         *dt = Instant::now();
 
-        self.apply_futures(globals, tree, states, attribute_storage);
-
-        self.apply_changes(globals, tree, states, attribute_storage);
+        self.apply_futures(globals, tree, states, component_attributes, attribute_storage);
+        self.apply_changes(globals, tree, states, component_attributes, attribute_storage);
 
         // -----------------------------------------------------------------------------
         //   - Update dirty widgets -
@@ -682,6 +703,7 @@ where
                 self.constraints,
                 attribute_storage,
                 &self.floating_widgets,
+                &*states,
                 self.viewport,
             );
             cycle.run();
@@ -704,6 +726,7 @@ where
         &mut self,
         tree: &mut WidgetTree<'bp>,
         states: &mut States,
+        component_attributes: &mut ComponentAttributeCollection<'bp>,
         attribute_storage: &mut AttributeStorage<'bp>,
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
@@ -725,6 +748,7 @@ where
                 components: &mut self.components,
                 dirty_widgets: &mut self.dirty_widgets,
                 states,
+                component_attributes,
                 attribute_storage,
                 assoc_events,
                 focus_queue,

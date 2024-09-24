@@ -1,24 +1,50 @@
 use std::any::Any;
 use std::borrow::Cow;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
 use anathema_state::{AnyState, CommonVal, SharedState, State, StateId, Value};
 use anathema_store::slab::Slab;
+use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::WidgetComponentId;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
-use crate::expressions::Either;
+use crate::expressions::{Either, EvalValue};
 use crate::layout::Viewport;
-use crate::nodes::ComponentAttributes;
 use crate::widget::Parent;
-use crate::Elements;
+use crate::{Attributes, Elements};
 
 pub mod events;
+
+pub type ComponentAttributes<'bp> = SmallMap<&'bp str, crate::values::Value<'bp, EvalValue<'bp>>>;
+
+pub struct ComponentAttributeCollection<'bp> {
+    inner: HashMap<WidgetComponentId, ComponentAttributes<'bp>>,
+}
+
+impl<'bp> ComponentAttributeCollection<'bp> {
+    pub fn empty() -> Self {
+        Self {
+            inner: HashMap::new()
+        }
+    }
+
+    pub(crate) fn insert(&mut self, id: WidgetComponentId, attributes: ComponentAttributes<'bp>) {
+        self.inner.insert(id, attributes);
+    }
+
+    pub fn get(&self, component_id: WidgetComponentId) -> Option<&ComponentAttributes<'bp>> {
+        self.inner.get(&component_id)
+    }
+
+    pub fn get_unchecked(&self, component_id: WidgetComponentId) -> &ComponentAttributes<'bp> {
+        self.inner.get(&component_id).expect("a component always have attributes associated with it")
+    }
+}
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
 pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
@@ -170,8 +196,8 @@ impl Emitter {
 
 pub struct Context<'rt, T> {
     inner: UntypedContext<'rt>,
-    _p: PhantomData<T>,
     component_ctx: ComponentContext<'rt>,
+    _p: PhantomData<T>,
 }
 
 impl<'rt, T: 'static> Context<'rt, T> {
@@ -225,7 +251,7 @@ impl<'rt, T: 'static> Context<'rt, T> {
     /// Get a value from external state
     pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
         let val = self.component_ctx.attributes.get(key);
-        val.and_then(|(_, val)| val.load_common_val())
+        val.and_then(|val| val.load_common_val())
     }
 
     /// Send a message to a given component
@@ -275,8 +301,8 @@ pub struct ComponentContext<'rt> {
     pub state_id: StateId,
     pub assoc_functions: &'rt [(StringId, StringId)],
     pub assoc_events: &'rt mut AssociatedEvents,
+    pub attributes: &'rt ComponentAttributes<'rt>,
     focus_queue: &'rt mut FocusQueue<'static>,
-    attributes: &'rt ComponentAttributes<'rt>,
 }
 
 impl<'rt> ComponentContext<'rt> {

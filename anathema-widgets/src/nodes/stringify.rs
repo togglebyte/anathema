@@ -50,7 +50,7 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
                             if i > 0 {
                                 let _ = write!(&mut self.output, ", ");
                             }
-                            let _ = write!(&mut self.output, "{}: {:?}", key.to_str(), v);
+                            let _ = write!(&mut self.output, "{}: {:?}", key.as_str(), v);
                         }
                     }
                     let _ = write!(&mut self.output, "]");

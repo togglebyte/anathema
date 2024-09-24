@@ -5,7 +5,9 @@ use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, CommonVal, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
+use anathema_widgets::components::{
+    AssociatedEvents, ComponentAttributeCollection, ComponentId, Emitter, FocusQueue, UntypedContext,
+};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetKind, WidgetTree};
 
@@ -233,6 +235,7 @@ impl<T: GlobalEvents> EventHandler<T> {
 
                     let mut event_ctx = EventCtx {
                         states,
+                        component_attributes: event_ctx.component_attributes,
                         components: event_ctx.components,
                         attribute_storage: event_ctx.attribute_storage,
                         assoc_events: event_ctx.assoc_events,
@@ -263,7 +266,8 @@ impl<T: GlobalEvents> EventHandler<T> {
                 let found = tree.with_value_mut(widget_id, |_, widget, _| {
                     let WidgetKind::Component(component) = widget else { unreachable!() };
 
-                    let Some((_, val)) = component.attributes.get(&*key) else { return false };
+                    let Some(attributes) = event_ctx.component_attributes.get(component.component_id) else { return false };
+                    let Some(val) = attributes.get(&*key) else { return false };
                     let Some(either) = val.load_common_val() else { return false };
                     let Some(cv) = either.to_common() else { return false };
                     if value != cv {
@@ -302,6 +306,7 @@ pub(crate) struct EventCtx<'a, 'rt, 'bp> {
     pub dirty_widgets: &'a mut DirtyWidgets,
     pub components: &'a mut Components,
     pub states: &'a mut States,
+    pub component_attributes: &'a mut ComponentAttributeCollection<'bp>,
     pub attribute_storage: &'a mut AttributeStorage<'bp>,
     pub assoc_events: &'a mut AssociatedEvents,
     pub focus_queue: &'a mut FocusQueue<'static>,

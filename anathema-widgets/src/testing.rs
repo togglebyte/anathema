@@ -79,7 +79,7 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let mut scope = Scope::new();
         let globals = Globals::new(Default::default());
         scope.insert_state(StateId::ZERO);
-        let value = eval(&self.test_state.0, &globals, &scope, &self.states, value_id);
+        let value = crate::expressions2::eval2(&self.test_state.0, &globals, &scope, &self.states, value_id);
         f(value)
     }
 }

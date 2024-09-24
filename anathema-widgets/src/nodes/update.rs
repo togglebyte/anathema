@@ -5,7 +5,7 @@ use anathema_templates::Globals;
 use super::element::Element;
 use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
-use crate::components::ComponentRegistry;
+use crate::components::{ComponentAttributeCollection, ComponentRegistry};
 use crate::error::Result;
 use crate::values::ValueId;
 use crate::widget::{Components, FloatingWidgets};
@@ -18,6 +18,7 @@ struct UpdateTree<'a, 'b, 'bp> {
     factory: &'a Factory,
     scope: &'b mut Scope<'bp>,
     states: &'b mut States,
+    component_attributes: &'b mut ComponentAttributeCollection<'bp>,
     component_registry: &'b mut ComponentRegistry,
     attribute_storage: &'b mut AttributeStorage<'bp>,
     floating_widgets: &'b mut FloatingWidgets,
@@ -38,6 +39,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
             self.factory,
             self.scope,
             self.states,
+            self.component_attributes,
             self.component_registry,
             self.attribute_storage,
             self.floating_widgets,
@@ -63,6 +65,7 @@ pub fn update_tree<'bp>(
     factory: &Factory,
     scope: &mut Scope<'bp>,
     states: &mut States,
+    component_attributes: &mut ComponentAttributeCollection<'bp>,
     component_registry: &mut ComponentRegistry,
     change: &Change,
     value_id: ValueId,
@@ -79,6 +82,7 @@ pub fn update_tree<'bp>(
         factory,
         scope,
         states,
+        component_attributes,
         component_registry,
         attribute_storage,
         floating_widgets,
@@ -104,7 +108,7 @@ fn update_widget<'bp>(
             if let Change::Dropped | Change::Changed = change {
                 let attributes = ctx.attribute_storage.get_mut(value_id.key());
                 if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
-                    value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states);
+                    value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, ctx.component_attributes);
                 }
             }
         }
@@ -139,10 +143,8 @@ pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>,
             scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
         }
         WidgetKind::Component(component) => {
-            for (k, (_, v)) in component.attributes.iter() {
-                let v = v.downgrade();
-                scope.scope_downgrade(k, v);
-            }
+            scope.scope_component_attributes(component.component_id);
+
             // Insert internal state
             let state_id = component.state_id();
             scope.insert_state(state_id);

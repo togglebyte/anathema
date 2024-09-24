@@ -4,6 +4,7 @@ use anathema_state::ValueRef;
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::Expression;
 
+use crate::components::ComponentAttributeCollection;
 use crate::expressions::{Either, EvalValue};
 use crate::widget::ValueKey;
 use crate::Scope;
@@ -51,7 +52,7 @@ impl<'bp, T> Value<'bp, T> {
 }
 
 impl<'bp> Value<'bp, EvalValue<'bp>> {
-    pub(crate) fn load_common_val(&self) -> Option<Either<'_>> {
+    pub fn load_common_val(&self) -> Option<Either<'_>> {
         self.inner.load_common_val()
     }
 
@@ -64,12 +65,13 @@ impl<'bp> Value<'bp, EvalValue<'bp>> {
         globals: &'bp anathema_templates::Globals,
         scope: &Scope<'bp>,
         states: &anathema_state::States,
+        component_attributes: &ComponentAttributeCollection<'bp>,
     ) {
         if !self.inner.contains_index() {
             return;
         }
         let Some(expr) = self.expr else { return };
-        let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, id);
+        let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, component_attributes, id);
         self.inner = inner;
     }
 }

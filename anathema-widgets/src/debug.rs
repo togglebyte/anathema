@@ -37,6 +37,8 @@ impl DebugWriter for EvalValueDebug<'_> {
             EvalValue::Op(_, _, _) => todo!(),
             EvalValue::Not(_) => todo!(),
             EvalValue::Equality(_, _, _) => todo!(),
+            EvalValue::State(_) => todo!(),
+            EvalValue::ComponentAttributes(_) => todo!(),
         }
     }
 }

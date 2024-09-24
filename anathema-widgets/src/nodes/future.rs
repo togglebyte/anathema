@@ -6,7 +6,7 @@ use super::element::Element;
 use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 use super::update::scope_value;
-use crate::components::ComponentRegistry;
+use crate::components::{ComponentAttributeCollection, ComponentRegistry};
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
@@ -19,6 +19,7 @@ struct ResolveFutureValues<'a, 'b, 'bp> {
     factory: &'a Factory,
     scope: &'b mut Scope<'bp>,
     states: &'b mut States,
+    component_attributes: &'b mut ComponentAttributeCollection<'bp>,
     component_registry: &'b mut ComponentRegistry,
     attribute_storage: &'b mut AttributeStorage<'bp>,
     floating_widgets: &'b mut FloatingWidgets,
@@ -36,6 +37,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
             self.factory,
             self.scope,
             self.states,
+            self.component_attributes,
             self.component_registry,
             self.attribute_storage,
             self.floating_widgets,
@@ -57,6 +59,7 @@ pub fn try_resolve_future_values<'bp>(
     factory: &Factory,
     scope: &mut Scope<'bp>,
     states: &mut States,
+    component_attributes: &mut ComponentAttributeCollection<'bp>,
     component_registry: &mut ComponentRegistry,
     value_id: ValueId,
     path: &[u16],
@@ -71,6 +74,7 @@ pub fn try_resolve_future_values<'bp>(
         factory,
         scope,
         states,
+        component_attributes,
         component_registry,
         attribute_storage,
         floating_widgets,
@@ -98,7 +102,14 @@ fn try_resolve_value<'bp>(
             };
 
             if let Some(expr) = val.expr {
-                let value = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);
+                let value = eval(
+                    expr,
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    ctx.component_attributes,
+                    value_id,
+                );
                 *val = value;
             }
         }
@@ -112,6 +123,7 @@ fn try_resolve_value<'bp>(
                 ctx.globals,
                 ctx.scope,
                 ctx.states,
+                ctx.component_attributes,
                 value_id,
             );
 
@@ -179,26 +191,34 @@ fn try_resolve_value<'bp>(
         }
         WidgetKind::If(widget) => {
             if let Some(expr) = widget.cond.expr {
-                let value = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);
+                let value = eval(
+                    expr,
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    ctx.component_attributes,
+                    value_id,
+                );
                 widget.cond = value;
             }
         }
         WidgetKind::Else(el) => {
             let Some(val) = &mut el.cond else { return Ok(()) };
             if let Some(expr) = val.expr {
-                *val = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);
+                *val = eval(
+                    expr,
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    ctx.component_attributes,
+                    value_id,
+                );
             }
         }
         WidgetKind::ControlFlow(_) => unreachable!(),
         WidgetKind::Iteration(_) => unreachable!(),
         WidgetKind::Component(component) => {
-            for (_, (i, v)) in component.attributes.iter_mut() {
-                if *i == value_id.index() {
-                    if let Some(expr) = v.expr {
-                        *v = eval(expr, ctx.globals, ctx.scope, ctx.states, value_id);
-                    }
-                }
-            }
+            panic!()
         }
     }
 

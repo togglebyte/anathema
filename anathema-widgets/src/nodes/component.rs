@@ -4,18 +4,15 @@ use anathema_store::storage::strings::StringId;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::WidgetComponentId;
 
-use crate::components::{AnyComponent, ComponentKind};
+use crate::components::{AnyComponent, ComponentAttributes, ComponentKind};
 use crate::expressions::EvalValue;
-use crate::{Value, ValueIndex};
-
-pub type ComponentAttributes<'bp> = SmallMap<&'bp str, (ValueIndex, Value<'bp, EvalValue<'bp>>)>;
+use crate::{Value, ValueIndex, WidgetId};
 
 #[derive(Debug)]
 pub struct Component<'bp> {
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
-    pub attributes: ComponentAttributes<'bp>,
     pub component_id: WidgetComponentId,
     pub parent: Option<WidgetComponentId>,
     pub kind: ComponentKind,
@@ -27,7 +24,6 @@ impl<'bp> Component<'bp> {
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
-        attributes: ComponentAttributes<'bp>,
         component_id: WidgetComponentId,
         kind: ComponentKind,
         assoc_functions: &'bp [(StringId, StringId)],
@@ -37,7 +33,6 @@ impl<'bp> Component<'bp> {
             body,
             dyn_component,
             state_id,
-            attributes,
             component_id,
             kind,
             assoc_functions,

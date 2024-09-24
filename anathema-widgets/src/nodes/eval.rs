@@ -6,8 +6,10 @@ use anathema_templates::{Globals, WidgetComponentId};
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
-use super::{component, controlflow, ComponentAttributes};
-use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
+use super::{component, controlflow};
+use crate::components::{
+    AnyComponent, ComponentAttributeCollection, ComponentAttributes, ComponentKind, ComponentRegistry,
+};
 use crate::container::Container;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
@@ -21,6 +23,7 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) factory: &'a Factory,
     pub(super) scope: &'b mut Scope<'bp>,
     pub(super) states: &'b mut States,
+    pub(super) component_attributes: &'b mut ComponentAttributeCollection<'bp>,
     pub(super) component_registry: &'b mut ComponentRegistry,
     pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
@@ -33,6 +36,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         factory: &'a Factory,
         scope: &'b mut Scope<'bp>,
         states: &'b mut States,
+        component_attributes: &'b mut ComponentAttributeCollection<'bp>,
         component_registry: &'b mut ComponentRegistry,
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
@@ -43,6 +47,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
             factory,
             scope,
             states,
+            component_attributes,
             component_registry,
             attribute_storage,
             floating_widgets,
@@ -93,14 +98,28 @@ impl Evaluator for SingleEval {
 
         if let Some(expr) = single.value.as_ref() {
             let value = attributes.insert_with(ValueKey::Value, |value_index| {
-                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
+                eval(
+                    expr,
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    ctx.component_attributes,
+                    (widget_id, value_index),
+                )
             });
             attributes.value = Some(value);
         }
 
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(expr, ctx.globals, ctx.scope, ctx.states, (widget_id, value_index))
+                eval(
+                    expr,
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    ctx.component_attributes,
+                    (widget_id, value_index),
+                )
             });
         }
 
@@ -193,7 +212,14 @@ impl Evaluator for ForLoopEval {
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
-            collection: eval_collection(&for_loop.data, ctx.globals, ctx.scope, ctx.states, value_id),
+            collection: eval_collection(
+                &for_loop.data,
+                ctx.globals,
+                ctx.scope,
+                ctx.states,
+                ctx.component_attributes,
+                value_id,
+            ),
             body: &for_loop.body,
         };
 
@@ -282,7 +308,14 @@ impl Evaluator for IfEval {
         let node_id = transaction.node_id();
 
         let value_id = (node_id, ValueIndex::ZERO);
-        let cond = eval(&input.cond, ctx.globals, ctx.scope, ctx.states, value_id);
+        let cond = eval(
+            &input.cond,
+            ctx.globals,
+            ctx.scope,
+            ctx.states,
+            ctx.component_attributes,
+            value_id,
+        );
 
         let if_widget = controlflow::If { cond, show: false };
 
@@ -315,10 +348,16 @@ impl Evaluator for ElseEval {
         let widget_id = transaction.node_id();
         let value_id = (widget_id, ValueIndex::ZERO);
 
-        let cond = input
-            .cond
-            .as_ref()
-            .map(|cond| eval(cond, ctx.globals, ctx.scope, ctx.states, value_id));
+        let cond = input.cond.as_ref().map(|cond| {
+            eval(
+                cond,
+                ctx.globals,
+                ctx.scope,
+                ctx.states,
+                ctx.component_attributes,
+                value_id,
+            )
+        });
 
         let else_widget = controlflow::Else {
             cond,
@@ -354,20 +393,28 @@ impl Evaluator for ComponentEval {
         let transaction = tree.insert(parent);
 
         let mut attributes = ComponentAttributes::empty();
-        for (i, (k, v)) in input.attributes.iter().enumerate() {
-            let idx: SmallIndex = (i as u8).into();
-            let val = eval(v, ctx.globals, ctx.scope, ctx.states, (transaction.node_id(), idx));
-            attributes.set(&**k, (idx, val));
+
+        for (key, expr) in input.attributes.iter() {
+            attributes.insert_with(key, |value_index| {
+                eval(
+                    expr,
+                    ctx.globals,
+                    ctx.scope,
+                    ctx.states,
+                    ctx.component_attributes,
+                    (transaction.node_id(), value_index),
+                )
+            });
         }
 
         let component_id = usize::from(input.id).into();
+        ctx.component_attributes.insert(component_id, attributes);
         let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(state);
         let comp_widget = component::Component::new(
             &input.body,
             component,
             state_id,
-            attributes,
             component_id,
             kind,
             &input.assoc_functions,
@@ -391,11 +438,8 @@ impl Evaluator for ComponentEval {
 
             // Expose attributes to the template
 
-            // Insert external state (if there is one)
-            for (k, (_, v)) in component.attributes.iter() {
-                let v = v.downgrade();
-                ctx.scope.scope_downgrade(k, v);
-            }
+            // Scope attributes
+            ctx.scope.scope_component_attributes(component_id);
 
             for bp in &input.body {
                 eval_blueprint(bp, ctx, parent, tree)?;

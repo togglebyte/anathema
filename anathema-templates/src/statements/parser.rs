@@ -6,7 +6,6 @@ use crate::error::{src_line_no, ParseError, ParseErrorKind, Result};
 use crate::expressions::parser::parse_expr;
 use crate::expressions::Expression;
 use crate::token::{Kind, Operator, Tokens, Value};
-// use crate::variables::Visibility;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum State {

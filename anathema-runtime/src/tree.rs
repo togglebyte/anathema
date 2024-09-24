@@ -38,13 +38,14 @@ impl<'bp> Tree<'bp> for WidgetTree<'bp> {
             );
             let state = event_ctx.states.get_mut(state_id);
 
+            let attributes = event_ctx.component_attributes.get_unchecked(component.component_id);
             let component_ctx = ComponentContext::new(
                 state_id,
                 component.parent,
                 component.assoc_functions,
                 event_ctx.assoc_events,
                 event_ctx.focus_queue,
-                &component.attributes,
+                attributes,
             );
 
             let event_ctx = AnyEventCtx {

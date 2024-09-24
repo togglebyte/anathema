@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::ops::ControlFlow;
@@ -234,11 +235,17 @@ pub enum ValueKey<'bp> {
 }
 
 impl ValueKey<'_> {
-    pub fn to_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             ValueKey::Value => "value",
             ValueKey::Attribute(name) => name,
         }
+    }
+}
+
+impl Borrow<str> for ValueKey<'_> {
+    fn borrow(&self) -> &str {
+        self.as_str()
     }
 }
 
