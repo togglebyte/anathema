@@ -85,24 +85,24 @@ fn derive_named_state(fields: &FieldsNamed) -> (Result, Result) {
 
     (
         Ok(quote! {
-            # use ::anathema::state::Path;
+            # use ::anathema::state::{Value, Path};
             let Path::Key(key) = path else { return None };
             match key {
                 #(
                     #field_names => {
-                        Some(#field_idents.value_ref(sub))
+                        Some(Value::value_ref(#field_idents, sub))
                     }
                 )*
                 _ => None,
             }
         }),
         Ok(quote! {
-            # use ::anathema::state::Path;
+            # use ::anathema::state::{Value, Path};
             let Path::Key(key) = path else { return None };
             match key {
                 #(
                     #field_names => {
-                        Some(#field_idents.to_pending())
+                        Some(Value::to_pending(#field_idents))
                     }
                 )*
                 _ => None,
@@ -126,18 +126,18 @@ fn derive_unnamed_state(fields: &FieldsUnnamed) -> (Result, Result) {
 
     (
         Ok(quote! {
-            # use ::anathema::state::Path;
+            # use ::anathema::state::{Value, Path};
             let Path::Index(index) = path else { return None };
             match index {
-                #(#field_indices => Some(#field_names.value_ref(sub)),)*
+                #(#field_indices => Some(Value::value_ref(#field_names, sub)),)*
                 _ => None,
             }
         }),
         Ok(quote! {
-            # use ::anathema::state::Path;
+            # use ::anathema::state::{Value, Path};
             let Path::Index(index) = path else { return None };
             match index {
-                #(#field_indices => Some(#field_names.to_pending()),)*
+                #(#field_indices => Some(Value::to_pending(#field_names)),)*
                 _ => None,
             }
         }),
