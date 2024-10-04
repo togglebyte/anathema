@@ -71,23 +71,23 @@ mod test {
     use anathema_store::tree::Tree;
     use anathema_templates::Document;
 
-    use crate::components::ComponentRegistry;
+    use crate::components::{ComponentAttributeCollection, ComponentRegistry};
     use crate::nodes::stringify::Stringify;
     use crate::scope::Scope;
     use crate::testing::setup_test_factory;
-    use crate::{eval_blueprint, AttributeStorage, Components, EvalContext, FloatingWidgets};
+    use crate::{eval_blueprint, AttributeStorage, Components, DirtyWidgets, EvalContext, FloatingWidgets};
 
     #[test]
     fn if_stmt() {
         let tpl = "
-        if a
-            test a
-            test a
-            test a
-            test a
+        if state.a
+            test state.a
+            test state.a
+            test state.a
+            test state.a
         else
             test
-            test !a
+            test !state.a
         ";
         let mut map = Map::empty();
         map.insert("a", true);
@@ -100,7 +100,9 @@ mod test {
         let factory = setup_test_factory();
         let mut component_registry = ComponentRegistry::new();
         let mut components = Components::new();
+        let mut dirty_widgets = DirtyWidgets::empty();
         let mut states = States::new();
+        let mut component_attributes = ComponentAttributeCollection::empty();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
@@ -110,10 +112,12 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
+            &mut component_attributes,
             &mut component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
             &mut components,
+            &mut dirty_widgets,
         );
 
         eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();

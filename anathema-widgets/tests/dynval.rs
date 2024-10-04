@@ -5,7 +5,7 @@ mod run;
 #[test]
 fn future_dyn_if() {
     let template = r#"
-if value
+if state.value
     test "hello"
         "#;
 
@@ -32,7 +32,7 @@ if value
 #[test]
 fn future_dyn_collection() {
     let template = r#"
-for value in list
+for value in state.list
     test value
     "#;
 
@@ -62,9 +62,27 @@ fn future_dyn_value() {
     let f2 = r#"test Str("hello world")"#;
 
     let state = Map::empty();
-    TestCase::setup("test value")
+    TestCase::setup("test state.value")
         .build(state)
         .expect_frame("test")
         .with_state(0, |state| state.insert("value", "hello world"))
+        .expect_frame(f2);
+}
+
+#[test]
+fn future_map_value() {
+    let f1 = r#"test"#;
+    let f2 = r#"test Str("hello")"#;
+
+    let state = Map::<Map<String>>::empty();
+    TestCase::setup("test state.map.value")
+        .build(state)
+        .with_state(0, |state| state.insert("map", Map::<String>::empty()))
+        .expect_frame(f1)
+        .with_state(0, |state| {
+            let mut state = state.to_mut();
+            let map = state.get_mut("map").unwrap();
+            map.insert("value", "hello".to_string());
+        })
         .expect_frame(f2);
 }

@@ -184,6 +184,16 @@ impl Subscribers {
     fn clear(&mut self) {
         *self = Subscribers::Empty;
     }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        match self {
+            Subscribers::Empty => 0,
+            Subscribers::One(_) => 1,
+            Subscribers::Arr(_, index) => index.0 as usize,
+            Subscribers::Heap(vec) => vec.len(),
+        }
+    }
 }
 
 pub(super) struct SubscriberMap {
@@ -228,7 +238,7 @@ impl SubscriberMap {
 
     #[cfg(test)]
     fn count(&self) -> usize {
-        self.inner.iter_values().count()
+        self.inner.iter_values().map(|s| s.len()).sum()
     }
 }
 

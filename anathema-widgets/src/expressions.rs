@@ -6,16 +6,10 @@ use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, Sha
 use anathema_templates::expressions::{Equality, Op};
 use anathema_templates::{Expression, Globals, WidgetComponentId};
 
-use crate::components::{ComponentAttributeCollection, ComponentAttributes};
-use crate::expressions2::Resolver2;
+use crate::components::ComponentAttributeCollection;
 use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
 use crate::Value;
-
-pub(crate) fn future_value<'a>(id: ValueId) -> EvalValue<'a> {
-    register_future(id);
-    EvalValue::Empty
-}
 
 pub enum Either<'a> {
     Static(CommonVal<'a>),
@@ -34,19 +28,6 @@ impl<'a> Either<'a> {
         match self {
             Either::Static(val) => val.to_number(),
             Either::Dyn(state) => state.to_common().and_then(|v| v.to_number()),
-        }
-    }
-
-    pub(crate) fn load_path(&self) -> Option<Path<'_>> {
-        match self {
-            Either::Static(CommonVal::Int(n)) => Some(Path::Index(*n as usize)),
-            Either::Static(CommonVal::Str(s)) => Some(Path::Key(s)),
-            Either::Static(_) => None,
-            Either::Dyn(state) => match state.to_common()? {
-                CommonVal::Int(n) => Some(Path::Index(n as usize)),
-                CommonVal::Str(s) => Some(Path::Key(s)),
-                _ => None,
-            },
         }
     }
 
@@ -138,8 +119,7 @@ impl<'bp> EvalValue<'bp> {
         }
     }
 
-    // TODO: make this private
-    pub(crate) fn get(
+    fn get(
         &self,
         path: Path<'_>,
         value_id: ValueId,
@@ -252,7 +232,7 @@ impl<'bp> EvalValue<'bp> {
                 let rhs = rhs.inner_upgrade(value_id).into();
                 Self::Equality(lhs, rhs, *eq)
             }
-            Self::Empty => future_value(value_id),
+            Self::Empty => Self::Empty,
         }
     }
 
@@ -325,8 +305,8 @@ impl<'bp> EvalValue<'bp> {
         match self {
             EvalValue::Static(val) => Some(Either::Static(*val)),
             EvalValue::Dyn(val) => Some(Either::Dyn(val.as_state()?)),
-            EvalValue::State(id) => panic!(),
-            EvalValue::ComponentAttributes(id) => None, // There should be no instance where attributes is a single value
+            EvalValue::State(_) => panic!(),
+            EvalValue::ComponentAttributes(_) => None, // There should be no instance where attributes is a single value
             EvalValue::Index(val, _) => val.load_common_val(),
             EvalValue::Pending(_) => None,
             EvalValue::ExprMap(_) => None,
@@ -438,17 +418,6 @@ impl<'bp> EvalValue<'bp> {
             e => panic!("{e:?}"),
         }
     }
-
-    // If the eval value contains an index this value would
-    // be subject to change if the index it self was updated
-    pub(crate) fn contains_index(&self) -> bool {
-        match self {
-            Self::Index(..) => true,
-            Self::ExprList(list) => list.iter().any(Self::contains_index),
-            Self::ExprMap(_) => todo!(),
-            _ => false,
-        }
-    }
 }
 
 impl From<PendingValue> for EvalValue<'_> {
@@ -480,181 +449,157 @@ impl<'a> TryFrom<&EvalValue<'a>> for &'a str {
     }
 }
 
-// struct ValueResolver<'bp> {
-//     globals: &'bp Globals,
-//     scope_offset: Option<usize>,
-//     value_id: ValueId,
-// }
+pub struct Resolver<'scope, 'bp> {
+    globals: &'bp Globals,
+    _scope_level: usize,
+    subscriber: ValueId,
+    scope: &'scope Scope<'bp>,
+    states: &'scope States,
+    component_attributes: &'scope ComponentAttributeCollection<'bp>,
+    register_future_value: bool,
+}
 
-// impl<'bp> ValueResolver<'bp> {
-//     fn new(globals: &'bp Globals, value_id: ValueId) -> Self {
-//         Self {
-//             scope_offset: None,
-//             globals,
-//             value_id,
-//         }
-//     }
+impl<'scope, 'bp> Resolver<'scope, 'bp> {
+    pub(crate) fn new(
+        _scope_level: usize,
+        scope: &'scope Scope<'bp>,
+        states: &'scope States,
+        component_attributes: &'scope ComponentAttributeCollection<'bp>,
+        globals: &'bp Globals,
+        subscriber: ValueId,
+    ) -> Self {
+        Self {
+            scope,
+            states,
+            component_attributes,
+            globals,
+            _scope_level,
+            subscriber,
+            register_future_value: false,
+        }
+    }
 
-//     fn reset_offset(&self) -> Self {
-//         Self {
-//             scope_offset: None,
-//             globals: self.globals,
-//             value_id: self.value_id,
-//         }
-//     }
+    pub(crate) fn root(
+        scope: &'scope Scope<'bp>,
+        states: &'scope States,
+        component_attributes: &'scope ComponentAttributeCollection<'bp>,
+        globals: &'bp Globals,
+        subscriber: ValueId,
+    ) -> Self {
+        Self::new(0, scope, states, component_attributes, globals, subscriber)
+    }
 
-//     // NOTE
-//     // Eval values will never be pending here as pending values are resolved by the scope lookup.
-//     // This should probably be expressed with the type system instead but since downgraded values
-//     // are recursive a wrapper won't do.
-//     fn lookup(&mut self, expr: &'bp Expression, scope: &Scope<'bp>, states: &States) -> EvalValue<'bp> {
-//         match expr {
+    pub fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
+        match expression {
+            // -----------------------------------------------------------------------------
+            //   - Values -
+            // -----------------------------------------------------------------------------
+            &Expression::Primitive(val) => EvalValue::Static(val.into()),
+            Expression::Str(s) => EvalValue::Static(CommonVal::Str(s)),
+            Expression::Map(map) => {
+                let inner = map
+                    .iter()
+                    .map(|(key, expr)| (key.clone(), self.resolve(expr)))
+                    .collect();
+                EvalValue::ExprMap(inner)
+            }
+            Expression::List(list) => {
+                let inner = list.iter().map(|expr| self.resolve(expr)).collect();
+                EvalValue::ExprList(inner)
+            }
 
-//             Expression::Ident(ident) => {
-//                 let lookup = ScopeLookup::new(&**ident, self.value_id);
+            // -----------------------------------------------------------------------------
+            //   - Conditionals -
+            // -----------------------------------------------------------------------------
+            Expression::Not(expr) => EvalValue::Not(self.resolve(expr).into()),
+            Expression::Equality(lhs, rhs, eq) => {
+                EvalValue::Equality(self.resolve(lhs).into(), self.resolve(rhs).into(), *eq)
+            }
 
-//                 let Some(val) = scope.get(lookup, &mut self.scope_offset, states) else {
-//                     match self.globals.get(ident) {
-//                         Some(expr) => return :elf.reset_offset().resolve(expr, scope, states),
-//                         None => return future_value(self.value_id),
-//                     }
-//                 };
+            // -----------------------------------------------------------------------------
+            //   - Lookups -
+            // -----------------------------------------------------------------------------
+            Expression::Ident(_) | Expression::Index(_, _) => self.lookup(expression),
 
-//                 val
-//             }
-//             Expression::Index(lhs, rhs) => {
-//                 // -----------------------------------------------------------------------------
-//                 //   - Index -
-//                 // -----------------------------------------------------------------------------
-//                 let rhs = self.reset_offset().resolve(rhs, scope, states);
-//                 if rhs == EvalValue::Empty {
-//                     // No need to register a future value here as that is already
-//                     // done when trying to resolve the `rhs`.
-//                     return EvalValue::Empty;
-//                 }
-//                 let Some(common_val) = rhs.load_common_val() else { return future_value(self.value_id) };
-//                 let Some(path) = common_val.load_path() else { return future_value(self.value_id) };
+            // -----------------------------------------------------------------------------
+            //   - Maths -
+            // -----------------------------------------------------------------------------
+            Expression::Negative(expr) => EvalValue::Negative(self.resolve(expr).into()),
+            Expression::Op(lhs, rhs, op) => {
+                let lhs = self.resolve(lhs);
+                let rhs = self.resolve(rhs);
+                EvalValue::Op(lhs.into(), rhs.into(), *op)
+            }
 
-//                 // -----------------------------------------------------------------------------
-//                 //   - Static list -
-//                 // -----------------------------------------------------------------------------
-//                 if let (Expression::List(list), Path::Index(i)) = (lhs.as_ref(), path) {
-//                     let Some(expr) = list.get(i) else { return future_value(self.value_id) };
-//                     let value = self.reset_offset().resolve(expr, scope, states);
-//                     drop(common_val);
-//                     return EvalValue::Index(value.into(), rhs.into());
-//                 }
+            // -----------------------------------------------------------------------------
+            //   - Either -
+            // -----------------------------------------------------------------------------
+            Expression::Either(lhs, rhs) => match self.resolve(lhs) {
+                EvalValue::Empty => self.resolve(rhs),
+                value => value,
+            },
 
-//                 // -----------------------------------------------------------------------------
-//                 //   - Static map -
-//                 // -----------------------------------------------------------------------------
-//                 if let (Expression::Map(map), Path::Key(key)) = (lhs.as_ref(), path) {
-//                     let Some(expr) = map.get(key) else { return future_value(self.value_id) };
-//                     let value = self.reset_offset().resolve(expr, scope, states);
-//                     drop(common_val);
-//                     return EvalValue::Index(value.into(), rhs.into());
-//                 }
+            // -----------------------------------------------------------------------------
+            //   - Function call -
+            // -----------------------------------------------------------------------------
+            Expression::Call { fun: _, args: _ } => todo!(),
+        }
+    }
 
-//                 let lhs = self.resolve(lhs, scope, states);
-//                 match &lhs {
-//                     EvalValue::Index(val, _) => match val.get(path, self.value_id, states) {
-//                         Some(val) => {
-//                             drop(common_val);
-//                             EvalValue::Index(val.into(), EvalValue::Index(lhs.into(), rhs.into()).into())
-//                         }
-//                         None => future_value(self.value_id),
-//                     },
-//                     EvalValue::Dyn(value_ref) => {
-//                         match value_ref
-//                             .as_state()
-//                             .and_then(|state| state.state_get(path, self.value_id))
-//                         {
-//                             Some(value) => {
-//                                 drop(common_val);
-//                                 EvalValue::Index(
-//                                     EvalValue::Dyn(value).into(),
-//                                     EvalValue::Index(lhs.into(), rhs.into()).into(),
-//                                 )
-//                             }
-//                             None => future_value(self.value_id),
-//                         }
-//                     }
-//                     EvalValue::ExprList(_) | EvalValue::ExprMap(_) => match lhs.get(path, self.value_id, states) {
-//                         Some(val) => val,
-//                         None => future_value(self.value_id),
-//                     },
-//                     _ => future_value(self.value_id),
-//                 }
-//             }
-//             _ => EvalValue::Empty,
-//         }
-//     }
+    fn lookup(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
+        match expression {
+            Expression::Ident(ident) => match &**ident {
+                "state" => self.scope.get_state(),
+                "attributes" => self.scope.get_component_attributes(),
+                path => {
+                    let lookup = ScopeLookup::new(Path::from(path), self.subscriber);
+                    match self.scope.get(lookup, &mut None, self.states) {
+                        Some(val) => val,
+                        None => match self.globals.get(path) {
+                            Some(value) => self.resolve(value),
+                            None => {
+                                self.register_future_value = true;
+                                EvalValue::Empty
+                            }
+                        },
+                    }
+                }
+            },
+            Expression::Index(lhs, rhs) => {
+                let value = self.resolve(lhs);
 
-//     fn resolve(&mut self, expr: &'bp Expression, scope: &Scope<'bp>, states: &States) -> EvalValue<'bp> {
-//         use {EvalValue as V, Expression as E};
+                // The RHS is always the index / ident.
+                // Note that this might still be an op, e.g a + 1
+                // So the expression has to be evaluated before it can be used as an index.
+                //
+                // Once evaluated it should be either a string or a number
+                let index = match &**rhs {
+                    Expression::Str(ident) => Path::from(&**ident),
+                    expr => {
+                        let index = self.resolve(expr);
+                        if let EvalValue::Empty = index {
+                            self.register_future_value = true;
+                            return EvalValue::Empty;
+                        }
+                        let index = index.load_number().unwrap().as_int() as usize;
+                        Path::from(index)
+                    }
+                };
 
-//         match expr {
-//             // -----------------------------------------------------------------------------
-//             //   - Values -
-//             // -----------------------------------------------------------------------------
-//             E::Primitive(val) => V::Static((*val).into()),
-//             E::Str(s) => V::Static(CommonVal::Str(s)),
-//             E::Map(map) => {
-//                 let inner = map
-//                     .iter()
-//                     .map(|(key, expr)| (key.clone(), self.reset_offset().resolve(expr, scope, states)))
-//                     .collect();
-//                 V::ExprMap(inner)
-//             }
-//             E::List(list) => {
-//                 let inner = list
-//                     .iter()
-//                     .map(|expr| self.reset_offset().resolve(expr, scope, states))
-//                     .collect();
-//                 V::ExprList(inner)
-//             }
+                let val = match value.get(index, self.subscriber, self.states, self.component_attributes) {
+                    Some(val) => val,
+                    None => {
+                        self.register_future_value = true;
+                        EvalValue::Empty
+                    }
+                };
 
-//             // -----------------------------------------------------------------------------
-//             //   - Lookups -
-//             // -----------------------------------------------------------------------------
-//             E::Ident(_) | E::Index(..) => self.lookup(expr, scope, states),
-
-//             // -----------------------------------------------------------------------------
-//             //   - Conditionals -
-//             // -----------------------------------------------------------------------------
-//             E::Not(expr) => V::Not(self.resolve(expr, scope, states).into()),
-//             E::Equality(lhs, rhs, eq) => V::Equality(
-//                 self.reset_offset().resolve(lhs, scope, states).into(),
-//                 self.reset_offset().resolve(rhs, scope, states).into(),
-//                 *eq,
-//             ),
-
-//             // -----------------------------------------------------------------------------
-//             //   - Maths -
-//             // -----------------------------------------------------------------------------
-//             E::Negative(expr) => V::Negative(self.resolve(expr, scope, states).into()),
-
-//             E::Op(lhs, rhs, op) => {
-//                 let lhs = self.reset_offset().resolve(lhs, scope, states);
-//                 let rhs = self.reset_offset().resolve(rhs, scope, states);
-//                 V::Op(lhs.into(), rhs.into(), *op)
-//             }
-
-//             // -----------------------------------------------------------------------------
-//             //   - Either -
-//             // -----------------------------------------------------------------------------
-//             E::Either(lhs, rhs) => match self.reset_offset().resolve(lhs, scope, states) {
-//                 EvalValue::Empty => self.reset_offset().resolve(rhs, scope, states),
-//                 value => value,
-//             },
-
-//             // -----------------------------------------------------------------------------
-//             //   - Function call -
-//             // -----------------------------------------------------------------------------
-//             E::Call { fun: _, args: _ } => todo!(),
-//         }
-//     }
-// }
+                val
+            }
+            _ => unreachable!("lookup only handles ident and index"),
+        }
+    }
+}
 
 pub(crate) fn eval<'bp>(
     expr: &'bp Expression,
@@ -665,7 +610,14 @@ pub(crate) fn eval<'bp>(
     value_id: impl Into<ValueId>,
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
-    let value = Resolver2::root(scope, states, component_attributes, globals, value_id).resolve(expr);
+
+    let mut resolver = Resolver::root(scope, states, component_attributes, globals, value_id);
+    let value = resolver.resolve(expr);
+
+    if resolver.register_future_value {
+        register_future(value_id);
+    }
+
     Value::new(value, Some(expr))
 }
 
@@ -677,7 +629,8 @@ pub(crate) fn eval_collection<'bp>(
     component_attributes: &ComponentAttributeCollection<'bp>,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
-    let value = Resolver2::root(scope, states, component_attributes, globals, value_id).resolve(expr);
+    let mut resolver = Resolver::root(scope, states, component_attributes, globals, value_id);
+    let value = resolver.resolve(expr);
 
     let collection = match value {
         EvalValue::Dyn(val) => Collection::Dyn(val),
@@ -689,6 +642,10 @@ pub(crate) fn eval_collection<'bp>(
         },
         _ => Collection::Future,
     };
+
+    if let Collection::Future = collection {
+        register_future(value_id);
+    }
 
     Value::new(collection, Some(expr))
 }
@@ -713,9 +670,12 @@ mod test {
         lists.push_back(numbers);
 
         ScopedTest::new()
-            .with_value("a", lists)
+            .with_state_value("a", lists)
             // Subtract 115 from a[0][0]
-            .with_expr(sub(index(index(ident("a"), num(0)), num(0)), num(115)))
+            .with_expr(sub(
+                index(index(index(ident("state"), strlit("a")), num(0)), num(0)),
+                num(115),
+            ))
             .eval(|value| {
                 let val = value.load::<u32>().unwrap();
                 assert_eq!(val, 8);
@@ -731,8 +691,11 @@ mod test {
         lists.push_back(map);
 
         ScopedTest::new()
-            .with_value("list", lists)
-            .with_expr(add(index(index(ident("list"), num(0)), strlit("val")), num(1)))
+            .with_state_value("list", lists)
+            .with_expr(add(
+                index(index(index(ident("state"), strlit("list")), num(0)), strlit("val")),
+                num(1),
+            ))
             .eval(|value| {
                 let val = value.load::<u32>().unwrap();
                 assert_eq!(val, 2);
@@ -741,7 +704,9 @@ mod test {
 
     #[test]
     fn simple_lookup() {
-        let mut t = ScopedTest::new().with_value("a", 1u32).with_expr(ident("a"));
+        let mut t = ScopedTest::new()
+            .with_state_value("a", 1u32)
+            .with_expr(index(ident("state"), strlit("a")));
 
         t.eval(|value| {
             let val = value.load::<u32>().unwrap();
@@ -752,9 +717,12 @@ mod test {
     #[test]
     fn dyn_add() {
         let mut t = ScopedTest::new()
-            .with_value("a", 1u32)
-            .with_value("b", 2u32)
-            .with_expr(mul(add(ident("b"), ident("b")), ident("b")));
+            .with_state_value("a", 1u32)
+            .with_state_value("b", 2u32)
+            .with_expr(mul(
+                add(index(ident("state"), strlit("b")), index(ident("state"), strlit("b"))),
+                index(ident("state"), strlit("b")),
+            ));
 
         t.eval(|value| {
             let val = value.load::<u32>().unwrap();
@@ -765,8 +733,8 @@ mod test {
     #[test]
     fn dyn_neg() {
         ScopedTest::new()
-            .with_value("a", 2i32)
-            .with_expr(neg(ident("a")))
+            .with_state_value("a", 2i32)
+            .with_expr(neg(index(ident("state"), strlit("a"))))
             .eval(|value| {
                 let val = value.load::<i32>().unwrap();
                 assert_eq!(val, -2);
@@ -776,8 +744,8 @@ mod test {
     #[test]
     fn dyn_not() {
         ScopedTest::new()
-            .with_value("a", true)
-            .with_expr(not(ident("a")))
+            .with_state_value("a", true)
+            .with_expr(not(index(ident("state"), strlit("a"))))
             .eval(|value| {
                 let val = value.load::<bool>().unwrap();
                 assert!(!val);
@@ -786,17 +754,19 @@ mod test {
 
     #[test]
     fn dyn_not_no_val() {
-        ScopedTest::<bool, _>::new().with_expr(not(ident("a"))).eval(|value| {
-            let val = value.load::<bool>().unwrap();
-            assert!(val);
-        });
+        ScopedTest::<bool, _>::new()
+            .with_expr(not(index(ident("state"), strlit("a"))))
+            .eval(|value| {
+                let val = value.load::<bool>().unwrap();
+                assert!(val);
+            });
     }
 
     #[test]
     fn bool_eval() {
         ScopedTest::new()
-            .with_value("a", true)
-            .with_expr(not(not(ident("a"))))
+            .with_state_value("a", true)
+            .with_expr(not(not(index(ident("state"), strlit("a")))))
             .eval(|value| {
                 let val = value.load::<bool>().unwrap();
                 assert!(val);
@@ -806,9 +776,12 @@ mod test {
     #[test]
     fn equality() {
         ScopedTest::new()
-            .with_value("a", 1)
-            .with_value("b", 2)
-            .with_expr(eq(add(ident("a"), num(1)), ident("b")))
+            .with_state_value("a", 1)
+            .with_state_value("b", 2)
+            .with_expr(eq(
+                add(index(ident("state"), strlit("a")), num(1)),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -818,9 +791,12 @@ mod test {
     #[test]
     fn str_equality() {
         ScopedTest::new()
-            .with_value("a", "lark")
-            .with_value("b", "lark")
-            .with_expr(eq(ident("a"), ident("b")))
+            .with_state_value("a", "lark")
+            .with_state_value("b", "lark")
+            .with_expr(eq(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -830,9 +806,12 @@ mod test {
     #[test]
     fn and_expr() {
         ScopedTest::new()
-            .with_value("a", true)
-            .with_value("b", true)
-            .with_expr(and(ident("a"), ident("b")))
+            .with_state_value("a", true)
+            .with_state_value("b", true)
+            .with_expr(and(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -842,9 +821,12 @@ mod test {
     #[test]
     fn or_expr() {
         ScopedTest::new()
-            .with_value("a", false)
-            .with_value("b", true)
-            .with_expr(or(ident("a"), ident("b")))
+            .with_state_value("a", false)
+            .with_state_value("b", true)
+            .with_expr(or(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -854,9 +836,12 @@ mod test {
     #[test]
     fn greater_expr() {
         ScopedTest::new()
-            .with_value("a", 2)
-            .with_value("b", 1)
-            .with_expr(greater_than(ident("a"), ident("b")))
+            .with_state_value("a", 2)
+            .with_state_value("b", 1)
+            .with_expr(greater_than(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -866,9 +851,12 @@ mod test {
     #[test]
     fn greater_equal_expr() {
         ScopedTest::new()
-            .with_value("a", 2)
-            .with_value("b", 2)
-            .with_expr(greater_than_equal(ident("a"), ident("b")))
+            .with_state_value("a", 2)
+            .with_state_value("b", 2)
+            .with_expr(greater_than_equal(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -878,9 +866,12 @@ mod test {
     #[test]
     fn lesser_expr() {
         ScopedTest::new()
-            .with_value("a", 1)
-            .with_value("b", 2)
-            .with_expr(less_than(ident("a"), ident("b")))
+            .with_state_value("a", 1)
+            .with_state_value("b", 2)
+            .with_expr(less_than(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
@@ -890,9 +881,12 @@ mod test {
     #[test]
     fn lesser_equal_expr() {
         ScopedTest::new()
-            .with_value("a", 2)
-            .with_value("b", 2)
-            .with_expr(less_than_equal(ident("a"), ident("b")))
+            .with_state_value("a", 2)
+            .with_state_value("b", 2)
+            .with_expr(less_than_equal(
+                index(ident("state"), strlit("a")),
+                index(ident("state"), strlit("b")),
+            ))
             .eval(|value| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);

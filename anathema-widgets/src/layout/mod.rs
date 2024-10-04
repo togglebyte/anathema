@@ -96,7 +96,7 @@ pub struct LayoutCtx<'a, 'bp> {
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
     pub glyph_map: &'a mut GlyphMap,
-    states: &'a States,
+    _states: &'a States,
 }
 
 impl<'a, 'bp> LayoutCtx<'a, 'bp> {
@@ -104,13 +104,13 @@ impl<'a, 'bp> LayoutCtx<'a, 'bp> {
         attribs: &'a AttributeStorage<'bp>,
         viewport: &'a Viewport,
         glyph_map: &'a mut GlyphMap,
-        states: &'a States,
+        _states: &'a States,
     ) -> Self {
         Self {
             attribs,
             viewport,
             glyph_map,
-            states,
+            _states,
         }
     }
 }

@@ -170,11 +170,11 @@ mod test {
     use anathema_templates::Document;
 
     use super::*;
-    use crate::components::ComponentRegistry;
+    use crate::components::{ComponentAttributeCollection, ComponentRegistry};
     use crate::nodes::stringify::Stringify;
     use crate::nodes::{eval_blueprint, update_tree};
     use crate::testing::setup_test_factory;
-    use crate::{AttributeStorage, Components, FloatingWidgets};
+    use crate::{AttributeStorage, Components, DirtyWidgets, FloatingWidgets};
 
     #[test]
     fn loop_remove() {
@@ -187,7 +187,7 @@ mod test {
         map.insert("a", list);
 
         let tpl = "
-        for x in a
+        for x in state.a
             test x
             // test loop
         ";
@@ -199,7 +199,9 @@ mod test {
         let factory = setup_test_factory();
         let mut component_registry = ComponentRegistry::new();
         let mut components = Components::new();
+        let mut dirty_widgets = DirtyWidgets::empty();
         let mut states = States::new();
+        let mut component_attributes = ComponentAttributeCollection::empty();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
@@ -208,10 +210,12 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
+            &mut component_attributes,
             &mut component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
             &mut components,
+            &mut dirty_widgets,
         );
 
         eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();
@@ -253,6 +257,7 @@ mod test {
                     &factory,
                     &mut scope,
                     &mut states,
+                    &mut component_attributes,
                     &mut component_registry,
                     &change,
                     sub,
@@ -261,6 +266,7 @@ mod test {
                     &mut attribute_storage,
                     &mut floating_widgets,
                     &mut components,
+                    &mut dirty_widgets,
                 );
             });
         });
@@ -304,7 +310,7 @@ mod test {
         map.insert("a", list);
 
         let tpl = "
-        for x in a
+        for x in state.a
             test x
                 test x
         ";
@@ -313,9 +319,11 @@ mod test {
         let mut attribute_storage = AttributeStorage::empty();
         let mut floating_widgets = FloatingWidgets::empty();
         let mut components = Components::new();
+        let mut dirty_widgets = DirtyWidgets::empty();
         let factory = setup_test_factory();
         let mut component_reg = ComponentRegistry::new();
         let mut states = States::new();
+        let mut component_attributes = ComponentAttributeCollection::empty();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
@@ -324,10 +332,12 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
+            &mut component_attributes,
             &mut component_reg,
             &mut attribute_storage,
             &mut floating_widgets,
             &mut components,
+            &mut dirty_widgets,
         );
         eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree).unwrap();
 

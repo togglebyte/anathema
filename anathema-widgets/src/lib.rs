@@ -7,7 +7,8 @@ pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::values::{Value, Values};
 pub use crate::widget::{
     AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Elements, Factory,
-    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetNeeds, WidgetTree,
+    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, UpdateWidgetNeeds, Widget, WidgetId, WidgetNeeds,
+    WidgetTree,
 };
 
 pub mod components;
@@ -15,7 +16,6 @@ mod container;
 pub mod debug;
 pub mod error;
 pub mod expressions;
-pub mod expressions2;
 pub mod layout;
 mod nodes;
 pub mod paint;

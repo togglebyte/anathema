@@ -5,7 +5,7 @@ use anathema_geometry::Size;
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
-use anathema_widgets::components::ComponentRegistry;
+use anathema_widgets::components::{ComponentAttributeCollection, ComponentRegistry};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory,
@@ -22,6 +22,7 @@ pub struct TestRunner {
     blueprint: Blueprint,
     globals: Globals,
     components: Components,
+    dirty_widgets: DirtyWidgets,
 }
 
 impl TestRunner {
@@ -30,8 +31,7 @@ impl TestRunner {
         register_default_widgets(&mut factory);
 
         let mut component_registry = ComponentRegistry::new();
-        let mut states = States::new();
-        states.insert(Box::new(TestState::new()));
+        let states = States::new();
 
         // Add two to both dimensions to compensate
         // for the border size that we inject here.
@@ -46,7 +46,7 @@ impl TestRunner {
         ";
         let mut doc = Document::new(root);
         let main = doc.add_component("main", src.to_template()).unwrap();
-        component_registry.add_component(main.into(), (), ());
+        component_registry.add_component(main.into(), (), TestState::new());
 
         let (blueprint, globals) = doc.compile().unwrap();
 
@@ -58,6 +58,7 @@ impl TestRunner {
             blueprint,
             globals,
             components: Components::new(),
+            dirty_widgets: DirtyWidgets::empty(),
         }
     }
 
@@ -68,16 +69,18 @@ impl TestRunner {
         let viewport = Viewport::new(self.backend.surface.size());
 
         let mut scope = Scope::new();
-        scope.insert_state(StateId::ZERO);
+        let mut component_attributes = ComponentAttributeCollection::empty();
         let mut ctx = EvalContext::new(
             &self.globals,
             &self.factory,
             &mut scope,
             &mut self.states,
+            &mut component_attributes,
             &mut self.component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
             &mut self.components,
+            &mut self.dirty_widgets,
         );
 
         eval_blueprint(&self.blueprint, &mut ctx, &[], &mut tree).unwrap();
@@ -90,10 +93,11 @@ impl TestRunner {
             tree,
             attribute_storage,
             viewport,
-            dirty_widgets: DirtyWidgets::empty(),
             factory: &self.factory,
+            component_attributes,
             component_registry: &mut self.component_registry,
             components: &mut self.components,
+            dirty_widgets: &mut self.dirty_widgets,
             changes: Changes::empty(),
             glyph_map: GlyphMap::empty(),
         }
@@ -108,10 +112,11 @@ pub struct TestInstance<'bp> {
     globals: &'bp Globals,
     backend: &'bp mut TestBackend,
     viewport: Viewport,
-    dirty_widgets: DirtyWidgets,
     factory: &'bp Factory,
+    component_attributes: ComponentAttributeCollection<'bp>,
     component_registry: &'bp mut ComponentRegistry,
     components: &'bp mut Components,
+    dirty_widgets: &'bp mut DirtyWidgets,
     changes: Changes,
     glyph_map: GlyphMap,
 }
@@ -130,11 +135,13 @@ impl TestInstance<'_> {
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
                 let Some(path): Option<Box<_>> = self.tree.try_path_ref(sub).map(Into::into) else { return };
+
                 update_tree(
                     self.globals,
                     self.factory,
                     &mut scope,
                     self.states,
+                    &mut self.component_attributes,
                     self.component_registry,
                     change,
                     sub,
@@ -143,6 +150,7 @@ impl TestInstance<'_> {
                     &mut self.attribute_storage,
                     &mut self.floating_widgets,
                     self.components,
+                    self.dirty_widgets,
                 );
             })
         });
@@ -165,6 +173,7 @@ impl TestInstance<'_> {
             constraints,
             attribute_storage,
             &self.floating_widgets,
+            &self.states,
             self.viewport,
         )
         .run();
@@ -174,9 +183,7 @@ impl TestInstance<'_> {
         let actual = std::mem::take(&mut self.backend.output);
         let actual = actual.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");
 
-        eprintln!("{actual}");
-
-        assert_eq!(actual, expected);
+        assert_eq!(expected, actual, "\nExpected:\n{expected}\nGot:\n{actual}");
         self
     }
 

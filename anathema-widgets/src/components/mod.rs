@@ -16,7 +16,7 @@ use self::events::{Event, KeyEvent, MouseEvent};
 use crate::expressions::{Either, EvalValue};
 use crate::layout::Viewport;
 use crate::widget::Parent;
-use crate::{Attributes, Elements};
+use crate::Elements;
 
 pub mod events;
 
@@ -28,9 +28,7 @@ pub struct ComponentAttributeCollection<'bp> {
 
 impl<'bp> ComponentAttributeCollection<'bp> {
     pub fn empty() -> Self {
-        Self {
-            inner: HashMap::new()
-        }
+        Self { inner: HashMap::new() }
     }
 
     pub(crate) fn insert(&mut self, id: WidgetComponentId, attributes: ComponentAttributes<'bp>) {
@@ -42,7 +40,9 @@ impl<'bp> ComponentAttributeCollection<'bp> {
     }
 
     pub fn get_unchecked(&self, component_id: WidgetComponentId) -> &ComponentAttributes<'bp> {
-        self.inner.get(&component_id).expect("a component always have attributes associated with it")
+        self.inner
+            .get(&component_id)
+            .expect("a component always have attributes associated with it")
     }
 }
 

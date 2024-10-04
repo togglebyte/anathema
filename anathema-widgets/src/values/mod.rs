@@ -49,6 +49,18 @@ impl<'bp, T> Value<'bp, T> {
     pub(crate) fn inner(&self) -> &T {
         &self.inner
     }
+
+    pub(crate) fn replace(&mut self, value: Value<'bp, T>) -> bool
+    where
+        T: PartialEq,
+    {
+        if self.inner != value.inner {
+            self.inner = value.inner;
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<'bp> Value<'bp, EvalValue<'bp>> {
@@ -67,9 +79,6 @@ impl<'bp> Value<'bp, EvalValue<'bp>> {
         states: &anathema_state::States,
         component_attributes: &ComponentAttributeCollection<'bp>,
     ) {
-        if !self.inner.contains_index() {
-            return;
-        }
         let Some(expr) = self.expr else { return };
         let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, component_attributes, id);
         self.inner = inner;
@@ -127,7 +136,10 @@ impl<'bp> Collection<'bp> {
     pub(crate) fn count(&self) -> usize {
         match self {
             Self::Static(e) => e.len(),
-            Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
+            Self::Dyn(value_ref) => {
+                let Some(state) = value_ref.as_state() else { return 0 };
+                state.count()
+            }
             Self::Index(collection, _) => collection.count(),
             Self::Future => 0,
         }

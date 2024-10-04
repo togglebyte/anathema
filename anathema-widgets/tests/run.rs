@@ -5,7 +5,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, StateId, States};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_widgets::components::ComponentRegistry;
+use anathema_widgets::components::{ComponentAttributeCollection, ComponentRegistry};
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, Elements,
@@ -36,6 +36,7 @@ pub struct TestCaseRunner<'bp, S> {
     dirty_widgets: DirtyWidgets,
     floating_widgets: FloatingWidgets,
     states: States,
+    component_attributes: ComponentAttributeCollection<'bp>,
     component_registry: ComponentRegistry,
     future_values: FutureValues,
     changes: Changes,
@@ -56,10 +57,12 @@ where
             &self.factory,
             &mut scope,
             &mut self.states,
+            &mut self.component_attributes,
             &mut self.component_registry,
             &mut self.attribute_storage,
             &mut self.floating_widgets,
             &mut self.components,
+            &mut self.dirty_widgets,
         );
 
         eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree).unwrap();
@@ -67,7 +70,12 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                &self.attribute_storage,
+                &self.viewport,
+                &mut self.glyph_map,
+                &self.states,
+            );
             layout_widget(
                 widget,
                 children,
@@ -91,7 +99,12 @@ where
         // Floating widgets
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                &self.attribute_storage,
+                &self.viewport,
+                &mut self.glyph_map,
+                &self.states,
+            );
             layout_widget(
                 widget,
                 children,
@@ -137,6 +150,7 @@ where
                 &self.factory,
                 &mut scope,
                 &mut self.states,
+                &mut self.component_attributes,
                 &mut self.component_registry,
                 sub,
                 &path,
@@ -144,6 +158,7 @@ where
                 &mut self.attribute_storage,
                 &mut self.floating_widgets,
                 &mut self.components,
+                &mut self.dirty_widgets,
             );
         });
     }
@@ -162,6 +177,7 @@ where
                     &self.factory,
                     &mut scope,
                     &mut self.states,
+                    &mut self.component_attributes,
                     &mut self.component_registry,
                     &change,
                     sub,
@@ -170,6 +186,7 @@ where
                     &mut self.attribute_storage,
                     &mut self.floating_widgets,
                     &mut self.components,
+                    &mut self.dirty_widgets,
                 );
             });
         })
@@ -227,7 +244,12 @@ where
 
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                &self.attribute_storage,
+                &self.viewport,
+                &mut self.glyph_map,
+                &mut self.states,
+            );
             layout_widget(
                 widget,
                 children,
@@ -267,6 +289,7 @@ impl TestCase {
         let tree = WidgetTree::empty();
         let components = ComponentRegistry::new();
         let mut states = States::new();
+        let component_attributes = ComponentAttributeCollection::empty();
         states.insert(Box::new(state));
 
         let factory = setup_factory();
@@ -277,6 +300,7 @@ impl TestCase {
             blueprint: &self.blueprint,
             tree,
             states,
+            component_attributes,
             component_registry: components,
             factory,
             future_values: FutureValues::empty(),

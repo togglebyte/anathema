@@ -97,7 +97,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
                 let mut layout_ctx =
-                    LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map, &self.states);
+                    LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map, self.states);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 

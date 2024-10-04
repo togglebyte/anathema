@@ -44,26 +44,29 @@ pub fn eval_blueprint<'bp>(
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{List, Map, States, Subscriber, Value};
-    use anathema_templates::{Expression, Globals};
+    use anathema_state::{List, Map, States, Subscriber};
+    use anathema_templates::expressions::{ident, index, strlit};
+    use anathema_templates::Globals;
 
-    use crate::expressions::eval_collection;
+    use crate::components::ComponentAttributeCollection;
+    use crate::expressions::{eval_collection, Resolver};
     use crate::scope::ScopeLookup;
     use crate::values::ValueId;
     use crate::Scope;
 
     #[test]
     fn scope_lookup_over_a_collection() {
-        // for val in list
+        // for val in state.list
         //     test val
 
         let mut states = States::new();
+        let component_attributes = ComponentAttributeCollection::empty();
         let mut scope = Scope::new();
         let globals = Globals::new(Default::default());
 
         // Setup state to contain a list mapped to the key "list"
         let mut state = Map::<List<_>>::empty();
-        let list = Value::<List<_>>::from_iter([123u32, 124]);
+        let list = List::from_iter([123u32, 124]);
         state.insert("list", list);
         let state_id = states.insert(Box::new(state));
         scope.insert_state(state_id);
@@ -73,12 +76,12 @@ mod test {
         // In this case the expression would be an `Ident("list")`.
         //
         // The ident is used to lookup the collection in the scope:
-        let list_expr = Expression::Ident("list".into());
+        let list_expr = index(ident("state"), strlit("list"));
         let for_key = Subscriber::ZERO;
 
         // Here we are associating the `val` path with the collection, which
         // is either a slice of expressions or a `PendingValue`.
-        let collection = eval_collection(&list_expr, &globals, &scope, &states, for_key);
+        let collection = eval_collection(&list_expr, &globals, &scope, &states, &component_attributes, for_key);
 
         // Next up the value would be scoped per iteraton, so `val` is pulled out
         // of the collection by an index, and the resulting value
@@ -104,51 +107,49 @@ mod test {
 
     #[test]
     fn nested_scope_lookup_over_a_collection() {
-        // for list in lists
+        // for list in state.lists
         //     for val in list
         //         test val
 
         let mut states = States::new();
+        let component_attributes = ComponentAttributeCollection::empty();
         let mut scope = Scope::new();
         let globals = Globals::new(Default::default());
 
         // Setup state to contain a list mapped to the key "list"
         let mut state = Map::<List<_>>::empty();
         let mut lists = List::<List<_>>::empty();
-        let mut list = List::empty();
-        list.push_back(123u32);
-        list.push_back(124);
+        let list = List::from_iter(123..=124u32);
         lists.push_back(list);
         state.insert("lists", lists);
 
         let s = states.insert(Box::new(state));
         scope.insert_state(s);
 
-        let lists_expr = Expression::Ident("lists".into());
-        let list_expr = Expression::Ident("list".into());
+        let lists_expr = index(ident("state"), strlit("lists"));
+        let list_expr = ident("list");
         let for_key = Subscriber::ZERO;
 
-        let collection = eval_collection(&lists_expr, &globals, &scope, &states, for_key);
+        let collection = eval_collection(&lists_expr, &globals, &scope, &states, &component_attributes, for_key);
 
-        for index in 0..1 {
+        for idx in 0..1 {
             scope.push();
 
             // Scope the value from the collection
-            collection.scope(&mut scope, "list", index);
+            collection.scope(&mut scope, "list", idx);
 
             let for_key = ValueId::ONE;
 
             // Next up the value would be scoped per iteraton, so `val` is scoped to `(list, index)`
-            for index in 0..2 {
-                let collection = eval_collection(&list_expr, &globals, &scope, &states, for_key);
+            for idx in 0..2 {
+                let collection = eval_collection(&list_expr, &globals, &scope, &states, &component_attributes, for_key);
                 scope.push();
-                collection.scope(&mut scope, "val", index);
+                collection.scope(&mut scope, "val", idx);
 
-                let sub = ValueId::ONE;
-                let output = scope.get(ScopeLookup::new("val", sub), &mut None, &states).unwrap();
-
+                let expr = ident("val");
+                let output = Resolver::root(&scope, &states, &component_attributes, &globals, for_key).resolve(&expr);
                 let int = output.load::<u32>().unwrap();
-                assert_eq!(int, 123 + index as u32);
+                assert_eq!(int, 123 + idx as u32);
                 scope.pop();
             }
 

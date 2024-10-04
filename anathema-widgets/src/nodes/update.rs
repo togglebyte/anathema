@@ -9,7 +9,7 @@ use crate::components::{ComponentAttributeCollection, ComponentRegistry};
 use crate::error::Result;
 use crate::values::ValueId;
 use crate::widget::{Components, FloatingWidgets};
-use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
+use crate::{AttributeStorage, DirtyWidgets, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
 
 struct UpdateTree<'a, 'b, 'bp> {
     globals: &'bp Globals,
@@ -23,16 +23,13 @@ struct UpdateTree<'a, 'b, 'bp> {
     attribute_storage: &'b mut AttributeStorage<'bp>,
     floating_widgets: &'b mut FloatingWidgets,
     components: &'b mut Components,
+    dirty_widgets: &'b mut DirtyWidgets,
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
     type Output = Result<()>;
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
-        if let WidgetKind::Element(el) = node {
-            el.container.needs = WidgetNeeds::Layout;
-        }
-
         scope_value(node, self.scope, &[]);
         let mut ctx = EvalContext::new(
             self.globals,
@@ -44,6 +41,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
             self.attribute_storage,
             self.floating_widgets,
             self.components,
+            self.dirty_widgets,
         );
         update_widget(node, &mut ctx, self.value_id, self.change, path, tree)?;
 
@@ -74,6 +72,7 @@ pub fn update_tree<'bp>(
     attribute_storage: &mut AttributeStorage<'bp>,
     floating_widgets: &mut FloatingWidgets,
     components: &mut Components,
+    dirty_widgets: &mut DirtyWidgets,
 ) {
     let update = UpdateTree {
         globals,
@@ -87,6 +86,7 @@ pub fn update_tree<'bp>(
         attribute_storage,
         floating_widgets,
         components,
+        dirty_widgets,
     };
     tree.apply_path_finder(path, update);
 }
@@ -99,13 +99,15 @@ fn update_widget<'bp>(
     path: &[u16],
     tree: &mut WidgetTree<'bp>,
 ) -> Result<()> {
+    // Tell all widgets they need layout
+
     match widget {
         WidgetKind::Element(..) => {
             // Reflow of the layout will be triggered by the runtime and not in this step
 
             // Any dropped dyn value should register for future updates.
             // This is done by reloading the value, making it empty
-            if let Change::Dropped | Change::Changed = change {
+            if let Change::Dropped = change {
                 let attributes = ctx.attribute_storage.get_mut(value_id.key());
                 if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
                     value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, ctx.component_attributes);

@@ -184,7 +184,13 @@ impl DirtyWidgets {
     }
 }
 
-struct UpdateWidgetNeeds(WidgetNeeds);
+pub struct UpdateWidgetNeeds(WidgetNeeds);
+
+impl UpdateWidgetNeeds {
+    pub fn new(needs: WidgetNeeds) -> Self {
+        Self(needs)
+    }
+}
 
 impl NodeWalker<WidgetKind<'_>> for UpdateWidgetNeeds {
     fn apply(&mut self, widget: &mut WidgetKind<'_>) {

@@ -36,7 +36,7 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
-    Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
+    Factory, FloatingWidgets, GlyphMap, Scope, UpdateWidgetNeeds, WidgetKind, WidgetNeeds, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -339,6 +339,7 @@ where
                 attribute_storage,
                 &mut self.floating_widgets,
                 &mut self.components,
+                &mut self.dirty_widgets,
             );
         });
     }
@@ -363,6 +364,8 @@ where
                 scope.clear();
                 let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
 
+                tree.apply_node_walker(&path, UpdateWidgetNeeds::new(WidgetNeeds::Layout));
+
                 update_tree(
                     globals,
                     &self.factory,
@@ -377,6 +380,7 @@ where
                     attribute_storage,
                     &mut self.floating_widgets,
                     &mut self.components,
+                    &mut self.dirty_widgets,
                 );
             });
         });
@@ -472,6 +476,7 @@ where
             &mut attribute_storage,
             &mut self.floating_widgets,
             &mut self.components,
+            &mut self.dirty_widgets,
         );
 
         let blueprint = self.blueprint.clone();
@@ -479,15 +484,9 @@ where
         // First build the tree
         let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree);
 
-        match res {
-            Ok(_) => (),
-            Err(err) => {
-                match self.reset(tree, &mut states) {
-                    Ok(()) => (),
-                    Err(err) => return Err(err),
-                }
-                return Err(err.into());
-            }
+        if let Err(err) = res {
+            self.reset(tree, &mut states)?;
+            return Err(err.into());
         }
 
         let mut dt = Instant::now();

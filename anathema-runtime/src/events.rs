@@ -177,8 +177,6 @@ impl<T: GlobalEvents> EventHandler<T> {
             match event {
                 Event::Resize(width, height) => {
                     // Reset needs_layout for all the nodes
-                    // TODO: this is awful, we can't just push a random widget id in there so it's not empty
-                    // event_ctx.dirty_widgets.push(WidgetId::ZERO, WidgetNeeds::Layout)
                     let (nodes, elements) = tree.split();
                     anathema_widgets::layout::reset_layout(
                         nodes,
@@ -266,7 +264,9 @@ impl<T: GlobalEvents> EventHandler<T> {
                 let found = tree.with_value_mut(widget_id, |_, widget, _| {
                     let WidgetKind::Component(component) = widget else { unreachable!() };
 
-                    let Some(attributes) = event_ctx.component_attributes.get(component.component_id) else { return false };
+                    let Some(attributes) = event_ctx.component_attributes.get(component.component_id) else {
+                        return false;
+                    };
                     let Some(val) = attributes.get(&*key) else { return false };
                     let Some(either) = val.load_common_val() else { return false };
                     let Some(cv) = either.to_common() else { return false };

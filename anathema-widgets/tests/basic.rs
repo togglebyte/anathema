@@ -29,7 +29,7 @@ impl State for TestState {
 #[test]
 fn basic() {
     let state = TestState { is_true: true.into() };
-    TestCase::setup("test is_true")
+    TestCase::setup("test state.is_true")
         .build(state)
         .expect_frame("test Bool(true)")
         .with_state(0, |state| *state.is_true.to_mut() = false)
@@ -41,9 +41,9 @@ fn if_else() {
     let state = TestState { is_true: false.into() };
     TestCase::setup(
         r#"
-if does.not.exist
+if state.does.not.exist
     test "a"
-else if !is_true
+else if !state.is_true
     test "b"
 else
     test "c"

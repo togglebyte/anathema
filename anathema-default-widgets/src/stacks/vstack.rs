@@ -62,8 +62,8 @@ mod test {
         let tpl = "
             vstack
                 border
-                    text value
-                for i in [0]
+                    text state.value
+                for i in [2]
                     border
                         text i
         ";
@@ -74,7 +74,7 @@ mod test {
             ║│0│║
             ║└─┘║
             ║┌─┐║
-            ║│0│║
+            ║│2│║
             ║└─┘║
             ╚═══╝
         ";
@@ -85,7 +85,7 @@ mod test {
             ║│7│║
             ║└─┘║
             ║┌─┐║
-            ║│0│║
+            ║│2│║
             ║└─┘║
             ╚═══╝
         ";

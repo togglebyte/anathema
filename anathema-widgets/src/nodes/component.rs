@@ -1,12 +1,9 @@
 use anathema_state::StateId;
-use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::WidgetComponentId;
 
-use crate::components::{AnyComponent, ComponentAttributes, ComponentKind};
-use crate::expressions::EvalValue;
-use crate::{Value, ValueIndex, WidgetId};
+use crate::components::{AnyComponent, ComponentKind};
 
 #[derive(Debug)]
 pub struct Component<'bp> {

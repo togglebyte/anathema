@@ -1,6 +1,5 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
-use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
 use anathema_templates::{Globals, WidgetComponentId};
 
@@ -15,7 +14,7 @@ use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
-use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
+use crate::{eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
@@ -28,6 +27,7 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
     pub(super) components: &'b mut Components,
+    pub(super) dirty_widgets: &'b mut DirtyWidgets,
 }
 
 impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
@@ -41,6 +41,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
         components: &'b mut Components,
+        dirty_widgets: &'b mut DirtyWidgets,
     ) -> Self {
         Self {
             globals,
@@ -52,6 +53,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
             attribute_storage,
             floating_widgets,
             components,
+            dirty_widgets,
         }
     }
 
@@ -210,17 +212,19 @@ impl Evaluator for ForLoopEval {
         let transaction = tree.insert(parent);
         let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
 
+        let collection = eval_collection(
+            &for_loop.data,
+            ctx.globals,
+            ctx.scope,
+            ctx.states,
+            ctx.component_attributes,
+            value_id,
+        );
+
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
-            collection: eval_collection(
-                &for_loop.data,
-                ctx.globals,
-                ctx.scope,
-                ctx.states,
-                ctx.component_attributes,
-                value_id,
-            ),
             body: &for_loop.body,
+            collection,
         };
 
         let widget = WidgetKind::For(for_loop);

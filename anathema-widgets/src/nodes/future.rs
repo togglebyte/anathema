@@ -11,7 +11,7 @@ use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
 use crate::widget::{Components, FloatingWidgets};
-use crate::{AttributeStorage, Factory, Scope, WidgetKind, WidgetTree};
+use crate::{AttributeStorage, DirtyWidgets, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
 
 struct ResolveFutureValues<'a, 'b, 'bp> {
     globals: &'bp Globals,
@@ -24,6 +24,7 @@ struct ResolveFutureValues<'a, 'b, 'bp> {
     attribute_storage: &'b mut AttributeStorage<'bp>,
     floating_widgets: &'b mut FloatingWidgets,
     components: &'b mut Components,
+    dirty_widgets: &'b mut DirtyWidgets,
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'bp> {
@@ -42,6 +43,7 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'b
             self.attribute_storage,
             self.floating_widgets,
             self.components,
+            self.dirty_widgets,
         );
 
         try_resolve_value(node, &mut ctx, self.value_id, path, tree)?;
@@ -67,6 +69,7 @@ pub fn try_resolve_future_values<'bp>(
     attribute_storage: &mut AttributeStorage<'bp>,
     floating_widgets: &mut FloatingWidgets,
     components: &mut Components,
+    dirty_widgets: &mut DirtyWidgets,
 ) {
     let res = ResolveFutureValues {
         globals,
@@ -79,6 +82,7 @@ pub fn try_resolve_future_values<'bp>(
         attribute_storage,
         floating_widgets,
         components,
+        dirty_widgets,
     };
 
     tree.apply_path_finder(path, res);
@@ -110,7 +114,10 @@ fn try_resolve_value<'bp>(
                     ctx.component_attributes,
                     value_id,
                 );
-                *val = value;
+
+                if val.replace(value) {
+                    ctx.dirty_widgets.push(container.id, WidgetNeeds::Layout);
+                }
             }
         }
         WidgetKind::For(for_loop) => {
@@ -217,8 +224,9 @@ fn try_resolve_value<'bp>(
         }
         WidgetKind::ControlFlow(_) => unreachable!(),
         WidgetKind::Iteration(_) => unreachable!(),
-        WidgetKind::Component(component) => {
-            panic!()
+        WidgetKind::Component(_) => {
+            // TODO: not sure what we should do here
+            // panic!()
         }
     }
 
@@ -238,12 +246,13 @@ mod test {
         let globals = Globals::default();
         let scope = Scope::new();
         let states = States::new();
+        let component_attributes = ComponentAttributeCollection::empty();
         let mut futures = Stack::empty();
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 0);
 
-        eval(expr, &globals, &scope, &states, value_id);
+        eval(expr, &globals, &scope, &states, &component_attributes, value_id);
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 1);

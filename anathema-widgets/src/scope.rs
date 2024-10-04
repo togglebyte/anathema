@@ -1,7 +1,7 @@
 use std::fmt::{self, Debug, Write};
 
 use anathema_debug::DebugWriter;
-use anathema_state::{AnyState, Path, PendingValue, StateId, States};
+use anathema_state::{Path, PendingValue, StateId, States};
 use anathema_templates::WidgetComponentId;
 
 use crate::expressions::{Downgraded, EvalValue};
@@ -46,13 +46,6 @@ impl<'bp> Entry<'bp> {
             _ => None,
         }
     }
-
-    fn is_state(&self) -> bool {
-        match self {
-            Self::State(_) => true,
-            _ => false,
-        }
-    }
 }
 
 impl Debug for Entry<'_> {
@@ -62,7 +55,9 @@ impl Debug for Entry<'_> {
             Entry::Pending(path, pending_value) => f.debug_tuple("Pending").field(path).field(pending_value).finish(),
             Entry::Downgraded(path, value) => f.debug_tuple("Downgraded").field(path).field(value).finish(),
             Entry::State(state) => f.debug_tuple("State").field(&state).finish(),
-            Entry::ComponentAttributes(component_id) => f.debug_tuple("ComponentAttributes").field(&component_id).finish(),
+            Entry::ComponentAttributes(component_id) => {
+                f.debug_tuple("ComponentAttributes").field(&component_id).finish()
+            }
             Entry::Empty => f.debug_tuple("Empty").finish(),
         }
     }
@@ -125,7 +120,7 @@ impl<'bp> Scope<'bp> {
         &self,
         lookup: &ScopeLookup<'bp>,
         offset: &mut Option<usize>,
-        states: &States,
+        _states: &States,
     ) -> Option<EvalValue<'bp>> {
         let mut current_offset = offset.unwrap_or(self.storage.len());
 
@@ -161,10 +156,10 @@ impl<'bp> Scope<'bp> {
     // There is always a state for each component
     // (if no explicit state is given a unit is assumed)
     //
-    // This is not entirely correct given that the root template
+    // TODO: This is not entirely correct given that the root template
     // has no component, perhaps this should change so there is always
     // a component in the root.
-    pub(crate) fn get_state(&self, states: &States) -> EvalValue<'bp> {
+    pub(crate) fn get_state(&self) -> EvalValue<'bp> {
         self.storage
             .iter()
             .rev()
@@ -270,22 +265,12 @@ impl<'bp> Scope<'bp> {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{List, Map, Subscriber, Value};
+    use anathema_state::{List, Map, Value};
     use anathema_templates::{Expression, Globals};
 
     use super::*;
+    use crate::components::ComponentAttributeCollection;
     use crate::expressions::eval_collection;
-    use crate::testing::ScopedTest;
-
-    #[test]
-    fn fetch_state_value() {
-        ScopedTest::new()
-            .with_value("a", 123u32)
-            .lookup(ScopeLookup::new("a", Subscriber::ZERO), |val| {
-                let val = val.load::<u32>().unwrap();
-                assert_eq!(val, 123u32);
-            });
-    }
 
     #[test]
     fn scope_collection() {
@@ -293,10 +278,11 @@ mod test {
         map.insert("list", Value::<List<u8>>::from_iter([1u8, 2, 3]));
 
         let states = States::new();
+        let component_attributes = ComponentAttributeCollection::empty();
         let scope = Scope::new();
         let expr = Expression::Ident("list".into());
         let globals = Globals::new(Default::default());
-        eval_collection(&expr, &globals, &scope, &states, ValueId::ZERO);
+        eval_collection(&expr, &globals, &scope, &states, &component_attributes, ValueId::ZERO);
 
         //         let one = [Expression::Primitive(1i64.into())];
 

@@ -5,9 +5,10 @@ use anathema_state::{Map, State, StateId, States};
 use anathema_store::tree::TreeForEach;
 use anathema_templates::{Expression, Globals};
 
+use crate::components::ComponentAttributeCollection;
 use crate::expressions::{eval, EvalValue};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::scope::{Scope, ScopeLookup};
+use crate::scope::Scope;
 use crate::values::{ValueId, ValueIndex};
 use crate::{AttributeStorage, Factory, PositionChildren, Value, Widget, WidgetId, WidgetKind};
 
@@ -42,7 +43,7 @@ impl<T: 'static + State> ScopedTest<T, NoExpr> {
 }
 
 impl<T: 'static + State, S> ScopedTest<T, S> {
-    pub fn with_value(mut self, key: &str, value: T) -> Self {
+    pub fn with_state_value(mut self, key: &str, value: T) -> Self {
         let map = self.states.get_mut(StateId::ZERO).unwrap();
         let map = map
             .to_any_mut()
@@ -50,18 +51,6 @@ impl<T: 'static + State, S> ScopedTest<T, S> {
             .unwrap();
         map.insert(key, value);
         self
-    }
-
-    pub fn lookup<F>(self, lookup: ScopeLookup<'_>, f: F)
-    where
-        F: FnOnce(EvalValue<'_>),
-    {
-        let mut scope = Scope::new();
-        scope.insert_state(StateId::ZERO);
-        let value = scope
-            .get(lookup, &mut None, &self.states)
-            .expect("should contain value");
-        f(value);
     }
 }
 
@@ -79,7 +68,15 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let mut scope = Scope::new();
         let globals = Globals::new(Default::default());
         scope.insert_state(StateId::ZERO);
-        let value = crate::expressions2::eval2(&self.test_state.0, &globals, &scope, &self.states, value_id);
+        let component_attributes = ComponentAttributeCollection::empty();
+        let value = eval(
+            &self.test_state.0,
+            &globals,
+            &scope,
+            &self.states,
+            &component_attributes,
+            value_id,
+        );
         f(value)
     }
 }

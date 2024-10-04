@@ -5,7 +5,7 @@ mod run;
 #[test]
 fn collection_insert() {
     let template = r#"
-        for val in list
+        for val in state.list
             test val
     "#;
 
@@ -51,7 +51,7 @@ fn collection_insert() {
 #[test]
 fn collection_remove() {
     let template = r#"
-for val in list
+for val in state.list
     test val
         "#;
 
@@ -90,7 +90,7 @@ for val in list
 #[test]
 fn collection_change() {
     let template = r#"
-for val in list
+for val in state.list
     test val
     "#;
 
