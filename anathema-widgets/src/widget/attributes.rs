@@ -23,12 +23,27 @@ impl<'bp> AttributeStorage<'bp> {
         self.0.get(id).map(|(_, a)| a).expect("every element has attributes")
     }
 
+    /// Get a reference to attributes by widget id
+    pub fn try_get(&self, id: WidgetId) -> Option<&Attributes<'bp>> {
+        self.0.get(id).map(|(_, a)| a)
+    }
+
     /// Get a mutable reference to attributes by widget id
     pub fn get_mut(&mut self, id: WidgetId) -> &mut Attributes<'bp> {
         self.0
             .get_mut(id)
             .map(|(_, a)| a)
             .expect("every element has attributes")
+    }
+
+    pub fn with_mut<F, O>(&mut self, widget_id: WidgetId, f: F) -> Option<O>
+    where
+        F: FnOnce(&mut Attributes<'bp>, &mut Self) -> O,
+    {
+        let mut value = self.try_remove(widget_id)?;
+        let output = f(&mut value, self);
+        self.insert(widget_id, value);
+        Some(output)
     }
 
     /// Insert attributes for a given widget.
@@ -39,8 +54,10 @@ impl<'bp> AttributeStorage<'bp> {
     }
 
     /// Try to remove attributes for a specific widget
-    pub fn try_remove(&mut self, id: WidgetId) {
-        let _ = self.0.remove_if(id, |(current_gen, _)| *current_gen == id.gen());
+    pub fn try_remove(&mut self, id: WidgetId) -> Option<Attributes<'bp>> {
+        self.0
+            .remove_if(id, |(current_gen, _)| *current_gen == id.gen())
+            .map(|(_, value)| value)
     }
 }
 

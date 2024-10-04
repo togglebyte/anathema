@@ -1,90 +1,49 @@
-use anathema_state::States;
 use anathema_store::tree::PathFinder;
-use anathema_templates::Globals;
 
 use super::element::Element;
 use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 use super::update::scope_value;
-use crate::components::{ComponentAttributeCollection, ComponentRegistry};
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
-use crate::widget::{Components, FloatingWidgets};
-use crate::{AttributeStorage, DirtyWidgets, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
+use crate::{WidgetKind, WidgetNeeds, WidgetTree};
 
 struct ResolveFutureValues<'a, 'b, 'bp> {
-    globals: &'bp Globals,
     value_id: ValueId,
-    factory: &'a Factory,
-    scope: &'b mut Scope<'bp>,
-    states: &'b mut States,
-    component_attributes: &'b mut ComponentAttributeCollection<'bp>,
-    component_registry: &'b mut ComponentRegistry,
-    attribute_storage: &'b mut AttributeStorage<'bp>,
-    floating_widgets: &'b mut FloatingWidgets,
-    components: &'b mut Components,
-    dirty_widgets: &'b mut DirtyWidgets,
+    ctx: EvalContext<'a, 'b, 'bp>,
 }
 
 impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'bp> {
     type Output = Result<()>;
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
-        scope_value(node, self.scope, &[]);
+        // if the widget is a component, defer scoping the value until afterwards
+        if !matches!(node, WidgetKind::Component(_)) {
+            scope_value(node, self.ctx.scope, &[]);
+        }
 
-        let mut ctx = EvalContext::new(
-            self.globals,
-            self.factory,
-            self.scope,
-            self.states,
-            self.component_attributes,
-            self.component_registry,
-            self.attribute_storage,
-            self.floating_widgets,
-            self.components,
-            self.dirty_widgets,
-        );
+        try_resolve_value(node, &mut self.ctx, self.value_id, path, tree)?;
 
-        try_resolve_value(node, &mut ctx, self.value_id, path, tree)?;
+        if matches!(node, WidgetKind::Component(_)) {
+            scope_value(node, self.ctx.scope, &[]);
+        }
 
         Ok(())
     }
 
     fn parent(&mut self, parent: &mut WidgetKind<'bp>, children: &[u16]) {
-        scope_value(parent, self.scope, children);
+        scope_value(parent, self.ctx.scope, children);
     }
 }
 
 pub fn try_resolve_future_values<'bp>(
-    globals: &'bp Globals,
-    factory: &Factory,
-    scope: &mut Scope<'bp>,
-    states: &mut States,
-    component_attributes: &mut ComponentAttributeCollection<'bp>,
-    component_registry: &mut ComponentRegistry,
     value_id: ValueId,
     path: &[u16],
     tree: &mut WidgetTree<'bp>,
-    attribute_storage: &mut AttributeStorage<'bp>,
-    floating_widgets: &mut FloatingWidgets,
-    components: &mut Components,
-    dirty_widgets: &mut DirtyWidgets,
+    ctx: EvalContext<'_, '_, 'bp>,
 ) {
-    let res = ResolveFutureValues {
-        globals,
-        value_id,
-        factory,
-        scope,
-        states,
-        component_attributes,
-        component_registry,
-        attribute_storage,
-        floating_widgets,
-        components,
-        dirty_widgets,
-    };
-
+    let res = ResolveFutureValues { value_id, ctx };
     tree.apply_path_finder(path, res);
 }
 
@@ -97,28 +56,19 @@ fn try_resolve_value<'bp>(
 ) -> Result<()> {
     match widget {
         WidgetKind::Element(Element { container, .. }) => {
-            let Some(val) = ctx
-                .attribute_storage
-                .get_mut(container.id)
-                .get_mut_with_index(value_id.index())
-            else {
-                return Ok(());
-            };
+            ctx.attribute_storage
+                .with_mut(container.id, |attributes, attribute_storage| {
+                    let Some(val) = attributes.get_mut_with_index(value_id.index()) else { return };
 
-            if let Some(expr) = val.expr {
-                let value = eval(
-                    expr,
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.component_attributes,
-                    value_id,
-                );
+                    if let Some(expr) = val.expr {
+                        let value = eval(expr, ctx.globals, ctx.scope, ctx.states, attribute_storage, value_id);
 
-                if val.replace(value) {
-                    ctx.dirty_widgets.push(container.id, WidgetNeeds::Layout);
-                }
-            }
+                        if val.replace(value) {
+                            // TODO: do we need this?
+                            ctx.dirty_widgets.push(container.id, WidgetNeeds::Layout);
+                        }
+                    }
+                });
         }
         WidgetKind::For(for_loop) => {
             // 1. Assign a new collection
@@ -130,7 +80,7 @@ fn try_resolve_value<'bp>(
                 ctx.globals,
                 ctx.scope,
                 ctx.states,
-                ctx.component_attributes,
+                ctx.attribute_storage,
                 value_id,
             );
 
@@ -203,7 +153,7 @@ fn try_resolve_value<'bp>(
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
-                    ctx.component_attributes,
+                    ctx.attribute_storage,
                     value_id,
                 );
                 widget.cond = value;
@@ -217,16 +167,23 @@ fn try_resolve_value<'bp>(
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
-                    ctx.component_attributes,
+                    ctx.attribute_storage,
                     value_id,
                 );
             }
         }
         WidgetKind::ControlFlow(_) => unreachable!(),
         WidgetKind::Iteration(_) => unreachable!(),
-        WidgetKind::Component(_) => {
-            // TODO: not sure what we should do here
-            // panic!()
+        WidgetKind::Component(component) => {
+            ctx.attribute_storage
+                .with_mut(component.widget_id, |attributes, attribute_storage| {
+                    let Some(val) = attributes.get_mut_with_index(value_id.index()) else { return };
+
+                    if let Some(expr) = val.expr {
+                        let value = eval(expr, ctx.globals, ctx.scope, ctx.states, attribute_storage, value_id);
+                        val.replace(value);
+                    }
+                });
         }
     }
 

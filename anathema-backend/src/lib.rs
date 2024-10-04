@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
-use anathema_state::States;
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
@@ -48,7 +47,6 @@ pub struct WidgetCycle<'rt, 'bp, T> {
     constraints: Constraints,
     attribute_storage: &'rt AttributeStorage<'bp>,
     floating_widgets: &'rt FloatingWidgets,
-    states: &'rt States,
     viewport: Viewport,
 }
 
@@ -60,7 +58,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         constraints: Constraints,
         attribute_storage: &'rt AttributeStorage<'bp>,
         floating_widgets: &'rt FloatingWidgets,
-        states: &'rt States,
         viewport: Viewport,
     ) -> Self {
         Self {
@@ -70,7 +67,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             constraints,
             attribute_storage,
             floating_widgets,
-            states,
             viewport,
         }
     }
@@ -96,8 +92,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx =
-                    LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map, self.states);
+                let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
@@ -115,7 +110,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         let mut filter = LayoutFilter::new(true, self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             // Layout
-            let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map, self.states);
+            let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
             layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
             // Position

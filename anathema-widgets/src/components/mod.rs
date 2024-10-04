@@ -1,50 +1,23 @@
 use std::any::Any;
 use std::borrow::Cow;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
 use anathema_state::{AnyState, CommonVal, SharedState, State, StateId, Value};
 use anathema_store::slab::Slab;
-use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::WidgetComponentId;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
-use crate::expressions::{Either, EvalValue};
+use crate::expressions::Either;
 use crate::layout::Viewport;
 use crate::widget::Parent;
-use crate::Elements;
+use crate::{Attributes, Elements, WidgetId};
 
 pub mod events;
-
-pub type ComponentAttributes<'bp> = SmallMap<&'bp str, crate::values::Value<'bp, EvalValue<'bp>>>;
-
-pub struct ComponentAttributeCollection<'bp> {
-    inner: HashMap<WidgetComponentId, ComponentAttributes<'bp>>,
-}
-
-impl<'bp> ComponentAttributeCollection<'bp> {
-    pub fn empty() -> Self {
-        Self { inner: HashMap::new() }
-    }
-
-    pub(crate) fn insert(&mut self, id: WidgetComponentId, attributes: ComponentAttributes<'bp>) {
-        self.inner.insert(id, attributes);
-    }
-
-    pub fn get(&self, component_id: WidgetComponentId) -> Option<&ComponentAttributes<'bp>> {
-        self.inner.get(&component_id)
-    }
-
-    pub fn get_unchecked(&self, component_id: WidgetComponentId) -> &ComponentAttributes<'bp> {
-        self.inner
-            .get(&component_id)
-            .expect("a component always have attributes associated with it")
-    }
-}
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
 pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
@@ -248,9 +221,9 @@ impl<'rt, T: 'static> Context<'rt, T> {
         );
     }
 
-    /// Get a value from external state
-    pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
-        let val = self.component_ctx.attributes.get(key);
+    /// Get a value from the component attributes
+    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either<'a>> {
+        let val = self.component_ctx.attributes.get_val(key);
         val.and_then(|val| val.load_common_val())
     }
 
@@ -301,18 +274,18 @@ pub struct ComponentContext<'rt> {
     pub state_id: StateId,
     pub assoc_functions: &'rt [(StringId, StringId)],
     pub assoc_events: &'rt mut AssociatedEvents,
-    pub attributes: &'rt ComponentAttributes<'rt>,
+    pub attributes: &'rt Attributes<'rt>,
     focus_queue: &'rt mut FocusQueue<'static>,
 }
 
 impl<'rt> ComponentContext<'rt> {
     pub fn new(
         state_id: StateId,
-        parent: Option<WidgetComponentId>,
+        parent: Option<WidgetId>,
         assoc_functions: &'rt [(StringId, StringId)],
         assoc_events: &'rt mut AssociatedEvents,
         focus_queue: &'rt mut FocusQueue<'static>,
-        attributes: &'rt ComponentAttributes<'rt>,
+        attributes: &'rt Attributes<'rt>,
     ) -> Self {
         Self {
             parent: parent.map(Into::into),

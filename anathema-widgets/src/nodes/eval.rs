@@ -6,15 +6,15 @@ use anathema_templates::{Globals, WidgetComponentId};
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow};
-use crate::components::{
-    AnyComponent, ComponentAttributeCollection, ComponentAttributes, ComponentKind, ComponentRegistry,
-};
+use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::Container;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
-use crate::{eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetKind, WidgetNeeds, WidgetTree};
+use crate::{
+    eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetId, WidgetKind, WidgetNeeds, WidgetTree,
+};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
@@ -22,12 +22,12 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) factory: &'a Factory,
     pub(super) scope: &'b mut Scope<'bp>,
     pub(super) states: &'b mut States,
-    pub(super) component_attributes: &'b mut ComponentAttributeCollection<'bp>,
     pub(super) component_registry: &'b mut ComponentRegistry,
     pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
     pub(super) components: &'b mut Components,
     pub(super) dirty_widgets: &'b mut DirtyWidgets,
+    pub(super) parent: Option<WidgetId>,
 }
 
 impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
@@ -36,7 +36,6 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         factory: &'a Factory,
         scope: &'b mut Scope<'bp>,
         states: &'b mut States,
-        component_attributes: &'b mut ComponentAttributeCollection<'bp>,
         component_registry: &'b mut ComponentRegistry,
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
@@ -48,12 +47,12 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
             factory,
             scope,
             states,
-            component_attributes,
             component_registry,
             attribute_storage,
             floating_widgets,
             components,
             dirty_widgets,
+            parent: None,
         }
     }
 
@@ -105,7 +104,7 @@ impl Evaluator for SingleEval {
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
-                    ctx.component_attributes,
+                    ctx.attribute_storage,
                     (widget_id, value_index),
                 )
             });
@@ -119,7 +118,7 @@ impl Evaluator for SingleEval {
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
-                    ctx.component_attributes,
+                    ctx.attribute_storage,
                     (widget_id, value_index),
                 )
             });
@@ -217,7 +216,7 @@ impl Evaluator for ForLoopEval {
             ctx.globals,
             ctx.scope,
             ctx.states,
-            ctx.component_attributes,
+            ctx.attribute_storage,
             value_id,
         );
 
@@ -317,7 +316,7 @@ impl Evaluator for IfEval {
             ctx.globals,
             ctx.scope,
             ctx.states,
-            ctx.component_attributes,
+            ctx.attribute_storage,
             value_id,
         );
 
@@ -358,7 +357,7 @@ impl Evaluator for ElseEval {
                 ctx.globals,
                 ctx.scope,
                 ctx.states,
-                ctx.component_attributes,
+                ctx.attribute_storage,
                 value_id,
             )
         });
@@ -395,24 +394,25 @@ impl Evaluator for ComponentEval {
         tree: &mut WidgetTree<'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
+        let widget_id = transaction.node_id();
 
-        let mut attributes = ComponentAttributes::empty();
+        let mut attributes = Attributes::empty(widget_id);
 
         for (key, expr) in input.attributes.iter() {
-            attributes.insert_with(key, |value_index| {
+            attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 eval(
                     expr,
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
-                    ctx.component_attributes,
-                    (transaction.node_id(), value_index),
+                    ctx.attribute_storage,
+                    (widget_id, value_index),
                 )
             });
         }
 
         let component_id = usize::from(input.id).into();
-        ctx.component_attributes.insert(component_id, attributes);
+        ctx.attribute_storage.insert(widget_id, attributes);
         let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(state);
         let comp_widget = component::Component::new(
@@ -420,9 +420,10 @@ impl Evaluator for ComponentEval {
             component,
             state_id,
             component_id,
+            widget_id,
             kind,
             &input.assoc_functions,
-            input.parent,
+            ctx.parent,
         );
 
         let widget_id = transaction
@@ -430,7 +431,7 @@ impl Evaluator for ComponentEval {
             .ok_or(Error::TreeTransactionFailed)?;
 
         let path = tree.path(widget_id);
-        ctx.components.push(path, widget_id, state_id, component_id);
+        ctx.components.push(path, component_id, widget_id, state_id);
 
         tree.with_value_mut(widget_id, move |parent, widget, tree| {
             let WidgetKind::Component(component) = widget else { unreachable!() };
@@ -443,9 +444,10 @@ impl Evaluator for ComponentEval {
             // Expose attributes to the template
 
             // Scope attributes
-            ctx.scope.scope_component_attributes(component_id);
+            ctx.scope.scope_component_attributes(widget_id);
 
             for bp in &input.body {
+                ctx.parent = Some(widget_id);
                 eval_blueprint(bp, ctx, parent, tree)?;
             }
 

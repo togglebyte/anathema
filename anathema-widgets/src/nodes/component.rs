@@ -4,14 +4,19 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::WidgetComponentId;
 
 use crate::components::{AnyComponent, ComponentKind};
+use crate::WidgetId;
 
 #[derive(Debug)]
 pub struct Component<'bp> {
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
+    /// Used to identify the component in the component registry.
+    /// This id will not be unique for prototypes
+    // TODO: do we need the component id?
     pub component_id: WidgetComponentId,
-    pub parent: Option<WidgetComponentId>,
+    pub widget_id: WidgetId,
+    pub parent: Option<WidgetId>,
     pub kind: ComponentKind,
     pub assoc_functions: &'bp [(StringId, StringId)],
 }
@@ -22,15 +27,17 @@ impl<'bp> Component<'bp> {
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
         component_id: WidgetComponentId,
+        widget_id: WidgetId,
         kind: ComponentKind,
         assoc_functions: &'bp [(StringId, StringId)],
-        parent: Option<WidgetComponentId>,
+        parent: Option<WidgetId>,
     ) -> Self {
         Self {
             body,
             dyn_component,
             state_id,
             component_id,
+            widget_id,
             kind,
             assoc_functions,
             parent,

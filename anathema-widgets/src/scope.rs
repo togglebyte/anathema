@@ -2,10 +2,10 @@ use std::fmt::{self, Debug, Write};
 
 use anathema_debug::DebugWriter;
 use anathema_state::{Path, PendingValue, StateId, States};
-use anathema_templates::WidgetComponentId;
 
 use crate::expressions::{Downgraded, EvalValue};
 use crate::values::ValueId;
+use crate::WidgetId;
 
 #[derive(Debug)]
 pub struct ScopeLookup<'bp> {
@@ -30,7 +30,7 @@ enum Entry<'bp> {
     Downgraded(Path<'bp>, Downgraded<'bp>),
     Pending(Path<'bp>, PendingValue),
     State(StateId),
-    ComponentAttributes(WidgetComponentId),
+    ComponentAttributes(WidgetId),
     /// This is marking the entry as free, and another entry can be written here.
     /// This is not indicative of a missing value
     #[default]
@@ -222,8 +222,8 @@ impl<'bp> Scope<'bp> {
         self.insert_entry(entry);
     }
 
-    pub(crate) fn scope_component_attributes(&mut self, component_id: WidgetComponentId) {
-        let entry = Entry::ComponentAttributes(component_id);
+    pub(crate) fn scope_component_attributes(&mut self, widget_id: WidgetId) {
+        let entry = Entry::ComponentAttributes(widget_id);
         self.insert_entry(entry);
     }
 

@@ -4,10 +4,9 @@ use anathema_state::ValueRef;
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::Expression;
 
-use crate::components::ComponentAttributeCollection;
 use crate::expressions::{Either, EvalValue};
 use crate::widget::ValueKey;
-use crate::Scope;
+use crate::{AttributeStorage, Scope};
 
 pub(crate) type ValueId = anathema_state::Subscriber;
 pub type ValueIndex = SmallIndex;
@@ -77,10 +76,10 @@ impl<'bp> Value<'bp, EvalValue<'bp>> {
         globals: &'bp anathema_templates::Globals,
         scope: &Scope<'bp>,
         states: &anathema_state::States,
-        component_attributes: &ComponentAttributeCollection<'bp>,
+        attribute_storage: &AttributeStorage<'bp>,
     ) {
         let Some(expr) = self.expr else { return };
-        let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, component_attributes, id);
+        let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, attribute_storage, id);
         self.inner = inner;
     }
 }

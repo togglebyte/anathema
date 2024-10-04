@@ -48,9 +48,9 @@ impl WidgetNeeds {
 
 #[derive(Debug)]
 pub struct CompEntry {
+    pub state_id: StateId,
     pub widget_id: WidgetId,
     pub component_id: WidgetComponentId,
-    pub state_id: StateId,
     path: Box<[u16]>,
 }
 
@@ -77,6 +77,7 @@ impl PartialEq for CompEntry {
 pub struct Components {
     pub tab_index: usize,
     inner: SortedList<CompEntry>,
+    widget_ids: SmallMap<WidgetId, usize>,
     comp_ids: SmallMap<WidgetComponentId, usize>,
 }
 
@@ -85,26 +86,27 @@ impl Components {
         Self {
             tab_index: 0,
             inner: SortedList::empty(),
+            widget_ids: SmallMap::empty(),
             comp_ids: SmallMap::empty(),
         }
     }
 
-    pub fn push(&mut self, path: Box<[u16]>, widget_id: WidgetId, state_id: StateId, component_id: WidgetComponentId) {
+    pub fn push(&mut self, path: Box<[u16]>, component_id: WidgetComponentId, widget_id: WidgetId, state_id: StateId) {
         let entry = CompEntry {
             path,
+            component_id,
             widget_id,
             state_id,
-            component_id,
         };
+        self.widget_ids.set(widget_id, self.inner.len());
         self.comp_ids.set(component_id, self.inner.len());
         self.inner.push(entry);
     }
 
-    pub fn remove(&mut self, path: &[u16]) {
-        if let Some(index) = self.inner.binary_search_by(|entry| (*entry.path).cmp(path)) {
-            let entry = self.inner.remove(index);
-            self.comp_ids.remove(&entry.component_id);
-        }
+    pub fn remove(&mut self, widget_id: WidgetId) {
+        let Some(index) = self.widget_ids.remove(&widget_id) else { return };
+        let entry = self.inner.remove(index);
+        let _ = self.comp_ids.remove(&entry.component_id);
     }
 
     pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
@@ -120,18 +122,17 @@ impl Components {
         self.inner.get(*index)
     }
 
+    pub fn get_by_widget_id(&mut self, id: WidgetId) -> Option<&CompEntry> {
+        let index = self.widget_ids.get(&id)?;
+        self.inner.get(*index)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {
         self.inner.iter()
     }
 
     pub fn len(&self) -> usize {
         self.inner.len()
-    }
-
-    pub fn dodgy_remove(&mut self, widget_id: WidgetId) {
-        let Some(index) = self.inner.iter().position(|entry| entry.widget_id == widget_id) else { return };
-        let entry = self.inner.remove(index);
-        self.comp_ids.remove(&entry.component_id);
     }
 }
 
@@ -202,16 +203,16 @@ impl NodeWalker<WidgetKind<'_>> for UpdateWidgetNeeds {
 
 /// Parent in a component relationship
 #[derive(Debug, Copy, Clone)]
-pub struct Parent(pub WidgetComponentId);
+pub struct Parent(pub WidgetId);
 
-impl From<Parent> for WidgetComponentId {
+impl From<Parent> for WidgetId {
     fn from(value: Parent) -> Self {
         value.0
     }
 }
 
-impl From<WidgetComponentId> for Parent {
-    fn from(value: WidgetComponentId) -> Self {
+impl From<WidgetId> for Parent {
+    fn from(value: WidgetId) -> Self {
         Self(value)
     }
 }

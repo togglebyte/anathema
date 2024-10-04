@@ -25,12 +25,16 @@ impl Container {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        if !matches!(self.needs, WidgetNeeds::Layout) {
-            return self.size;
-        }
+        // if !matches!(self.needs, WidgetNeeds::Layout) {
+        //     return self.size;
+        // }
         self.needs = WidgetNeeds::Position;
 
         self.size = self.inner.any_layout(children, constraints, self.id, ctx);
+
+        // If the size does not match the previous size, or the constraints are 
+        // different than last frame, then this needs to layout everything.
+
         // Floating widgets always report a zero size
         // as they should not affect their parents
         match self.inner.any_floats() {
@@ -46,9 +50,10 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        if !matches!(self.needs, WidgetNeeds::Position) {
-            return;
-        }
+        // if !matches!(self.needs, WidgetNeeds::Position) {
+        //     return;
+        // }
+
         self.needs = WidgetNeeds::Paint;
 
         self.pos = pos;
@@ -67,25 +72,24 @@ impl Container {
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        if !matches!(self.needs, WidgetNeeds::Paint) {
-            return;
-        }
+        // if !matches!(self.needs, WidgetNeeds::Paint) {
+        //     return;
+        // }
 
         let mut ctx = ctx.into_sized(self.size, self.pos);
         let region = ctx.create_region();
         ctx.set_clip_region(region);
 
-        let attrs = attribute_storage.get(self.id);
+        let attributes = attribute_storage.get(self.id);
 
         // Apply all attributes
         for y in 0..self.size.height as u16 {
             for x in 0..self.size.width as u16 {
                 let pos = LocalPos::new(x, y);
-                ctx.set_attributes(attrs, pos);
+                ctx.set_attributes(attributes, pos);
             }
         }
 
-        let attributes = attribute_storage.get(self.id);
         if let Some(fill) = attributes.get_val("fill") {
             for y in 0..ctx.local_size.height as u16 {
                 let mut used_width = 0;

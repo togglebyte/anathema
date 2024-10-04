@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_state::States;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
@@ -96,21 +95,14 @@ pub struct LayoutCtx<'a, 'bp> {
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
     pub glyph_map: &'a mut GlyphMap,
-    _states: &'a States,
 }
 
 impl<'a, 'bp> LayoutCtx<'a, 'bp> {
-    pub fn new(
-        attribs: &'a AttributeStorage<'bp>,
-        viewport: &'a Viewport,
-        glyph_map: &'a mut GlyphMap,
-        _states: &'a States,
-    ) -> Self {
+    pub fn new(attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport, glyph_map: &'a mut GlyphMap) -> Self {
         Self {
             attribs,
             viewport,
             glyph_map,
-            _states,
         }
     }
 }

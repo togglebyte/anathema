@@ -5,9 +5,7 @@ use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, CommonVal, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{
-    AssociatedEvents, ComponentAttributeCollection, ComponentId, Emitter, FocusQueue, UntypedContext,
-};
+use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetKind, WidgetTree};
 
@@ -223,9 +221,7 @@ impl<T: GlobalEvents> EventHandler<T> {
                 event_ctx.states.with_mut(event.state, |state, states| {
                     let common_val = (event.f)(state);
                     let Some(common_val) = common_val.to_common() else { return };
-                    let Some(entry) = event_ctx.components.get_by_component_id(event.parent.into()) else {
-                        return;
-                    };
+                    let Some(entry) = event_ctx.components.get_by_widget_id(event.parent.into()) else { return };
 
                     let (widget_id, state_id) = (entry.widget_id, entry.state_id);
 
@@ -233,7 +229,6 @@ impl<T: GlobalEvents> EventHandler<T> {
 
                     let mut event_ctx = EventCtx {
                         states,
-                        component_attributes: event_ctx.component_attributes,
                         components: event_ctx.components,
                         attribute_storage: event_ctx.attribute_storage,
                         assoc_events: event_ctx.assoc_events,
@@ -264,10 +259,8 @@ impl<T: GlobalEvents> EventHandler<T> {
                 let found = tree.with_value_mut(widget_id, |_, widget, _| {
                     let WidgetKind::Component(component) = widget else { unreachable!() };
 
-                    let Some(attributes) = event_ctx.component_attributes.get(component.component_id) else {
-                        return false;
-                    };
-                    let Some(val) = attributes.get(&*key) else { return false };
+                    let attributes = event_ctx.attribute_storage.get(component.widget_id);
+                    let Some(val) = attributes.get_val(&key) else { return false };
                     let Some(either) = val.load_common_val() else { return false };
                     let Some(cv) = either.to_common() else { return false };
                     if value != cv {
@@ -306,7 +299,6 @@ pub(crate) struct EventCtx<'a, 'rt, 'bp> {
     pub dirty_widgets: &'a mut DirtyWidgets,
     pub components: &'a mut Components,
     pub states: &'a mut States,
-    pub component_attributes: &'a mut ComponentAttributeCollection<'bp>,
     pub attribute_storage: &'a mut AttributeStorage<'bp>,
     pub assoc_events: &'a mut AssociatedEvents,
     pub focus_queue: &'a mut FocusQueue<'static>,

@@ -112,7 +112,7 @@ impl<'bp> For<'bp> {
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
-                    ctx.component_attributes,
+                    ctx.attribute_storage,
                     value_id,
                 );
 

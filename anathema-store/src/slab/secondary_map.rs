@@ -71,3 +71,39 @@ where
         self.0.iter().map(|(_, v)| v)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn with_mut() {
+        let mut map = SecondaryMap::empty();
+        map.insert(0usize, 1);
+        map.insert(1usize, 2);
+        map.insert(2usize, 3);
+
+        map.with_mut(1, |two, the_rest| {
+            assert_eq!(two, 2);
+        });
+    }
+
+    #[test]
+    fn insert_and_get() {
+        let mut map = SecondaryMap::empty();
+        map.insert(0usize, 1);
+        assert_eq!(map.get(0usize).unwrap(), 1);
+    }
+
+    #[test]
+    fn remove_if_cond() {
+        let mut map = SecondaryMap::empty();
+        map.insert(0usize, 1);
+        map.insert(1usize, 2);
+        map.insert(2usize, 4);
+
+        for i in 0usize..3 {
+            map.remove_if(i, |val| *val % 2 == 0);
+        }
+    }
+}

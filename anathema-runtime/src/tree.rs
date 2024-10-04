@@ -30,33 +30,31 @@ impl<'bp> Tree<'bp> for WidgetTree<'bp> {
         self.with_value_mut(widget_id, |path, widget, tree| {
             let WidgetKind::Component(component) = widget else { return None };
             let (node, values) = tree.get_node_by_path(path)?;
-            let elements = Elements::new(
-                node.children(),
-                values,
-                event_ctx.attribute_storage,
-                event_ctx.dirty_widgets,
-            );
-            let state = event_ctx.states.get_mut(state_id);
 
-            let attributes = event_ctx.component_attributes.get_unchecked(component.component_id);
-            let component_ctx = ComponentContext::new(
-                state_id,
-                component.parent,
-                component.assoc_functions,
-                event_ctx.assoc_events,
-                event_ctx.focus_queue,
-                attributes,
-            );
+            event_ctx
+                .attribute_storage
+                .with_mut(component.widget_id, |attributes, attribute_storage| {
+                    let elements = Elements::new(node.children(), values, attribute_storage, event_ctx.dirty_widgets);
 
-            let event_ctx = AnyEventCtx {
-                state,
-                elements,
-                context: event_ctx.context,
-                component_ctx,
-            };
+                    let state = event_ctx.states.get_mut(state_id);
+                    let component_ctx = ComponentContext::new(
+                        state_id,
+                        component.parent,
+                        component.assoc_functions,
+                        event_ctx.assoc_events,
+                        event_ctx.focus_queue,
+                        attributes,
+                    );
 
-            let value = f(&mut *component.dyn_component, event_ctx);
-            Some(value)
+                    let event_ctx = AnyEventCtx {
+                        state,
+                        elements,
+                        context: event_ctx.context,
+                        component_ctx,
+                    };
+
+                    f(&mut *component.dyn_component, event_ctx)
+                })
         })
     }
 }

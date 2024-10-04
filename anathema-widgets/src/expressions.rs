@@ -4,12 +4,11 @@ use std::rc::Rc;
 
 use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, SharedState, StateId, States, ValueRef};
 use anathema_templates::expressions::{Equality, Op};
-use anathema_templates::{Expression, Globals, WidgetComponentId};
+use anathema_templates::{Expression, Globals};
 
-use crate::components::ComponentAttributeCollection;
 use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
-use crate::Value;
+use crate::{AttributeStorage, Value, WidgetId};
 
 pub enum Either<'a> {
     Static(CommonVal<'a>),
@@ -65,7 +64,7 @@ pub enum EvalValue<'bp> {
     Static(CommonVal<'bp>),
     Dyn(ValueRef),
     State(StateId),
-    ComponentAttributes(WidgetComponentId),
+    ComponentAttributes(WidgetId),
     Index(Box<Self>, Box<Self>),
     /// Pending value is used for collections
     /// and traversing state, as a means
@@ -124,7 +123,7 @@ impl<'bp> EvalValue<'bp> {
         path: Path<'_>,
         value_id: ValueId,
         states: &States,
-        attribs: &ComponentAttributeCollection<'bp>,
+        attribs: &AttributeStorage<'bp>,
     ) -> Option<EvalValue<'bp>> {
         match self {
             EvalValue::Dyn(value) => Some(EvalValue::Dyn(
@@ -135,9 +134,9 @@ impl<'bp> EvalValue<'bp> {
                 .get(*id)
                 .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn)),
             EvalValue::ComponentAttributes(id) => {
-                let attributes = attribs.get(*id)?;
+                let attributes = attribs.try_get(*id)?;
                 let value = match path {
-                    Path::Key(key) => attributes.get(key)?,
+                    Path::Key(key) => attributes.get_val(key)?,
                     Path::Index(_) => todo!(),
                 };
                 Some(value.copy_with_sub(value_id))
@@ -455,7 +454,7 @@ pub struct Resolver<'scope, 'bp> {
     subscriber: ValueId,
     scope: &'scope Scope<'bp>,
     states: &'scope States,
-    component_attributes: &'scope ComponentAttributeCollection<'bp>,
+    attributes: &'scope AttributeStorage<'bp>,
     register_future_value: bool,
 }
 
@@ -464,14 +463,14 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
         _scope_level: usize,
         scope: &'scope Scope<'bp>,
         states: &'scope States,
-        component_attributes: &'scope ComponentAttributeCollection<'bp>,
+        attributes: &'scope AttributeStorage<'bp>,
         globals: &'bp Globals,
         subscriber: ValueId,
     ) -> Self {
         Self {
             scope,
             states,
-            component_attributes,
+            attributes,
             globals,
             _scope_level,
             subscriber,
@@ -482,11 +481,11 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
     pub(crate) fn root(
         scope: &'scope Scope<'bp>,
         states: &'scope States,
-        component_attributes: &'scope ComponentAttributeCollection<'bp>,
+        attributes: &'scope AttributeStorage<'bp>,
         globals: &'bp Globals,
         subscriber: ValueId,
     ) -> Self {
-        Self::new(0, scope, states, component_attributes, globals, subscriber)
+        Self::new(0, scope, states, attributes, globals, subscriber)
     }
 
     pub fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
@@ -586,12 +585,12 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                     }
                 };
 
-                let val = match value.get(index, self.subscriber, self.states, self.component_attributes) {
-                    Some(val) => val,
-                    None => {
+                let val = match value.get(index, self.subscriber, self.states, self.attributes) {
+                    Some(EvalValue::Empty) | None => {
                         self.register_future_value = true;
                         EvalValue::Empty
                     }
+                    Some(val) => val,
                 };
 
                 val
@@ -606,12 +605,12 @@ pub(crate) fn eval<'bp>(
     globals: &'bp Globals,
     scope: &Scope<'bp>,
     states: &States,
-    component_attributes: &ComponentAttributeCollection<'bp>,
+    attributes: &AttributeStorage<'bp>,
     value_id: impl Into<ValueId>,
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(scope, states, component_attributes, globals, value_id);
+    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id);
     let value = resolver.resolve(expr);
 
     if resolver.register_future_value {
@@ -626,10 +625,10 @@ pub(crate) fn eval_collection<'bp>(
     globals: &'bp Globals,
     scope: &Scope<'bp>,
     states: &States,
-    component_attributes: &ComponentAttributeCollection<'bp>,
+    attributes: &AttributeStorage<'bp>,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
-    let mut resolver = Resolver::root(scope, states, component_attributes, globals, value_id);
+    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id);
     let value = resolver.resolve(expr);
 
     let collection = match value {
