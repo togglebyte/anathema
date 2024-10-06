@@ -5,7 +5,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State, StateId, States};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_widgets::components::{ComponentAttributeCollection, ComponentRegistry};
+use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, Elements,
@@ -36,7 +36,6 @@ pub struct TestCaseRunner<'bp, S> {
     dirty_widgets: DirtyWidgets,
     floating_widgets: FloatingWidgets,
     states: States,
-    component_attributes: ComponentAttributeCollection<'bp>,
     component_registry: ComponentRegistry,
     future_values: FutureValues,
     changes: Changes,
@@ -57,7 +56,6 @@ where
             &self.factory,
             &mut scope,
             &mut self.states,
-            &mut self.component_attributes,
             &mut self.component_registry,
             &mut self.attribute_storage,
             &mut self.floating_widgets,
@@ -70,12 +68,7 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(
-                &self.attribute_storage,
-                &self.viewport,
-                &mut self.glyph_map,
-                &self.states,
-            );
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
             layout_widget(
                 widget,
                 children,
@@ -99,12 +92,7 @@ where
         // Floating widgets
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(
-                &self.attribute_storage,
-                &self.viewport,
-                &mut self.glyph_map,
-                &self.states,
-            );
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
             layout_widget(
                 widget,
                 children,
@@ -145,21 +133,19 @@ where
             scope.insert_state(StateId::ZERO);
             let path = self.tree.path(sub);
 
-            try_resolve_future_values(
+            let ctx = EvalContext::new(
                 self.globals,
                 &self.factory,
                 &mut scope,
                 &mut self.states,
-                &mut self.component_attributes,
                 &mut self.component_registry,
-                sub,
-                &path,
-                &mut self.tree,
                 &mut self.attribute_storage,
                 &mut self.floating_widgets,
                 &mut self.components,
                 &mut self.dirty_widgets,
             );
+
+            try_resolve_future_values(sub, &path, &mut self.tree, ctx);
         });
     }
 
@@ -172,22 +158,19 @@ where
                 scope.insert_state(StateId::ZERO);
                 let Some(path) = self.tree.try_path(sub) else { return };
 
-                update_tree(
+                let ctx = EvalContext::new(
                     self.globals,
                     &self.factory,
                     &mut scope,
                     &mut self.states,
-                    &mut self.component_attributes,
                     &mut self.component_registry,
-                    &change,
-                    sub,
-                    &path,
-                    &mut self.tree,
                     &mut self.attribute_storage,
                     &mut self.floating_widgets,
                     &mut self.components,
                     &mut self.dirty_widgets,
                 );
+
+                update_tree(&change, sub, &path, &mut self.tree, ctx);
             });
         })
     }
@@ -244,12 +227,8 @@ where
 
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(
-                &self.attribute_storage,
-                &self.viewport,
-                &mut self.glyph_map,
-                &mut self.states,
-            );
+            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+
             layout_widget(
                 widget,
                 children,
@@ -289,7 +268,6 @@ impl TestCase {
         let tree = WidgetTree::empty();
         let components = ComponentRegistry::new();
         let mut states = States::new();
-        let component_attributes = ComponentAttributeCollection::empty();
         states.insert(Box::new(state));
 
         let factory = setup_factory();
@@ -300,7 +278,6 @@ impl TestCase {
             blueprint: &self.blueprint,
             tree,
             states,
-            component_attributes,
             component_registry: components,
             factory,
             future_values: FutureValues::empty(),

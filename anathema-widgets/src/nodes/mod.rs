@@ -48,11 +48,10 @@ mod test {
     use anathema_templates::expressions::{ident, index, strlit};
     use anathema_templates::Globals;
 
-    use crate::components::ComponentAttributeCollection;
     use crate::expressions::{eval_collection, Resolver};
     use crate::scope::ScopeLookup;
     use crate::values::ValueId;
-    use crate::Scope;
+    use crate::{AttributeStorage, Scope};
 
     #[test]
     fn scope_lookup_over_a_collection() {
@@ -60,8 +59,8 @@ mod test {
         //     test val
 
         let mut states = States::new();
-        let component_attributes = ComponentAttributeCollection::empty();
         let mut scope = Scope::new();
+        let attributes = AttributeStorage::empty();
         let globals = Globals::new(Default::default());
 
         // Setup state to contain a list mapped to the key "list"
@@ -81,7 +80,7 @@ mod test {
 
         // Here we are associating the `val` path with the collection, which
         // is either a slice of expressions or a `PendingValue`.
-        let collection = eval_collection(&list_expr, &globals, &scope, &states, &component_attributes, for_key);
+        let collection = eval_collection(&list_expr, &globals, &scope, &states, &attributes, for_key);
 
         // Next up the value would be scoped per iteraton, so `val` is pulled out
         // of the collection by an index, and the resulting value
@@ -112,7 +111,7 @@ mod test {
         //         test val
 
         let mut states = States::new();
-        let component_attributes = ComponentAttributeCollection::empty();
+        let attributes = AttributeStorage::empty();
         let mut scope = Scope::new();
         let globals = Globals::new(Default::default());
 
@@ -130,7 +129,7 @@ mod test {
         let list_expr = ident("list");
         let for_key = Subscriber::ZERO;
 
-        let collection = eval_collection(&lists_expr, &globals, &scope, &states, &component_attributes, for_key);
+        let collection = eval_collection(&lists_expr, &globals, &scope, &states, &attributes, for_key);
 
         for idx in 0..1 {
             scope.push();
@@ -142,12 +141,12 @@ mod test {
 
             // Next up the value would be scoped per iteraton, so `val` is scoped to `(list, index)`
             for idx in 0..2 {
-                let collection = eval_collection(&list_expr, &globals, &scope, &states, &component_attributes, for_key);
+                let collection = eval_collection(&list_expr, &globals, &scope, &states, &attributes, for_key);
                 scope.push();
                 collection.scope(&mut scope, "val", idx);
 
                 let expr = ident("val");
-                let output = Resolver::root(&scope, &states, &component_attributes, &globals, for_key).resolve(&expr);
+                let output = Resolver::root(&scope, &states, &attributes, &globals, for_key).resolve(&expr);
                 let int = output.load::<u32>().unwrap();
                 assert_eq!(int, 123 + idx as u32);
                 scope.pop();

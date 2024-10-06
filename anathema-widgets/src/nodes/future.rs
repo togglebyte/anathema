@@ -7,7 +7,7 @@ use super::update::scope_value;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
-use crate::{WidgetKind, WidgetNeeds, WidgetTree};
+use crate::{WidgetKind, WidgetTree};
 
 struct ResolveFutureValues<'a, 'b, 'bp> {
     value_id: ValueId,
@@ -65,7 +65,7 @@ fn try_resolve_value<'bp>(
 
                         if val.replace(value) {
                             // TODO: do we need this?
-                            ctx.dirty_widgets.push(container.id, WidgetNeeds::Layout);
+                            ctx.dirty_widgets.push(container.id);
                         }
                     }
                 });
@@ -192,24 +192,25 @@ fn try_resolve_value<'bp>(
 
 #[cfg(test)]
 mod test {
-    use anathema_state::drain_futures;
+    use anathema_state::{drain_futures, States};
     use anathema_store::stack::Stack;
     use anathema_templates::expressions::{ident, index, list, map, num, strlit};
-    use anathema_templates::Expression;
+    use anathema_templates::{Expression, Globals};
 
     use super::*;
+    use crate::{AttributeStorage, Scope};
 
     fn future_value(expr: &Expression, value_id: ValueId) {
         let globals = Globals::default();
         let scope = Scope::new();
         let states = States::new();
-        let component_attributes = ComponentAttributeCollection::empty();
+        let attributes = AttributeStorage::empty();
         let mut futures = Stack::empty();
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 0);
 
-        eval(expr, &globals, &scope, &states, &component_attributes, value_id);
+        eval(expr, &globals, &scope, &states, &attributes, value_id);
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 1);

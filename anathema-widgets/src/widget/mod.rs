@@ -9,7 +9,7 @@ use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::sorted::SortedList;
-use anathema_store::tree::{NodeWalker, Tree, TreeForEach};
+use anathema_store::tree::{Tree, TreeForEach};
 use anathema_templates::WidgetComponentId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
@@ -28,23 +28,6 @@ pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'b
 pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
 pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, PaintFilter<'frame, 'bp>>;
 pub type WidgetId = anathema_store::slab::Key;
-
-/// Represent the needs of a widget.
-#[derive(Debug, Copy, Clone)]
-#[repr(u8)]
-pub enum WidgetNeeds {
-    Paint = 0,
-    Position = 1,
-    Layout = 2,
-}
-
-impl WidgetNeeds {
-    pub(crate) fn update(&mut self, new: Self) {
-        if (*self as u8) < new as u8 {
-            *self = new;
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct CompEntry {
@@ -157,7 +140,7 @@ impl FloatingWidgets {
 }
 
 pub struct DirtyWidgets {
-    inner: Vec<(WidgetId, WidgetNeeds)>,
+    inner: Vec<WidgetId>,
 }
 
 impl DirtyWidgets {
@@ -165,8 +148,8 @@ impl DirtyWidgets {
         Self { inner: vec![] }
     }
 
-    pub fn push(&mut self, widget_id: WidgetId, needs: WidgetNeeds) {
-        self.inner.push((widget_id, needs));
+    pub fn push(&mut self, widget_id: WidgetId) {
+        self.inner.push(widget_id);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -175,29 +158,6 @@ impl DirtyWidgets {
 
     pub fn clear(&mut self) {
         self.inner.clear();
-    }
-
-    pub fn apply(&self, tree: &mut Tree<WidgetKind<'_>>) {
-        for (id, needs) in &self.inner {
-            let path = tree.path(*id);
-            tree.apply_node_walker(&path, UpdateWidgetNeeds(*needs));
-        }
-    }
-}
-
-pub struct UpdateWidgetNeeds(WidgetNeeds);
-
-impl UpdateWidgetNeeds {
-    pub fn new(needs: WidgetNeeds) -> Self {
-        Self(needs)
-    }
-}
-
-impl NodeWalker<WidgetKind<'_>> for UpdateWidgetNeeds {
-    fn apply(&mut self, widget: &mut WidgetKind<'_>) {
-        if let WidgetKind::Element(el) = widget {
-            el.container.needs.update(self.0);
-        }
     }
 }
 
@@ -290,7 +250,7 @@ pub trait AnyWidget {
 
     fn any_inner_bounds(&self, pos: Pos, size: Size) -> Region;
 
-    fn any_needs(&mut self) -> WidgetNeeds;
+    fn any_needs_reflow(&mut self) -> bool;
 }
 
 impl<T: 'static + Widget> AnyWidget for T {
@@ -340,8 +300,8 @@ impl<T: 'static + Widget> AnyWidget for T {
         self.floats()
     }
 
-    fn any_needs(&mut self) -> WidgetNeeds {
-        self.needs()
+    fn any_needs_reflow(&mut self) -> bool {
+        self.needs_reflow()
     }
 }
 
@@ -390,8 +350,8 @@ pub trait Widget {
         Region::from((pos, size))
     }
 
-    fn needs(&mut self) -> WidgetNeeds {
-        WidgetNeeds::Paint
+    fn needs_reflow(&mut self) -> bool {
+        false
     }
 }
 

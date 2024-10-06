@@ -7,7 +7,7 @@ use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{Node, TreeValues};
 
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetId, WidgetKind, WidgetNeeds};
+use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetId, WidgetKind};
 
 // -----------------------------------------------------------------------------
 //   - Elements -
@@ -232,9 +232,8 @@ where
                 let attributes = self.attributes.get_mut(el.id());
                 (self.f)(el, attributes);
 
-                match el.container.inner.any_needs() {
-                    WidgetNeeds::Paint => (),
-                    needs => self.dirty_widgets.push(widget_id, needs),
+                if el.container.inner.any_needs_reflow() {
+                    self.dirty_widgets.push(widget_id);
                 }
 
                 if !self.continuous {

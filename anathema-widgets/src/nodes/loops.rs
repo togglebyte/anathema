@@ -170,7 +170,7 @@ mod test {
     use anathema_templates::Document;
 
     use super::*;
-    use crate::components::{ComponentAttributeCollection, ComponentRegistry};
+    use crate::components::ComponentRegistry;
     use crate::nodes::stringify::Stringify;
     use crate::nodes::{eval_blueprint, update_tree};
     use crate::testing::setup_test_factory;
@@ -201,7 +201,6 @@ mod test {
         let mut components = Components::new();
         let mut dirty_widgets = DirtyWidgets::empty();
         let mut states = States::new();
-        let mut component_attributes = ComponentAttributeCollection::empty();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
@@ -210,7 +209,6 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
-            &mut component_attributes,
             &mut component_registry,
             &mut attribute_storage,
             &mut floating_widgets,
@@ -252,21 +250,25 @@ mod test {
                 eprintln!("- apply change: {change:?}");
                 let mut scope = Scope::with_capacity(10);
                 let widget_path = widget_tree.path(sub);
-                update_tree(
+
+                let ctx = EvalContext::new(
                     &globals,
                     &factory,
                     &mut scope,
                     &mut states,
-                    &mut component_attributes,
                     &mut component_registry,
-                    &change,
-                    sub,
-                    &widget_path,
-                    &mut widget_tree,
                     &mut attribute_storage,
                     &mut floating_widgets,
                     &mut components,
                     &mut dirty_widgets,
+                );
+
+                update_tree(
+                    &change,
+                    sub,
+                    &widget_path,
+                    &mut widget_tree,
+                    ctx,
                 );
             });
         });
@@ -323,7 +325,6 @@ mod test {
         let factory = setup_test_factory();
         let mut component_reg = ComponentRegistry::new();
         let mut states = States::new();
-        let mut component_attributes = ComponentAttributeCollection::empty();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
@@ -332,7 +333,6 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
-            &mut component_attributes,
             &mut component_reg,
             &mut attribute_storage,
             &mut floating_widgets,

@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId, WidgetNeeds};
+use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -216,13 +216,10 @@ impl Widget for Overflow {
         });
     }
 
-    fn needs(&mut self) -> WidgetNeeds {
-        if self.is_dirty {
-            self.is_dirty = false;
-            WidgetNeeds::Position
-        } else {
-            WidgetNeeds::Paint
-        }
+    fn needs_reflow(&mut self) -> bool {
+        let needs_reflow = self.is_dirty;
+        self.is_dirty = false;
+        needs_reflow
     }
 }
 

@@ -5,7 +5,6 @@ use anathema_state::{Map, State, StateId, States};
 use anathema_store::tree::TreeForEach;
 use anathema_templates::{Expression, Globals};
 
-use crate::components::ComponentAttributeCollection;
 use crate::expressions::{eval, EvalValue};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::scope::Scope;
@@ -67,14 +66,14 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let value_id = ValueId::from((key, index));
         let mut scope = Scope::new();
         let globals = Globals::new(Default::default());
+        let attributes = AttributeStorage::empty();
         scope.insert_state(StateId::ZERO);
-        let component_attributes = ComponentAttributeCollection::empty();
         let value = eval(
             &self.test_state.0,
             &globals,
             &scope,
             &self.states,
-            &component_attributes,
+            &attributes,
             value_id,
         );
         f(value)

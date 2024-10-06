@@ -6,7 +6,7 @@ use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 use crate::error::Result;
 use crate::values::ValueId;
-use crate::{Scope, WidgetKind, WidgetNeeds, WidgetTree};
+use crate::{Scope, WidgetKind, WidgetTree};
 
 struct UpdateTree<'a, 'b, 'bp> {
     change: &'a Change,
@@ -24,9 +24,6 @@ impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
     }
 
     fn parent(&mut self, parent: &mut WidgetKind<'bp>, children: &[u16]) {
-        if let WidgetKind::Element(el) = parent {
-            el.container.needs = WidgetNeeds::Layout;
-        }
         scope_value(parent, self.ctx.scope, children);
     }
 }

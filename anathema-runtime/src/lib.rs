@@ -36,7 +36,7 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
-    Factory, FloatingWidgets, GlyphMap, Scope, UpdateWidgetNeeds, WidgetKind, WidgetNeeds, WidgetTree,
+    Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -360,8 +360,6 @@ where
                 scope.clear();
                 let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
 
-                tree.apply_node_walker(&path, UpdateWidgetNeeds::new(WidgetNeeds::Layout));
-
                 let ctx = EvalContext::new(
                     globals,
                     &self.factory,
@@ -650,12 +648,6 @@ where
 
         self.apply_changes(globals, tree, states, attribute_storage);
         self.apply_futures(globals, tree, states, attribute_storage);
-
-        // -----------------------------------------------------------------------------
-        //   - Update dirty widgets -
-        //   Mark dirty widgets for redraw, along with their parents
-        // -----------------------------------------------------------------------------
-        self.dirty_widgets.apply(tree);
 
         // Cleanup removed attributes from widgets.
         for key in tree.drain_removed() {

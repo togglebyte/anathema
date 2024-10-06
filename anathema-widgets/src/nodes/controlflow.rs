@@ -71,7 +71,7 @@ mod test {
     use anathema_store::tree::Tree;
     use anathema_templates::Document;
 
-    use crate::components::{ComponentAttributeCollection, ComponentRegistry};
+    use crate::components::ComponentRegistry;
     use crate::nodes::stringify::Stringify;
     use crate::scope::Scope;
     use crate::testing::setup_test_factory;
@@ -102,7 +102,6 @@ mod test {
         let mut components = Components::new();
         let mut dirty_widgets = DirtyWidgets::empty();
         let mut states = States::new();
-        let mut component_attributes = ComponentAttributeCollection::empty();
         let state_id = states.insert(Box::new(map));
         let mut scope = Scope::new();
         scope.insert_state(state_id);
@@ -112,7 +111,6 @@ mod test {
             &factory,
             &mut scope,
             &mut states,
-            &mut component_attributes,
             &mut component_registry,
             &mut attribute_storage,
             &mut floating_widgets,

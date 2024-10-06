@@ -4,7 +4,7 @@ use anathema_geometry::{LocalPos, Pos, Region, Size};
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
-use crate::widget::{AnyWidget, PositionChildren, WidgetNeeds};
+use crate::widget::{AnyWidget, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
 /// Wraps a widget and retain some geometry for the widget
@@ -15,7 +15,6 @@ pub struct Container {
     pub size: Size,
     pub pos: Pos,
     pub inner_bounds: Region,
-    pub needs: WidgetNeeds,
 }
 
 impl Container {
@@ -25,12 +24,10 @@ impl Container {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        // if !matches!(self.needs, WidgetNeeds::Layout) {
-        //     return self.size;
-        // }
-        self.needs = WidgetNeeds::Position;
-
-        self.size = self.inner.any_layout(children, constraints, self.id, ctx);
+        let size = self.inner.any_layout(children, constraints, self.id, ctx);
+        if size != self.size {
+            // propagate change
+        }
 
         // If the size does not match the previous size, or the constraints are 
         // different than last frame, then this needs to layout everything.
@@ -50,12 +47,6 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        // if !matches!(self.needs, WidgetNeeds::Position) {
-        //     return;
-        // }
-
-        self.needs = WidgetNeeds::Paint;
-
         self.pos = pos;
         let ctx = PositionCtx {
             inner_size: self.size,

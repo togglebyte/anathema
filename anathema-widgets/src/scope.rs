@@ -269,8 +269,8 @@ mod test {
     use anathema_templates::{Expression, Globals};
 
     use super::*;
-    use crate::components::ComponentAttributeCollection;
     use crate::expressions::eval_collection;
+    use crate::AttributeStorage;
 
     #[test]
     fn scope_collection() {
@@ -278,11 +278,11 @@ mod test {
         map.insert("list", Value::<List<u8>>::from_iter([1u8, 2, 3]));
 
         let states = States::new();
-        let component_attributes = ComponentAttributeCollection::empty();
         let scope = Scope::new();
+        let attributes = AttributeStorage::empty();
         let expr = Expression::Ident("list".into());
         let globals = Globals::new(Default::default());
-        eval_collection(&expr, &globals, &scope, &states, &component_attributes, ValueId::ZERO);
+        eval_collection(&expr, &globals, &scope, &states, &attributes, ValueId::ZERO);
 
         //         let one = [Expression::Primitive(1i64.into())];
 

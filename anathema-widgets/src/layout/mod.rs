@@ -6,7 +6,7 @@ use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetId, WidgetKind, WidgetNeeds};
+use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetId, WidgetKind};
 
 mod constraints;
 mod display;
@@ -154,7 +154,7 @@ pub fn reset_layout<'bp>(
 
 fn inner_reset_layout(mut children: LayoutChildren<'_, '_, '_>, dirty_widgets: &mut DirtyWidgets) {
     children.for_each(|element, children| {
-        dirty_widgets.push(element.id(), WidgetNeeds::Layout);
+        dirty_widgets.push(element.id());
         inner_reset_layout(children, dirty_widgets);
         ControlFlow::Continue(())
     });

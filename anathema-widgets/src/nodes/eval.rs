@@ -13,7 +13,7 @@ use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
 use crate::{
-    eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetId, WidgetKind, WidgetNeeds, WidgetTree,
+    eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetId, WidgetKind, WidgetTree,
 };
 
 /// Evaluation context
@@ -140,7 +140,6 @@ impl Evaluator for SingleEval {
             pos: Pos::ZERO,
             size: Size::ZERO,
             inner_bounds: Region::ZERO,
-            needs: WidgetNeeds::Layout,
         };
 
         // Widget
