@@ -42,8 +42,7 @@ impl Widget for Column {
 
             let mut pos = ctx.pos;
             pos.x += x;
-
-            child.position(children, pos, attribute_storage, ctx.viewport);
+            child.position(children, ctx, pos, attribute_storage, ctx.viewport);
             ctx.pos.y += size.height as i32;
             ControlFlow::Continue(())
         });
