@@ -24,10 +24,7 @@ impl Container {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        let size = self.inner.any_layout(children, constraints, self.id, ctx);
-        if size != self.size {
-            // propagate change
-        }
+        self.size = self.inner.any_layout(children, constraints, self.id, ctx);
 
         // If the size does not match the previous size, or the constraints are 
         // different than last frame, then this needs to layout everything.

@@ -4,6 +4,7 @@ use std::ops::ControlFlow;
 use super::{Node, ValueId};
 use crate::slab::GenSlab;
 
+/// Visit each node in the entire tree
 pub trait NodeVisitor<T> {
     /// Return control flow.
     /// * `ControlFlow::Continue(())` continue

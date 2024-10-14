@@ -161,8 +161,8 @@ impl Widget for Overflow {
 
         // If the value is clamped, update the offset
         match attributes.get(CLAMP) {
-            Some(false) => {}
-            _ => self.clamp(self.inner_size, ctx.inner_size),
+            Some(false) => (),
+            Some(true) | None => self.clamp(self.inner_size, ctx.inner_size),
         }
 
         if let Direction::Backward = direction {

@@ -292,7 +292,9 @@ impl<T> Tree<T> {
     }
 
     /// Apply the [`PathFinder`].
-    pub fn apply_path_finder(&mut self, node_path: &[u16], path_finder: impl PathFinder<T>) {
+    pub fn apply_path_finder<P>(&mut self, node_path: &[u16], path_finder: P) 
+        where P: PathFinder<Input = T>
+    {
         apply_path_finder(self, node_path, path_finder);
     }
 
@@ -316,7 +318,10 @@ impl<T> Tree<T> {
     }
 }
 
-fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &[u16], mut path_finder: impl PathFinder<T>) {
+fn apply_path_finder<P>(tree: &mut Tree<P::Input>, node_path: &[u16], mut path_finder: P)
+where
+    P: PathFinder,
+{
     let mut path: &[u16] = node_path;
     let mut nodes: &[_] = &tree.layout.inner;
     let values = &mut tree.values;

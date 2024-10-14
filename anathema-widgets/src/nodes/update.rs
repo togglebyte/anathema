@@ -14,7 +14,8 @@ struct UpdateTree<'a, 'b, 'bp> {
     ctx: EvalContext<'a, 'b, 'bp>,
 }
 
-impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for UpdateTree<'a, 'b, 'bp> {
+impl<'a, 'b, 'bp> PathFinder for UpdateTree<'a, 'b, 'bp> {
+    type Input = WidgetKind<'bp>;
     type Output = Result<()>;
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {

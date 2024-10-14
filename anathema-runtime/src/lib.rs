@@ -660,6 +660,7 @@ where
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
         let needs_reflow = !self.changes.is_empty() || !self.dirty_widgets.is_empty();
+        let needs_reflow = true;
         if needs_reflow {
             let mut cycle = WidgetCycle::new(
                 &mut self.backend,

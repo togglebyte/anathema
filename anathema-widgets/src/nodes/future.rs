@@ -14,7 +14,8 @@ struct ResolveFutureValues<'a, 'b, 'bp> {
     ctx: EvalContext<'a, 'b, 'bp>,
 }
 
-impl<'a, 'b, 'bp> PathFinder<WidgetKind<'bp>> for ResolveFutureValues<'a, 'b, 'bp> {
+impl<'a, 'b, 'bp> PathFinder for ResolveFutureValues<'a, 'b, 'bp> {
+    type Input = WidgetKind<'bp>;
     type Output = Result<()>;
 
     fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
