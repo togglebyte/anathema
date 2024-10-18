@@ -1,12 +1,12 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
+use anathema_store::tree::{Node, PathList, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetId, WidgetKind};
+use crate::{AttributeStorage, GlyphMap, LayoutChildren, WidgetId, WidgetKind};
 
 mod constraints;
 mod display;
@@ -139,25 +139,6 @@ pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,
     pub viewport: Viewport,
-}
-
-pub fn reset_layout<'bp>(
-    children: &[Node],
-    values: &mut TreeValues<WidgetKind<'bp>>,
-    attribute_storage: &AttributeStorage<'bp>,
-    dirty_widgets: &mut DirtyWidgets,
-) {
-    let filter = LayoutFilter::new(true, attribute_storage);
-    let children = TreeForEach::new(children, values, &filter);
-    inner_reset_layout(children, dirty_widgets);
-}
-
-fn inner_reset_layout(mut children: LayoutChildren<'_, '_, '_>, dirty_widgets: &mut DirtyWidgets) {
-    children.for_each(|element, children| {
-        dirty_widgets.push(element.id());
-        inner_reset_layout(children, dirty_widgets);
-        ControlFlow::Continue(())
-    });
 }
 
 #[cfg(test)]

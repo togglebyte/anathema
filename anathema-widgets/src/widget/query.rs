@@ -4,10 +4,10 @@ use anathema_geometry::{Pos, Region};
 use anathema_state::CommonVal;
 pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{Node, TreeValues};
+use anathema_store::tree::{Node, PathList, TreeValues};
 
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetId, WidgetKind};
+use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
 
 // -----------------------------------------------------------------------------
 //   - Elements -
@@ -16,7 +16,7 @@ pub struct Elements<'tree, 'bp> {
     nodes: &'tree [Node],
     widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
     attributes: &'tree mut AttributeStorage<'bp>,
-    dirty_widgets: &'tree mut DirtyWidgets,
+    pathlist: &'tree mut PathList,
 }
 
 impl<'tree, 'bp> Elements<'tree, 'bp> {
@@ -24,13 +24,13 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         nodes: &'tree [Node],
         widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
-        dirty_widgets: &'tree mut DirtyWidgets,
+        pathlist: &'tree mut PathList,
     ) -> Self {
         Self {
             nodes,
             widgets,
             attributes: attribute_storage,
-            dirty_widgets,
+            pathlist,
         }
     }
 
@@ -104,7 +104,7 @@ where
             f,
             continuous,
             attributes: self.elements.attributes,
-            dirty_widgets: self.elements.dirty_widgets,
+            pathlist: self.elements.pathlist,
         };
 
         apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
@@ -219,21 +219,21 @@ pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
     f: F,
     continuous: bool,
     attributes: &'tag mut AttributeStorage<'bp>,
-    dirty_widgets: &'tag mut DirtyWidgets,
+    pathlist: &'tag mut PathList,
 }
 
 impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'bp, 'tag, T, F>
 where
     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
-    fn visit(&mut self, value: &mut WidgetKind<'bp>, _path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
+    fn visit(&mut self, value: &mut WidgetKind<'bp>, path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
         if let WidgetKind::Element(el) = value {
             if self.filter.filter(el, self.attributes) {
                 let attributes = self.attributes.get_mut(el.id());
                 (self.f)(el, attributes);
 
                 if el.container.inner.any_needs_reflow() {
-                    self.dirty_widgets.push(widget_id);
+                    self.pathlist.push(path);
                 }
 
                 if !self.continuous {

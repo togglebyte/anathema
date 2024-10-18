@@ -26,7 +26,7 @@ use anathema_default_widgets::register_default_widgets;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::root_node;
+use anathema_store::tree::{root_node, PathList, PathListCtl};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
@@ -35,7 +35,7 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext,
     Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
@@ -204,6 +204,7 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
             factory: self.factory,
             future_values: FutureValues::empty(),
             glyph_map: GlyphMap::empty(),
+            pathlistctl: PathListCtl::new(),
 
             changes: Changes::empty(),
             component_registry: self.component_registry,
@@ -212,7 +213,6 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
             components: Components::new(),
-            dirty_widgets: DirtyWidgets::empty(),
             event_handler: EventHandler::new(self.global_events),
         };
 
@@ -258,7 +258,7 @@ pub struct Runtime<T, G> {
     constraints: Constraints,
     // * Event handling
     components: Components,
-    dirty_widgets: DirtyWidgets,
+    pathlistctl: PathListCtl,
     // tab_indices: TabIndices,
 
     // -----------------------------------------------------------------------------
@@ -334,7 +334,7 @@ where
                 attribute_storage,
                 &mut self.floating_widgets,
                 &mut self.components,
-                &mut self.dirty_widgets,
+                self.pathlistctl.list(),
             );
 
             try_resolve_future_values(sub, &path, tree, ctx);
@@ -369,7 +369,7 @@ where
                     attribute_storage,
                     &mut self.floating_widgets,
                     &mut self.components,
-                    &mut self.dirty_widgets,
+                    self.pathlistctl.list(),
                 );
 
                 update_tree(change, sub, &path, tree, ctx);
@@ -396,7 +396,7 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
-            dirty_widgets: &mut self.dirty_widgets,
+            pathlist: self.pathlistctl.list(),
             states,
             attribute_storage,
             assoc_events,
@@ -463,7 +463,7 @@ where
             &mut attribute_storage,
             &mut self.floating_widgets,
             &mut self.components,
-            &mut self.dirty_widgets,
+            self.pathlistctl.list(),
         );
 
         let blueprint = self.blueprint.clone();
@@ -501,7 +501,7 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
-            dirty_widgets: &mut self.dirty_widgets,
+            pathlist: self.pathlistctl.list(),
             states: &mut states,
             attribute_storage: &mut attribute_storage,
             assoc_events: &mut assoc_events,
@@ -624,7 +624,7 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
-            dirty_widgets: &mut self.dirty_widgets,
+            pathlist: self.pathlistctl.list(),
             states,
             attribute_storage,
             assoc_events,
@@ -659,7 +659,7 @@ where
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
-        let needs_reflow = !self.changes.is_empty() || !self.dirty_widgets.is_empty();
+        let needs_reflow = !self.changes.is_empty() || !self.pathlistctl.is_empty();
         let needs_reflow = true;
         if needs_reflow {
             let mut cycle = WidgetCycle::new(
@@ -676,7 +676,6 @@ where
             self.backend.render(&mut self.glyph_map);
             self.backend.clear();
             self.changes.clear();
-            self.dirty_widgets.clear();
         }
 
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
@@ -710,7 +709,7 @@ where
 
             let mut event_ctx = EventCtx {
                 components: &mut self.components,
-                dirty_widgets: &mut self.dirty_widgets,
+                pathlist: self.pathlistctl.list(),
                 states,
                 attribute_storage,
                 assoc_events,

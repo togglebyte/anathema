@@ -3,6 +3,7 @@ use std::ops::Deref;
 pub use self::iter::{TreeFilter, TreeForEach};
 pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
+pub use self::pathlist::{PathList, PathListCtl};
 pub use self::transactions::InsertTransaction;
 use self::visitor::NodeVisitor;
 pub use self::walker::NodeWalker;
@@ -12,6 +13,7 @@ pub use crate::slab::Key as ValueId;
 mod iter;
 mod nodepath;
 mod pathfinder;
+mod pathlist;
 mod transactions;
 pub mod visitor;
 mod walker;
@@ -292,8 +294,9 @@ impl<T> Tree<T> {
     }
 
     /// Apply the [`PathFinder`].
-    pub fn apply_path_finder<P>(&mut self, node_path: &[u16], path_finder: P) 
-        where P: PathFinder<Input = T>
+    pub fn apply_path_finder<P>(&mut self, node_path: &[u16], path_finder: P)
+    where
+        P: PathFinder<Input = T>,
     {
         apply_path_finder(self, node_path, path_finder);
     }

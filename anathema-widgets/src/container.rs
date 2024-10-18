@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
+use anathema_templates::blueprints::Blueprint;
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
@@ -9,16 +10,17 @@ use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
 /// Wraps a widget and retain some geometry for the widget
 #[derive(Debug)]
-pub struct Container {
+pub(crate) struct Container {
     pub inner: Box<dyn AnyWidget>,
     pub id: WidgetId,
     pub size: Size,
     pub pos: Pos,
     pub inner_bounds: Region,
+    // pub children: Children<'bp>,
 }
 
 impl Container {
-    pub fn layout<'bp>(
+    pub(crate) fn layout<'bp>(
         &mut self,
         children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
@@ -26,7 +28,7 @@ impl Container {
     ) -> Size {
         self.size = self.inner.any_layout(children, constraints, self.id, ctx);
 
-        // If the size does not match the previous size, or the constraints are 
+        // If the size does not match the previous size, or the constraints are
         // different than last frame, then this needs to layout everything.
 
         // Floating widgets always report a zero size
@@ -37,7 +39,7 @@ impl Container {
         }
     }
 
-    pub fn position<'bp>(
+    pub(crate) fn position<'bp>(
         &mut self,
         children: PositionChildren<'_, '_, 'bp>,
         pos: Pos,
@@ -54,7 +56,7 @@ impl Container {
         self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.size);
     }
 
-    pub fn paint<'bp>(
+    pub(crate) fn paint<'bp>(
         &mut self,
         children: PaintChildren<'_, '_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,

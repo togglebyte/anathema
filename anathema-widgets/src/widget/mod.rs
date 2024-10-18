@@ -139,28 +139,6 @@ impl FloatingWidgets {
     }
 }
 
-pub struct DirtyWidgets {
-    inner: Vec<WidgetId>,
-}
-
-impl DirtyWidgets {
-    pub fn empty() -> Self {
-        Self { inner: vec![] }
-    }
-
-    pub fn push(&mut self, widget_id: WidgetId) {
-        self.inner.push(widget_id);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
-
-    pub fn clear(&mut self) {
-        self.inner.clear();
-    }
-}
-
 /// Parent in a component relationship
 #[derive(Debug, Copy, Clone)]
 pub struct Parent(pub WidgetId);
