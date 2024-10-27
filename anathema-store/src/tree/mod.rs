@@ -303,7 +303,8 @@ impl<T> Tree<T> {
 
     /// Apply the [`NodeWalker`].
     pub fn apply_node_walker(&mut self, path: &[u16], mut walker: impl NodeWalker<T>) {
-        walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
+        unimplemented!()
+        // walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
     }
 
     /// Apply a [`NodeVisitor`], depth first

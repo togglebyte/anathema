@@ -8,14 +8,12 @@ use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow};
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
-use crate::container::Container;
+use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
-use crate::{
-    eval_blueprint, AttributeStorage, Factory, Scope, WidgetId, WidgetKind, WidgetTree,
-};
+use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetId, WidgetKind, WidgetTree};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
@@ -139,8 +137,8 @@ impl Evaluator for SingleEval {
             inner: widget,
             id: widget_id,
             pos: Pos::ZERO,
-            size: Size::ZERO,
             inner_bounds: Region::ZERO,
+            cache: Cache::ZERO,
         };
 
         // Widget

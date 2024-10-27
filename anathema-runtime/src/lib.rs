@@ -35,8 +35,8 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext,
-    Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
+    FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -259,7 +259,6 @@ pub struct Runtime<T, G> {
     // * Event handling
     components: Components,
     pathlistctl: PathListCtl,
-    // tab_indices: TabIndices,
 
     // -----------------------------------------------------------------------------
     //   - Mut during updates -

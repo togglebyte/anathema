@@ -147,7 +147,7 @@ impl<'bp, 'a> Filter<'bp> for Kind<'a> {
                     .unwrap_or(false)
             }
             Kind::AtPosition(pos) => {
-                let region = Region::from((el.container.pos, el.container.size));
+                let region = Region::from((el.container.pos, el.size()));
                 region.contains(*pos)
             }
         }

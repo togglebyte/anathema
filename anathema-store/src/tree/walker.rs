@@ -107,12 +107,12 @@ mod test {
         let parent = tree.path(key);
         let _ = tree.insert(&parent).commit_child(42).unwrap();
         let key = tree.insert(&parent).commit_child(42).unwrap();
-        let parent = tree.path(key);
-        tree.insert(&parent).commit_child(42).unwrap();
-        tree.insert(&parent).commit_child(42).unwrap();
+        let target = tree.path(key);
+        tree.insert(&target).commit_child(42).unwrap();
+        tree.insert(&target).commit_child(42).unwrap();
 
         let (nodes, values) = tree.split();
-        walk_the_walker(nodes, values, &parent, &mut Zero);
+        walk_the_walker(nodes, values, &target, &mut Zero);
 
         let values = values.iter().map(|(_path, value)| value).copied().collect::<Vec<_>>();
         assert_eq!(values, vec![0, 42, 0, 0, 0]);

@@ -27,6 +27,12 @@ impl<'bp> Element<'bp> {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
+        // If the context doesn't force layout, and the id is not in the list of dirty widgets
+        // (currently this path ctl) then return the cached value
+        if !ctx.needs_layout(self.id()) {
+            return self.size();
+        }
+
         self.container.layout(children, constraints, ctx)
     }
 
@@ -52,7 +58,7 @@ impl<'bp> Element<'bp> {
     }
 
     pub fn size(&self) -> Size {
-        self.container.size
+        self.container.cache.size
     }
 
     /// Inner bounds in global space

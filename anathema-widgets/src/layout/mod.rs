@@ -95,6 +95,7 @@ pub struct LayoutCtx<'a, 'bp> {
     pub attribs: &'a AttributeStorage<'bp>,
     pub viewport: &'a Viewport,
     pub glyph_map: &'a mut GlyphMap,
+    pub force_layout: bool,
 }
 
 impl<'a, 'bp> LayoutCtx<'a, 'bp> {
@@ -103,7 +104,14 @@ impl<'a, 'bp> LayoutCtx<'a, 'bp> {
             attribs,
             viewport,
             glyph_map,
+            force_layout: false,
         }
+    }
+
+    pub fn needs_layout(&self, node_id: WidgetId) -> bool {
+        // self.dirty_widgets.contains(node_id) || self.force_layout
+        panic!("this needs a list of dirty widgets to check against");
+        self.force_layout
     }
 }
 

@@ -8,14 +8,28 @@ use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, PositionChildren};
 use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
 
+#[derive(Debug, PartialEq)]
+pub struct Cache {
+    pub(super) size: Size,
+    constraints: Constraints,
+}
+
+impl Cache {
+    pub(crate) const ZERO: Self = Self::new(Size::ZERO, Constraints::ZERO);
+
+    const fn new(size: Size, constraints: Constraints) -> Self {
+        Self { size, constraints }
+    }
+}
+
 /// Wraps a widget and retain some geometry for the widget
 #[derive(Debug)]
 pub(crate) struct Container {
     pub inner: Box<dyn AnyWidget>,
     pub id: WidgetId,
-    pub size: Size,
     pub pos: Pos,
     pub inner_bounds: Region,
+    pub cache: Cache,
     // pub children: Children<'bp>,
 }
 
@@ -26,7 +40,14 @@ impl Container {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        self.size = self.inner.any_layout(children, constraints, self.id, ctx);
+        let size = self.inner.any_layout(children, constraints, self.id, ctx);
+        let cache = Cache::new(size, constraints);
+
+        if cache != self.cache {
+            // If this was the target node to layout and nothing has changed,
+            // then there is no reason to continue the layout.
+            ctx.force_layout = true;
+        }
 
         // If the size does not match the previous size, or the constraints are
         // different than last frame, then this needs to layout everything.
@@ -35,7 +56,7 @@ impl Container {
         // as they should not affect their parents
         match self.inner.any_floats() {
             true => Size::ZERO,
-            false => self.size,
+            false => self.cache.size,
         }
     }
 
@@ -48,12 +69,12 @@ impl Container {
     ) {
         self.pos = pos;
         let ctx = PositionCtx {
-            inner_size: self.size,
+            inner_size: self.cache.size,
             pos,
             viewport,
         };
         self.inner.any_position(children, self.id, attribute_storage, ctx);
-        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.size);
+        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.cache.size);
     }
 
     pub(crate) fn paint<'bp>(
@@ -66,15 +87,15 @@ impl Container {
         //     return;
         // }
 
-        let mut ctx = ctx.into_sized(self.size, self.pos);
+        let mut ctx = ctx.into_sized(self.cache.size, self.pos);
         let region = ctx.create_region();
         ctx.set_clip_region(region);
 
         let attributes = attribute_storage.get(self.id);
 
         // Apply all attributes
-        for y in 0..self.size.height as u16 {
-            for x in 0..self.size.width as u16 {
+        for y in 0..self.cache.size.height as u16 {
+            for x in 0..self.cache.size.width as u16 {
                 let pos = LocalPos::new(x, y);
                 ctx.set_attributes(attributes, pos);
             }

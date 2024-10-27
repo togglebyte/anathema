@@ -55,7 +55,7 @@ impl<'bp> For<'bp> {
                         loop_index: anathema_state::Value::new(*index as i64),
                         binding: self.binding,
                     }))
-                    .unwrap(); // TODO unwrap
+                    .ok_or(Error::TreeTransactionFailed)?;
 
                 // Bump the index for every subsequent sibling of the newly inserted node
                 tree.children_after(&insert_at, |node, values| {
@@ -263,13 +263,7 @@ mod test {
                     &mut dirty_widgets,
                 );
 
-                update_tree(
-                    &change,
-                    sub,
-                    &widget_path,
-                    &mut widget_tree,
-                    ctx,
-                );
+                update_tree(&change, sub, &widget_path, &mut widget_tree, ctx);
             });
         });
 
