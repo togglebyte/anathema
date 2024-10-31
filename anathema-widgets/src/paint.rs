@@ -155,6 +155,9 @@ pub fn paint<'bp>(
     attribute_storage: &AttributeStorage<'bp>,
     ignore_floats: bool,
 ) {
+    #[cfg(feature = "profile")]
+    puffin::profile_function!();
+
     let filter = PaintFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
     let ctx = PaintCtx::new(surface, None, glyph_index);

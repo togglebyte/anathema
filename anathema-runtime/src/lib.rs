@@ -26,7 +26,7 @@ use anathema_default_widgets::register_default_widgets;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::{root_node, PathList, PathListCtl};
+use anathema_store::tree::{root_node, AsNodePath};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
@@ -35,8 +35,8 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, EvalContext, Factory,
-    FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
+    Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -204,7 +204,7 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
             factory: self.factory,
             future_values: FutureValues::empty(),
             glyph_map: GlyphMap::empty(),
-            pathlistctl: PathListCtl::new(),
+            dirty_widgets: DirtyWidgets::empty(),
 
             changes: Changes::empty(),
             component_registry: self.component_registry,
@@ -258,7 +258,7 @@ pub struct Runtime<T, G> {
     constraints: Constraints,
     // * Event handling
     components: Components,
-    pathlistctl: PathListCtl,
+    dirty_widgets: DirtyWidgets,
 
     // -----------------------------------------------------------------------------
     //   - Mut during updates -
@@ -333,7 +333,7 @@ where
                 attribute_storage,
                 &mut self.floating_widgets,
                 &mut self.components,
-                self.pathlistctl.list(),
+                &mut self.dirty_widgets,
             );
 
             try_resolve_future_values(sub, &path, tree, ctx);
@@ -368,10 +368,32 @@ where
                     attribute_storage,
                     &mut self.floating_widgets,
                     &mut self.components,
-                    self.pathlistctl.list(),
+                    &mut self.dirty_widgets,
                 );
 
                 update_tree(change, sub, &path, tree, ctx);
+
+                // This is nonsense: TODO
+                // It's a massive hack, let's replace this with the path list again maybe?
+                {
+                    let mut path = &*path;
+                    loop {
+                        if let Some((parent, _)) = path.split_parent() {
+                            if parent.is_empty() {
+                                break;
+                            }
+                            path = parent;
+                            let Some(id) = tree.id(path) else {
+                                unreachable!("this implies the widget exists but the parent was removed")
+                            };
+                            self.dirty_widgets.push(id);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                self.dirty_widgets.push(sub.key());
             });
         });
     }
@@ -395,7 +417,7 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
-            pathlist: self.pathlistctl.list(),
+            dirty_widgets: &mut self.dirty_widgets,
             states,
             attribute_storage,
             assoc_events,
@@ -426,6 +448,16 @@ where
     /// Start the runtime
     pub fn run(&mut self) {
         self.backend.finalize();
+
+        // TODO: this should not be here (probably)
+        #[cfg(feature = "profile")]
+        let _puffin_server = {
+            let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
+            let server = puffin_http::Server::new(&server_addr).unwrap();
+            puffin::set_scopes_on(true);
+            server
+        };
+
         loop {
             match self.internal_run() {
                 Ok(()) => (),
@@ -462,7 +494,7 @@ where
             &mut attribute_storage,
             &mut self.floating_widgets,
             &mut self.components,
-            self.pathlistctl.list(),
+            &mut self.dirty_widgets,
         );
 
         let blueprint = self.blueprint.clone();
@@ -484,8 +516,10 @@ where
             &mut self.glyph_map,
             self.constraints,
             &attribute_storage,
+            &self.dirty_widgets,
             &self.floating_widgets,
             self.viewport,
+            true,
         )
         .run();
         self.backend.render(&mut self.glyph_map);
@@ -500,7 +534,7 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
-            pathlist: self.pathlistctl.list(),
+            dirty_widgets: &mut self.dirty_widgets,
             states: &mut states,
             attribute_storage: &mut attribute_storage,
             assoc_events: &mut assoc_events,
@@ -598,8 +632,8 @@ where
         assoc_events: &mut AssociatedEvents,
         focus_queue: &mut FocusQueue<'static>,
     ) -> Result<()> {
-        // Clear the text buffer
-        // self.string_storage.clear();
+        #[cfg(feature = "profile")]
+        puffin::GlobalProfiler::lock().new_frame();
 
         // Pull and keep consuming events while there are events present in the queue.
         let poll_duration = self.handle_messages(
@@ -623,7 +657,7 @@ where
 
         let mut event_ctx = EventCtx {
             components: &mut self.components,
-            pathlist: self.pathlistctl.list(),
+            dirty_widgets: &mut self.dirty_widgets,
             states,
             attribute_storage,
             assoc_events,
@@ -658,8 +692,7 @@ where
         // -----------------------------------------------------------------------------
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
-        let needs_reflow = !self.changes.is_empty() || !self.pathlistctl.is_empty();
-        let needs_reflow = true;
+        let needs_reflow = !self.dirty_widgets.is_empty();
         if needs_reflow {
             let mut cycle = WidgetCycle::new(
                 &mut self.backend,
@@ -667,14 +700,17 @@ where
                 &mut self.glyph_map,
                 self.constraints,
                 attribute_storage,
+                &self.dirty_widgets,
                 &self.floating_widgets,
                 self.viewport,
+                false,
             );
             cycle.run();
 
             self.backend.render(&mut self.glyph_map);
             self.backend.clear();
             self.changes.clear();
+            self.dirty_widgets.clear();
         }
 
         let sleep = sleep_micros.saturating_sub(fps_now.elapsed().as_micros()) as u64;
@@ -708,7 +744,7 @@ where
 
             let mut event_ctx = EventCtx {
                 components: &mut self.components,
-                pathlist: self.pathlistctl.list(),
+                dirty_widgets: &mut self.dirty_widgets,
                 states,
                 attribute_storage,
                 assoc_events,

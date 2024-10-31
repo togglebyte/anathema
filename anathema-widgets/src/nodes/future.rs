@@ -66,7 +66,7 @@ fn try_resolve_value<'bp>(
 
                         if val.replace(value) {
                             // TODO: do we need this?
-                            ctx.pathlist.push(path);
+                            ctx.dirty_widgets.push(value_id.key());
                         }
                     }
                 });

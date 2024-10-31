@@ -1,12 +1,12 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{Node, PathList, TreeFilter, TreeForEach, TreeValues};
+use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, GlyphMap, LayoutChildren, WidgetId, WidgetKind};
+use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetId, WidgetKind};
 
 mod constraints;
 mod display;
@@ -93,25 +93,31 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
 
 pub struct LayoutCtx<'a, 'bp> {
     pub attribs: &'a AttributeStorage<'bp>,
+    pub dirty_widgets: &'a DirtyWidgets,
     pub viewport: &'a Viewport,
     pub glyph_map: &'a mut GlyphMap,
     pub force_layout: bool,
 }
 
 impl<'a, 'bp> LayoutCtx<'a, 'bp> {
-    pub fn new(attribs: &'a AttributeStorage<'bp>, viewport: &'a Viewport, glyph_map: &'a mut GlyphMap) -> Self {
+    pub fn new(
+        attribs: &'a AttributeStorage<'bp>,
+        dirty_widgets: &'a DirtyWidgets,
+        viewport: &'a Viewport,
+        glyph_map: &'a mut GlyphMap,
+        force_layout: bool,
+    ) -> Self {
         Self {
             attribs,
+            dirty_widgets,
             viewport,
             glyph_map,
-            force_layout: false,
+            force_layout,
         }
     }
 
     pub fn needs_layout(&self, node_id: WidgetId) -> bool {
-        // self.dirty_widgets.contains(node_id) || self.force_layout
-        panic!("this needs a list of dirty widgets to check against");
-        self.force_layout
+        self.dirty_widgets.contains(node_id) || self.force_layout
     }
 }
 
@@ -123,6 +129,9 @@ pub fn layout_widget<'bp>(
     ctx: &mut LayoutCtx<'_, 'bp>,
     ignore_floats: bool,
 ) {
+    #[cfg(feature = "profile")]
+    puffin::profile_function!();
+
     let filter = LayoutFilter::new(ignore_floats, ctx.attribs);
     let children = TreeForEach::new(children, values, &filter);
     element.layout(children, constraints, ctx);
@@ -137,6 +146,8 @@ pub fn position_widget<'bp>(
     ignore_floats: bool,
     viewport: Viewport,
 ) {
+    #[cfg(feature = "profile")]
+    puffin::profile_function!();
     let filter = LayoutFilter::new(ignore_floats, attribute_storage);
     let children = TreeForEach::new(children, values, &filter);
     element.position(children, pos, attribute_storage, viewport);

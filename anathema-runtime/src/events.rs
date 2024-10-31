@@ -4,11 +4,10 @@ use std::time::{Duration, Instant};
 use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, CommonVal, States};
-use anathema_store::tree::PathList;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Components, Elements, GlyphMap, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;
@@ -157,7 +156,7 @@ impl<T: GlobalEvents> EventHandler<T> {
             };
 
             let (nodes, values) = tree.split();
-            let mut elements = Elements::new(nodes, values, event_ctx.attribute_storage, event_ctx.pathlist);
+            let mut elements = Elements::new(nodes, values, event_ctx.attribute_storage, event_ctx.dirty_widgets);
             let mut global_ctx = GlobalContext {
                 focus_queue: event_ctx.focus_queue,
                 emitter: event_ctx.context.emitter,
@@ -236,7 +235,7 @@ impl<T: GlobalEvents> EventHandler<T> {
                         assoc_events: event_ctx.assoc_events,
                         focus_queue: event_ctx.focus_queue,
                         context: event_ctx.context,
-                        pathlist: event_ctx.pathlist,
+                        dirty_widgets: event_ctx.dirty_widgets,
                     };
 
                     tree.with_component(widget_id, state_id, &mut event_ctx, |comp, ctx| {
@@ -298,7 +297,7 @@ impl<T: GlobalEvents> EventHandler<T> {
 // TODO: rename this, it has nothing to do with the events,
 // but rather calling functions on dyn components
 pub(crate) struct EventCtx<'a, 'rt, 'bp> {
-    pub pathlist: &'a mut PathList,
+    pub dirty_widgets: &'a mut DirtyWidgets,
     pub components: &'a mut Components,
     pub states: &'a mut States,
     pub attribute_storage: &'a mut AttributeStorage<'bp>,

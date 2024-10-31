@@ -1,6 +1,5 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
-use anathema_store::tree::PathList;
 use anathema_templates::blueprints::{Component, ControlFlow, Else, For, If, Single};
 use anathema_templates::{Globals, WidgetComponentId};
 
@@ -13,7 +12,7 @@ use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
 use crate::values::{ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
-use crate::{eval_blueprint, AttributeStorage, Factory, Scope, WidgetId, WidgetKind, WidgetTree};
+use crate::{eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetId, WidgetKind, WidgetTree};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
@@ -25,7 +24,7 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
     pub(super) components: &'b mut Components,
-    pub(super) pathlist: &'b mut PathList,
+    pub(super) dirty_widgets: &'b mut DirtyWidgets,
     pub(super) parent: Option<WidgetId>,
 }
 
@@ -39,7 +38,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
         components: &'b mut Components,
-        pathlist: &'b mut PathList,
+        dirty_widgets: &'b mut DirtyWidgets,
     ) -> Self {
         Self {
             globals,
@@ -50,7 +49,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
             attribute_storage,
             floating_widgets,
             components,
-            pathlist,
+            dirty_widgets,
             parent: None,
         }
     }

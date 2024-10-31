@@ -178,6 +178,13 @@ impl Widget for Overflow {
         };
 
         children.for_each(|node, children| {
+            // TODO
+            // ----
+            // this should stop doing layout once the children are no longer
+            // visible. Take the offset into consideration to skip widgets as well
+            //
+            // This should be done on this type if possible `PositionChildren<'_, '_, 'bp>`,
+            // so all widgets can benefit from this.
             match direction {
                 Direction::Forward => {
                     node.position(children, pos, attribute_storage, ctx.viewport);

@@ -34,7 +34,7 @@ impl<'bp> Tree<'bp> for WidgetTree<'bp> {
             event_ctx
                 .attribute_storage
                 .with_mut(component.widget_id, |attributes, attribute_storage| {
-                    let elements = Elements::new(node.children(), values, attribute_storage, event_ctx.pathlist);
+                    let elements = Elements::new(node.children(), values, attribute_storage, event_ctx.dirty_widgets);
 
                     let state = event_ctx.states.get_mut(state_id);
                     let component_ctx = ComponentContext::new(

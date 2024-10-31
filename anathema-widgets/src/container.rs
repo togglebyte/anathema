@@ -30,7 +30,6 @@ pub(crate) struct Container {
     pub pos: Pos,
     pub inner_bounds: Region,
     pub cache: Cache,
-    // pub children: Children<'bp>,
 }
 
 impl Container {
@@ -40,6 +39,8 @@ impl Container {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
+        // NOTE: The layout is possibly skipped in the Element::layout call
+
         let size = self.inner.any_layout(children, constraints, self.id, ctx);
         let cache = Cache::new(size, constraints);
 
@@ -47,6 +48,7 @@ impl Container {
             // If this was the target node to layout and nothing has changed,
             // then there is no reason to continue the layout.
             ctx.force_layout = true;
+            self.cache = cache;
         }
 
         // If the size does not match the previous size, or the constraints are

@@ -23,6 +23,10 @@ anathema-templates = { path = "./anathema-templates" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-geometry = { path = "./anathema-geometry" }
 
+[features]
+default = []
+profile = ["anathema-runtime/profile", "anathema-widgets/profile"]
+
 [lints]
 workspace = true
 

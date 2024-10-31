@@ -4,10 +4,12 @@ use anathema_geometry::{Pos, Region};
 use anathema_state::CommonVal;
 pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{Node, PathList, TreeValues};
+use anathema_store::tree::{Node, TreeValues};
 
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
+
+use super::DirtyWidgets;
 
 // -----------------------------------------------------------------------------
 //   - Elements -
@@ -16,7 +18,7 @@ pub struct Elements<'tree, 'bp> {
     nodes: &'tree [Node],
     widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
     attributes: &'tree mut AttributeStorage<'bp>,
-    pathlist: &'tree mut PathList,
+    dirty_widgets: &'tree mut DirtyWidgets,
 }
 
 impl<'tree, 'bp> Elements<'tree, 'bp> {
@@ -24,13 +26,13 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
         nodes: &'tree [Node],
         widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
-        pathlist: &'tree mut PathList,
+        dirty_widgets: &'tree mut DirtyWidgets,
     ) -> Self {
         Self {
             nodes,
             widgets,
             attributes: attribute_storage,
-            pathlist,
+            dirty_widgets,
         }
     }
 
@@ -104,7 +106,7 @@ where
             f,
             continuous,
             attributes: self.elements.attributes,
-            pathlist: self.elements.pathlist,
+            dirty_widgets: self.elements.dirty_widgets,
         };
 
         apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
@@ -219,7 +221,7 @@ pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
     f: F,
     continuous: bool,
     attributes: &'tag mut AttributeStorage<'bp>,
-    pathlist: &'tag mut PathList,
+    dirty_widgets: &'tag mut DirtyWidgets,
 }
 
 impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'bp, 'tag, T, F>
@@ -233,7 +235,7 @@ where
                 (self.f)(el, attributes);
 
                 if el.container.inner.any_needs_reflow() {
-                    self.pathlist.push(path);
+                    self.dirty_widgets.push(widget_id);
                 }
 
                 if !self.continuous {

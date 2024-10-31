@@ -4,7 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
-use anathema_widgets::{AttributeStorage, Element, FloatingWidgets, GlyphMap, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, DirtyWidgets, Element, FloatingWidgets, GlyphMap, WidgetKind, WidgetTree};
 
 pub mod test;
 pub mod tui;
@@ -46,8 +46,10 @@ pub struct WidgetCycle<'rt, 'bp, T> {
     glyph_map: &'rt mut GlyphMap,
     constraints: Constraints,
     attribute_storage: &'rt AttributeStorage<'bp>,
+    dirty_widgets: &'rt DirtyWidgets,
     floating_widgets: &'rt FloatingWidgets,
     viewport: Viewport,
+    force_layout: bool,
 }
 
 impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
@@ -57,8 +59,10 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         glyph_map: &'rt mut GlyphMap,
         constraints: Constraints,
         attribute_storage: &'rt AttributeStorage<'bp>,
+        dirty_widgets: &'rt DirtyWidgets,
         floating_widgets: &'rt FloatingWidgets,
         viewport: Viewport,
+        force_layout: bool,
     ) -> Self {
         Self {
             backend,
@@ -66,8 +70,10 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             glyph_map,
             constraints,
             attribute_storage,
+            dirty_widgets,
             floating_widgets,
             viewport,
+            force_layout,
         }
     }
 
@@ -92,7 +98,13 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
                 let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
+                let mut layout_ctx = LayoutCtx::new(
+                    self.attribute_storage,
+                    self.dirty_widgets,
+                    &self.viewport,
+                    self.glyph_map,
+                    self.force_layout,
+                );
 
                 layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
@@ -110,7 +122,13 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         let mut filter = LayoutFilter::new(true, self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             // Layout
-            let mut layout_ctx = LayoutCtx::new(self.attribute_storage, &self.viewport, self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                self.attribute_storage,
+                self.dirty_widgets,
+                &self.viewport,
+                self.glyph_map,
+                self.force_layout,
+            );
             layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
 
             // Position

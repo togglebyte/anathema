@@ -6,8 +6,8 @@ pub use crate::nodes::{eval_blueprint, try_resolve_future_values, update_tree, E
 pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::values::{Value, Values};
 pub use crate::widget::{
-    AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, Elements, Factory, FloatingWidgets,
-    LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetTree,
+    AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Elements, Factory,
+    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetTree,
 };
 
 #[cfg(test)]
