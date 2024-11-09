@@ -111,6 +111,16 @@ impl Widget for Overflow {
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
+
+        // TODO: remove this -TB 2024-10-31
+        // // horrid log
+        // {
+        //     use std::io::Write;
+        //     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/log.lol").unwrap();
+        //     file.write(b"layout\n");
+        //     file.flush();
+        // }
+
         let attributes = ctx.attribs.get(id);
         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
 

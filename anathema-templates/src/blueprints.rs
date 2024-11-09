@@ -58,20 +58,31 @@ pub enum Blueprint {
 
 #[macro_export]
 macro_rules! single {
-    ($ident:expr) => {
+    (value @ $ident:expr, $value:expr) => {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: vec![],
             attributes: SmallMap::empty(),
-            value: None,
+            value: Some($value.into()),
         })
     };
-    ($ident:expr, $children:expr) => {
+    (children @ $ident:expr, $($children:expr),*) => {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: $children,
             attributes: SmallMap::empty(),
             value: None,
+        })
+    };
+}
+
+#[macro_export]
+macro_rules! forloop {
+    ($binding:expr, $data:expr, $body:expr) => {
+        $crate::blueprints::Blueprint::For(For {
+            binding: $binding.into(),
+            data: $data,
+            body: $body,
         })
     };
 }

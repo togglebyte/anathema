@@ -9,7 +9,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, WidgetId, WidgetKind};
+use crate::{AttributeStorage, WidgetContainer, WidgetId, WidgetKind};
 
 pub type GlyphMap = IndexMap<GlyphIndex, String>;
 
@@ -118,7 +118,7 @@ impl<'frame, 'bp> PaintFilter<'frame, 'bp> {
 }
 
 impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
-    type Input = WidgetKind<'bp>;
+    type Input = WidgetContainer<'bp>;
     type Output = Element<'bp>;
 
     fn filter<'val>(
@@ -126,19 +126,21 @@ impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
         _widget_id: WidgetId,
         input: &'val mut Self::Input,
         _children: &[Node],
-        _widgets: &mut TreeValues<WidgetKind<'bp>>,
+        _widgets: &mut TreeValues<WidgetContainer<'bp>>,
     ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
-        match input {
+        match &mut input.kind {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => match self
-                .attributes
-                .get(el.id())
-                .get::<Display>("display")
-                .unwrap_or_default()
-            {
-                Display::Show => ControlFlow::Continue(Some(el)),
-                Display::Hide | Display::Exclude => ControlFlow::Continue(None),
-            },
+            WidgetKind::Element(el) => {
+                match self
+                    .attributes
+                    .get(el.id())
+                    .get::<Display>("display")
+                    .unwrap_or_default()
+                {
+                    Display::Show => ControlFlow::Continue(Some(el)),
+                    Display::Hide | Display::Exclude => ControlFlow::Break(()),
+                }
+            }
             WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
             WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
             _ => ControlFlow::Continue(None),
@@ -151,7 +153,7 @@ pub fn paint<'bp>(
     glyph_index: &mut GlyphMap,
     element: &mut Element<'bp>,
     children: &[Node],
-    values: &mut TreeValues<WidgetKind<'bp>>,
+    values: &mut TreeValues<WidgetContainer<'bp>>,
     attribute_storage: &AttributeStorage<'bp>,
     ignore_floats: bool,
 ) {

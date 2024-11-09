@@ -6,7 +6,7 @@ pub use self::pathfinder::PathFinder;
 pub use self::pathlist::{PathList, PathListCtl};
 pub use self::transactions::InsertTransaction;
 use self::visitor::NodeVisitor;
-pub use self::walker::NodeWalker;
+use self::view::TreeView;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
 
@@ -15,6 +15,7 @@ mod nodepath;
 mod pathfinder;
 mod pathlist;
 mod transactions;
+mod view;
 pub mod visitor;
 mod walker;
 
@@ -23,6 +24,9 @@ pub type TreeValues<T> = GenSlab<(Box<[u16]>, T)>;
 /// A tree where all values (`T`) are stored in a single contiguous list,
 /// and the inner tree (`Nodes`) is made up of branches with indices into
 /// the flat list.
+///
+/// This means fewer allocations when removing entire branches as we can reuse
+/// the memory for the values.
 #[derive(Debug)]
 pub struct Tree<T> {
     layout: Nodes,
@@ -38,6 +42,10 @@ impl<T> Tree<T> {
             values: TreeValues::empty(),
             removed_values: Vec::new(),
         }
+    }
+
+    pub fn view_mut(&mut self) -> TreeView<'_, T> {
+        TreeView::new(root_node(), &mut self.layout, &mut self.values)
     }
 
     pub fn values(self) -> TreeValues<T> {
@@ -132,18 +140,14 @@ impl<T> Tree<T> {
     /// let one = tree.get_ref_by_id(value_id).unwrap();
     /// assert_eq!(*one, 1);
     /// ```
-    pub fn insert<'tree>(&'tree mut self, parent: &'tree [u16]) -> InsertTransaction<'tree, T> {
-        InsertTransaction::new(self, parent)
+    pub fn insert<'tree>(&'tree mut self, parent: &'tree [u16]) -> InsertTransaction<'_, 'tree, T> {
+        panic!()
+        // InsertTransaction::new(self, parent)
     }
 
     /// Get a reference by value id
     pub fn get_ref_by_id(&self, node_id: ValueId) -> Option<&T> {
         self.values.get(node_id).map(|(_, val)| val)
-    }
-
-    /// Get a mutable reference by value id
-    pub fn get_mut_by_id(&mut self, node_id: ValueId) -> Option<&mut T> {
-        self.values.get_mut(node_id).map(|(_, val)| val)
     }
 
     /// Get a reference by path.
@@ -157,14 +161,6 @@ impl<T> Tree<T> {
     /// Get a reference to a `Node` via a path.
     pub fn get_node_by_path(&mut self, path: &[u16]) -> Option<(&Node, &mut TreeValues<T>)> {
         self.layout.with(path, |node| node).map(|node| (node, &mut self.values))
-    }
-
-    /// Get a mutable reference by path.
-    /// This has an additional cost since the value id has to
-    /// be found first.
-    pub fn get_mut_by_path(&mut self, path: &[u16]) -> Option<&mut T> {
-        let id = self.id(path)?;
-        self.values.get_mut(id).map(|(_, val)| val)
     }
 
     /// Remove a `Node` and value from the tree.
@@ -261,6 +257,7 @@ impl<T> Tree<T> {
     }
 
     /// Apply function to each child of a parent path.
+    #[deprecated]
     pub fn children_of<F>(&mut self, parent: &[u16], mut f: F) -> Option<()>
     where
         F: FnMut(&Node, &mut TreeValues<T>),
@@ -301,11 +298,11 @@ impl<T> Tree<T> {
         apply_path_finder(self, node_path, path_finder);
     }
 
-    /// Apply the [`NodeWalker`].
-    pub fn apply_node_walker(&mut self, path: &[u16], mut walker: impl NodeWalker<T>) {
-        unimplemented!()
-        // walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
-    }
+    // /// Apply the [`NodeWalker`].
+    // pub fn apply_node_walker(&mut self, path: &[u16], mut walker: impl NodeWalker) {
+    //     unimplemented!()
+    //     // walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
+    // }
 
     /// Apply a [`NodeVisitor`], depth first
     pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
@@ -365,7 +362,7 @@ where
 
 #[derive(Debug)]
 pub struct Nodes {
-    inner: Vec<Node>,
+    pub(crate) inner: Vec<Node>,
 }
 
 impl Nodes {
@@ -504,8 +501,8 @@ impl Deref for Nodes {
 
 #[derive(Debug)]
 pub struct Node {
-    value: ValueId,
-    children: Nodes,
+    pub(crate) value: ValueId,
+    pub(crate) children: Nodes,
 }
 
 impl Node {
@@ -649,5 +646,32 @@ mod test {
         assert!(tree.get_ref_by_path(path).is_some());
         tree.remove(path);
         assert!(tree.get_ref_by_path(path).is_none());
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Value {
+        S(String),
+        I(usize),
+    }
+
+    #[test]
+    fn modify_tree() {
+        let mut tree = Tree::<Value>::empty();
+        tree.view_mut().insert(root_node()).commit_child(Value::I(123));
+        let path = &[0, 0];
+        tree.view_mut().insert(path).commit_at(Value::I(1));
+
+        let mut tree = tree.view_mut();
+        tree.for_each(|outer_value, mut children| {
+            children.for_each(|inner_value, mut children| {
+                let parent = &[0, 0];
+                children.insert(parent).commit_child(Value::I(999));
+                let path = &[0, 0, 0];
+                let value = children.get_mut_by_path(path).unwrap();
+                assert_eq!(*value, Value::I(999));
+                assert_eq!(*outer_value, Value::I(123));
+                assert_eq!(*inner_value, Value::I(1));
+            });
+        });
     }
 }

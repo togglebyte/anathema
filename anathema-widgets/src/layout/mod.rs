@@ -6,7 +6,7 @@ use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetId, WidgetKind};
+use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetContainer, WidgetId, WidgetKind};
 
 mod constraints;
 mod display;
@@ -53,7 +53,7 @@ impl<'frame, 'bp> LayoutFilter<'frame, 'bp> {
 }
 
 impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
-    type Input = WidgetKind<'bp>;
+    type Input = WidgetContainer<'bp>;
     type Output = Element<'bp>;
 
     fn filter<'val>(
@@ -61,19 +61,21 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
         _value_id: WidgetId,
         input: &'val mut Self::Input,
         children: &[Node],
-        widgets: &mut TreeValues<WidgetKind<'bp>>,
+        widgets: &mut TreeValues<WidgetContainer<'bp>>,
     ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
-        match input {
+        match &mut input.kind {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => match self
-                .attributes
-                .get(el.id())
-                .get::<Display>("display")
-                .unwrap_or_default()
-            {
-                Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
-                Display::Exclude => ControlFlow::Continue(None),
-            },
+            WidgetKind::Element(el) => {
+                match self
+                    .attributes
+                    .get(el.id())
+                    .get::<Display>("display")
+                    .unwrap_or_default()
+                {
+                    Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
+                    Display::Exclude => ControlFlow::Continue(None),
+                }
+            }
             WidgetKind::ControlFlow(widget) => {
                 // TODO `update` should probably be called `layout`
                 //       as it does not update during an update step.
@@ -124,7 +126,7 @@ impl<'a, 'bp> LayoutCtx<'a, 'bp> {
 pub fn layout_widget<'bp>(
     element: &mut Element<'bp>,
     children: &[Node],
-    values: &mut TreeValues<WidgetKind<'bp>>,
+    values: &mut TreeValues<WidgetContainer<'bp>>,
     constraints: Constraints,
     ctx: &mut LayoutCtx<'_, 'bp>,
     ignore_floats: bool,
@@ -141,7 +143,7 @@ pub fn position_widget<'bp>(
     pos: Pos,
     element: &mut Element<'bp>,
     children: &[Node],
-    values: &mut TreeValues<WidgetKind<'bp>>,
+    values: &mut TreeValues<WidgetContainer<'bp>>,
     attribute_storage: &AttributeStorage<'bp>,
     ignore_floats: bool,
     viewport: Viewport,

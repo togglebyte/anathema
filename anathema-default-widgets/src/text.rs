@@ -87,9 +87,12 @@ impl Widget for Text {
 
         // Layout text
         attributes.value().map(|value| {
-            value.str_iter(|s| match self.strings.add_str(s) {
-                ProcessResult::Break => ControlFlow::Break(()),
-                ProcessResult::Continue => ControlFlow::Continue(()),
+            value.str_iter(|s| {
+                //meh
+                match self.strings.add_str(s) {
+                    ProcessResult::Break => ControlFlow::Break(()),
+                    ProcessResult::Continue => ControlFlow::Continue(()),
+                }
             })
         });
 

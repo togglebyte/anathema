@@ -4,7 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
-use anathema_widgets::{AttributeStorage, DirtyWidgets, Element, FloatingWidgets, GlyphMap, WidgetKind, WidgetTree};
+use anathema_widgets::{AttributeStorage, DirtyWidgets, Element, FloatingWidgets, GlyphMap, WidgetContainer, WidgetKind, WidgetTree};
 
 pub mod test;
 pub mod tui;
@@ -22,7 +22,7 @@ pub trait Backend {
         glyph_map: &mut GlyphMap,
         element: &mut Element<'bp>,
         children: &[Node],
-        values: &mut TreeValues<WidgetKind<'bp>>,
+        values: &mut TreeValues<WidgetContainer<'bp>>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     );
@@ -87,7 +87,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
                 match parent {
                     None => break (Pos::ZERO, self.constraints),
                     Some(p) => match self.tree.get_ref_by_path(p) {
-                        Some(WidgetKind::Element(el)) => {
+                        Some(WidgetContainer { kind:WidgetKind::Element(el), .. }) => {
                             let bounds = el.inner_bounds();
                             break (bounds.from, Constraints::from(bounds));
                         }
@@ -97,7 +97,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             };
 
             self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                let WidgetKind::Element(el) = widget else { unreachable!("this is always a floating widget") };
+                let WidgetKind::Element(el) = &mut widget.kind else { unreachable!("this is always a floating widget") };
                 let mut layout_ctx = LayoutCtx::new(
                     self.attribute_storage,
                     self.dirty_widgets,

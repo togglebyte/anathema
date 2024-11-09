@@ -4,7 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{CellAttributes, Glyph, GlyphMap};
-use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
+use anathema_widgets::{AttributeStorage, Element, WidgetContainer, WidgetKind, WidgetRenderer};
 
 use crate::Backend;
 
@@ -43,7 +43,7 @@ impl Backend for TestBackend {
         _: &mut GlyphMap,
         element: &mut Element<'bp>,
         children: &[Node],
-        values: &mut TreeValues<WidgetKind<'bp>>,
+        values: &mut TreeValues<WidgetContainer<'bp>>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     ) {

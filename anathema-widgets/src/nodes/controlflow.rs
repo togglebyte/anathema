@@ -4,17 +4,19 @@ use anathema_templates::blueprints::Blueprint;
 use crate::expressions::EvalValue;
 use crate::{Value, WidgetKind};
 
+use super::WidgetContainer;
+
 #[derive(Debug)]
 pub struct ControlFlow;
 
 impl ControlFlow {
-    pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetKind<'_>>) {
+    pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetContainer<'_>>) {
         // Once an if / else is set to true, everything else should be set to false.
         let mut was_set = false;
 
         for node in children {
             let Some((_, widget)) = values.get_mut(node.value()) else { continue };
-            match widget {
+            match &mut widget.kind {
                 WidgetKind::If(widget) => {
                     if widget.is_true() {
                         widget.show = true;

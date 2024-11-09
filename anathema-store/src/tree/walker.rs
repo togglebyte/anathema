@@ -1,120 +1,108 @@
-use super::Node;
-use crate::slab::GenSlab;
+// use super::{Node, Tree, TreeValues};
+// use crate::slab::GenSlab;
 
-/// Call the apply function for every value in the tree that is part of the path,
-/// and then on all the children (recursively) for the selected node.
-pub trait NodeWalker<V> {
-    fn apply(&mut self, node: &mut V);
-}
+// enum Value {
+//     S(String),
+//     I(usize),
+// }
 
-/// This function will apply the `walker` to all the nodes in the path.
-/// Once it finds the target node, it will apply the walker to the node
-/// and all the children and childrens children etc. of that node.
-pub fn walk_the_walker<T>(
-    mut nodes: &[Node],
-    values: &mut GenSlab<(Box<[u16]>, T)>,
-    mut path: &[u16],
-    walker: &mut impl NodeWalker<T>,
-) {
-    loop {
-        match path {
-            [] => break,
-            [i] => {
-                // Found the node
-                let index = *i as usize;
-                let node = &nodes[index];
-                let node_id = node.value();
+// pub struct Each<T>
+// where
+//     T: Children,
+// {
+//     inner: T,
+//     transformer: T::Transformer,
+// }
 
-                let value = values
-                    .get_mut(node_id)
-                    .map(|(_, val)| val)
-                    .expect("a node always has a matching value");
+// impl<T> Each<T>
+// where
+//     T: Children,
+// {
+//     fn for_each<F>(&mut self, f: F, tree: &mut Tree<Value>)
+//     where
+//         for<'a> F: FnMut(&mut usize, Self),
+//     {
+//         // for node in tree.layout.iter() {
+//         //     // filter and use tree
+//         //     tree.with_value_mut(node.value, |path, value, tree| {
+//         //         let thing = self.transformer.transform(value);
+//         //         // self.inner.next(thing);
+//         //     });
 
-                walker.apply(value);
+//         // }
+//     }
+// }
 
-                // Apply the walker to all the children
-                apply_walker(node.children(), values, walker);
-                break;
-            }
-            [i, sub_path @ ..] => {
-                let index = *i as usize;
-                if index >= nodes.len() {
-                    break;
-                }
-                path = sub_path;
-                let node = &nodes[index];
+// pub trait Children {
+//     type Transformer: Transformer;
 
-                let node_id = node.value();
+//     fn next(&mut self);
+// }
 
-                let parent = values
-                    .get_mut(node_id)
-                    .map(|(_, val)| val)
-                    .expect("a node always has a matching value");
+// pub trait Transformer {
+//     type Context;
 
-                walker.apply(parent);
-                nodes = node.children();
-            }
-        }
-    }
-}
+//     fn new() -> Self
+//     where
+//         Self: Sized;
 
-/// This function will apply the walker to all the children
-fn apply_walker<T>(children: &[Node], values: &mut GenSlab<(Box<[u16]>, T)>, walker: &mut impl NodeWalker<T>) {
-    for child in children {
-        let node_id = child.value();
-        let value = values
-            .get_mut(node_id)
-            .map(|(_, val)| val)
-            .expect("a node always has a matching value");
-        walker.apply(value);
-        apply_walker(child.children(), values, walker);
-    }
-}
+//     fn transform(&mut self, input: &mut Value) -> &mut usize;
+// }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::tree::Tree;
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//     use crate::tree::{root_node, Tree};
 
-    struct Zero;
+//     struct Evaluator;
 
-    impl NodeWalker<usize> for Zero {
-        fn apply(&mut self, node: &mut usize) {
-            *node = 0;
-        }
-    }
+//     impl Transformer for Evaluator {
+//         type Context = ();
+//         type From<'a> = &'a String;
+//         type To<'a> = Result<usize, ()>;
 
-    #[test]
-    fn walk_the_tree() {
-        // This creates a tree with the following layout:
-        // 0 = 42
-        //     1 = 42
-        //     2 = 42
-        //         3 = 42
-        //         4 = 42
-        //
-        // Then we apply the node walker to the node with an id of 2
-        // This should change all the nodes on the way to 2, and all the children of 2.
-        //
-        // 0 = 0
-        //     1 = 42
-        //     2 = 0
-        //         3 = 0
-        //         4 = 0
+//         fn new() -> Self
+//         where
+//             Self: Sized,
+//         {
+//             Self
+//         }
 
-        let mut tree = Tree::empty();
-        let key = tree.insert(&[]).commit_child(42).unwrap();
-        let parent = tree.path(key);
-        let _ = tree.insert(&parent).commit_child(42).unwrap();
-        let key = tree.insert(&parent).commit_child(42).unwrap();
-        let target = tree.path(key);
-        tree.insert(&target).commit_child(42).unwrap();
-        tree.insert(&target).commit_child(42).unwrap();
+//         fn transform<'a>(&mut self, input: Self::From<'a>) -> Self::To<'a> {
+//             input.parse().map_err(|_| ())
+//         }
+//     }
 
-        let (nodes, values) = tree.split();
-        walk_the_walker(nodes, values, &target, &mut Zero);
+//     struct Zero;
 
-        let values = values.iter().map(|(_path, value)| value).copied().collect::<Vec<_>>();
-        assert_eq!(values, vec![0, 42, 0, 0, 0]);
-    }
-}
+//     impl Children for Zero {
+//         type Transformer = Evaluator;
+
+//         fn next(&mut self) {
+//             todo!()
+//         }
+//     }
+
+//     #[test]
+//     fn doit() {
+//         let mut tree = Tree::<String>::empty();
+//         tree.insert(root_node()).commit_child("2".into());
+//         let path = &[0];
+//         tree.insert(path).commit_child("123".into());
+//         let path = &[0, 0];
+//         tree.insert(path).commit_child("1".into());
+//         tree.insert(path).commit_child("broken number".into());
+
+//         let mut each = Each {
+//             inner: Zero,
+//             transformer: Evaluator,
+//         };
+//         each.for_each(|node, children| {
+//             panic!();
+//         });
+
+//         // panic!("{tree:#?}");
+
+//         // assert_eq!(expected, actual);
+//     }
+// }

@@ -8,7 +8,7 @@ use anathema_store::tree::ValueId;
 use crate::expressions::EvalValue;
 use crate::nodes::element::Element;
 use crate::nodes::loops::{For, Iteration};
-use crate::{AttributeStorage, WidgetKind, WidgetTree};
+use crate::{AttributeStorage, WidgetContainer, WidgetKind, WidgetTree};
 struct EvalValueDebug<'a>(&'a EvalValue<'a>);
 
 impl DebugWriter for EvalValueDebug<'_> {
@@ -155,11 +155,11 @@ struct DebugWidgetsVisitor<'a, 'bp, O> {
     output: &'a mut O,
 }
 
-impl<O: std::fmt::Write> NodeVisitor<WidgetKind<'_>> for DebugWidgetsVisitor<'_, '_, O> {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
+impl<O: std::fmt::Write> NodeVisitor<WidgetContainer<'_>> for DebugWidgetsVisitor<'_, '_, O> {
+    fn visit(&mut self, value: &mut WidgetContainer<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let indent = " ".repeat(self.level * 4);
         write!(self.output, "{indent}").unwrap();
-        WidgetDebug(value, self.attribute_storage).write(self.output).unwrap();
+        WidgetDebug(&value.kind, self.attribute_storage).write(self.output).unwrap();
         writeln!(self.output).unwrap();
         ControlFlow::Continue(())
     }

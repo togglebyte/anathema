@@ -1,4 +1,4 @@
-use anathema_state::CommonVal;
+use anathema_state::{CommonVal, State};
 
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub enum Display {
@@ -6,6 +6,17 @@ pub enum Display {
     Show,
     Hide,
     Exclude,
+}
+
+impl State for Display {
+    fn to_common(&self) -> Option<CommonVal<'_>> {
+        let val = match self {
+            Display::Show => CommonVal::Str("show"),
+            Display::Hide => CommonVal::Str("hide"),
+            Display::Exclude => CommonVal::Str("exclude"),
+        };
+        Some(val)
+    }
 }
 
 impl TryFrom<CommonVal<'_>> for Display {

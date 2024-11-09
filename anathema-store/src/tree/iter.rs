@@ -58,10 +58,13 @@ impl<'a, 'filter, T, Fil> TreeForEach<'a, 'filter, T, Fil> {
     {
         for node in self.nodes {
             self.values.with_mut(node.value(), |(_, value), values| {
-                let filter = self.filter.filter(node.value(), value, node.children(), values);
+                let filter_output = self.filter.filter(node.value(), value, node.children(), values);
 
-                match filter {
+                match filter_output {
+                    // Skip the current node
                     ControlFlow::Break(()) => ControlFlow::Continue(()),
+
+                    // For-each for the children but don't process the current node
                     ControlFlow::Continue(None) => {
                         let mut for_each = TreeForEach {
                             nodes: node.children(),
@@ -70,6 +73,8 @@ impl<'a, 'filter, T, Fil> TreeForEach<'a, 'filter, T, Fil> {
                         };
                         for_each.inner_for_each(f)
                     }
+
+                    // Process the current node
                     ControlFlow::Continue(Some(val)) => {
                         let each = TreeForEach {
                             nodes: node.children(),

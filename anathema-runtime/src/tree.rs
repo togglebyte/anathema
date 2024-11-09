@@ -28,7 +28,7 @@ impl<'bp> Tree<'bp> for WidgetTree<'bp> {
         F: FnOnce(&mut dyn AnyComponent, AnyEventCtx<'_, '_, '_>) -> V,
     {
         self.with_value_mut(widget_id, |path, widget, tree| {
-            let WidgetKind::Component(component) = widget else { return None };
+            let WidgetKind::Component(component) = &mut widget.kind else { return None };
             let (node, values) = tree.get_node_by_path(path)?;
 
             event_ctx

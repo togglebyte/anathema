@@ -258,7 +258,7 @@ impl<T: GlobalEvents> EventHandler<T> {
                     .expect("components can not change during this call");
 
                 let found = tree.with_value_mut(widget_id, |_, widget, _| {
-                    let WidgetKind::Component(component) = widget else { unreachable!() };
+                    let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
 
                     let attributes = event_ctx.attribute_storage.get(component.widget_id);
                     let Some(val) = attributes.get_val(&key) else { return false };

@@ -2,7 +2,7 @@ use anathema_state::Change;
 use anathema_store::tree::new_node_path;
 use anathema_templates::blueprints::Blueprint;
 
-use super::WidgetKind;
+use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
 use crate::expressions::eval_collection;
 use crate::nodes::EvalContext;
@@ -49,18 +49,30 @@ impl<'bp> For<'bp> {
                 ctx.scope.scope_pending(self.binding, *value);
 
                 let insert_at = new_node_path(path, *index as u16);
+                let widget = WidgetKind::Iteration(Iteration {
+                    loop_index: anathema_state::Value::new(*index as i64),
+                    binding: self.binding,
+                });
+                let widget = WidgetContainer::new(widget, &self.body);
+
                 let iter_id = tree
                     .insert(&insert_at)
-                    .commit_at(WidgetKind::Iteration(Iteration {
-                        loop_index: anathema_state::Value::new(*index as i64),
-                        binding: self.binding,
-                    }))
+                    .commit_at(widget)
                     .ok_or(Error::TreeTransactionFailed)?;
 
                 // Bump the index for every subsequent sibling of the newly inserted node
                 tree.children_after(&insert_at, |node, values| {
                     let iter_widget = values.get_mut(node.value());
-                    let Some((_, WidgetKind::Iteration(iter))) = iter_widget else { unreachable!() };
+                    let Some((
+                        _,
+                        WidgetContainer {
+                            kind: WidgetKind::Iteration(iter),
+                            ..
+                        },
+                    )) = iter_widget
+                    else {
+                        unreachable!()
+                    };
                     *iter.loop_index.to_mut() += 1;
                 });
 
@@ -87,7 +99,7 @@ impl<'bp> For<'bp> {
                     // However the list is ["c", "b", "a"] before the first
                     // change is applied, which would lead to scoping `"c" to `0`
                     // twice.
-                    let WidgetKind::Iteration(iter) = iter_widget else { unreachable!() };
+                    let WidgetKind::Iteration(ref iter) = iter_widget.kind else { unreachable!() };
                     ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
                     for bp in self.body {
@@ -108,7 +120,7 @@ impl<'bp> For<'bp> {
 
                 // TODO unwrap, ewww
                 self.collection = eval_collection(
-                    self.collection.expr.unwrap(),
+                    self.collection.expr.unwrap(), // Map None to an error
                     ctx.globals,
                     ctx.scope,
                     ctx.states,
@@ -116,32 +128,34 @@ impl<'bp> For<'bp> {
                     value_id,
                 );
 
-                for index in 0..self.collection.count() {
-                    self.scope_value(ctx.scope, index);
-                    ctx.scope.push();
+                // for index in 0..self.collection.count() {
+                //     self.scope_value(ctx.scope, index);
+                //     ctx.scope.push();
 
-                    let iter_id = tree
-                        .insert(path)
-                        .commit_child(WidgetKind::Iteration(Iteration {
-                            loop_index: anathema_state::Value::new(index as i64),
-                            binding: self.binding,
-                        }))
-                        .ok_or(Error::TreeTransactionFailed)?;
+                //     let widget = WidgetKind::Iteration(Iteration {
+                //             loop_index: anathema_state::Value::new(index as i64),
+                //             binding: self.binding,
+                //         });
 
-                    // Scope the iteration value
-                    tree.with_value_mut(iter_id, |parent, widget, tree| -> Result<()> {
-                        let WidgetKind::Iteration(iter) = widget else { unreachable!() };
-                        ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
+                //     let iter_id = tree
+                //         .insert(path)
+                //         .commit_child()
+                //         .ok_or(Error::TreeTransactionFailed)?;
 
-                        for bp in self.body {
-                            eval_blueprint(bp, ctx, parent, tree)?;
-                        }
+                //     // Scope the iteration value
+                //     tree.with_value_mut(iter_id, |parent, widget, tree| -> Result<()> {
+                //         let WidgetKind::Iteration(iter) = widget else { unreachable!() };
+                //         ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
-                        Ok(())
-                    })?;
+                //         for bp in self.body {
+                //             eval_blueprint(bp, ctx, parent, tree)?;
+                //         }
 
-                    ctx.scope.pop();
-                }
+                //         Ok(())
+                //     })?;
+
+                //     ctx.scope.pop();
+                // }
             }
             Change::Changed => {
                 // TODO implement this as an optimisation once the runtime is done.

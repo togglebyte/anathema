@@ -1,16 +1,16 @@
-use super::Tree;
+use super::{Tree, TreeView};
 use crate::slab::Key;
 use crate::tree::nodepath::new_node_path;
 use crate::tree::AsNodePath;
 
-pub struct InsertTransaction<'tree, T> {
-    tree: &'tree mut Tree<T>,
+pub struct InsertTransaction<'a, 'tree, T> {
+    tree: &'a mut TreeView<'tree, T>,
     node_id: Key,
-    source: &'tree [u16],
+    source: &'a [u16],
 }
 
-impl<'tree, T> InsertTransaction<'tree, T> {
-    pub fn new(tree: &'tree mut Tree<T>, source: &'tree [u16]) -> Self {
+impl<'a, 'tree, T> InsertTransaction<'a, 'tree, T> {
+    pub fn new(tree: &'a mut TreeView<'tree, T>, source: &'a [u16]) -> Self {
         let node_id = tree.values.next_id();
         Self { tree, node_id, source }
     }
@@ -22,7 +22,10 @@ impl<'tree, T> InsertTransaction<'tree, T> {
     /// Insert a child under a given parent.
     /// This will return `None` if the parent does not exist
     pub fn commit_child(self, value: T) -> Option<Key> {
-        let node_id = self.tree.layout.with_mut(self.source, |nodes| {
+        assert_eq!(self.tree.offset, &self.source[..self.tree.offset.len()]);
+        let relative = &self.source[self.tree.offset.len()..];
+
+        let node_id = self.tree.layout.with_mut(relative, |nodes| {
             // The node path is the source + len of children in source
             let node_path = new_node_path(self.source, nodes.len() as u16);
 
@@ -38,7 +41,7 @@ impl<'tree, T> InsertTransaction<'tree, T> {
     /// Insert a node at a given path.
     /// This will force all the values **after** the new node
     /// (along with all the children of the values) to have their paths updated.
-    pub fn commit_at(self, value: T) -> Option<Key> {
+    pub fn commit_at(mut self, value: T) -> Option<Key> {
         let (parent, index) = self.source.split_parent()?;
 
         let node_id = self.tree.layout.with_mut(parent, |siblings| {

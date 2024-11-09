@@ -606,7 +606,7 @@ where
 
         // Move all components from the tree back to the registry.
         for (_, widget) in tree.values().into_iter() {
-            let WidgetKind::Component(comp) = widget else { continue };
+            let WidgetKind::Component(comp) = widget.kind else { continue };
             let ComponentKind::Instance = comp.kind else { continue };
             let state = states.remove(comp.state_id);
             self.component_registry

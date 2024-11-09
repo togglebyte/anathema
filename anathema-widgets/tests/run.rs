@@ -68,7 +68,13 @@ where
         // Non floating widgets
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                &self.attribute_storage,
+                &mut self.dirty_widgets,
+                &self.viewport,
+                &mut self.glyph_map,
+                true,
+            );
             layout_widget(
                 widget,
                 children,
@@ -92,7 +98,13 @@ where
         // Floating widgets
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                &self.attribute_storage,
+                &mut self.dirty_widgets,
+                &self.viewport,
+                &mut self.glyph_map,
+                true,
+            );
             layout_widget(
                 widget,
                 children,
@@ -227,7 +239,13 @@ where
 
         let mut filter = LayoutFilter::new(false, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(&self.attribute_storage, &self.viewport, &mut self.glyph_map);
+            let mut layout_ctx = LayoutCtx::new(
+                &self.attribute_storage,
+                &mut self.dirty_widgets,
+                &self.viewport,
+                &mut self.glyph_map,
+                false,
+            );
 
             layout_widget(
                 widget,

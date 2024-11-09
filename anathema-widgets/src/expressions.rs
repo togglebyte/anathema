@@ -132,7 +132,9 @@ impl<'bp> EvalValue<'bp> {
             EvalValue::Index(value, _) => value.get(path, value_id, states, attribs),
             EvalValue::State(id) => states
                 .get(*id)
-                .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn)),
+                .and_then(|state| {
+                    state.state_get(path, value_id).map(EvalValue::Dyn)
+                }),
             EvalValue::ComponentAttributes(id) => {
                 let attributes = attribs.try_get(*id)?;
                 let value = match path {

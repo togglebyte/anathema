@@ -1,4 +1,5 @@
 use anathema_templates::blueprints::Blueprint;
+use eval::Children;
 
 pub use self::element::Element;
 use self::eval::{ComponentEval, ControlFlowEval, EvalContext, Evaluator, ForLoopEval, SingleEval};
@@ -26,6 +27,21 @@ pub enum WidgetKind<'bp> {
     If(controlflow::If<'bp>),
     Else(controlflow::Else<'bp>),
     Component(component::Component<'bp>),
+}
+
+pub struct WidgetContainer<'bp> {
+    pub kind: WidgetKind<'bp>,
+    children: Children<'bp>,
+}
+
+impl<'bp> WidgetContainer<'bp> {
+    pub fn new(kind: WidgetKind<'bp>, blueprints: &'bp [Blueprint]) -> Self {
+        let children = blueprints.into_iter();
+        Self {
+            kind,
+            children: Children::new(children),
+        }
+    }
 }
 
 pub fn eval_blueprint<'bp>(

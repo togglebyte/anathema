@@ -17,16 +17,16 @@ pub use self::factory::Factory;
 pub use self::query::Elements;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::paint::{PaintCtx, PaintFilter, SizePos};
-use crate::WidgetKind;
+use crate::{WidgetContainer, WidgetKind};
 
 mod attributes;
 mod factory;
 mod query;
 
-pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
-pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, PaintFilter<'frame, 'bp>>;
+pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
+pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, PaintFilter<'frame, 'bp>>;
 pub type WidgetId = anathema_store::slab::Key;
 
 #[derive(Debug)]

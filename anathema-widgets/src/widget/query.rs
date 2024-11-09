@@ -6,17 +6,16 @@ pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{Node, TreeValues};
 
-use crate::nodes::element::Element;
-use crate::{AttributeStorage, Attributes, WidgetId, WidgetKind};
-
 use super::DirtyWidgets;
+use crate::nodes::element::Element;
+use crate::{AttributeStorage, Attributes, WidgetContainer, WidgetId, WidgetKind};
 
 // -----------------------------------------------------------------------------
 //   - Elements -
 // -----------------------------------------------------------------------------
 pub struct Elements<'tree, 'bp> {
     nodes: &'tree [Node],
-    widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
+    widgets: &'tree mut TreeValues<WidgetContainer<'bp>>,
     attributes: &'tree mut AttributeStorage<'bp>,
     dirty_widgets: &'tree mut DirtyWidgets,
 }
@@ -24,7 +23,7 @@ pub struct Elements<'tree, 'bp> {
 impl<'tree, 'bp> Elements<'tree, 'bp> {
     pub fn new(
         nodes: &'tree [Node],
-        widgets: &'tree mut TreeValues<WidgetKind<'bp>>,
+        widgets: &'tree mut TreeValues<WidgetContainer<'bp>>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
         dirty_widgets: &'tree mut DirtyWidgets,
     ) -> Self {
@@ -224,12 +223,12 @@ pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
     dirty_widgets: &'tag mut DirtyWidgets,
 }
 
-impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetKind<'bp>> for QueryRun<'bp, 'tag, T, F>
+impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetContainer<'bp>> for QueryRun<'bp, 'tag, T, F>
 where
     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
 {
-    fn visit(&mut self, value: &mut WidgetKind<'bp>, path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
-        if let WidgetKind::Element(el) = value {
+    fn visit(&mut self, value: &mut WidgetContainer<'bp>, path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
+        if let WidgetKind::Element(el) = &mut value.kind {
             if self.filter.filter(el, self.attributes) {
                 let attributes = self.attributes.get_mut(el.id());
                 (self.f)(el, attributes);

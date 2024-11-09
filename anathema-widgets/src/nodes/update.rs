@@ -4,6 +4,7 @@ use anathema_store::tree::PathFinder;
 use super::element::Element;
 use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
+use super::WidgetContainer;
 use crate::error::Result;
 use crate::values::ValueId;
 use crate::{Scope, WidgetKind, WidgetTree};
@@ -15,17 +16,17 @@ struct UpdateTree<'a, 'b, 'bp> {
 }
 
 impl<'a, 'b, 'bp> PathFinder for UpdateTree<'a, 'b, 'bp> {
-    type Input = WidgetKind<'bp>;
+    type Input = WidgetContainer<'bp>;
     type Output = Result<()>;
 
-    fn apply(&mut self, node: &mut WidgetKind<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
-        scope_value(node, self.ctx.scope, &[]);
-        update_widget(node, &mut self.ctx, self.value_id, self.change, path, tree)?;
+    fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
+        scope_value(&node.kind, self.ctx.scope, &[]);
+        update_widget(&mut node.kind, &mut self.ctx, self.value_id, self.change, path, tree)?;
         Ok(())
     }
 
-    fn parent(&mut self, parent: &mut WidgetKind<'bp>, children: &[u16]) {
-        scope_value(parent, self.ctx.scope, children);
+    fn parent(&mut self, parent: &mut WidgetContainer<'bp>, children: &[u16]) {
+        scope_value(&parent.kind, self.ctx.scope, children);
     }
 }
 
