@@ -13,13 +13,13 @@ impl<'tree, T> TreeView<'tree, T> {
 
     pub fn for_each<F>(&mut self, mut f: F)
     where
-        F: FnMut(&mut T, TreeView<'_, T>),
+        F: FnMut(&[u16], &mut T, TreeView<'_, T>),
     {
         for index in 0..self.layout.len() {
             let node = &mut self.layout.inner[index];
             self.values.with_mut(node.value, |(offset, value), values| {
                 let tree_view = TreeView::new(offset, &mut node.children, values);
-                f(value, tree_view);
+                f(offset, value, tree_view);
             });
         }
     }
@@ -59,3 +59,108 @@ impl<'tree, T> TreeView<'tree, T> {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::tree::{root_node, Tree};
+
+    struct EvalContext {
+        adder: usize,
+        budget: usize,
+    }
+
+    #[derive(Debug)]    
+    enum Kind<'bp> {
+        Value(u8),
+        Loop(&'bp Blueprint),
+    }
+
+    #[derive(Debug)]    
+    enum BpKind {
+        Single(u8),
+        Loop(usize),
+    }
+
+    #[derive(Debug)]
+    struct Value<'bp> {
+        kind: Kind<'bp>,
+        blueprint: &'bp Blueprint,
+    }
+
+    struct Blueprint {
+        inner: Vec<Blueprint>,
+        kind: BpKind,
+    }
+
+    impl std::fmt::Debug for Blueprint {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "<blueprint>")
+        }
+    }
+
+    fn eval<'bp, 'tree>(
+        parent: &[u16],
+        bp: &'bp Blueprint,
+        ctx: &mut EvalContext,
+        tree: &mut TreeView<'tree, Value<'bp>>,
+    ) {
+        if ctx.budget == 0 {
+            return;
+        }
+
+        ctx.budget -= 1;
+
+        let kind = match bp.kind {
+            BpKind::Single(val) => Kind::Value(val),
+            BpKind::Loop(count) => Kind::Loop(bp),
+        };
+
+        let value = Value {
+            kind,
+            blueprint: bp
+        };
+
+        // let value = Value {
+        //     inner: bp.value + ctx.adder,
+        //     blueprint: bp,
+        // };
+
+        tree.insert(parent).commit_child(value).unwrap();
+    }
+
+    #[test]
+    fn deferred_value_creation() {
+        let blueprint = Blueprint {
+            kind: BpKind::Loop(2),
+            inner: vec![
+                Blueprint {
+                    inner: vec![],
+                    kind: BpKind::Single(0),
+                },
+                Blueprint {
+                    inner: vec![
+                        Blueprint {
+                            inner: vec![],
+                            kind: BpKind::Single(1),
+                        },
+                    ],
+                    kind: BpKind::Single(2),
+                },
+            ],
+        };
+
+        let mut ctx = EvalContext { adder: 100, budget: 3 };
+        let mut tree = Tree::empty();
+
+        let mut view = tree.view_mut();
+        eval(root_node(), &blueprint, &mut ctx, &mut view);
+
+        view.for_each(|path, value, mut children| {
+            for bp in &value.blueprint.inner {
+                eval(path, bp, &mut ctx, &mut children);
+            }
+        });
+
+        panic!("{tree:#?}");
+    }
+}
