@@ -10,6 +10,9 @@ use self::visitor::NodeVisitor;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
 
+pub use self::foreach::Generator;
+
+mod foreach;
 mod iter;
 mod nodepath;
 mod pathfinder;
@@ -17,7 +20,7 @@ mod pathlist;
 mod transactions;
 mod view;
 pub mod visitor;
-mod walker;
+// mod walker;
 
 pub type TreeValues<T> = GenSlab<(Box<[u16]>, T)>;
 
@@ -662,8 +665,8 @@ mod test {
         tree.view_mut().insert(path).commit_at(Value::I(1));
 
         let mut tree = tree.view_mut();
-        tree.for_each(|path, outer_value, mut children| {
-            children.for_each(|path, inner_value, mut children| {
+        tree.for_each(|_path, outer_value, mut children| {
+            children.for_each(|_path, inner_value, mut children| {
                 let parent = &[0, 0];
                 children.insert(parent).commit_child(Value::I(999));
                 let path = &[0, 0, 0];

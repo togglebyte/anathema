@@ -1,4 +1,4 @@
-use super::{Tree, TreeView};
+use super::TreeView;
 use crate::slab::Key;
 use crate::tree::nodepath::new_node_path;
 use crate::tree::AsNodePath;
@@ -41,7 +41,7 @@ impl<'a, 'tree, T> InsertTransaction<'a, 'tree, T> {
     /// Insert a node at a given path.
     /// This will force all the values **after** the new node
     /// (along with all the children of the values) to have their paths updated.
-    pub fn commit_at(mut self, value: T) -> Option<Key> {
+    pub fn commit_at(self, value: T) -> Option<Key> {
         let (parent, index) = self.source.split_parent()?;
 
         let node_id = self.tree.layout.with_mut(parent, |siblings| {
