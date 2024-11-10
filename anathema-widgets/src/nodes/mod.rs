@@ -13,6 +13,7 @@ mod component;
 mod controlflow;
 pub(crate) mod element;
 pub(crate) mod eval;
+pub(crate) mod eval2;
 mod future;
 pub(crate) mod loops;
 mod stringify;

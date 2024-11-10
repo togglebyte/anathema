@@ -13,13 +13,13 @@ impl<'tree, T> TreeView<'tree, T> {
 
     pub fn for_each<F>(&mut self, mut f: F)
     where
-        F: FnMut(&mut T, TreeView<'_, T>),
+        F: FnMut(&[u16], &mut T, TreeView<'_, T>),
     {
         for index in 0..self.layout.len() {
             let node = &mut self.layout.inner[index];
             self.values.with_mut(node.value, |(offset, value), values| {
                 let tree_view = TreeView::new(offset, &mut node.children, values);
-                f(value, tree_view);
+                f(offset, value, tree_view);
             });
         }
     }
@@ -59,3 +59,101 @@ impl<'tree, T> TreeView<'tree, T> {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::tree::{root_node, Tree};
+
+    struct EvalContext {
+        adder: usize,
+        budget: usize,
+    }
+
+    enum Kind<'bp> {
+        Value(Value<'bp>),
+        Loop(&'bp Blueprint),
+    }
+
+    enum BpKind {
+        Single,
+        Loop(usize),
+    }
+
+    #[derive(Debug)]
+    struct Value<'bp> {
+        inner: usize,
+        blueprint: &'bp Blueprint,
+    }
+
+    struct Blueprint {
+        value: usize,
+        inner: Vec<Blueprint>,
+        kind: BpKind,
+    }
+
+    impl std::fmt::Debug for Blueprint {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "<blueprint>")
+        }
+    }
+
+    fn eval<'bp, 'tree>(
+        parent: &[u16],
+        bp: &'bp Blueprint,
+        ctx: &mut EvalContext,
+        tree: &mut TreeView<'tree, Value<'bp>>,
+    ) {
+        if ctx.budget == 0 {
+            return;
+        }
+
+        ctx.budget -= 1;
+
+        let value = Value {
+            inner: bp.value + ctx.adder,
+            blueprint: bp,
+        };
+
+        tree.insert(parent).commit_child(value).unwrap();
+    }
+
+    #[test]
+    fn deferred_value_creation() {
+        let blueprint = Blueprint {
+            value: 0,
+            kind: BpKind::Loop(2),
+            inner: vec![
+                Blueprint {
+                    value: 0,
+                    inner: vec![],
+                    kind: BpKind::Single,
+                },
+                Blueprint {
+                    value: 1,
+                    inner: vec![
+                        Blueprint {
+                            value: 2,
+                            inner: vec![],
+                            kind: BpKind::Single,
+                        },
+                    ],
+                    kind: BpKind::Loop(2),
+                },
+            ],
+        };
+
+        let mut ctx = EvalContext { adder: 100, budget: 3 };
+        let mut tree = Tree::empty();
+
+        let mut view = tree.view_mut();
+        eval(root_node(), &blueprint, &mut ctx, &mut view);
+
+        view.for_each(|path, value, mut children| {
+            for bp in &value.blueprint.inner {
+                eval(path, bp, &mut ctx, &mut children);
+            }
+        });
+
+        panic!("{tree:#?}");
+    }
+}

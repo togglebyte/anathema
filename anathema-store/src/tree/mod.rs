@@ -5,8 +5,8 @@ pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
 pub use self::pathlist::{PathList, PathListCtl};
 pub use self::transactions::InsertTransaction;
+pub use self::view::TreeView;
 use self::visitor::NodeVisitor;
-use self::view::TreeView;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
 
@@ -662,8 +662,8 @@ mod test {
         tree.view_mut().insert(path).commit_at(Value::I(1));
 
         let mut tree = tree.view_mut();
-        tree.for_each(|outer_value, mut children| {
-            children.for_each(|inner_value, mut children| {
+        tree.for_each(|path, outer_value, mut children| {
+            children.for_each(|path, inner_value, mut children| {
                 let parent = &[0, 0];
                 children.insert(parent).commit_child(Value::I(999));
                 let path = &[0, 0, 0];
