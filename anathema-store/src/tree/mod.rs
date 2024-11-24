@@ -1,5 +1,6 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
+pub use self::foreach::{ForEach2, Generator, Traverser};
 pub use self::iter::{TreeFilter, TreeForEach};
 pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
@@ -9,8 +10,6 @@ pub use self::view::TreeView;
 use self::visitor::NodeVisitor;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
-
-pub use self::foreach::Generator;
 
 mod foreach;
 mod iter;
@@ -293,7 +292,7 @@ impl<T> Tree<T> {
         Some(())
     }
 
-    /// Apply the [`PathFinder`].
+    /// Apply the [`PathFinder`] to a given path.
     pub fn apply_path_finder<P>(&mut self, node_path: &[u16], path_finder: P)
     where
         P: PathFinder<Input = T>,
@@ -418,6 +417,27 @@ impl Nodes {
         }
     }
 
+    /// Find a mutable node by its path
+    fn get_by_path_mut(&mut self, mut path: &[u16]) -> Option<&mut Node> {
+        let mut nodes = self;
+        loop {
+            match path {
+                [] => break None,
+                [i] if (*i as usize) < nodes.len() => break Some(&mut nodes.inner[*i as usize]),
+                // The index is outside of the node length
+                [_] => break None,
+                [i, sub_path @ ..] => {
+                    let index = *i as usize;
+                    if index >= nodes.len() {
+                        break None;
+                    }
+                    path = sub_path;
+                    nodes = &mut nodes.inner[index].children;
+                }
+            }
+        }
+    }
+
     fn get_mut(&mut self, index: usize) -> Option<&mut Node> {
         self.inner.get_mut(index)
     }
@@ -502,6 +522,12 @@ impl Deref for Nodes {
     }
 }
 
+impl DerefMut for Nodes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 #[derive(Debug)]
 pub struct Node {
     pub(crate) value: ValueId,
@@ -520,8 +546,12 @@ impl Node {
         self.value
     }
 
-    pub fn children(&self) -> &[Node] {
-        &self.children.inner
+    pub fn children(&self) -> &Nodes {
+        &self.children
+    }
+
+    pub fn children_mut(&mut self) -> &mut Nodes {
+        &mut self.children
     }
 
     fn reparent<T>(&mut self, dest: &[u16], values: &mut TreeValues<T>) {

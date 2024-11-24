@@ -5,7 +5,7 @@ use anathema_state::CommonVal;
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{LEFT, RIGHT};
 
@@ -74,12 +74,12 @@ pub struct Text {
 impl Widget for Text {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let attributes = ctx.attribs.get(id);
+        let attributes = ctx.attribute_storage.get(id);
         let wrap = attributes.get(WRAP).unwrap_or_default();
         let size = constraints.max_size();
         self.strings = Strings::new(size, wrap);
@@ -97,13 +97,13 @@ impl Widget for Text {
         });
 
         // Layout text of all the sub-nodes
-        children.for_each(|child, _| {
+        children.each(ctx, |ctx, child, _| {
             let Some(_span) = child.try_to_ref::<Span>() else {
                 return ControlFlow::Continue(());
             };
             self.strings.set_style(child.id());
 
-            let attributes = ctx.attribs.get(child.id());
+            let attributes = ctx.attribute_storage.get(child.id());
             if let Some(text) = attributes.value() {
                 text.str_iter(|s| match self.strings.add_str(s) {
                     ProcessResult::Break => ControlFlow::Break(()),
@@ -121,7 +121,7 @@ impl Widget for Text {
 
     fn paint<'bp>(
         &mut self,
-        _: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
@@ -166,7 +166,7 @@ impl Widget for Text {
 
     fn position<'bp>(
         &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         _attributes: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         _ctx: PositionCtx,
@@ -182,10 +182,10 @@ pub struct Span;
 impl Widget for Span {
     fn layout<'bp>(
         &mut self,
-        _: LayoutChildren<'_, '_, 'bp>,
-        _: Constraints,
-        _: WidgetId,
-        _: &mut LayoutCtx<'_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
+        constraints: Constraints,
+        id: WidgetId,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         // Everything is handled by the parent text
         panic!("this should never be called");
@@ -193,7 +193,7 @@ impl Widget for Span {
 
     fn position<'bp>(
         &mut self,
-        _: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PositionCtx,

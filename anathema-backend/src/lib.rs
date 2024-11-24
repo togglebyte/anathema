@@ -1,10 +1,14 @@
+use std::ops::ControlFlow;
 use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{AsNodePath, Node, TreeValues};
+use anathema_store::tree::{AsNodePath, ForEach2, Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
-use anathema_widgets::{AttributeStorage, DirtyWidgets, Element, FloatingWidgets, GlyphMap, WidgetContainer, WidgetKind, WidgetTree};
+use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::{
+    AttributeStorage, DirtyWidgets, Element, EvalContext, FloatingWidgets, ForEach, GlyphMap, LayoutForEach,
+    WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
+};
 
 pub mod test;
 pub mod tui;
@@ -20,9 +24,7 @@ pub trait Backend {
     fn paint<'bp>(
         &mut self,
         glyph_map: &mut GlyphMap,
-        element: &mut Element<'bp>,
-        children: &[Node],
-        values: &mut TreeValues<WidgetContainer<'bp>>,
+        widgets: ForEach<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     );
@@ -43,110 +45,113 @@ pub trait Backend {
 pub struct WidgetCycle<'rt, 'bp, T> {
     backend: &'rt mut T,
     tree: &'rt mut WidgetTree<'bp>,
-    glyph_map: &'rt mut GlyphMap,
     constraints: Constraints,
-    attribute_storage: &'rt AttributeStorage<'bp>,
-    dirty_widgets: &'rt DirtyWidgets,
-    floating_widgets: &'rt FloatingWidgets,
-    viewport: Viewport,
-    force_layout: bool,
 }
 
 impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
-    pub fn new(
-        backend: &'rt mut T,
-        tree: &'rt mut WidgetTree<'bp>,
-        glyph_map: &'rt mut GlyphMap,
-        constraints: Constraints,
-        attribute_storage: &'rt AttributeStorage<'bp>,
-        dirty_widgets: &'rt DirtyWidgets,
-        floating_widgets: &'rt FloatingWidgets,
-        viewport: Viewport,
-        force_layout: bool,
-    ) -> Self {
+    pub fn new(backend: &'rt mut T, tree: &'rt mut WidgetTree<'bp>, constraints: Constraints) -> Self {
         Self {
             backend,
             tree,
-            glyph_map,
             constraints,
-            attribute_storage,
-            dirty_widgets,
-            floating_widgets,
-            viewport,
-            force_layout,
         }
     }
 
     fn floating(&mut self) {
-        // Floating widgets
-        for widget_id in self.floating_widgets.iter() {
-            // Find the parent widget and get the position
-            // If no parent element is found assume Pos::ZERO
-            let mut parent = self.tree.path_ref(*widget_id).parent();
-            let (pos, constraints) = loop {
-                match parent {
-                    None => break (Pos::ZERO, self.constraints),
-                    Some(p) => match self.tree.get_ref_by_path(p) {
-                        Some(WidgetContainer { kind:WidgetKind::Element(el), .. }) => {
-                            let bounds = el.inner_bounds();
-                            break (bounds.from, Constraints::from(bounds));
-                        }
-                        _ => parent = p.parent(),
-                    },
-                }
-            };
+        // // Floating widgets
+        // for widget_id in self.floating_widgets.iter() {
+        //     // Find the parent widget and get the position
+        //     // If no parent element is found assume Pos::ZERO
+        //     let mut parent = self.tree.path_ref(*widget_id).parent();
+        //     let (pos, constraints) = loop {
+        //         match parent {
+        //             None => break (Pos::ZERO, self.constraints),
+        //             Some(p) => match self.tree.get_ref_by_path(p) {
+        //                 Some(WidgetContainer { kind:WidgetKind::Element(el), .. }) => {
+        //                     let bounds = el.inner_bounds();
+        //                     break (bounds.from, Constraints::from(bounds));
+        //                 }
+        //                 _ => parent = p.parent(),
+        //             },
+        //         }
+        //     };
 
-            self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-                let WidgetKind::Element(el) = &mut widget.kind else { unreachable!("this is always a floating widget") };
-                let mut layout_ctx = LayoutCtx::new(
-                    self.attribute_storage,
-                    self.dirty_widgets,
-                    &self.viewport,
-                    self.glyph_map,
-                    self.force_layout,
-                );
+        //     self.tree.with_nodes_and_values(*widget_id, |widget, children, values| {
+        //         let WidgetKind::Element(el) = &mut widget.kind else { unreachable!("this is always a floating widget") };
+        //         let mut layout_ctx = LayoutCtx::new(
+        //             self.attribute_storage,
+        //             self.dirty_widgets,
+        //             &self.viewport,
+        //             self.glyph_map,
+        //             self.force_layout,
+        //         );
 
-                layout_widget(el, children, values, constraints, &mut layout_ctx, true);
+        //         layout_widget(el, children, values, constraints, &mut layout_ctx, true);
 
-                // Position
-                position_widget(pos, el, children, values, self.attribute_storage, true, self.viewport);
+        //         // Position
+        //         position_widget(pos, el, children, values, self.attribute_storage, true, self.viewport);
 
-                // Paint
-                self.backend
-                    .paint(self.glyph_map, el, children, values, self.attribute_storage, true);
-            });
-        }
+        //         // Paint
+        //         self.backend
+        //             .paint(self.glyph_map, el, children, values, self.attribute_storage, true);
+        //     });
+        // }
     }
 
-    pub fn run(&mut self) {
-        let mut filter = LayoutFilter::new(true, self.attribute_storage);
-        self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            // Layout
-            let mut layout_ctx = LayoutCtx::new(
-                self.attribute_storage,
-                self.dirty_widgets,
-                &self.viewport,
-                self.glyph_map,
-                self.force_layout,
-            );
-            layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
+    pub fn run(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>) {
+        // // let mut filter = LayoutFilter::new(true, self.attribute_storage);
+        // // let for_each = ForEach2::new(self.tree.view_mut(), panic!(), WidgetGenerator::Noop);
+        // // panic!("Use foreach 2 here");
 
-            // Position
-            position_widget(
-                Pos::ZERO,
-                widget,
-                children,
-                values,
-                self.attribute_storage,
-                true,
-                self.viewport,
-            );
-
-            // Paint
-            self.backend
-                .paint(self.glyph_map, widget, children, values, self.attribute_storage, true);
+        // -----------------------------------------------------------------------------
+        //   - Layout -
+        // -----------------------------------------------------------------------------
+        let mut for_each = LayoutForEach::new(self.tree.view_mut(), None);
+        let constraints = self.constraints;
+        for_each.each(ctx, |ctx, widget, children| {
+            let _size = widget.layout(children, constraints, ctx);
+            ControlFlow::Break(())
         });
 
-        self.floating();
+        // -----------------------------------------------------------------------------
+        //   - Position -
+        // -----------------------------------------------------------------------------
+        let mut for_each = ForEach::new(self.tree.view_mut());
+        for_each.each(|widget, children| {
+            widget.position(children, Pos::ZERO, ctx.attribute_storage, *ctx.viewport);
+            ControlFlow::Break(())
+        });
+
+        // -----------------------------------------------------------------------------
+        //   - Paint -
+        // -----------------------------------------------------------------------------
+        self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage, true);
+
+        // //     // Layout
+        // //     let mut layout_ctx = LayoutCtx::new(
+        // //         self.attribute_storage,
+        // //         self.dirty_widgets,
+        // //         &self.viewport,
+        // //         self.glyph_map,
+        // //         self.force_layout,
+        // //     );
+        // //     layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
+
+        // //     // Position
+        // //     position_widget(
+        // //         Pos::ZERO,
+        // //         widget,
+        // //         children,
+        // //         values,
+        // //         self.attribute_storage,
+        // //         true,
+        // //         self.viewport,
+        // //     );
+
+        // //     // Paint
+        // //     self.backend
+        // //         .paint(self.glyph_map, widget, children, values, self.attribute_storage, true);
+
+        // // self.floating();
     }
 }

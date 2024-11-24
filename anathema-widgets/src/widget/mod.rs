@@ -9,20 +9,23 @@ use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::sorted::SortedList;
-use anathema_store::tree::{Tree, TreeForEach};
+use anathema_store::tree::{Tree, TreeForEach, TreeView};
 use anathema_templates::WidgetComponentId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
 pub use self::query::Elements;
+pub use self::tree::{ForEach, LayoutForEach};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::paint::{PaintCtx, PaintFilter, SizePos};
-use crate::{WidgetContainer, WidgetKind};
+use crate::{EvalContext, WidgetContainer, WidgetKind};
 
 mod attributes;
 mod factory;
 mod query;
+mod tree;
 
+pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
 pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
 pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
@@ -166,7 +169,7 @@ impl DirtyWidgets {
 
     pub fn contains(&self, id: WidgetId) -> bool {
         self.inner.iter().any(|wid| id.eq(wid))
-    } 
+    }
 }
 
 /// Parent in a component relationship
@@ -232,15 +235,15 @@ pub trait AnyWidget {
 
     fn any_layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size;
 
     fn any_position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -248,7 +251,7 @@ pub trait AnyWidget {
 
     fn any_paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -272,17 +275,17 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         self.layout(children, constraints, id, ctx)
     }
 
     fn any_position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -292,7 +295,7 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -322,21 +325,21 @@ impl Debug for dyn AnyWidget {
 pub trait Widget {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size;
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.for_each(|child, children| {
-            let ctx = ctx.to_unsized();
+        children.each(|child, children| {
+            let mut ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
         });
@@ -344,7 +347,7 @@ pub trait Widget {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,

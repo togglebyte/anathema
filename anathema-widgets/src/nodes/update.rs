@@ -25,8 +25,8 @@ impl<'a, 'b, 'bp> PathFinder for UpdateTree<'a, 'b, 'bp> {
         Ok(())
     }
 
-    fn parent(&mut self, parent: &mut WidgetContainer<'bp>, children: &[u16]) {
-        scope_value(&parent.kind, self.ctx.scope, children);
+    fn parent(&mut self, parent: &mut WidgetContainer<'bp>, sub_path: &[u16]) {
+        scope_value(&parent.kind, self.ctx.scope, sub_path);
     }
 }
 

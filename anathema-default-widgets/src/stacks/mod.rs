@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, WidgetId};
 
 pub use self::column::Column;
 pub use self::hstack::HStack;
@@ -24,12 +24,12 @@ pub struct Stack(Axis);
 impl Stack {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let attributes = ctx.attribs.get(id);
+        let attributes = ctx.attribute_storage.get(id);
 
         if let Some(width) = attributes.get_usize(MIN_WIDTH) {
             constraints.min_width = width;
@@ -56,10 +56,10 @@ impl Stack {
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let direction = attributes.get(DIRECTION).unwrap_or_default();
@@ -72,7 +72,7 @@ impl Stack {
             }
         }
 
-        children.for_each(|node, children| {
+        children.each(|node, children| {
             match direction {
                 Direction::Forward => {
                     node.position(children, pos, attribute_storage, ctx.viewport);

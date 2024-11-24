@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::layout::alignment::{Alignment, ALIGNMENT};
 
@@ -12,12 +12,12 @@ pub struct Align;
 impl Widget for Align {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         _: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        children.for_each(|widget, children| {
+        children.each(ctx, |ctx, widget, children| {
             let _ = widget.layout(children, constraints, ctx);
             ControlFlow::Break(())
         });
@@ -27,15 +27,15 @@ impl Widget for Align {
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let alignment = attributes.get(ALIGNMENT).unwrap_or_default();
 
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             let width = ctx.inner_size.width as i32;
             let height = ctx.inner_size.height as i32;
             let child_width = child.size().width as i32;

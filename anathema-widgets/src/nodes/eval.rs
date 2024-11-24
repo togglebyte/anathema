@@ -13,21 +13,10 @@ use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
+use crate::layout::Viewport;
 use crate::values::{ValueId, ValueIndex};
-use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey};
-use crate::{eval_blueprint, AttributeStorage, DirtyWidgets, Factory, Scope, WidgetId, WidgetKind, WidgetTree};
-
-pub type BlueprintsIter<'a> = Iter<'a, Blueprint>;
-
-pub struct Children<'bp> {
-    inner: BlueprintsIter<'bp>,
-}
-
-impl<'bp> Children<'bp> {
-    pub fn new(inner: BlueprintsIter<'bp>) -> Self {
-        Self { inner }
-    }
-}
+use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey, WidgetTreeView};
+use crate::{eval_blueprint, AttributeStorage, DirtyWidgets, Factory, GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree};
 
 /// Evaluation context
 pub struct EvalContext<'a, 'b, 'bp> {
@@ -36,11 +25,14 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) scope: &'b mut Scope<'bp>,
     pub(super) states: &'b mut States,
     pub(super) component_registry: &'b mut ComponentRegistry,
-    pub(super) attribute_storage: &'b mut AttributeStorage<'bp>,
+    pub attribute_storage: &'b mut AttributeStorage<'bp>,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
     pub(super) components: &'b mut Components,
     pub(super) dirty_widgets: &'b mut DirtyWidgets,
     pub(super) parent: Option<WidgetId>,
+    pub viewport: &'a Viewport,
+    pub glyph_map: &'b mut GlyphMap,
+    pub force_layout: bool,
 }
 
 impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
@@ -54,6 +46,9 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         floating_widgets: &'b mut FloatingWidgets,
         components: &'b mut Components,
         dirty_widgets: &'b mut DirtyWidgets,
+        viewport: &'a Viewport,
+        glyph_map: &'b mut GlyphMap,
+        force_layout: bool,
     ) -> Self {
         Self {
             globals,
@@ -66,6 +61,9 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
             components,
             dirty_widgets,
             parent: None,
+            viewport,
+            glyph_map,
+            force_layout,
         }
     }
 
@@ -74,6 +72,10 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         component_id: WidgetComponentId,
     ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
         self.component_registry.get(component_id)
+    }
+
+    pub fn needs_layout(&self, node_id: WidgetId) -> bool {
+        self.dirty_widgets.contains(node_id) || self.force_layout
     }
 }
 
@@ -86,7 +88,7 @@ pub(super) trait Evaluator {
         input: Self::Input<'bp>,
         context: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()>;
 }
 
@@ -100,7 +102,7 @@ impl Evaluator for SingleEval {
         single: Self::Input<'bp>,
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
         let widget_id = transaction.node_id();
@@ -161,6 +163,7 @@ impl Evaluator for SingleEval {
 
         transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
 
+        // TODO clear
         // Children
         // let parent = tree.path(widget_id);
         // for child in &single.children {
@@ -220,38 +223,39 @@ impl Evaluator for ForLoopEval {
         for_loop: Self::Input<'bp>,
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
-        panic!("soon")
-        // let transaction = tree.insert(parent);
-        // let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
+        let transaction = tree.insert(parent);
+        let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
 
-        // let collection = eval_collection(
-        //     &for_loop.data,
-        //     ctx.globals,
-        //     ctx.scope,
-        //     ctx.states,
-        //     ctx.attribute_storage,
-        //     value_id,
-        // );
+        let collection = eval_collection(
+            &for_loop.data,
+            ctx.globals,
+            ctx.scope,
+            ctx.states,
+            ctx.attribute_storage,
+            value_id,
+        );
 
-        // let for_loop = super::loops::For {
-        //     binding: &for_loop.binding,
-        //     body: &for_loop.body,
-        //     collection,
-        // };
+        let for_loop = super::loops::For {
+            binding: &for_loop.binding,
+            body: &for_loop.body,
+            collection,
+        };
 
-        // let widget = WidgetKind::For(for_loop);
+        let body = for_loop.body;
+        let widget = WidgetKind::For(for_loop);
+        let widget = WidgetContainer::new(widget, body);
 
-        // let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
 
         // tree.with_value_mut(for_loop_id, move |parent, widget, tree| {
-        //     let WidgetKind::For(for_loop) = widget else { unreachable!() };
+        //     let WidgetKind::For(ref for_loop) = widget.kind else { unreachable!() };
         //     self.eval_body(for_loop, ctx, parent, tree)?;
         //     Ok(())
         // })?;
 
-        // Ok(())
+        Ok(())
     }
 }
 
@@ -265,7 +269,7 @@ impl Evaluator for ControlFlowEval {
         control_flow: Self::Input<'bp>,
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         panic!("this is just as bad")
         // let transaction = tree.insert(parent);
@@ -321,7 +325,7 @@ impl Evaluator for IfEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         panic!("once control flow is done, come back here")
         // let transaction = tree.insert(parent);
@@ -362,7 +366,7 @@ impl Evaluator for ElseEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         panic!("do it once if is done")
         // let transaction = tree.insert(parent);
@@ -409,7 +413,7 @@ impl Evaluator for ComponentEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalContext<'_, '_, 'bp>,
         parent: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
         let widget_id = transaction.node_id();

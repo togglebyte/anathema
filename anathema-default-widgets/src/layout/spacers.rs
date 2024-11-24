@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
+use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
 
 use super::Axis;
 
@@ -12,14 +12,14 @@ use super::Axis;
 /// whereas this does the layout of multiple [`Spacer`]s
 /// inside already evaluated children.
 pub fn layout_all_spacers<'bp>(
-    nodes: &mut LayoutChildren<'_, '_, 'bp>,
+    nodes: &mut LayoutForEach<'_, 'bp>,
     mut constraints: Constraints,
     axis: Axis,
-    ctx: &mut LayoutCtx<'_, 'bp>,
+    ctx: &mut EvalContext<'_, '_, 'bp>,
 ) -> Size {
     let mut final_size = Size::ZERO;
     let mut count = 0;
-    nodes.for_each(|node, _| {
+    nodes.each(ctx, |ctx, node, _| {
         if node.ident == "spacer" {
             count += 1;
         }
@@ -42,7 +42,7 @@ pub fn layout_all_spacers<'bp>(
         }
     };
 
-    nodes.for_each(|node, children| {
+    nodes.each(ctx, |ctx, node, children| {
         if node.ident != "spacer" {
             return ControlFlow::Continue(());
         }

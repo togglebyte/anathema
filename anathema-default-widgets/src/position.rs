@@ -4,7 +4,7 @@ use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 
@@ -72,69 +72,70 @@ impl Widget for Position {
 
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let attribs = ctx.attribs.get(id);
-        self.placement = attribs.get(PLACEMENT).unwrap_or_default();
+        panic!()
+        // let attribs = ctx.attribs.get(id);
+        // self.placement = attribs.get(PLACEMENT).unwrap_or_default();
 
-        self.horz_edge = match attribs.get_int(LEFT) {
-            Some(left) => HorzEdge::Left(left as u32),
-            None => match attribs.get_int(RIGHT) {
-                Some(right) => HorzEdge::Right(right as u32),
-                None => HorzEdge::Left(0),
-            },
-        };
+        // self.horz_edge = match attribs.get_int(LEFT) {
+        //     Some(left) => HorzEdge::Left(left as u32),
+        //     None => match attribs.get_int(RIGHT) {
+        //         Some(right) => HorzEdge::Right(right as u32),
+        //         None => HorzEdge::Left(0),
+        //     },
+        // };
 
-        self.vert_edge = match attribs.get_int(TOP) {
-            Some(top) => VertEdge::Top(top as u32),
-            None => match attribs.get_int(BOTTOM) {
-                Some(bottom) => VertEdge::Bottom(bottom as u32),
-                None => VertEdge::Top(0),
-            },
-        };
+        // self.vert_edge = match attribs.get_int(TOP) {
+        //     Some(top) => VertEdge::Top(top as u32),
+        //     None => match attribs.get_int(BOTTOM) {
+        //         Some(bottom) => VertEdge::Bottom(bottom as u32),
+        //         None => VertEdge::Top(0),
+        //     },
+        // };
 
-        // Relative:
-        // Position relative to parent means calculating a new constraint
-        // based of the position of the top, left - the size
-        //
-        // Given a constraint of 10 x 10 and a left of 2 and a top of 3 it would
-        // produce a new set of constraints at 8 x 7
-        //
-        // Absolute:
-        // Position relative to the viewport,
-        // Has no constraints
+        // // Relative:
+        // // Position relative to parent means calculating a new constraint
+        // // based of the position of the top, left - the size
+        // //
+        // // Given a constraint of 10 x 10 and a left of 2 and a top of 3 it would
+        // // produce a new set of constraints at 8 x 7
+        // //
+        // // Absolute:
+        // // Position relative to the viewport,
+        // // Has no constraints
 
-        let constraints = match self.placement {
-            Placement::Relative => constraints,
-            Placement::Absolute => ctx.viewport.constraints(),
-        };
+        // let constraints = match self.placement {
+        //     Placement::Relative => constraints,
+        //     Placement::Absolute => ctx.viewport.constraints(),
+        // };
 
-        let mut size = Size::ZERO;
+        // let mut size = Size::ZERO;
 
-        children.for_each(|child, children| {
-            size = child.layout(children, constraints, ctx);
-            ControlFlow::Break(())
-        });
+        // children.for_each(|child, children| {
+        //     size = child.layout(children, constraints, ctx);
+        //     ControlFlow::Break(())
+        // });
 
-        size.width = match self.horz_edge {
-            HorzEdge::Left(left) => size.width + left as usize,
-            HorzEdge::Right(right) => constraints.max_width() - right as usize,
-        };
+        // size.width = match self.horz_edge {
+        //     HorzEdge::Left(left) => size.width + left as usize,
+        //     HorzEdge::Right(right) => constraints.max_width() - right as usize,
+        // };
 
-        size.height = match self.vert_edge {
-            VertEdge::Top(top) => size.height + top as usize,
-            VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
-        };
+        // size.height = match self.vert_edge {
+        //     VertEdge::Top(top) => size.height + top as usize,
+        //     VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
+        // };
 
-        size
+        // size
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
@@ -143,7 +144,7 @@ impl Widget for Position {
             ctx.pos = Pos::ZERO;
         }
 
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             // let (pos, size) = match self.placement {
             //     Placement::Relative => (ctx.pos, child.size()),
             //     Placement::Absolute => (Pos::ZERO, ctx.viewport.size()),
@@ -171,12 +172,12 @@ impl Widget for Position {
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             let mut ctx = ctx.to_unsized();
             ctx.clip = None;
             child.paint(children, ctx, attribute_storage);

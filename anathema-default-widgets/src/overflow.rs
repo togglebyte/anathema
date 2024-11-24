@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -106,63 +106,64 @@ impl Overflow {
 impl Widget for Overflow {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
-        mut constraints: Constraints,
+        children: LayoutForEach<'_, 'bp>,
+        constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
+        panic!()
 
-        // TODO: remove this -TB 2024-10-31
-        // // horrid log
-        // {
-        //     use std::io::Write;
-        //     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/log.lol").unwrap();
-        //     file.write(b"layout\n");
-        //     file.flush();
-        // }
+//         // TODO: remove this -TB 2024-10-31
+//         // // horrid log
+//         // {
+//         //     use std::io::Write;
+//         //     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/log.lol").unwrap();
+//         //     file.write(b"layout\n");
+//         //     file.flush();
+//         // }
 
-        let attributes = ctx.attribs.get(id);
-        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+//         let attributes = ctx.attribs.get(id);
+//         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
 
-        let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
+//         let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
 
-        match axis {
-            Axis::Horizontal => constraints.unbound_width(),
-            Axis::Vertical => constraints.unbound_height(),
-        }
+//         match axis {
+//             Axis::Horizontal => constraints.unbound_width(),
+//             Axis::Vertical => constraints.unbound_height(),
+//         }
 
-        if attributes.get_bool(UNCONSTRAINED) {
-            constraints.unbound_width();
-            constraints.unbound_height();
-        }
+//         if attributes.get_bool(UNCONSTRAINED) {
+//             constraints.unbound_width();
+//             constraints.unbound_height();
+//         }
 
-        if let Some(width) = attributes.get_usize(WIDTH) {
-            constraints.make_width_tight(width);
-        }
+//         if let Some(width) = attributes.get_usize(WIDTH) {
+//             constraints.make_width_tight(width);
+//         }
 
-        if let Some(height) = attributes.get_usize(HEIGHT) {
-            constraints.make_height_tight(height);
-        }
+//         if let Some(height) = attributes.get_usize(HEIGHT) {
+//             constraints.make_height_tight(height);
+//         }
 
-        self.direction = attributes.get(DIRECTION).unwrap_or_default();
+//         self.direction = attributes.get(DIRECTION).unwrap_or_default();
 
-        // Make `unconstrained` an enum instead of a `bool`
-        let unconstrained = true;
-        let mut many = Many::new(self.direction, axis, unconstrained);
+//         // Make `unconstrained` an enum instead of a `bool`
+//         let unconstrained = true;
+//         let mut many = Many::new(self.direction, axis, unconstrained);
 
-        let _size = many.layout(children, constraints, ctx);
+//         let _size = many.layout(children, constraints, ctx);
 
-        self.inner_size = many.used_size.inner_size();
+//         self.inner_size = many.used_size.inner_size();
 
-        output_size
+//         output_size
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let direction = attributes.get(DIRECTION).unwrap_or_default();
@@ -187,7 +188,7 @@ impl Widget for Overflow {
             Direction::Backward => pos + self.offset,
         };
 
-        children.for_each(|node, children| {
+        children.each(|node, children| {
             // TODO
             // ----
             // this should stop doing layout once the children are no longer
@@ -218,14 +219,14 @@ impl Widget for Overflow {
 
     fn paint<'bp>(
         &mut self,
-        mut children: anathema_widgets::PaintChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let region = ctx.create_region();
 
-        children.for_each(|widget, children| {
+        children.each(|widget, children| {
             ctx.set_clip_region(region);
             let ctx = ctx.to_unsized();
             widget.paint(children, ctx, attribute_storage);

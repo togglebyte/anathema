@@ -5,7 +5,7 @@ use anathema_widgets::expressions::EvalValue;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{
-    AnyWidget, AttributeStorage, Attributes, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId,
+    AnyWidget, AttributeStorage, Attributes, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId
 };
 
 use crate::layout::border::BorderLayout;
@@ -388,70 +388,71 @@ impl Border {
 impl Widget for Border {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let attributes = ctx.attribs.get(id);
-        self.sides = attributes
-            .get_val("sides")
-            .and_then(|s| Sides::try_from(s.deref()).ok())
-            .unwrap_or_default();
+        panic!()
+        // let attributes = ctx.attribs.get(id);
+        // self.sides = attributes
+        //     .get_val("sides")
+        //     .and_then(|s| Sides::try_from(s.deref()).ok())
+        //     .unwrap_or_default();
 
-        self.border_style = match attributes.get_val(BORDER_STYLE) {
-            None => BorderStyle::Thin,
-            Some(val) => {
-                let mut edges = DEFAULT_SLIM_EDGES;
-                let mut index = 0;
+        // self.border_style = match attributes.get_val(BORDER_STYLE) {
+        //     None => BorderStyle::Thin,
+        //     Some(val) => {
+        //         let mut edges = DEFAULT_SLIM_EDGES;
+        //         let mut index = 0;
 
-                val.str_iter(|s| {
-                    match s {
-                        "thin" => return ControlFlow::Break(()),
-                        "thick" => {
-                            edges = BorderStyle::Thick.edges();
-                            return ControlFlow::Break(());
-                        }
-                        _ => (),
-                    }
+        //         val.str_iter(|s| {
+        //             match s {
+        //                 "thin" => return ControlFlow::Break(()),
+        //                 "thick" => {
+        //                     edges = BorderStyle::Thick.edges();
+        //                     return ControlFlow::Break(());
+        //                 }
+        //                 _ => (),
+        //             }
 
-                    let mut glyphs = Glyphs::new(s);
-                    while let Some(g) = glyphs.next(ctx.glyph_map) {
-                        edges[index] = g;
-                        index += 1;
-                        if index >= DEFAULT_SLIM_EDGES.len() {
-                            break;
-                        };
-                    }
+        //             let mut glyphs = Glyphs::new(s);
+        //             while let Some(g) = glyphs.next(ctx.glyph_map) {
+        //                 edges[index] = g;
+        //                 index += 1;
+        //                 if index >= DEFAULT_SLIM_EDGES.len() {
+        //                     break;
+        //                 };
+        //             }
 
-                    ControlFlow::Break(())
-                });
-                BorderStyle::Custom(edges)
-            }
-        };
-        self.edges = self.border_style.edges();
+        //             ControlFlow::Break(())
+        //         });
+        //         BorderStyle::Custom(edges)
+        //     }
+        // };
+        // self.edges = self.border_style.edges();
 
-        let mut layout = BorderLayout {
-            min_width: attributes.get_usize(MIN_WIDTH),
-            min_height: attributes.get_usize(MIN_HEIGHT),
-            max_width: attributes.get_usize(MAX_WIDTH),
-            max_height: attributes.get_usize(MAX_HEIGHT),
-            height: attributes.get_usize(HEIGHT),
-            width: attributes.get_usize(WIDTH),
-            border_size: self.border_size(self.sides),
-        };
+        // let mut layout = BorderLayout {
+        //     min_width: attributes.get_usize(MIN_WIDTH),
+        //     min_height: attributes.get_usize(MIN_HEIGHT),
+        //     max_width: attributes.get_usize(MAX_WIDTH),
+        //     max_height: attributes.get_usize(MAX_HEIGHT),
+        //     height: attributes.get_usize(HEIGHT),
+        //     width: attributes.get_usize(WIDTH),
+        //     border_size: self.border_size(self.sides),
+        // };
 
-        layout.layout(children, constraints, ctx)
+        // layout.layout(children, constraints, ctx)
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
     ) {
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             if self.sides.contains(Sides::TOP) {
                 ctx.pos.y += 1;
             }
@@ -467,14 +468,14 @@ impl Widget for Border {
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let border_size = self.border_size(self.sides);
 
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())

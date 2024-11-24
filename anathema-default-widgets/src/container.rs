@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 
@@ -12,14 +12,14 @@ pub struct Container;
 impl Widget for Container {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
 
-        let attribs = ctx.attribs.get(id);
+        let attribs = ctx.attribute_storage.get(id);
 
         if let Some(width) = attribs.get_usize(WIDTH) {
             constraints.make_width_tight(width);
@@ -45,7 +45,7 @@ impl Widget for Container {
             constraints.set_max_height(height);
         }
         
-        children.for_each(|child, children| {
+        children.each(ctx, |ctx, child, children| {
             size = child.layout(children, constraints, ctx);
             ControlFlow::Break(())
         });
@@ -58,12 +58,12 @@ impl Widget for Container {
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });

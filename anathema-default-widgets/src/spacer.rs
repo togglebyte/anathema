@@ -1,7 +1,7 @@
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 #[derive(Debug, Default)]
 pub struct Spacer;
@@ -9,17 +9,17 @@ pub struct Spacer;
 impl Widget for Spacer {
     fn layout<'bp>(
         &mut self,
-        _children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        _id: WidgetId,
-        _ctx: &mut LayoutCtx<'_, 'bp>,
+        id: WidgetId,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         Size::new(constraints.min_width, constraints.min_height)
     }
 
     fn paint<'bp>(
         &mut self,
-        _: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PaintCtx<'_, SizePos>,
@@ -29,7 +29,7 @@ impl Widget for Spacer {
 
     fn position<'bp>(
         &mut self,
-        _: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PositionCtx,

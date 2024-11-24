@@ -5,8 +5,8 @@ use anathema_templates::blueprints::Blueprint;
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
-use crate::widget::{AnyWidget, PositionChildren};
-use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
+use crate::widget::{AnyWidget, ForEach, PositionChildren};
+use crate::{AttributeStorage, EvalContext, LayoutForEach, LayoutChildren, PaintChildren, WidgetId};
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -35,9 +35,9 @@ pub(crate) struct Container {
 impl Container {
     pub(crate) fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         // NOTE: The layout is possibly skipped in the Element::layout call
 
@@ -64,7 +64,7 @@ impl Container {
 
     pub(crate) fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
@@ -81,7 +81,7 @@ impl Container {
 
     pub(crate) fn paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {

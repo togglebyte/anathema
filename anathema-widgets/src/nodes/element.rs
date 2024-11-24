@@ -3,8 +3,8 @@ use anathema_geometry::{Pos, Region, Size};
 use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, Viewport};
 use crate::paint::{PaintCtx, Unsized};
-use crate::widget::{PaintChildren, PositionChildren};
-use crate::{AttributeStorage, LayoutChildren, WidgetId};
+use crate::widget::{ForEach, PaintChildren, PositionChildren};
+use crate::{AttributeStorage, EvalContext, LayoutForEach, LayoutChildren, WidgetId};
 
 #[derive(Debug)]
 pub struct Element<'bp> {
@@ -23,9 +23,9 @@ impl<'bp> Element<'bp> {
 
     pub fn layout(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         // If the context doesn't force layout, and the id is not in the list of dirty widgets
         // (currently this path ctl) then return the cached value
@@ -39,7 +39,7 @@ impl<'bp> Element<'bp> {
     /// Position the element
     pub fn position(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
@@ -50,7 +50,7 @@ impl<'bp> Element<'bp> {
     /// Draw an element to the surface
     pub fn paint(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {

@@ -9,7 +9,7 @@ use super::TreeView;
 //
 // A blueprint becomes a widget and gets a generator?
 
-struct ForEach2<'tree, V, T, G, C> {
+pub struct ForEach2<'tree, V, T, G, C> {
     tree: TreeView<'tree, V>,
     traverser: &'tree T,
     generator: G,
@@ -20,7 +20,6 @@ impl<'tree, 'bp, V, T, G, C> ForEach2<'tree, V, T, G, C>
 where
     G: Generator<V, C>,
     T: Traverser<V>,
-    G: Generator<V, C>,
 {
     pub fn new(tree: TreeView<'tree, V>, traverser: &'tree T, generator: G) -> Self {
         Self {
@@ -84,11 +83,14 @@ where
     }
 }
 
-// -----------------------------------------------------------------------------
-//   - Traits -
-// -----------------------------------------------------------------------------
+pub trait Filter {
+    type Input;
+    type Output;
+    
+    fn filter(&self, value: &mut Self::Input) -> &mut Self::Output;
+}
 
-trait Traverser<T> {
+pub trait Traverser<T> {
     fn traverse(&self, input: &mut T) -> bool;
 }
 
@@ -209,7 +211,7 @@ mod test {
         Loop(usize, &'bp [Blueprint]),
         Iter(&'bp [Blueprint]),
         Single(&'bp [Blueprint]),
-        Noop,
+        Empty,
     }
 
     // struct Gen<'a, 'bp> {
@@ -219,28 +221,27 @@ mod test {
     impl<'frame, 'bp> Generator<Value<'bp>, Ctx<'frame>> for Gen<'bp> {
         fn generate(&mut self, tree: &mut TreeView<'_, Value<'bp>>, ctx: &mut Ctx<'frame>) -> bool {
             match self {
-                _ => panic!(),
-                // Gen::Loop(counter, body) if *counter > 0 && tree.layout.inner.len() != *counter => {
-                //     *counter -= 1;
-                //     eprintln!("counter: {counter}");
-                //     let value = Value::Iter(body);
-                //     tree.insert(tree.offset).commit_child(value);
-                // }
-                // Gen::Loop(counter, body) => return false,
-                // Gen::Single(blueprints) | Gen::Iter(blueprints) => {
-                //     if blueprints.is_empty() {
-                //         return false;
-                //     }
+                Gen::Loop(counter, body) if *counter > 0 && tree.layout.inner.len() != *counter => {
+                    *counter -= 1;
+                    eprintln!("counter: {counter}");
+                    let value = Value::Iter(body);
+                    tree.insert(tree.offset).commit_child(value);
+                }
+                Gen::Loop(counter, body) => return false,
+                Gen::Single(blueprints) | Gen::Iter(blueprints) => {
+                    if blueprints.is_empty() {
+                        return false;
+                    }
 
-                //     let index = tree.layout.inner.len();
-                //     if index == blueprints.len() {
-                //         return false;
-                //     }
+                    let index = tree.layout.inner.len();
+                    if index == blueprints.len() {
+                        return false;
+                    }
 
-                //     let blueprint = &blueprints[index];
-                //     eval(blueprint, tree);
-                // }
-                // Gen::Noop => return false,
+                    let blueprint = &blueprints[index];
+                    eval(blueprint, tree);
+                }
+                Gen::Empty => return false,
             }
             true
         }
@@ -321,18 +322,10 @@ mod test {
 
         // TODO: need a sub tree with the children of `value_id`
 
-        let node = view.layout.get_mut(0).unwrap();
-        let mut children = TreeView::new(&[0], &mut node.children, &mut view.values);
-        view.with_value_mut(value_id, |_path, value, view| {
-            let mut for_each = ForEach2::new(view, &Tr);
+        view.each(&mut ctx, &Tr, |ctx, value, children| {
             let mut size = 0;
-            for_each.each(&mut ctx, |ctx, value, children| {
-                eprintln!("{value:?}");
-                // eprintln!("starting layout for {value:?}");
-                size += value.layout(ctx, children);
-                // eprintln!("ending layout for {value:?}");
-                ControlFlow::Continue(())
-            });
+            size += value.layout(ctx, children);
+            ControlFlow::Continue(())
         });
 
 

@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
+use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
 
 use super::Axis;
 
@@ -45,16 +45,16 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 pub fn layout_all_expansions<'bp>(
-    nodes: &mut LayoutChildren<'_, '_, 'bp>,
+    nodes: &mut LayoutForEach<'_, 'bp>,
     constraints: Constraints,
     axis: Axis,
-    ctx: &mut LayoutCtx<'_, 'bp>,
+    ctx: &mut EvalContext<'_, '_, 'bp>,
 ) -> Size {
     let mut factors = vec![];
 
-    nodes.for_each(|node, _children| {
+    nodes.each(ctx, |ctx, node, _children| {
         if node.ident == "expand" {
-            let attributes = ctx.attribs.get(node.id());
+            let attributes = ctx.attribute_storage.get(node.id());
             let factor = attributes.get("factor").unwrap_or(DEFAULT_FACTOR);
             factors.push(factor);
         }
@@ -75,7 +75,7 @@ pub fn layout_all_expansions<'bp>(
     };
 
     let mut index = 0;
-    nodes.for_each(|node, children| {
+    nodes.each(ctx, |ctx, node, children| {
         if node.ident != "expand" {
             return ControlFlow::Continue(());
         }

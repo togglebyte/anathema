@@ -26,7 +26,7 @@ use anathema_default_widgets::register_default_widgets;
 use anathema_state::{
     clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
 };
-use anathema_store::tree::{root_node, AsNodePath};
+use anathema_store::tree::{root_node, AsNodePath, TreeView};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::{
@@ -318,26 +318,27 @@ where
         if self.future_values.is_empty() {
             return;
         }
+        panic!()
 
-        let mut scope = Scope::new();
-        self.future_values.drain().rev().for_each(|sub| {
-            scope.clear();
-            let path = tree.path(sub);
+        // let mut scope = Scope::new();
+        // self.future_values.drain().rev().for_each(|sub| {
+        //     scope.clear();
+        //     let path = tree.path(sub);
 
-            let ctx = EvalContext::new(
-                globals,
-                &self.factory,
-                &mut scope,
-                states,
-                &mut self.component_registry,
-                attribute_storage,
-                &mut self.floating_widgets,
-                &mut self.components,
-                &mut self.dirty_widgets,
-            );
+        //     let ctx = EvalContext::new(
+        //         globals,
+        //         &self.factory,
+        //         &mut scope,
+        //         states,
+        //         &mut self.component_registry,
+        //         attribute_storage,
+        //         &mut self.floating_widgets,
+        //         &mut self.components,
+        //         &mut self.dirty_widgets,
+        //     );
 
-            try_resolve_future_values(sub, &path, tree, ctx);
-        });
+        //     try_resolve_future_values(sub, &path, tree, ctx);
+        // });
     }
 
     fn apply_changes<'bp>(
@@ -353,49 +354,50 @@ where
             return;
         }
 
-        let mut scope = Scope::new();
-        self.changes.iter().for_each(|(sub, change)| {
-            sub.iter().for_each(|sub| {
-                scope.clear();
-                let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
+        panic!()
+        // let mut scope = Scope::new();
+        // self.changes.iter().for_each(|(sub, change)| {
+        //     sub.iter().for_each(|sub| {
+        //         scope.clear();
+        //         let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
 
-                let ctx = EvalContext::new(
-                    globals,
-                    &self.factory,
-                    &mut scope,
-                    states,
-                    &mut self.component_registry,
-                    attribute_storage,
-                    &mut self.floating_widgets,
-                    &mut self.components,
-                    &mut self.dirty_widgets,
-                );
+        //         let ctx = EvalContext::new(
+        //             globals,
+        //             &self.factory,
+        //             &mut scope,
+        //             states,
+        //             &mut self.component_registry,
+        //             attribute_storage,
+        //             &mut self.floating_widgets,
+        //             &mut self.components,
+        //             &mut self.dirty_widgets,
+        //         );
 
-                update_tree(change, sub, &path, tree, ctx);
+        //         update_tree(change, sub, &path, tree, ctx);
 
-                // This is nonsense: TODO
-                // It's a massive hack, let's replace this with the path list again maybe?
-                {
-                    let mut path = &*path;
-                    loop {
-                        if let Some((parent, _)) = path.split_parent() {
-                            if parent.is_empty() {
-                                break;
-                            }
-                            path = parent;
-                            let Some(id) = tree.id(path) else {
-                                unreachable!("this implies the widget exists but the parent was removed")
-                            };
-                            self.dirty_widgets.push(id);
-                        } else {
-                            break;
-                        }
-                    }
-                }
+        //         // This is nonsense: TODO
+        //         // It's a massive hack, let's replace this with the path list again maybe?
+        //         {
+        //             let mut path = &*path;
+        //             loop {
+        //                 if let Some((parent, _)) = path.split_parent() {
+        //                     if parent.is_empty() {
+        //                         break;
+        //                     }
+        //                     path = parent;
+        //                     let Some(id) = tree.id(path) else {
+        //                         unreachable!("this implies the widget exists but the parent was removed")
+        //                     };
+        //                     self.dirty_widgets.push(id);
+        //                 } else {
+        //                     break;
+        //                 }
+        //             }
+        //         }
 
-                self.dirty_widgets.push(sub.key());
-            });
-        });
+        //         self.dirty_widgets.push(sub.key());
+        //     });
+        // });
     }
 
     // Handles component messages for (ideally) at most half of a tick
@@ -495,12 +497,16 @@ where
             &mut self.floating_widgets,
             &mut self.components,
             &mut self.dirty_widgets,
+            &self.viewport,
+            &mut self.glyph_map,
+            true,
         );
 
         let blueprint = self.blueprint.clone();
 
         // First build the tree
-        let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut tree);
+        let mut view = tree.view_mut();
+        let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut view);
 
         if let Err(err) = res {
             self.reset(tree, &mut states)?;
@@ -510,18 +516,7 @@ where
         let mut dt = Instant::now();
 
         // Initial layout, position and paint
-        WidgetCycle::new(
-            &mut self.backend,
-            &mut tree,
-            &mut self.glyph_map,
-            self.constraints,
-            &attribute_storage,
-            &self.dirty_widgets,
-            &self.floating_widgets,
-            self.viewport,
-            true,
-        )
-        .run();
+        WidgetCycle::new(&mut self.backend, &mut tree, self.constraints).run(&mut ctx);
         self.backend.render(&mut self.glyph_map);
         self.backend.clear();
 
@@ -693,19 +688,26 @@ where
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
         let needs_reflow = !self.dirty_widgets.is_empty();
+        let needs_reflow = true;
         if needs_reflow {
-            let mut cycle = WidgetCycle::new(
-                &mut self.backend,
-                tree,
-                &mut self.glyph_map,
-                self.constraints,
+            let mut scope = Scope::new();
+            let mut ctx = EvalContext::new(
+                &globals,
+                &self.factory,
+                &mut scope,
+                states,
+                &mut self.component_registry,
                 attribute_storage,
-                &self.dirty_widgets,
-                &self.floating_widgets,
-                self.viewport,
-                false,
+                &mut self.floating_widgets,
+                &mut self.components,
+                &mut self.dirty_widgets,
+                &self.viewport,
+                &mut self.glyph_map,
+                true,
             );
-            cycle.run();
+
+            let mut cycle = WidgetCycle::new(&mut self.backend, tree, self.constraints);
+            cycle.run(&mut ctx);
 
             self.backend.render(&mut self.glyph_map);
             self.backend.clear();

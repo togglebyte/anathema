@@ -9,7 +9,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, WidgetContainer, WidgetId, WidgetKind};
+use crate::{AttributeStorage, ForEach, WidgetContainer, WidgetId, WidgetKind};
 
 pub type GlyphMap = IndexMap<GlyphIndex, String>;
 
@@ -151,19 +151,21 @@ impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
 pub fn paint<'bp>(
     surface: &mut impl WidgetRenderer,
     glyph_index: &mut GlyphMap,
-    element: &mut Element<'bp>,
-    children: &[Node],
-    values: &mut TreeValues<WidgetContainer<'bp>>,
+    mut widgets: ForEach<'_, 'bp>,
     attribute_storage: &AttributeStorage<'bp>,
     ignore_floats: bool,
 ) {
     #[cfg(feature = "profile")]
     puffin::profile_function!();
 
-    let filter = PaintFilter::new(ignore_floats, attribute_storage);
-    let children = TreeForEach::new(children, values, &filter);
-    let ctx = PaintCtx::new(surface, None, glyph_index);
-    element.paint(children, ctx, attribute_storage);
+    // let filter = PaintFilter::new(ignore_floats, attribute_storage);
+    // let children = TreeForEach::new(children, values, &filter);
+    widgets.each(|widget, children| {
+        let ctx = PaintCtx::new(surface, None, glyph_index);
+        widget.paint(children, ctx, attribute_storage);
+        ControlFlow::Continue(())
+    });
+    // element.paint(children, ctx, attribute_storage);
 }
 
 #[derive(Debug, Copy, Clone)]

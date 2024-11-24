@@ -14,9 +14,10 @@ pub(super) const LOOP_INDEX: &str = "loop";
 
 #[derive(Debug)]
 pub struct For<'bp> {
-    pub(super) binding: &'bp str,
-    pub(super) collection: Value<'bp, Collection<'bp>>,
-    pub(super) body: &'bp [Blueprint],
+    pub(crate) binding: &'bp str,
+    pub(crate) collection: Value<'bp, Collection<'bp>>,
+    // TODO: remove the body here as it's attached to the container
+    pub(crate) body: &'bp [Blueprint],
 }
 
 impl<'bp> For<'bp> {
@@ -102,9 +103,9 @@ impl<'bp> For<'bp> {
                     let WidgetKind::Iteration(ref iter) = iter_widget.kind else { unreachable!() };
                     ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
-                    for bp in self.body {
-                        eval_blueprint(bp, ctx, parent, tree)?;
-                    }
+                    // for bp in self.body {
+                    //     eval_blueprint(bp, ctx, parent, tree)?;
+                    // }
 
                     Ok(())
                 })?;

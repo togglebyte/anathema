@@ -1,5 +1,6 @@
+use anathema_store::tree::Generator;
 use anathema_templates::blueprints::Blueprint;
-use eval::Children;
+use loops::LOOP_INDEX;
 
 pub use self::element::Element;
 use self::eval::{ComponentEval, ControlFlowEval, EvalContext, Evaluator, ForLoopEval, SingleEval};
@@ -7,17 +8,70 @@ pub use self::future::try_resolve_future_values;
 pub use self::stringify::Stringify;
 pub use self::update::update_tree;
 use crate::error::Result;
+use crate::widget::WidgetTreeView;
 use crate::WidgetTree;
 
 mod component;
 mod controlflow;
 pub(crate) mod element;
 pub(crate) mod eval;
-pub(crate) mod eval2;
 mod future;
 pub(crate) mod loops;
 mod stringify;
 mod update;
+
+// -----------------------------------------------------------------------------
+//   - Generators -
+// -----------------------------------------------------------------------------
+pub enum WidgetGenerator<'bp> {
+    Children(&'bp [Blueprint]),
+    Single,
+    Loop(&'bp [Blueprint]),
+    ControlFlow,
+    Noop,
+}
+
+impl<'a, 'b, 'bp> Generator<WidgetContainer<'bp>, EvalContext<'a, 'b, 'bp>> for WidgetGenerator<'bp> {
+    fn from_value(value: &mut WidgetContainer<'bp>, ctx: &mut EvalContext<'a, 'b, 'bp>) -> Self
+    where
+        Self: Sized,
+    {
+        match &value.kind {
+            WidgetKind::Element(el) => WidgetGenerator::Children(value.children),
+            WidgetKind::For(for_loop) => WidgetGenerator::Loop(value.children),
+            WidgetKind::Iteration(iter) => todo!(),
+            WidgetKind::ControlFlow(cf) => todo!(),
+            WidgetKind::If(_) => todo!(),
+            WidgetKind::Else(_) => todo!(),
+            WidgetKind::Component(_) => todo!(),
+        }
+    }
+
+    fn generate(&mut self, tree: &mut WidgetTreeView<'_, 'bp>, ctx: &mut EvalContext<'_, '_, 'bp>) -> bool {
+        match self {
+            WidgetGenerator::Children(blueprints) => {
+                if blueprints.is_empty() {
+                    return false;
+                }
+
+                let index = tree.layout_len();
+                if index >= blueprints.len() {
+                    return false;
+                }
+
+                let blueprint = &blueprints[index];
+
+                let parent = tree.offset;
+                eval_blueprint(blueprint, ctx, parent, tree);
+                true
+            }
+            WidgetGenerator::Single => todo!(),
+            WidgetGenerator::Loop(_) => todo!(),
+            WidgetGenerator::ControlFlow => todo!(),
+            WidgetGenerator::Noop => false,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum WidgetKind<'bp> {
@@ -30,18 +84,61 @@ pub enum WidgetKind<'bp> {
     Component(component::Component<'bp>),
 }
 
+#[derive(Debug)]
 pub struct WidgetContainer<'bp> {
     pub kind: WidgetKind<'bp>,
-    children: Children<'bp>,
+    pub(crate) children: &'bp [Blueprint],
 }
 
 impl<'bp> WidgetContainer<'bp> {
     pub fn new(kind: WidgetKind<'bp>, blueprints: &'bp [Blueprint]) -> Self {
-        let children = blueprints.into_iter();
         Self {
             kind,
-            children: Children::new(children),
+            children: blueprints,
         }
+    }
+
+    pub(crate) fn push_scope(&self, ctx: &mut EvalContext<'_, '_, 'bp>) {
+        match &self.kind {
+            WidgetKind::Element(_) => todo!(),
+            WidgetKind::For(for_loop) => {
+                ctx.scope.push();
+                for_loop.collection.scope(scope, for_loop.binding)
+                ctx.scope.scope_pending(for_loop.binding, iter.loop_index.to_pending());
+            }
+            WidgetKind::Iteration(iter) => {
+                ctx.scope.push();
+                for_loop.collection.scope(scope, for_loop.binding)
+                ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
+                ctx.scope.scope_pending(iter.binding, iter.loop_index);
+
+                See `scope_values` in nodes/update.rs and see if that already 
+                does what we need? The for loop seems a bit sus, how does it work
+                with the children?
+            }
+            WidgetKind::ControlFlow(_) => todo!(),
+            WidgetKind::If(_) => todo!(),
+            WidgetKind::Else(_) => todo!(),
+            WidgetKind::Component(_) => todo!(),
+        }
+        todo!()
+    }
+
+    pub(crate) fn pop_scope(&self, ctx: &mut EvalContext<'_, '_, 'bp>) {
+        match &self.kind {
+            WidgetKind::Element(_) => todo!(),
+            WidgetKind::For(for_loop) => {
+                ctx.scope.pop();
+            }
+            WidgetKind::Iteration(_) => {
+                ctx.scope.pop();
+            }
+            WidgetKind::ControlFlow(_) => todo!(),
+            WidgetKind::If(_) => todo!(),
+            WidgetKind::Else(_) => todo!(),
+            WidgetKind::Component(_) => todo!(),
+        }
+        todo!()
     }
 }
 
@@ -49,7 +146,7 @@ pub fn eval_blueprint<'bp>(
     blueprint: &'bp Blueprint,
     ctx: &mut EvalContext<'_, '_, 'bp>,
     parent: &[u16],
-    tree: &mut WidgetTree<'bp>,
+    tree: &mut WidgetTreeView<'_, 'bp>,
 ) -> Result<()> {
     match blueprint {
         Blueprint::Single(single) => SingleEval.eval(single, ctx, parent, tree),

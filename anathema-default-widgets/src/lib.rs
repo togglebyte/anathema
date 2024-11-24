@@ -15,8 +15,8 @@ mod spacer;
 mod stacks;
 mod text;
 
-#[cfg(test)]
-mod testing;
+// #[cfg(test)]
+// mod testing;
 
 pub(crate) const WIDTH: &str = "width";
 pub(crate) const HEIGHT: &str = "height";

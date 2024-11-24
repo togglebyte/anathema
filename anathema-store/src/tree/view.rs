@@ -1,17 +1,24 @@
-use super::{InsertTransaction, Nodes, TreeValues, ValueId};
+use std::ops::ControlFlow;
+
+use super::{ForEach2, Generator, InsertTransaction, Nodes, Traverser, TreeValues, ValueId};
 
 #[derive(Debug)]
 pub struct TreeView<'tree, T> {
-    pub(super) offset: &'tree [u16],
-    pub(super) values: &'tree mut TreeValues<T>,
-    pub(super) layout: &'tree mut Nodes,
+    pub offset: &'tree [u16],
+    pub values: &'tree mut TreeValues<T>,
+    pub layout: &'tree mut Nodes,
 }
 
 impl<'tree, T> TreeView<'tree, T> {
-    pub(super) fn new(offset: &'tree [u16], layout: &'tree mut Nodes, values: &'tree mut TreeValues<T>) -> Self {
+    pub fn new(offset: &'tree [u16], layout: &'tree mut Nodes, values: &'tree mut TreeValues<T>) -> Self {
         Self { offset, values, layout }
     }
 
+    pub fn layout_len(&self) -> usize {
+        self.layout.len()
+    }
+
+    #[deprecated]
     pub fn for_each<F>(&mut self, mut f: F)
     where
         F: FnMut(&[u16], &mut T, TreeView<'_, T>),
@@ -23,6 +30,49 @@ impl<'tree, T> TreeView<'tree, T> {
                 f(offset, value, tree_view);
             });
         }
+    }
+
+    pub fn each<C, F, Tr, Gen>(&mut self, ctx: &mut C, traverser: &Tr, mut f: F)
+    where
+        Gen: Generator<T, C>,
+        Tr: Traverser<T>,
+        for<'a> F: FnMut(&mut C, &mut T, ForEach2<'a, T, Tr, Gen, C>) -> ControlFlow<()>,
+    {
+        for node in &mut self.layout.inner {
+            self.values.with_mut(node.value, |(path, value), values| {
+                let view = TreeView::new(path, &mut node.children, values);
+                let gen = Gen::from_value(value, ctx);
+                let children = ForEach2::new(view, traverser, gen);
+                f(ctx, value, children);
+            })
+        }
+    }
+
+    /// The path reference for a value in the tree.
+    /// Unlike a `ValueId` which will never change for a given value,
+    /// the `NodePath` can change if the node is moved to another location within the tree.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value id is no long present in the tree.
+    pub fn path_ref(&self, id: impl Into<ValueId>) -> &[u16] {
+        let id = id.into();
+        let (path, _) = self
+            .values
+            .get(id)
+            .expect("an id should always be associated with a path");
+        path
+    }
+
+    /// The path to a value in the tree.
+    /// Unlike a `ValueId` which will never change for a given value,
+    /// the `NodePath` can change if the node is moved to another location within the tree.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value id is no long present in the tree.
+    pub fn path(&self, id: impl Into<ValueId>) -> Box<[u16]> {
+        self.path_ref(id).into()
     }
 
     /// Find the value id by the path
@@ -70,12 +120,14 @@ impl<'tree, T> TreeView<'tree, T> {
         F: FnOnce(&[u16], &mut T, TreeView<'_, T>) -> V,
     {
         let mut ticket = self.values.checkout(value_id);
+        let (path, value) = &mut *ticket;
+        let node = self.layout.get_by_path_mut(&path[self.offset.len()..]).unwrap(); // TODO: unwrap decide what to do with this horrid unwrap
         let view = TreeView {
-            offset: self.offset,
+            offset: path,
             values: self.values,
-            layout: self.layout,
+            layout: node.children_mut(),
         };
-        let value = f(&ticket.value.0, &mut ticket.value.1, view);
+        let value = f(path, value, view);
         self.values.restore(ticket);
         value
     }

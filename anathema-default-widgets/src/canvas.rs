@@ -2,7 +2,7 @@ use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 use unicode_width::UnicodeWidthChar;
 
 use crate::{HEIGHT, WIDTH};
@@ -177,33 +177,34 @@ impl Default for Canvas {
 impl Widget for Canvas {
     fn layout<'bp>(
         &mut self,
-        _children: LayoutChildren<'_, '_, 'bp>,
-        mut constraints: Constraints,
+        children: LayoutForEach<'_, 'bp>,
+        constraints: Constraints,
         id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let attribs = ctx.attribs.get(id);
+        panic!()
+        // let attribs = ctx.attribs.get(id);
 
-        if let Some(width) = attribs.get_usize(WIDTH) {
-            constraints.set_max_width(width);
-        }
+        // if let Some(width) = attribs.get_usize(WIDTH) {
+        //     constraints.set_max_width(width);
+        // }
 
-        if let Some(height) = attribs.get_usize(HEIGHT) {
-            constraints.set_max_height(height);
-        }
+        // if let Some(height) = attribs.get_usize(HEIGHT) {
+        //     constraints.set_max_height(height);
+        // }
 
-        let size = constraints.max_size();
+        // let size = constraints.max_size();
 
-        if self.buffer.size != size {
-            self.buffer = Buffer::copy_from(&mut self.buffer, size);
-        }
+        // if self.buffer.size != size {
+        //     self.buffer = Buffer::copy_from(&mut self.buffer, size);
+        // }
 
-        self.buffer.size
+        // self.buffer.size
     }
 
     fn position<'bp>(
         &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -213,7 +214,7 @@ impl Widget for Canvas {
 
     fn paint<'bp>(
         &mut self,
-        _children: PaintChildren<'_, '_, 'bp>,
+        _children: ForEach<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,

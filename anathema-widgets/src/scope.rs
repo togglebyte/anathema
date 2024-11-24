@@ -2,6 +2,7 @@ use std::fmt::{self, Debug, Write};
 
 use anathema_debug::DebugWriter;
 use anathema_state::{Path, PendingValue, StateId, States};
+use anathema_templates::Expression;
 
 use crate::expressions::{Downgraded, EvalValue};
 use crate::values::ValueId;
@@ -29,6 +30,7 @@ enum Entry<'bp> {
     Scope(usize),
     Downgraded(Path<'bp>, Downgraded<'bp>),
     Pending(Path<'bp>, PendingValue),
+    Expressions(Path<'bp>, &'bp [Expression]),
     State(StateId),
     ComponentAttributes(WidgetId),
     /// This is marking the entry as free, and another entry can be written here.
@@ -59,6 +61,9 @@ impl Debug for Entry<'_> {
                 f.debug_tuple("ComponentAttributes").field(&component_id).finish()
             }
             Entry::Empty => f.debug_tuple("Empty").finish(),
+            Entry::Expressions(binding, expressions) => {
+                f.debug_tuple("Expressions").field(binding).field(expressions).finish()
+            }
         }
     }
 }
@@ -219,6 +224,11 @@ impl<'bp> Scope<'bp> {
 
     pub(crate) fn scope_pending(&mut self, key: &'bp str, iter_value: PendingValue) {
         let entry = Entry::Pending(Path::from(key), iter_value);
+        self.insert_entry(entry);
+    }
+
+    pub(crate) fn scope_expressions(&mut self, key: &'bp str, expressions: &'bp [Expression]) {
+        let entry = Entry::Expressions(Path::from(key), expressions);
         self.insert_entry(entry);
     }
 

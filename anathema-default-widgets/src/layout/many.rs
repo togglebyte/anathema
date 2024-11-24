@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
+use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
 
 use super::{expand, spacers, Axis, Direction};
 
@@ -76,9 +76,9 @@ impl Many {
 impl Many {
     pub(crate) fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         let max_constraints = constraints;
 
@@ -87,7 +87,7 @@ impl Many {
 
         let mut size = Size::ZERO;
 
-        children.for_each(|node, children| {
+        children.each(ctx, |ctx, node, children| {
             if ["spacer", "expand"].contains(&node.ident) {
                 return ControlFlow::Continue(());
             }

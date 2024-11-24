@@ -118,6 +118,7 @@ impl<'bp> EvalValue<'bp> {
         }
     }
 
+    // This is only used by the expression evaluation `Expression::Index`
     fn get(
         &self,
         path: Path<'_>,
@@ -490,7 +491,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
         Self::new(0, scope, states, attributes, globals, subscriber)
     }
 
-    pub fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
+    fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
         match expression {
             // -----------------------------------------------------------------------------
             //   - Values -

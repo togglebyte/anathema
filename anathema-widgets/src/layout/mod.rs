@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
+use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues, Traverser};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
@@ -49,6 +49,12 @@ impl<'frame, 'bp> LayoutFilter<'frame, 'bp> {
             attributes,
             ignore_floats,
         }
+    }
+}
+
+impl<'frame, 'bp> Traverser<WidgetContainer<'bp>> for LayoutFilter<'frame, 'bp> {
+    fn traverse(&self, input: &mut WidgetContainer<'bp>) -> bool {
+        todo!()
     }
 }
 
@@ -123,37 +129,38 @@ impl<'a, 'bp> LayoutCtx<'a, 'bp> {
     }
 }
 
-pub fn layout_widget<'bp>(
-    element: &mut Element<'bp>,
-    children: &[Node],
-    values: &mut TreeValues<WidgetContainer<'bp>>,
-    constraints: Constraints,
-    ctx: &mut LayoutCtx<'_, 'bp>,
-    ignore_floats: bool,
-) {
-    #[cfg(feature = "profile")]
-    puffin::profile_function!();
+// TODO: remove this as it's no longer needed -TB 2024-11-20
+// pub fn layout_widget<'bp>(
+//     element: &mut Element<'bp>,
+//     children: &[Node],
+//     values: &mut TreeValues<WidgetContainer<'bp>>,
+//     constraints: Constraints,
+//     ctx: &mut LayoutCtx<'_, 'bp>,
+//     ignore_floats: bool,
+// ) {
+//     #[cfg(feature = "profile")]
+//     puffin::profile_function!();
 
-    let filter = LayoutFilter::new(ignore_floats, ctx.attribs);
-    let children = TreeForEach::new(children, values, &filter);
-    element.layout(children, constraints, ctx);
-}
+//     let filter = LayoutFilter::new(ignore_floats, ctx.attribs);
+//     let children = TreeForEach::new(children, values, &filter);
+//     element.layout(children, constraints, ctx);
+// }
 
-pub fn position_widget<'bp>(
-    pos: Pos,
-    element: &mut Element<'bp>,
-    children: &[Node],
-    values: &mut TreeValues<WidgetContainer<'bp>>,
-    attribute_storage: &AttributeStorage<'bp>,
-    ignore_floats: bool,
-    viewport: Viewport,
-) {
-    #[cfg(feature = "profile")]
-    puffin::profile_function!();
-    let filter = LayoutFilter::new(ignore_floats, attribute_storage);
-    let children = TreeForEach::new(children, values, &filter);
-    element.position(children, pos, attribute_storage, viewport);
-}
+// pub fn position_widget<'bp>(
+//     pos: Pos,
+//     element: &mut Element<'bp>,
+//     children: &[Node],
+//     values: &mut TreeValues<WidgetContainer<'bp>>,
+//     attribute_storage: &AttributeStorage<'bp>,
+//     ignore_floats: bool,
+//     viewport: Viewport,
+// ) {
+//     #[cfg(feature = "profile")]
+//     puffin::profile_function!();
+//     let filter = LayoutFilter::new(ignore_floats, attribute_storage);
+//     let children = TreeForEach::new(children, values, &filter);
+//     element.position(children, pos, attribute_storage, viewport);
+// }
 
 #[derive(Debug, Copy, Clone)]
 pub struct PositionCtx {

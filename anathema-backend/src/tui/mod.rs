@@ -11,7 +11,7 @@ use std::time::Duration;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::{AttributeStorage, Element, GlyphMap, WidgetContainer, WidgetKind, WidgetRenderer};
+use anathema_widgets::{AttributeStorage, Element, ForEach, GlyphMap, WidgetContainer, WidgetKind, WidgetRenderer};
 use crossterm::execute;
 use crossterm::terminal::{size, BeginSynchronizedUpdate, EndSynchronizedUpdate};
 pub use screen::Screen;
@@ -171,18 +171,14 @@ impl Backend for TuiBackend {
     fn paint<'bp>(
         &mut self,
         glyph_map: &mut GlyphMap,
-        element: &mut Element<'bp>,
-        children: &[Node],
-        values: &mut TreeValues<WidgetContainer<'bp>>,
+        widgets: ForEach<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     ) {
         anathema_widgets::paint::paint(
             &mut self.screen,
             glyph_map,
-            element,
-            children,
-            values,
+            widgets,
             attribute_storage,
             ignore_floats,
         );

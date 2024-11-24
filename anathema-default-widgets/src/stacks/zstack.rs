@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 #[derive(Default)]
 pub struct ZStack;
@@ -10,29 +10,30 @@ pub struct ZStack;
 impl Widget for ZStack {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        _id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        id: WidgetId,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let mut size = Size::ZERO;
-        children.for_each(|child, children| {
-            let child_size = child.layout(children, constraints, ctx);
-            size.width = size.width.max(child_size.width);
-            size.height = size.height.max(child_size.height);
-            ControlFlow::Continue(())
-        });
-        size
+        panic!()
+        // let mut size = Size::ZERO;
+        // children.for_each(|child, children| {
+        //     let child_size = child.layout(children, constraints, ctx);
+        //     size.width = size.width.max(child_size.width);
+        //     size.height = size.height.max(child_size.height);
+        //     ControlFlow::Continue(())
+        // });
+        // size
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        ctx: PositionCtx,
+        mut ctx: PositionCtx,
     ) {
-        children.for_each(|child, children| {
+        children.each(|child, children| {
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Continue(())
         });
