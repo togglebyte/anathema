@@ -67,6 +67,7 @@ impl Overflow {
     }
 
     pub fn scroll_to(&mut self, pos: Pos) {
+        self.is_dirty = true;
         self.offset = pos;
     }
 
