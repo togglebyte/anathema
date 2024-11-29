@@ -165,10 +165,10 @@ impl<T> GenSlab<T> {
         }
     }
 
-    /// Replace an existing value with a new one.
+    /// Try to replace an existing value if it exists, with a new one.
     /// This will bump the generation.
-    pub fn replace(&mut self, key: Key, mut new_value: T) -> Option<(Key, T)> {
-        match &mut self.inner[key.index()] {
+    pub fn try_replace(&mut self, key: Key, mut new_value: T) -> Option<(Key, T)> {
+        match &mut self.inner.get_mut(key.index())? {
             Entry::Occupied(val, gen) if key.gen() == *gen => {
                 key.bump();
                 *gen = key.gen();
@@ -176,6 +176,26 @@ impl<T> GenSlab<T> {
                 Some((key, new_value))
             }
             _ => None,
+        }
+    }
+
+    /// Replace an existing value with a new one.
+    /// This will bump the generation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the entry does not exist
+    pub fn replace(&mut self, key: Key, mut new_value: T) -> (Key, T) {
+        match &mut self.inner[key.index()] {
+            Entry::Occupied(val, gen) if key.gen() == *gen => {
+                key.bump();
+                *gen = key.gen();
+                std::mem::swap(&mut new_value, val);
+                (key, new_value)
+            }
+            Entry::Occupied(..) => panic!("entry refers to a different value"),
+            Entry::CheckedOut(_) => panic!("entry is checked out"),
+            Entry::Vacant(..) => panic!("entry no longer exists"),
         }
     }
 
@@ -486,7 +506,7 @@ mod test {
     fn replace() {
         let mut slab = GenSlab::empty();
         let key_1 = slab.insert("hello world");
-        let (key_1, _) = slab.replace(key_1, "updated").unwrap();
+        let (key_1, _) = slab.replace(key_1, "updated");
         let s = slab.remove(key_1).unwrap();
         assert_eq!(s, "updated");
     }

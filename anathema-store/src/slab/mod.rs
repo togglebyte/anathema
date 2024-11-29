@@ -12,12 +12,14 @@ use std::ops::{Deref, DerefMut};
 
 pub use self::basic::Slab;
 pub use self::generational::{Gen, GenSlab, Key};
-pub use self::rc::{Element, RcSlab};
+pub use self::shared::rc::{RcElement, RcSlab};
+pub use self::shared::arc::{ArcElement, ArcSlab};
+pub use self::shared::SharedSlab;
 pub use self::secondary_map::SecondaryMap;
 
 mod basic;
 mod generational;
-mod rc;
+mod shared;
 mod secondary_map;
 
 /// Index value for a slab

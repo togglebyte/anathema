@@ -1,12 +1,14 @@
 use std::mem::swap;
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::Arc;
+
+use super::SharedSlab;
 
 /// An element stored in a generational slab.
 #[derive(Debug, PartialEq)]
-pub struct Element<T>(Rc<Option<T>>);
+pub struct ArcElement<T>(Arc<Option<T>>);
 
-impl<T> Deref for Element<T> {
+impl<T> Deref for ArcElement<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -18,14 +20,16 @@ impl<T> Deref for Element<T> {
 
 // -----------------------------------------------------------------------------
 //   - Entry -
-//   Both vacant and occupied use the same Rc to prevent additional allocations
+//   Both vacant and occupied use the same Arc to prevent additional allocations
 // -----------------------------------------------------------------------------
 enum Entry<I, T> {
+    // The pending value is set while a swap is ongoing,
+    // as the value is neither vacant nor occupied during.
     Pending,
-    // The `Rc<Option<T>>` should always be `None`
-    Vacant(Option<I>, Rc<Option<T>>),
-    // The `Rc<Option<T>>` should always be `Some(T)`
-    Occupied(Rc<Option<T>>),
+    // The `Arc<Option<T>>` should always be `None`
+    Vacant(Option<I>, Arc<Option<T>>),
+    // The `Arc<Option<T>>` should always be `Some(T)`
+    Occupied(Arc<Option<T>>),
 }
 
 impl<I, T> Entry<I, T> {
@@ -38,8 +42,8 @@ impl<I, T> Entry<I, T> {
 
         match entry {
             Entry::Vacant(_, mut storage_cell) => {
-                Rc::get_mut(&mut storage_cell)
-                    .expect("Rc strong count is always one here")
+                Arc::get_mut(&mut storage_cell)
+                    .expect("Arc strong count is always one here")
                     .replace(inner_value);
 
                 swap(self, &mut Entry::Occupied(storage_cell));
@@ -52,7 +56,7 @@ impl<I, T> Entry<I, T> {
     fn try_evict(&mut self, next_id: &mut Option<I>) -> Option<T> {
         // If the strong count is anything but 1, then return None
         if let Entry::Occupied(value) = self {
-            if Rc::strong_count(value) != 1 {
+            if Arc::strong_count(value) != 1 {
                 return None;
             }
         }
@@ -62,7 +66,7 @@ impl<I, T> Entry<I, T> {
 
         match value {
             Entry::Occupied(mut store) => {
-                let value = Rc::get_mut(&mut store)
+                let value = Arc::get_mut(&mut store)
                     .expect("strong count is always one")
                     .take()
                     .expect("occupied variant never contains a None");
@@ -75,22 +79,22 @@ impl<I, T> Entry<I, T> {
 
     // Create a new occupied entry
     fn allocate_occupied(value: T) -> Self {
-        Self::Occupied(Rc::new(Some(value)))
+        Self::Occupied(Arc::new(Some(value)))
     }
 }
 
 // -----------------------------------------------------------------------------
-//   - Rc backed slab -
+//   - Arc backed slab -
 // -----------------------------------------------------------------------------
 /// Similar to a basic `Slab`, however each value is reference counted.
-/// When removing a value from the slab the `Rc` is retained so as to reduce
+/// When removing a value from the slab the `Arc` is retained so as to reduce
 /// additional allocations.
-pub struct RcSlab<I, T> {
+pub struct ArcSlab<I, T> {
     next_id: Option<I>,
     inner: Vec<Entry<I, T>>,
 }
 
-impl<I, T> RcSlab<I, T>
+impl<I, T> ArcSlab<I, T>
 where
     I: Copy,
     I: From<usize>,
@@ -104,12 +108,29 @@ where
         }
     }
 
-    /// This will clone the underlying Rc.
-    /// Unlike the `Slab` the `RcSlab` needs the values to be
+    /// Iterator over the keys and elements
+    pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
+        self.inner.iter().enumerate().filter_map(|(i, e)| match e {
+            Entry::Occupied(val) => val.as_ref().as_ref().map(|val| (i.into(), val)),
+            Entry::Vacant(_, _) | Entry::Pending => None,
+        })
+    }
+}
+
+impl<I, T> SharedSlab<I, T> for ArcSlab<I, T>
+where
+    I: Copy,
+    I: From<usize>,
+    I: Into<usize>,
+{
+    type Element = ArcElement<T>;
+
+    /// This will clone the underlying Arc.
+    /// Unlike the `Slab` the `ArcSlab` needs the values to be
     /// manually removed with `try_remove`.
-    pub fn get(&mut self, index: I) -> Option<Element<T>> {
+    fn get(&mut self, index: I) -> Option<ArcElement<T>> {
         match self.inner.get(index.into())? {
-            Entry::Occupied(value) => Some(Element(value.clone())),
+            Entry::Occupied(value) => Some(ArcElement(value.clone())),
             _ => None,
         }
     }
@@ -120,7 +141,7 @@ where
     // Write the vacant entry's `next_id` into self.next_id, and
     // finally replace the vacant entry with the occupied value
     /// Insert a value into the slab
-    pub fn insert(&mut self, value: T) -> I {
+    fn insert(&mut self, value: T) -> I {
         match self.next_id.take() {
             Some(index) => {
                 let entry = &mut self.inner[index.into()];
@@ -145,24 +166,16 @@ where
     /// # Panics
     ///
     /// Will panic if the slot is not occupied.
-    pub fn try_remove(&mut self, index: I) -> Option<T> {
+    fn try_remove(&mut self, index: I) -> Option<T> {
         let value = self.inner[index.into()].try_evict(&mut self.next_id);
         if value.is_some() {
             self.next_id = Some(index);
         }
         value
     }
-
-    /// Iterator over the keys and elements
-    pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
-        self.inner.iter().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val) => val.as_ref().as_ref().map(|val| (i.into(), val)),
-            Entry::Vacant(_, _) | Entry::Pending => None,
-        })
-    }
 }
 
-impl<I, T> RcSlab<I, T>
+impl<I, T> ArcSlab<I, T>
 where
     I: Copy,
     I: From<usize>,
@@ -179,14 +192,14 @@ where
             let _ = match value {
                 Entry::Pending => writeln!(&mut s, "{idx}: pending"),
                 Entry::Vacant(next, value) => {
-                    let count = Rc::strong_count(value);
+                    let count = Arc::strong_count(value);
                     let _ = write!(&mut s, "{idx}: value: {value:?} | count: {count} | ");
                     match next {
                         Some(i) => writeln!(&mut s, "next id: {}", (*i).into()),
                         None => writeln!(&mut s, "no next id"),
                     }
                 }
-                Entry::Occupied(value) => writeln!(&mut s, "{idx}: {value:?} | count: {}", Rc::strong_count(value)),
+                Entry::Occupied(value) => writeln!(&mut s, "{idx}: {value:?} | count: {}", Arc::strong_count(value)),
             };
         }
 
@@ -209,7 +222,7 @@ mod test {
 
     #[test]
     fn try_remove_value() {
-        let mut slab = RcSlab::<usize, _>::empty();
+        let mut slab = ArcSlab::<usize, _>::empty();
         let index = slab.insert("I has a value");
 
         {
@@ -223,25 +236,25 @@ mod test {
     }
 
     #[test]
-    fn ensure_rc_resuse() {
-        let mut slab = RcSlab::<usize, _>::empty();
+    fn ensure_arc_resuse() {
+        let mut slab = ArcSlab::<usize, _>::empty();
 
         // Add and remove the value to ensure there is
-        // an unused `Rc<T>` inside the slab
+        // an unused `Arc<T>` inside the slab
         let index = slab.insert(123);
 
-        // Get a pointer to the (now) vacant `Rc`
+        // Get a pointer to the (now) vacant `Arc`
         let ptr_a = {
             let Entry::Occupied(rc) = &slab.inner[0] else { panic!() };
-            Rc::as_ptr(rc)
+            Arc::as_ptr(rc)
         };
         assert!(slab.try_remove(index).is_some());
 
         // ... then insert a value and make sure the value exists
         slab.insert(456);
         let Entry::Occupied(value) = &slab.inner[0] else { panic!() };
-        // and get a pointer to the `Rc`
-        let ptr_b = Rc::as_ptr(value);
+        // and get a pointer to the `Arc`
+        let ptr_b = Arc::as_ptr(value);
 
         // Compare the two pointers and ensure they are the same
         assert_eq!(ptr_a, ptr_b);
@@ -249,7 +262,7 @@ mod test {
 
     #[test]
     fn push_multi() {
-        let mut slab = RcSlab::<usize, usize>::empty();
+        let mut slab = ArcSlab::<usize, usize>::empty();
         let idx1 = slab.insert(1);
         let idx2 = slab.insert(2);
         let idx3 = slab.insert(3);
@@ -261,7 +274,7 @@ mod test {
 
     #[test]
     fn clones() {
-        let mut slab = RcSlab::<usize, usize>::empty();
+        let mut slab = ArcSlab::<usize, usize>::empty();
         // strong count of 1
         let idx1 = slab.insert(1);
 
@@ -270,11 +283,11 @@ mod test {
             let _val1 = slab.get(idx1);
             let _val2 = slab.get(idx1);
             let Entry::Occupied(val) = &slab.inner[0] else { panic!() };
-            assert_eq!(Rc::strong_count(val), 3);
+            assert_eq!(Arc::strong_count(val), 3);
         } // drop all the clones resetting the strong count to 1
 
         let Entry::Occupied(val) = &slab.inner[0] else { panic!() };
         // Ensure it actually is one
-        assert_eq!(Rc::strong_count(val), 1);
+        assert_eq!(Arc::strong_count(val), 1);
     }
 }

@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 
+use crate::slab::Slab;
+
 use super::shared::SharedKey;
-use super::Slab;
 
 // -----------------------------------------------------------------------------
 //   - Key -
