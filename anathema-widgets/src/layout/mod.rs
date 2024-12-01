@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues, Traverser};
+use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
@@ -52,12 +52,6 @@ impl<'frame, 'bp> LayoutFilter<'frame, 'bp> {
     }
 }
 
-impl<'frame, 'bp> Traverser<WidgetContainer<'bp>> for LayoutFilter<'frame, 'bp> {
-    fn traverse(&self, input: &mut WidgetContainer<'bp>) -> bool {
-        todo!()
-    }
-}
-
 impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
     type Input = WidgetContainer<'bp>;
     type Output = Element<'bp>;
@@ -89,11 +83,13 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
                 //       That is not possible since the child widget is
                 //       checked out already, so iterating over the children
                 //       of ControlFlow does not work
-                widget.update(children, widgets);
+                // widget.update(children, widgets);
+                panic!();
                 ControlFlow::Continue(None)
             }
-            WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
-            WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
+            WidgetKind::ControlFlowContainer(_) => panic!("this should be replaced with the ForEach from widgets/tree.rs"),
+            // WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
+            // WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
             _ => ControlFlow::Continue(None),
         }
     }
@@ -167,6 +163,21 @@ pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,
     pub viewport: Viewport,
+}
+
+// TODO: filter out all exclude / hide widgets
+#[derive(Debug, Copy, Clone)]
+pub struct PositionFilter;
+
+impl<'bp> crate::widget::Filter<'bp> for PositionFilter {
+    type Output = Element<'bp>;
+
+    fn filter<'a>(widget: &'a mut WidgetContainer<'bp>) -> Option<&'a mut Self::Output> {
+        match &mut widget.kind {
+            WidgetKind::Element(element) => Some(element),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

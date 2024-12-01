@@ -2,6 +2,15 @@ pub const fn root_node() -> &'static [u16] {
     &[]
 }
 
+/// Join two paths into a single path.
+/// This will allocate
+pub fn join(parent: &[u16], path: &[u16]) -> Box<[u16]> {
+    let mut v = Vec::with_capacity(parent.len() + path.len());
+    v.extend(parent);
+    v.extend(path);
+    v.into_boxed_slice()
+}
+
 pub fn new_node_path(parent: &[u16], index: u16) -> Box<[u16]> {
     let mut path = Vec::with_capacity(parent.len() + 1);
     path.extend(parent);

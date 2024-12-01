@@ -29,7 +29,7 @@ impl Stack {
         id: WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        let attributes = ctx.attribute_storage.get(id);
+        let attributes = ctx.attribute_storage.get_mut(id);
 
         if let Some(width) = attributes.get_usize(MIN_WIDTH) {
             constraints.min_width = width;
@@ -56,7 +56,7 @@ impl Stack {
 
     fn position<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,

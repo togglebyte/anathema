@@ -77,15 +77,18 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
             WidgetKind::ControlFlow(_) => {
                 let _ = write!(&mut self.output, "<control flow>");
             }
-            WidgetKind::If(if_widget) => {
-                let _ = write!(&mut self.output, "<if cond = {}>", if_widget.cond.load_bool());
+            WidgetKind::ControlFlowContainer(id) => {
+                let _ = write!(&mut self.output, "<control flow container {id}>");
             }
-            WidgetKind::Else(if_widget) => match &if_widget.cond {
-                Some(cond) => {
-                    let _ = write!(&mut self.output, "<else cond = {}>", cond.load_bool());
-                }
-                None => drop(write!(&mut self.output, "<else>")),
-            },
+            // WidgetKind::If(if_widget) => {
+            //     let _ = write!(&mut self.output, "<if cond = {}>", if_widget.cond.load_bool());
+            // }
+            // WidgetKind::Else(if_widget) => match &if_widget.cond {
+            //     Some(cond) => {
+            //         let _ = write!(&mut self.output, "<else cond = {}>", cond.load_bool());
+            //     }
+            //     None => drop(write!(&mut self.output, "<else>")),
+            // },
             WidgetKind::Component(_) => drop(write!(&mut self.output, "<component>")),
         }
 

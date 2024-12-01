@@ -3,7 +3,7 @@ pub use values::ValueIndex;
 
 pub use crate::nodes::eval::EvalContext;
 pub use crate::nodes::{
-    eval_blueprint, try_resolve_future_values, update_tree, Element, Stringify, WidgetContainer, WidgetGenerator,
+    eval_blueprint, try_resolve_future_values, update_widget, Element, Stringify, WidgetContainer, WidgetGenerator,
     WidgetKind,
 };
 pub use crate::paint::{GlyphMap, WidgetRenderer};

@@ -45,7 +45,8 @@ impl<'a, 'tree, T> InsertTransaction<'a, 'tree, T> {
         let (parent, index) = self.source.split_parent()?;
 
         let node_id = self.tree.layout.with_mut(parent, |siblings| {
-            let value_id = self.tree.values.insert((self.source.into(), value));
+            let path = crate::tree::nodepath::join(self.tree.offset, self.source);
+            let value_id = self.tree.values.insert((path, value));
 
             // Insert value id at a given index...
             siblings.insert(index, value_id);

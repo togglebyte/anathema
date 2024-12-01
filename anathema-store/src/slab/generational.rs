@@ -397,6 +397,13 @@ impl<T> GenSlab<T> {
         }
     }
 
+    /// Remove this function
+    //TODO: remove this
+    #[deprecated]
+    pub fn count_all_entries(&self) -> usize {
+        self.inner.len()
+    }
+
     /// Be aware that this will only ever be as performant as
     /// the underlying vector if all entries are occupied.
     ///

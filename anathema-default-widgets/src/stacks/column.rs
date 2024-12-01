@@ -29,7 +29,7 @@ impl Widget for Column {
 
     fn position<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,

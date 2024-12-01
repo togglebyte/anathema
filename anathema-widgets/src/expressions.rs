@@ -10,6 +10,29 @@ use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
 use crate::{AttributeStorage, Value, WidgetId};
 
+// TODO: name this something else (and if you suggest SomethingElse as the name you are a lark)
+#[derive(Debug)]
+pub enum NameThis<'a> {
+    Nothing,
+    Value(EvalValue<'a>),
+    ResolveThisNow(&'a Expression),
+}
+
+impl<'a> From<Option<EvalValue<'a>>> for NameThis<'a> {
+    fn from(value: Option<EvalValue<'a>>) -> Self {
+        match value {
+            Some(value) => Self::Value(value),
+            None => Self::Nothing,
+        }
+    }
+}
+
+impl<'a> From<EvalValue<'a>> for NameThis<'a> {
+    fn from(value: EvalValue<'a>) -> Self {
+        Self::Value(value)
+    }
+}
+
 pub enum Either<'a> {
     Static(CommonVal<'a>),
     Dyn(SharedState<'a>),
@@ -70,8 +93,9 @@ pub enum EvalValue<'bp> {
     /// and traversing state, as a means
     /// to access state without subscribing to it
     Pending(PendingValue),
-    ExprMap(HashMap<Rc<str>, EvalValue<'bp>>),
-    ExprList(Box<[EvalValue<'bp>]>),
+    // Map(HashMap<&'bp str, EvalValue<'bp>>),
+    ExprList(&'bp [Expression]),
+    Map2(&'bp HashMap<String, Expression>),
 
     // Operations
     Negative(Box<Self>),
@@ -96,12 +120,13 @@ impl<'bp> EvalValue<'bp> {
                 index.copy_with_sub(value_id).into(),
             ),
             Self::Pending(_) => panic!("this should not be called on a pending value"),
-            Self::ExprMap(map) => Self::ExprMap(
-                map.iter()
-                    .map(|(k, v)| (k.clone(), v.copy_with_sub(value_id)))
-                    .collect(),
-            ),
-            Self::ExprList(list) => Self::ExprList(list.iter().map(|val| val.copy_with_sub(value_id)).collect()),
+            // Self::Map(map) => Self::Map(
+            //     map.iter()
+            //         .map(|(k, v)| (k.clone(), v.copy_with_sub(value_id)))
+            //         .collect(),
+            // ),
+            Self::ExprList(list) => Self::ExprList(list),
+            Self::Map2(map) => Self::Map2(map),
             Self::Negative(val) => Self::Negative(val.copy_with_sub(value_id).into()),
             Self::Op(lhs, rhs, op) => Self::Op(
                 lhs.copy_with_sub(value_id).into(),
@@ -119,56 +144,69 @@ impl<'bp> EvalValue<'bp> {
     }
 
     // This is only used by the expression evaluation `Expression::Index`
-    fn get(
+    // If the lhs is a list of expression, the selected expression has to be evaluated
+    // in this function.
+    pub(crate) fn get(
         &self,
         path: Path<'_>,
         value_id: ValueId,
         states: &States,
         attribs: &AttributeStorage<'bp>,
-    ) -> Option<EvalValue<'bp>> {
+    ) -> NameThis<'bp> {
         match self {
-            EvalValue::Dyn(value) => Some(EvalValue::Dyn(
-                value.as_state().and_then(|state| state.state_get(path, value_id))?,
-            )),
+            EvalValue::ExprList(expressions) => match path {
+                Path::Index(idx) if idx >= expressions.len() => NameThis::Nothing,
+                Path::Index(idx) => {
+                    let expr = &expressions[idx];
+                    NameThis::ResolveThisNow(expr)
+                }
+                Path::Key(_) => NameThis::Nothing,
+            },
+            EvalValue::Map2(map) => match path {
+                Path::Key(key) => {
+                    match map.get(key) {
+                        Some(expr) => NameThis::ResolveThisNow(expr),
+                        None => NameThis::Nothing
+                    }
+                }
+                Path::Index(idx) => NameThis::Nothing,
+            }
+            EvalValue::Dyn(value) => value
+                .as_state()
+                .and_then(|state| state.state_get(path, value_id))
+                .map(EvalValue::Dyn)
+                .into(),
             EvalValue::Index(value, _) => value.get(path, value_id, states, attribs),
             EvalValue::State(id) => states
                 .get(*id)
-                .and_then(|state| {
-                    state.state_get(path, value_id).map(EvalValue::Dyn)
-                }),
+                .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn))
+                .into(),
             EvalValue::ComponentAttributes(id) => {
-                let attributes = attribs.try_get(*id)?;
+                let Some(attributes) = attribs.try_get(*id) else { return NameThis::Nothing };
                 let value = match path {
-                    Path::Key(key) => attributes.get_val(key)?,
+                    Path::Key(key) => match attributes.get_val(key) {
+                        Some(val) => val,
+                        None => todo!(),
+                    },
                     Path::Index(_) => todo!(),
                 };
-                Some(value.copy_with_sub(value_id))
+                NameThis::Value(value.copy_with_sub(value_id).into())
             }
-            EvalValue::Pending(_) => {
-                unreachable!("pending values are resolved by the scope and should never exist here")
-            }
-            EvalValue::ExprMap(map) => match path {
-                Path::Key(key) => Some(map.get(key)?.copy_with_sub(value_id)),
-                Path::Index(_) => None,
-            },
-            EvalValue::ExprList(list) => match path {
-                Path::Index(idx) => {
-                    let a = list.get(idx)?;
-                    let b = a.copy_with_sub(value_id);
-                    Some(b)
-                }
-                Path::Key(_) => None,
-            },
+            EvalValue::Pending(_) => unreachable!("pending values are resolved by the scope and should never exist here"),
+            // EvalValue::Map(map) => match path {
+            //     Path::Key(key) => panic!("see expression list 2, do that here"), //Some(map.get(key).copy_with_sub(value_id)),
+            //     Path::Index(_) => NameThis::Nothing,
+            // },
             EvalValue::Static(_)
             | EvalValue::Negative(_)
             | EvalValue::Op(_, _, _)
             | EvalValue::Not(_)
             | EvalValue::Equality(_, _, _)
-            | EvalValue::Empty => None,
+            | EvalValue::Empty => NameThis::Nothing,
         }
     }
 
-    /// Downgrade andy ValueRef to PendingValue
+    /// Downgrade any `ValueRef` to `PendingValue`
     fn inner_downgrade(&self) -> Self {
         match self {
             Self::Static(val) => Self::Static(*val),
@@ -177,17 +215,15 @@ impl<'bp> EvalValue<'bp> {
             Self::State(id) => Self::State(*id),
             Self::ComponentAttributes(id) => Self::ComponentAttributes(*id),
             Self::Index(val, index) => Self::Index(val.inner_downgrade().into(), index.inner_downgrade().into()),
-            Self::ExprMap(map) => {
-                let map = map
-                    .iter()
-                    .map(|(key, val)| (key.clone(), val.inner_downgrade()))
-                    .collect();
-                Self::ExprMap(map)
-            }
-            Self::ExprList(list) => {
-                let list = list.iter().map(Self::inner_downgrade).collect();
-                Self::ExprList(list)
-            }
+            // Self::Map(map) => {
+            //     let map = map
+            //         .iter()
+            //         .map(|(key, val)| (key.clone(), val.inner_downgrade()))
+            //         .collect();
+            //     Self::Map(map)
+            // }
+            Self::ExprList(list) => Self::ExprList(list),
+            Self::Map2(map) => Self::Map2(map),
             Self::Negative(val) => Self::Negative(val.inner_downgrade().into()),
             Self::Op(lhs, rhs, op) => Self::Op(lhs.inner_downgrade().into(), rhs.inner_downgrade().into(), *op),
             Self::Not(val) => Self::Not(val.inner_downgrade().into()),
@@ -211,17 +247,19 @@ impl<'bp> EvalValue<'bp> {
                 value.inner_upgrade(value_id).into(),
                 index.inner_upgrade(value_id).into(),
             ),
-            Self::ExprMap(map) => {
-                let map = map
-                    .iter()
-                    .map(|(key, val)| (key.clone(), val.inner_upgrade(value_id)))
-                    .collect();
-                Self::ExprMap(map)
-            }
-            Self::ExprList(list) => {
-                let list = list.iter().map(Self::inner_downgrade).collect();
-                Self::ExprList(list)
-            }
+            // Self::Map(map) => {
+            //     let map = map
+            //         .iter()
+            //         .map(|(key, val)| (key.clone(), val.inner_upgrade(value_id)))
+            //         .collect();
+            //     Self::Map(map)
+            // }
+            Self::ExprList(list) => Self::ExprList(list),
+            Self::Map2(map) => Self::Map2(map),
+            // Self::ExprList(list) => {
+            //     let list = list.iter().map(Self::inner_downgrade).collect();
+            //     Self::ExprList(list)
+            // }
             Self::Negative(val) => Self::Negative(val.inner_upgrade(value_id).into()),
             Self::Op(lhs, rhs, op) => Self::Op(
                 lhs.inner_upgrade(value_id).into(),
@@ -271,13 +309,19 @@ impl<'bp> EvalValue<'bp> {
     where
         F: FnMut(&str) -> ControlFlow<()>,
     {
+        panic!(
+            "Currently we are not able to have strings made up of lists. We need this. Make it a thing.
+            Maybe it's worth making a string value that is a composite value made up of multiple eval values?
+            This should only be used for strings"
+        );
+
         let val = match self {
-            EvalValue::ExprList(list) => {
-                for value in list.iter() {
-                    value.internal_str_iter(f)?;
-                }
-                ControlFlow::Continue(())
-            }
+            // EvalValue::ExprList(list) => {
+            //     for value in list.iter() {
+            //         value.internal_str_iter(f)?;
+            //     }
+            //     ControlFlow::Continue(())
+            // }
             EvalValue::Static(val) => {
                 let s = val.to_common_str();
                 let s = s.as_ref();
@@ -311,7 +355,8 @@ impl<'bp> EvalValue<'bp> {
             EvalValue::ComponentAttributes(_) => None, // There should be no instance where attributes is a single value
             EvalValue::Index(val, _) => val.load_common_val(),
             EvalValue::Pending(_) => None,
-            EvalValue::ExprMap(_) => None,
+            // EvalValue::Map(_) => None,
+            EvalValue::Map2(_) => None,
             EvalValue::ExprList(_) => None,
 
             // Operations
@@ -352,6 +397,8 @@ impl<'bp> EvalValue<'bp> {
                 };
                 Some(CommonVal::from(b).into())
             }
+            EvalValue::ExprList(_) => unreachable!(),
+            EvalValue::Map2(_) => unreachable!(),
             EvalValue::Empty => None,
         }
     }
@@ -498,17 +545,18 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
             // -----------------------------------------------------------------------------
             &Expression::Primitive(val) => EvalValue::Static(val.into()),
             Expression::Str(s) => EvalValue::Static(CommonVal::Str(s)),
+            // Expression::Map(map) => {
+            //     let inner = map
+            //         .iter()
+            //         .map(|(key, expr)| (key.as_str(), self.resolve(expr)))
+            //         .collect();
+            //     EvalValue::Map(inner)
+            // }
             Expression::Map(map) => {
-                let inner = map
-                    .iter()
-                    .map(|(key, expr)| (key.clone(), self.resolve(expr)))
-                    .collect();
-                EvalValue::ExprMap(inner)
+                panic!()
+                // EvalValue::Map2(map),
             }
-            Expression::List(list) => {
-                let inner = list.iter().map(|expr| self.resolve(expr)).collect();
-                EvalValue::ExprList(inner)
-            }
+            Expression::List(list) => EvalValue::ExprList(list),
 
             // -----------------------------------------------------------------------------
             //   - Conditionals -
@@ -556,14 +604,20 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                 path => {
                     let lookup = ScopeLookup::new(Path::from(path), self.subscriber);
                     match self.scope.get(lookup, &mut None, self.states) {
-                        Some(val) => val,
-                        None => match self.globals.get(path) {
-                            Some(value) => self.resolve(value),
-                            None => {
-                                self.register_future_value = true;
-                                EvalValue::Empty
-                            }
-                        },
+                        NameThis::Nothing => {
+                            self.register_future_value = true;
+                            EvalValue::Empty
+                        }
+                        NameThis::Value(eval_value) => eval_value,
+                        NameThis::ResolveThisNow(expr) => self.resolve(expr),
+                        // Some(val) => val,
+                        // None => match self.globals.get(path) {
+                        //     Some(value) => self.resolve(value),
+                        //     None => {
+                        //         self.register_future_value = true;
+                        //         EvalValue::Empty
+                        //     }
+                        // },
                     }
                 }
             },
@@ -589,11 +643,12 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                 };
 
                 let val = match value.get(index, self.subscriber, self.states, self.attributes) {
-                    Some(EvalValue::Empty) | None => {
+                    NameThis::Nothing => {
                         self.register_future_value = true;
                         EvalValue::Empty
                     }
-                    Some(val) => val,
+                    NameThis::Value(value) => value,
+                    NameThis::ResolveThisNow(expr) => self.resolve(expr),
                 };
 
                 val
@@ -631,23 +686,21 @@ pub(crate) fn eval_collection<'bp>(
     attributes: &AttributeStorage<'bp>,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
+    let value_id = value_id.into();
+
     let mut resolver = Resolver::root(scope, states, attributes, globals, value_id);
     let value = resolver.resolve(expr);
 
     let collection = match value {
         EvalValue::Dyn(val) => Collection::Dyn(val),
-        EvalValue::ExprList(list) => Collection::Static(list),
+        EvalValue::ExprList(list) => Collection::Static2(list),
         EvalValue::Index(list, rhs) => match *list {
             EvalValue::Dyn(val) => Collection::Index(Collection::Dyn(val).into(), rhs),
-            EvalValue::ExprList(list) => Collection::Index(Collection::Static(list).into(), rhs),
+            EvalValue::ExprList(list) => Collection::Index(Collection::Static2(list).into(), rhs),
             _ => Collection::Future,
         },
         _ => Collection::Future,
     };
-
-    if let Collection::Future = collection {
-        register_future(value_id);
-    }
 
     Value::new(collection, Some(expr))
 }

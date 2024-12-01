@@ -19,7 +19,7 @@ impl Widget for Spacer {
 
     fn paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PaintChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PaintCtx<'_, SizePos>,
@@ -29,7 +29,7 @@ impl Widget for Spacer {
 
     fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PositionCtx,

@@ -66,7 +66,7 @@ where
         let Some(node) = self.tree.layout.inner.get_mut(index) else { return ControlFlow::Continue(()) };
 
         self.tree.values.with_mut(node.value, |(path, value), values| {
-            let mut children = TreeView::new(path, &mut node.children, values);
+            let mut children = TreeView::new(path, &mut node.children, values, self.tree.removed_values);
             let generator = G::from_value(value, ctx);
             let mut children = ForEach2::new(children, self.traverser, generator);
 

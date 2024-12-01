@@ -9,15 +9,18 @@ use crate::expressions::Expression;
 use crate::primitives::Primitive;
 
 #[derive(Debug, Default, Clone)]
-pub struct Globals(HashMap<Rc<str>, Expression>);
+pub struct Globals(HashMap<Rc<str>, Variable>);
 
 impl Globals {
-    pub fn new(hm: HashMap<Rc<str>, Expression>) -> Self {
+    pub fn new(hm: HashMap<Rc<str>, Variable>) -> Self {
         Self(hm)
     }
 
     pub fn get(&self, ident: &str) -> Option<&Expression> {
-        self.0.get(ident)
+        match self.0.get(ident) {
+            Some(Variable::Global(expr)) => Some(expr),
+            _ => None,
+        }
     }
 
     pub fn take(&mut self) -> Self {
@@ -46,23 +49,29 @@ impl From<VarId> for usize {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Variable {
-    Static(Primitive),
-    Str(Rc<str>),
+#[derive(Debug, Clone)]
+enum Variable {
+    LocalIdent,
+    Global(Expression),
 }
 
-impl From<&str> for Variable {
-    fn from(value: &str) -> Self {
-        Self::Str(value.into())
-    }
-}
+// #[derive(Debug, Clone, PartialEq)]
+// pub enum Variable {
+//     Static(Primitive),
+//     Str(Rc<str>),
+// }
 
-impl From<Primitive> for Variable {
-    fn from(value: Primitive) -> Self {
-        Self::Static(value)
-    }
-}
+// impl From<&str> for Variable {
+//     fn from(value: &str) -> Self {
+//         Self::Str(value.into())
+//     }
+// }
+
+// impl From<Primitive> for Variable {
+//     fn from(value: Primitive) -> Self {
+//         Self::Static(value)
+//     }
+// }
 
 /// The scope id acts as a path made up of indices
 /// into the scope tree.
@@ -280,7 +289,7 @@ impl Declarations {
 pub struct Variables {
     root: RootScope,
     current: ScopeId,
-    store: Slab<VarId, Expression>,
+    store: Slab<VarId, Variable>,
     declarations: Declarations,
 }
 
@@ -315,6 +324,13 @@ impl Variables {
 
     pub fn declare(&mut self, ident: impl Into<Rc<str>>, value: impl Into<Expression>) -> VarId {
         let value = value.into();
+        let var_id = self.store.insert(Variable::Global(value.into()));
+        let scope_id = self.current.clone();
+        self.declare_at(ident, var_id, scope_id)
+    }
+
+    pub fn declare_local(&mut self, ident: impl Into<Rc<str>>) -> VarId {
+        let value = Variable::LocalIdent;
         let var_id = self.store.insert(value);
         let scope_id = self.current.clone();
         self.declare_at(ident, var_id, scope_id)
@@ -325,6 +341,10 @@ impl Variables {
         self.root
             .get_var_id(&self.current, ident)
             .and_then(|id| self.store.get(id).cloned())
+            .and_then(|val| match val {
+                Variable::Global(expression) => Some(expression),
+                Variable::LocalIdent => None,
+            })
     }
 
     /// Create a new child and set the new childs id as the `current` id.
@@ -351,11 +371,15 @@ impl Variables {
         self.store
             .get(var)
             .cloned()
+            .map(|val| match val {
+                Variable::LocalIdent => unreachable!("this is a test function"),
+                Variable::Global(expression) => expression,
+            })
             .expect("it would be an Anathema compilation error if this failed")
     }
 }
 
-impl From<Variables> for HashMap<Rc<str>, Expression> {
+impl From<Variables> for HashMap<Rc<str>, Variable> {
     fn from(mut vars: Variables) -> Self {
         let mut hm = HashMap::new();
 
@@ -375,7 +399,7 @@ impl From<Variables> for HashMap<Rc<str>, Expression> {
 pub struct ScopeDebug<'a> {
     level: usize,
     scope: &'a Scope,
-    store: &'a Slab<VarId, Expression>,
+    store: &'a Slab<VarId, Variable>,
 }
 
 #[cfg(not(target_os = "windows"))]

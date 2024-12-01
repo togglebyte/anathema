@@ -7,30 +7,30 @@ use crate::{Expression, WidgetComponentId};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {
-    pub ident: Rc<str>,
+    pub ident: String,
     pub children: Vec<Blueprint>,
-    pub attributes: SmallMap<Rc<str>, Expression>,
+    pub attributes: SmallMap<String, Expression>,
     pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct For {
-    pub binding: Rc<str>,
+    pub binding: String,
     pub data: Expression,
     pub body: Vec<Blueprint>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlFlow {
-    pub if_node: If,
+    // pub if_node: If,
     pub elses: Vec<Else>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct If {
-    pub cond: Expression,
-    pub body: Vec<Blueprint>,
-}
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct If {
+//     pub cond: Expression,
+//     pub body: Vec<Blueprint>,
+// }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Else {
@@ -42,7 +42,7 @@ pub struct Else {
 pub struct Component {
     pub id: WidgetComponentId,
     pub body: Vec<Blueprint>,
-    pub attributes: SmallMap<Rc<str>, Expression>,
+    pub attributes: SmallMap<String, Expression>,
     pub assoc_functions: Vec<(StringId, StringId)>,
     pub parent: Option<WidgetComponentId>,
 }
@@ -58,6 +58,14 @@ pub enum Blueprint {
 
 #[macro_export]
 macro_rules! single {
+    ($ident:expr) => {
+        $crate::blueprints::Blueprint::Single(Single {
+            ident: $ident.into(),
+            children: vec![],
+            attributes: SmallMap::empty(),
+            value: None,
+        })
+    };
     (value @ $ident:expr, $value:expr) => {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
@@ -66,7 +74,7 @@ macro_rules! single {
             value: Some($value.into()),
         })
     };
-    (children @ $ident:expr, $($children:expr),*) => {
+    (children @ $ident:expr, $children:expr) => {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: $children,

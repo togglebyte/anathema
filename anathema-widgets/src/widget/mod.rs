@@ -15,9 +15,9 @@ use anathema_templates::WidgetComponentId;
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
 pub use self::query::Elements;
-pub use self::tree::{ForEach, LayoutForEach};
-use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::paint::{PaintCtx, PaintFilter, SizePos};
+pub use self::tree::{ForEach, LayoutForEach, Filter};
+use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, PositionFilter};
+use crate::paint::{PainFilter, PaintCtx, PaintFilter, SizePos};
 use crate::{EvalContext, WidgetContainer, WidgetKind};
 
 mod attributes;
@@ -28,8 +28,8 @@ mod tree;
 pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
 pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, PaintFilter<'frame, 'bp>>;
+pub type PositionChildren<'a, 'bp> = ForEach<'a, 'bp, PositionFilter>;
+pub type PaintChildren<'a, 'bp> = ForEach<'a, 'bp, PainFilter>;
 pub type WidgetId = anathema_store::slab::Key;
 
 #[derive(Debug)]
@@ -243,7 +243,7 @@ pub trait AnyWidget {
 
     fn any_position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -251,7 +251,7 @@ pub trait AnyWidget {
 
     fn any_paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PainFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -285,7 +285,7 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -295,7 +295,7 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PainFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -333,7 +333,7 @@ pub trait Widget {
 
     fn paint<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: ForEach<'_, 'bp, PainFilter>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
@@ -347,7 +347,7 @@ pub trait Widget {
 
     fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,

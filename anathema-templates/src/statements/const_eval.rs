@@ -12,60 +12,55 @@ use crate::primitives::Primitive;
 // a.b[c]
 // ```
 // would resolve `a` from vars, `b` from `a`, and `c` from vars.
-fn eval_path(expr: &Expression, ctx: &Context<'_>) -> Option<Expression> {
+fn eval_path(expr: Expression, ctx: &Context<'_>) -> Option<Expression> {
     use {Expression as E, Primitive as P};
 
     match expr {
-        // NOTE: if `None` is not returned here then overriding globals in templates will fail
-        E::Ident(_) => None, //ctx.fetch(ident),
-        E::Str(strlit) => ctx.fetch(strlit),
-        E::Index(lhs, rhs) => match eval_path(lhs, ctx)? {
-            E::List(list) => match const_eval(rhs.clone(), ctx) {
-                E::Primitive(P::Int(num)) => list.get(num as usize).cloned(),
-                _ => Some(E::Index(
-                    E::List(list.clone()).into(),
-                    const_eval(*rhs.clone(), ctx).into(),
-                )),
-            },
-            E::Map(map) => match const_eval(rhs.clone(), ctx) {
-                E::Str(key) => map.get(&*key).cloned(),
-                _ => Some(E::Index(
-                    E::Map(map.clone()).into(),
-                    const_eval(*rhs.clone(), ctx).into(),
-                )),
-            },
-            index @ E::Index(..) => Some(E::Index(index.into(), const_eval(*rhs.clone(), ctx).into())),
-            _ => None,
-        },
-        _ => None,
+        // Don't return None here, as this is possibly the ident of a state value,
+        // or an attribute
+        E::Ident(ref ident) => Some(ctx.fetch(&ident).unwrap_or(expr)),
+        E::Str(ref strlit) => Some(ctx.fetch(&strlit).unwrap_or(expr)),
+        E::Index(lhs, rhs) => {
+            let lhs = const_eval(lhs, ctx)?;
+            let rhs = const_eval(rhs, ctx)?;
+
+            match (&lhs, &rhs) {
+                (E::List(list), E::Primitive(P::Int(index))) => list.get(*index as usize).cloned(),
+                (E::Map(map), E::Str(key)) => map.get(key).cloned(),
+                _ => Some(E::Index(lhs.into(), rhs.into())),
+            }
+        }
+        _ => Some(expr),
     }
 }
 
-pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Expression {
+// Returning `None` here means we evaluated a const expression but the expression didn't exist,
+// e.g indexing outside of a list of primitives.
+pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Option<Expression> {
     use {Expression as E, Primitive as P};
 
     macro_rules! ce {
         ($e:expr) => {
-            const_eval($e, ctx).into()
+            const_eval($e, ctx)?.into()
         };
     }
 
     let expr = expr.into();
-    match expr {
+
+    let expr = match expr {
         expr @ (E::Primitive(_) | E::Str(_) | E::Either(..)) => expr,
         E::Not(expr) => E::Not(ce!(*expr)),
         E::Negative(expr) => E::Negative(ce!(*expr)),
         E::Equality(lhs, rhs, eq) => E::Equality(ce!(*lhs), ce!(*rhs), eq),
 
-        E::Ident(_) => eval_path(&expr, ctx).map(|e| ce!(e)).unwrap_or(expr),
-        E::Index(..) => eval_path(&expr, ctx).map(|e| ce!(e)).unwrap_or(expr),
+        E::Ident(_) | E::Index(..) => eval_path(expr, ctx)?,
 
         E::List(list) => {
-            let list = list.iter().cloned().map(|expr| ce!(expr)).collect();
+            let list = list.into_iter().filter_map(|expr| ce!(expr)).collect();
             E::List(list)
         }
         E::Map(map) => {
-            let hm = HashMap::from_iter(map.iter().map(|(k, v)| (k.clone(), ce!(v.clone()))));
+            let hm = HashMap::from_iter(map.into_iter().flat_map(|(k, v)| Some((k, ce!(v)))));
             E::Map(hm.into())
         }
         E::Op(lhs, rhs, op) => match (ce!(*lhs), ce!(*rhs)) {
@@ -82,16 +77,18 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Expr
             (lhs, rhs) => E::Op(lhs.into(), rhs.into(), op),
         },
         E::Call { fun, args } => E::Call {
-            fun: fun.clone(),
-            args: args.iter().map(|expr| ce!(expr.clone())).collect(),
+            fun,
+            args: args.into_iter().filter_map(|expr| ce!(expr)).collect(),
         },
-    }
+    };
+
+    Some(expr)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::expressions::{add, div, mul, num, sub};
+    use crate::expressions::{add, div, ident, index, list, mul, num, sub};
     use crate::statements::with_context;
 
     #[test]
@@ -99,7 +96,7 @@ mod test {
         with_context(|ctx| {
             let expr = add(num(1), num(2));
 
-            let output = const_eval(expr, &ctx);
+            let output = const_eval(expr, &ctx).unwrap();
             assert_eq!(output, *num(3));
         });
     }
@@ -109,7 +106,7 @@ mod test {
         with_context(|ctx| {
             let expr = sub(num(1), num(2));
 
-            let output = const_eval(expr, &ctx);
+            let output = const_eval(expr, &ctx).unwrap();
             assert_eq!(output, *num(-1));
         });
     }
@@ -119,7 +116,7 @@ mod test {
         with_context(|ctx| {
             let expr = mul(num(2), num(2));
 
-            let output = const_eval(expr, &ctx);
+            let output = const_eval(expr, &ctx).unwrap();
             assert_eq!(output, *num(4));
         });
     }
@@ -129,8 +126,26 @@ mod test {
         with_context(|ctx| {
             let expr = div(num(2), num(2));
 
-            let output = const_eval(expr, &ctx);
+            let output = const_eval(expr, &ctx).unwrap();
             assert_eq!(output, *num(1));
+        });
+    }
+
+    #[test]
+    fn const_index_resolve() {
+        with_context(|ctx| {
+            let expr = index(list([1, 2, 3]), num(2));
+            let output = const_eval(expr, &ctx).unwrap();
+            assert_eq!(output, *num(3));
+        });
+    }
+
+    #[test]
+    fn const_index_lookup_of_state() {
+        with_context(|ctx| {
+            let expr = index(index(ident("state"), ident("list")), num(2));
+            let output = const_eval(expr.clone(), &ctx).unwrap();
+            assert_eq!(output, *expr);
         });
     }
 }

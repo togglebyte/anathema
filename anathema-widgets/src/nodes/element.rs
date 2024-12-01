@@ -1,8 +1,8 @@
 use anathema_geometry::{Pos, Region, Size};
 
 use crate::container::Container;
-use crate::layout::{Constraints, LayoutCtx, Viewport};
-use crate::paint::{PaintCtx, Unsized};
+use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
+use crate::paint::{PainFilter, PaintCtx, Unsized};
 use crate::widget::{ForEach, PaintChildren, PositionChildren};
 use crate::{AttributeStorage, EvalContext, LayoutForEach, LayoutChildren, WidgetId};
 
@@ -39,7 +39,7 @@ impl<'bp> Element<'bp> {
     /// Position the element
     pub fn position(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
@@ -50,7 +50,7 @@ impl<'bp> Element<'bp> {
     /// Draw an element to the surface
     pub fn paint(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PainFilter>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {

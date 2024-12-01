@@ -135,7 +135,7 @@ impl Widget for Position {
 
     fn position<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
@@ -172,7 +172,7 @@ impl Widget for Position {
 
     fn paint<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,

@@ -29,7 +29,7 @@ impl Widget for VStack {
 
     fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PositionChildren<'_, 'bp>,
         attributes: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -39,7 +39,7 @@ impl Widget for VStack {
 
     fn paint<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,

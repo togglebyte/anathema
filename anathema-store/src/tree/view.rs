@@ -1,17 +1,28 @@
 use std::ops::ControlFlow;
 
-use super::{ForEach2, Generator, InsertTransaction, Nodes, Traverser, TreeValues, ValueId};
+use super::{visitor::NodeVisitor, AsNodePath, InsertTransaction, Nodes, TreeValues, ValueId};
 
 #[derive(Debug)]
 pub struct TreeView<'tree, T> {
     pub offset: &'tree [u16],
     pub values: &'tree mut TreeValues<T>,
     pub layout: &'tree mut Nodes,
+    pub removed_values: &'tree mut Vec<ValueId>,
 }
 
 impl<'tree, T> TreeView<'tree, T> {
-    pub fn new(offset: &'tree [u16], layout: &'tree mut Nodes, values: &'tree mut TreeValues<T>) -> Self {
-        Self { offset, values, layout }
+    pub fn new(
+        offset: &'tree [u16],
+        layout: &'tree mut Nodes,
+        values: &'tree mut TreeValues<T>,
+        removed_values: &'tree mut Vec<ValueId>,
+    ) -> Self {
+        Self {
+            offset,
+            values,
+            layout,
+            removed_values,
+        }
     }
 
     pub fn layout_len(&self) -> usize {
@@ -26,27 +37,27 @@ impl<'tree, T> TreeView<'tree, T> {
         for index in 0..self.layout.len() {
             let node = &mut self.layout.inner[index];
             self.values.with_mut(node.value, |(offset, value), values| {
-                let tree_view = TreeView::new(offset, &mut node.children, values);
+                let tree_view = TreeView::new(offset, &mut node.children, values, self.removed_values);
                 f(offset, value, tree_view);
             });
         }
     }
 
-    pub fn each<C, F, Tr, Gen>(&mut self, ctx: &mut C, traverser: &Tr, mut f: F)
-    where
-        Gen: Generator<T, C>,
-        Tr: Traverser<T>,
-        for<'a> F: FnMut(&mut C, &mut T, ForEach2<'a, T, Tr, Gen, C>) -> ControlFlow<()>,
-    {
-        for node in &mut self.layout.inner {
-            self.values.with_mut(node.value, |(path, value), values| {
-                let view = TreeView::new(path, &mut node.children, values);
-                let gen = Gen::from_value(value, ctx);
-                let children = ForEach2::new(view, traverser, gen);
-                f(ctx, value, children);
-            })
-        }
-    }
+    // pub fn each<C, F, Tr, Gen>(&mut self, ctx: &mut C, traverser: &Tr, mut f: F)
+    // where
+    //     Gen: Generator<T, C>,
+    //     Tr: Traverser<T>,
+    //     for<'a> F: FnMut(&mut C, &mut T, ForEach2<'a, T, Tr, Gen, C>) -> ControlFlow<()>,
+    // {
+    //     for node in &mut self.layout.inner {
+    //         self.values.with_mut(node.value, |(path, value), values| {
+    //             let view = TreeView::new(path, &mut node.children, values);
+    //             let gen = Gen::from_value(value, ctx);
+    //             let children = ForEach2::new(view, traverser, gen);
+    //             f(ctx, value, children);
+    //         })
+    //     }
+    // }
 
     /// The path reference for a value in the tree.
     /// Unlike a `ValueId` which will never change for a given value,
@@ -109,6 +120,45 @@ impl<'tree, T> TreeView<'tree, T> {
         InsertTransaction::new(self, parent)
     }
 
+    /// Remove a `Node` and value from the tree.
+    /// This will also remove all the children and associated values.
+    pub fn relative_remove(&mut self, path: &[u16]) {
+        if self.layout.is_empty() {
+            return
+        }
+
+        // This will not return the value that was removed, as it will also
+        // remove all the children under that node.
+        let (path, index) = path.split_parent().expect("a value will always exist within the tree");
+
+        let node = self.layout.with_mut(path, |nodes| {
+            let node = nodes.remove(index);
+            self.removed_values.push(node.value);
+
+            nodes.inner[index..].iter_mut().for_each(|node| {
+                // Update the subsequent siblings by bumping their index by one
+                let (path, _) = self.values.get_mut(node.value).expect("every node has a value");
+                path[path.len() - 1] -= 1;
+
+                // Clone the path to drop the borrow of the tree
+                let path = path.clone();
+                // Update the root of all the children of the preceeding siblings
+                node.reparent(&path, &mut self.values);
+            });
+
+            node
+        });
+
+        if let Some(mut node) = node {
+            let value_key = node.value();
+            let _value = self
+                .values
+                .remove(value_key)
+                .expect("a node is always associated with a value");
+            node.children.clear(&mut self.values, &mut self.removed_values);
+        }
+    }
+
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the rest of the tree.
     ///
@@ -126,9 +176,16 @@ impl<'tree, T> TreeView<'tree, T> {
             offset: path,
             values: self.values,
             layout: node.children_mut(),
+            removed_values: self.removed_values,
         };
         let value = f(path, value, view);
         self.values.restore(ticket);
         value
     }
+
+    /// Apply a [`NodeVisitor`], depth first
+    pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
+        super::visitor::apply_visitor(&self.layout, &mut self.values, visitor);
+    }
+
 }

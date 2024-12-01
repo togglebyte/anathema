@@ -2,12 +2,11 @@ use std::ops::ControlFlow;
 use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{AsNodePath, ForEach2, Node, TreeValues};
+use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    AttributeStorage, DirtyWidgets, Element, EvalContext, FloatingWidgets, ForEach, GlyphMap, LayoutForEach,
-    WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
+    AttributeStorage, DirtyWidgets, Element, EvalContext, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree
 };
 
 pub mod test;
@@ -24,7 +23,7 @@ pub trait Backend {
     fn paint<'bp>(
         &mut self,
         glyph_map: &mut GlyphMap,
-        widgets: ForEach<'_, 'bp>,
+        widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     );
@@ -116,7 +115,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Position -
         // -----------------------------------------------------------------------------
-        let mut for_each = ForEach::new(self.tree.view_mut());
+        let mut for_each = PositionChildren::new(self.tree.view_mut());
         for_each.each(|widget, children| {
             widget.position(children, Pos::ZERO, ctx.attribute_storage, *ctx.viewport);
             ControlFlow::Break(())
@@ -125,6 +124,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Paint -
         // -----------------------------------------------------------------------------
+        let mut for_each = PaintChildren::new(self.tree.view_mut());
         self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage, true);
 
         // //     // Layout

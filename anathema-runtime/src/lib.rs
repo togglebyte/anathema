@@ -18,13 +18,15 @@
 // -----------------------------------------------------------------------------
 
 use std::fmt::Write;
+use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_default_widgets::register_default_widgets;
 use anathema_state::{
-    clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Changes, FutureValues, States,
+    clear_all_changes, clear_all_futures, clear_all_subs, drain_changes, drain_futures, Change, Changes, FutureValues,
+    States,
 };
 use anathema_store::tree::{root_node, AsNodePath, TreeView};
 use anathema_templates::blueprints::Blueprint;
@@ -35,8 +37,8 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, EvalContext,
-    Factory, FloatingWidgets, GlyphMap, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_widget, AttributeStorage, Components, DirtyWidgets, EvalContext,
+    Factory, FloatingWidgets, GlyphMap, LayoutForEach, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -318,7 +320,6 @@ where
         if self.future_values.is_empty() {
             return;
         }
-        panic!()
 
         // let mut scope = Scope::new();
         // self.future_values.drain().rev().for_each(|sub| {
@@ -354,50 +355,88 @@ where
             return;
         }
 
-        panic!()
-        // let mut scope = Scope::new();
-        // self.changes.iter().for_each(|(sub, change)| {
-        //     sub.iter().for_each(|sub| {
-        //         scope.clear();
-        //         let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
+        let mut scope = Scope::new();
 
-        //         let ctx = EvalContext::new(
-        //             globals,
-        //             &self.factory,
-        //             &mut scope,
-        //             states,
-        //             &mut self.component_registry,
-        //             attribute_storage,
-        //             &mut self.floating_widgets,
-        //             &mut self.components,
-        //             &mut self.dirty_widgets,
-        //         );
+        // let mut ctx = EvalContext::new(
+        //     globals,
+        //     &self.factory,
+        //     &mut scope,
+        //     states,
+        //     &mut self.component_registry,
+        //     attribute_storage,
+        //     &mut self.floating_widgets,
+        //     &mut self.components,
+        //     &mut self.dirty_widgets,
+        //     &self.viewport,
+        //     &mut self.glyph_map,
+        //     false,
+        // );
 
-        //         update_tree(change, sub, &path, tree, ctx);
+        self.changes.iter().for_each(|(sub, change)| {
+            sub.iter().for_each(|sub| {
+                self.dirty_widgets.push(sub.key());
 
-        //         // This is nonsense: TODO
-        //         // It's a massive hack, let's replace this with the path list again maybe?
-        //         {
-        //             let mut path = &*path;
-        //             loop {
-        //                 if let Some((parent, _)) = path.split_parent() {
-        //                     if parent.is_empty() {
-        //                         break;
-        //                     }
-        //                     path = parent;
-        //                     let Some(id) = tree.id(path) else {
-        //                         unreachable!("this implies the widget exists but the parent was removed")
-        //                     };
-        //                     self.dirty_widgets.push(id);
-        //                 } else {
-        //                     break;
-        //                 }
-        //             }
-        //         }
+                let mut tree = tree.view_mut();
+                tree.with_value_mut(sub.key(), |path, widget, tree| {
+                    update_widget(widget, sub, change, path, tree);
+                });
 
-        //         self.dirty_widgets.push(sub.key());
-        //     });
-        // });
+                // match change {
+                //     Change::Inserted(index, pending_value) => {
+                //         tree.with_value_mut(sub.key(), |path, widget, tree| {
+                //             // TODO: All the children from index.. has to have the loop_index
+                //             // incrememented by one
+
+                //             let WidgetKind::For(for_loop) = widget else { panic!() };
+                //             let body = widget.children;
+                //             // insert and update indices
+                //             let widget = WidgetKind::Iteration(Iteration {
+                //                 loop_index: Value::new(index as i64),
+                //                 binding: for_loop.binding,
+                //             });
+                //             let transaction = tree.insert(path);
+                //             transaction.commit_child();
+                //         });
+                //     }
+                //     Change::Removed(index) => todo!(),
+                //     Change::Changed => todo!(),
+                //     Change::Dropped => todo!(),
+                // }
+
+                // scope.clear();
+                // // let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
+
+                // // update_tree(change, sub, &path, tree, ctx);
+                // let mut for_each = LayoutForEach::new(tree.view_mut(), None);
+                // let constraints = self.constraints;
+                // for_each.each(&mut ctx, |ctx, widget, children| {
+                //     let _ = widget.layout(children, constraints, ctx);
+                //     ControlFlow::Break(())
+                // });
+
+                // // This is nonsense: TODO
+                // // It's a massive hack, let's replace this with the path list again maybe?
+                // // {
+                // //     let mut path = &*path;
+                // //     loop {
+                // //         if let Some((parent, _)) = path.split_parent() {
+                // //             if parent.is_empty() {
+                // //                 break;
+                // //             }
+                // //             path = parent;
+                // //             let Some(id) = tree.id(path) else {
+                // //                 unreachable!("this implies the widget exists but the parent was removed")
+                // //             };
+                // //             self.dirty_widgets.push(id);
+                // //         } else {
+                // //             break;
+                // //         }
+                // //     }
+                // // }
+
+                // // self.dirty_widgets.push(sub.key());
+            });
+        });
     }
 
     // Handles component messages for (ideally) at most half of a tick
@@ -516,7 +555,26 @@ where
         let mut dt = Instant::now();
 
         // Initial layout, position and paint
-        WidgetCycle::new(&mut self.backend, &mut tree, self.constraints).run(&mut ctx);
+        let mut cycle = WidgetCycle::new(&mut self.backend, &mut tree, self.constraints);
+        cycle.run(&mut ctx);
+
+        deb(&mut tree, &attribute_storage);
+
+        // let values = tree.values();
+        // for (_, value) in values.iter() {
+
+        //     match &value.kind {
+        //         WidgetKind::Element(element) => eprintln!("element: {}", element.ident),
+        //         WidgetKind::For(_) => eprintln!("for"),
+        //         WidgetKind::Iteration(iteration) => eprintln!("iter"),
+        //         WidgetKind::Component(component) => eprintln!("component"),
+
+        //         WidgetKind::ControlFlow(control_flow) => todo!(),
+        //         WidgetKind::If(_) => todo!(),
+        //         WidgetKind::Else(_) => todo!(),
+        //     }
+        // }
+
         self.backend.render(&mut self.glyph_map);
         self.backend.clear();
 
@@ -688,9 +746,9 @@ where
         //   - Layout, position and paint -
         // -----------------------------------------------------------------------------
         let needs_reflow = !self.dirty_widgets.is_empty();
-        let needs_reflow = true;
         if needs_reflow {
             let mut scope = Scope::new();
+
             let mut ctx = EvalContext::new(
                 &globals,
                 &self.factory,
@@ -708,6 +766,8 @@ where
 
             let mut cycle = WidgetCycle::new(&mut self.backend, tree, self.constraints);
             cycle.run(&mut ctx);
+
+            deb(tree, &attribute_storage);
 
             self.backend.render(&mut self.glyph_map);
             self.backend.clear();
@@ -757,4 +817,15 @@ where
             tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| a.any_tick(b, dt));
         }
     }
+}
+
+fn deb<'bp>(tree: &mut WidgetTree<'bp>, attrs: &AttributeStorage<'bp>) {
+    let output = anathema_widgets::debug::debug_tree(&mut tree.view_mut(), attrs);
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/log.lol")
+        .unwrap();
+    file.write_all(output.as_bytes());
 }

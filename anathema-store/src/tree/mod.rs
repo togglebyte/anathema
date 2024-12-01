@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-pub use self::foreach::{ForEach2, Generator, Traverser};
+pub use self::foreach::Generator;
 pub use self::iter::{TreeFilter, TreeForEach};
 pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
@@ -47,7 +47,7 @@ impl<T> Tree<T> {
     }
 
     pub fn view_mut(&mut self) -> TreeView<'_, T> {
-        TreeView::new(root_node(), &mut self.layout, &mut self.values)
+        TreeView::new(root_node(), &mut self.layout, &mut self.values, &mut self.removed_values)
     }
 
     pub fn values(self) -> TreeValues<T> {
@@ -131,21 +131,21 @@ impl<T> Tree<T> {
         Some(path)
     }
 
-    /// Being an insert transaction.
-    /// The transaction has to be committed before the value is written to
-    /// the tree.
-    /// ```
-    /// # use anathema_store::tree::*;
-    /// let mut tree = Tree::empty();
-    /// let transaction = tree.insert(&[]);
-    /// let value_id = transaction.commit_child(1usize).unwrap();
-    /// let one = tree.get_ref_by_id(value_id).unwrap();
-    /// assert_eq!(*one, 1);
-    /// ```
-    pub fn insert<'tree>(&'tree mut self, parent: &'tree [u16]) -> InsertTransaction<'_, 'tree, T> {
-        panic!()
-        // InsertTransaction::new(self, parent)
-    }
+    // /// Being an insert transaction.
+    // /// The transaction has to be committed before the value is written to
+    // /// the tree.
+    // /// ```
+    // /// # use anathema_store::tree::*;
+    // /// let mut tree = Tree::empty();
+    // /// let transaction = tree.insert(&[]);
+    // /// let value_id = transaction.commit_child(1usize).unwrap();
+    // /// let one = tree.get_ref_by_id(value_id).unwrap();
+    // /// assert_eq!(*one, 1);
+    // /// ```
+    // pub fn insert<'tree>(&'tree mut self, parent: &'tree [u16]) -> InsertTransaction<'_, 'tree, T> {
+    //     panic!()
+    //     // InsertTransaction::new(self, parent)
+    // }
 
     /// Get a reference by value id
     pub fn get_ref_by_id(&self, node_id: ValueId) -> Option<&T> {

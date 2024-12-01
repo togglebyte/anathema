@@ -393,61 +393,60 @@ impl Widget for Border {
         id: WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        panic!()
-        // let attributes = ctx.attribs.get(id);
-        // self.sides = attributes
-        //     .get_val("sides")
-        //     .and_then(|s| Sides::try_from(s.deref()).ok())
-        //     .unwrap_or_default();
+        let attributes = ctx.attribute_storage.get_mut(id);
+        self.sides = attributes
+            .get_val("sides")
+            .and_then(|s| Sides::try_from(s.deref()).ok())
+            .unwrap_or_default();
 
-        // self.border_style = match attributes.get_val(BORDER_STYLE) {
-        //     None => BorderStyle::Thin,
-        //     Some(val) => {
-        //         let mut edges = DEFAULT_SLIM_EDGES;
-        //         let mut index = 0;
+        self.border_style = match attributes.get_val(BORDER_STYLE) {
+            None => BorderStyle::Thin,
+            Some(val) => {
+                let mut edges = DEFAULT_SLIM_EDGES;
+                let mut index = 0;
 
-        //         val.str_iter(|s| {
-        //             match s {
-        //                 "thin" => return ControlFlow::Break(()),
-        //                 "thick" => {
-        //                     edges = BorderStyle::Thick.edges();
-        //                     return ControlFlow::Break(());
-        //                 }
-        //                 _ => (),
-        //             }
+                val.str_iter(|s| {
+                    match s {
+                        "thin" => return ControlFlow::Break(()),
+                        "thick" => {
+                            edges = BorderStyle::Thick.edges();
+                            return ControlFlow::Break(());
+                        }
+                        _ => (),
+                    }
 
-        //             let mut glyphs = Glyphs::new(s);
-        //             while let Some(g) = glyphs.next(ctx.glyph_map) {
-        //                 edges[index] = g;
-        //                 index += 1;
-        //                 if index >= DEFAULT_SLIM_EDGES.len() {
-        //                     break;
-        //                 };
-        //             }
+                    let mut glyphs = Glyphs::new(s);
+                    while let Some(g) = glyphs.next(ctx.glyph_map) {
+                        edges[index] = g;
+                        index += 1;
+                        if index >= DEFAULT_SLIM_EDGES.len() {
+                            break;
+                        };
+                    }
 
-        //             ControlFlow::Break(())
-        //         });
-        //         BorderStyle::Custom(edges)
-        //     }
-        // };
-        // self.edges = self.border_style.edges();
+                    ControlFlow::Break(())
+                });
+                BorderStyle::Custom(edges)
+            }
+        };
+        self.edges = self.border_style.edges();
 
-        // let mut layout = BorderLayout {
-        //     min_width: attributes.get_usize(MIN_WIDTH),
-        //     min_height: attributes.get_usize(MIN_HEIGHT),
-        //     max_width: attributes.get_usize(MAX_WIDTH),
-        //     max_height: attributes.get_usize(MAX_HEIGHT),
-        //     height: attributes.get_usize(HEIGHT),
-        //     width: attributes.get_usize(WIDTH),
-        //     border_size: self.border_size(self.sides),
-        // };
+        let mut layout = BorderLayout {
+            min_width: attributes.get_usize(MIN_WIDTH),
+            min_height: attributes.get_usize(MIN_HEIGHT),
+            max_width: attributes.get_usize(MAX_WIDTH),
+            max_height: attributes.get_usize(MAX_HEIGHT),
+            height: attributes.get_usize(HEIGHT),
+            width: attributes.get_usize(WIDTH),
+            border_size: self.border_size(self.sides),
+        };
 
-        // layout.layout(children, constraints, ctx)
+        layout.layout(children, constraints, ctx)
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
@@ -468,7 +467,7 @@ impl Widget for Border {
 
     fn paint<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,

@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_templates::blueprints::Blueprint;
 
-use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
+use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach, PositionChildren};
 use crate::{AttributeStorage, EvalContext, LayoutForEach, LayoutChildren, PaintChildren, WidgetId};
@@ -64,7 +64,7 @@ impl Container {
 
     pub(crate) fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
@@ -81,7 +81,7 @@ impl Container {
 
     pub(crate) fn paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PaintChildren<'_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
@@ -94,6 +94,8 @@ impl Container {
         ctx.set_clip_region(region);
 
         let attributes = attribute_storage.get(self.id);
+
+        let size = self.cache.size;
 
         // Apply all attributes
         for y in 0..self.cache.size.height as u16 {

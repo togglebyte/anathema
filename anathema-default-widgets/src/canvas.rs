@@ -204,7 +204,7 @@ impl Widget for Canvas {
 
     fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PositionChildren<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -214,7 +214,7 @@ impl Widget for Canvas {
 
     fn paint<'bp>(
         &mut self,
-        _children: ForEach<'_, 'bp>,
+        _children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,

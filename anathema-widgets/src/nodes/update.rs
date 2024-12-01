@@ -7,7 +7,8 @@ use super::loops::LOOP_INDEX;
 use super::WidgetContainer;
 use crate::error::Result;
 use crate::values::ValueId;
-use crate::{Scope, WidgetKind, WidgetTree};
+use crate::widget::WidgetTreeView;
+use crate::{AttributeStorage, Scope, ValueIndex, WidgetKind, WidgetTree};
 
 struct UpdateTree<'a, 'b, 'bp> {
     change: &'a Change,
@@ -20,70 +21,74 @@ impl<'a, 'b, 'bp> PathFinder for UpdateTree<'a, 'b, 'bp> {
     type Output = Result<()>;
 
     fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
-        scope_value(&node.kind, self.ctx.scope, &[]);
-        update_widget(&mut node.kind, &mut self.ctx, self.value_id, self.change, path, tree)?;
+        panic!("old hat, don't use the path finder anymore, use the new ForEach");
+        // scope_value(&node.kind, self.ctx.scope, &[]);
+        // update_widget(&mut node.kind, &mut self.ctx, self.value_id, self.change, path, tree)?;
         Ok(())
     }
 
     fn parent(&mut self, parent: &mut WidgetContainer<'bp>, sub_path: &[u16]) {
-        scope_value(&parent.kind, self.ctx.scope, sub_path);
+        panic!("old hat, don't use the path finder anymore, use the new ForEach");
+        // scope_value(&parent.kind, self.ctx.scope, sub_path);
     }
 }
 
-/// Scan the widget tree using the node path.
-/// Build up the scope from the parent nodes.
-pub fn update_tree<'bp>(
-    change: &Change,
-    value_id: ValueId,
-    path: &[u16],
-    tree: &mut WidgetTree<'bp>,
-    ctx: EvalContext<'_, '_, 'bp>,
-) {
-    let update = UpdateTree { change, value_id, ctx };
-    tree.apply_path_finder(path, update);
-}
-
-fn update_widget<'bp>(
-    widget: &mut WidgetKind<'bp>,
-    ctx: &mut EvalContext<'_, '_, 'bp>,
+pub fn update_widget<'bp>(
+    widget: &mut WidgetContainer<'bp>,
+    // ctx: &mut EvalContext<'_, '_, 'bp>,
     value_id: ValueId,
     change: &Change,
     path: &[u16],
-    tree: &mut WidgetTree<'bp>,
+    tree: WidgetTreeView<'_, 'bp>,
 ) -> Result<()> {
     // Tell all widgets they need layout
 
-    match widget {
+    match &mut widget.kind {
         WidgetKind::Element(..) => {
             // Reflow of the layout will be triggered by the runtime and not in this step
 
             // Any dropped dyn value should register for future updates.
             // This is done by reloading the value, making it empty
+
+            // TODO
+            // Can we pass in the attribute storage here and just set the value to a future value?
+            // Is this even needed given the layout for_each?
             if let Change::Dropped = change {
-                ctx.attribute_storage
-                    .with_mut(value_id.key(), |attributes, attribute_storage| {
-                        if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
-                            value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, attribute_storage);
-                        }
-                    });
+                // ctx.attribute_storage
+                //     .with_mut(value_id.key(), |attributes, attribute_storage| {
+                //         if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
+                //             value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, attribute_storage);
+                //         }
+                //     });
             }
         }
-        WidgetKind::For(for_loop) => for_loop.update(ctx, change, value_id, path, tree)?,
+        WidgetKind::For(for_loop) => for_loop.update(change, value_id, tree)?,
         WidgetKind::Iteration(_) => todo!(),
         // but rather the ControlFlow is managing
         // these in the layout process instead, as
         // the ControlFlow has access to all the
         // branches.
-        WidgetKind::ControlFlow(_) => unreachable!("update is never called on ControlFlow, only the children"),
-        WidgetKind::If(_) | WidgetKind::Else(_) => (), // If / Else are not updated by themselves
+        WidgetKind::ControlFlow(controlflow) => {
+            controlflow
+                .elses
+                .iter_mut()
+                .enumerate()
+                .filter_map(|(id, cf)| cf.cond.as_mut().map(|cond| (id, cond)))
+                .for_each(|(id, cond)| {
+                    if ValueIndex::from(id) == value_id.index() {
+                    }
+
+                });
+        }
+        WidgetKind::ControlFlowContainer(_) => unreachable!("control flow containers have no values"),
         WidgetKind::Component(component) => {
             if let Change::Dropped = change {
-                ctx.attribute_storage
-                    .with_mut(component.widget_id, |attributes, component_attributes| {
-                        if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
-                            value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, component_attributes);
-                        }
-                    });
+                // ctx.attribute_storage
+                //     .with_mut(component.widget_id, |attributes, component_attributes| {
+                //         if let Some(value) = attributes.get_mut_with_index(value_id.index()) {
+                //             value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, component_attributes);
+                //         }
+                //     });
             }
         }
     }
@@ -91,25 +96,27 @@ fn update_widget<'bp>(
     Ok(())
 }
 
-pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>, children: &[u16]) {
-    match widget {
-        WidgetKind::For(for_loop) => match children {
-            [next, ..] => {
-                let index = *next as usize;
-                for_loop.collection.scope(scope, for_loop.binding, index);
-            }
-            [] => {}
-        },
-        WidgetKind::Iteration(iter) => {
-            scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
-        }
-        WidgetKind::Component(component) => {
-            scope.scope_component_attributes(component.widget_id);
+// pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>, children: &[u16]) {
+//     match widget {
+//         WidgetKind::For(for_loop) => match children {
+//             [next, ..] => {
+//                 panic!("this should not be used, instead this should happen in the LayoutForEach");
+//                 // let index = *next as usize;
+//                 // for_loop.collection.scope(scope, for_loop.binding, index);
+//             }
+//             [] => {}
+//         },
+//         WidgetKind::Iteration(iter) => {
+//             scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
+//         }
+//         WidgetKind::Component(component) => {
+//             scope.scope_component_attributes(component.widget_id);
 
-            // Insert internal state
-            let state_id = component.state_id();
-            scope.insert_state(state_id);
-        }
-        WidgetKind::ControlFlow(_) | WidgetKind::Element(Element { .. }) | WidgetKind::If(_) | WidgetKind::Else(_) => {}
-    }
-}
+//             // Insert internal state
+//             let state_id = component.state_id();
+//             scope.insert_state(state_id);
+//         }
+//         _ => panic!("let's remove this in favour of the local tree impl"),
+//         // WidgetKind::ControlFlow(_) | WidgetKind::Element(Element { .. }) | WidgetKind::If(_) | WidgetKind::Else(_) => {}
+//     }
+// }

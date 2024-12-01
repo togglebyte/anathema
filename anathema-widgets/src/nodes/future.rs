@@ -3,7 +3,7 @@ use anathema_store::tree::PathFinder;
 use super::element::Element;
 use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
-use super::update::scope_value;
+// use super::update::scope_value;
 use super::WidgetContainer;
 use crate::error::{Error, Result};
 use crate::expressions::{eval, eval_collection};
@@ -22,20 +22,23 @@ impl<'a, 'b, 'bp> PathFinder for ResolveFutureValues<'a, 'b, 'bp> {
     fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
         // if the widget is a component, defer scoping the value until afterwards
         if !matches!(node.kind, WidgetKind::Component(_)) {
-            scope_value(&node.kind, self.ctx.scope, &[]);
+            panic!("let's not use this anymore")
+            // scope_value(&node.kind, self.ctx.scope, &[]);
         }
 
         try_resolve_value(&mut node.kind, &mut self.ctx, self.value_id, path, tree)?;
 
         if matches!(node.kind, WidgetKind::Component(_)) {
-            scope_value(&node.kind, self.ctx.scope, &[]);
+            panic!("let's not use this anymore")
+            // scope_value(&node.kind, self.ctx.scope, &[]);
         }
 
         Ok(())
     }
 
     fn parent(&mut self, parent: &mut WidgetContainer<'bp>, children: &[u16]) {
-        scope_value(&parent.kind, self.ctx.scope, children);
+        panic!("let's not use this anymore")
+        // scope_value(&parent.kind, self.ctx.scope, children);
     }
 }
 
@@ -149,33 +152,34 @@ fn try_resolve_value<'bp>(
             //     ctx.scope.pop();
             // }
         }
-        WidgetKind::If(widget) => {
-            if let Some(expr) = widget.cond.expr {
-                let value = eval(
-                    expr,
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.attribute_storage,
-                    value_id,
-                );
-                widget.cond = value;
-            }
-        }
-        WidgetKind::Else(el) => {
-            let Some(val) = &mut el.cond else { return Ok(()) };
-            if let Some(expr) = val.expr {
-                *val = eval(
-                    expr,
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.attribute_storage,
-                    value_id,
-                );
-            }
-        }
+        // WidgetKind::If(widget) => {
+        //     if let Some(expr) = widget.cond.expr {
+        //         let value = eval(
+        //             expr,
+        //             ctx.globals,
+        //             ctx.scope,
+        //             ctx.states,
+        //             ctx.attribute_storage,
+        //             value_id,
+        //         );
+        //         widget.cond = value;
+        //     }
+        // }
+        // WidgetKind::Else(el) => {
+        //     let Some(val) = &mut el.cond else { return Ok(()) };
+        //     if let Some(expr) = val.expr {
+        //         *val = eval(
+        //             expr,
+        //             ctx.globals,
+        //             ctx.scope,
+        //             ctx.states,
+        //             ctx.attribute_storage,
+        //             value_id,
+        //         );
+        //     }
+        // }
         WidgetKind::ControlFlow(_) => unreachable!(),
+        WidgetKind::ControlFlowContainer(_) => unreachable!(),
         WidgetKind::Iteration(_) => unreachable!(),
         WidgetKind::Component(component) => {
             ctx.attribute_storage

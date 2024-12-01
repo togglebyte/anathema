@@ -8,7 +8,8 @@ use crate::expressions::eval_collection;
 use crate::nodes::EvalContext;
 use crate::scope::Scope;
 use crate::values::{Collection, ValueId};
-use crate::{eval_blueprint, Value, WidgetTree};
+use crate::widget::WidgetTreeView;
+use crate::{eval_blueprint, AttributeStorage, Value, WidgetId, WidgetTree};
 
 pub(super) const LOOP_INDEX: &str = "loop";
 
@@ -22,20 +23,20 @@ pub struct For<'bp> {
 
 impl<'bp> For<'bp> {
     pub(super) fn scope_value(&self, scope: &mut Scope<'bp>, index: usize) {
-        self.collection.scope(scope, self.binding, index)
+        panic!("don't use this, this is for the old collections. The Iter should do this part")
+        // self.collection.scope(scope, self.binding, index)
     }
 
     pub(crate) fn collection(&self) -> &Collection<'_> {
         self.collection.inner()
     }
 
-    pub(crate) fn update(
+    pub(super) fn update(
         &mut self,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        // ctx: &mut EvalContext<'_, '_, 'bp>,
         change: &Change,
         value_id: ValueId,
-        path: &[u16],
-        tree: &mut WidgetTree<'bp>,
+        mut tree: WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         match change {
             Change::Inserted(index, value) => {
@@ -43,27 +44,21 @@ impl<'bp> For<'bp> {
                 // 2. Create new iteration
                 // 3. Insert new iteration
                 // 4. Update index of all subsequent iterations
-                // 5. Scope new value
-                // 6. Eval body
 
-                ctx.scope.push();
-                ctx.scope.scope_pending(self.binding, *value);
+                // ctx.scope.push();
+                // ctx.scope.scope_pending(self.binding, *value);
 
-                let insert_at = new_node_path(path, *index as u16);
+                let path = [*index as u16];
+                let transaction = tree.insert(&path);
                 let widget = WidgetKind::Iteration(Iteration {
                     loop_index: anathema_state::Value::new(*index as i64),
                     binding: self.binding,
                 });
                 let widget = WidgetContainer::new(widget, &self.body);
+                let _ = transaction.commit_at(widget).ok_or(Error::TreeTransactionFailed)?;
 
-                let iter_id = tree
-                    .insert(&insert_at)
-                    .commit_at(widget)
-                    .ok_or(Error::TreeTransactionFailed)?;
-
-                // Bump the index for every subsequent sibling of the newly inserted node
-                tree.children_after(&insert_at, |node, values| {
-                    let iter_widget = values.get_mut(node.value());
+                for child in &tree.layout[*index as usize + 1..] {
+                    let iter_widget = tree.values.get_mut(child.value());
                     let Some((
                         _,
                         WidgetContainer {
@@ -75,59 +70,25 @@ impl<'bp> For<'bp> {
                         unreachable!()
                     };
                     *iter.loop_index.to_mut() += 1;
-                });
-
-                tree.with_value_mut(iter_id, |parent, iter_widget, tree| {
-                    // NOTE
-                    // The value has to be scoped to the current binding and not
-                    // the iteration, since the collection might've changed more than once
-                    // and differ from what's represented by the tree.
-                    //
-                    // E.g
-                    // Two inserts at 0 would result in scoping the same value twice:
-                    // the current values in the collection at position 0.
-                    //
-                    // If the list starts out with ["a"]
-                    // The tree will contain a ValueRef -> "a".
-                    //
-                    // If two values are added to the list:
-                    // list.insert(0, "b");
-                    // list.insert(0, "c");
-                    //
-                    // The change output will be Change::Insert(0, "b")
-                    // The change output will be Change::Insert(0, "c")
-                    //
-                    // However the list is ["c", "b", "a"] before the first
-                    // change is applied, which would lead to scoping `"c" to `0`
-                    // twice.
-                    let WidgetKind::Iteration(ref iter) = iter_widget.kind else { unreachable!() };
-                    ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
-
-                    // for bp in self.body {
-                    //     eval_blueprint(bp, ctx, parent, tree)?;
-                    // }
-
-                    Ok(())
-                })?;
-
-                ctx.scope.pop();
+                }
             }
             Change::Removed(index) => {
-                let child_to_remove = new_node_path(path, *index as u16);
-                tree.remove(&child_to_remove);
+                let path = [*index as u16];
+                let child_to_remove = new_node_path(&path, *index as u16);
+                tree.relative_remove(&[*index as u16]);
             }
             Change::Dropped => {
-                tree.remove_children(path);
+                tree.relative_remove(&[]);
 
-                // TODO unwrap, ewww
-                self.collection = eval_collection(
-                    self.collection.expr.unwrap(), // Map None to an error
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.attribute_storage,
-                    value_id,
-                );
+                // // TODO unwrap, ewww
+                // self.collection = eval_collection(
+                //     self.collection.expr.unwrap(), // Map None to an error
+                //     ctx.globals,
+                //     ctx.scope,
+                //     ctx.states,
+                //     ctx.attribute_storage,
+                //     value_id,
+                // );
 
                 // for index in 0..self.collection.count() {
                 //     self.scope_value(ctx.scope, index);
@@ -165,6 +126,8 @@ impl<'bp> For<'bp> {
                 //      layout using cached constraints and size.
                 //      If the size changes, then this has to be propagate
                 //      throughout the widget tree
+                //
+                // NOTE: This comment was written 12,000 years ago, is this still relevant?
             }
         }
 

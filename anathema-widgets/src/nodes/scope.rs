@@ -2,10 +2,9 @@ use std::fmt::{self, Debug, Write};
 
 use anathema_debug::DebugWriter;
 use anathema_state::{Path, PendingValue, StateId, States};
-use anathema_templates::Expression;
 
-use crate::expressions::{Downgraded, EvalValue, NameThis};
-use crate::values::ValueId;
+use crate::expressions::{Downgraded, EvalValue};
+use crate::values::{Collection, ValueId};
 use crate::WidgetId;
 
 #[derive(Debug)]
@@ -30,8 +29,6 @@ enum Entry<'bp> {
     Scope(usize),
     Downgraded(Path<'bp>, Downgraded<'bp>),
     Pending(Path<'bp>, PendingValue),
-    Expressions(Path<'bp>, &'bp [Expression]),
-    Expression(Path<'bp>, &'bp Expression),
     State(StateId),
     ComponentAttributes(WidgetId),
     /// This is marking the entry as free, and another entry can be written here.
@@ -41,12 +38,10 @@ enum Entry<'bp> {
 }
 
 impl<'bp> Entry<'bp> {
-    fn get(&self, lookup: Path<'_>) -> Option<&Self> {
+    fn get(&self, lookup: &ScopeLookup<'bp>) -> Option<&Self> {
         match self {
-            Self::Downgraded(path, _) if *path == lookup => Some(self),
-            Self::Pending(path, _) if *path == lookup => Some(self),
-            Self::Expression(path, _) if *path == lookup => Some(self),
-            Self::Expressions(path, _) if *path == lookup => Some(self),
+            Self::Downgraded(path, _) if *path == lookup.path => Some(self),
+            Self::Pending(path, _) if *path == lookup.path => Some(self),
             Self::State(_) => Some(self),
             _ => None,
         }
@@ -64,12 +59,6 @@ impl Debug for Entry<'_> {
                 f.debug_tuple("ComponentAttributes").field(&component_id).finish()
             }
             Entry::Empty => f.debug_tuple("Empty").finish(),
-            Entry::Expressions(binding, expressions) => {
-                f.debug_tuple("Expressions").field(binding).field(expressions).finish()
-            }
-            Entry::Expression(binding, expression) => {
-                f.debug_tuple("Expression").field(binding).field(expression).finish()
-            }
         }
     }
 }
@@ -127,34 +116,30 @@ impl<'bp> Scope<'bp> {
         self.storage_index += 1;
     }
 
-    fn inner_get(&self, lookup: &ScopeLookup<'bp>, offset: &mut Option<usize>, _states: &States) -> NameThis<'bp> {
+    fn inner_get(
+        &self,
+        lookup: &ScopeLookup<'bp>,
+        offset: &mut Option<usize>,
+        _states: &States,
+    ) -> Option<EvalValue<'bp>> {
         let mut current_offset = offset.unwrap_or(self.storage.len());
 
         loop {
-            let Some((new_offset, entry)) = self.storage[..current_offset]
+            let (new_offset, entry) = self.storage[..current_offset]
                 .iter()
                 .enumerate()
                 .rev()
-                .find_map(|(i, e)| e.get(lookup.path).map(|e| (i, e)))
-            else {
-                return NameThis::Nothing;
-            };
+                .find_map(|(i, e)| e.get(lookup).map(|e| (i, e)))?;
 
             current_offset = new_offset;
             *offset = Some(new_offset);
 
             match entry {
                 // Pending
-                Entry::Pending(_, pending) => break EvalValue::Dyn(pending.to_value(lookup.id)).into(),
+                Entry::Pending(_, pending) => break Some(EvalValue::Dyn(pending.to_value(lookup.id))),
 
                 // Downgraded
-                Entry::Downgraded(_, downgrade) => break downgrade.upgrade(lookup.id).into(),
-
-                // Expression
-                Entry::Expression(path, expression) => break NameThis::ResolveThisNow(expression),
-
-                // Expressions
-                Entry::Expressions(path, expressions) => panic!(),
+                Entry::Downgraded(_, downgrade) => break Some(downgrade.upgrade(lookup.id)),
 
                 // State value
                 // &Entry::State(state_id) => {
@@ -168,15 +153,6 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub(crate) fn get_expressions(&self, b: Path<'_>) -> Option<&'bp [Expression]> {
-        self.storage.iter().rev().find_map(|e| match e {
-            Entry::Expressions(binding, expressions) if b.eq(binding) => Some(*expressions),
-            _ => None,
-        })
-    }
-
-    // This gets the most recently scoped state.
-    //
     // There is always a state for each component
     // (if no explicit state is given a unit is assumed)
     //
@@ -204,17 +180,17 @@ impl<'bp> Scope<'bp> {
                 _ => None,
             })
             // Note that this `expect` is false until we force a root component
-            .expect("there should always be at least one attribute entry")
+            .expect("there should always be at least one state entry")
     }
 
     /// Get can never return an eval value that is downgraded or pending
-    pub(crate) fn get(&self, lookup: ScopeLookup<'bp>, offset: &mut Option<usize>, states: &States) -> NameThis<'bp> {
+    pub(crate) fn get(
+        &self,
+        lookup: ScopeLookup<'bp>,
+        offset: &mut Option<usize>,
+        states: &States,
+    ) -> Option<EvalValue<'bp>> {
         self.inner_get(&lookup, offset, states)
-    }
-
-    pub fn insert_state(&mut self, state_id: StateId) {
-        let entry = Entry::State(state_id);
-        self.insert_entry(entry);
     }
 
     pub(crate) fn push(&mut self) {
@@ -236,20 +212,12 @@ impl<'bp> Scope<'bp> {
         self.level -= 1;
     }
 
+    // -----------------------------------------------------------------------------
+    //   - Scope values -
+    // -----------------------------------------------------------------------------
+
     pub(crate) fn scope_pending(&mut self, key: &'bp str, iter_value: PendingValue) {
         let entry = Entry::Pending(Path::from(key), iter_value);
-        self.insert_entry(entry);
-    }
-
-    // TODO: scope this expression at the scope level for which it was inserted.
-    pub(crate) fn scope_expression(&mut self, key: &'bp str, expression: &'bp Expression) {
-        let entry = Entry::Expression(Path::from(key), expression);
-        self.insert_entry(entry);
-    }
-
-    // TODO: scope this expression at the scope level for which it was inserted.
-    pub(crate) fn scope_expressions(&mut self, key: &'bp str, expressions: &'bp [Expression]) {
-        let entry = Entry::Expressions(Path::from(key), expressions);
         self.insert_entry(entry);
     }
 
@@ -263,78 +231,21 @@ impl<'bp> Scope<'bp> {
         self.insert_entry(entry);
     }
 
-    pub(crate) fn scope_indexed(&mut self, binding: &'bp str, index: usize, mut offset: Option<usize>) {
-        // 1. find the value by binding
+    // -----------------------------------------------------------------------------
+    //   - Insert -
+    // -----------------------------------------------------------------------------
 
-        let mut current_offset = offset.unwrap_or(self.storage.len());
-
-        loop {
-            let Some((new_offset, entry)) = self.storage[..current_offset]
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(i, e)| e.get(binding.into()).map(|e| (i, e)))
-            else {
-                return;
-            };
-
-            current_offset = new_offset;
-            offset = Some(new_offset);
-
-            // Loops only scope pending values or collections
-            match entry {
-                // Pending
-                Entry::Pending(_, pending) => {
-                    let Some(value) = pending.as_state(|state| state.state_lookup(index.into())) else { break };
-                    let entry = Entry::Pending(binding.into(), value);
-                    self.insert_entry(entry);
-                }
-
-                // // Expressions
-                Entry::Expressions(path, expressions) => {
-                    let expression = &expressions[index];
-                    let entry = Entry::Expression(binding.into(), expression);
-                    self.insert_entry(entry);
-                }
-
-                // State value
-                // &Entry::State(state_id) => {
-                //     let state = states.get(state_id)?;
-                //     if let Some(value) = state.state_get(lookup.path, lookup.id) {
-                //         break Some(EvalValue::Dyn(value));
-                //     }
-                // }
-                _ => continue,
-            };
-
-
-        }
-
-        // let value_id = ValueId::from((iter.widget_id, SmallIndex::ZERO));
-        // let lookup = ScopeLookup::new(iter.binding, value_id);
-        // match ctx.scope.get_expressions(iter.binding.into()) {
-        //     Some(exprs) => {
-        //         ctx.scope.scope_expression(iter.binding, &exprs[loop_index]);
-        //     }
-        //     None => match ctx.scope.get(lookup, &mut None, ctx.states) {
-        //         crate::expressions::NameThis::Nothing => panic!("missing collection"),
-        //         crate::expressions::NameThis::Value(eval_value) => {
-        //             match eval_value.get(loop_index.into(), value_id, ctx.states, ctx.attribute_storage) {
-        //                 crate::expressions::NameThis::Nothing => todo!(),
-        //                 crate::expressions::NameThis::Value(eval_value) => {
-        //                     ctx.scope.scope_downgrade(iter.binding, eval_value.downgrade())
-        //                 }
-        //                 crate::expressions::NameThis::ResolveThisNow(expr) => {
-        //                     ctx.scope.scope_expression(iter.binding, expr)
-        //                 }
-        //             }
-        //         }
-        //         crate::expressions::NameThis::ResolveThisNow(expr) => {
-        //             unreachable!()
-        //         }
-        //     },
-        // }
+    pub fn insert_state(&mut self, state_id: StateId) {
+        let entry = Entry::State(state_id);
+        self.insert_entry(entry);
     }
+
+    pub fn insert_collection(&mut self, binding: &'bp str, collection: &Collection<'bp>) {
+        panic!();
+        // let entry = Entry::State(state_id);
+        // self.insert_entry(entry);
+    }
+
 }
 
 pub struct DebugScope<'a, 'b>(pub &'a Scope<'b>);

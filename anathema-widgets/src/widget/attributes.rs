@@ -166,10 +166,11 @@ impl<'bp> Attributes<'bp> {
     /// This will convert any state value of any numerical type
     /// into a `usize`.
     /// This will truncate any bits don't fit into a usize.
-    pub fn get_usize(&self, key: &'bp str) -> Option<usize> {
+    pub fn get_usize(&mut self, key: &'bp str) -> Option<usize> {
         let key = ValueKey::Attribute(key);
 
         let value = self.values.get(&key)?;
+        let snark = value.load_common_val();
         value
             .load_common_val()
             .and_then(|e| e.load_number().map(|n| n.as_uint()))

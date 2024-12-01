@@ -121,7 +121,7 @@ impl Widget for Text {
 
     fn paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PaintChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
@@ -166,7 +166,7 @@ impl Widget for Text {
 
     fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PositionChildren<'_, 'bp>,
         _attributes: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         _ctx: PositionCtx,
@@ -193,7 +193,7 @@ impl Widget for Span {
 
     fn position<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp>,
+        children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PositionCtx,

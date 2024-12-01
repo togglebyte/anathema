@@ -1,3 +1,4 @@
+use anathema_store::smallmap::SmallIndex;
 use anathema_store::tree::Generator;
 use anathema_templates::blueprints::Blueprint;
 use loops::LOOP_INDEX;
@@ -6,13 +7,15 @@ pub use self::element::Element;
 use self::eval::{ComponentEval, ControlFlowEval, EvalContext, Evaluator, ForLoopEval, SingleEval};
 pub use self::future::try_resolve_future_values;
 pub use self::stringify::Stringify;
-pub use self::update::update_tree;
+pub use self::update::update_widget;
 use crate::error::Result;
+use crate::scope::ScopeLookup;
+use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
 use crate::WidgetTree;
 
 mod component;
-mod controlflow;
+pub(crate) mod controlflow;
 pub(crate) mod element;
 pub(crate) mod eval;
 mod future;
@@ -37,12 +40,10 @@ impl<'a, 'b, 'bp> Generator<WidgetContainer<'bp>, EvalContext<'a, 'b, 'bp>> for 
         Self: Sized,
     {
         match &value.kind {
-            WidgetKind::Element(el) => WidgetGenerator::Children(value.children),
+            WidgetKind::Element(_) | WidgetKind::ControlFlowContainer(_) => WidgetGenerator::Children(value.children),
             WidgetKind::For(for_loop) => WidgetGenerator::Loop(value.children),
             WidgetKind::Iteration(iter) => todo!(),
             WidgetKind::ControlFlow(cf) => todo!(),
-            WidgetKind::If(_) => todo!(),
-            WidgetKind::Else(_) => todo!(),
             WidgetKind::Component(_) => todo!(),
         }
     }
@@ -78,9 +79,10 @@ pub enum WidgetKind<'bp> {
     Element(Element<'bp>),
     For(loops::For<'bp>),
     Iteration(loops::Iteration<'bp>),
-    ControlFlow(controlflow::ControlFlow),
-    If(controlflow::If<'bp>),
-    Else(controlflow::Else<'bp>),
+    ControlFlow(controlflow::ControlFlow<'bp>),
+    ControlFlowContainer(u16),
+    // If(controlflow::If<'bp>),
+    // Else(controlflow::Else<'bp>),
     Component(component::Component<'bp>),
 }
 
@@ -100,45 +102,50 @@ impl<'bp> WidgetContainer<'bp> {
 
     pub(crate) fn push_scope(&self, ctx: &mut EvalContext<'_, '_, 'bp>) {
         match &self.kind {
-            WidgetKind::Element(_) => todo!(),
             WidgetKind::For(for_loop) => {
                 ctx.scope.push();
-                for_loop.collection.scope(scope, for_loop.binding)
-                ctx.scope.scope_pending(for_loop.binding, iter.loop_index.to_pending());
+                for_loop.collection.scope_collection(ctx.scope, for_loop.binding);
             }
             WidgetKind::Iteration(iter) => {
                 ctx.scope.push();
-                for_loop.collection.scope(scope, for_loop.binding)
-                ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
-                ctx.scope.scope_pending(iter.binding, iter.loop_index);
-
-                See `scope_values` in nodes/update.rs and see if that already 
-                does what we need? The for loop seems a bit sus, how does it work
-                with the children?
+                let loop_index = *iter.loop_index.to_ref() as usize;
+                ctx.scope.scope_indexed(iter.binding, loop_index, None);
             }
-            WidgetKind::ControlFlow(_) => todo!(),
-            WidgetKind::If(_) => todo!(),
-            WidgetKind::Else(_) => todo!(),
-            WidgetKind::Component(_) => todo!(),
+            WidgetKind::Component(component) => {
+                ctx.scope.push();
+                ctx.scope.scope_component_attributes(component.widget_id);
+
+                // Insert internal state
+                let state_id = component.state_id();
+                ctx.scope.insert_state(state_id);
+            }
+            WidgetKind::Element(_) => (),
+            WidgetKind::ControlFlow(_) => (),
+            WidgetKind::ControlFlowContainer(_) => (),
         }
-        todo!()
     }
 
     pub(crate) fn pop_scope(&self, ctx: &mut EvalContext<'_, '_, 'bp>) {
         match &self.kind {
-            WidgetKind::Element(_) => todo!(),
-            WidgetKind::For(for_loop) => {
-                ctx.scope.pop();
-            }
-            WidgetKind::Iteration(_) => {
-                ctx.scope.pop();
-            }
-            WidgetKind::ControlFlow(_) => todo!(),
-            WidgetKind::If(_) => todo!(),
-            WidgetKind::Else(_) => todo!(),
-            WidgetKind::Component(_) => todo!(),
+            WidgetKind::Iteration(_) | WidgetKind::For(_) | WidgetKind::Component(_) => ctx.scope.pop(),
+            _ => (),
         }
-        todo!()
+    }
+
+    pub(crate) fn resolve_pending_values(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>) {
+        match &mut self.kind {
+            WidgetKind::Element(element) => todo!(),
+            WidgetKind::For(_) => todo!(),
+            WidgetKind::ControlFlow(controlflow) => {
+                let e = &mut controlflow.elses[0];
+                let c = e.cond.as_mut().unwrap();
+                c.reload_val();
+            }
+            WidgetKind::ControlFlowContainer(_) => (),
+            WidgetKind::Iteration(iteration) => (),
+            WidgetKind::Component(component) => todo!(),
+        }
+        // todo!()
     }
 }
 

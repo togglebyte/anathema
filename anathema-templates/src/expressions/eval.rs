@@ -14,11 +14,11 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
         Expr::Primitive(val) => Expression::Primitive(val),
         Expr::Ident(string_id) => {
             let string = strings.get_unchecked(string_id);
-            Expression::Ident(Rc::from(string))
+            Expression::Ident(string)
         }
         Expr::Str(string_id) => {
             let string = strings.get_unchecked(string_id);
-            Expression::Str(Rc::from(string))
+            Expression::Str(string)
         }
         Expr::Array { lhs, index } => {
             let lhs = eval(*lhs, strings)?;
@@ -117,7 +117,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
 
             Expression::Call {
                 fun: eval(*fun, strings)?.into(),
-                args: args.into_boxed_slice(),
+                args,
             }
         }
     };

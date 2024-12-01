@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use anathema_store::slab::Element;
+use anathema_store::slab::RcElement;
 use anathema_store::store::{OwnedKey, SharedKey};
 
 pub use self::list::List;
@@ -183,7 +183,7 @@ impl<'a, T: 'static> Drop for Unique<'a, T> {
 // -----------------------------------------------------------------------------
 #[derive(Default)]
 enum ElementState {
-    Alive(Element<Box<dyn AnyState>>),
+    Alive(RcElement<Box<dyn AnyState>>),
     #[default]
     Dropped,
 }
@@ -222,7 +222,7 @@ pub struct Shared<'a, T: 'static> {
 }
 
 impl<'a, T> Shared<'a, T> {
-    fn new(key: SharedKey, value: Element<Box<dyn AnyState>>) -> Self {
+    fn new(key: SharedKey, value: RcElement<Box<dyn AnyState>>) -> Self {
         Self {
             state: SharedState::new(key, value),
             _p: PhantomData,
@@ -271,7 +271,7 @@ pub struct SharedState<'a> {
 }
 
 impl<'a> SharedState<'a> {
-    fn new(key: SharedKey, state: Element<Box<dyn AnyState>>) -> Self {
+    fn new(key: SharedKey, state: RcElement<Box<dyn AnyState>>) -> Self {
         Self {
             key,
             inner: ElementState::Alive(state),

@@ -19,7 +19,7 @@ impl Widget for Container {
     ) -> Size {
         let mut size = Size::ZERO;
 
-        let attribs = ctx.attribute_storage.get(id);
+        let attribs = ctx.attribute_storage.get_mut(id);
 
         if let Some(width) = attribs.get_usize(WIDTH) {
             constraints.make_width_tight(width);
@@ -29,21 +29,21 @@ impl Widget for Container {
             constraints.make_height_tight(height);
         }
 
-        if let Some(width) = attribs.get_usize(MIN_WIDTH) {
-            constraints.min_width = width;
-        }
+        // if let Some(width) = attribs.get_usize(MIN_WIDTH) {
+        //     constraints.min_width = width;
+        // }
 
-        if let Some(height) = attribs.get_usize(MIN_HEIGHT) {
-            constraints.min_height = height;
-        }
+        // if let Some(height) = attribs.get_usize(MIN_HEIGHT) {
+        //     constraints.min_height = height;
+        // }
 
-        if let Some(width) = attribs.get_usize(MAX_WIDTH) {
-            constraints.set_max_width(width);
-        }
+        // if let Some(width) = attribs.get_usize(MAX_WIDTH) {
+        //     constraints.set_max_width(width);
+        // }
 
-        if let Some(height) = attribs.get_usize(MAX_HEIGHT) {
-            constraints.set_max_height(height);
-        }
+        // if let Some(height) = attribs.get_usize(MAX_HEIGHT) {
+        //     constraints.set_max_height(height);
+        // }
         
         children.each(ctx, |ctx, child, children| {
             size = child.layout(children, constraints, ctx);
@@ -58,7 +58,7 @@ impl Widget for Container {
 
     fn position<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,

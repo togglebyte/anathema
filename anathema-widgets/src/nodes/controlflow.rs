@@ -1,55 +1,92 @@
 use anathema_store::tree::{Node, TreeValues};
-use anathema_templates::blueprints::Blueprint;
-
-use crate::expressions::EvalValue;
-use crate::{Value, WidgetKind};
+use anathema_templates::blueprints::{self, Blueprint};
 
 use super::WidgetContainer;
+use crate::expressions::EvalValue;
+use crate::widget::WidgetTreeView;
+use crate::{Value, WidgetKind};
 
 #[derive(Debug)]
-pub struct ControlFlow;
+pub struct ControlFlow<'bp> {
+    // pub if_node: If<'bp>,
+    pub elses: Vec<Else<'bp>>,
+}
 
-impl ControlFlow {
-    pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetContainer<'_>>) {
-        // Once an if / else is set to true, everything else should be set to false.
-        let mut was_set = false;
-
-        for node in children {
-            let Some((_, widget)) = values.get_mut(node.value()) else { continue };
-            match &mut widget.kind {
-                WidgetKind::If(widget) => {
-                    if widget.is_true() {
-                        widget.show = true;
-                        was_set = true;
-                    } else {
-                        widget.show = false;
-                    }
-                }
-                WidgetKind::Else(widget) => {
-                    if was_set {
-                        widget.show = false;
-                    } else if widget.is_true() {
-                        widget.show = true;
-                        was_set = true;
-                    }
-                }
-                _ => unreachable!(),
-            }
+impl ControlFlow<'_> {
+    pub(crate) fn has_changed(&self, children: &WidgetTreeView<'_, '_>) -> bool {
+        let child_count = children.layout_len();
+        if child_count != 1 {
+            return true;
         }
+
+        let branch_id = self.current_branch_id(children);
+
+        // Check if another branch id before this has become true, 
+        // if so this has changed.
+        if self.elses[..branch_id as usize].iter().any(|e| e.is_true()) {
+            return true;
+        }
+
+        // If the current branch is false, the value has changed,
+        // as it has to have been true at one point to become
+        // the current branch.
+        !self.elses[branch_id as usize].is_true()
+    }
+
+    fn current_branch_id(&self, children: &WidgetTreeView<'_, '_>) -> u16 {
+        let node_id = children.layout[0].value();
+        let (path, widget) = children
+            .values
+            .get(node_id)
+            .expect("because the node exists, the value exist");
+
+        let WidgetKind::ControlFlowContainer(id) = widget.kind else { unreachable!() };
+        id
     }
 }
 
-#[derive(Debug)]
-pub struct If<'bp> {
-    pub cond: Value<'bp, EvalValue<'bp>>,
-    pub show: bool,
-}
+// impl ControlFlow<'_> {
+//     pub(crate) fn update(&self, children: &[Node], values: &mut TreeValues<WidgetContainer<'_>>) {
+//         // Once an if / else is set to true, everything else should be set to false.
+//         let mut was_set = false;
 
-impl If<'_> {
-    pub(crate) fn is_true(&self) -> bool {
-        self.cond.load_common_val().map(|v| v.load_bool()).unwrap_or(false)
-    }
-}
+//         for node in children {
+//             let Some((_, widget)) = values.get_mut(node.value()) else { continue };
+//             match &mut widget.kind {
+//                 WidgetKind::If(widget) => {
+//                     if widget.is_true() {
+//                         widget.show = true;
+//                         was_set = true;
+//                     } else {
+//                         widget.show = false;
+//                     }
+//                 }
+//                 WidgetKind::Else(widget) => {
+//                     if was_set {
+//                         widget.show = false;
+//                     } else if widget.is_true() {
+//                         widget.show = true;
+//                         was_set = true;
+//                     }
+//                 }
+//                 _ => unreachable!(),
+//             }
+//         }
+//     }
+// }
+
+// #[derive(Debug)]
+// pub struct If<'bp> {
+//     pub cond: Value<'bp, EvalValue<'bp>>,
+//     pub body: &'bp [Blueprint],
+//     pub show: bool,
+// }
+
+// impl If<'_> {
+//     pub(crate) fn is_true(&self) -> bool {
+//         self.cond.load_common_val().map(|v| v.load_bool()).unwrap_or(false)
+//     }
+// }
 
 #[derive(Debug)]
 pub struct Else<'bp> {

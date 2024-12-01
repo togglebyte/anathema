@@ -1,4 +1,4 @@
-use anathema_store::slab::Element;
+use anathema_store::slab::RcElement;
 use anathema_store::store::{OwnedKey, SharedKey};
 
 use super::{ValueKey, OWNED, SHARED, SUBSCRIBERS};
@@ -32,8 +32,8 @@ pub(crate) fn get_unique(key: OwnedKey) -> Box<dyn AnyState> {
 
 // Try to make an owned value into a shared value, if it isn't already.
 // To get access to another shared instance of the value, call this function again.
-pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box<dyn AnyState>>)> {
-    fn lookup_shared(key: SharedKey) -> Element<Box<dyn AnyState>> {
+pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<Box<dyn AnyState>>)> {
+    fn lookup_shared(key: SharedKey) -> RcElement<Box<dyn AnyState>> {
         SHARED.with(|shared| shared.get(key))
     }
 
@@ -62,8 +62,8 @@ pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element
 //
 // This function assumes the value exists and should be limited to `Value<T>`.
 // If there is a chance the value is no longer present use `try_make_shared` instead.
-pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, Element<Box<dyn AnyState>>)> {
-    fn lookup_shared(key: SharedKey) -> Element<Box<dyn AnyState>> {
+pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<Box<dyn AnyState>>)> {
+    fn lookup_shared(key: SharedKey) -> RcElement<Box<dyn AnyState>> {
         SHARED.with(|shared| shared.get(key))
     }
 

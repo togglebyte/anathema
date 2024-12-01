@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use anathema_state::ValueRef;
+use anathema_state::{PendingValue, ValueRef};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::Expression;
 
@@ -121,6 +121,7 @@ pub(crate) enum Collection<'bp> {
     ///     text x
     /// ```
     Static(Box<[EvalValue<'bp>]>),
+    Static2(&'bp [Expression]),
     /// This will (probably) resolve to a collection from a state.
     Dyn(ValueRef),
     /// Index value.
@@ -135,29 +136,50 @@ impl<'bp> Collection<'bp> {
     pub(crate) fn count(&self) -> usize {
         match self {
             Self::Static(e) => e.len(),
-            Self::Dyn(value_ref) => {
-                let Some(state) = value_ref.as_state() else { return 0 };
-                state.count()
-            }
+            Self::Static2(e) => e.len(),
+            Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
             Self::Index(collection, _) => collection.count(),
             Self::Future => 0,
         }
     }
 
-    pub(crate) fn scope(&self, scope: &mut Scope<'bp>, binding: &'bp str, index: usize) {
+    pub(crate) fn scope_collection(&self, scope: &mut Scope<'bp>, binding: &'bp str) {
         match self {
-            Collection::Static(values) => {
-                let downgrade = values[index].downgrade();
-                scope.scope_downgrade(binding, downgrade);
-            }
+            Collection::Static(_) => panic!("this variant should be removed"),
+            Collection::Static2(expressions) => scope.scope_expressions(binding, expressions),
             Collection::Dyn(value_ref) => {
-                let Some(value) = value_ref.as_state().and_then(|state| state.state_lookup(index.into())) else {
-                    return;
-                };
-                scope.scope_pending(binding, value)
+                let pending = value_ref.to_pending();
+                scope.scope_pending(binding, pending);
             }
-            Collection::Index(collection, _) => collection.scope(scope, binding, index),
-            Collection::Future => {}
+            Collection::Index(collection, eval_value) => collection.scope_collection(scope, binding),
+            Collection::Future => (),
+            // for x in state.list[y[i]] 
+            // Values that can change:
+            // * state.list
+            // * y
+            // * i
         }
     }
+
+    // pub(crate) fn scope(&self, scope: &mut Scope<'bp>, binding: &'bp str, index: usize) {
+    //     match self {
+    //         Collection::Static2(expressions) => {
+    //             // scope.scope_expressions(binding, downgrade);
+    //             panic!("still figuring this one out")
+    //         }
+    //         Collection::Static(values) => {
+    //             let downgrade = values[index].downgrade();
+    //             scope.scope_downgrade(binding, downgrade);
+    //         }
+    //         Collection::Dyn(value_ref) => {
+    //             let value = value_ref
+    //                 .as_state()
+    //                 .and_then(|state| state.state_lookup(index.into()))
+    //                 .unwrap(); // TODO: unwrap...
+    //             scope.scope_pending(binding, value)
+    //         }
+    //         Collection::Index(collection, _) => collection.scope(scope, binding, index),
+    //         Collection::Future => {}
+    //     }
+    // }
 }

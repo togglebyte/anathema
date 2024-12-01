@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::rc::Rc;
 
 use crate::primitives::Primitive;
 
@@ -32,9 +31,9 @@ pub enum Equality {
 pub enum Expression {
     // Value types
     Primitive(Primitive),
-    Str(Rc<str>),
-    List(Rc<[Self]>),
-    Map(Rc<HashMap<Rc<str>, Self>>),
+    Str(String),
+    List(Vec<Self>),
+    Map(HashMap<String, Self>),
 
     // Unary
     Not(Box<Self>),
@@ -44,7 +43,7 @@ pub enum Expression {
     Equality(Box<Self>, Box<Self>, Equality),
 
     // Lookup
-    Ident(Rc<str>),
+    Ident(String),
     Index(Box<Self>, Box<Self>),
 
     // Operations
@@ -54,7 +53,7 @@ pub enum Expression {
     Either(Box<Self>, Box<Self>),
 
     // Function call
-    Call { fun: Box<Self>, args: Box<[Self]> },
+    Call { fun: Box<Self>, args: Vec<Self> },
 }
 
 impl From<Box<Expression>> for Expression {
@@ -215,7 +214,7 @@ pub fn list<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expr
 
 pub fn map<E: Into<Expression>>(input: impl IntoIterator<Item = (&'static str, E)>) -> Box<Expression> {
     let input = input.into_iter().map(|(k, v)| (k.into(), v.into()));
-    let hm: HashMap<Rc<str>, Expression> = HashMap::from_iter(input);
+    let hm: HashMap<String, Expression> = HashMap::from_iter(input);
     Expression::Map(hm.into()).into()
 }
 
