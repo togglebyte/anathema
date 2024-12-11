@@ -37,8 +37,7 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_widget, AttributeStorage, Components, DirtyWidgets, EvalContext,
-    Factory, FloatingWidgets, GlyphMap, LayoutForEach, Scope, WidgetKind, WidgetTree,
+    eval_blueprint, try_resolve_future_values, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Scope, WidgetKind, WidgetTree
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -214,6 +213,7 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
             document: self.document,
             viewport: Viewport::new((width, height)),
             floating_widgets: FloatingWidgets::empty(),
+            changelist: ChangeList::empty(),
             components: Components::new(),
             event_handler: EventHandler::new(self.global_events),
         };
@@ -274,6 +274,7 @@ pub struct Runtime<T, G> {
     component_registry: ComponentRegistry,
     // * Layout
     floating_widgets: FloatingWidgets,
+    changelist: ChangeList,
 }
 
 impl<T> Runtime<T, ()>
@@ -321,25 +322,10 @@ where
             return;
         }
 
-        // let mut scope = Scope::new();
-        // self.future_values.drain().rev().for_each(|sub| {
-        //     scope.clear();
-        //     let path = tree.path(sub);
-
-        //     let ctx = EvalContext::new(
-        //         globals,
-        //         &self.factory,
-        //         &mut scope,
-        //         states,
-        //         &mut self.component_registry,
-        //         attribute_storage,
-        //         &mut self.floating_widgets,
-        //         &mut self.components,
-        //         &mut self.dirty_widgets,
-        //     );
-
-        //     try_resolve_future_values(sub, &path, tree, ctx);
-        // });
+        for sub in self.future_values.drain().rev() {
+            self.changelist.insert(sub.key(), sub);
+            self.dirty_widgets.push(sub.key());
+        }
     }
 
     fn apply_changes<'bp>(
@@ -354,27 +340,11 @@ where
         if self.changes.is_empty() {
             return;
         }
-
-        let mut scope = Scope::new();
-
-        // let mut ctx = EvalContext::new(
-        //     globals,
-        //     &self.factory,
-        //     &mut scope,
-        //     states,
-        //     &mut self.component_registry,
-        //     attribute_storage,
-        //     &mut self.floating_widgets,
-        //     &mut self.components,
-        //     &mut self.dirty_widgets,
-        //     &self.viewport,
-        //     &mut self.glyph_map,
-        //     false,
-        // );
-
+        
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
                 self.dirty_widgets.push(sub.key());
+                self.changelist.insert(sub.key(), sub);
 
                 let mut tree = tree.view_mut();
                 tree.with_value_mut(sub.key(), |path, widget, tree| {
@@ -534,6 +504,7 @@ where
             &mut self.component_registry,
             &mut attribute_storage,
             &mut self.floating_widgets,
+            &mut self.changelist,
             &mut self.components,
             &mut self.dirty_widgets,
             &self.viewport,
@@ -757,6 +728,7 @@ where
                 &mut self.component_registry,
                 attribute_storage,
                 &mut self.floating_widgets,
+                &mut self.changelist,
                 &mut self.components,
                 &mut self.dirty_widgets,
                 &self.viewport,

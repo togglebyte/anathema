@@ -18,7 +18,7 @@ use crate::layout::Viewport;
 use crate::values::{Collection, ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey, WidgetTreeView};
 use crate::{
-    eval_blueprint, AttributeStorage, DirtyWidgets, Factory, GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree,
+    eval_blueprint, AttributeStorage, ChangeList, DirtyWidgets, Factory, GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree
 };
 
 /// Evaluation context
@@ -29,6 +29,7 @@ pub struct EvalContext<'a, 'b, 'bp> {
     pub(super) states: &'b mut States,
     pub(super) component_registry: &'b mut ComponentRegistry,
     pub(super) floating_widgets: &'b mut FloatingWidgets,
+    pub(super) changelist: &'b mut ChangeList,
     pub(super) components: &'b mut Components,
     pub dirty_widgets: &'b mut DirtyWidgets,
     pub(super) parent: Option<WidgetId>,
@@ -47,6 +48,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
         component_registry: &'b mut ComponentRegistry,
         attribute_storage: &'b mut AttributeStorage<'bp>,
         floating_widgets: &'b mut FloatingWidgets,
+        changelist: &'b mut ChangeList,
         components: &'b mut Components,
         dirty_widgets: &'b mut DirtyWidgets,
         viewport: &'a Viewport,
@@ -61,6 +63,7 @@ impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
             component_registry,
             attribute_storage,
             floating_widgets,
+            changelist,
             components,
             dirty_widgets,
             parent: None,
@@ -226,24 +229,12 @@ impl Evaluator for ControlFlowEval {
         let widget_id = transaction.node_id();
 
         let widget = WidgetKind::ControlFlow(controlflow::ControlFlow {
-            // if_node: controlflow::If {
-            //     cond: eval(
-            //         &control_flow.if_node.cond,
-            //         ctx.globals,
-            //         ctx.scope,
-            //         ctx.states,
-            //         ctx.attribute_storage,
-            //         (widget_id, SmallIndex::ZERO),
-            //     ),
-            //     body: &control_flow.if_node.body,
-            //     show: false,
-            // },
             elses: control_flow
                 .elses
                 .iter()
                 .enumerate()
                 .map(|(i, e)| {
-                    let value_index = SmallIndex::from(i + 1);
+                    let value_index = SmallIndex::from(i);
 
                     controlflow::Else {
                         cond: e.cond.as_ref().map(|cond| {
@@ -253,7 +244,7 @@ impl Evaluator for ControlFlowEval {
                                 ctx.scope,
                                 ctx.states,
                                 ctx.attribute_storage,
-                                (widget_id, SmallIndex::ZERO),
+                                (widget_id, SmallIndex::from(i)),
                             )
                         }),
                         body: &e.body,

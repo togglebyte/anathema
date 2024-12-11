@@ -12,7 +12,7 @@ use crate::error::Result;
 use crate::scope::ScopeLookup;
 use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
-use crate::WidgetTree;
+use crate::{WidgetId, WidgetTree};
 
 mod component;
 pub(crate) mod controlflow;
@@ -132,18 +132,32 @@ impl<'bp> WidgetContainer<'bp> {
         }
     }
 
-    pub(crate) fn resolve_pending_values(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>) {
+    pub(crate) fn resolve_pending_values(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>, widget_id: WidgetId) {
+        let Some(mut changes) = ctx.changelist.drain(widget_id) else { return };
         match &mut self.kind {
-            WidgetKind::Element(element) => todo!(),
-            WidgetKind::For(_) => todo!(),
+            WidgetKind::Element(element) => {
+                ctx.attribute_storage.with_mut(widget_id, |attributes, storage| {
+                    for value_id in changes {
+                        let Some(value) = attributes.attribs.get_mut_with_index(value_id.index()) else { continue };
+                        value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, storage);
+                    }
+                });
+            }
+            WidgetKind::For(for_loop) => {
+                for value_id in changes {
+                    for_loop.collection.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, ctx.attribute_storage);
+                }
+            }
             WidgetKind::ControlFlow(controlflow) => {
-                let e = &mut controlflow.elses[0];
-                let c = e.cond.as_mut().unwrap();
-                c.reload_val();
+                for value_id in changes {
+                    for value in controlflow.elses.iter_mut().filter_map(|e| e.cond.as_mut()) {
+                        value.reload_val(value_id, ctx.globals, ctx.scope, ctx.states, ctx.attribute_storage);
+                    }
+                }
             }
             WidgetKind::ControlFlowContainer(_) => (),
             WidgetKind::Iteration(iteration) => (),
-            WidgetKind::Component(component) => todo!(),
+            WidgetKind::Component(component) => (),
         }
         // todo!()
     }

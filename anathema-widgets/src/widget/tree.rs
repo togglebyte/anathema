@@ -92,10 +92,11 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         let widget_count = self.tree.values.count_all_entries();
 
-        self.tree.with_value_mut(node.value(), |path, widget, mut children| {
+        let widget_id = node.value();
+        self.tree.with_value_mut(widget_id, |path, widget, mut children| {
             widget.push_scope(ctx);
 
-            widget.resolve_pending_values(ctx);
+            widget.resolve_pending_values(ctx, widget_id);
 
             let cf = match &mut widget.kind {
                 WidgetKind::Element(el) => {
@@ -124,6 +125,8 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 }
 
 // Generate the next available widget into the tree
+// TODO: break this down into more manageable code.
+//       this is a hot mess
 fn generate<'bp>(
     parent: Generator<'_, 'bp>,
     tree: &mut WidgetTreeView<'_, 'bp>,
@@ -217,7 +220,6 @@ fn generate<'bp>(
                         .as_ref()
                         .map(|cond| {
                             let val = cond.load_bool();
-                            // eprintln!("the value is {val:?}");
                             val
                         })
                         .unwrap_or(true);

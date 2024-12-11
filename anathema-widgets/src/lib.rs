@@ -1,4 +1,5 @@
 pub use scope::{DebugScope, Scope};
+use values::ValueId;
 pub use values::ValueIndex;
 
 pub use crate::nodes::eval::EvalContext;
@@ -13,6 +14,8 @@ pub use crate::widget::{
     FloatingWidgets, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
     WidgetTree,
 };
+
+pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, ValueId>;
 
 #[cfg(test)]
 mod testing;

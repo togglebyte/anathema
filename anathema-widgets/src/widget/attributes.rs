@@ -63,7 +63,7 @@ impl<'bp> AttributeStorage<'bp> {
 
 #[derive(Debug)]
 pub struct Attributes<'bp> {
-    pub(crate) values: Values<'bp>,
+    pub(crate) attribs: Values<'bp>,
     pub(crate) value: Option<SmallIndex>,
     widget_id: WidgetId,
 }
@@ -72,7 +72,7 @@ impl<'bp> Attributes<'bp> {
     /// Create an empty set of attributes
     pub fn empty(widget_id: WidgetId) -> Self {
         Self {
-            values: Values::empty(),
+            attribs: Values::empty(),
             value: None,
             widget_id,
         }
@@ -81,20 +81,20 @@ impl<'bp> Attributes<'bp> {
     /// Set the value
     pub fn set(&mut self, key: &'bp str, value: impl Into<CommonVal<'bp>>) {
         let value = value.into().into();
-        self.values.set(ValueKey::Attribute(key), value);
+        self.attribs.set(ValueKey::Attribute(key), value);
     }
 
     /// Resolve the value from a state and track it from the attributes.
     /// This means changes to the state value will update the attribute automatically
     pub fn set_pending(&mut self, key: &'bp str, value: PendingValue) {
         let key = ValueKey::Attribute(key);
-        match self.values.get_index(&key) {
+        match self.attribs.get_index(&key) {
             Some(idx) => {
                 let valueref = value.to_value((self.widget_id, idx).into());
-                self.values.set(key, valueref.into());
+                self.attribs.set(key, valueref.into());
             }
             None => {
-                self.values.insert_with(key, |idx| {
+                self.attribs.insert_with(key, |idx| {
                     let valueref = value.to_value((self.widget_id, idx).into());
                     valueref.into()
                 });
@@ -106,19 +106,19 @@ impl<'bp> Attributes<'bp> {
     where
         F: Fn(SmallIndex) -> Value<'bp, EvalValue<'bp>>,
     {
-        self.values.insert_with(key, f)
+        self.attribs.insert_with(key, f)
     }
 
     pub fn remove(&mut self, key: &'bp str) -> Option<Value<'_, EvalValue<'_>>> {
         let key = ValueKey::Attribute(key);
-        self.values.remove(&key)
+        self.attribs.remove(&key)
     }
 
     /// Get the `Value` out of attributes.
     /// This is always the first item
     pub fn value(&self) -> Option<&Value<'_, EvalValue<'_>>> {
         let idx = self.value?;
-        self.values.get_with_index(idx)
+        self.attribs.get_with_index(idx)
     }
 
     /// Get a copy of a value
@@ -147,7 +147,7 @@ impl<'bp> Attributes<'bp> {
     }
 
     pub fn get_val(&self, key: &str) -> Option<&Value<'bp, EvalValue<'bp>>> {
-        self.values.get(key)
+        self.attribs.get(key)
     }
 
     /// Get an integer regardless of how the value was stored.
@@ -156,7 +156,7 @@ impl<'bp> Attributes<'bp> {
     pub fn get_int(&self, key: &'bp str) -> Option<i64> {
         let key = ValueKey::Attribute(key);
 
-        let value = self.values.get(&key)?;
+        let value = self.attribs.get(&key)?;
         value
             .load_common_val()
             .and_then(|e| e.load_number().map(|n| n.as_int()))
@@ -166,10 +166,10 @@ impl<'bp> Attributes<'bp> {
     /// This will convert any state value of any numerical type
     /// into a `usize`.
     /// This will truncate any bits don't fit into a usize.
-    pub fn get_usize(&mut self, key: &'bp str) -> Option<usize> {
+    pub fn get_usize(&self, key: &'bp str) -> Option<usize> {
         let key = ValueKey::Attribute(key);
 
-        let value = self.values.get(&key)?;
+        let value = self.attribs.get(&key)?;
         let snark = value.load_common_val();
         value
             .load_common_val()
@@ -177,7 +177,7 @@ impl<'bp> Attributes<'bp> {
     }
 
     pub(crate) fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp, EvalValue<'bp>>> {
-        self.values.get_mut_with_index(index)
+        self.attribs.get_mut_with_index(index)
     }
 
     /// Treat the underlying value as a boolean.
@@ -189,7 +189,7 @@ impl<'bp> Attributes<'bp> {
     /// Iterate over attributes.
     /// This will skip the value
     pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &Value<'_, EvalValue<'_>>)> {
-        self.values.iter().filter(|(key, _)| match key {
+        self.attribs.iter().filter(|(key, _)| match key {
             ValueKey::Value => false,
             ValueKey::Attribute(_) => true,
         })
@@ -198,7 +198,7 @@ impl<'bp> Attributes<'bp> {
     /// Returns true if the attributes contains the key
     pub fn contains(&self, key: &'bp str) -> bool {
         let key = ValueKey::Attribute(key);
-        self.values.get(&key).is_some()
+        self.attribs.get(&key).is_some()
     }
 }
 

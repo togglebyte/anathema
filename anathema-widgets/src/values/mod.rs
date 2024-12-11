@@ -84,6 +84,24 @@ impl<'bp> Value<'bp, EvalValue<'bp>> {
     }
 }
 
+impl<'bp> Value<'bp, Collection<'bp>> {
+    /// Re-evaluate the value if it has been removed.
+    /// This will replace the inner value with an empty EvalValue
+    /// and register the value for future changes
+    pub(crate) fn reload_val(
+        &mut self,
+        id: ValueId,
+        globals: &'bp anathema_templates::Globals,
+        scope: &Scope<'bp>,
+        states: &anathema_state::States,
+        attribute_storage: &AttributeStorage<'bp>,
+    ) {
+        let Some(expr) = self.expr else { return };
+        let Value { inner, .. } = crate::expressions::eval_collection(expr, globals, scope, states, attribute_storage, id);
+        self.inner = inner;
+    }
+}
+
 impl<'bp, T> Deref for Value<'bp, T> {
     type Target = T;
 
@@ -160,26 +178,4 @@ impl<'bp> Collection<'bp> {
             // * i
         }
     }
-
-    // pub(crate) fn scope(&self, scope: &mut Scope<'bp>, binding: &'bp str, index: usize) {
-    //     match self {
-    //         Collection::Static2(expressions) => {
-    //             // scope.scope_expressions(binding, downgrade);
-    //             panic!("still figuring this one out")
-    //         }
-    //         Collection::Static(values) => {
-    //             let downgrade = values[index].downgrade();
-    //             scope.scope_downgrade(binding, downgrade);
-    //         }
-    //         Collection::Dyn(value_ref) => {
-    //             let value = value_ref
-    //                 .as_state()
-    //                 .and_then(|state| state.state_lookup(index.into()))
-    //                 .unwrap(); // TODO: unwrap...
-    //             scope.scope_pending(binding, value)
-    //         }
-    //         Collection::Index(collection, _) => collection.scope(scope, binding, index),
-    //         Collection::Future => {}
-    //     }
-    // }
 }

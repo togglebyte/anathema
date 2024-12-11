@@ -691,6 +691,10 @@ pub(crate) fn eval_collection<'bp>(
     let mut resolver = Resolver::root(scope, states, attributes, globals, value_id);
     let value = resolver.resolve(expr);
 
+    if resolver.register_future_value {
+        register_future(value_id);
+    }
+
     let collection = match value {
         EvalValue::Dyn(val) => Collection::Dyn(val),
         EvalValue::ExprList(list) => Collection::Static2(list),

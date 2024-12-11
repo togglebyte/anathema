@@ -6,7 +6,7 @@ use super::{Index, Ticket};
 /// A generation associated with a key.
 /// The generation is used to ensure that the same key can be reused without retaining
 /// a reference to old data.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd)]
 #[repr(transparent)]
 pub struct Gen(u16);
 
@@ -36,7 +36,7 @@ impl From<usize> for Gen {
 ///
 /// Bits 0..48: 48-bit key
 /// Bits 48..64 are the 16-bit generation
-#[derive(Copy, Clone, PartialEq, Hash, Eq)]
+#[derive(Copy, Clone, PartialEq, Hash, Eq, PartialOrd)]
 pub struct Key(u64);
 
 impl Key {
@@ -69,6 +69,11 @@ impl Key {
         (self.0 << Self::GEN_BITS >> Self::GEN_BITS) as usize
     }
 
+    /// This gets the index of the key, this is used for debugging only
+    pub const fn debug_index(&self) -> usize {
+        (self.0 << Self::GEN_BITS >> Self::GEN_BITS) as usize
+    }
+
     /// Get the key generation
     pub const fn gen(&self) -> Gen {
         Gen((self.0 >> Self::INDEX_BITS) as u16)
@@ -83,9 +88,9 @@ impl Debug for Key {
 
 impl From<(usize, usize)> for Key {
     fn from((index, gen): (usize, usize)) -> Self {
-        let gen = (gen as u64) << Self::INDEX_BITS;
+        let gen = (gen as u64) >> Self::INDEX_BITS;
         let index = (index as u64) << Self::GEN_BITS >> Self::GEN_BITS;
-        Self(gen & index)
+        Self(gen | index)
     }
 }
 
@@ -569,5 +574,14 @@ mod test {
         let index = index.bump();
 
         assert_eq!(index.gen().0, 0);
+    }
+
+    #[test]
+    fn from_values() {
+        let index = 123;
+        let gen = 456;
+        let key = Key::from((index, gen));
+        assert_eq!(key.index(), index);
+        assert_eq!(key.gen(), gen);
     }
 }

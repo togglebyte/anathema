@@ -69,16 +69,15 @@ pub fn update_widget<'bp>(
         // the ControlFlow has access to all the
         // branches.
         WidgetKind::ControlFlow(controlflow) => {
-            controlflow
-                .elses
-                .iter_mut()
-                .enumerate()
-                .filter_map(|(id, cf)| cf.cond.as_mut().map(|cond| (id, cond)))
-                .for_each(|(id, cond)| {
-                    if ValueIndex::from(id) == value_id.index() {
-                    }
-
-                });
+            // controlflow
+            //     .elses
+            //     .iter_mut()
+            //     .enumerate()
+            //     .filter_map(|(id, cf)| cf.cond.as_mut().map(|cond| (id, cond)))
+            //     .for_each(|(id, cond)| {
+            //         if ValueIndex::from(id) == value_id.index() {
+            //         }
+            //     });
         }
         WidgetKind::ControlFlowContainer(_) => unreachable!("control flow containers have no values"),
         WidgetKind::Component(component) => {
