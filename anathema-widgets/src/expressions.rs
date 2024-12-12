@@ -95,7 +95,8 @@ pub enum EvalValue<'bp> {
     Pending(PendingValue),
     // Map(HashMap<&'bp str, EvalValue<'bp>>),
     ExprList(&'bp [Expression]),
-    Map2(&'bp HashMap<String, Expression>),
+    List(Box<[EvalValue<'bp>]>),
+    Map(&'bp HashMap<String, Expression>),
 
     // Operations
     Negative(Box<Self>),
@@ -126,7 +127,8 @@ impl<'bp> EvalValue<'bp> {
             //         .collect(),
             // ),
             Self::ExprList(list) => Self::ExprList(list),
-            Self::Map2(map) => Self::Map2(map),
+            Self::List(list) => panic!("copy should not be done on evaluated lists"),
+            Self::Map(map) => Self::Map(map),
             Self::Negative(val) => Self::Negative(val.copy_with_sub(value_id).into()),
             Self::Op(lhs, rhs, op) => Self::Op(
                 lhs.copy_with_sub(value_id).into(),
@@ -162,15 +164,18 @@ impl<'bp> EvalValue<'bp> {
                 }
                 Path::Key(_) => NameThis::Nothing,
             },
-            EvalValue::Map2(map) => match path {
-                Path::Key(key) => {
-                    match map.get(key) {
-                        Some(expr) => NameThis::ResolveThisNow(expr),
-                        None => NameThis::Nothing
-                    }
-                }
+            EvalValue::List(list) => match path {
+                Path::Index(idx) if idx >= list.len() => NameThis::Nothing,
+                Path::Index(idx) => NameThis::Value(list[idx].copy_with_sub(value_id)),
+                Path::Key(_) => NameThis::Nothing,
+            },
+            EvalValue::Map(map) => match path {
+                Path::Key(key) => match map.get(key) {
+                    Some(expr) => NameThis::ResolveThisNow(expr),
+                    None => NameThis::Nothing,
+                },
                 Path::Index(idx) => NameThis::Nothing,
-            }
+            },
             EvalValue::Dyn(value) => value
                 .as_state()
                 .and_then(|state| state.state_get(path, value_id))
@@ -186,13 +191,15 @@ impl<'bp> EvalValue<'bp> {
                 let value = match path {
                     Path::Key(key) => match attributes.get_val(key) {
                         Some(val) => val,
-                        None => todo!(),
+                        None => return NameThis::Nothing,
                     },
-                    Path::Index(_) => todo!(),
+                    Path::Index(_) => unreachable!("attributes are not indexed by numbers"),
                 };
                 NameThis::Value(value.copy_with_sub(value_id).into())
             }
-            EvalValue::Pending(_) => unreachable!("pending values are resolved by the scope and should never exist here"),
+            EvalValue::Pending(_) => {
+                unreachable!("pending values are resolved by the scope and should never exist here")
+            }
             // EvalValue::Map(map) => match path {
             //     Path::Key(key) => panic!("see expression list 2, do that here"), //Some(map.get(key).copy_with_sub(value_id)),
             //     Path::Index(_) => NameThis::Nothing,
@@ -223,7 +230,8 @@ impl<'bp> EvalValue<'bp> {
             //     Self::Map(map)
             // }
             Self::ExprList(list) => Self::ExprList(list),
-            Self::Map2(map) => Self::Map2(map),
+            Self::List(list) => Self::List(list.iter().map(|val| val.inner_downgrade()).collect()),
+            Self::Map(map) => Self::Map(map),
             Self::Negative(val) => Self::Negative(val.inner_downgrade().into()),
             Self::Op(lhs, rhs, op) => Self::Op(lhs.inner_downgrade().into(), rhs.inner_downgrade().into(), *op),
             Self::Not(val) => Self::Not(val.inner_downgrade().into()),
@@ -255,7 +263,8 @@ impl<'bp> EvalValue<'bp> {
             //     Self::Map(map)
             // }
             Self::ExprList(list) => Self::ExprList(list),
-            Self::Map2(map) => Self::Map2(map),
+            Self::List(list) => Self::List(list.iter().map(|val| val.inner_upgrade(value_id)).collect()),
+            Self::Map(map) => Self::Map(map),
             // Self::ExprList(list) => {
             //     let list = list.iter().map(Self::inner_downgrade).collect();
             //     Self::ExprList(list)
@@ -309,19 +318,13 @@ impl<'bp> EvalValue<'bp> {
     where
         F: FnMut(&str) -> ControlFlow<()>,
     {
-        panic!(
-            "Currently we are not able to have strings made up of lists. We need this. Make it a thing.
-            Maybe it's worth making a string value that is a composite value made up of multiple eval values?
-            This should only be used for strings"
-        );
-
         let val = match self {
-            // EvalValue::ExprList(list) => {
-            //     for value in list.iter() {
-            //         value.internal_str_iter(f)?;
-            //     }
-            //     ControlFlow::Continue(())
-            // }
+            EvalValue::List(list) => {
+                for value in list.iter() {
+                    value.internal_str_iter(f)?;
+                }
+                ControlFlow::Continue(())
+            }
             EvalValue::Static(val) => {
                 let s = val.to_common_str();
                 let s = s.as_ref();
@@ -356,8 +359,9 @@ impl<'bp> EvalValue<'bp> {
             EvalValue::Index(val, _) => val.load_common_val(),
             EvalValue::Pending(_) => None,
             // EvalValue::Map(_) => None,
-            EvalValue::Map2(_) => None,
+            EvalValue::Map(_) => None,
             EvalValue::ExprList(_) => None,
+            EvalValue::List(_) => None,
 
             // Operations
             EvalValue::Negative(expr) => expr.load_number().map(|n| -n).map(Into::into),
@@ -398,7 +402,7 @@ impl<'bp> EvalValue<'bp> {
                 Some(CommonVal::from(b).into())
             }
             EvalValue::ExprList(_) => unreachable!(),
-            EvalValue::Map2(_) => unreachable!(),
+            EvalValue::Map(_) => unreachable!(),
             EvalValue::Empty => None,
         }
     }
@@ -506,6 +510,7 @@ pub struct Resolver<'scope, 'bp> {
     states: &'scope States,
     attributes: &'scope AttributeStorage<'bp>,
     register_future_value: bool,
+    deferred: bool,
 }
 
 impl<'scope, 'bp> Resolver<'scope, 'bp> {
@@ -516,6 +521,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
         attributes: &'scope AttributeStorage<'bp>,
         globals: &'bp Globals,
         subscriber: ValueId,
+        deferred: bool,
     ) -> Self {
         Self {
             scope,
@@ -525,6 +531,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
             _scope_level,
             subscriber,
             register_future_value: false,
+            deferred,
         }
     }
 
@@ -534,11 +541,12 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
         attributes: &'scope AttributeStorage<'bp>,
         globals: &'bp Globals,
         subscriber: ValueId,
+        deferred: bool,
     ) -> Self {
-        Self::new(0, scope, states, attributes, globals, subscriber)
+        Self::new(0, scope, states, attributes, globals, subscriber, deferred)
     }
 
-    fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
+    pub(crate) fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
         match expression {
             // -----------------------------------------------------------------------------
             //   - Values -
@@ -552,11 +560,12 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
             //         .collect();
             //     EvalValue::Map(inner)
             // }
-            Expression::Map(map) => {
-                panic!()
-                // EvalValue::Map2(map),
+            Expression::Map(map) => EvalValue::Map(map),
+            Expression::List(list) if self.deferred => EvalValue::ExprList(list),
+            Expression::List(list) => {
+                let inner = list.iter().map(|expr| self.resolve(expr)).collect();
+                EvalValue::List(inner)
             }
-            Expression::List(list) => EvalValue::ExprList(list),
 
             // -----------------------------------------------------------------------------
             //   - Conditionals -
@@ -668,7 +677,7 @@ pub(crate) fn eval<'bp>(
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id);
+    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id, false);
     let value = resolver.resolve(expr);
 
     if resolver.register_future_value {
@@ -688,7 +697,7 @@ pub(crate) fn eval_collection<'bp>(
 ) -> Value<'bp, Collection<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id);
+    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id, true);
     let value = resolver.resolve(expr);
 
     if resolver.register_future_value {

@@ -107,55 +107,53 @@ impl Widget for Overflow {
     fn layout<'bp>(
         &mut self,
         children: LayoutForEach<'_, 'bp>,
-        constraints: Constraints,
+        mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        panic!()
+        // TODO: remove this -TB 2024-10-31
+        // // horrid log
+        // {
+        //     use std::io::Write;
+        //     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/log.lol").unwrap();
+        //     file.write(b"layout\n");
+        //     file.flush();
+        // }
 
-//         // TODO: remove this -TB 2024-10-31
-//         // // horrid log
-//         // {
-//         //     use std::io::Write;
-//         //     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/log.lol").unwrap();
-//         //     file.write(b"layout\n");
-//         //     file.flush();
-//         // }
+        let attributes = ctx.attribute_storage.get(id);
+        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
 
-//         let attributes = ctx.attribs.get(id);
-//         let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+        let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
 
-//         let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
+        match axis {
+            Axis::Horizontal => constraints.unbound_width(),
+            Axis::Vertical => constraints.unbound_height(),
+        }
 
-//         match axis {
-//             Axis::Horizontal => constraints.unbound_width(),
-//             Axis::Vertical => constraints.unbound_height(),
-//         }
+        if attributes.get_bool(UNCONSTRAINED) {
+            constraints.unbound_width();
+            constraints.unbound_height();
+        }
 
-//         if attributes.get_bool(UNCONSTRAINED) {
-//             constraints.unbound_width();
-//             constraints.unbound_height();
-//         }
+        if let Some(width) = attributes.get_usize(WIDTH) {
+            constraints.make_width_tight(width);
+        }
 
-//         if let Some(width) = attributes.get_usize(WIDTH) {
-//             constraints.make_width_tight(width);
-//         }
+        if let Some(height) = attributes.get_usize(HEIGHT) {
+            constraints.make_height_tight(height);
+        }
 
-//         if let Some(height) = attributes.get_usize(HEIGHT) {
-//             constraints.make_height_tight(height);
-//         }
+        self.direction = attributes.get(DIRECTION).unwrap_or_default();
 
-//         self.direction = attributes.get(DIRECTION).unwrap_or_default();
+        // Make `unconstrained` an enum instead of a `bool`
+        let unconstrained = true;
+        let mut many = Many::new(self.direction, axis, unconstrained);
 
-//         // Make `unconstrained` an enum instead of a `bool`
-//         let unconstrained = true;
-//         let mut many = Many::new(self.direction, axis, unconstrained);
+        let _size = many.layout(children, constraints, ctx);
 
-//         let _size = many.layout(children, constraints, ctx);
+        self.inner_size = many.used_size.inner_size();
 
-//         self.inner_size = many.used_size.inner_size();
-
-//         output_size
+        output_size
     }
 
     fn position<'bp>(

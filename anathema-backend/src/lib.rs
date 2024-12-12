@@ -105,7 +105,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
-        let mut for_each = LayoutForEach::new(self.tree.view_mut(), None);
+        let mut for_each = LayoutForEach::new(self.tree.view_mut());
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
             let _size = widget.layout(children, constraints, ctx);

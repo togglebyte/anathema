@@ -43,8 +43,12 @@ pub struct LayoutForEach<'a, 'bp> {
 }
 
 impl<'a, 'bp> LayoutForEach<'a, 'bp> {
-    pub fn new(tree: WidgetTreeView<'a, 'bp>, generator: Option<Generator<'a, 'bp>>) -> Self {
-        Self { tree, generator }
+    pub fn new(tree: WidgetTreeView<'a, 'bp>) -> Self {
+        Self { tree, generator: None }
+    }
+
+    fn with_generator(tree: WidgetTreeView<'a, 'bp>, generator: Generator<'a, 'bp>) -> Self {
+        Self { tree, generator: Some(generator) }
     }
 
     pub fn each<F>(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>, mut f: F) -> ControlFlow<()>
@@ -100,7 +104,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
             let cf = match &mut widget.kind {
                 WidgetKind::Element(el) => {
-                    let children = LayoutForEach::new(children, Some(Generator::Single(&widget.children)));
+                    let children = LayoutForEach::with_generator(children, Generator::Single(&widget.children));
                     f(ctx, el, children)
                 }
                 WidgetKind::ControlFlow(controlflow) => {
@@ -109,11 +113,11 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         children.relative_remove(&[0]);
                     }
                     let generator = Generator::from(&*widget);
-                    let mut children = LayoutForEach::new(children, Some(generator));
+                    let mut children = LayoutForEach::with_generator(children, generator);
                     children.inner_each(ctx, f)
                 }
                 _ => {
-                    let mut children = LayoutForEach::new(children, Some(Generator::from(&*widget)));
+                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
                     children.inner_each(ctx, f)
                 }
             };

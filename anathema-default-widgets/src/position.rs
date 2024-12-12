@@ -72,65 +72,64 @@ impl Widget for Position {
 
     fn layout<'bp>(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        panic!()
-        // let attribs = ctx.attribs.get(id);
-        // self.placement = attribs.get(PLACEMENT).unwrap_or_default();
+        let attribs = ctx.attribute_storage.get(id);
+        self.placement = attribs.get(PLACEMENT).unwrap_or_default();
 
-        // self.horz_edge = match attribs.get_int(LEFT) {
-        //     Some(left) => HorzEdge::Left(left as u32),
-        //     None => match attribs.get_int(RIGHT) {
-        //         Some(right) => HorzEdge::Right(right as u32),
-        //         None => HorzEdge::Left(0),
-        //     },
-        // };
+        self.horz_edge = match attribs.get_int(LEFT) {
+            Some(left) => HorzEdge::Left(left as u32),
+            None => match attribs.get_int(RIGHT) {
+                Some(right) => HorzEdge::Right(right as u32),
+                None => HorzEdge::Left(0),
+            },
+        };
 
-        // self.vert_edge = match attribs.get_int(TOP) {
-        //     Some(top) => VertEdge::Top(top as u32),
-        //     None => match attribs.get_int(BOTTOM) {
-        //         Some(bottom) => VertEdge::Bottom(bottom as u32),
-        //         None => VertEdge::Top(0),
-        //     },
-        // };
+        self.vert_edge = match attribs.get_int(TOP) {
+            Some(top) => VertEdge::Top(top as u32),
+            None => match attribs.get_int(BOTTOM) {
+                Some(bottom) => VertEdge::Bottom(bottom as u32),
+                None => VertEdge::Top(0),
+            },
+        };
 
-        // // Relative:
-        // // Position relative to parent means calculating a new constraint
-        // // based of the position of the top, left - the size
-        // //
-        // // Given a constraint of 10 x 10 and a left of 2 and a top of 3 it would
-        // // produce a new set of constraints at 8 x 7
-        // //
-        // // Absolute:
-        // // Position relative to the viewport,
-        // // Has no constraints
+        // Relative:
+        // Position relative to parent means calculating a new constraint
+        // based of the position of the top, left - the size
+        //
+        // Given a constraint of 10 x 10 and a left of 2 and a top of 3 it would
+        // produce a new set of constraints at 8 x 7
+        //
+        // Absolute:
+        // Position relative to the viewport,
+        // Has no constraints
 
-        // let constraints = match self.placement {
-        //     Placement::Relative => constraints,
-        //     Placement::Absolute => ctx.viewport.constraints(),
-        // };
+        let constraints = match self.placement {
+            Placement::Relative => constraints,
+            Placement::Absolute => ctx.viewport.constraints(),
+        };
 
-        // let mut size = Size::ZERO;
+        let mut size = Size::ZERO;
 
-        // children.for_each(|child, children| {
-        //     size = child.layout(children, constraints, ctx);
-        //     ControlFlow::Break(())
-        // });
+        children.each(ctx, |ctx, child, children| {
+            size = child.layout(children, constraints, ctx);
+            ControlFlow::Break(())
+        });
 
-        // size.width = match self.horz_edge {
-        //     HorzEdge::Left(left) => size.width + left as usize,
-        //     HorzEdge::Right(right) => constraints.max_width() - right as usize,
-        // };
+        size.width = match self.horz_edge {
+            HorzEdge::Left(left) => size.width + left as usize,
+            HorzEdge::Right(right) => constraints.max_width() - right as usize,
+        };
 
-        // size.height = match self.vert_edge {
-        //     VertEdge::Top(top) => size.height + top as usize,
-        //     VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
-        // };
+        size.height = match self.vert_edge {
+            VertEdge::Top(top) => size.height + top as usize,
+            VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
+        };
 
-        // size
+        size
     }
 
     fn position<'bp>(

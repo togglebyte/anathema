@@ -6,10 +6,9 @@ use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, State,
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::layout::{layout_widget, position_widget, Constraints, LayoutCtx, LayoutFilter, Viewport};
+use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_tree, AttributeStorage, Components, DirtyWidgets, Elements,
-    EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutChildren, Scope, Stringify, Widget, WidgetTree,
+    eval_blueprint, try_resolve_future_values, AttributeStorage, ChangeList, Components, DirtyWidgets, Elements, EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutChildren, LayoutForEach, Scope, Stringify, Widget, WidgetTree
 };
 
 #[macro_export]
@@ -35,6 +34,7 @@ pub struct TestCaseRunner<'bp, S> {
     attribute_storage: AttributeStorage<'bp>,
     dirty_widgets: DirtyWidgets,
     floating_widgets: FloatingWidgets,
+    changelist: ChangeList,
     states: States,
     component_registry: ComponentRegistry,
     future_values: FutureValues,
@@ -59,13 +59,26 @@ where
             &mut self.component_registry,
             &mut self.attribute_storage,
             &mut self.floating_widgets,
+            &mut self.changelist,
             &mut self.components,
             &mut self.dirty_widgets,
+            &self.viewport,
+            &mut self.glyph_map,
+            true
         );
 
-        eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree).unwrap();
+        // eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree.view_mut()).unwrap();
 
         // Non floating widgets
+        
+        let mut layout = LayoutForEach::new(self.tree.view_mut());
+        let constraints = self.viewport.constraints();
+        layout.each(&mut ctx, |ctx, widget, children| {
+            let _size = widget.layout(children, constraints, ctx);
+            ControlFlow::Break(())
+        });
+
+
         let mut filter = LayoutFilter::new(true, &self.attribute_storage);
         self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
             let mut layout_ctx = LayoutCtx::new(
@@ -75,6 +88,9 @@ where
                 &mut self.glyph_map,
                 true,
             );
+
+
+
             layout_widget(
                 widget,
                 children,
@@ -322,11 +338,11 @@ impl Widget for TestWidget {
         mut children: LayoutChildren<'_, '_, 'bp>,
         constraints: Constraints,
         _attributs: anathema_widgets::WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         let mut size = Size::new(1, 1);
 
-        children.for_each(|node, children| {
+        children.for_each(ctx, |ctx, node, children| {
             let widget_size = node.layout(children, constraints, ctx);
             size.width = size.width.max(widget_size.width);
             size.height += widget_size.height;
@@ -339,13 +355,13 @@ impl Widget for TestWidget {
 
     fn position<'bp>(
         &mut self,
-        mut children: anathema_widgets::PositionChildren<'_, '_, 'bp>,
+        mut children: anathema_widgets::PositionChildren<'_, 'bp>,
         _attributes: anathema_widgets::WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: anathema_widgets::layout::PositionCtx,
     ) {
         let mut pos = Pos::ZERO;
-        children.for_each(|node, children| {
+        children.each(|node, children| {
             node.position(children, pos, attribute_storage, ctx.viewport);
             pos.y += node.size().height as i32;
 

@@ -281,7 +281,7 @@ mod test {
                 collection.scope(&mut scope, "val", idx);
 
                 let expr = ident("val");
-                let output = Resolver::root(&scope, &states, &attributes, &globals, for_key).resolve(&expr);
+                let output = Resolver::root(&scope, &states, &attributes, &globals, for_key, false).resolve(&expr);
                 let int = output.load::<u32>().unwrap();
                 assert_eq!(int, 123 + idx as u32);
                 scope.pop();

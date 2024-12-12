@@ -35,23 +35,28 @@ impl DebugWriter for EvalValueDebug<'_> {
             EvalValue::Empty => write!(output, "<empty>"),
             EvalValue::Static(val) => write!(output, "{val:?}"),
             EvalValue::Pending(pending) => write!(output, "<pending {}>", usize::from(pending.owned_key())),
-            // EvalValue::Map(_) => todo!(),
-            EvalValue::Map2(_) => todo!(),
-            // EvalValue::ExprList(list) => {
-            //     write!(output, "[")?;
-            //     list.iter().for_each(|val| {
-            //         EvalValueDebug(val).write(output).unwrap();
-            //         write!(output, ", ").unwrap();
-            //     });
-            //     write!(output, "]")
-            // }
+            EvalValue::Map(_) => todo!(),
             EvalValue::Negative(_) => todo!(),
-            EvalValue::Op(_, _, _) => todo!(),
+            EvalValue::Op(lhs, rhs, op) => {
+                write!(output, "<op ")?;
+                EvalValueDebug(lhs).write(output)?;
+                write!(output, " {op:?} ")?;
+                EvalValueDebug(rhs).write(output)?;
+                write!(output, ">")
+            }
             EvalValue::Not(_) => todo!(),
             EvalValue::Equality(_, _, _) => todo!(),
             EvalValue::State(_) => todo!(),
             EvalValue::ComponentAttributes(_) => todo!(),
             EvalValue::ExprList(_) => todo!(),
+            EvalValue::List(list) => {
+                write!(output, "[")?;
+                list.iter().for_each(|val| {
+                    EvalValueDebug(val).write(output).unwrap();
+                    write!(output, ", ").unwrap();
+                });
+                write!(output, "]")
+            }
         }
     }
 }
@@ -111,11 +116,7 @@ impl DebugWriter for IterationDebug<'_> {
     fn write(&mut self, output: &mut impl Write) -> std::fmt::Result {
         let key = self.0.loop_index.key();
         let value = *self.0.loop_index.to_ref();
-        write!(
-            output,
-            "<iter binding = {}, index = {value}>",
-            self.0.binding,
-        )
+        write!(output, "<iter binding = {}, index = {value}>", self.0.binding,)
     }
 }
 

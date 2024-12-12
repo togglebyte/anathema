@@ -34,51 +34,50 @@ pub struct Padding(PaddingValues);
 impl Widget for Padding {
     fn layout<'bp>(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        panic!()
-        // let attributes = ctx.attribs.get(id);
-        // let mut size = Size::ZERO;
-        // let padding = attributes.get(PADDING).unwrap_or(0);
+        let attributes = ctx.attribute_storage.get(id);
+        let mut size = Size::ZERO;
+        let padding = attributes.get(PADDING).unwrap_or(0);
 
-        // self.0.top = attributes
-        //     .get_usize(TOP)
-        //     .and_then(|v| v.try_into().ok())
-        //     .unwrap_or(padding);
-        // self.0.right = attributes
-        //     .get_usize(RIGHT)
-        //     .and_then(|v| v.try_into().ok())
-        //     .unwrap_or(padding);
-        // self.0.bottom = attributes
-        //     .get_usize(BOTTOM)
-        //     .and_then(|v| v.try_into().ok())
-        //     .unwrap_or(padding);
-        // self.0.left = attributes
-        //     .get_usize(LEFT)
-        //     .and_then(|v| v.try_into().ok())
-        //     .unwrap_or(padding);
+        self.0.top = attributes
+            .get_usize(TOP)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
+        self.0.right = attributes
+            .get_usize(RIGHT)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
+        self.0.bottom = attributes
+            .get_usize(BOTTOM)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
+        self.0.left = attributes
+            .get_usize(LEFT)
+            .and_then(|v| v.try_into().ok())
+            .unwrap_or(padding);
 
-        // let padding_size = self.0.size();
+        let padding_size = self.0.size();
 
-        // children.for_each(|child, children| {
-        //     let mut child_constraints = constraints;
-        //     child_constraints.sub_max_width(padding_size.width);
-        //     child_constraints.sub_max_height(padding_size.height);
-        //     let mut child_size = child.layout(children, child_constraints, ctx);
-        //     child_size += padding_size;
-        //     size.width = child_size.width.max(size.width);
-        //     size.height = child_size.height.max(size.height);
+        children.each(ctx, |ctx, child, children| {
+            let mut child_constraints = constraints;
+            child_constraints.sub_max_width(padding_size.width);
+            child_constraints.sub_max_height(padding_size.height);
+            let mut child_size = child.layout(children, child_constraints, ctx);
+            child_size += padding_size;
+            size.width = child_size.width.max(size.width);
+            size.height = child_size.height.max(size.height);
 
-        //     ControlFlow::Break(())
-        // });
+            ControlFlow::Break(())
+        });
 
-        // size.width = constraints.min_width.max(size.width).min(constraints.max_width());
-        // size.height = constraints.min_height.max(size.height).min(constraints.max_height());
+        size.width = constraints.min_width.max(size.width).min(constraints.max_width());
+        size.height = constraints.min_height.max(size.height).min(constraints.max_height());
 
-        // size
+        size
     }
 
     fn position<'bp>(

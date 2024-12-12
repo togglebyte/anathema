@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema::CommonVal;
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
+use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
 
 pub static DIRECTION: &str = "direction";
 pub static AXIS: &str = "axis";
@@ -15,19 +15,18 @@ pub(crate) mod many;
 mod spacers;
 
 pub(crate) fn single_layout<'bp>(
-    mut children: LayoutChildren<'_, '_, 'bp>,
+    mut children: LayoutForEach<'_, 'bp>,
     constraints: Constraints,
-    ctx: &mut LayoutCtx<'_, 'bp>,
+    ctx: &mut EvalContext<'_, '_, 'bp>,
 ) -> Size {
-    panic!()
-    // let mut size = Size::ZERO;
+    let mut size = Size::ZERO;
 
-    // children.for_each(|node, children| {
-    //     size = node.layout(children, constraints, ctx);
-    //     ControlFlow::Break(())
-    // });
+    children.each(ctx, |ctx, node, children| {
+        size = node.layout(children, constraints, ctx);
+        ControlFlow::Break(())
+    });
 
-    // size
+    size
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]

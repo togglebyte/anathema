@@ -27,7 +27,7 @@ mod tree;
 
 pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
-pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetContainer<'bp>, LayoutFilter<'frame, 'bp>>;
+pub type LayoutChildren<'a, 'frame, 'bp> = LayoutForEach<'a, 'bp>;
 pub type PositionChildren<'a, 'bp> = ForEach<'a, 'bp, PositionFilter>;
 pub type PaintChildren<'a, 'bp> = ForEach<'a, 'bp, PainFilter>;
 pub type WidgetId = anathema_store::slab::Key;

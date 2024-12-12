@@ -18,20 +18,19 @@ impl Widget for Expand {
         id: WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
-        panic!()
-        // let mut size = single_layout(children, constraints, ctx);
+        let mut size = single_layout(children, constraints, ctx);
 
-        // let attributes = ctx.attribs.get(id);
-        // match attributes.get("axis") {
-        //     Some(Axis::Horizontal) => size.width = constraints.max_width(),
-        //     Some(Axis::Vertical) => size.height = constraints.max_height(),
-        //     None => {
-        //         size.width = constraints.max_width();
-        //         size.height = constraints.max_height();
-        //     }
-        // }
+        let attributes = ctx.attribute_storage.get(id);
+        match attributes.get("axis") {
+            Some(Axis::Horizontal) => size.width = constraints.max_width(),
+            Some(Axis::Vertical) => size.height = constraints.max_height(),
+            None => {
+                size.width = constraints.max_width();
+                size.height = constraints.max_height();
+            }
+        }
 
-        // size
+        size
     }
 
     fn position<'bp>(

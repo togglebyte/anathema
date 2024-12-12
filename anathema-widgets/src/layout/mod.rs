@@ -95,6 +95,7 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
     }
 }
 
+// TODO remove this?
 pub struct LayoutCtx<'a, 'bp> {
     pub attribs: &'a AttributeStorage<'bp>,
     pub dirty_widgets: &'a DirtyWidgets,
