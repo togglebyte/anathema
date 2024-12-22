@@ -22,19 +22,19 @@ pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
     pub(super) scope: Scope<'bp>,
-    pub(super) states: States,
+    pub(super) states: &'frame mut States,
     pub(super) globals: &'bp Globals,
-    pub(super) dirty_widgets: &'frame DirtyWidgets,
+    pub dirty_widgets: &'frame mut DirtyWidgets,
     factory: &'frame Factory,
-    pub(super) changelist: &'frame mut ChangeList,
+    pub changelist: &'frame mut ChangeList,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
-    components: &'frame mut Components,
+    pub components: &'frame mut Components,
     pub(super) force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
     pub viewport: Viewport,
 
     // Need these for the eval context
-    floating_widgets: &'frame mut FloatingWidgets,
+    pub floating_widgets: &'frame mut FloatingWidgets,
     component_registry: &'frame mut ComponentRegistry,
 }
 
@@ -42,19 +42,20 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
     pub fn new(
         globals: &'bp Globals,
         factory: &'frame Factory,
+        states: &'frame mut States,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
         components: &'frame mut Components,
         component_registry: &'frame mut ComponentRegistry,
         floating_widgets: &'frame mut FloatingWidgets,
         changelist: &'frame mut ChangeList,
         glyph_map: &'frame mut GlyphMap,
-        dirty_widgets: &'frame DirtyWidgets,
+        dirty_widgets: &'frame mut DirtyWidgets,
         viewport: Viewport,
         force_layout: bool,
     ) -> Self {
         Self {
             scope: Scope::new(),
-            states: States::new(),
+            states,
             attribute_storage,
             components,
             component_registry,
@@ -73,7 +74,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         self.dirty_widgets.contains(node_id) || self.force_layout
     }
 
-    pub(super) fn eval_ctx(&mut self) -> EvalCtx<'_, 'bp> {
+    pub fn eval_ctx(&mut self) -> EvalCtx<'_, 'bp> {
         EvalCtx {
             floating_widgets: self.floating_widgets,
             attribute_storage: self.attribute_storage,

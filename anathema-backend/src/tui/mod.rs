@@ -53,7 +53,6 @@ pub struct TuiBackendBuilder {
     enable_raw_mode: bool,
     enable_alt_screen: bool,
     enable_mouse: bool,
-    zero_cursor: bool,
 }
 
 impl TuiBackendBuilder {
@@ -132,7 +131,6 @@ impl TuiBackend {
             enable_raw_mode: false,
             enable_alt_screen: false,
             enable_mouse: false,
-            zero_cursor: true,
         }
     }
 

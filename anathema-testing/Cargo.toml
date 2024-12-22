@@ -9,6 +9,8 @@ anathema-widgets = { path = "../anathema-widgets" }
 anathema-runtime = { path = "../anathema-runtime" }
 anathema-backend = { path = "../anathema-backend" }
 anathema-templates = { path = "../anathema-templates" }
+anathema-state = { path = "../anathema-state" }
+anathema-default-widgets = { path = "../anathema-default-widgets" }
 unicode-width = { workspace = true }
 
 [lints]

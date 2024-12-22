@@ -6,8 +6,8 @@ use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    AttributeStorage, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach,
-    PaintChildren, PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
+    AttributeStorage, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
+    PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
 };
 
 pub mod test;
@@ -99,7 +99,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // }
     }
 
-    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, glyphs: &mut GlyphMap) {
+    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
@@ -115,7 +115,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         let mut for_each = PositionChildren::new(self.tree.view_mut());
         for_each.each(|widget, children| {
-            // widget.position(children, Pos::ZERO, ctx.attribute_storage, ctx.viewport);
+            widget.position(children, Pos::ZERO, ctx.attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
 
@@ -123,9 +123,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Paint -
         // -----------------------------------------------------------------------------
         let mut for_each = PaintChildren::new(self.tree.view_mut());
-        // self.backend
-        //     .paint(glyphs, for_each, ctx.sidecar.attribute_storage, true);
-        panic!();
+        self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage, true);
 
         self.floating();
     }

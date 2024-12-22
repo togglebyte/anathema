@@ -1,7 +1,13 @@
+use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
+use anathema_geometry::Size;
+use anathema_state::{Changes, FutureValues, States};
 use anathema_templates::{Document, ToSourceKind};
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
-use anathema_widgets::{AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree};
+use anathema_widgets::layout::Viewport;
+use anathema_widgets::{
+    AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree,
+};
 
 pub use crate::error::{Error, Result};
 use crate::runtime::Runtime;
@@ -50,6 +56,26 @@ impl Builder {
         Ok(id.into())
     }
 
+    /// Registers a [Component] with the runtime as long as the component and the associated state
+    /// implements the `Default` trait.
+    /// This returns a unique [ComponentId] that is used to send messages to the component.
+    pub fn from_default<C>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl ToSourceKind,
+    ) -> Result<ComponentId<C::Message>>
+    where
+        C: Component + Default,
+        C::State: Default,
+    {
+        let component = C::default();
+        let state = C::State::default();
+        let ident = ident.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?.into();
+        self.component_registry.add_component(id, component, state);
+        Ok(id.into())
+    }
+
     /// Registers a [Component] as a prototype with the [Runtime],
     /// which allows for multiple instances of the component to exist the templates.
     pub fn prototype<FC, FS, C>(
@@ -70,28 +96,35 @@ impl Builder {
         Ok(())
     }
 
-    pub fn finish<B, F, U>(&mut self, backend: B, mut f: F) -> Result<()> 
-        where F: FnMut(Runtime<'_, B>) -> Result<U>
+    pub fn finish<F, U>(&mut self, size: Size, mut f: F) -> Result<()>
+    where
+        F: FnMut(Runtime<'_>) -> Result<U>,
     {
         let (blueprint, globals) = self.document.compile()?;
         let tree = WidgetTree::empty();
         let attribute_storage = AttributeStorage::empty();
+        let viewport = Viewport::new(size);
 
-        let inst = Runtime {
-            backend,
+        let mut inst = Runtime {
             component_registry: &mut self.component_registry,
             components: Components::new(),
             document: &mut self.document,
             factory: &self.factory,
             tree,
+            states: States::new(),
             attribute_storage,
             floating_widgets: FloatingWidgets::empty(),
             changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
+            future_values: FutureValues::empty(),
             glyph_map: GlyphMap::empty(),
             blueprint: &blueprint,
             globals: &globals,
+            changes: Changes::empty(),
+            viewport,
         };
+
+        inst.init();
 
         f(inst);
 
