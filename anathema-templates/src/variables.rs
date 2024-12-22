@@ -50,7 +50,7 @@ impl From<VarId> for usize {
 }
 
 #[derive(Debug, Clone)]
-enum Variable {
+pub enum Variable {
     LocalIdent,
     Global(Expression),
 }

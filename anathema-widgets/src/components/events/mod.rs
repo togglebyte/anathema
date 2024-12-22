@@ -1,3 +1,5 @@
+use anathema_geometry::Size;
+
 pub use self::key::{KeyCode, KeyEvent, KeyState};
 pub use self::mouse::{MouseButton, MouseEvent, MouseState};
 
@@ -20,7 +22,7 @@ pub enum Event {
     /// Mouse event
     Mouse(MouseEvent),
     /// Window was resized
-    Resize(u16, u16),
+    Resize(Size),
 }
 
 impl Event {

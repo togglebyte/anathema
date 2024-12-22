@@ -8,7 +8,9 @@ use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, AttributeStorage, ChangeList, Components, DirtyWidgets, Elements, EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutChildren, LayoutForEach, Scope, Stringify, Widget, WidgetTree
+    eval_blueprint, try_resolve_future_values, AttributeStorage, ChangeList, Components, DirtyWidgets, Elements,
+    EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren,
+    Scope, Stringify, Widget, WidgetTree,
 };
 
 #[macro_export]
@@ -64,82 +66,86 @@ where
             &mut self.dirty_widgets,
             &self.viewport,
             &mut self.glyph_map,
-            true
+            true,
         );
 
-        // eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree.view_mut()).unwrap();
+        eval_blueprint(self.blueprint, &mut ctx, &[], &mut self.tree.view_mut()).unwrap();
 
         // Non floating widgets
-        
-        let mut layout = LayoutForEach::new(self.tree.view_mut());
+
+        let mut layout = LayoutChildren::new(self.tree.view_mut());
         let constraints = self.viewport.constraints();
         layout.each(&mut ctx, |ctx, widget, children| {
             let _size = widget.layout(children, constraints, ctx);
             ControlFlow::Break(())
         });
 
-
-        let mut filter = LayoutFilter::new(true, &self.attribute_storage);
-        self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(
-                &self.attribute_storage,
-                &mut self.dirty_widgets,
-                &self.viewport,
-                &mut self.glyph_map,
-                true,
-            );
-
-
-
-            layout_widget(
-                widget,
-                children,
-                values,
-                self.viewport.constraints(),
-                &mut layout_ctx,
-                true,
-            );
-
-            position_widget(
-                Pos::ZERO,
-                widget,
-                children,
-                values,
-                &self.attribute_storage,
-                true,
-                self.viewport,
-            );
+        let mut position = PositionChildren::new(self.tree.view_mut());
+        position.each(|widget, children| {
+            widget.position(children, Pos::ZERO, &self.attribute_storage, self.viewport);
+            ControlFlow::Break(())
         });
 
-        // Floating widgets
-        let mut filter = LayoutFilter::new(false, &self.attribute_storage);
-        self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
-            let mut layout_ctx = LayoutCtx::new(
-                &self.attribute_storage,
-                &mut self.dirty_widgets,
-                &self.viewport,
-                &mut self.glyph_map,
-                true,
-            );
-            layout_widget(
-                widget,
-                children,
-                values,
-                self.viewport.constraints(),
-                &mut layout_ctx,
-                true,
-            );
+        // let mut filter = LayoutFilter::new(true, &self.attribute_storage);
+        // self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
 
-            position_widget(
-                Pos::ZERO,
-                widget,
-                children,
-                values,
-                &self.attribute_storage,
-                true,
-                self.viewport,
-            );
-        });
+        // let mut layout_ctx = LayoutCtx::new(
+        //     &self.attribute_storage,
+        //     &mut self.dirty_widgets,
+        //     &self.viewport,
+        //     &mut self.glyph_map,
+        //     true,
+        // );
+
+        // layout_widget(
+        //     widget,
+        //     children,
+        //     values,
+        //     self.viewport.constraints(),
+        //     &mut layout_ctx,
+        //     true,
+        // );
+
+        // position_widget(
+        //     Pos::ZERO,
+        //     widget,
+        //     children,
+        //     values,
+        //     &self.attribute_storage,
+        //     true,
+        //     self.viewport,
+        // );
+        // });
+
+        // // Floating widgets
+        // let mut filter = LayoutFilter::new(false, &self.attribute_storage);
+        // self.tree.for_each(&mut filter).first(&mut |widget, children, values| {
+        //     let mut layout_ctx = LayoutCtx::new(
+        //         &self.attribute_storage,
+        //         &mut self.dirty_widgets,
+        //         &self.viewport,
+        //         &mut self.glyph_map,
+        //         true,
+        //     );
+        //     layout_widget(
+        //         widget,
+        //         children,
+        //         values,
+        //         self.viewport.constraints(),
+        //         &mut layout_ctx,
+        //         true,
+        //     );
+
+        //     position_widget(
+        //         Pos::ZERO,
+        //         widget,
+        //         children,
+        //         values,
+        //         &self.attribute_storage,
+        //         true,
+        //         self.viewport,
+        //     );
+        // });
     }
 
     pub fn expect_frame(&mut self, frame: &str) -> &mut Self {
@@ -169,8 +175,12 @@ where
                 &mut self.component_registry,
                 &mut self.attribute_storage,
                 &mut self.floating_widgets,
+                &mut self.changelist,
                 &mut self.components,
                 &mut self.dirty_widgets,
+                &self.viewport,
+                &mut self.glyph_map,
+                false,
             );
 
             try_resolve_future_values(sub, &path, &mut self.tree, ctx);
@@ -193,9 +203,13 @@ where
                     &mut self.states,
                     &mut self.component_registry,
                     &mut self.attribute_storage,
+                    &mut self.changelist,
                     &mut self.floating_widgets,
                     &mut self.components,
                     &mut self.dirty_widgets,
+                    &self.viewport,
+                    &mut self.glyph_map,
+                    false,
                 );
 
                 update_tree(&change, sub, &path, &mut self.tree, ctx);
@@ -335,7 +349,7 @@ struct TestWidget;
 impl Widget for TestWidget {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutChildren<'_, 'bp>,
         constraints: Constraints,
         _attributs: anathema_widgets::WidgetId,
         ctx: &mut EvalContext<'_, '_, 'bp>,

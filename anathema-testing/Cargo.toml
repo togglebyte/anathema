@@ -1,0 +1,15 @@
+[package]
+name = "anathema-testing"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anathema-geometry = { path = "../anathema-geometry" }
+anathema-widgets = { path = "../anathema-widgets" }
+anathema-runtime = { path = "../anathema-runtime" }
+anathema-backend = { path = "../anathema-backend" }
+anathema-templates = { path = "../anathema-templates" }
+unicode-width = { workspace = true }
+
+[lints]
+workspace = true

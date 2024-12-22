@@ -1,19 +1,19 @@
-// ------------------
+// -----------------------------------------------------------------------------
 //   - Runtime -
 //   1. Creating the initial widget tree
-//   2. Runtime loop      <--------------------------------+
-//    ^  2.1. Wait for messages                            |
-//    |  2.2. Wait for events                              v
+//   2. Runtime loop >----------------------------------------+
+//    ^  2.1. Wait for messages                               |
+//    |  2.2. Wait for events                                 v
 //    |  2.4. Was there events / messages / data changes? (no) (yes)
-//    |                                                         ^
-//    |                                                         |
+//    |                                                    |    |
+//    +----------------------------------------------------+    |
 //    |       +-------------------------------------------------+
 //    |       |
 //    |       V
 //    |       1. Layout
 //    |       2. Position
 //    |       3. Draw
-//    +------ 4. Run again
+//    +-----< 4. Run again
 //
 // -----------------------------------------------------------------------------
 
@@ -37,10 +37,12 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, try_resolve_future_values, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, EvalContext, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Scope, WidgetKind, WidgetTree
+    eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
+    GlyphMap, LayoutForEach, Scope, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use renderonly::OneShot;
 use tree::Tree;
 
 pub use self::events::{GlobalContext, GlobalEvents};
@@ -50,7 +52,12 @@ static REBUILD: AtomicBool = AtomicBool::new(false);
 
 mod error;
 mod events;
+mod renderonly;
+mod testing;
 mod tree;
+
+pub mod builder;
+pub mod runtime;
 
 pub struct RuntimeBuilder<T, G> {
     pub factory: Factory,
@@ -220,6 +227,36 @@ impl<T, G: GlobalEvents> RuntimeBuilder<T, G> {
 
         Ok(inst)
     }
+
+    pub fn oneshot(mut self) -> Result<OneShot<T>>
+    where
+        T: Backend,
+    {
+        let (width, height) = self.backend.size().into();
+        let (blueprint, globals) = self.document.compile()?;
+        let constraints = Constraints::new(width as usize, height as usize);
+
+        let inst = OneShot {
+            backend: self.backend,
+            constraints,
+            blueprint,
+            factory: self.factory,
+            future_values: FutureValues::empty(),
+            glyph_map: GlyphMap::empty(),
+            dirty_widgets: DirtyWidgets::empty(),
+
+            changes: Changes::empty(),
+            component_registry: self.component_registry,
+            globals,
+            document: self.document,
+            viewport: Viewport::new((width, height)),
+            floating_widgets: FloatingWidgets::empty(),
+            changelist: ChangeList::empty(),
+            components: Components::new(),
+        };
+
+        Ok(inst)
+    }
 }
 
 /// A runtime for Anathema.
@@ -340,7 +377,7 @@ where
         if self.changes.is_empty() {
             return;
         }
-        
+
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|sub| {
                 self.dirty_widgets.push(sub.key());
@@ -350,61 +387,6 @@ where
                 tree.with_value_mut(sub.key(), |path, widget, tree| {
                     update_widget(widget, sub, change, path, tree);
                 });
-
-                // match change {
-                //     Change::Inserted(index, pending_value) => {
-                //         tree.with_value_mut(sub.key(), |path, widget, tree| {
-                //             // TODO: All the children from index.. has to have the loop_index
-                //             // incrememented by one
-
-                //             let WidgetKind::For(for_loop) = widget else { panic!() };
-                //             let body = widget.children;
-                //             // insert and update indices
-                //             let widget = WidgetKind::Iteration(Iteration {
-                //                 loop_index: Value::new(index as i64),
-                //                 binding: for_loop.binding,
-                //             });
-                //             let transaction = tree.insert(path);
-                //             transaction.commit_child();
-                //         });
-                //     }
-                //     Change::Removed(index) => todo!(),
-                //     Change::Changed => todo!(),
-                //     Change::Dropped => todo!(),
-                // }
-
-                // scope.clear();
-                // // let Some(path): Option<Box<_>> = tree.try_path_ref(sub).map(Into::into) else { return };
-
-                // // update_tree(change, sub, &path, tree, ctx);
-                // let mut for_each = LayoutForEach::new(tree.view_mut(), None);
-                // let constraints = self.constraints;
-                // for_each.each(&mut ctx, |ctx, widget, children| {
-                //     let _ = widget.layout(children, constraints, ctx);
-                //     ControlFlow::Break(())
-                // });
-
-                // // This is nonsense: TODO
-                // // It's a massive hack, let's replace this with the path list again maybe?
-                // // {
-                // //     let mut path = &*path;
-                // //     loop {
-                // //         if let Some((parent, _)) = path.split_parent() {
-                // //             if parent.is_empty() {
-                // //                 break;
-                // //             }
-                // //             path = parent;
-                // //             let Some(id) = tree.id(path) else {
-                // //                 unreachable!("this implies the widget exists but the parent was removed")
-                // //             };
-                // //             self.dirty_widgets.push(id);
-                // //         } else {
-                // //             break;
-                // //         }
-                // //     }
-                // // }
-
-                // // self.dirty_widgets.push(sub.key());
             });
         });
     }
@@ -485,110 +467,94 @@ where
     // 5 - Recursively calls [Self::internal_run].
     // TODO: We should move this into a loop in [Self::run].
     fn internal_run(&mut self) -> Result<()> {
-        let mut fps_now = Instant::now();
-        let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
-        let mut tree = WidgetTree::empty();
-        let mut attribute_storage = AttributeStorage::empty();
-        let mut assoc_events = AssociatedEvents::new();
-        let mut focus_queue = FocusQueue::new();
+        panic!()
+        // let mut fps_now = Instant::now();
+        // let sleep_micros = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u128;
+        // let mut tree = WidgetTree::empty();
+        // let mut attribute_storage = AttributeStorage::empty();
+        // let mut assoc_events = AssociatedEvents::new();
+        // let mut focus_queue = FocusQueue::new();
 
-        let mut states = States::new();
-        let mut scope = Scope::new();
-        let globals = self.globals.take();
+        // let mut states = States::new();
+        // let mut scope = Scope::new();
+        // let globals = self.globals.take();
 
-        let mut ctx = EvalContext::new(
-            &globals,
-            &self.factory,
-            &mut scope,
-            &mut states,
-            &mut self.component_registry,
-            &mut attribute_storage,
-            &mut self.floating_widgets,
-            &mut self.changelist,
-            &mut self.components,
-            &mut self.dirty_widgets,
-            &self.viewport,
-            &mut self.glyph_map,
-            true,
-        );
+        // let mut ctx = EvalContext::new(
+        //     &globals,
+        //     &self.factory,
+        //     &mut scope,
+        //     &mut states,
+        //     &mut self.component_registry,
+        //     &mut attribute_storage,
+        //     &mut self.floating_widgets,
+        //     &mut self.changelist,
+        //     &mut self.components,
+        //     &mut self.dirty_widgets,
+        //     &self.viewport,
+        //     &mut self.glyph_map,
+        //     true,
+        // );
 
-        let blueprint = self.blueprint.clone();
+        // let blueprint = self.blueprint.clone();
 
-        // First build the tree
-        let mut view = tree.view_mut();
-        let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut view);
+        // // First build the tree
+        // let mut view = tree.view_mut();
+        // let res = eval_blueprint(&blueprint, &mut ctx, root_node(), &mut view);
 
-        if let Err(err) = res {
-            self.reset(tree, &mut states)?;
-            return Err(err.into());
-        }
-
-        let mut dt = Instant::now();
-
-        // Initial layout, position and paint
-        let mut cycle = WidgetCycle::new(&mut self.backend, &mut tree, self.constraints);
-        cycle.run(&mut ctx);
-
-        deb(&mut tree, &attribute_storage);
-
-        // let values = tree.values();
-        // for (_, value) in values.iter() {
-
-        //     match &value.kind {
-        //         WidgetKind::Element(element) => eprintln!("element: {}", element.ident),
-        //         WidgetKind::For(_) => eprintln!("for"),
-        //         WidgetKind::Iteration(iteration) => eprintln!("iter"),
-        //         WidgetKind::Component(component) => eprintln!("component"),
-
-        //         WidgetKind::ControlFlow(control_flow) => todo!(),
-        //         WidgetKind::If(_) => todo!(),
-        //         WidgetKind::Else(_) => todo!(),
-        //     }
+        // if let Err(err) = res {
+        //     self.reset(tree, &mut states)?;
+        //     return Err(err.into());
         // }
 
-        self.backend.render(&mut self.glyph_map);
-        self.backend.clear();
+        // let mut dt = Instant::now();
 
-        // Try to set focus on the first available component
-        let context = UntypedContext {
-            emitter: &self.emitter,
-            viewport: self.viewport,
-            strings: &self.document.strings,
-        };
+        // // Initial layout, position and paint
+        // let mut cycle = WidgetCycle::new(&mut self.backend, &mut tree, self.constraints);
+        // cycle.run(&mut ctx);
 
-        let mut event_ctx = EventCtx {
-            components: &mut self.components,
-            dirty_widgets: &mut self.dirty_widgets,
-            states: &mut states,
-            attribute_storage: &mut attribute_storage,
-            assoc_events: &mut assoc_events,
-            context,
-            focus_queue: &mut focus_queue,
-        };
+        // self.backend.render(&mut self.glyph_map);
+        // self.backend.clear();
 
-        self.event_handler.set_initial_focus(&mut tree, &mut event_ctx);
+        // // Try to set focus on the first available component
+        // let context = UntypedContext {
+        //     emitter: &self.emitter,
+        //     viewport: self.viewport,
+        //     strings: &self.document.strings,
+        // };
 
-        loop {
-            self.tick(
-                fps_now,
-                &mut dt,
-                sleep_micros,
-                &mut tree,
-                &mut states,
-                &mut attribute_storage,
-                &globals,
-                &mut assoc_events,
-                &mut focus_queue,
-            )?;
+        // let mut event_ctx = EventCtx {
+        //     components: &mut self.components,
+        //     dirty_widgets: &mut self.dirty_widgets,
+        //     states: &mut states,
+        //     attribute_storage: &mut attribute_storage,
+        //     assoc_events: &mut assoc_events,
+        //     context,
+        //     focus_queue: &mut focus_queue,
+        // };
 
-            if REBUILD.swap(false, Ordering::Relaxed) {
-                break;
-            }
+        // self.event_handler.set_initial_focus(&mut tree, &mut event_ctx);
 
-            fps_now = Instant::now();
-        }
+        // loop {
+        //     self.tick(
+        //         fps_now,
+        //         &mut dt,
+        //         sleep_micros,
+        //         &mut tree,
+        //         &mut states,
+        //         &mut attribute_storage,
+        //         &globals,
+        //         &mut assoc_events,
+        //         &mut focus_queue,
+        //     )?;
 
-        self.reset(tree, &mut states)
+        //     if REBUILD.swap(false, Ordering::Relaxed) {
+        //         break;
+        //     }
+
+        //     fps_now = Instant::now();
+        // }
+
+        // self.reset(tree, &mut states)
     }
 
     pub fn show_error(&mut self, err: Error) {
@@ -718,28 +684,26 @@ where
         // -----------------------------------------------------------------------------
         let needs_reflow = !self.dirty_widgets.is_empty();
         if needs_reflow {
-            let mut scope = Scope::new();
+            // let mut scope = Scope::new();
 
-            let mut ctx = EvalContext::new(
-                &globals,
-                &self.factory,
-                &mut scope,
-                states,
-                &mut self.component_registry,
-                attribute_storage,
-                &mut self.floating_widgets,
-                &mut self.changelist,
-                &mut self.components,
-                &mut self.dirty_widgets,
-                &self.viewport,
-                &mut self.glyph_map,
-                true,
-            );
+            // let mut ctx = EvalContext::new(
+            //     &globals,
+            //     &self.factory,
+            //     &mut scope,
+            //     states,
+            //     &mut self.component_registry,
+            //     attribute_storage,
+            //     &mut self.floating_widgets,
+            //     &mut self.changelist,
+            //     &mut self.components,
+            //     &mut self.dirty_widgets,
+            //     &self.viewport,
+            //     &mut self.glyph_map,
+            //     true,
+            // );
 
             let mut cycle = WidgetCycle::new(&mut self.backend, tree, self.constraints);
-            cycle.run(&mut ctx);
-
-            deb(tree, &attribute_storage);
+            // cycle.run(&mut ctx);
 
             self.backend.render(&mut self.glyph_map);
             self.backend.clear();

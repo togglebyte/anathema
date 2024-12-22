@@ -1,7 +1,7 @@
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{
-    AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId,
+    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId,
 };
 
 use super::Stack;
@@ -21,7 +21,7 @@ impl Widget for HStack {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.0.layout(children, constraints, id, ctx)
     }

@@ -104,7 +104,7 @@ impl<'bp> Attributes<'bp> {
 
     pub(crate) fn insert_with<F>(&mut self, key: ValueKey<'bp>, f: F) -> SmallIndex
     where
-        F: Fn(SmallIndex) -> Value<'bp, EvalValue<'bp>>,
+        F: FnOnce(SmallIndex) -> Value<'bp, EvalValue<'bp>>,
     {
         self.attribs.insert_with(key, f)
     }

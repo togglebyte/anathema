@@ -4,7 +4,7 @@ use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
 use crate::paint::{PainFilter, PaintCtx, Unsized};
 use crate::widget::{ForEach, PaintChildren, PositionChildren};
-use crate::{AttributeStorage, EvalContext, LayoutForEach, LayoutChildren, WidgetId};
+use crate::{AttributeStorage, LayoutForEach, LayoutChildren, WidgetId};
 
 #[derive(Debug)]
 pub struct Element<'bp> {
@@ -25,7 +25,7 @@ impl<'bp> Element<'bp> {
         &mut self,
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         // If the context doesn't force layout, and the id is not in the list of dirty widgets
         // (currently this path ctl) then return the cached value

@@ -112,6 +112,7 @@ mod test {
         //         4 = 0
 
         let mut tree = Tree::empty();
+        let mut tree = tree.view_mut();
         let key = tree.insert(&[]).commit_child(42).unwrap();
         let parent = tree.path(key);
         let _ = tree.insert(&parent).commit_child(42).unwrap();
@@ -120,10 +121,9 @@ mod test {
         tree.insert(&parent).commit_child(42).unwrap();
         tree.insert(&parent).commit_child(42).unwrap();
 
-        let (nodes, values) = tree.split();
-        apply_visitor(nodes, values, &mut Zero);
+        tree.apply_visitor(&mut Zero);
 
-        let values = values.iter().map(|(_path, value)| value).copied().collect::<Vec<_>>();
+        let values = tree.values.iter().map(|(_path, value)| value).copied().collect::<Vec<_>>();
         assert_eq!(values, vec![0, 0, 0, 0, 0]);
     }
 }

@@ -6,7 +6,7 @@ use anathema_templates::blueprints::Blueprint;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach, PositionChildren};
-use crate::{AttributeStorage, EvalContext, LayoutForEach, LayoutChildren, PaintChildren, WidgetId};
+use crate::{AttributeStorage, LayoutForEach, LayoutChildren, PaintChildren, WidgetId};
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -37,7 +37,7 @@ impl Container {
         &mut self,
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         // NOTE: The layout is possibly skipped in the Element::layout call
 

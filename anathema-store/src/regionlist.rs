@@ -15,6 +15,8 @@ struct Entry {
 /// Each key entry has a pre-determined sized region associated with it.
 ///
 /// ```
+/// use anathema_store::regionlist::RegionList;
+/// use anathema_store::slab::Key;
 /// let mut region_list = RegionList::<32, Key, ()>::empty();
 /// region_list.insert(Key::from((12, 0)), ());
 /// ```
@@ -32,7 +34,9 @@ where
 {
     /// Create an empty instance of a change list
     /// ```
-    /// let list = ChangeList::empty();
+    /// use anathema_store::regionlist::RegionList;
+    /// use anathema_store::slab::Key;
+    /// let list = RegionList::<32, Key, ()>::empty();
     /// ```
     pub fn empty() -> Self {
         Self {

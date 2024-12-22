@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{
-    AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId,
+    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId,
 };
 
 use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
@@ -17,7 +17,7 @@ impl Widget for Container {
         mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
 

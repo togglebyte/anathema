@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
+use anathema_widgets::{LayoutChildren, LayoutForEach};
 
 use super::Axis;
 
@@ -48,7 +48,7 @@ pub fn layout_all_expansions<'bp>(
     nodes: &mut LayoutForEach<'_, 'bp>,
     constraints: Constraints,
     axis: Axis,
-    ctx: &mut EvalContext<'_, '_, 'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> Size {
     let mut factors = vec![];
 

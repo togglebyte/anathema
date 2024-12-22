@@ -1,0 +1,14 @@
+[setup]
+description Do some bs and then some other stuff
+screen 100 40
+template boo.aml
+enable_mouse
+
+[run]
+tick
+press ctrl a
+expect boo.aml
+click 10 10
+expect boo-without-box.aml
+tick
+resize 90 20

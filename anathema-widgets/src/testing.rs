@@ -9,7 +9,7 @@ use crate::expressions::{eval, EvalValue};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::scope::Scope;
 use crate::values::{ValueId, ValueIndex};
-use crate::{AttributeStorage, Factory, PositionChildren, Value, Widget, WidgetId, WidgetKind};
+use crate::{AttributeStorage, EvalContext, Factory, LayoutChildren, PositionChildren, Value, Widget, WidgetId, WidgetKind};
 
 pub struct NoExpr;
 pub struct WithExpr(Expression);
@@ -84,19 +84,19 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
 struct TestWidget;
 
 impl Widget for TestWidget {
-    fn layout(
+    fn layout<'bp>(
         &mut self,
-        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_, '_>>,
+        _children: LayoutChildren<'_, 'bp>,
         _: Constraints,
         _: WidgetId,
-        _: &mut LayoutCtx<'_, '_>,
+        _: &mut EvalContext<'_, '_, 'bp>,
     ) -> Size {
         todo!()
     }
 
     fn position<'bp>(
         &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
+        _children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _ctx: PositionCtx,

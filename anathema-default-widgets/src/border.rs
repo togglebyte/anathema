@@ -5,7 +5,8 @@ use anathema_widgets::expressions::EvalValue;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{
-    AnyWidget, AttributeStorage, Attributes, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId
+    AnyWidget, AttributeStorage, Attributes, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren,
+    Widget, WidgetId,
 };
 
 use crate::layout::border::BorderLayout;
@@ -391,7 +392,7 @@ impl Widget for Border {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribute_storage.get_mut(id);
         self.sides = attributes

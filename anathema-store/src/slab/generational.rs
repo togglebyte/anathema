@@ -88,7 +88,7 @@ impl Debug for Key {
 
 impl From<(usize, usize)> for Key {
     fn from((index, gen): (usize, usize)) -> Self {
-        let gen = (gen as u64) >> Self::INDEX_BITS;
+        let gen = (gen as u64) << Self::INDEX_BITS;
         let index = (index as u64) << Self::GEN_BITS >> Self::GEN_BITS;
         Self(gen | index)
     }
@@ -579,9 +579,9 @@ mod test {
     #[test]
     fn from_values() {
         let index = 123;
-        let gen = 456;
-        let key = Key::from((index, gen));
+        let gen = 456u16;
+        let key = Key::from((index, gen as usize));
         assert_eq!(key.index(), index);
-        assert_eq!(key.gen(), gen);
+        assert_eq!(key.gen(), Gen(gen));
     }
 }

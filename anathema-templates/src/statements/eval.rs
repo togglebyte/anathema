@@ -231,7 +231,7 @@ mod test {
         let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
         let Blueprint::ControlFlow(controlflow) = blueprint else { panic!() };
-        assert!(matches!(controlflow.if_node, If { .. }));
+        assert!(matches!(controlflow.elses[0], Else { .. }));
         assert!(!controlflow.elses.is_empty());
     }
 

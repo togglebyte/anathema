@@ -4,7 +4,7 @@ use anathema_geometry::{Pos, Region, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{
-    AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId
+    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId
 };
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
@@ -37,7 +37,7 @@ impl Widget for Padding {
         mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribute_storage.get(id);
         let mut size = Size::ZERO;

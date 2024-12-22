@@ -1,16 +1,144 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
+use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
+use anathema_templates::{Globals, WidgetComponentId};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
+use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
+use crate::expressions::ExprEvalCtx;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, DirtyWidgets, GlyphMap, LayoutChildren, WidgetContainer, WidgetId, WidgetKind};
+use crate::values::ValueId;
+use crate::{
+    AttributeStorage, Attributes, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap,
+    LayoutChildren, Scope, Value, WidgetContainer, WidgetId, WidgetKind,
+};
 
 mod constraints;
 mod display;
 pub mod text;
+
+pub struct LayoutCtx<'frame, 'bp> {
+    pub(super) scope: Scope<'bp>,
+    pub(super) states: States,
+    pub(super) globals: &'bp Globals,
+    pub(super) dirty_widgets: &'frame DirtyWidgets,
+    factory: &'frame Factory,
+    pub(super) changelist: &'frame mut ChangeList,
+    pub attribute_storage: &'frame mut AttributeStorage<'bp>,
+    components: &'frame mut Components,
+    pub(super) force_layout: bool,
+    pub glyph_map: &'frame mut GlyphMap,
+    pub viewport: Viewport,
+
+    // Need these for the eval context
+    floating_widgets: &'frame mut FloatingWidgets,
+    component_registry: &'frame mut ComponentRegistry,
+}
+
+impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
+    pub fn new(
+        globals: &'bp Globals,
+        factory: &'frame Factory,
+        attribute_storage: &'frame mut AttributeStorage<'bp>,
+        components: &'frame mut Components,
+        component_registry: &'frame mut ComponentRegistry,
+        floating_widgets: &'frame mut FloatingWidgets,
+        changelist: &'frame mut ChangeList,
+        glyph_map: &'frame mut GlyphMap,
+        dirty_widgets: &'frame DirtyWidgets,
+        viewport: Viewport,
+        force_layout: bool,
+    ) -> Self {
+        Self {
+            scope: Scope::new(),
+            states: States::new(),
+            attribute_storage,
+            components,
+            component_registry,
+            globals,
+            factory,
+            floating_widgets,
+            changelist,
+            glyph_map,
+            dirty_widgets,
+            viewport,
+            force_layout,
+        }
+    }
+
+    pub fn needs_layout(&self, node_id: WidgetId) -> bool {
+        self.dirty_widgets.contains(node_id) || self.force_layout
+    }
+
+    pub(super) fn eval_ctx(&mut self) -> EvalCtx<'_, 'bp> {
+        EvalCtx {
+            floating_widgets: self.floating_widgets,
+            attribute_storage: self.attribute_storage,
+            states: &mut self.states,
+            component_registry: self.component_registry,
+            components: self.components,
+            scope: &self.scope,
+            globals: self.globals,
+            factory: &self.factory,
+            parent: None,
+        }
+    }
+
+    pub(super) fn changes<F>(&mut self, widget_id: WidgetId, mut f: F) -> Option<()>
+    where
+        F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, Subscriber),
+    {
+        let changes = self.changelist.drain(widget_id)?;
+
+        self.attribute_storage.with_mut(widget_id, |attributes, storage| {
+            let ctx = ExprEvalCtx {
+                scope: &self.scope,
+                states: &self.states,
+                attributes: storage,
+                globals: self.globals,
+            };
+
+            for change in changes {
+                f(attributes, &ctx, change);
+            }
+        });
+
+        Some(())
+    }
+}
+
+pub struct EvalCtx<'frame, 'bp> {
+    pub(super) floating_widgets: &'frame mut FloatingWidgets,
+    pub(super) attribute_storage: &'frame mut AttributeStorage<'bp>,
+    pub(super) states: &'frame mut States,
+    component_registry: &'frame mut ComponentRegistry,
+    pub(super) components: &'frame mut Components,
+    scope: &'frame Scope<'bp>,
+    globals: &'bp Globals,
+    pub(super) factory: &'frame Factory,
+    pub(super) parent: Option<WidgetId>,
+}
+
+impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
+    pub(super) fn expr_eval_ctx(&'frame self) -> ExprEvalCtx<'frame, 'bp> {
+        ExprEvalCtx {
+            scope: self.scope,
+            states: self.states,
+            attributes: self.attribute_storage,
+            globals: self.globals,
+        }
+    }
+
+    pub(super) fn get_component(
+        &mut self,
+        component_id: WidgetComponentId,
+    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
+        self.component_registry.get(component_id)
+    }
+}
 
 #[derive(Debug, Copy, Clone)]
 /// A viewport represents the available space in the root
@@ -87,7 +215,9 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
                 panic!();
                 ControlFlow::Continue(None)
             }
-            WidgetKind::ControlFlowContainer(_) => panic!("this should be replaced with the ForEach from widgets/tree.rs"),
+            WidgetKind::ControlFlowContainer(_) => {
+                panic!("this should be replaced with the ForEach from widgets/tree.rs")
+            }
             // WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
             // WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
             _ => ControlFlow::Continue(None),
@@ -95,36 +225,36 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
     }
 }
 
-// TODO remove this?
-pub struct LayoutCtx<'a, 'bp> {
-    pub attribs: &'a AttributeStorage<'bp>,
-    pub dirty_widgets: &'a DirtyWidgets,
-    pub viewport: &'a Viewport,
-    pub glyph_map: &'a mut GlyphMap,
-    pub force_layout: bool,
-}
+// // TODO remove this?
+// pub struct LayoutCtx<'a, 'bp> {
+//     pub attribs: &'a AttributeStorage<'bp>,
+//     pub dirty_widgets: &'a DirtyWidgets,
+//     pub viewport: &'a Viewport,
+//     pub glyph_map: &'a mut GlyphMap,
+//     pub force_layout: bool,
+// }
 
-impl<'a, 'bp> LayoutCtx<'a, 'bp> {
-    pub fn new(
-        attribs: &'a AttributeStorage<'bp>,
-        dirty_widgets: &'a DirtyWidgets,
-        viewport: &'a Viewport,
-        glyph_map: &'a mut GlyphMap,
-        force_layout: bool,
-    ) -> Self {
-        Self {
-            attribs,
-            dirty_widgets,
-            viewport,
-            glyph_map,
-            force_layout,
-        }
-    }
+// impl<'a, 'bp> LayoutCtx<'a, 'bp> {
+//     pub fn new(
+//         attribs: &'a AttributeStorage<'bp>,
+//         dirty_widgets: &'a DirtyWidgets,
+//         viewport: &'a Viewport,
+//         glyph_map: &'a mut GlyphMap,
+//         force_layout: bool,
+//     ) -> Self {
+//         Self {
+//             attribs,
+//             dirty_widgets,
+//             viewport,
+//             glyph_map,
+//             force_layout,
+//         }
+//     }
 
-    pub fn needs_layout(&self, node_id: WidgetId) -> bool {
-        self.dirty_widgets.contains(node_id) || self.force_layout
-    }
-}
+//     pub fn needs_layout(&self, node_id: WidgetId) -> bool {
+//         self.dirty_widgets.contains(node_id) || self.force_layout
+//     }
+// }
 
 // TODO: remove this as it's no longer needed -TB 2024-11-20
 // pub fn layout_widget<'bp>(

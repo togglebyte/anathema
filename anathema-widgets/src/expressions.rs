@@ -10,6 +10,13 @@ use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
 use crate::{AttributeStorage, Value, WidgetId};
 
+pub(crate) struct ExprEvalCtx<'a, 'bp> {
+    pub(crate) scope: &'a Scope<'bp>,
+    pub(crate) states: &'a States,
+    pub(crate) attributes: &'a AttributeStorage<'bp>,
+    pub(crate) globals: &'bp Globals,
+}
+
 // TODO: name this something else (and if you suggest SomethingElse as the name you are a lark)
 #[derive(Debug)]
 pub enum NameThis<'a> {
@@ -503,47 +510,24 @@ impl<'a> TryFrom<&EvalValue<'a>> for &'a str {
 }
 
 pub struct Resolver<'scope, 'bp> {
-    globals: &'bp Globals,
-    _scope_level: usize,
+    ctx: &'scope ExprEvalCtx<'scope, 'bp>,
     subscriber: ValueId,
-    scope: &'scope Scope<'bp>,
-    states: &'scope States,
-    attributes: &'scope AttributeStorage<'bp>,
     register_future_value: bool,
     deferred: bool,
 }
 
 impl<'scope, 'bp> Resolver<'scope, 'bp> {
-    pub(crate) fn new(
-        _scope_level: usize,
-        scope: &'scope Scope<'bp>,
-        states: &'scope States,
-        attributes: &'scope AttributeStorage<'bp>,
-        globals: &'bp Globals,
-        subscriber: ValueId,
-        deferred: bool,
-    ) -> Self {
+    pub(crate) fn new(ctx: &'scope ExprEvalCtx<'scope, 'bp>, subscriber: ValueId, deferred: bool) -> Self {
         Self {
-            scope,
-            states,
-            attributes,
-            globals,
-            _scope_level,
+            ctx,
             subscriber,
             register_future_value: false,
             deferred,
         }
     }
 
-    pub(crate) fn root(
-        scope: &'scope Scope<'bp>,
-        states: &'scope States,
-        attributes: &'scope AttributeStorage<'bp>,
-        globals: &'bp Globals,
-        subscriber: ValueId,
-        deferred: bool,
-    ) -> Self {
-        Self::new(0, scope, states, attributes, globals, subscriber, deferred)
+    pub(crate) fn root(ctx: &'scope ExprEvalCtx<'scope, 'bp>, subscriber: ValueId, deferred: bool) -> Self {
+        Self::new(ctx, subscriber, deferred)
     }
 
     pub(crate) fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
@@ -608,11 +592,11 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
     fn lookup(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
         match expression {
             Expression::Ident(ident) => match &**ident {
-                "state" => self.scope.get_state(),
-                "attributes" => self.scope.get_component_attributes(),
+                "state" => self.ctx.scope.get_state(),
+                "attributes" => self.ctx.scope.get_component_attributes(),
                 path => {
                     let lookup = ScopeLookup::new(Path::from(path), self.subscriber);
-                    match self.scope.get(lookup, &mut None, self.states) {
+                    match self.ctx.scope.get(lookup, &mut None, self.ctx.states) {
                         NameThis::Nothing => {
                             self.register_future_value = true;
                             EvalValue::Empty
@@ -651,7 +635,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                     }
                 };
 
-                let val = match value.get(index, self.subscriber, self.states, self.attributes) {
+                let val = match value.get(index, self.subscriber, self.ctx.states, self.ctx.attributes) {
                     NameThis::Nothing => {
                         self.register_future_value = true;
                         EvalValue::Empty
@@ -669,15 +653,12 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
 
 pub(crate) fn eval<'bp>(
     expr: &'bp Expression,
-    globals: &'bp Globals,
-    scope: &Scope<'bp>,
-    states: &States,
-    attributes: &AttributeStorage<'bp>,
+    ctx: &ExprEvalCtx<'_, 'bp>,
     value_id: impl Into<ValueId>,
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id, false);
+    let mut resolver = Resolver::root(ctx, value_id, false);
     let value = resolver.resolve(expr);
 
     if resolver.register_future_value {
@@ -689,15 +670,12 @@ pub(crate) fn eval<'bp>(
 
 pub(crate) fn eval_collection<'bp>(
     expr: &'bp Expression,
-    globals: &'bp Globals,
-    scope: &Scope<'bp>,
-    states: &States,
-    attributes: &AttributeStorage<'bp>,
+    ctx: &ExprEvalCtx<'_, 'bp>,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(scope, states, attributes, globals, value_id, true);
+    let mut resolver = Resolver::root(ctx, value_id, true);
     let value = resolver.resolve(expr);
 
     if resolver.register_future_value {

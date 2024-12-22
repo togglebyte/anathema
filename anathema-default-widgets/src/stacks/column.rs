@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::layout::Axis;
 use crate::stacks::Stack;
@@ -18,13 +18,12 @@ impl Default for Column {
 impl Widget for Column {
     fn layout<'bp>(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
+        children: LayoutChildren<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        panic!()
-        // self.0.layout(children, constraints, id, ctx)
+        self.0.layout(children, constraints, id, ctx)
     }
 
     fn position<'bp>(

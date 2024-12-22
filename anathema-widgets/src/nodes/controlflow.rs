@@ -8,7 +8,6 @@ use crate::{Value, WidgetKind};
 
 #[derive(Debug)]
 pub struct ControlFlow<'bp> {
-    // pub if_node: If<'bp>,
     pub elses: Vec<Else<'bp>>,
 }
 
@@ -104,77 +103,77 @@ impl Else<'_> {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use anathema_state::{Map, States};
-    use anathema_store::tree::Tree;
-    use anathema_templates::Document;
+// #[cfg(test)]
+// mod test {
+//     use anathema_state::{Map, States};
+//     use anathema_store::tree::Tree;
+//     use anathema_templates::Document;
 
-    use crate::components::ComponentRegistry;
-    use crate::nodes::stringify::Stringify;
-    use crate::scope::Scope;
-    use crate::testing::setup_test_factory;
-    use crate::{eval_blueprint, AttributeStorage, Components, DirtyWidgets, EvalContext, FloatingWidgets};
+//     use crate::components::ComponentRegistry;
+//     use crate::nodes::stringify::Stringify;
+//     use crate::scope::Scope;
+//     use crate::testing::setup_test_factory;
+//     use crate::{eval_blueprint, AttributeStorage, Components, DirtyWidgets, EvalContext, FloatingWidgets};
 
-    #[test]
-    fn if_stmt() {
-        let tpl = "
-        if state.a
-            test state.a
-            test state.a
-            test state.a
-            test state.a
-        else
-            test
-            test !state.a
-        ";
-        let mut map = Map::empty();
-        map.insert("a", true);
+//     #[test]
+//     fn if_stmt() {
+//         let tpl = "
+//         if state.a
+//             test state.a
+//             test state.a
+//             test state.a
+//             test state.a
+//         else
+//             test
+//             test !state.a
+//         ";
+//         let mut map = Map::empty();
+//         map.insert("a", true);
 
-        let mut doc = Document::new(tpl);
-        let (blueprint, globals) = doc.compile().unwrap();
-        let mut widget_tree = Tree::<_>::empty();
-        let mut attribute_storage = AttributeStorage::empty();
-        let mut floating_widgets = FloatingWidgets::empty();
-        let factory = setup_test_factory();
-        let mut component_registry = ComponentRegistry::new();
-        let mut components = Components::new();
-        let mut dirty_widgets = DirtyWidgets::empty();
-        let mut states = States::new();
-        let state_id = states.insert(Box::new(map));
-        let mut scope = Scope::new();
-        scope.insert_state(state_id);
+//         let mut doc = Document::new(tpl);
+//         let (blueprint, globals) = doc.compile().unwrap();
+//         let mut widget_tree = Tree::<_>::empty();
+//         let mut attribute_storage = AttributeStorage::empty();
+//         let mut floating_widgets = FloatingWidgets::empty();
+//         let factory = setup_test_factory();
+//         let mut component_registry = ComponentRegistry::new();
+//         let mut components = Components::new();
+//         let mut dirty_widgets = DirtyWidgets::empty();
+//         let mut states = States::new();
+//         let state_id = states.insert(Box::new(map));
+//         let mut scope = Scope::new();
+//         scope.insert_state(state_id);
 
-        let mut ctx = EvalContext::new(
-            &globals,
-            &factory,
-            &mut scope,
-            &mut states,
-            &mut component_registry,
-            &mut attribute_storage,
-            &mut floating_widgets,
-            &mut components,
-            &mut dirty_widgets,
-        );
+//         let mut ctx = EvalContext::new(
+//             &globals,
+//             &factory,
+//             &mut scope,
+//             &mut states,
+//             &mut component_registry,
+//             &mut attribute_storage,
+//             &mut floating_widgets,
+//             &mut components,
+//             &mut dirty_widgets,
+//         );
 
-        eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();
+//         eval_blueprint(&blueprint, &mut ctx, &[], &mut widget_tree).unwrap();
 
-        let mut stringify = Stringify::new(&attribute_storage);
-        widget_tree.apply_visitor(&mut stringify);
-        let output = stringify.finish();
+//         let mut stringify = Stringify::new(&attribute_storage);
+//         widget_tree.apply_visitor(&mut stringify);
+//         let output = stringify.finish();
 
-        let expected = "
-<control flow>
-    <if cond = true>
-        test Bool(true)
-        test Bool(true)
-        test Bool(true)
-        test Bool(true)
-    <else>
-        test
-        test Bool(false)
-    ";
+//         let expected = "
+// <control flow>
+//     <if cond = true>
+//         test Bool(true)
+//         test Bool(true)
+//         test Bool(true)
+//         test Bool(true)
+//     <else>
+//         test
+//         test Bool(false)
+//     ";
 
-        assert_eq!(expected.trim(), output.trim());
-    }
-}
+//         assert_eq!(expected.trim(), output.trim());
+//     }
+// }

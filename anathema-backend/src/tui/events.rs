@@ -25,7 +25,7 @@ impl Events {
                     CTEvent::FocusLost => Event::Blur,
                     CTEvent::Key(key_ev) => Event::Key(key_code_to_key_code(key_ev)),
                     CTEvent::Mouse(mouse_ev) => Event::Mouse(mouse_to_mouse(mouse_ev)),
-                    CTEvent::Resize(width, height) => Event::Resize(width, height),
+                    CTEvent::Resize(width, height) => Event::Resize((width, height).into()),
                 };
 
                 Some(event)

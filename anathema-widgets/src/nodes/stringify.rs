@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::ValueId;
 
-use super::element::Element;
+use super::{element::Element, WidgetContainer};
 use crate::{AttributeStorage, WidgetKind};
 
 /// Stringify the tree.
@@ -31,10 +31,10 @@ impl<'a, 'bp> Stringify<'a, 'bp> {
     }
 }
 
-impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
+impl<'a, 'bp> NodeVisitor<WidgetContainer<'_>> for Stringify<'a, 'bp> {
+    fn visit(&mut self, value: &mut WidgetContainer<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let _ = write!(&mut self.output, "{}", self.indent);
-        match value {
+        match &value.kind {
             WidgetKind::Element(Element { ident, container, .. }) => {
                 let _ = write!(&mut self.output, "{ident}");
 

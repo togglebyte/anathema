@@ -5,7 +5,7 @@ use anathema_state::CommonVal;
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{LEFT, RIGHT};
 
@@ -77,7 +77,7 @@ impl Widget for Text {
         mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribute_storage.get(id);
         let wrap = attributes.get(WRAP).unwrap_or_default();
@@ -185,7 +185,7 @@ impl Widget for Span {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         // Everything is handled by the parent text
         panic!("this should never be called");

@@ -49,12 +49,11 @@ fn output() -> (Stdout, File) {
 pub struct TuiBackendBuilder {
     _stdout: Stdout,
     output: File,
-    quit_on_ctrl_c: bool,
-
     hide_cursor: bool,
     enable_raw_mode: bool,
     enable_alt_screen: bool,
     enable_mouse: bool,
+    zero_cursor: bool,
 }
 
 impl TuiBackendBuilder {
@@ -92,7 +91,6 @@ impl TuiBackendBuilder {
         let screen = Screen::new(size);
 
         let backend = TuiBackend {
-            quit_on_ctrl_c: self.quit_on_ctrl_c,
             screen,
             _stdout: self._stdout,
             output: BufWriter::new(self.output),
@@ -110,8 +108,6 @@ impl TuiBackendBuilder {
 
 /// Terminal backend
 pub struct TuiBackend {
-    /// Stop the runtime if Ctrl+c was pressed.
-    pub quit_on_ctrl_c: bool,
     screen: Screen,
     _stdout: Stdout,
     output: BufWriter<File>,
@@ -132,12 +128,11 @@ impl TuiBackend {
         TuiBackendBuilder {
             _stdout,
             output,
-            quit_on_ctrl_c: true,
-
             hide_cursor: false,
             enable_raw_mode: false,
             enable_alt_screen: false,
             enable_mouse: false,
+            zero_cursor: true,
         }
     }
 

@@ -306,8 +306,6 @@ impl<'bp> Scope<'bp> {
                 // }
                 _ => continue,
             };
-
-
         }
 
         // let value_id = ValueId::from((iter.widget_id, SmallIndex::ZERO));

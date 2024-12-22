@@ -5,11 +5,12 @@ use anathema_state::Value;
 use anathema_store::tree::TreeView;
 use anathema_templates::blueprints::Blueprint;
 
-use super::{WidgetId, WidgetTreeView};
+use crate::layout::LayoutCtx;
 use crate::nodes::controlflow;
 use crate::nodes::loops::Iteration;
 use crate::values::Collection;
-use crate::{eval_blueprint, Element, EvalContext, WidgetContainer, WidgetKind};
+use crate::widget::WidgetTreeView;
+use crate::{eval_blueprint, Element, WidgetContainer, WidgetKind};
 
 // TODO: Add the option to "skip" values with an offset for `inner_each` (this is for overflow widgets)
 
@@ -48,19 +49,22 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
     }
 
     fn with_generator(tree: WidgetTreeView<'a, 'bp>, generator: Generator<'a, 'bp>) -> Self {
-        Self { tree, generator: Some(generator) }
+        Self {
+            tree,
+            generator: Some(generator),
+        }
     }
 
-    pub fn each<F>(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>, mut f: F) -> ControlFlow<()>
+    pub fn each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, mut f: F) -> ControlFlow<()>
     where
-        F: FnMut(&mut EvalContext<'_, '_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
+        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
         self.inner_each(ctx, &mut f)
     }
 
-    fn inner_each<F>(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>, f: &mut F) -> ControlFlow<()>
+    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
     where
-        F: FnMut(&mut EvalContext<'_, '_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
+        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
         let layout_len = self.tree.layout_len();
         for index in 0..self.tree.layout_len() {
@@ -84,9 +88,9 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
         ControlFlow::Continue(())
     }
 
-    fn process<F>(&mut self, index: usize, ctx: &mut EvalContext<'_, '_, 'bp>, f: &mut F) -> ControlFlow<()>
+    fn process<F>(&mut self, index: usize, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
     where
-        F: FnMut(&mut EvalContext<'_, '_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
+        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
         let node = self
             .tree
@@ -134,7 +138,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 fn generate<'bp>(
     parent: Generator<'_, 'bp>,
     tree: &mut WidgetTreeView<'_, 'bp>,
-    ctx: &mut EvalContext<'_, '_, 'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> bool {
     match parent {
         Generator::Single(blueprints) | Generator::Iteration(_, blueprints) => {
@@ -147,7 +151,8 @@ fn generate<'bp>(
                 return false;
             }
 
-            eval_blueprint(&blueprints[index], ctx, tree.offset, tree);
+            let mut ctx = ctx.eval_ctx();
+            eval_blueprint(&blueprints[index], &mut ctx, tree.offset, tree);
             true
         }
         Generator::Loop(collection, _, _) if collection.count() == tree.layout_len() => false,

@@ -147,19 +147,6 @@ impl<T> Tree<T> {
     //     // InsertTransaction::new(self, parent)
     // }
 
-    /// Get a reference by value id
-    pub fn get_ref_by_id(&self, node_id: ValueId) -> Option<&T> {
-        self.values.get(node_id).map(|(_, val)| val)
-    }
-
-    /// Get a reference by path.
-    /// This has an additional cost since the value id has to
-    /// be found first.
-    pub fn get_ref_by_path(&self, path: &[u16]) -> Option<&T> {
-        let id = self.id(path)?;
-        self.values.get(id).map(|(_, val)| val)
-    }
-
     /// Get a reference to a `Node` via a path.
     pub fn get_node_by_path(&mut self, path: &[u16]) -> Option<(&Node, &mut TreeValues<T>)> {
         self.layout.with(path, |node| node).map(|node| (node, &mut self.values))
@@ -214,17 +201,6 @@ impl<T> Tree<T> {
             values: &mut self.values,
             filter,
         }
-    }
-
-    /// Perform a given operation (`F`) on a reference to a value in the tree
-    /// while still haveing mutable access to the rest of the tree.
-    pub fn with_value<F, R>(&self, value_id: ValueId, mut f: F) -> Option<R>
-    where
-        F: FnMut(&[u16], &T, &Self) -> R,
-    {
-        let value = self.values.get(value_id)?;
-        let ret = f(&value.0, &value.1, self);
-        Some(ret)
     }
 
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
@@ -567,144 +543,5 @@ impl Node {
 mod test {
     use super::*;
 
-    #[test]
-    fn insert_and_commit() {
-        let mut tree = Tree::<u32>::empty();
-        let transaction = tree.insert(root_node());
-        let node_id = transaction.node_id();
-        let value = 123;
 
-        transaction.commit_child(value);
-
-        assert_eq!(*tree.get_ref_by_id(node_id).unwrap(), 123);
-    }
-
-    #[test]
-    fn insert_without_commit() {
-        let mut tree = Tree::<()>::empty();
-        let transaction = tree.insert(root_node());
-        let node_id = transaction.node_id();
-        assert!(tree.get_ref_by_id(node_id).is_none());
-    }
-
-    #[test]
-    fn get_by_path() {
-        let mut tree = Tree::empty();
-        let node_id = tree.insert(root_node()).commit_child(1).unwrap();
-        let path = tree.path(node_id);
-        tree.insert(&path).commit_child(2);
-
-        let one = tree.get_ref_by_path(&[0]).unwrap();
-        let two = tree.get_ref_by_path(&[0, 0]).unwrap();
-
-        assert_eq!(*one, 1);
-        assert_eq!(*two, 2);
-    }
-
-    #[test]
-    fn with_node_id() {
-        let mut tree = Tree::empty();
-        let key = tree.insert(root_node()).commit_child(0).unwrap();
-        tree.insert(root_node()).commit_child(1);
-        tree.with_value(key, |_path, _value, _tree| {});
-    }
-
-    #[test]
-    fn with_node_id_reading_checkedout_value() {
-        let mut tree = Tree::empty();
-        let key = tree.insert(root_node()).commit_child(0).unwrap();
-        tree.insert(root_node()).commit_child(1);
-        tree.with_value_mut(key, |_path, _value, tree| {
-            // The value is already checked out
-            assert!(tree.get_ref_by_id(key).is_none());
-        });
-    }
-
-    // This is where we start:
-    // Insert At has to be a posibility.
-    // Scenario:
-    // * Insert at 0
-    // * Insert at len
-    // * Insert in the middle
-    #[test]
-    fn insert_at_path() {
-        let mut tree = Tree::empty();
-        // Setup: add two entries
-
-        // First entry
-        let key = tree.insert(root_node()).commit_child(0).unwrap();
-        let _sibling_path = tree.path_ref(key);
-
-        // Second entry (with two children)
-        let key_1 = tree.insert(root_node()).commit_child(1).unwrap();
-        let parent: Box<_> = tree.path_ref(key_1).into();
-
-        // Insert two values under the second entry
-        let key_1_0 = tree.insert(&parent).commit_child(5).unwrap();
-        let key_1_1 = tree.insert(&parent).commit_child(6).unwrap();
-
-        // Assert 1.
-        // First assertion that the paths are all rooted in [1]
-        assert_eq!(tree.path_ref(key_1), &[1]);
-        assert_eq!(tree.path_ref(key_1_0), &[1, 0]);
-        assert_eq!(tree.path_ref(key_1_1), &[1, 1]);
-
-        // Insert a node as the new first node ([0]), which should update
-        // the path for all the other entries in the tree
-        let insert_at = &[0];
-        tree.insert(insert_at).commit_at(123).unwrap();
-
-        // Assert 2
-        // Second assertion that the paths are all rooted in [2]
-        assert_eq!(tree.path_ref(key_1), &[2]);
-        assert_eq!(tree.path_ref(key_1_0), &[2, 0]);
-        assert_eq!(tree.path_ref(key_1_1), &[2, 1]);
-
-        // Insert a node as the new last node ([0]), which should update
-        // the path for all the other entries in the tree
-        let insert_at = [3];
-        let key_3 = tree.insert(&insert_at).commit_at(999).unwrap();
-
-        // Assert 3
-        assert_eq!(tree.path_ref(key_3), &[3]);
-    }
-
-    #[test]
-    fn remove_children() {
-        let mut tree = Tree::<u32>::empty();
-        tree.insert(root_node()).commit_child(1);
-        let path = &[0, 0];
-        tree.insert(path).commit_at(2);
-
-        assert!(tree.get_ref_by_path(path).is_some());
-        tree.remove(path);
-        assert!(tree.get_ref_by_path(path).is_none());
-    }
-
-    #[derive(Debug, PartialEq)]
-    enum Value {
-        S(String),
-        I(usize),
-    }
-
-    #[test]
-    fn modify_tree() {
-        let mut tree = Tree::<Value>::empty();
-        tree.view_mut().insert(root_node()).commit_child(Value::I(123));
-        let path = &[0, 0];
-        tree.view_mut().insert(path).commit_at(Value::I(1));
-
-        let mut tree = tree.view_mut();
-        tree.for_each(|_path, outer_value, mut children| {
-            children.for_each(|_path, inner_value, mut children| {
-                let parent = &[0, 0];
-                children.insert(parent).commit_child(Value::I(999));
-                let path = &[0, 0, 0];
-                let value = children.get_mut_by_path(path).unwrap();
-                assert_eq!(*value, Value::I(999));
-                assert_eq!(*outer_value, Value::I(123));
-                assert_eq!(*inner_value, Value::I(1));
-            });
-        });
-    }
 }

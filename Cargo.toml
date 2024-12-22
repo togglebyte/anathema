@@ -22,6 +22,7 @@ anathema-store = { path = "./anathema-store" }
 anathema-templates = { path = "./anathema-templates" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-geometry = { path = "./anathema-geometry" }
+anathema-testing = { path = "./anathema-testing" }
 
 [features]
 default = []
@@ -53,6 +54,7 @@ members = [
     "anathema-store",
     "anathema-templates", 
     "anathema-widgets", 
+    "anathema-testing", 
 ]
 
 [workspace.lints.rust]

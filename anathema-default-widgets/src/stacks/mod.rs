@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PositionChildren, WidgetId};
+use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, WidgetId};
 
 pub use self::column::Column;
 pub use self::hstack::HStack;
@@ -27,7 +27,7 @@ impl Stack {
         mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribute_storage.get_mut(id);
 

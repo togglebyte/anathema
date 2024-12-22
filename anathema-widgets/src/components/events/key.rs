@@ -1,11 +1,11 @@
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum KeyState {
     Press,
     Repeat,
     Release,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct KeyEvent {
     pub code: KeyCode,
     pub ctrl: bool,
@@ -21,7 +21,7 @@ impl KeyEvent {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum KeyCode {
     Char(char),
     Tab,

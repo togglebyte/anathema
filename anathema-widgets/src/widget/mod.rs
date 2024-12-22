@@ -15,19 +15,18 @@ use anathema_templates::WidgetComponentId;
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
 pub use self::query::Elements;
-pub use self::tree::{ForEach, LayoutForEach, Filter};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, PositionFilter};
 use crate::paint::{PainFilter, PaintCtx, PaintFilter, SizePos};
-use crate::{EvalContext, WidgetContainer, WidgetKind};
+pub use crate::tree::{Filter, ForEach, LayoutForEach};
+use crate::{WidgetContainer, WidgetKind};
 
 mod attributes;
 mod factory;
 mod query;
-mod tree;
 
 pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
-pub type LayoutChildren<'a, 'frame, 'bp> = LayoutForEach<'a, 'bp>;
+pub type LayoutChildren<'a, 'bp> = LayoutForEach<'a, 'bp>;
 pub type PositionChildren<'a, 'bp> = ForEach<'a, 'bp, PositionFilter>;
 pub type PaintChildren<'a, 'bp> = ForEach<'a, 'bp, PainFilter>;
 pub type WidgetId = anathema_store::slab::Key;
@@ -238,7 +237,7 @@ pub trait AnyWidget {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size;
 
     fn any_position<'bp>(
@@ -278,7 +277,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         self.layout(children, constraints, id, ctx)
     }
@@ -328,7 +327,7 @@ pub trait Widget {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size;
 
     fn paint<'bp>(

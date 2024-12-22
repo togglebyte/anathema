@@ -13,77 +13,60 @@ use super::{component, controlflow, WidgetContainer};
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
-use crate::expressions::{eval, eval_collection};
-use crate::layout::Viewport;
+use crate::expressions::{eval, eval_collection, ExprEvalCtx};
+use crate::layout::{EvalCtx, Viewport};
 use crate::values::{Collection, ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey, WidgetTreeView};
 use crate::{
-    eval_blueprint, AttributeStorage, ChangeList, DirtyWidgets, Factory, GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree
+    eval_blueprint, AttributeStorage, ChangeList, DirtyWidgets, Factory, GlyphMap, Scope, WidgetId, WidgetKind,
+    WidgetTree,
 };
 
 /// Evaluation context
-pub struct EvalContext<'a, 'b, 'bp> {
-    pub(super) globals: &'bp Globals,
-    pub(super) factory: &'a Factory,
-    pub(crate) scope: &'b mut Scope<'bp>,
-    pub(super) states: &'b mut States,
-    pub(super) component_registry: &'b mut ComponentRegistry,
-    pub(super) floating_widgets: &'b mut FloatingWidgets,
-    pub(super) changelist: &'b mut ChangeList,
-    pub(super) components: &'b mut Components,
-    pub dirty_widgets: &'b mut DirtyWidgets,
-    pub(super) parent: Option<WidgetId>,
-    pub attribute_storage: &'b mut AttributeStorage<'bp>,
-    pub viewport: &'a Viewport,
-    pub glyph_map: &'b mut GlyphMap,
-    pub force_layout: bool,
-}
+// pub struct EvalContext<'rt, 'bp> {
+//     pub viewport: Viewport,
+//     pub(crate) scope: Scope<'bp>,
+//     pub(crate) states: States,
+//     pub(crate) globals: &'bp Globals,
+//     pub(crate) parent: Option<WidgetId>,
+//     pub sidecar: &'rt mut Sidecar<'rt, 'bp>,
+//     pub(crate) force_layout: bool,
+// }
 
-impl<'a, 'b, 'bp> EvalContext<'a, 'b, 'bp> {
-    pub fn new(
-        globals: &'bp Globals,
-        factory: &'a Factory,
-        scope: &'b mut Scope<'bp>,
-        states: &'b mut States,
-        component_registry: &'b mut ComponentRegistry,
-        attribute_storage: &'b mut AttributeStorage<'bp>,
-        floating_widgets: &'b mut FloatingWidgets,
-        changelist: &'b mut ChangeList,
-        components: &'b mut Components,
-        dirty_widgets: &'b mut DirtyWidgets,
-        viewport: &'a Viewport,
-        glyph_map: &'b mut GlyphMap,
-        force_layout: bool,
-    ) -> Self {
-        Self {
-            globals,
-            factory,
-            scope,
-            states,
-            component_registry,
-            attribute_storage,
-            floating_widgets,
-            changelist,
-            components,
-            dirty_widgets,
-            parent: None,
-            viewport,
-            glyph_map,
-            force_layout,
-        }
-    }
+// impl<'rt, 'bp> EvalContext<'rt, 'bp> {
+//     pub fn new(
+//         globals: &'bp Globals,
+//         factory: &'rt Factory,
+//         scope: Scope<'bp>,
+//         states: States,
+//         viewport: Viewport,
+//         sidecar: &'rt mut Sidecar<'rt, 'bp>,
+//         force_layout: bool,
+//     ) -> Self {
+//         Self {
+//             globals,
+//             scope,
+//             states,
+//             parent: None,
+//             viewport,
+//             sidecar,
+//             force_layout,
+//         }
+//     }
 
-    fn get_component(
-        &mut self,
-        component_id: WidgetComponentId,
-    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
-        self.component_registry.get(component_id)
-    }
+//     pub fn needs_layout(&self, node_id: WidgetId) -> bool {
+//         self.sidecar.dirty_widgets.contains(node_id) || self.force_layout
+//     }
 
-    pub fn needs_layout(&self, node_id: WidgetId) -> bool {
-        self.dirty_widgets.contains(node_id) || self.force_layout
-    }
-}
+//     pub(crate) fn expr_eval_ctx(&self) -> ExprEvalCtx<'_, 'bp> {
+//         ExprEvalCtx {
+//             scope: &self.scope,
+//             states: &self.states,
+//             attributes: &*self.sidecar.attribute_storage,
+//             globals: self.globals,
+//         }
+//     }
+// }
 
 /// Evaluate a node kind
 pub(super) trait Evaluator {
@@ -92,7 +75,7 @@ pub(super) trait Evaluator {
     fn eval<'bp>(
         &mut self,
         input: Self::Input<'bp>,
-        context: &mut EvalContext<'_, '_, 'bp>,
+        context: &mut EvalCtx<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()>;
@@ -106,7 +89,7 @@ impl Evaluator for SingleEval {
     fn eval<'bp>(
         &mut self,
         single: Self::Input<'bp>,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut EvalCtx<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -119,29 +102,15 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty(widget_id);
 
         if let Some(expr) = single.value.as_ref() {
-            let value = attributes.insert_with(ValueKey::Value, |value_index| {
-                eval(
-                    expr,
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.attribute_storage,
-                    (widget_id, value_index),
-                )
-            });
+            let expr_eval_ctx = ctx.expr_eval_ctx();
+            let value =
+                attributes.insert_with(ValueKey::Value, |value_index| eval(expr, &expr_eval_ctx, (widget_id, value_index)));
             attributes.value = Some(value);
         }
 
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(
-                    expr,
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.attribute_storage,
-                    (widget_id, value_index),
-                )
+                eval(expr, &ctx.expr_eval_ctx(), (widget_id, value_index))
             });
         }
 
@@ -181,21 +150,15 @@ impl Evaluator for ForLoopEval {
     fn eval<'bp>(
         &mut self,
         for_loop: Self::Input<'bp>,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut EvalCtx<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
         let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
 
-        let collection = eval_collection(
-            &for_loop.data,
-            ctx.globals,
-            ctx.scope,
-            ctx.states,
-            ctx.attribute_storage,
-            value_id,
-        );
+        let ctx = ctx.expr_eval_ctx();
+        let collection = eval_collection(&for_loop.data, &ctx, value_id);
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
@@ -221,7 +184,7 @@ impl Evaluator for ControlFlowEval {
     fn eval<'bp>(
         &mut self,
         control_flow: Self::Input<'bp>,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut EvalCtx<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -237,16 +200,10 @@ impl Evaluator for ControlFlowEval {
                     let value_index = SmallIndex::from(i);
 
                     controlflow::Else {
-                        cond: e.cond.as_ref().map(|cond| {
-                            eval(
-                                cond,
-                                ctx.globals,
-                                ctx.scope,
-                                ctx.states,
-                                ctx.attribute_storage,
-                                (widget_id, SmallIndex::from(i)),
-                            )
-                        }),
+                        cond: e
+                            .cond
+                            .as_ref()
+                            .map(|cond| eval(cond, &ctx.expr_eval_ctx(), (widget_id, SmallIndex::from(i)))),
                         body: &e.body,
                         show: false,
                     }
@@ -268,7 +225,7 @@ impl Evaluator for ComponentEval {
     fn eval<'bp>(
         &mut self,
         input: Self::Input<'bp>,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut EvalCtx<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -279,20 +236,15 @@ impl Evaluator for ComponentEval {
 
         for (key, expr) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(
-                    expr,
-                    ctx.globals,
-                    ctx.scope,
-                    ctx.states,
-                    ctx.attribute_storage,
-                    (widget_id, value_index),
-                )
+                eval(expr, &ctx.expr_eval_ctx(), (widget_id, value_index))
             });
         }
 
         let component_id = usize::from(input.id).into();
         ctx.attribute_storage.insert(widget_id, attributes);
-        let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
+        let (kind, component, state) = ctx
+            .get_component(component_id)
+            .ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(state);
         let comp_widget = component::Component::new(
             &input.body,

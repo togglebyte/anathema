@@ -6,11 +6,13 @@ use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    AttributeStorage, DirtyWidgets, Element, EvalContext, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree
+    AttributeStorage, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach,
+    PaintChildren, PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
 };
 
 pub mod test;
 pub mod tui;
+pub mod tuiscroll;
 
 pub trait Backend {
     fn size(&self) -> Size;
@@ -97,18 +99,14 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // }
     }
 
-    pub fn run(&mut self, ctx: &mut EvalContext<'_, '_, 'bp>) {
-        // // let mut filter = LayoutFilter::new(true, self.attribute_storage);
-        // // let for_each = ForEach2::new(self.tree.view_mut(), panic!(), WidgetGenerator::Noop);
-        // // panic!("Use foreach 2 here");
-
+    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, glyphs: &mut GlyphMap) {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
         let mut for_each = LayoutForEach::new(self.tree.view_mut());
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
-            let _size = widget.layout(children, constraints, ctx);
+            widget.layout(children, constraints, ctx);
             ControlFlow::Break(())
         });
 
@@ -117,7 +115,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         let mut for_each = PositionChildren::new(self.tree.view_mut());
         for_each.each(|widget, children| {
-            widget.position(children, Pos::ZERO, ctx.attribute_storage, *ctx.viewport);
+            // widget.position(children, Pos::ZERO, ctx.attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
 
@@ -125,33 +123,10 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Paint -
         // -----------------------------------------------------------------------------
         let mut for_each = PaintChildren::new(self.tree.view_mut());
-        self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage, true);
+        // self.backend
+        //     .paint(glyphs, for_each, ctx.sidecar.attribute_storage, true);
+        panic!();
 
-        // //     // Layout
-        // //     let mut layout_ctx = LayoutCtx::new(
-        // //         self.attribute_storage,
-        // //         self.dirty_widgets,
-        // //         &self.viewport,
-        // //         self.glyph_map,
-        // //         self.force_layout,
-        // //     );
-        // //     layout_widget(widget, children, values, self.constraints, &mut layout_ctx, true);
-
-        // //     // Position
-        // //     position_widget(
-        // //         Pos::ZERO,
-        // //         widget,
-        // //         children,
-        // //         values,
-        // //         self.attribute_storage,
-        // //         true,
-        // //         self.viewport,
-        // //     );
-
-        // //     // Paint
-        // //     self.backend
-        // //         .paint(self.glyph_map, widget, children, values, self.attribute_storage, true);
-
-        // // self.floating();
+        self.floating();
     }
 }

@@ -4,7 +4,7 @@ use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 
@@ -75,7 +75,7 @@ impl Widget for Position {
         mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribute_storage.get(id);
         self.placement = attribs.get(PLACEMENT).unwrap_or_default();

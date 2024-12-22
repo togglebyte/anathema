@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
+use anathema_widgets::{LayoutChildren, LayoutForEach};
 
 use crate::border::BorderSize;
 
@@ -21,7 +21,7 @@ impl BorderLayout {
         &mut self,
         mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let mut size = Size::ZERO;
 

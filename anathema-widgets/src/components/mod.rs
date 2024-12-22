@@ -357,7 +357,7 @@ impl<'rt> FocusQueue<'rt> {
     }
 }
 
-pub trait Component {
+pub trait Component : 'static {
     type State: State;
     type Message;
 
@@ -492,7 +492,7 @@ where
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
             Event::Key(ev) => self.on_key(ev, state, ctx.elements, context),
             Event::Mouse(ev) => self.on_mouse(ev, state, ctx.elements, context),
-            Event::Resize(_, _) | Event::Noop | Event::Stop => (),
+            Event::Resize(_) | Event::Noop | Event::Stop => (),
         }
         event
     }

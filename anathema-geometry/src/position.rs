@@ -8,7 +8,7 @@ use crate::Size;
 
 /// A position in global space.
 /// Can contain negative coordinates
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd)]
 pub struct Pos {
     /// X coordinate
     pub x: i32,

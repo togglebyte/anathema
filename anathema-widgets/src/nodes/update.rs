@@ -2,7 +2,6 @@ use anathema_state::Change;
 use anathema_store::tree::PathFinder;
 
 use super::element::Element;
-use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 use super::WidgetContainer;
 use crate::error::Result;
@@ -10,32 +9,32 @@ use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
 use crate::{AttributeStorage, Scope, ValueIndex, WidgetKind, WidgetTree};
 
-struct UpdateTree<'a, 'b, 'bp> {
-    change: &'a Change,
-    value_id: ValueId,
-    ctx: EvalContext<'a, 'b, 'bp>,
-}
+// struct UpdateTree<'rt, 'bp> {
+//     change: &'a Change,
+//     value_id: ValueId,
+//     ctx: EvalContext<'rt, 'bp>,
+// }
 
-impl<'a, 'b, 'bp> PathFinder for UpdateTree<'a, 'b, 'bp> {
-    type Input = WidgetContainer<'bp>;
-    type Output = Result<()>;
+// impl<'a, 'b, 'bp> PathFinder for UpdateTree<'a, 'b, 'bp> {
+//     type Input = WidgetContainer<'bp>;
+//     type Output = Result<()>;
 
-    fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
-        panic!("old hat, don't use the path finder anymore, use the new ForEach");
-        // scope_value(&node.kind, self.ctx.scope, &[]);
-        // update_widget(&mut node.kind, &mut self.ctx, self.value_id, self.change, path, tree)?;
-        Ok(())
-    }
+//     fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
+//         panic!("old hat, don't use the path finder anymore, use the new ForEach");
+//         // scope_value(&node.kind, self.ctx.scope, &[]);
+//         // update_widget(&mut node.kind, &mut self.ctx, self.value_id, self.change, path, tree)?;
+//         Ok(())
+//     }
 
-    fn parent(&mut self, parent: &mut WidgetContainer<'bp>, sub_path: &[u16]) {
-        panic!("old hat, don't use the path finder anymore, use the new ForEach");
-        // scope_value(&parent.kind, self.ctx.scope, sub_path);
-    }
-}
+//     fn parent(&mut self, parent: &mut WidgetContainer<'bp>, sub_path: &[u16]) {
+//         panic!("old hat, don't use the path finder anymore, use the new ForEach");
+//         // scope_value(&parent.kind, self.ctx.scope, sub_path);
+//     }
+// }
 
 pub fn update_widget<'bp>(
     widget: &mut WidgetContainer<'bp>,
-    // ctx: &mut EvalContext<'_, '_, 'bp>,
+    // ctx: &mut EvalContext<'_, 'bp>,
     value_id: ValueId,
     change: &Change,
     path: &[u16],
@@ -64,11 +63,8 @@ pub fn update_widget<'bp>(
         }
         WidgetKind::For(for_loop) => for_loop.update(change, value_id, tree)?,
         WidgetKind::Iteration(_) => todo!(),
-        // but rather the ControlFlow is managing
-        // these in the layout process instead, as
-        // the ControlFlow has access to all the
-        // branches.
         WidgetKind::ControlFlow(controlflow) => {
+            // TODO: is this even needed? - TB 2024-12-21
             // controlflow
             //     .elses
             //     .iter_mut()

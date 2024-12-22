@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::{EvalContext, LayoutChildren, LayoutForEach};
+use anathema_widgets::{LayoutChildren, LayoutForEach};
 
 use super::{expand, spacers, Axis, Direction};
 
@@ -78,7 +78,7 @@ impl Many {
         &mut self,
         mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let max_constraints = constraints;
 

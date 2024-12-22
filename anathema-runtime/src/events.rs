@@ -173,7 +173,7 @@ impl<T: GlobalEvents> EventHandler<T> {
             }
 
             match event {
-                Event::Resize(width, height) => {
+                Event::Resize(size) => {
                     // Reset needs_layout for all the nodes
                     let (nodes, elements) = tree.split();
                     panic!("this should force a reflow and redraw");
@@ -185,7 +185,6 @@ impl<T: GlobalEvents> EventHandler<T> {
                     // );
 
                     // Resize the backend
-                    let size = Size::from((width, height));
                     backend.resize(size, glyph_map);
                     viewport.resize(size);
                     constraints.set_max_width(size.width);

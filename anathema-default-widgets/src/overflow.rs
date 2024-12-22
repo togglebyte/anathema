@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, EvalContext, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -109,7 +109,7 @@ impl Widget for Overflow {
         children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
-        ctx: &mut EvalContext<'_, '_, 'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         // TODO: remove this -TB 2024-10-31
         // // horrid log

@@ -1,7 +1,6 @@
 use anathema_store::tree::PathFinder;
 
 use super::element::Element;
-use super::eval::EvalContext;
 use super::loops::LOOP_INDEX;
 // use super::update::scope_value;
 use super::WidgetContainer;
@@ -10,192 +9,192 @@ use crate::expressions::{eval, eval_collection};
 use crate::values::{Collection, ValueId};
 use crate::{WidgetKind, WidgetTree};
 
-struct ResolveFutureValues<'a, 'b, 'bp> {
-    value_id: ValueId,
-    ctx: EvalContext<'a, 'b, 'bp>,
-}
+// struct ResolveFutureValues<'rt, 'bp> {
+//     value_id: ValueId,
+//     ctx: EvalContext<'rt, 'bp>,
+// }
 
-impl<'a, 'b, 'bp> PathFinder for ResolveFutureValues<'a, 'b, 'bp> {
-    type Input = WidgetContainer<'bp>;
-    type Output = Result<()>;
+// impl<'a, 'b, 'bp> PathFinder for ResolveFutureValues<'a, 'b, 'bp> {
+//     type Input = WidgetContainer<'bp>;
+//     type Output = Result<()>;
 
-    fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
-        // if the widget is a component, defer scoping the value until afterwards
-        if !matches!(node.kind, WidgetKind::Component(_)) {
-            panic!("let's not use this anymore")
-            // scope_value(&node.kind, self.ctx.scope, &[]);
-        }
+//     fn apply(&mut self, node: &mut WidgetContainer<'bp>, path: &[u16], tree: &mut WidgetTree<'bp>) -> Self::Output {
+//         // if the widget is a component, defer scoping the value until afterwards
+//         if !matches!(node.kind, WidgetKind::Component(_)) {
+//             panic!("let's not use this anymore")
+//             // scope_value(&node.kind, self.ctx.scope, &[]);
+//         }
 
-        try_resolve_value(&mut node.kind, &mut self.ctx, self.value_id, path, tree)?;
+//         try_resolve_value(&mut node.kind, &mut self.ctx, self.value_id, path, tree)?;
 
-        if matches!(node.kind, WidgetKind::Component(_)) {
-            panic!("let's not use this anymore")
-            // scope_value(&node.kind, self.ctx.scope, &[]);
-        }
+//         if matches!(node.kind, WidgetKind::Component(_)) {
+//             panic!("let's not use this anymore")
+//             // scope_value(&node.kind, self.ctx.scope, &[]);
+//         }
 
-        Ok(())
-    }
+//         Ok(())
+//     }
 
-    fn parent(&mut self, parent: &mut WidgetContainer<'bp>, children: &[u16]) {
-        panic!("let's not use this anymore")
-        // scope_value(&parent.kind, self.ctx.scope, children);
-    }
-}
+//     fn parent(&mut self, parent: &mut WidgetContainer<'bp>, children: &[u16]) {
+//         panic!("let's not use this anymore")
+//         // scope_value(&parent.kind, self.ctx.scope, children);
+//     }
+// }
 
-pub fn try_resolve_future_values<'bp>(
-    value_id: ValueId,
-    path: &[u16],
-    tree: &mut WidgetTree<'bp>,
-    ctx: EvalContext<'_, '_, 'bp>,
-) {
-    let res = ResolveFutureValues { value_id, ctx };
-    tree.apply_path_finder(path, res);
-}
+// pub fn try_resolve_future_values<'bp>(
+//     value_id: ValueId,
+//     path: &[u16],
+//     tree: &mut WidgetTree<'bp>,
+//     ctx: EvalContext<'_, '_, 'bp>,
+// ) {
+//     let res = ResolveFutureValues { value_id, ctx };
+//     tree.apply_path_finder(path, res);
+// }
 
-fn try_resolve_value<'bp>(
-    widget: &mut WidgetKind<'bp>,
-    ctx: &mut EvalContext<'_, '_, 'bp>,
-    value_id: ValueId,
-    path: &[u16],
-    tree: &mut WidgetTree<'bp>,
-) -> Result<()> {
-    match widget {
-        WidgetKind::Element(Element { container, .. }) => {
-            ctx.attribute_storage
-                .with_mut(container.id, |attributes, attribute_storage| {
-                    let Some(val) = attributes.get_mut_with_index(value_id.index()) else { return };
+// fn try_resolve_value<'bp>(
+//     widget: &mut WidgetKind<'bp>,
+//     ctx: &mut EvalContext<'_, '_, 'bp>,
+//     value_id: ValueId,
+//     path: &[u16],
+//     tree: &mut WidgetTree<'bp>,
+// ) -> Result<()> {
+//     match widget {
+//         WidgetKind::Element(Element { container, .. }) => {
+//             ctx.attribute_storage
+//                 .with_mut(container.id, |attributes, attribute_storage| {
+//                     let Some(val) = attributes.get_mut_with_index(value_id.index()) else { return };
 
-                    if let Some(expr) = val.expr {
-                        let value = eval(expr, ctx.globals, ctx.scope, ctx.states, attribute_storage, value_id);
+//                     if let Some(expr) = val.expr {
+//                         let value = eval(expr, ctx.globals, ctx.scope, ctx.states, attribute_storage, value_id);
 
-                        if val.replace(value) {
-                            // TODO: do we need this?
-                            ctx.dirty_widgets.push(value_id.key());
-                        }
-                    }
-                });
-        }
-        WidgetKind::For(for_loop) => {
-            panic!()
-            // // 1. Assign a new collection
-            // // 2. Remove the current children
-            // // 3. Build up new children
+//                         if val.replace(value) {
+//                             // TODO: do we need this?
+//                             ctx.dirty_widgets.push(value_id.key());
+//                         }
+//                     }
+//                 });
+//         }
+//         WidgetKind::For(for_loop) => {
+//             panic!()
+//             // // 1. Assign a new collection
+//             // // 2. Remove the current children
+//             // // 3. Build up new children
 
-            // for_loop.collection = eval_collection(
-            //     for_loop.collection.expr.unwrap(),
-            //     ctx.globals,
-            //     ctx.scope,
-            //     ctx.states,
-            //     ctx.attribute_storage,
-            //     value_id,
-            // );
+//             // for_loop.collection = eval_collection(
+//             //     for_loop.collection.expr.unwrap(),
+//             //     ctx.globals,
+//             //     ctx.scope,
+//             //     ctx.states,
+//             //     ctx.attribute_storage,
+//             //     value_id,
+//             // );
 
-            // tree.remove_children(path);
+//             // tree.remove_children(path);
 
-            // let collection = &for_loop.collection;
-            // let binding = &for_loop.binding;
-            // let body = for_loop.body;
-            // let parent = path;
+//             // let collection = &for_loop.collection;
+//             // let binding = &for_loop.binding;
+//             // let body = for_loop.body;
+//             // let parent = path;
 
-            // for index in 0..collection.count() {
-            //     ctx.scope.push();
+//             // for index in 0..collection.count() {
+//             //     ctx.scope.push();
 
-            //     match collection.inner() {
-            //         Collection::Static(expressions) => {
-            //             let downgrade = expressions[index].downgrade();
-            //             ctx.scope.scope_downgrade(binding, downgrade)
-            //         }
-            //         Collection::Dyn(value_ref) => {
-            //             let value = value_ref
-            //                 .as_state()
-            //                 .and_then(|state| state.state_lookup(index.into()))
-            //                 .expect("the collection has a value since it has a length");
-            //             ctx.scope.scope_pending(binding, value)
-            //         }
-            //         Collection::Index(collection, _) => match &**collection {
-            //             Collection::Static(expressions) => {
-            //                 let downgrade = expressions[index].downgrade();
-            //                 ctx.scope.scope_downgrade(binding, downgrade)
-            //             }
-            //             Collection::Dyn(value_ref) => {
-            //                 let value = value_ref
-            //                     .as_state()
-            //                     .and_then(|state| state.state_lookup(index.into()))
-            //                     .expect("the collection has a value since it has a length");
-            //                 ctx.scope.scope_pending(binding, value)
-            //             }
-            //             Collection::Future => {}
-            //             Collection::Index(_, _) => unreachable!("maaybe it's not?"),
-            //         },
-            //         Collection::Future => {}
-            //     }
+//             //     match collection.inner() {
+//             //         Collection::Static(expressions) => {
+//             //             let downgrade = expressions[index].downgrade();
+//             //             ctx.scope.scope_downgrade(binding, downgrade)
+//             //         }
+//             //         Collection::Dyn(value_ref) => {
+//             //             let value = value_ref
+//             //                 .as_state()
+//             //                 .and_then(|state| state.state_lookup(index.into()))
+//             //                 .expect("the collection has a value since it has a length");
+//             //             ctx.scope.scope_pending(binding, value)
+//             //         }
+//             //         Collection::Index(collection, _) => match &**collection {
+//             //             Collection::Static(expressions) => {
+//             //                 let downgrade = expressions[index].downgrade();
+//             //                 ctx.scope.scope_downgrade(binding, downgrade)
+//             //             }
+//             //             Collection::Dyn(value_ref) => {
+//             //                 let value = value_ref
+//             //                     .as_state()
+//             //                     .and_then(|state| state.state_lookup(index.into()))
+//             //                     .expect("the collection has a value since it has a length");
+//             //                 ctx.scope.scope_pending(binding, value)
+//             //             }
+//             //             Collection::Future => {}
+//             //             Collection::Index(_, _) => unreachable!("maaybe it's not?"),
+//             //         },
+//             //         Collection::Future => {}
+//             //     }
 
-            //     let iter_id = tree
-            //         .insert(parent)
-            //         .commit_child(WidgetKind::Iteration(super::loops::Iteration {
-            //             loop_index: anathema_state::Value::new(index as i64),
-            //             binding,
-            //         }))
-            //         .ok_or(Error::TreeTransactionFailed)?;
+//             //     let iter_id = tree
+//             //         .insert(parent)
+//             //         .commit_child(WidgetKind::Iteration(super::loops::Iteration {
+//             //             loop_index: anathema_state::Value::new(index as i64),
+//             //             binding,
+//             //         }))
+//             //         .ok_or(Error::TreeTransactionFailed)?;
 
-            //     // Scope the iteration value
-            //     tree.with_value_mut(iter_id, |parent, widget, tree| {
-            //         let WidgetKind::Iteration(iter) = widget else { unreachable!() };
-            //         ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
+//             //     // Scope the iteration value
+//             //     tree.with_value_mut(iter_id, |parent, widget, tree| {
+//             //         let WidgetKind::Iteration(iter) = widget else { unreachable!() };
+//             //         ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
 
-            //         for bp in body {
-            //             crate::eval_blueprint(bp, ctx, parent, tree)?;
-            //         }
-            //         Ok(())
-            //     })?;
+//             //         for bp in body {
+//             //             crate::eval_blueprint(bp, ctx, parent, tree)?;
+//             //         }
+//             //         Ok(())
+//             //     })?;
 
-            //     ctx.scope.pop();
-            // }
-        }
-        // WidgetKind::If(widget) => {
-        //     if let Some(expr) = widget.cond.expr {
-        //         let value = eval(
-        //             expr,
-        //             ctx.globals,
-        //             ctx.scope,
-        //             ctx.states,
-        //             ctx.attribute_storage,
-        //             value_id,
-        //         );
-        //         widget.cond = value;
-        //     }
-        // }
-        // WidgetKind::Else(el) => {
-        //     let Some(val) = &mut el.cond else { return Ok(()) };
-        //     if let Some(expr) = val.expr {
-        //         *val = eval(
-        //             expr,
-        //             ctx.globals,
-        //             ctx.scope,
-        //             ctx.states,
-        //             ctx.attribute_storage,
-        //             value_id,
-        //         );
-        //     }
-        // }
-        WidgetKind::ControlFlow(_) => unreachable!(),
-        WidgetKind::ControlFlowContainer(_) => unreachable!(),
-        WidgetKind::Iteration(_) => unreachable!(),
-        WidgetKind::Component(component) => {
-            ctx.attribute_storage
-                .with_mut(component.widget_id, |attributes, attribute_storage| {
-                    let Some(val) = attributes.get_mut_with_index(value_id.index()) else { return };
+//             //     ctx.scope.pop();
+//             // }
+//         }
+//         // WidgetKind::If(widget) => {
+//         //     if let Some(expr) = widget.cond.expr {
+//         //         let value = eval(
+//         //             expr,
+//         //             ctx.globals,
+//         //             ctx.scope,
+//         //             ctx.states,
+//         //             ctx.attribute_storage,
+//         //             value_id,
+//         //         );
+//         //         widget.cond = value;
+//         //     }
+//         // }
+//         // WidgetKind::Else(el) => {
+//         //     let Some(val) = &mut el.cond else { return Ok(()) };
+//         //     if let Some(expr) = val.expr {
+//         //         *val = eval(
+//         //             expr,
+//         //             ctx.globals,
+//         //             ctx.scope,
+//         //             ctx.states,
+//         //             ctx.attribute_storage,
+//         //             value_id,
+//         //         );
+//         //     }
+//         // }
+//         WidgetKind::ControlFlow(_) => unreachable!(),
+//         WidgetKind::ControlFlowContainer(_) => unreachable!(),
+//         WidgetKind::Iteration(_) => unreachable!(),
+//         WidgetKind::Component(component) => {
+//             ctx.attribute_storage
+//                 .with_mut(component.widget_id, |attributes, attribute_storage| {
+//                     let Some(val) = attributes.get_mut_with_index(value_id.index()) else { return };
 
-                    if let Some(expr) = val.expr {
-                        let value = eval(expr, ctx.globals, ctx.scope, ctx.states, attribute_storage, value_id);
-                        val.replace(value);
-                    }
-                });
-        }
-    }
+//                     if let Some(expr) = val.expr {
+//                         let value = eval(expr, ctx.globals, ctx.scope, ctx.states, attribute_storage, value_id);
+//                         val.replace(value);
+//                     }
+//                 });
+//         }
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod test {
