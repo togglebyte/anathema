@@ -8,7 +8,7 @@ use std::time::Duration;
 use anathema_state::{AnyState, CommonVal, SharedState, State, StateId, Value};
 use anathema_store::slab::Slab;
 use anathema_store::storage::strings::{StringId, Strings};
-use anathema_templates::WidgetComponentId;
+use anathema_templates::ComponentBlueprintId;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
@@ -29,7 +29,7 @@ enum ComponentType {
 
 /// Store component factories.
 /// This is how components are created.
-pub struct ComponentRegistry(Slab<WidgetComponentId, ComponentType>);
+pub struct ComponentRegistry(Slab<ComponentBlueprintId, ComponentType>);
 
 impl ComponentRegistry {
     pub fn new() -> Self {
@@ -41,7 +41,7 @@ impl ComponentRegistry {
     /// This is fine as the component ids are generated at the same time.
     pub fn add_component<S: 'static + State>(
         &mut self,
-        id: WidgetComponentId,
+        id: ComponentBlueprintId,
         component: impl Component + 'static,
         state: S,
     ) {
@@ -49,7 +49,7 @@ impl ComponentRegistry {
         self.0.insert_at(id, comp_type);
     }
 
-    pub fn add_prototype<FC, FS, C, S>(&mut self, id: WidgetComponentId, proto: FC, mut state: FS)
+    pub fn add_prototype<FC, FS, C, S>(&mut self, id: ComponentBlueprintId, proto: FC, mut state: FS)
     where
         FC: 'static + Fn() -> C,
         FS: 'static + FnMut() -> S,
@@ -66,7 +66,7 @@ impl ComponentRegistry {
     ///
     /// Panics if the component isn't registered.
     /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(&mut self, id: WidgetComponentId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
+    pub fn get(&mut self, id: ComponentBlueprintId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => Some((ComponentKind::Instance, comp.take()?, state.take()?)),
@@ -83,7 +83,7 @@ impl ComponentRegistry {
     /// Panics if the component entry doesn't exist or if the entry is for a prototype.
     pub fn return_component(
         &mut self,
-        id: WidgetComponentId,
+        id: ComponentBlueprintId,
         current_component: Box<dyn AnyComponent>,
         current_state: Box<dyn AnyState>,
     ) {
@@ -101,10 +101,10 @@ impl ComponentRegistry {
 }
 
 #[derive(Debug)]
-pub struct ComponentId<T>(pub(crate) WidgetComponentId, pub(crate) PhantomData<T>);
+pub struct ComponentId<T>(pub(crate) ComponentBlueprintId, pub(crate) PhantomData<T>);
 
-impl<T> From<WidgetComponentId> for ComponentId<T> {
-    fn from(value: WidgetComponentId) -> Self {
+impl<T> From<ComponentBlueprintId> for ComponentId<T> {
+    fn from(value: ComponentBlueprintId) -> Self {
         Self(value, PhantomData)
     }
 }
@@ -119,11 +119,11 @@ impl<T> Copy for ComponentId<T> {}
 
 pub struct ViewMessage {
     pub(super) payload: Box<dyn Any + Send + Sync>,
-    pub(super) recipient: WidgetComponentId,
+    pub(super) recipient: ComponentBlueprintId,
 }
 
 impl ViewMessage {
-    pub fn recipient(&self) -> WidgetComponentId {
+    pub fn recipient(&self) -> ComponentBlueprintId {
         self.recipient
     }
 

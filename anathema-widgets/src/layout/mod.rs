@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use anathema_templates::{Globals, WidgetComponentId};
+use anathema_templates::{Globals, ComponentBlueprintId};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
@@ -135,7 +135,7 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
 
     pub(super) fn get_component(
         &mut self,
-        component_id: WidgetComponentId,
+        component_id: ComponentBlueprintId,
     ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
         self.component_registry.get(component_id)
     }

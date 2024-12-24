@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{drain_changes, drain_futures, Changes, FutureValues, States};
+use anathema_state::{drain_changes, drain_futures, AnyState, Changes, FutureValues, State, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
@@ -74,6 +74,18 @@ impl<'bp> Runtime<'bp> {
         let mut first_frame = self.next_frame()?;
         first_frame.init(blueprint);
         Ok(())
+    }
+
+    pub fn select_component(&mut self) {
+        // self.components
+    }
+
+    pub fn state_id(&mut self, component_id: usize) -> Option<StateId> {
+        self.components.get(component_id).map(|(_, id)| id)
+    }
+
+    pub fn get_state(&mut self, state_id: StateId) -> Option<&dyn AnyState> {
+        self.states.get(state_id)
     }
 }
 

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
-use crate::{Expression, WidgetComponentId};
+use crate::{Expression, ComponentBlueprintId};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {
@@ -40,11 +40,12 @@ pub struct Else {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
-    pub id: WidgetComponentId,
+    pub id: ComponentBlueprintId,
     pub body: Vec<Blueprint>,
     pub attributes: SmallMap<String, Expression>,
     pub assoc_functions: Vec<(StringId, StringId)>,
-    pub parent: Option<WidgetComponentId>,
+    /// The parent component in the blueprint
+    pub parent: Option<ComponentBlueprintId>,
 }
 
 /// A blueprint represents what widget should be built from the information

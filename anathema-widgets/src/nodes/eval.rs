@@ -5,7 +5,7 @@ use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
-use anathema_templates::{Globals, WidgetComponentId};
+use anathema_templates::{Globals, ComponentBlueprintId};
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};

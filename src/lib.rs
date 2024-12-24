@@ -14,7 +14,7 @@ pub use {
 pub mod prelude {
     pub use crate::backend::tui::TuiBackend;
     pub use crate::runtime::{GlobalContext, GlobalEvents, Runtime};
-    pub use crate::templates::{Document, SourceKind, ToSourceKind, WidgetComponentId};
+    pub use crate::templates::{Document, SourceKind, ToSourceKind, ComponentBlueprintId};
     pub use crate::widgets::components::Context;
 }
 pub mod component {

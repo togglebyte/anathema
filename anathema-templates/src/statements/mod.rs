@@ -6,7 +6,7 @@ use crate::components::ComponentTemplates;
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::variables::Variables;
-use crate::WidgetComponentId;
+use crate::ComponentBlueprintId;
 
 mod const_eval;
 pub(crate) mod eval;
@@ -17,7 +17,7 @@ pub(crate) struct Context<'vars> {
     pub(crate) components: &'vars mut ComponentTemplates,
     pub(crate) strings: &'vars mut Strings,
     pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
-    pub(crate) current_component_parent: Option<WidgetComponentId>,
+    pub(crate) current_component_parent: Option<ComponentBlueprintId>,
 }
 
 impl<'vars> Context<'vars> {
@@ -26,7 +26,7 @@ impl<'vars> Context<'vars> {
         components: &'vars mut ComponentTemplates,
         strings: &'vars mut Strings,
         slots: SmallMap<StringId, Vec<Blueprint>>,
-        current_component_parent: Option<WidgetComponentId>,
+        current_component_parent: Option<ComponentBlueprintId>,
     ) -> Self {
         Self {
             globals,
@@ -39,7 +39,7 @@ impl<'vars> Context<'vars> {
 }
 
 impl Context<'_> {
-    pub fn component_parent(&self) -> Option<WidgetComponentId> {
+    pub fn component_parent(&self) -> Option<ComponentBlueprintId> {
         self.current_component_parent
     }
 
@@ -49,7 +49,7 @@ impl Context<'_> {
 
     fn load_component(
         &mut self,
-        parent_component_id: WidgetComponentId,
+        parent_component_id: ComponentBlueprintId,
         slots: SmallMap<StringId, Vec<Blueprint>>,
     ) -> Result<Vec<Blueprint>> {
         self.components
@@ -62,7 +62,7 @@ pub(crate) enum Statement {
     LoadValue(Expression),
     LoadAttribute { key: StringId, value: Expression },
     AssociatedFunction { internal: StringId, external: StringId },
-    Component(WidgetComponentId),
+    Component(ComponentBlueprintId),
     ComponentSlot(StringId),
     Node(StringId),
     For { binding: StringId, data: Expression },
@@ -222,7 +222,7 @@ mod test {
         }
     }
 
-    pub(crate) fn component(id: impl Into<WidgetComponentId>) -> Statement {
+    pub(crate) fn component(id: impl Into<ComponentBlueprintId>) -> Statement {
         Statement::Component(id.into())
     }
 

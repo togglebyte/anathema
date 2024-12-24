@@ -453,4 +453,10 @@ mod test {
 
         assert_eq!(val.as_int(), 2);
     }
+
+    #[test]
+    fn monitor_value() {
+        let value = Value::new(1);
+        // value.monitor
+    }
 }

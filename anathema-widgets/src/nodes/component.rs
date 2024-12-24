@@ -1,7 +1,7 @@
 use anathema_state::StateId;
 use anathema_store::storage::strings::StringId;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::WidgetComponentId;
+use anathema_templates::ComponentBlueprintId;
 
 use crate::components::{AnyComponent, ComponentKind};
 use crate::WidgetId;
@@ -14,7 +14,7 @@ pub struct Component<'bp> {
     /// Used to identify the component in the component registry.
     /// This id will not be unique for prototypes
     // TODO: do we need the component id?
-    pub component_id: WidgetComponentId,
+    pub component_id: ComponentBlueprintId,
     pub widget_id: WidgetId,
     pub parent: Option<WidgetId>,
     pub kind: ComponentKind,
@@ -26,7 +26,7 @@ impl<'bp> Component<'bp> {
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
-        component_id: WidgetComponentId,
+        component_id: ComponentBlueprintId,
         widget_id: WidgetId,
         kind: ComponentKind,
         assoc_functions: &'bp [(StringId, StringId)],

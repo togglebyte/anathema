@@ -6,7 +6,7 @@ use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
 use crate::error::{Error, Result};
 use crate::expressions::Expression;
-use crate::{Primitive, WidgetComponentId};
+use crate::{Primitive, ComponentBlueprintId};
 
 pub(crate) struct Scope {
     statements: Statements,
@@ -124,7 +124,7 @@ impl Scope {
         Ok(Blueprint::ControlFlow(ControlFlow { elses }))
     }
 
-    fn eval_component(&mut self, component_id: WidgetComponentId, ctx: &mut Context<'_>) -> Result<Blueprint> {
+    fn eval_component(&mut self, component_id: ComponentBlueprintId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let parent = ctx.component_parent();
 
         // Associated functions

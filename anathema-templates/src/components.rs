@@ -79,29 +79,29 @@ pub(crate) enum ComponentSource {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct WidgetComponentId(u32);
+pub struct ComponentBlueprintId(u32);
 
-impl From<WidgetComponentId> for Index {
-    fn from(value: WidgetComponentId) -> Self {
+impl From<ComponentBlueprintId> for Index {
+    fn from(value: ComponentBlueprintId) -> Self {
         value.0.into()
     }
 }
 
-impl From<WidgetComponentId> for usize {
-    fn from(value: WidgetComponentId) -> Self {
+impl From<ComponentBlueprintId> for usize {
+    fn from(value: ComponentBlueprintId) -> Self {
         value.0 as usize
     }
 }
 
-impl From<usize> for WidgetComponentId {
+impl From<usize> for ComponentBlueprintId {
     fn from(value: usize) -> Self {
         Self(value as u32)
     }
 }
 
 pub(crate) struct ComponentTemplates {
-    dependencies: Stack<WidgetComponentId>,
-    components: Storage<WidgetComponentId, String, ComponentSource>,
+    dependencies: Stack<ComponentBlueprintId>,
+    components: Storage<ComponentBlueprintId, String, ComponentSource>,
 }
 
 impl ComponentTemplates {
@@ -112,18 +112,18 @@ impl ComponentTemplates {
         }
     }
 
-    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> WidgetComponentId {
+    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> ComponentBlueprintId {
         self.components.push(name.into(), ComponentSource::Empty)
     }
 
-    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> WidgetComponentId {
+    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> ComponentBlueprintId {
         let ident = ident.into();
         self.components.insert(ident, template)
     }
 
     pub(crate) fn load(
         &mut self,
-        parent_id: WidgetComponentId,
+        parent_id: ComponentBlueprintId,
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
@@ -168,7 +168,7 @@ impl ComponentTemplates {
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
-        parent: WidgetComponentId,
+        parent: ComponentBlueprintId,
     ) -> Result<Vec<Blueprint>> {
         let tokens = Lexer::new(template, strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, template.len());

@@ -40,8 +40,6 @@ pub fn update_widget<'bp>(
     path: &[u16],
     tree: WidgetTreeView<'_, 'bp>,
 ) -> Result<()> {
-    // Tell all widgets they need layout
-
     match &mut widget.kind {
         WidgetKind::Element(..) => {
             // Reflow of the layout will be triggered by the runtime and not in this step

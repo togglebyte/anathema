@@ -10,7 +10,7 @@ use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::sorted::SortedList;
 use anathema_store::tree::{Tree, TreeForEach, TreeView};
-use anathema_templates::WidgetComponentId;
+use anathema_templates::ComponentBlueprintId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
@@ -33,9 +33,11 @@ pub type WidgetId = anathema_store::slab::Key;
 
 #[derive(Debug)]
 pub struct CompEntry {
+    /// The state owned by this component
     pub state_id: StateId,
+    /// The components id in the widget tree
     pub widget_id: WidgetId,
-    pub component_id: WidgetComponentId,
+    component_id: ComponentBlueprintId,
     path: Box<[u16]>,
 }
 
@@ -59,11 +61,16 @@ impl PartialEq for CompEntry {
     }
 }
 
+/// This handles tab indexing and the list of component positions in the tree
 pub struct Components {
+    /// Current selected component
     pub tab_index: usize,
+    /// All components 
     inner: SortedList<CompEntry>,
+    /// Map the widget id to the component entry
     widget_ids: SmallMap<WidgetId, usize>,
-    comp_ids: SmallMap<WidgetComponentId, usize>,
+    /// Map the widget component id to the component entry
+    comp_ids: SmallMap<ComponentBlueprintId, usize>,
 }
 
 impl Components {
@@ -76,7 +83,7 @@ impl Components {
         }
     }
 
-    pub fn push(&mut self, path: Box<[u16]>, component_id: WidgetComponentId, widget_id: WidgetId, state_id: StateId) {
+    pub fn push(&mut self, path: Box<[u16]>, component_id: ComponentBlueprintId, widget_id: WidgetId, state_id: StateId) {
         let entry = CompEntry {
             path,
             component_id,
@@ -91,18 +98,19 @@ impl Components {
     pub fn remove(&mut self, widget_id: WidgetId) {
         let Some(index) = self.widget_ids.remove(&widget_id) else { return };
         let entry = self.inner.remove(index);
-        let _ = self.comp_ids.remove(&entry.component_id);
+        self.comp_ids.remove(&entry.component_id);
     }
 
     pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
         self.get(self.tab_index)
     }
 
+    // This needs mutable access to self as it will sort the list if needed
     pub fn get(&mut self, index: usize) -> Option<(WidgetId, StateId)> {
         self.inner.get(index).map(|e| (e.widget_id, e.state_id))
     }
 
-    pub fn get_by_component_id(&mut self, id: WidgetComponentId) -> Option<&CompEntry> {
+    pub fn get_by_component_id(&mut self, id: ComponentBlueprintId) -> Option<&CompEntry> {
         let index = self.comp_ids.get(&id)?;
         self.inner.get(*index)
     }
@@ -188,18 +196,18 @@ impl From<WidgetId> for Parent {
 }
 
 /// Component relationships, tracking the parent component of each component
-pub struct ComponentParents(SecondaryMap<WidgetComponentId, Parent>);
+pub struct ComponentParents(SecondaryMap<ComponentBlueprintId, Parent>);
 
 impl ComponentParents {
     pub fn empty() -> Self {
         Self(SecondaryMap::empty())
     }
 
-    pub fn try_remove(&mut self, key: WidgetComponentId) {
+    pub fn try_remove(&mut self, key: ComponentBlueprintId) {
         self.0.try_remove(key);
     }
 
-    pub fn get_parent(&self, child: WidgetComponentId) -> Option<Parent> {
+    pub fn get_parent(&self, child: ComponentBlueprintId) -> Option<Parent> {
         self.0.get(child).copied()
     }
 }
