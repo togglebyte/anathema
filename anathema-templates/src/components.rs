@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-use anathema_store::slab::Index;
+use anathema_store::slab::{Index, SlabIndex};
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::strings::{StringId, Strings};
@@ -80,6 +80,21 @@ pub(crate) enum ComponentSource {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentBlueprintId(u32);
+
+impl SlabIndex for ComponentBlueprintId {
+    const MAX: usize = u32::MAX as usize;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
+    }
+}
 
 impl From<ComponentBlueprintId> for Index {
     fn from(value: ComponentBlueprintId) -> Self {

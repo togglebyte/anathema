@@ -7,11 +7,11 @@ use crate::slab::{RcElement, RcSlab, SharedSlab};
 //   - Shared key -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SharedKey(pub usize, pub OwnedKey);
+pub struct SharedKey(pub u32, pub OwnedKey);
 
 impl From<SharedKey> for usize {
     fn from(key: SharedKey) -> usize {
-        key.0
+        key.0 as usize
     }
 }
 
@@ -46,7 +46,7 @@ impl<T> Shared<T> {
 
     pub fn insert(&self, owned_key: OwnedKey, value: T) -> SharedKey {
         let key = self.inner.borrow_mut().insert(value);
-        SharedKey(key, owned_key)
+        SharedKey(key as u32, owned_key)
     }
 
     pub fn try_evict(&self, key: SharedKey) -> Option<T> {

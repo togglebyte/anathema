@@ -1,5 +1,5 @@
 use anathema_debug::DebugWriter;
-use anathema_store::slab::Slab;
+use anathema_store::slab::{Slab, SlabIndex};
 use anathema_store::smallmap::SmallIndex;
 use anathema_store::stack::Stack;
 
@@ -37,15 +37,18 @@ impl KeyIndex {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct SubKey(u32);
 
-impl From<SubKey> for usize {
-    fn from(key: SubKey) -> usize {
-        key.0 as usize
-    }
-}
+impl SlabIndex for SubKey {
+    const MAX: usize = u32::MAX as usize;
 
-impl From<usize> for SubKey {
-    fn from(value: usize) -> Self {
-        Self(value as u32)
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
     }
 }
 
@@ -84,7 +87,7 @@ pub(crate) struct SubscriberDebug(pub(crate) Subscriber);
 
 impl DebugWriter for SubscriberDebug {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        writeln!(output, "<sub key {:?} | index {}>", self.0 .0, usize::from(self.0 .1))
+        writeln!(output, "<sub key {:?} | index {}>", self.0 .0, self.0.1.as_usize())
     }
 }
 

@@ -1,7 +1,9 @@
 use anathema_store::stack::Stack;
+use anathema_store::store::{Monitor, OwnedKey};
 
 use super::subscriber::{SubKey, Subscribers};
-use super::{CHANGES, SUBSCRIBERS};
+use super::watchers::remove_monitor;
+use super::{ValueKey, CHANGES, SUBSCRIBERS, WATCH_QUEUE};
 use crate::PendingValue;
 
 pub type Changes = Stack<(Subscribers, Change)>;
@@ -28,11 +30,21 @@ pub fn clear_all_changes() {
     CHANGES.with_borrow_mut(|changes| changes.clear());
 }
 
-pub(crate) fn changed(subkey: SubKey, change: Change) {
-    let subscribers = SUBSCRIBERS.with_borrow(|subs| subs.get(subkey));
+pub(crate) fn changed(key: &mut ValueKey, change: Change) {
+    // Monitored
+    let monitored = key.owned().aux() != Monitor::initial();
+    if monitored {
+        let watcher = remove_monitor(key.owned_mut().aux());
+        WATCH_QUEUE.with_borrow_mut(|queue| queue.push(watcher));
+        key.owned_mut().set_aux(Monitor::initial());
+    }
+
+    // Notify subscribers
+    let subscribers = SUBSCRIBERS.with_borrow(|subs| subs.get(key.sub()));
     if subscribers.is_empty() {
         return;
     }
+
     CHANGES.with_borrow_mut(|changes| {
         changes.push((subscribers, change));
     });

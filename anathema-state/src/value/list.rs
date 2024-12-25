@@ -68,21 +68,24 @@ impl<T: 'static + State> Value<List<T>> {
 
     /// Push a value to the back of the list
     pub fn push_back(&mut self, value: impl Into<Value<T>>) {
-        let key = self.key;
-        let list = &mut *self.to_mut();
-        let index = list.inner.len();
-        let value = value.into();
-        changed(key.sub(), Change::Inserted(index as u32, value.to_pending()));
-        list.inner.push_back(value);
+        let (index, value) = {
+            let list = &mut *self.to_mut();
+            let index = list.inner.len();
+            let value = value.into();
+            let pending = value.to_pending();
+            list.inner.push_back(value);
+
+            (index as u32, pending)
+        };
+        changed(&mut self.key, Change::Inserted(index, value));
     }
 
     /// Push a value to the front of the list
     pub fn push_front(&mut self, value: impl Into<Value<T>>) {
-        let key = self.key;
-        let list = &mut *self.to_mut();
         let value = value.into();
-        changed(key.sub(), Change::Inserted(0, value.to_pending()));
-        list.inner.push_front(value);
+        let pending = value.to_pending();
+        self.to_mut().inner.push_front(value);
+        changed(&mut self.key, Change::Inserted(0, pending));
     }
 
     /// Insert a value at a given index.
@@ -91,49 +94,40 @@ impl<T: 'static + State> Value<List<T>> {
     ///
     /// Will panic if the index is out of bounds
     pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
-        let key = self.key;
-        let list = &mut *self.to_mut();
         let value = value.into();
-        changed(key.sub(), Change::Inserted(index as u32, value.to_pending()));
-        list.inner.insert(index, value);
+        let pending = value.to_pending();
+        self.to_mut().inner.insert(index, value);
+        changed(&mut self.key, Change::Inserted(index as u32, pending));
     }
 
     /// Remove a value from the list.
     /// If the value isn't in the list `None` is returned.
     pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
-        let key = self.key;
-        let list = &mut *self.to_mut();
-        let value = list.inner.remove(index);
-        changed(key.sub(), Change::Removed(index as u32));
+        let value = self.to_mut().inner.remove(index);
+        changed(&mut self.key, Change::Removed(index as u32));
         value
     }
 
     /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
-        let key = self.key;
-        let list = &mut *self.to_mut();
-        let value = list.inner.pop_front();
+        let value = self.to_mut().inner.pop_front();
         if value.is_some() {
-            changed(key.sub(), Change::Removed(0));
+            changed(&mut self.key, Change::Removed(0));
         }
         value
     }
 
     /// Pop a value from the back of the list
     pub fn pop_back(&mut self) -> Option<Value<T>> {
-        let key = self.key;
-        let list = &mut *self.to_mut();
-
-        if list.inner.is_empty() {
-            return None;
-        }
-
-        let value = list.inner.pop_back();
-        if value.is_some() {
+        let (value, index) = {
+            let list = &mut *self.to_mut();
+            let value = list.inner.pop_back()?;
             let index = list.inner.len();
-            changed(key.sub(), Change::Removed(index as u32));
-        }
-        value
+            (value, index)
+        };
+
+        changed(&mut self.key, Change::Removed(index as u32));
+        Some(value)
     }
 
     pub fn for_each<F>(&mut self, mut f: F)

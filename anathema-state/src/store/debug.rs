@@ -14,7 +14,7 @@ struct OwnedStateDebug<'a>(OwnedKey, &'a OwnedEntry<Box<dyn AnyState>>);
 
 impl DebugWriter for OwnedStateDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        let key: usize = self.0.into();
+        let key: usize = self.0.debug_index();
         match self.1 {
             OwnedEntry::Occupied(state) => match state.to_common() {
                 Some(val) => writeln!(output, "[{key}] : {val:?}"),
@@ -60,7 +60,7 @@ impl DebugWriter for ChangeDebug<'_> {
             Change::Inserted(idx, pending) => write!(
                 output,
                 "<inserted at {idx} | value {}>",
-                usize::from(pending.owned_key())
+                pending.owned_key().debug_index()
             ),
             Change::Removed(idx) => write!(output, "<removed {idx}>"),
             Change::Dropped => write!(output, "<dropped>"),

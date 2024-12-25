@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::slab::Slab;
+use crate::slab::{Slab, SlabIndex};
 
 pub struct IndexMap<I, K> {
     slab: Slab<I, K>,
@@ -9,10 +9,7 @@ pub struct IndexMap<I, K> {
 
 impl<I, K> IndexMap<I, K>
 where
-    I: Copy,
-    I: From<usize>,
-    I: Into<usize>,
-    I: PartialEq,
+    I: SlabIndex,
     K: Eq,
     K: std::hash::Hash,
     K: Clone,

@@ -1,10 +1,13 @@
 use std::fmt::Display;
 
 use anathema_geometry::{Pos, Size};
+use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{CellAttributes, Glyph, GlyphMap};
-use anathema_widgets::{AttributeStorage, Element, ForEach, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer};
+use anathema_widgets::{
+    AttributeStorage, Element, ForEach, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer,
+};
 
 use crate::Backend;
 
@@ -107,7 +110,7 @@ impl Display for TestSurface {
                 let idx = y * self.size.width + x;
                 match self.buffer[idx] {
                     Glyph::Single(c, _) => write!(f, "{}", c)?,
-                    Glyph::Cluster(i, _) => write!(f, "({})", usize::from(i))?,
+                    Glyph::Cluster(i, _) => write!(f, "({})", i.as_usize())?,
                 }
             }
             writeln!(f)?;

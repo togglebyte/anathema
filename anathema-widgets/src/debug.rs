@@ -25,7 +25,7 @@ struct EvalValueDebug<'a>(&'a EvalValue<'a>);
 impl DebugWriter for EvalValueDebug<'_> {
     fn write(&mut self, output: &mut impl Write) -> std::fmt::Result {
         match self.0 {
-            EvalValue::Dyn(value_ref) => write!(output, "{} ", usize::from(value_ref.owned_key())),
+            EvalValue::Dyn(value_ref) => write!(output, "{} ", value_ref.owned_key().debug_index()),
             EvalValue::Index(value_ref, index_value_ref) => {
                 write!(output, "source: ")?;
                 Self(value_ref).write(output)?;
@@ -34,7 +34,7 @@ impl DebugWriter for EvalValueDebug<'_> {
             }
             EvalValue::Empty => write!(output, "<empty>"),
             EvalValue::Static(val) => write!(output, "{val:?}"),
-            EvalValue::Pending(pending) => write!(output, "<pending {}>", usize::from(pending.owned_key())),
+            EvalValue::Pending(pending) => write!(output, "<pending {}>", pending.owned_key().debug_index()),
             EvalValue::Map(_) => todo!(),
             EvalValue::Negative(_) => todo!(),
             EvalValue::Op(lhs, rhs, op) => {
@@ -99,7 +99,7 @@ impl DebugWriter for ForDebug<'_> {
         write!(output, "<for")?;
         match self.0.collection() {
             crate::values::Collection::Dyn(value_ref) => {
-                write!(output, " {} ", usize::from(value_ref.owned_key()))
+                write!(output, " {} ", value_ref.owned_key().debug_index())
             }
             crate::values::Collection::Static(_) => write!(output, " <static> "),
             crate::values::Collection::Static2(_) => write!(output, " <static> "),

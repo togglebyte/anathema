@@ -3,9 +3,10 @@ use std::slice::Iter;
 
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Value};
+use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
-use anathema_templates::{Globals, ComponentBlueprintId};
+use anathema_templates::{ComponentBlueprintId, Globals};
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
@@ -103,8 +104,9 @@ impl Evaluator for SingleEval {
 
         if let Some(expr) = single.value.as_ref() {
             let expr_eval_ctx = ctx.expr_eval_ctx();
-            let value =
-                attributes.insert_with(ValueKey::Value, |value_index| eval(expr, &expr_eval_ctx, (widget_id, value_index)));
+            let value = attributes.insert_with(ValueKey::Value, |value_index| {
+                eval(expr, &expr_eval_ctx, (widget_id, value_index))
+            });
             attributes.value = Some(value);
         }
 
@@ -197,13 +199,13 @@ impl Evaluator for ControlFlowEval {
                 .iter()
                 .enumerate()
                 .map(|(i, e)| {
-                    let value_index = SmallIndex::from(i);
+                    let value_index = SmallIndex::from_usize(i);
 
                     controlflow::Else {
                         cond: e
                             .cond
                             .as_ref()
-                            .map(|cond| eval(cond, &ctx.expr_eval_ctx(), (widget_id, SmallIndex::from(i)))),
+                            .map(|cond| eval(cond, &ctx.expr_eval_ctx(), (widget_id, SmallIndex::from_usize(i)))),
                         body: &e.body,
                         show: false,
                     }
@@ -242,9 +244,7 @@ impl Evaluator for ComponentEval {
 
         let component_id = usize::from(input.id).into();
         ctx.attribute_storage.insert(widget_id, attributes);
-        let (kind, component, state) = ctx
-            .get_component(component_id)
-            .ok_or(Error::ComponentConsumed)?;
+        let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(state);
         let comp_widget = component::Component::new(
             &input.body,

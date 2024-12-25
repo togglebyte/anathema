@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use anathema_store::slab::Slab;
+use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::{CommonVal, Hex, Number, Path, PendingValue, Subscriber, Value, ValueRef};
 
@@ -13,15 +13,17 @@ impl StateId {
     pub const ZERO: Self = Self(0);
 }
 
-impl From<usize> for StateId {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
+impl SlabIndex for StateId {
+    const MAX: usize = usize::MAX;
 
-impl From<StateId> for usize {
-    fn from(value: StateId) -> Self {
-        value.0
+    fn as_usize(&self) -> usize {
+        self.0
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized {
+        Self(index)
     }
 }
 

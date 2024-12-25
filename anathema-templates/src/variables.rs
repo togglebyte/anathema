@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 #[cfg(not(target_os = "windows"))]
 use anathema_debug::DebugWriter;
-use anathema_store::slab::Slab;
+use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::expressions::Expression;
 use crate::primitives::Primitive;
@@ -37,17 +37,21 @@ impl From<Variables> for Globals {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct VarId(usize);
 
-impl From<usize> for VarId {
-    fn from(value: usize) -> Self {
-        Self(value)
+impl SlabIndex for VarId {
+    const MAX: usize = usize::MAX;
+
+    fn as_usize(&self) -> usize {
+        self.0
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index)
     }
 }
 
-impl From<VarId> for usize {
-    fn from(value: VarId) -> Self {
-        value.0
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum Variable {

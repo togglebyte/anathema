@@ -3,6 +3,7 @@ use std::ops::{ControlFlow, Deref};
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_state::{Color, Hex};
 use anathema_store::indexmap::IndexMap;
+use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -77,15 +78,18 @@ pub trait WidgetRenderer {
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 pub struct GlyphIndex(u32);
 
-impl From<GlyphIndex> for usize {
-    fn from(value: GlyphIndex) -> Self {
-        value.0 as usize
-    }
-}
+impl SlabIndex for GlyphIndex {
+    const MAX: usize = u32::MAX as usize;
 
-impl From<usize> for GlyphIndex {
-    fn from(value: usize) -> Self {
-        Self(value as u32)
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
     }
 }
 

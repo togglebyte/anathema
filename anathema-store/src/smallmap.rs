@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use crate::slab::Slab;
+use crate::slab::{Slab, SlabIndex};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct SmallIndex(u8);
@@ -11,22 +11,36 @@ impl SmallIndex {
     pub const ZERO: Self = Self(0);
 }
 
-impl From<u8> for SmallIndex {
-    fn from(value: u8) -> Self {
-        Self(value)
+impl SlabIndex for SmallIndex {
+    const MAX: usize = u8::MAX as usize;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
     }
-}
-impl From<usize> for SmallIndex {
-    fn from(value: usize) -> Self {
-        Self(value as u8)
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized {
+        Self(index as u8)
     }
 }
 
-impl From<SmallIndex> for usize {
-    fn from(value: SmallIndex) -> Self {
-        value.0 as usize
-    }
-}
+// impl From<u8> for SmallIndex {
+//     fn from(value: u8) -> Self {
+//         Self(value)
+//     }
+// }
+// impl From<usize> for SmallIndex {
+//     fn from(value: usize) -> Self {
+//         Self(value as u8)
+//     }
+// }
+
+// impl From<SmallIndex> for usize {
+//     fn from(value: SmallIndex) -> Self {
+//         value.0 as usize
+//     }
+// }
 
 /// A small map used to store a small amount of values.
 /// ```

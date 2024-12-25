@@ -2,8 +2,8 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use anathema_store::slab::RcElement;
-use anathema_store::store::{OwnedKey, SharedKey};
+use anathema_store::slab::{Aux, RcElement};
+use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 
 pub use self::list::List;
 pub use self::map::Map;
@@ -13,6 +13,7 @@ use crate::store::subscriber::{subscribe, unsubscribe};
 use crate::store::values::{
     copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, with_owned,
 };
+use crate::store::watchers::{monitor, Watcher};
 use crate::store::{changed, ValueKey};
 use crate::{Change, Subscriber};
 
@@ -51,8 +52,7 @@ impl<T: AnyState + 'static> From<T> for Value<T> {
 impl<T: AnyState + 'static> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
-        let key = new_value(Box::new(value));
-
+        let mut key = new_value(Box::new(value));
         Self { key, _p: PhantomData }
     }
 
@@ -65,7 +65,7 @@ impl<T: AnyState + 'static> Value<T> {
         let value = get_unique(self.key.owned());
         Unique {
             value: Some(value),
-            key: self.key,
+            key: &mut self.key,
             _p: PhantomData,
         }
     }
@@ -118,9 +118,20 @@ impl<T: AnyState + 'static> Value<T> {
     pub fn set(&mut self, new_value: T) {
         *self.to_mut() = new_value;
     }
+
+    /// Attach a monitor to the value.
+    pub fn monitor(&mut self, watcher: Watcher) {
+        monitor(self.key.owned_mut(), watcher);
+    }
+
+    pub(crate) fn is_monitored(&self) -> bool {
+        self.key.owned().aux() != Monitor::initial()
+    }
 }
 
 /// Copy the inner value from the owned value.
+///
+/// This does not copy any auxillary data attached to the key
 impl<T: State + 'static + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
         copy_val(self.key.owned())
@@ -129,7 +140,7 @@ impl<T: State + 'static + Copy> Value<T> {
 
 impl<T> Drop for Value<T> {
     fn drop(&mut self) {
-        changed(self.key.sub(), Change::Dropped);
+        changed(&mut self.key, Change::Dropped);
         drop_value(self.key);
     }
 }
@@ -138,7 +149,7 @@ impl<T> Drop for Value<T> {
 /// This is the primary means to mutate the value.
 pub struct Unique<'a, T: 'static> {
     value: Option<Box<dyn AnyState>>,
-    key: ValueKey,
+    key: &'a mut ValueKey,
     _p: PhantomData<&'a mut T>,
 }
 
@@ -157,7 +168,7 @@ impl<'a, T> Deref for Unique<'a, T> {
 
 impl<'a, T> DerefMut for Unique<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        changed(self.key.sub(), Change::Changed);
+        changed(self.key, Change::Changed);
         self.value
             .as_mut()
             .expect("value is only ever set to None on drop")
@@ -397,6 +408,10 @@ impl PendingValue {
 
 #[cfg(test)]
 mod test {
+    use anathema_store::stack::Stack;
+
+    use crate::drain_watchers;
+
     use super::*;
 
     #[test]
@@ -430,9 +445,9 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "value is currently shared: OwnedKey(0)")]
+    #[should_panic(expected = "value is currently shared: Key <0:0>")]
     fn mutable_shared_panic() {
-        // This hould panic because of mutable access
+        // This should panic because of mutable access
         // is held while also having a value reference.
         let mut value = Value::new(String::new());
         let s1 = value.value_ref(Subscriber::ZERO);
@@ -455,8 +470,48 @@ mod test {
     }
 
     #[test]
-    fn monitor_value() {
-        let value = Value::new(1);
-        // value.monitor
+    fn monitor_change() {
+        let mut value = Value::new(1);
+        assert!(!value.is_monitored());
+        value.monitor(Watcher::new(0));
+        assert!(value.is_monitored());
+
+        // Modify value
+        *value.to_mut() = 2;
+
+        let mut stack = Stack::empty();
+        drain_watchers(&mut stack);
+        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
+    }
+
+    #[test]
+    fn monitor_drop() {
+        let mut value = Value::new(1);
+        value.monitor(Watcher::new(0));
+        drop(value);
+
+        let mut stack = Stack::empty();
+        drain_watchers(&mut stack);
+        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
+    }
+
+    #[test]
+    fn monitor_only_once() {
+        let mut stack = Stack::empty();
+
+        let mut value = Value::new(1);
+        value.monitor(Watcher::new(0));
+        *value.to_mut() = 2;
+
+        // First monitor
+        drain_watchers(&mut stack);
+        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
+
+        // Second change but there was no re-attached monitor
+        drop(value);
+
+        // ... so the stack is now empty
+        drain_watchers(&mut stack);
+        assert!(stack.pop().is_none());
     }
 }

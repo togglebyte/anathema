@@ -5,7 +5,7 @@ use crate::tree::AsNodePath;
 
 pub struct InsertTransaction<'a, 'tree, T> {
     tree: &'a mut TreeView<'tree, T>,
-    node_id: Key,
+    node_id: Key<()>,
     source: &'a [u16],
 }
 
