@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 
 use anathema_store::stack::Stack;
-use anathema_store::store::{Owned, OwnedKey, Shared};
+use anathema_store::store::{Monitor, Owned, OwnedKey, Shared};
+use values::OwnedValue;
 use watchers::{Watcher, Watchers};
 
 pub(crate) use self::change::changed;
@@ -17,8 +18,8 @@ pub(crate) mod values;
 pub(crate) mod watchers;
 
 thread_local! {
-    static OWNED: Owned<Box<dyn AnyState>> = const { Owned::empty() };
-    static SHARED: Shared<Box<dyn AnyState>> = const { Shared::empty() };
+    static OWNED: Owned<OwnedValue> = const { Owned::empty() };
+    static SHARED: Shared<OwnedValue> = const { Shared::empty() };
     static SUBSCRIBERS: RefCell<SubscriberMap> = const { RefCell::new(SubscriberMap::empty()) };
     static CHANGES: RefCell<Changes> = const { RefCell::new(Stack::empty()) };
     static FUTURE_VALUES: RefCell<FutureValues> = const { RefCell::new(Stack::empty()) };
@@ -33,10 +34,6 @@ pub struct ValueKey(OwnedKey, SubKey);
 impl ValueKey {
     pub fn owned(&self) -> OwnedKey {
         self.0
-    }
-
-    pub fn owned_mut(&mut self) -> &mut OwnedKey {
-        &mut self.0
     }
 
     pub(crate) fn sub(&self) -> SubKey {

@@ -12,8 +12,9 @@ use crate::states::AnyState;
 use crate::store::subscriber::{subscribe, unsubscribe};
 use crate::store::values::{
     copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, with_owned,
+    OwnedValue,
 };
-use crate::store::watchers::{monitor, Watcher};
+use crate::store::watchers::{monitor, queue_monitor, Watcher};
 use crate::store::{changed, ValueKey};
 use crate::{Change, Subscriber};
 
@@ -65,7 +66,7 @@ impl<T: AnyState + 'static> Value<T> {
         let value = get_unique(self.key.owned());
         Unique {
             value: Some(value),
-            key: &mut self.key,
+            key: self.key,
             _p: PhantomData,
         }
     }
@@ -118,15 +119,6 @@ impl<T: AnyState + 'static> Value<T> {
     pub fn set(&mut self, new_value: T) {
         *self.to_mut() = new_value;
     }
-
-    /// Attach a monitor to the value.
-    pub fn monitor(&mut self, watcher: Watcher) {
-        monitor(self.key.owned_mut(), watcher);
-    }
-
-    pub(crate) fn is_monitored(&self) -> bool {
-        self.key.owned().aux() != Monitor::initial()
-    }
 }
 
 /// Copy the inner value from the owned value.
@@ -140,7 +132,7 @@ impl<T: State + 'static + Copy> Value<T> {
 
 impl<T> Drop for Value<T> {
     fn drop(&mut self) {
-        changed(&mut self.key, Change::Dropped);
+        changed(self.key, Change::Dropped);
         drop_value(self.key);
     }
 }
@@ -148,9 +140,16 @@ impl<T> Drop for Value<T> {
 /// Unique access to the underlying value.
 /// This is the primary means to mutate the value.
 pub struct Unique<'a, T: 'static> {
-    value: Option<Box<dyn AnyState>>,
-    key: &'a mut ValueKey,
+    value: Option<OwnedValue>,
+    key: ValueKey,
     _p: PhantomData<&'a mut T>,
+}
+
+#[cfg(test)]
+impl<'a, T> Unique<'a, T> {
+    pub(crate) fn is_monitored(&self) -> bool {
+        self.value.as_ref().unwrap().monitor.is_set()
+    }
 }
 
 impl<'a, T> Deref for Unique<'a, T> {
@@ -160,6 +159,7 @@ impl<'a, T> Deref for Unique<'a, T> {
         self.value
             .as_ref()
             .expect("value is only ever set to None on drop")
+            .val
             .to_any_ref()
             .downcast_ref()
             .expect("the type should never change")
@@ -168,10 +168,16 @@ impl<'a, T> Deref for Unique<'a, T> {
 
 impl<'a, T> DerefMut for Unique<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
+        let value = self.value.as_mut().expect("value is only ever set to None on drop");
+
+        if value.monitor.is_set() {
+            queue_monitor(&mut value.monitor);
+        }
+
         changed(self.key, Change::Changed);
-        self.value
-            .as_mut()
-            .expect("value is only ever set to None on drop")
+
+        value
+            .val
             .to_any_mut()
             .downcast_mut()
             .expect("the type should never change")
@@ -180,11 +186,9 @@ impl<'a, T> DerefMut for Unique<'a, T> {
 
 impl<'a, T: 'static> Drop for Unique<'a, T> {
     fn drop(&mut self) {
-        // TODO this can be an unwrap_unchecked because the `value` is always Some(_) in `Unique`
-        //      except here where it's dropped
-        let value = self.value.take().unwrap();
+        let value = self.value.take().expect("`Unique` always has a value as it's checked out");
 
-        // this is the only place where self.value = None
+        // NOTE: this is the only place where self.value = None
         return_owned(self.key.owned(), value);
     }
 }
@@ -194,7 +198,7 @@ impl<'a, T: 'static> Drop for Unique<'a, T> {
 // -----------------------------------------------------------------------------
 #[derive(Default)]
 enum ElementState {
-    Alive(RcElement<Box<dyn AnyState>>),
+    Alive(RcElement<OwnedValue>),
     #[default]
     Dropped,
 }
@@ -204,21 +208,21 @@ impl ElementState {
     fn as_state(&self) -> &Box<dyn AnyState> {
         match self {
             Self::Dropped => unreachable!(),
-            Self::Alive(ref value) => value,
+            Self::Alive(value) => &value.val,
         }
     }
 
     fn as_ref<T: 'static>(&self) -> &T {
         match self {
             Self::Dropped => unreachable!(),
-            Self::Alive(ref value) => value.to_any_ref().downcast_ref().expect("invalid type"),
+            Self::Alive(value) => value.val.to_any_ref().downcast_ref().expect("invalid type"),
         }
     }
 
     fn try_as_ref<T: 'static>(&self) -> Option<&T> {
         match self {
             Self::Dropped => unreachable!(),
-            Self::Alive(ref value) => value.to_any_ref().downcast_ref(),
+            Self::Alive(value) => value.val.to_any_ref().downcast_ref(),
         }
     }
 
@@ -233,7 +237,7 @@ pub struct Shared<'a, T: 'static> {
 }
 
 impl<'a, T> Shared<'a, T> {
-    fn new(key: SharedKey, value: RcElement<Box<dyn AnyState>>) -> Self {
+    fn new(key: SharedKey, value: RcElement<OwnedValue>) -> Self {
         Self {
             state: SharedState::new(key, value),
             _p: PhantomData,
@@ -282,7 +286,7 @@ pub struct SharedState<'a> {
 }
 
 impl<'a> SharedState<'a> {
-    fn new(key: SharedKey, state: RcElement<Box<dyn AnyState>>) -> Self {
+    fn new(key: SharedKey, state: RcElement<OwnedValue>) -> Self {
         Self {
             key,
             inner: ElementState::Alive(state),
@@ -398,11 +402,15 @@ impl PendingValue {
     where
         F: Fn(&dyn AnyState) -> T,
     {
-        with_owned(self.0.owned(), f)
+        with_owned(self.0.owned(), |val| f(&val.val))
     }
 
     pub fn owned_key(&self) -> OwnedKey {
         self.0.owned()
+    }
+
+    pub fn monitor(&self, watcher: Watcher) {
+        monitor(self.0.owned(), watcher);
     }
 }
 
@@ -410,9 +418,8 @@ impl PendingValue {
 mod test {
     use anathema_store::stack::Stack;
 
-    use crate::drain_watchers;
-
     use super::*;
+    use crate::drain_watchers;
 
     #[test]
     fn new_value() {
@@ -472,9 +479,10 @@ mod test {
     #[test]
     fn monitor_change() {
         let mut value = Value::new(1);
-        assert!(!value.is_monitored());
-        value.monitor(Watcher::new(0));
-        assert!(value.is_monitored());
+        assert!(!value.to_mut().is_monitored());
+
+        value.to_pending().monitor(Watcher::new(0));
+        assert!(value.to_mut().is_monitored());
 
         // Modify value
         *value.to_mut() = 2;
@@ -487,7 +495,7 @@ mod test {
     #[test]
     fn monitor_drop() {
         let mut value = Value::new(1);
-        value.monitor(Watcher::new(0));
+        value.to_pending().monitor(Watcher::new(0));
         drop(value);
 
         let mut stack = Stack::empty();
@@ -500,7 +508,7 @@ mod test {
         let mut stack = Stack::empty();
 
         let mut value = Value::new(1);
-        value.monitor(Watcher::new(0));
+        value.to_pending().monitor(Watcher::new(0));
         *value.to_mut() = 2;
 
         // First monitor
@@ -513,5 +521,18 @@ mod test {
         // ... so the stack is now empty
         drain_watchers(&mut stack);
         assert!(stack.pop().is_none());
+    }
+
+    #[test]
+    fn monitor_pending() {
+        let mut stack = Stack::empty();
+
+        let value = Value::new(1);
+        let pending = value.to_pending();
+        pending.monitor(Watcher::new(0));
+        drop(value);
+
+        drain_watchers(&mut stack);
+        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
     }
 }

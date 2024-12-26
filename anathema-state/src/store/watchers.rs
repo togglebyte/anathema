@@ -4,7 +4,9 @@ use std::num::NonZeroU16;
 use anathema_store::slab::Slab;
 use anathema_store::store::{Monitor, OwnedKey};
 
-use super::WATCHERS;
+use crate::store::values::with_owned;
+
+use super::{WATCHERS, WATCH_QUEUE};
 
 /// There can be at most `u16::MAX` watchers at any given time, even though there can be up to
 /// `u32::MAX` values.
@@ -40,11 +42,13 @@ impl Watcher {
     }
 }
 
-pub(crate) fn monitor(key: &mut OwnedKey, watcher: Watcher) {
+pub(crate) fn monitor(key: OwnedKey, watcher: Watcher) {
     let monitor = WATCHERS.with_borrow_mut(|watchers| watchers.insert(watcher));
-    key.set_aux(monitor);
+    with_owned(key, |val| val.monitor = monitor);
 }
 
-pub(super) fn remove_monitor(monitor: Monitor) -> Watcher {
-    WATCHERS.with_borrow_mut(|watchers| watchers.remove(monitor))
+pub(crate) fn queue_monitor(monitor: &mut Monitor) {
+    let watcher = WATCHERS.with_borrow_mut(|watchers| watchers.remove(*monitor));
+    *monitor = Monitor::initial();
+    WATCH_QUEUE.with_borrow_mut(|queue| queue.push(watcher));
 }

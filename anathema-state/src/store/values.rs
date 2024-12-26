@@ -1,12 +1,28 @@
 use anathema_store::slab::RcElement;
-use anathema_store::store::{OwnedKey, SharedKey};
+use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 
+use super::watchers::queue_monitor;
 use super::{ValueKey, OWNED, SHARED, SUBSCRIBERS};
 use crate::states::AnyState;
+
+pub(crate) struct OwnedValue {
+    pub(crate) val: Box<dyn AnyState>,
+    pub(crate) monitor: Monitor,
+}
+
+impl OwnedValue {
+    pub fn new(val: Box<dyn AnyState>) -> Self {
+        Self {
+            val,
+            monitor: Monitor::initial(),
+        }
+    }
+}
 
 // Write a new value into the `OWNED` store and associate
 // a subscriber key with the value.
 pub(crate) fn new_value(value: Box<dyn AnyState>) -> ValueKey {
+    let value = OwnedValue::new(value);
     let owned_key = OWNED.with(|owned| owned.push(value));
     let sub_key = SUBSCRIBERS.with_borrow_mut(|subscribers| subscribers.push_empty());
     ValueKey(owned_key, sub_key)
@@ -14,10 +30,10 @@ pub(crate) fn new_value(value: Box<dyn AnyState>) -> ValueKey {
 
 pub(crate) fn with_owned<F, T>(key: OwnedKey, f: F) -> T
 where
-    F: Fn(&dyn AnyState) -> T,
+    F: Fn(&mut OwnedValue) -> T,
 {
-    let val = get_unique(key);
-    let ret = f(&val);
+    let mut val = get_unique(key);
+    let ret = f(&mut val);
     return_owned(key, val);
     ret
 }
@@ -26,14 +42,14 @@ where
 //
 // This checks out the value, making impossible to call `get_unique` again
 // until the value has been returned (using `return_owned`).
-pub(crate) fn get_unique(key: OwnedKey) -> Box<dyn AnyState> {
+pub(crate) fn get_unique(key: OwnedKey) -> OwnedValue {
     OWNED.with(|owned| owned.unique(key))
 }
 
 // Try to make an owned value into a shared value, if it isn't already.
 // To get access to another shared instance of the value, call this function again.
-pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<Box<dyn AnyState>>)> {
-    fn lookup_shared(key: SharedKey) -> RcElement<Box<dyn AnyState>> {
+pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<OwnedValue>)> {
+    fn lookup_shared(key: SharedKey) -> RcElement<OwnedValue> {
         SHARED.with(|shared| shared.get(key))
     }
 
@@ -62,8 +78,8 @@ pub(crate) fn try_make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcEleme
 //
 // This function assumes the value exists and should be limited to `Value<T>`.
 // If there is a chance the value is no longer present use `try_make_shared` instead.
-pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<Box<dyn AnyState>>)> {
-    fn lookup_shared(key: SharedKey) -> RcElement<Box<dyn AnyState>> {
+pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<OwnedValue>)> {
+    fn lookup_shared(key: SharedKey) -> RcElement<OwnedValue> {
         SHARED.with(|shared| shared.get(key))
     }
 
@@ -88,7 +104,7 @@ pub(crate) fn make_shared(owned_key: OwnedKey) -> Option<(SharedKey, RcElement<B
 }
 
 // Return an owned value back into `OWNED`.
-pub(crate) fn return_owned(key: OwnedKey, value: Box<dyn AnyState>) {
+pub(crate) fn return_owned(key: OwnedKey, value: OwnedValue) {
     OWNED.with(|owned| owned.return_unique_borrow(key, value));
 }
 
@@ -103,15 +119,20 @@ pub(crate) fn return_shared(key: SharedKey) {
 
 // Remove a value and it's associated subscribers
 pub(crate) fn drop_value(key: ValueKey) {
-    let _ = OWNED.with(|owned| owned.remove(key.0));
+    let mut value = OWNED.with(|owned| owned.remove(key.0));
     let _ = SUBSCRIBERS.with_borrow_mut(|subscribers| subscribers.remove(key.1));
+
+    if value.monitor.is_set() {
+        queue_monitor(&mut value.monitor);
+    }
 }
 
 pub(crate) fn copy_val<T: 'static + Copy>(key: OwnedKey) -> T {
     OWNED
         .with(|owned| {
             owned.with(key, |val| {
-                *val.to_any_ref()
+                *val.val
+                    .to_any_ref()
                     .downcast_ref::<T>()
                     .expect("the value type is determined by the wrapping Value<T> and should not change")
             })

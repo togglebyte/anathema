@@ -4,6 +4,13 @@ use super::Value;
 use crate::store::changed;
 use crate::{Change, CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
 
+// TODO: Optimisation: changing the list should probably just create one 
+//       change instead of two for the list.
+//
+//       Since the list is used with `deref_mut` it creates a `Unique<T>`
+//       which will insert a `Change::Updated` entry, even though
+//       that's probably superfluous.
+
 #[derive(Debug)]
 pub struct List<T> {
     inner: VecDeque<Value<T>>,
@@ -77,7 +84,7 @@ impl<T: 'static + State> Value<List<T>> {
 
             (index as u32, pending)
         };
-        changed(&mut self.key, Change::Inserted(index, value));
+        changed(self.key, Change::Inserted(index, value));
     }
 
     /// Push a value to the front of the list
@@ -85,7 +92,7 @@ impl<T: 'static + State> Value<List<T>> {
         let value = value.into();
         let pending = value.to_pending();
         self.to_mut().inner.push_front(value);
-        changed(&mut self.key, Change::Inserted(0, pending));
+        changed(self.key, Change::Inserted(0, pending));
     }
 
     /// Insert a value at a given index.
@@ -97,36 +104,33 @@ impl<T: 'static + State> Value<List<T>> {
         let value = value.into();
         let pending = value.to_pending();
         self.to_mut().inner.insert(index, value);
-        changed(&mut self.key, Change::Inserted(index as u32, pending));
+        changed(self.key, Change::Inserted(index as u32, pending));
     }
 
     /// Remove a value from the list.
     /// If the value isn't in the list `None` is returned.
     pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
         let value = self.to_mut().inner.remove(index);
-        changed(&mut self.key, Change::Removed(index as u32));
+        changed(self.key, Change::Removed(index as u32));
         value
     }
 
     /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
-        let value = self.to_mut().inner.pop_front();
-        if value.is_some() {
-            changed(&mut self.key, Change::Removed(0));
-        }
-        value
+        let value = self.to_mut().inner.pop_front()?;
+        changed(self.key, Change::Removed(0));
+        Some(value)
     }
 
     /// Pop a value from the back of the list
     pub fn pop_back(&mut self) -> Option<Value<T>> {
-        let (value, index) = {
-            let list = &mut *self.to_mut();
-            let value = list.inner.pop_back()?;
-            let index = list.inner.len();
-            (value, index)
-        };
+        let key = self.key;
 
-        changed(&mut self.key, Change::Removed(index as u32));
+        let list = &mut *self.to_mut();
+        let value = list.inner.pop_back()?;
+        let index = list.inner.len();
+
+        changed(key, Change::Removed(index as u32));
         Some(value)
     }
 
@@ -211,9 +215,9 @@ mod test {
     #[test]
     fn notify_insert() {
         let mut map = setup_map("a", 1, 2);
+        let mut map = map.to_mut();
 
-        let mut list = map.to_mut();
-        let list = list.get_mut("a").unwrap();
+        let list = map.get_mut("a").unwrap();
         let _vr = list.value_ref(Subscriber::ZERO);
         list.push_back(1);
 
@@ -224,9 +228,9 @@ mod test {
     #[test]
     fn notify_remove() {
         let mut map = setup_map("a", 1, 2);
+        let mut map = map.to_mut();
 
-        let mut list = map.to_mut();
-        let list = list.get_mut("a").unwrap();
+        let list = map.get_mut("a").unwrap();
         let _vr = list.value_ref(Subscriber::ZERO);
         list.remove(0);
 
@@ -237,9 +241,9 @@ mod test {
     #[test]
     fn notify_pop_front() {
         let mut map = setup_map("a", 1, 2);
+        let mut map = map.to_mut();
 
-        let mut list = map.to_mut();
-        let list = list.get_mut("a").unwrap();
+        let list = map.get_mut("a").unwrap();
 
         let _vr = list.value_ref(Subscriber::ZERO);
         list.pop_front();
@@ -251,9 +255,9 @@ mod test {
     #[test]
     fn notify_pop_back() {
         let mut map = setup_map("a", 1, 2);
+        let mut map = map.to_mut();
 
-        let mut list = map.to_mut();
-        let list = list.get_mut("a").unwrap();
+        let list = map.get_mut("a").unwrap();
 
         let _vr = list.value_ref(Subscriber::ZERO);
         list.pop_back();

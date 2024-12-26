@@ -6,7 +6,7 @@ use crate::slab::{Aux, Slab, SlabIndex};
 // -----------------------------------------------------------------------------
 //   - Key -
 // -----------------------------------------------------------------------------
-pub type OwnedKey = crate::slab::Key<Monitor>;
+pub type OwnedKey = crate::slab::Key<()>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Monitor(u16);
@@ -14,6 +14,10 @@ pub struct Monitor(u16);
 impl Monitor {
     pub const fn initial() -> Self {
         Self(Self::INITIAL)
+    }
+
+    pub fn is_set(self) -> bool {
+        self != Self::initial()
     }
 }
 
@@ -69,13 +73,13 @@ impl<T> OwnedEntry<T> {
 //   - Storage -
 // -----------------------------------------------------------------------------
 pub struct Owned<T> {
-    inner: RefCell<crate::slab::GenSlab<OwnedEntry<T>, Monitor>>,
+    inner: RefCell<crate::slab::GenSlab<OwnedEntry<T>>>,
 }
 
 impl<T> Owned<T> {
     pub const fn empty() -> Self {
         Self {
-            inner: RefCell::new(crate::slab::GenSlab::empty_monitored()),
+            inner: RefCell::new(crate::slab::GenSlab::empty_aux()),
         }
     }
 

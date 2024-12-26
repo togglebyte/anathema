@@ -222,7 +222,7 @@ impl<T> GenSlab<T> {
 
 impl<T, A: Aux> GenSlab<T, A> {
     /// Create an empty slab
-    pub const fn empty_monitored() -> Self {
+    pub const fn empty_aux() -> Self {
         Self {
             next_id: None,
             inner: vec![],

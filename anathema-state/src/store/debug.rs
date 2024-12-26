@@ -2,6 +2,7 @@ use anathema_debug::DebugWriter;
 use anathema_store::store::{OwnedEntry, OwnedKey};
 
 use super::subscriber::Subscribers;
+use super::values::OwnedValue;
 use super::{CHANGES, FUTURE_VALUES, OWNED, SHARED, SUBSCRIBERS};
 use crate::states::AnyState;
 use crate::store::subscriber::SubscriberDebug;
@@ -10,13 +11,13 @@ use crate::Change;
 // -----------------------------------------------------------------------------
 //   - Owne value debug -
 // -----------------------------------------------------------------------------
-struct OwnedStateDebug<'a>(OwnedKey, &'a OwnedEntry<Box<dyn AnyState>>);
+struct OwnedStateDebug<'a>(OwnedKey, &'a OwnedEntry<OwnedValue>);
 
 impl DebugWriter for OwnedStateDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
         let key: usize = self.0.debug_index();
         match self.1 {
-            OwnedEntry::Occupied(state) => match state.to_common() {
+            OwnedEntry::Occupied(state) => match state.val.to_common() {
                 Some(val) => writeln!(output, "[{key}] : {val:?}"),
                 None => writeln!(output, "[{key}] : <state>"),
             },
@@ -29,11 +30,11 @@ impl DebugWriter for OwnedStateDebug<'_> {
 // -----------------------------------------------------------------------------
 //   - Shared value debug -
 // -----------------------------------------------------------------------------
-struct SharedStateDebug<'a>(usize, &'a dyn AnyState);
+struct SharedStateDebug<'a>(usize, &'a OwnedValue);
 
 impl DebugWriter for SharedStateDebug<'_> {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        match self.1.to_common() {
+        match self.1.val.to_common() {
             Some(val) => writeln!(output, "[{}] : {val:?}", self.0),
             None => writeln!(output, "[{}] : <state>", self.0),
         }
