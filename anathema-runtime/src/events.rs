@@ -147,102 +147,103 @@ impl<T: GlobalEvents> EventHandler<T> {
         glyph_map: &mut GlyphMap,
     ) -> Result<()> {
         while let Some(event) = backend.next_event(poll_duration) {
-            let event = match self.global.enable_tab_navigation() {
-                false => event,
-                true => match tab(event_ctx, tree, event) {
-                    None => return Ok(()),
-                    Some(ev) => ev,
-                },
-            };
+            panic!()
+            // let event = match self.global.enable_tab_navigation() {
+            //     false => event,
+            //     true => match tab(event_ctx, tree, event) {
+            //         None => return Ok(()),
+            //         Some(ev) => ev,
+            //     },
+            // };
 
-            let (nodes, values) = tree.split();
-            let mut elements = Elements::new(nodes, values, event_ctx.attribute_storage, event_ctx.dirty_widgets);
-            let mut global_ctx = GlobalContext {
-                focus_queue: event_ctx.focus_queue,
-                emitter: event_ctx.context.emitter,
-            };
+            // let (nodes, values) = tree.split();
+            // let mut elements = Elements::new(nodes, values, event_ctx.attribute_storage, event_ctx.dirty_widgets);
+            // let mut global_ctx = GlobalContext {
+            //     focus_queue: event_ctx.focus_queue,
+            //     emitter: event_ctx.context.emitter,
+            // };
 
-            let event = self.global.handle(event, &mut elements, &mut global_ctx);
-            let Some(event) = event else { return Ok(()) };
+            // let event = self.global.handle(event, &mut elements, &mut global_ctx);
+            // let Some(event) = event else { return Ok(()) };
 
-            // Ignore mouse events, as they are handled by global event
-            if !event.is_mouse_event() {
-                if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
-                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
-                }
-            }
+            // // Ignore mouse events, as they are handled by global event
+            // if !event.is_mouse_event() {
+            //     if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+            //         tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
+            //     }
+            // }
 
-            match event {
-                Event::Resize(size) => {
-                    // Reset needs_layout for all the nodes
-                    let (nodes, elements) = tree.split();
-                    panic!("this should force a reflow and redraw");
-                    // anathema_widgets::layout::reset_layout(
-                    //     nodes,
-                    //     elements,
-                    //     event_ctx.attribute_storage,
-                    //     event_ctx.pathlist,
-                    // );
+            // match event {
+            //     Event::Resize(size) => {
+            //         // Reset needs_layout for all the nodes
+            //         let (nodes, elements) = tree.split();
+            //         panic!("this should force a reflow and redraw");
+            //         // anathema_widgets::layout::reset_layout(
+            //         //     nodes,
+            //         //     elements,
+            //         //     event_ctx.attribute_storage,
+            //         //     event_ctx.pathlist,
+            //         // );
 
-                    // Resize the backend
-                    backend.resize(size, glyph_map);
-                    viewport.resize(size);
-                    constraints.set_max_width(size.width);
-                    constraints.set_max_height(size.height);
+            //         // Resize the backend
+            //         backend.resize(size, glyph_map);
+            //         viewport.resize(size);
+            //         constraints.set_max_width(size.width);
+            //         constraints.set_max_height(size.height);
 
-                    // Remember to update the viewport on the context
-                    event_ctx.context.viewport = *viewport;
+            //         // Remember to update the viewport on the context
+            //         event_ctx.context.viewport = *viewport;
 
-                    // Notify all components of the resize
-                    let len = event_ctx.components.len();
-                    for i in 0..len {
-                        let (widget_id, state_id) = event_ctx
-                            .components
-                            .get(i)
-                            .expect("components can not change during this call");
+            //         // Notify all components of the resize
+            //         let len = event_ctx.components.len();
+            //         for i in 0..len {
+            //             let (widget_id, state_id) = event_ctx
+            //                 .components
+            //                 .get(i)
+            //                 .expect("components can not change during this call");
 
-                        tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_resize(ctx));
-                    }
-                }
-                Event::Blur | Event::Focus => (),
-                Event::Stop => return Err(Error::Stop),
-                _ => {}
-            }
+            //             tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_resize(ctx));
+            //         }
+            //     }
+            //     Event::Blur | Event::Focus => (),
+            //     Event::Stop => return Err(Error::Stop),
+            //     _ => {}
+            // }
 
-            // Make sure event handling isn't holding up the rest of the event loop.
-            if fps_now.elapsed().as_micros() > sleep_micros {
-                break;
-            }
+            // // Make sure event handling isn't holding up the rest of the event loop.
+            // if fps_now.elapsed().as_micros() > sleep_micros {
+            //     break;
+            // }
 
-            // -----------------------------------------------------------------------------
-            //   - Drain associated events -
-            // -----------------------------------------------------------------------------
-            while let Some(mut event) = event_ctx.assoc_events.next() {
-                event_ctx.states.with_mut(event.state, |state, states| {
-                    let common_val = (event.f)(state);
-                    let Some(common_val) = common_val.to_common() else { return };
-                    let Some(entry) = event_ctx.components.get_by_widget_id(event.parent.into()) else { return };
+            // // -----------------------------------------------------------------------------
+            // //   - Drain associated events -
+            // // -----------------------------------------------------------------------------
+            // while let Some(mut event) = event_ctx.assoc_events.next() {
+            //     event_ctx.states.with_mut(event.state, |state, states| {
+            //         let common_val = (event.f)(state);
+            //         let Some(common_val) = common_val.to_common() else { return };
+            //         let Some(entry) = event_ctx.components.get_by_widget_id(event.parent.into()) else { return };
 
-                    let (widget_id, state_id) = (entry.widget_id, entry.state_id);
+            //         let (widget_id, state_id) = (entry.widget_id, entry.state_id);
 
-                    let strings = event_ctx.context.strings;
+            //         let strings = event_ctx.context.strings;
 
-                    let mut event_ctx = EventCtx {
-                        states,
-                        components: event_ctx.components,
-                        attribute_storage: event_ctx.attribute_storage,
-                        assoc_events: event_ctx.assoc_events,
-                        focus_queue: event_ctx.focus_queue,
-                        context: event_ctx.context,
-                        dirty_widgets: event_ctx.dirty_widgets,
-                    };
+            //         let mut event_ctx = EventCtx {
+            //             states,
+            //             components: event_ctx.components,
+            //             attribute_storage: event_ctx.attribute_storage,
+            //             assoc_events: event_ctx.assoc_events,
+            //             focus_queue: event_ctx.focus_queue,
+            //             context: event_ctx.context,
+            //             dirty_widgets: event_ctx.dirty_widgets,
+            //         };
 
-                    tree.with_component(widget_id, state_id, &mut event_ctx, |comp, ctx| {
-                        let event_ident = strings.get_ref_unchecked(event.external);
-                        comp.any_receive(ctx, event_ident, common_val)
-                    });
-                })
-            }
+            //         tree.with_component(widget_id, state_id, &mut event_ctx, |comp, ctx| {
+            //             let event_ident = strings.get_ref_unchecked(event.external);
+            //             comp.any_receive(ctx, event_ident, common_val)
+            //         });
+            //     })
+            // }
         }
 
         // -----------------------------------------------------------------------------

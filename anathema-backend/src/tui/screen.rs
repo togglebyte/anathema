@@ -129,9 +129,11 @@ impl Screen {
 
     /// Restore the terminal by setting the cursor to show, disable raw mode, disable mouse capture
     /// and leave any alternative screens
-    pub fn restore(&mut self, mut output: impl Write) -> Result<()> {
+    pub fn restore(&mut self, mut output: impl Write, leave_alt_screen: bool) -> Result<()> {
         disable_raw_mode()?;
-        output.execute(LeaveAlternateScreen)?;
+        if leave_alt_screen {
+            output.execute(LeaveAlternateScreen)?;
+        }
         #[cfg(not(target_os = "windows"))]
         output.execute(crossterm::event::DisableMouseCapture)?;
         output.execute(cursor::Show)?;

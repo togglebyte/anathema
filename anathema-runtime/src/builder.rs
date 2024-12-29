@@ -3,7 +3,7 @@ use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_state::{Changes, FutureValues, States};
 use anathema_templates::{Document, ToSourceKind};
-use anathema_widgets::components::{Component, ComponentId, ComponentRegistry};
+use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, FocusQueue};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::{
     AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree,
@@ -98,12 +98,17 @@ impl Builder {
 
     pub fn finish<F, U>(&mut self, size: Size, mut f: F) -> Result<()>
     where
-        F: FnMut(Runtime<'_>) -> Result<U>,
+        F: FnOnce(Runtime<'_>) -> Result<U>,
     {
         let (blueprint, globals) = self.document.compile()?;
         let tree = WidgetTree::empty();
         let attribute_storage = AttributeStorage::empty();
         let viewport = Viewport::new(size);
+
+        let fps = 30;
+        let sleep_micros: u128 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u128;
+
+        let (message_sender, message_receiver) = flume::unbounded();
 
         let mut inst = Runtime {
             component_registry: &mut self.component_registry,
@@ -117,11 +122,17 @@ impl Builder {
             changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
             future_values: FutureValues::empty(),
+            assoc_events: AssociatedEvents::new(),
+            focus_queue: FocusQueue::new(),
             glyph_map: GlyphMap::empty(),
             blueprint: &blueprint,
             globals: &globals,
             changes: Changes::empty(),
             viewport,
+            emitter: message_sender.into(),
+            message_receiver,
+            fps,
+            sleep_micros,
         };
 
         inst.init();

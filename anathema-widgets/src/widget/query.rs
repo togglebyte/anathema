@@ -6,7 +6,7 @@ pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{Node, TreeValues};
 
-use super::DirtyWidgets;
+use super::{DirtyWidgets, WidgetTreeView};
 use crate::nodes::element::Element;
 use crate::{AttributeStorage, Attributes, WidgetContainer, WidgetId, WidgetKind};
 
@@ -14,22 +14,19 @@ use crate::{AttributeStorage, Attributes, WidgetContainer, WidgetId, WidgetKind}
 //   - Elements -
 // -----------------------------------------------------------------------------
 pub struct Elements<'tree, 'bp> {
-    nodes: &'tree [Node],
-    widgets: &'tree mut TreeValues<WidgetContainer<'bp>>,
+    children: WidgetTreeView<'tree, 'bp>,
     attributes: &'tree mut AttributeStorage<'bp>,
     dirty_widgets: &'tree mut DirtyWidgets,
 }
 
 impl<'tree, 'bp> Elements<'tree, 'bp> {
     pub fn new(
-        nodes: &'tree [Node],
-        widgets: &'tree mut TreeValues<WidgetContainer<'bp>>,
+        children: WidgetTreeView<'tree, 'bp>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
         dirty_widgets: &'tree mut DirtyWidgets,
     ) -> Self {
         Self {
-            nodes,
-            widgets,
+            children,
             attributes: attribute_storage,
             dirty_widgets,
         }
@@ -99,16 +96,44 @@ where
         self.by_filter(Kind::ByAttribute(key, value.into()))
     }
 
-    fn query(self, f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>), continuous: bool) {
-        let mut run = QueryRun {
-            filter: self.filter,
-            f,
-            continuous,
-            attributes: self.elements.attributes,
-            dirty_widgets: self.elements.dirty_widgets,
-        };
+    fn query(self, mut f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>), continuous: bool) {
+        // let mut run = QueryRun {
+        //     filter: self.filter,
+        //     f,
+        //     continuous,
+        //     attributes: self.elements.attributes,
+        //     dirty_widgets: self.elements.dirty_widgets,
+        // };
 
-        apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
+        for i in 0..self.elements.children.layout.len() {
+            // for node in self.elements.children.layout.iter() {
+            let node = &self.elements.children.layout[i];
+            let Some((_path, container)) = self.elements.children.values.get_mut(node.value()) else {
+                continue;
+            };
+
+            let WidgetKind::Element(ref mut element) = container.kind else { continue };
+
+            if !self.filter.filter(element, self.elements.attributes) {
+                continue;
+            }
+
+            let attributes = self.elements.attributes.get_mut(element.id());
+            f(element, attributes);
+
+            let mut query = Query {
+                filter: self.filter,
+                elements: self.elements,
+            };
+
+            if !continuous {
+                break
+            }
+
+            query.query(&mut f, continuous);
+        }
+
+        // apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
     }
 
     pub fn each<T>(self, f: T)
@@ -126,6 +151,7 @@ where
 // -----------------------------------------------------------------------------
 //   - Query kind -
 // -----------------------------------------------------------------------------
+#[derive(Debug, Copy, Clone)]
 pub enum Kind<'a> {
     ByTag(&'a str),
     ByAttribute(&'a str, CommonVal<'a>),
@@ -158,7 +184,7 @@ impl<'bp, 'a> Filter<'bp> for Kind<'a> {
 // -----------------------------------------------------------------------------
 //   - Filter -
 // -----------------------------------------------------------------------------
-pub trait Filter<'bp> {
+pub trait Filter<'bp>: Copy {
     fn filter(&self, el: &Element<'bp>, attributes: &mut AttributeStorage<'_>) -> bool;
 
     fn chain(self, other: impl Filter<'bp>) -> impl Filter<'bp>
@@ -172,6 +198,7 @@ pub trait Filter<'bp> {
 // -----------------------------------------------------------------------------
 //   - Filter chain -
 // -----------------------------------------------------------------------------
+#[derive(Debug, Copy, Clone)]
 pub struct FilterChain<A, B> {
     a: A,
     b: B,
@@ -223,26 +250,26 @@ pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
     dirty_widgets: &'tag mut DirtyWidgets,
 }
 
-impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetContainer<'bp>> for QueryRun<'bp, 'tag, T, F>
-where
-    F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
-{
-    fn visit(&mut self, value: &mut WidgetContainer<'bp>, path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
-        if let WidgetKind::Element(el) = &mut value.kind {
-            if self.filter.filter(el, self.attributes) {
-                let attributes = self.attributes.get_mut(el.id());
-                (self.f)(el, attributes);
+// impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetContainer<'bp>> for QueryRun<'bp, 'tag, T, F>
+// where
+//     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
+// {
+//     fn visit(&mut self, value: &mut WidgetContainer<'bp>, path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
+//         if let WidgetKind::Element(el) = &mut value.kind {
+//             if self.filter.filter(el, self.attributes) {
+//                 let attributes = self.attributes.get_mut(el.id());
+//                 (self.f)(el, attributes);
 
-                if el.container.inner.any_needs_reflow() {
-                    self.dirty_widgets.push(widget_id);
-                }
+//                 if el.container.inner.any_needs_reflow() {
+//                     self.dirty_widgets.push(widget_id);
+//                 }
 
-                if !self.continuous {
-                    return ControlFlow::Break(false);
-                }
-            }
-        }
+//                 if !self.continuous {
+//                     return ControlFlow::Break(false);
+//                 }
+//             }
+//         }
 
-        ControlFlow::Continue(())
-    }
-}
+//         ControlFlow::Continue(())
+//     }
+// }

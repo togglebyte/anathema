@@ -22,7 +22,7 @@ pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
     pub(super) scope: Scope<'bp>,
-    pub(super) states: &'frame mut States,
+    pub states: &'frame mut States,
     pub(super) globals: &'bp Globals,
     pub dirty_widgets: &'frame mut DirtyWidgets,
     factory: &'frame Factory,

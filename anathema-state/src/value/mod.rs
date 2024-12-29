@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use anathema_store::slab::{Aux, RcElement};
+use anathema_store::slab::RcElement;
 use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 
 pub use self::list::List;

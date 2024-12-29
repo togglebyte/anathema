@@ -1,17 +1,19 @@
 use std::cell::RefCell;
 
 use super::shared::SharedKey;
-use crate::slab::{Aux, Slab, SlabIndex};
+use crate::slab::{Slab, SlabIndex};
 
 // -----------------------------------------------------------------------------
 //   - Key -
 // -----------------------------------------------------------------------------
-pub type OwnedKey = crate::slab::Key<()>;
+pub type OwnedKey = crate::slab::Key;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Monitor(u16);
 
 impl Monitor {
+    pub const INITIAL: u16 = u16::MAX;
+
     pub const fn initial() -> Self {
         Self(Self::INITIAL)
     }
@@ -33,18 +35,6 @@ impl SlabIndex for Monitor {
         Self: Sized,
     {
         Self(index as u16)
-    }
-}
-
-impl Aux for Monitor {
-    const INITIAL: u16 = u16::MAX;
-
-    fn from_u16(val: u16) -> Self {
-        Self(val)
-    }
-
-    fn as_u64(self) -> u64 {
-        self.0 as u64
     }
 }
 
@@ -238,11 +228,5 @@ mod test {
         let key = owned.push(Box::new(123u32));
         let _ = owned.remove(key);
         let _value = owned.unique(key);
-    }
-
-    #[test]
-    fn monitor_key() {
-        let key = Key::<Monitor>::new(0, 0);
-        assert_eq!(key.aux(), Monitor(u16::MAX))
     }
 }

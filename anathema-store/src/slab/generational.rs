@@ -40,30 +40,35 @@ impl From<usize> for Gen {
 /// Bits 48..64 is the 16-bit aux storage in the key.
 ///
 /// This is used to attach additional data to the key.
-#[derive(Hash)]
-pub struct Key<A = ()>(u64, PhantomData<A>);
+#[derive(Hash, Copy, Clone)]
+pub struct Key(u64);
 
-impl<A> PartialEq for Key<A> {
+impl PartialEq for Key {
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+        self.index().eq(&other.index())
     }
 }
 
-impl<A> Clone for Key<A> {
-    fn clone(&self) -> Self {
-        Self(self.0, PhantomData)
+impl Eq for Key {}
+
+impl PartialOrd for Key {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.index().partial_cmp(&other.index())
     }
 }
 
-impl<A> Copy for Key<A> {}
+impl Ord for Key {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.index().cmp(&other.index())
+    }
+}
 
-impl<A: Aux> Key<A> {
+impl Key {
     const AUX_BITS: usize = 16;
     const AUX_OFFSET: usize = Self::INDEX_BITS + Self::GEN_BITS;
     const GEN_BITS: usize = 16;
     const INDEX_BITS: usize = 32;
     const INDEX_OFFSET: usize = Self::AUX_BITS + Self::GEN_BITS;
-
     /// Max, with the generation set to zero
     pub const MAX: Self = Self::new(u32::MAX, 0);
     /// One (generation is set to zero)
@@ -75,19 +80,18 @@ impl<A: Aux> Key<A> {
     pub const fn new(index: u32, gen: u16) -> Self {
         let index = (index as u64) << Self::INDEX_OFFSET >> Self::INDEX_OFFSET;
         let gen = (gen as u64) << Self::INDEX_BITS;
-        let aux = (A::INITIAL as u64) << Self::AUX_OFFSET;
-        Self(index | aux | gen, PhantomData)
+        Self(index | gen)
     }
 
     /// Set the upper auxillary value
-    pub fn set_aux(&mut self, aux: A) {
-        let aux = (aux.as_u64()) << Self::INDEX_BITS + Self::GEN_BITS;
+    pub fn set_aux(&mut self, aux: u16) {
+        let aux = (aux as u64) << Self::INDEX_BITS + Self::GEN_BITS;
         self.0 = self.0 << Self::GEN_BITS >> Self::GEN_BITS | aux;
     }
 
     /// Get the auxillary value
-    pub fn aux(&self) -> A {
-        A::from_u16((self.0 >> Self::AUX_OFFSET) as u16)
+    pub fn aux(&self) -> u16 {
+        (self.0 >> Self::AUX_OFFSET) as u16
     }
 
     pub(super) fn bump(mut self) -> Self {
@@ -116,51 +120,28 @@ impl<A: Aux> Key<A> {
     }
 }
 
-impl<A: Aux> Debug for Key<A> {
+impl Debug for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Key <{}:{}>", self.index(), self.gen().0)
     }
 }
 
-impl<A: Aux> From<(usize, usize)> for Key<A> {
+impl From<(usize, usize)> for Key {
     fn from((index, gen): (usize, usize)) -> Self {
         let mut this = Self::new(index as u32, gen as u16);
         this
     }
 }
 
-impl<A: Aux> From<(usize, Gen)> for Key<A> {
+impl From<(usize, Gen)> for Key {
     fn from((index, gen): (usize, Gen)) -> Self {
         (index, gen.0 as usize).into()
     }
 }
 
-impl<A: Aux> From<Key<A>> for Index {
-    fn from(value: Key<A>) -> Self {
+impl From<Key> for Index {
+    fn from(value: Key) -> Self {
         value.index().into()
-    }
-}
-
-/// Auxillary value associated with the key.
-/// The default is `()`.
-pub trait Aux {
-    /// Initial value
-    const INITIAL: u16 = 0;
-
-    /// Convert the 16 bits aux value into self
-    fn from_u16(val: u16) -> Self;
-
-    /// Convert self to u16
-    fn as_u64(self) -> u64;
-}
-
-impl Aux for () {
-    fn from_u16(val: u16) -> Self {
-        ()
-    }
-
-    fn as_u64(self) -> u64 {
-        0
     }
 }
 
@@ -168,13 +149,13 @@ impl Aux for () {
 //   - Entry -
 // -----------------------------------------------------------------------------
 #[derive(PartialEq)]
-enum Entry<T, A> {
-    Vacant(Option<Key<A>>),
+enum Entry<T> {
+    Vacant(Option<Key>),
     Occupied(T, Gen),
-    CheckedOut(Key<A>),
+    CheckedOut(Key),
 }
 
-impl<T, A> Entry<T, A> {
+impl<T> Entry<T> {
     // Insert an Occupied entry in place of a vacant one.
     fn swap(&mut self, value: T, gen: Gen) {
         debug_assert!(matches!(self, Entry::Vacant(_)));
@@ -187,7 +168,7 @@ impl<T, A> Entry<T, A> {
     }
 }
 
-impl<T: Debug, A: Aux> Debug for Entry<T, A> {
+impl<T: Debug> Debug for Entry<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Vacant(next_id) => f.debug_tuple("Vacant").field(next_id).finish(),
@@ -205,9 +186,9 @@ impl<T: Debug, A: Aux> Debug for Entry<T, A> {
 /// If another value is inserted at the same index it will have a new generation.
 /// This prevents stale indices pointing to incorrect values.
 #[derive(Debug)]
-pub struct GenSlab<T, A: Aux = ()> {
-    next_id: Option<Key<A>>,
-    inner: Vec<Entry<T, A>>,
+pub struct GenSlab<T> {
+    next_id: Option<Key>,
+    inner: Vec<Entry<T>>,
 }
 
 impl<T> GenSlab<T> {
@@ -220,7 +201,7 @@ impl<T> GenSlab<T> {
     }
 }
 
-impl<T, A: Aux> GenSlab<T, A> {
+impl<T> GenSlab<T> {
     /// Create an empty slab
     pub const fn empty_aux() -> Self {
         Self {
@@ -240,7 +221,7 @@ impl<T, A: Aux> GenSlab<T, A> {
 
     /// Try to replace an existing value if it exists, with a new one.
     /// This will bump the generation.
-    pub fn try_replace(&mut self, key: Key<A>, mut new_value: T) -> Option<(Key<A>, T)> {
+    pub fn try_replace(&mut self, key: Key, mut new_value: T) -> Option<(Key, T)> {
         match &mut self.inner.get_mut(key.index())? {
             Entry::Occupied(val, gen) if key.gen() == *gen => {
                 key.bump();
@@ -258,7 +239,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     /// # Panics
     ///
     /// Panics if the entry does not exist
-    pub fn replace(&mut self, key: Key<A>, mut new_value: T) -> (Key<A>, T) {
+    pub fn replace(&mut self, key: Key, mut new_value: T) -> (Key, T) {
         match &mut self.inner[key.index()] {
             Entry::Occupied(val, gen) if key.gen() == *gen => {
                 key.bump();
@@ -273,7 +254,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     }
 
     /// Closure over a mutable reference to T
-    pub fn with_mut<F, U>(&mut self, key: Key<A>, f: F) -> U
+    pub fn with_mut<F, U>(&mut self, key: Key, f: F) -> U
     where
         F: FnOnce(&mut T, &mut Self) -> U,
     {
@@ -283,7 +264,7 @@ impl<T, A: Aux> GenSlab<T, A> {
         ret
     }
 
-    pub(crate) fn checkout(&mut self, key: Key<A>) -> Ticket<Key<A>, T> {
+    pub(crate) fn checkout(&mut self, key: Key) -> Ticket<Key, T> {
         let mut entry = Entry::CheckedOut(key);
         std::mem::swap(&mut entry, &mut self.inner[key.index()]);
 
@@ -295,7 +276,7 @@ impl<T, A: Aux> GenSlab<T, A> {
         }
     }
 
-    pub(crate) fn restore(&mut self, Ticket { value, key }: Ticket<Key<A>, T>) {
+    pub(crate) fn restore(&mut self, Ticket { value, key }: Ticket<Key, T>) {
         let mut entry = Entry::Occupied(value, key.gen());
         std::mem::swap(&mut entry, &mut self.inner[key.index()]);
 
@@ -312,7 +293,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     /// There is no guarantee that this value will be the same
     /// value produced when doing an insert if another insert has happened
     /// since this value was returned.
-    pub fn next_id(&self) -> Key<A> {
+    pub fn next_id(&self) -> Key {
         match self.next_id {
             Some(id) => id,
             None => Key::new(self.inner.len() as u32, 0),
@@ -325,7 +306,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     // Write the vacant entry's `next_id` into self.next_id, and
     // finally replace the vacant entry with the occupied value
     /// Insert a value into the slab
-    pub fn insert(&mut self, value: T) -> Key<A> {
+    pub fn insert(&mut self, value: T) -> Key {
         match self.next_id.take() {
             Some(key) => {
                 let entry = &mut self.inner[key.index()];
@@ -356,8 +337,8 @@ impl<T, A: Aux> GenSlab<T, A> {
     /// # Panics
     ///
     /// Panics if a value is inserted at a position that is currently checked out
-    pub fn insert_at(&mut self, key: Key<A>, value: T) {
-        // let idx = index.into();
+    pub fn insert_at(&mut self, index: u32, value: T) {
+        let key = Key::new(index, 0);
 
         // If the index is outside of the current
         // length then fill the slots in between with
@@ -418,7 +399,7 @@ impl<T, A: Aux> GenSlab<T, A> {
 
     /// Remove a value from the slab, as long as the index and generation matches
     #[must_use]
-    pub fn remove(&mut self, mut key: Key<A>) -> Option<T> {
+    pub fn remove(&mut self, mut key: Key) -> Option<T> {
         let mut entry = Entry::Vacant(self.next_id.take());
         // Increment the generation
         std::mem::swap(&mut self.inner[key.index()], &mut entry);
@@ -435,7 +416,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     }
 
     /// Try to remove a value from the slab, where the index and generation matches
-    pub fn try_remove(&mut self, key: Key<A>) -> Option<T> {
+    pub fn try_remove(&mut self, key: Key) -> Option<T> {
         if self.inner.len() <= key.index() {
             return None;
         }
@@ -455,7 +436,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     }
 
     /// Get a reference to a value in the slab
-    pub fn get(&self, key: Key<A>) -> Option<&T> {
+    pub fn get(&self, key: Key) -> Option<&T> {
         match self.inner.get(key.index())? {
             Entry::Occupied(val, gen) if key.gen() == *gen => Some(val),
             _ => None,
@@ -463,7 +444,7 @@ impl<T, A: Aux> GenSlab<T, A> {
     }
 
     /// Get a mutable reference to a value in the slab
-    pub fn get_mut(&mut self, key: Key<A>) -> Option<&mut T> {
+    pub fn get_mut(&mut self, key: Key) -> Option<&mut T> {
         match self.inner.get_mut(key.index())? {
             Entry::Occupied(val, gen) if key.gen() == *gen => Some(val),
             _ => None,
@@ -511,19 +492,19 @@ impl<T, A: Aux> GenSlab<T, A> {
     }
 
     /// Iterate over the keys and elements
-    pub fn iter_keys(&self) -> impl Iterator<Item = (Key<A>, &T)> + '_ {
+    pub fn iter_keys(&self) -> impl Iterator<Item = (Key, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
             Entry::Occupied(val, gen) => Some(((i, *gen).into(), val)),
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
 
-    pub(crate) fn is_vacant(&self, key: Key<A>) -> bool {
+    pub(crate) fn is_vacant(&self, key: Key) -> bool {
         matches!(self.inner.get(key.index()), Some(Entry::Vacant(_)))
     }
 }
 
-impl<T, A: Aux> GenSlab<T, A>
+impl<T> GenSlab<T>
 where
     T: std::fmt::Debug,
 {
@@ -564,24 +545,9 @@ where
 mod test {
     use super::*;
 
-    #[derive(Debug, PartialEq)]
-    struct Custom(u16);
-
-    impl Aux for Custom {
-        const INITIAL: u16 = 42;
-
-        fn from_u16(val: u16) -> Self {
-            Custom(val)
-        }
-
-        fn as_u64(self) -> u64 {
-            self.0 as u64
-        }
-    }
-
     #[test]
     fn push() {
-        let mut slab = GenSlab::<_, ()>::empty();
+        let mut slab = GenSlab::empty();
         let index = slab.insert(123);
         let val = slab.remove(index).unwrap();
         assert_eq!(val, 123);
@@ -619,6 +585,13 @@ mod test {
     }
 
     #[test]
+    fn insert_at() {
+        let mut slab = GenSlab::empty();
+        slab.insert_at(5, ());
+        // assert_eq!(expected, actual);
+    }
+
+    #[test]
     fn ticket() {
         let mut slab = GenSlab::empty();
         let key_1 = slab.insert(1);
@@ -650,7 +623,7 @@ mod test {
 
     #[test]
     fn bump_test() {
-        let index = Key::<()>::new(0, 0);
+        let index = Key::new(0, 0);
         let index = index.bump();
         let mut index = index.bump();
         index.set_gen(u16::MAX);
@@ -663,7 +636,7 @@ mod test {
     fn from_values() {
         let index = 123;
         let gen = 456u16;
-        let key = Key::<()>::new(index, gen);
+        let key = Key::new(index, gen);
         assert_eq!(key.index(), index as usize);
         assert_eq!(key.gen(), Gen(gen));
     }
@@ -672,9 +645,10 @@ mod test {
     fn write_aux_store() {
         let index = 123;
         let gen = 456u16;
-        let mut key = Key::<Custom>::new(index, gen);
+        let mut key = Key::new(index, gen);
+        key.set_aux(42);
         assert_eq!(key.index(), index as usize);
         assert_eq!(key.gen(), Gen(gen));
-        assert_eq!(key.aux(), Custom(42));
+        assert_eq!(key.aux(), 42);
     }
 }

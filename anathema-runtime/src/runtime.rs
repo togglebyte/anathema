@@ -1,9 +1,3 @@
-// -----------------------------------------------------------------------------
-//   - Notes on viewstructs -
-//   Well, it's not really about viewstructs but here goes:
-//   * Split the runtime into different sections with different borrowed values
-// -----------------------------------------------------------------------------
-
 use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
@@ -13,11 +7,14 @@ use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::components::ComponentRegistry;
+use anathema_widgets::components::{
+    AnyEventCtx, AssociatedEvents, ComponentContext, ComponentRegistry, Emitter, FocusQueue, UntypedContext,
+    ViewMessage,
+};
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::{
-    eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
-    GlyphMap, Scope, WidgetTree, WidgetTreeView,
+    eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Elements, Factory,
+    FloatingWidgets, GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree, WidgetTreeView,
 };
 
 pub use crate::error::Result;
@@ -36,9 +33,15 @@ pub struct Runtime<'bp> {
     pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
     pub(super) future_values: FutureValues,
+    pub(super) assoc_events: AssociatedEvents,
+    pub(super) focus_queue: FocusQueue<'static>,
     pub(super) glyph_map: GlyphMap,
     pub(super) changes: Changes,
     pub(super) viewport: Viewport,
+    pub(super) emitter: Emitter,
+    pub(super) fps: usize,
+    pub(super) sleep_micros: u128,
+    pub(super) message_receiver: flume::Receiver<ViewMessage>,
 }
 
 impl<'bp> Runtime<'bp> {
@@ -64,6 +67,13 @@ impl<'bp> Runtime<'bp> {
             layout_ctx,
             changes: &mut self.changes,
             future_values: &mut self.future_values,
+            sleep_micros: self.sleep_micros,
+
+            focus_queue: &mut self.focus_queue,
+            assoc_events: &mut self.assoc_events,
+
+            emitter: &self.emitter,
+            message_receiver: &self.message_receiver,
         };
 
         Ok(inst)
@@ -90,12 +100,16 @@ impl<'bp> Runtime<'bp> {
 }
 
 pub struct Frame<'rt, 'bp> {
-    // backend: &'rt mut B,
     document: &'rt mut Document,
     tree: &'rt mut WidgetTree<'bp>,
     layout_ctx: LayoutCtx<'rt, 'bp>,
     changes: &'rt mut Changes,
     future_values: &'rt mut FutureValues,
+    assoc_events: &'rt mut AssociatedEvents,
+    focus_queue: &'rt mut FocusQueue<'static>,
+    sleep_micros: u128,
+    emitter: &'rt Emitter,
+    message_receiver: &'rt flume::Receiver<ViewMessage>,
 }
 
 impl<'bp> Frame<'_, 'bp> {
@@ -103,19 +117,20 @@ impl<'bp> Frame<'_, 'bp> {
         match event {
             Event::Noop => return,
             Event::Stop => todo!(),
-            Event::Blur => todo!(),
-            Event::Focus => todo!(),
-            Event::Key(key_event) => {}
+            Event::Blur | Event::Focus | Event::Key(_) => {
+                let Some((widget_id, state_id)) = self.layout_ctx.components.current() else { return };
+                self.send_event_to_component(event, widget_id, state_id);
+            }
             Event::Mouse(mouse_event) => {
-                // for i in 0..self.eval_ctx.components.len() {
-                //     let (widget_id, state_id) = self
-                //         .eval_ctx
-                //         .components
-                //         .get(i)
-                //         .expect("components can not change during this call");
+                for i in 0..self.layout_ctx.components.len() {
+                    let (widget_id, state_id) = self
+                        .layout_ctx
+                        .components
+                        .get(i)
+                        .expect("components can not change during this call");
 
-                //     // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
-                // }
+                    self.send_event_to_component(event, widget_id, state_id);
+                }
             }
             Event::Resize(size) => todo!(),
         }
@@ -130,10 +145,11 @@ impl<'bp> Frame<'_, 'bp> {
 
     pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Duration {
         let now = Instant::now();
+        let elapsed = self.handle_messages(now);
+        self.pull_events(elapsed, now, backend);
         self.apply_changes();
         self.resolve_future_values();
-        let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
-        cycle.run(&mut self.layout_ctx);
+        self.cycle(backend);
         now.elapsed()
     }
 
@@ -153,6 +169,44 @@ impl<'bp> Frame<'_, 'bp> {
             self.layout_ctx.floating_widgets.try_remove(key);
             self.layout_ctx.components.remove(key);
         }
+    }
+
+    fn handle_messages(&mut self, fps_now: Instant) -> Duration {
+        while let Ok(msg) = self.message_receiver.try_recv() {
+            if let Some((widget_id, state_id)) = self
+                .layout_ctx
+                .components
+                .get_by_component_id(msg.recipient())
+                .map(|e| (e.widget_id, e.state_id))
+            {
+                // tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| {
+                //     a.any_message(msg.payload(), b)
+                // });
+            }
+
+            // Make sure event handling isn't holding up the rest of the event loop.
+            if fps_now.elapsed().as_micros() > self.sleep_micros / 2 {
+                break;
+            }
+        }
+
+        fps_now.elapsed()
+    }
+
+    fn pull_events<B: Backend>(&mut self, remaining: Duration, fps_now: Instant, backend: &mut B) {
+        while let Some(event) = backend.next_event(remaining) {
+            self.event(event);
+
+            // Make sure event handling isn't holding up the rest of the event loop.
+            if fps_now.elapsed().as_micros() > self.sleep_micros {
+                break;
+            }
+        }
+    }
+
+    fn cycle<B: Backend>(&mut self, backend: &mut B) {
+        let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
+        cycle.run(&mut self.layout_ctx);
     }
 
     fn apply_changes(&mut self) {
@@ -191,5 +245,42 @@ impl<'bp> Frame<'_, 'bp> {
     fn poll_event<B: Backend>(&mut self, poll_timeout: Duration, backend: &mut B) {
         let Some(event) = backend.next_event(poll_timeout) else { return };
         self.event(event);
+    }
+
+    fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
+        let mut tree = self.tree.view_mut();
+
+        tree.with_value_mut(widget_id, |path, container, children| {
+            let WidgetKind::Component(component) = &mut container.kind else { return };
+            let state = self.layout_ctx.states.get_mut(state_id);
+
+            self.layout_ctx
+                .attribute_storage
+                .with_mut(widget_id, |attributes, storage| {
+                    let component_ctx = ComponentContext::new(
+                        state_id,
+                        component.parent,
+                        component.assoc_functions,
+                        self.assoc_events,
+                        self.focus_queue,
+                        attributes,
+                    );
+
+                    let mut elements = Elements::new(children, storage, self.layout_ctx.dirty_widgets);
+
+                    let event_ctx = AnyEventCtx {
+                        state,
+                        elements,
+                        context: UntypedContext {
+                            emitter: self.emitter,
+                            viewport: self.layout_ctx.viewport,
+                            strings: &self.document.strings,
+                        },
+                        component_ctx,
+                    };
+
+                    component.dyn_component.any_event(event_ctx, event);
+                });
+        });
     }
 }

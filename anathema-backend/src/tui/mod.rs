@@ -11,7 +11,10 @@ use std::time::Duration;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::{AttributeStorage, Element, ForEach, GlyphMap, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer};
+use anathema_widgets::{
+    AttributeStorage, Element, ForEach, GlyphMap, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer,
+};
+use crossterm::cursor::{RestorePosition, SavePosition};
 use crossterm::execute;
 use crossterm::terminal::{size, BeginSynchronizedUpdate, EndSynchronizedUpdate};
 pub use screen::Screen;
@@ -168,13 +171,7 @@ impl Backend for TuiBackend {
         attribute_storage: &AttributeStorage<'bp>,
         ignore_floats: bool,
     ) {
-        anathema_widgets::paint::paint(
-            &mut self.screen,
-            glyph_map,
-            widgets,
-            attribute_storage,
-            ignore_floats,
-        );
+        anathema_widgets::paint::paint(&mut self.screen, glyph_map, widgets, attribute_storage, ignore_floats);
         // TODO: decide if we need `paint` to return a Result or not
     }
 
@@ -189,6 +186,11 @@ impl Backend for TuiBackend {
     }
 
     fn finalize(&mut self) {
+        if self.enable_alt_screen {
+            let _ = execute!(&mut self.output, SavePosition);
+            let _ = Screen::enter_alt_screen(&mut self.output);
+        }
+
         if self.hide_cursor {
             // This is to fix an issue with Windows cmd.exe
             let _ = Screen::show_cursor(&mut self.output);
@@ -197,10 +199,6 @@ impl Backend for TuiBackend {
 
         if self.enable_raw_mode {
             let _ = Screen::enable_raw_mode();
-        }
-
-        if self.enable_alt_screen {
-            let _ = Screen::enter_alt_screen(&mut self.output);
         }
 
         if self.enable_mouse {
@@ -213,7 +211,10 @@ impl Backend for TuiBackend {
 
 impl Drop for TuiBackend {
     fn drop(&mut self) {
-        let _ = self.screen.restore(&mut self.output);
+        if self.enable_alt_screen {
+            let _ = execute!(&mut self.output, RestorePosition);
+        }
+        let _ = self.screen.restore(&mut self.output, self.enable_alt_screen);
     }
 }
 

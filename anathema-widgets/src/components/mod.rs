@@ -270,11 +270,11 @@ pub struct UntypedContext<'rt> {
 }
 
 pub struct ComponentContext<'rt> {
-    pub parent: Option<Parent>,
-    pub state_id: StateId,
-    pub assoc_functions: &'rt [(StringId, StringId)],
-    pub assoc_events: &'rt mut AssociatedEvents,
-    pub attributes: &'rt Attributes<'rt>,
+    parent: Option<Parent>,
+    state_id: StateId,
+    assoc_functions: &'rt [(StringId, StringId)],
+    assoc_events: &'rt mut AssociatedEvents,
+    attributes: &'rt Attributes<'rt>,
     focus_queue: &'rt mut FocusQueue<'static>,
 }
 
@@ -462,7 +462,7 @@ pub enum ComponentKind {
 pub trait AnyComponent {
     fn any_event(&mut self, ctx: AnyEventCtx<'_, '_, '_>, ev: Event) -> Event;
 
-    fn any_message(&mut self, message: Box<dyn Any>, ctx: AnyEventCtx<'_, '_, '_>);
+    fn any_message(&mut self, ctx: AnyEventCtx<'_, '_, '_>, message: Box<dyn Any>);
 
     fn any_tick(&mut self, ctx: AnyEventCtx<'_, '_, '_>, dt: Duration);
 
@@ -501,7 +501,7 @@ where
         self.accept_focus()
     }
 
-    fn any_message(&mut self, message: Box<dyn Any>, ctx: AnyEventCtx<'_, '_, '_>) {
+    fn any_message(&mut self, ctx: AnyEventCtx<'_, '_, '_>, message: Box<dyn Any>) {
         let state = ctx
             .state
             .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
