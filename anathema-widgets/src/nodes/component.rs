@@ -8,6 +8,7 @@ use crate::WidgetId;
 
 #[derive(Debug)]
 pub struct Component<'bp> {
+    pub name: &'bp str,
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
@@ -23,6 +24,7 @@ pub struct Component<'bp> {
 
 impl<'bp> Component<'bp> {
     pub fn new(
+        name: &'bp str,
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
@@ -33,6 +35,7 @@ impl<'bp> Component<'bp> {
         parent: Option<WidgetId>,
     ) -> Self {
         Self {
+            name,
             body,
             dyn_component,
             state_id,

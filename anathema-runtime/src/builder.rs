@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
@@ -96,7 +98,7 @@ impl Builder {
         Ok(())
     }
 
-    pub fn finish<F, U>(&mut self, size: Size, mut f: F) -> Result<()>
+    pub fn finish<F, U>(&mut self, size: Size, mut f: F) -> Result<U>
     where
         F: FnOnce(Runtime<'_>) -> Result<U>,
     {
@@ -133,12 +135,11 @@ impl Builder {
             message_receiver,
             fps,
             sleep_micros,
+            dt: Instant::now(),
         };
 
         inst.init();
 
-        f(inst);
-
-        Ok(())
+        f(inst)
     }
 }

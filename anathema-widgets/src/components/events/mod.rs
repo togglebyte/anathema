@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anathema_geometry::Size;
 
 pub use self::key::{KeyCode, KeyEvent, KeyState};
@@ -23,6 +25,8 @@ pub enum Event {
     Mouse(MouseEvent),
     /// Window was resized
     Resize(Size),
+    /// Tick
+    Tick(Duration),
 }
 
 impl Event {

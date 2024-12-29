@@ -8,9 +8,9 @@ pub use crate::nodes::{
 pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::values::{Value, Values};
 pub use crate::widget::{
-    AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Elements, Factory,
-    FloatingWidgets, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-    WidgetTree, WidgetTreeView,
+    AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Factory, FloatingWidgets,
+    ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId, WidgetTree,
+    WidgetTreeView,
 };
 
 pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, ValueId>;
@@ -26,6 +26,7 @@ pub mod expressions;
 pub mod layout;
 mod nodes;
 pub mod paint;
+pub mod query;
 mod scope;
 pub mod tree;
 mod values;

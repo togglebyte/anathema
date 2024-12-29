@@ -3,7 +3,7 @@ use anathema::component::{Component, ComponentId, MouseEvent};
 use anathema::runtime::Runtime;
 use anathema::state::{List, State, Value};
 use anathema::templates::Document;
-use anathema::widgets::components::Context;
+use anathema::widgets::components::DeprecatedContext;
 use anathema::widgets::Elements;
 
 pub struct Index {
@@ -25,7 +25,7 @@ impl Component for Index {
         mouse: MouseEvent,
         _state: &mut Self::State,
         mut elements: Elements<'_, '_>,
-        context: Context<'_, Self::State>,
+        context: DeprecatedContext<'_, Self::State>,
     ) {
         if mouse.lsb_down() {
             elements
@@ -59,7 +59,7 @@ impl Component for Messages {
         message: Self::Message,
         state: &mut Self::State,
         _: Elements<'_, '_>,
-        _: Context<'_, Self::State>,
+        _: DeprecatedContext<'_, Self::State>,
     ) {
         if state.messages.len() > 20 {
             state.messages.pop_front();

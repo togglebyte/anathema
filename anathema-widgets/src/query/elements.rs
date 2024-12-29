@@ -6,9 +6,8 @@ pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{Node, TreeValues};
 
-use super::{DirtyWidgets, WidgetTreeView};
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, Attributes, WidgetContainer, WidgetId, WidgetKind};
+use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
 
 // -----------------------------------------------------------------------------
 //   - Elements -
@@ -97,14 +96,6 @@ where
     }
 
     fn query(self, mut f: impl FnMut(&mut Element<'_>, &mut Attributes<'_>), continuous: bool) {
-        // let mut run = QueryRun {
-        //     filter: self.filter,
-        //     f,
-        //     continuous,
-        //     attributes: self.elements.attributes,
-        //     dirty_widgets: self.elements.dirty_widgets,
-        // };
-
         for i in 0..self.elements.children.layout.len() {
             // for node in self.elements.children.layout.iter() {
             let node = &self.elements.children.layout[i];
@@ -127,13 +118,11 @@ where
             };
 
             if !continuous {
-                break
+                break;
             }
 
             query.query(&mut f, continuous);
         }
-
-        // apply_visitor(self.elements.nodes, self.elements.widgets, &mut run);
     }
 
     pub fn each<T>(self, f: T)
@@ -238,38 +227,3 @@ impl<'bp, A: Filter<'bp>, B: Filter<'bp>> Filter<'bp> for FilterChain<A, B> {
         }
     }
 }
-
-// -----------------------------------------------------------------------------
-//   - Query runner -
-// -----------------------------------------------------------------------------
-pub struct QueryRun<'bp, 'tag, T: Filter<'bp>, F> {
-    filter: T,
-    f: F,
-    continuous: bool,
-    attributes: &'tag mut AttributeStorage<'bp>,
-    dirty_widgets: &'tag mut DirtyWidgets,
-}
-
-// impl<'bp, 'tag, T: Filter<'bp>, F> NodeVisitor<WidgetContainer<'bp>> for QueryRun<'bp, 'tag, T, F>
-// where
-//     F: FnMut(&mut Element<'bp>, &mut Attributes<'_>),
-// {
-//     fn visit(&mut self, value: &mut WidgetContainer<'bp>, path: &[u16], widget_id: WidgetId) -> ControlFlow<bool> {
-//         if let WidgetKind::Element(el) = &mut value.kind {
-//             if self.filter.filter(el, self.attributes) {
-//                 let attributes = self.attributes.get_mut(el.id());
-//                 (self.f)(el, attributes);
-
-//                 if el.container.inner.any_needs_reflow() {
-//                     self.dirty_widgets.push(widget_id);
-//                 }
-
-//                 if !self.continuous {
-//                     return ControlFlow::Break(false);
-//                 }
-//             }
-//         }
-
-//         ControlFlow::Continue(())
-//     }
-// }

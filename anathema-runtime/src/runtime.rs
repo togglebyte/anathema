@@ -2,19 +2,24 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{drain_changes, drain_futures, AnyState, Changes, FutureValues, State, StateId, States};
+use anathema_state::{
+    drain_changes, drain_futures, drain_watchers, AnyState, Changes, FutureValues, State, StateId, States, Watched,
+    Watcher,
+};
+use anathema_store::stack::Stack;
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyEventCtx, AssociatedEvents, ComponentContext, ComponentRegistry, Emitter, FocusQueue, UntypedContext,
-    ViewMessage,
+    AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentRegistry, Emitter, FocusQueue,
+    UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
+use anathema_widgets::query::Elements;
 use anathema_widgets::{
-    eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Elements, Factory,
-    FloatingWidgets, GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree, WidgetTreeView,
+    eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
+    GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree, WidgetTreeView,
 };
 
 pub use crate::error::Result;
@@ -42,6 +47,7 @@ pub struct Runtime<'bp> {
     pub(super) fps: usize,
     pub(super) sleep_micros: u128,
     pub(super) message_receiver: flume::Receiver<ViewMessage>,
+    pub(super) dt: Instant,
 }
 
 impl<'bp> Runtime<'bp> {
@@ -74,6 +80,8 @@ impl<'bp> Runtime<'bp> {
 
             emitter: &self.emitter,
             message_receiver: &self.message_receiver,
+
+            dt: &mut self.dt,
         };
 
         Ok(inst)
@@ -84,18 +92,6 @@ impl<'bp> Runtime<'bp> {
         let mut first_frame = self.next_frame()?;
         first_frame.init(blueprint);
         Ok(())
-    }
-
-    pub fn select_component(&mut self) {
-        // self.components
-    }
-
-    pub fn state_id(&mut self, component_id: usize) -> Option<StateId> {
-        self.components.get(component_id).map(|(_, id)| id)
-    }
-
-    pub fn get_state(&mut self, state_id: StateId) -> Option<&dyn AnyState> {
-        self.states.get(state_id)
     }
 }
 
@@ -110,6 +106,7 @@ pub struct Frame<'rt, 'bp> {
     sleep_micros: u128,
     emitter: &'rt Emitter,
     message_receiver: &'rt flume::Receiver<ViewMessage>,
+    dt: &'rt mut Instant,
 }
 
 impl<'bp> Frame<'_, 'bp> {
@@ -133,6 +130,7 @@ impl<'bp> Frame<'_, 'bp> {
                 }
             }
             Event::Resize(size) => todo!(),
+            Event::Tick(_) => panic!("this event should never be sent to the runtime"),
         }
     }
 
@@ -145,11 +143,13 @@ impl<'bp> Frame<'_, 'bp> {
 
     pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Duration {
         let now = Instant::now();
+        self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.pull_events(elapsed, now, backend);
         self.apply_changes();
         self.resolve_future_values();
         self.cycle(backend);
+        *self.dt = Instant::now();
         now.elapsed()
     }
 
@@ -257,30 +257,99 @@ impl<'bp> Frame<'_, 'bp> {
             self.layout_ctx
                 .attribute_storage
                 .with_mut(widget_id, |attributes, storage| {
-                    let component_ctx = ComponentContext::new(
+                    let mut elements = Elements::new(children, storage, self.layout_ctx.dirty_widgets);
+
+                    let ctx = AnyComponentContext::new(
+                        component.parent.map(Into::into),
                         state_id,
-                        component.parent,
                         component.assoc_functions,
                         self.assoc_events,
                         self.focus_queue,
                         attributes,
+                        state,
+                        self.emitter,
+                        self.layout_ctx.viewport,
+                        &self.document.strings,
                     );
 
-                    let mut elements = Elements::new(children, storage, self.layout_ctx.dirty_widgets);
-
-                    let event_ctx = AnyEventCtx {
-                        state,
-                        elements,
-                        context: UntypedContext {
-                            emitter: self.emitter,
-                            viewport: self.layout_ctx.viewport,
-                            strings: &self.document.strings,
-                        },
-                        component_ctx,
-                    };
-
-                    component.dyn_component.any_event(event_ctx, event);
+                    component.dyn_component.any_event(elements, ctx, event);
                 });
         });
+    }
+
+    fn tick_components(&mut self, dt: Duration) {
+        for i in 0..self.layout_ctx.components.len() {
+            let (widget_id, state_id) = self
+                .layout_ctx
+                .components
+                .get(i)
+                .expect("components can not change during this call");
+
+            let event = Event::Tick(dt);
+            self.send_event_to_component(event, widget_id, state_id);
+        }
+    }
+
+    // -----------------------------------------------------------------------------
+    //   - Used with test driver -
+    // -----------------------------------------------------------------------------
+
+    pub fn components(&mut self) -> anathema_widgets::query::Components<'_, 'bp> {
+        anathema_widgets::query::Components::new(
+            self.tree.view_mut(),
+            self.layout_ctx.attribute_storage,
+            self.layout_ctx.dirty_widgets,
+        )
+    }
+
+    pub fn elements(&mut self) -> Elements<'_, 'bp> {
+        Elements::new(
+            self.tree.view_mut(),
+            self.layout_ctx.attribute_storage,
+            self.layout_ctx.dirty_widgets,
+        )
+    }
+
+    pub fn get_state(&mut self, component: WidgetId) -> &dyn AnyState {
+        let component = self.layout_ctx.components.get_by_widget_id(component).unwrap();
+        let state = self.layout_ctx.states.get(component.state_id).unwrap();
+        state
+    }
+
+    // TODO: this can't really be called a frame if we can tick it multiple
+    // times. Maybe RuntimeMut or something less mental
+    pub fn wait_for_monitor<B: Backend>(
+        &mut self,
+        backend: &mut B,
+        watcher: Watcher,
+        mut timeout: Duration,
+    ) -> Result<Watched> {
+        let now = Instant::now();
+
+        let mut watchers = Stack::empty();
+        drain_watchers(&mut watchers);
+
+        if watchers.contains(&watcher) {
+            return Ok(Watched::Triggered);
+        }
+
+        loop {
+            let dur = self.tick(backend);
+            self.present(backend);
+            self.cleanup();
+
+            drain_watchers(&mut watchers);
+
+            if watchers.contains(&watcher) {
+                return Ok(Watched::Triggered);
+            }
+
+            if timeout.saturating_sub(now.elapsed()).is_zero() {
+                break Ok(Watched::Timeout);
+            }
+
+            let sleep = self.sleep_micros - dur.as_micros();
+            std::thread::sleep(Duration::from_micros(sleep as u64));
+        }
     }
 }

@@ -144,9 +144,11 @@ impl Scope {
             slots.set(slot_id, body);
         }
 
+        let name = ctx.components.name(component_id);
         let body = ctx.load_component(component_id, slots)?;
 
         let component = Component {
+            name,
             id: component_id,
             body,
             attributes,

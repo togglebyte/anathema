@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use anathema_store::stack::Stack;
 use anathema_store::store::{Monitor, Owned, OwnedKey, Shared};
 use values::OwnedValue;
+pub use watchers::Watched;
 use watchers::{Watcher, Watchers};
 
 pub(crate) use self::change::changed;
@@ -60,7 +61,6 @@ pub fn clear_all_futures() {
 pub fn drain_watchers(local: &mut Stack<Watcher>) {
     WATCH_QUEUE.with_borrow_mut(|watchers| watchers.drain_copy_into(local));
 }
-
 
 /// Remove all subscribers from values.
 ///

@@ -1,6 +1,7 @@
 use anathema_state::StateId;
 use anathema_widgets::components::{AnyComponent, AnyEventCtx, ComponentContext};
-use anathema_widgets::{Elements, WidgetId, WidgetKind, WidgetTree};
+use anathema_widgets::query::Elements;
+use anathema_widgets::{WidgetId, WidgetKind, WidgetTree};
 
 use crate::events::EventCtx;
 

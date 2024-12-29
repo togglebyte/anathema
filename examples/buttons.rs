@@ -3,7 +3,7 @@ use anathema_runtime::Runtime;
 use anathema_state::{CommonVal, State, Value};
 use anathema_templates::Document;
 use anathema_widgets::components::events::{KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{Component, Context};
+use anathema_widgets::components::{Component, DeprecatedContext};
 use anathema_widgets::Elements;
 
 struct App;
@@ -23,7 +23,7 @@ impl Component for App {
         _value: CommonVal<'_>,
         state: &mut Self::State,
         _elements: Elements<'_, '_>,
-        _context: Context<'_, Self::State>,
+        _context: DeprecatedContext<'_, Self::State>,
     ) {
         if ident == "increment" {
             *state.number.to_mut() += 1;
@@ -49,11 +49,11 @@ impl Component for Button {
     type Message = ();
     type State = ButtonState;
 
-    fn on_blur(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
+    fn on_blur(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: DeprecatedContext<'_, Self::State>) {
         state.in_focus.set(false);
     }
 
-    fn on_focus(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
+    fn on_focus(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: DeprecatedContext<'_, Self::State>) {
         state.in_focus.set(true);
     }
 
@@ -62,7 +62,7 @@ impl Component for Button {
         key: KeyEvent,
         _state: &mut Self::State,
         _elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: DeprecatedContext<'_, Self::State>,
     ) {
         if matches!(key.state, KeyState::Press) {
             if let KeyCode::Enter = key.code {

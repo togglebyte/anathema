@@ -247,6 +247,7 @@ impl Evaluator for ComponentEval {
         let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(state);
         let comp_widget = component::Component::new(
+            &input.name,
             &input.body,
             component,
             state_id,

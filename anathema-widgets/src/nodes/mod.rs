@@ -16,7 +16,7 @@ use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
 use crate::{WidgetId, WidgetTree};
 
-mod component;
+pub(crate) mod component;
 pub(crate) mod controlflow;
 pub(crate) mod element;
 pub(crate) mod eval;

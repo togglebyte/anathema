@@ -40,6 +40,7 @@ pub struct Else {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
+    pub name: String,
     pub id: ComponentBlueprintId,
     pub body: Vec<Blueprint>,
     pub attributes: SmallMap<String, Expression>,

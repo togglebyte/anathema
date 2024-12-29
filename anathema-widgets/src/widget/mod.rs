@@ -14,7 +14,6 @@ use anathema_templates::ComponentBlueprintId;
 
 pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
-pub use self::query::Elements;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, PositionFilter};
 use crate::paint::{PainFilter, PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
@@ -22,7 +21,6 @@ use crate::{WidgetContainer, WidgetKind};
 
 mod attributes;
 mod factory;
-mod query;
 
 pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;

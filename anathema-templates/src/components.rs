@@ -127,6 +127,11 @@ impl ComponentTemplates {
         }
     }
 
+    pub(crate) fn name(&self, blueprint_id: ComponentBlueprintId) -> String {
+        let (k, _) = self.components.get(blueprint_id).expect("if a component is registered it has a name");
+        k.into()
+    }
+
     pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> ComponentBlueprintId {
         self.components.push(name.into(), ComponentSource::Empty)
     }

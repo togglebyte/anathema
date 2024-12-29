@@ -334,7 +334,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
 
         let ident = self.read_ident()?;
         let ident = self.strings.get_unchecked(ident);
-        let component_id = self.components.insert_id(ident.to_owned());
+        let component_id = self.components.insert_id(ident);
         self.tokens.consume_indent();
 
         self.next_state();

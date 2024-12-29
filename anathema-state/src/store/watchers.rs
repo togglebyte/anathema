@@ -8,6 +8,12 @@ use crate::store::values::with_owned;
 
 use super::{WATCHERS, WATCH_QUEUE};
 
+#[derive(Debug)]
+pub enum Watched {
+    Timeout,
+    Triggered
+}
+
 /// There can be at most `u16::MAX` watchers at any given time, even though there can be up to
 /// `u32::MAX` values.
 ///

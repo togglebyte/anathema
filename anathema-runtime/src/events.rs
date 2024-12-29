@@ -7,7 +7,8 @@ use anathema_state::{AnyState, CommonVal, States};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, Elements, GlyphMap, WidgetKind, WidgetTree};
+use anathema_widgets::query::Elements;
+use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, GlyphMap, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;
@@ -36,53 +37,53 @@ fn tab<'bp>(event_ctx: &mut EventCtx<'_, '_, 'bp>, tree: &mut WidgetTree<'bp>, e
         };
 
         loop {
-            // -----------------------------------------------------------------------------
-            //   - Blur -
-            // -----------------------------------------------------------------------------
-            if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
-                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
-            }
+            // // -----------------------------------------------------------------------------
+            // //   - Blur -
+            // // -----------------------------------------------------------------------------
+            // if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+            //     tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+            // }
 
-            // -----------------------------------------------------------------------------
-            //   - Change index -
-            // -----------------------------------------------------------------------------
-            match dir {
-                Dir::F => {
-                    event_ctx.components.tab_index += 1;
-                    if event_ctx.components.tab_index >= event_ctx.components.len() {
-                        event_ctx.components.tab_index = 0;
-                    }
-                }
-                Dir::B => match event_ctx.components.tab_index >= 1 {
-                    true => event_ctx.components.tab_index -= 1,
-                    false => event_ctx.components.tab_index = event_ctx.components.len() - 1,
-                },
-            }
+            // // -----------------------------------------------------------------------------
+            // //   - Change index -
+            // // -----------------------------------------------------------------------------
+            // match dir {
+            //     Dir::F => {
+            //         event_ctx.components.tab_index += 1;
+            //         if event_ctx.components.tab_index >= event_ctx.components.len() {
+            //             event_ctx.components.tab_index = 0;
+            //         }
+            //     }
+            //     Dir::B => match event_ctx.components.tab_index >= 1 {
+            //         true => event_ctx.components.tab_index -= 1,
+            //         false => event_ctx.components.tab_index = event_ctx.components.len() - 1,
+            //     },
+            // }
 
-            if index == event_ctx.components.tab_index {
-                break;
-            }
+            // if index == event_ctx.components.tab_index {
+            //     break;
+            // }
 
-            // -----------------------------------------------------------------------------
-            //   - Focus -
-            // -----------------------------------------------------------------------------
-            if let Some((widget_id, state_id)) = event_ctx.components.current() {
-                tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+            // // -----------------------------------------------------------------------------
+            // //   - Focus -
+            // // -----------------------------------------------------------------------------
+            // if let Some((widget_id, state_id)) = event_ctx.components.current() {
+            //     tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
 
-                let cont = tree
-                    .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
-                        if !comp.any_accept_focus() {
-                            return true;
-                        }
-                        comp.any_focus(ctx);
-                        false
-                    })
-                    .unwrap_or(true);
+            //     let cont = tree
+            //         .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
+            //             if !comp.any_accept_focus() {
+            //                 return true;
+            //             }
+            //             comp.any_focus(ctx);
+            //             false
+            //         })
+            //         .unwrap_or(true);
 
-                if !cont {
-                    break;
-                }
-            }
+            //     if !cont {
+            //         break;
+            //     }
+            // }
         }
 
         return None;
@@ -96,7 +97,7 @@ fn tab<'bp>(event_ctx: &mut EventCtx<'_, '_, 'bp>, tree: &mut WidgetTree<'bp>, e
                 .get(i)
                 .expect("components can not change during this call");
 
-            tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
+            // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
         }
     }
 
@@ -113,25 +114,25 @@ impl<T: GlobalEvents> EventHandler<T> {
     }
 
     pub(super) fn set_initial_focus<'bp>(&mut self, tree: &mut WidgetTree<'bp>, event_ctx: &mut EventCtx<'_, '_, 'bp>) {
-        // Find the first widget that accepts focus, if no widget accepts focus then move on
-        for i in 0..event_ctx.components.len() {
-            if let Some((widget_id, state_id)) = event_ctx.components.get(i) {
-                let cont = tree
-                    .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
-                        if comp.any_accept_focus() {
-                            comp.any_focus(ctx);
-                            false
-                        } else {
-                            true
-                        }
-                    })
-                    .unwrap_or(false);
-                if !cont {
-                    event_ctx.components.tab_index = i;
-                    break;
-                }
-            }
-        }
+        // // Find the first widget that accepts focus, if no widget accepts focus then move on
+        // for i in 0..event_ctx.components.len() {
+        //     if let Some((widget_id, state_id)) = event_ctx.components.get(i) {
+        //         let cont = tree
+        //             .with_component(widget_id, state_id, event_ctx, |comp, ctx| {
+        //                 if comp.any_accept_focus() {
+        //                     comp.any_focus(ctx);
+        //                     false
+        //                 } else {
+        //                     true
+        //                 }
+        //             })
+        //             .unwrap_or(false);
+        //         if !cont {
+        //             event_ctx.components.tab_index = i;
+        //             break;
+        //         }
+        //     }
+        // }
     }
 
     pub(super) fn handle<'bp>(
@@ -279,12 +280,12 @@ impl<T: GlobalEvents> EventHandler<T> {
                 //   - Blur -
                 // -----------------------------------------------------------------------------
                 if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
-                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+                    // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
                 }
 
                 if found {
                     event_ctx.components.tab_index = i;
-                    tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+                    // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
                     break;
                 }
             }
