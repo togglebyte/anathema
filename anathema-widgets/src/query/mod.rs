@@ -2,13 +2,12 @@ use std::marker::PhantomData;
 
 use anathema_state::CommonVal;
 
-pub use self::elements2::Elements;
+pub use self::elements::Elements;
 pub use self::components::Components;
 use crate::{AttributeStorage, DirtyWidgets, WidgetTreeView};
 
 mod components;
 mod elements;
-mod elements2;
 
 // -----------------------------------------------------------------------------
 //   - Elements -

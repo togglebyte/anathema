@@ -30,18 +30,22 @@ impl<'tree, T> TreeView<'tree, T> {
         self.layout.len()
     }
 
-    #[deprecated]
-    pub fn for_each<F>(&mut self, mut f: F)
+    pub fn for_each<F, U>(&mut self, mut f: F) -> Option<U>
     where
-        F: FnMut(&[u16], &mut T, TreeView<'_, T>),
+        F: FnMut(&[u16], &mut T, TreeView<'_, T>) -> ControlFlow<U>,
     {
         for index in 0..self.layout.len() {
             let node = &mut self.layout.inner[index];
-            self.values.with_mut(node.value, |(offset, value), values| {
+            match self.values.with_mut(node.value, |(offset, value), values| {
                 let tree_view = TreeView::new(offset, &mut node.children, values, self.removed_values);
-                f(offset, value, tree_view);
-            });
+                f(offset, value, tree_view)
+            }) {
+                ControlFlow::Continue(_) => continue,
+                ControlFlow::Break(value) => return Some(value),
+            }
         }
+
+        None
     }
 
     /// The path reference for a value in the tree.
