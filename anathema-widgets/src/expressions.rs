@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::ControlFlow;
 use std::rc::Rc;
@@ -103,6 +104,7 @@ pub enum EvalValue<'bp> {
     // Map(HashMap<&'bp str, EvalValue<'bp>>),
     ExprList(&'bp [Expression]),
     List(Box<[EvalValue<'bp>]>),
+    TextSegments(Box<[Cow<'bp, str>]>),
     Map(&'bp HashMap<String, Expression>),
 
     // Operations
@@ -117,6 +119,58 @@ pub enum EvalValue<'bp> {
 }
 
 impl<'bp> EvalValue<'bp> {
+    // fn str_iter_thingy<'frame>(&self) -> Box<dyn Iterator<Item = Cow<'frame, str>> + 'frame> {
+    fn str_iter_thingy(&self) -> Vec<Cow<'bp, str>> {
+        match self {
+            EvalValue::Static(common_val) => vec![Cow::from(*common_val)],
+            EvalValue::Dyn(value_ref) => {
+                let state = value_ref.as_state().unwrap();
+                let common = state.to_common().unwrap();
+                let owned = Cow::from(common);
+                let owned = owned.to_string().into();
+                vec![owned]
+            }
+            EvalValue::Index(eval_value, _) => eval_value.str_iter_thingy(),
+            EvalValue::TextSegments(segments) => panic!(),
+
+            // Equality
+            EvalValue::Not(val) => vec![Cow::Owned((!val.load_bool()).to_string())],
+
+            EvalValue::Equality(lhs, rhs, eq) => {
+                let b = match eq {
+                    Equality::Eq => {
+                        let Some(lhs) = lhs.load_common_val() else { return vec![] },
+                        let Some(rhs) = rhs.load_common_val() else { return vec![] },
+                        lhs.to_common()? == rhs.to_common()?
+                    }
+                    Equality::NotEq => {
+                        let lhs = lhs.load_common_val()?;
+                        let rhs = rhs.load_common_val()?;
+                        lhs.to_common()? != rhs.to_common()?
+                    }
+                    Equality::And => lhs.load_bool() && rhs.load_bool(),
+                    Equality::Or => lhs.load_bool() || rhs.load_bool(),
+                    Equality::Gt => lhs.load_number()? > rhs.load_number()?,
+                    Equality::Gte => lhs.load_number()? >= rhs.load_number()?,
+                    Equality::Lt => lhs.load_number()? < rhs.load_number()?,
+                    Equality::Lte => lhs.load_number()? <= rhs.load_number()?,
+                };
+                Some(CommonVal::from(b).into())
+            }
+
+            EvalValue::List(list) => list.iter().map(|val| val.str_iter_thingy()).flatten().collect(),
+            EvalValue::Map(_) => panic!(),
+            EvalValue::Negative(eval_value) => todo!(),
+            EvalValue::Op(eval_value, eval_value1, op) => todo!(),
+
+            EvalValue::ExprList(_)
+            | EvalValue::Pending(_)
+            | EvalValue::ComponentAttributes(_)
+            | EvalValue::State(_) => unreachable!("can not become a string"),
+            EvalValue::Empty => todo!(),
+        }
+    }
+
     fn copy_with_sub(&self, value_id: ValueId) -> Self {
         match self {
             Self::Static(value) => Self::Static(*value),
@@ -134,7 +188,9 @@ impl<'bp> EvalValue<'bp> {
             //         .collect(),
             // ),
             Self::ExprList(list) => Self::ExprList(list),
-            Self::List(list) => panic!("copy should not be done on evaluated lists"),
+            Self::List(_) | Self::TextSegments(_) => {
+                panic!("copy should not be done on evaluated lists or text segments")
+            }
             Self::Map(map) => Self::Map(map),
             Self::Negative(val) => Self::Negative(val.copy_with_sub(value_id).into()),
             Self::Op(lhs, rhs, op) => Self::Op(
@@ -216,6 +272,7 @@ impl<'bp> EvalValue<'bp> {
             | EvalValue::Op(_, _, _)
             | EvalValue::Not(_)
             | EvalValue::Equality(_, _, _)
+            | EvalValue::TextSegments(_)
             | EvalValue::Empty => NameThis::Nothing,
         }
     }
@@ -238,6 +295,9 @@ impl<'bp> EvalValue<'bp> {
             // }
             Self::ExprList(list) => Self::ExprList(list),
             Self::List(list) => Self::List(list.iter().map(|val| val.inner_downgrade()).collect()),
+            Self::TextSegments(segments) => {
+                panic!("should these ever be downgraded? Downgrading should only be done in relation to loop data")
+            }
             Self::Map(map) => Self::Map(map),
             Self::Negative(val) => Self::Negative(val.inner_downgrade().into()),
             Self::Op(lhs, rhs, op) => Self::Op(lhs.inner_downgrade().into(), rhs.inner_downgrade().into(), *op),
@@ -271,6 +331,7 @@ impl<'bp> EvalValue<'bp> {
             // }
             Self::ExprList(list) => Self::ExprList(list),
             Self::List(list) => Self::List(list.iter().map(|val| val.inner_upgrade(value_id)).collect()),
+            Self::TextSegments(segments) => panic!("see downgrading text segments"),
             Self::Map(map) => Self::Map(map),
             // Self::ExprList(list) => {
             //     let list = list.iter().map(Self::inner_downgrade).collect();
@@ -365,10 +426,12 @@ impl<'bp> EvalValue<'bp> {
             EvalValue::ComponentAttributes(_) => None, // There should be no instance where attributes is a single value
             EvalValue::Index(val, _) => val.load_common_val(),
             EvalValue::Pending(_) => None,
-            // EvalValue::Map(_) => None,
             EvalValue::Map(_) => None,
             EvalValue::ExprList(_) => None,
             EvalValue::List(_) => None,
+            EvalValue::TextSegments(segments) => {
+                panic!("need to figure out how we can represent this as an actual string")
+            }
 
             // Operations
             EvalValue::Negative(expr) => expr.load_number().map(|n| -n).map(Into::into),
@@ -550,6 +613,13 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                 let inner = list.iter().map(|expr| self.resolve(expr)).collect();
                 EvalValue::List(inner)
             }
+            Expression::TextSegments(segments) => {
+                let inner: Vec<_> = segments.iter().map(|expr| self.resolve(expr)).collect();
+                // for val in inner {
+                // }
+                // EvalValue::TextSegments(inner)
+                panic!()
+            }
 
             // -----------------------------------------------------------------------------
             //   - Conditionals -
@@ -603,14 +673,6 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                         }
                         NameThis::Value(eval_value) => eval_value,
                         NameThis::ResolveThisNow(expr) => self.resolve(expr),
-                        // Some(val) => val,
-                        // None => match self.globals.get(path) {
-                        //     Some(value) => self.resolve(value),
-                        //     None => {
-                        //         self.register_future_value = true;
-                        //         EvalValue::Empty
-                        //     }
-                        // },
                     }
                 }
             },
@@ -938,4 +1000,7 @@ mod test {
                 assert!(b);
             });
     }
+
+    #[test]
+    fn strings() {}
 }

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::ops::Deref;
 
@@ -88,6 +89,15 @@ impl<'frame> CommonVal<'frame> {
         match self {
             Self::Color(color) => Some(*color),
             _ => None,
+        }
+    }
+}
+
+impl<'a> From<CommonVal<'a>> for Cow<'a, str> {
+    fn from(value: CommonVal<'a>) -> Self {
+        match value {
+            CommonVal::Str(s) => Cow::Borrowed(s),
+            _ => Cow::Owned(format!("{value}")),
         }
     }
 }

@@ -170,7 +170,6 @@ impl<'bp> Attributes<'bp> {
         let key = ValueKey::Attribute(key);
 
         let value = self.attribs.get(&key)?;
-        let snark = value.load_common_val();
         value
             .load_common_val()
             .and_then(|e| e.load_number().map(|n| n.as_uint()))

@@ -63,7 +63,7 @@ impl PartialEq for CompEntry {
 pub struct Components {
     /// Current selected component
     pub tab_index: usize,
-    /// All components 
+    /// All components
     inner: SortedList<CompEntry>,
     /// Map the widget id to the component entry
     widget_ids: SmallMap<WidgetId, usize>,
@@ -81,7 +81,13 @@ impl Components {
         }
     }
 
-    pub fn push(&mut self, path: Box<[u16]>, component_id: ComponentBlueprintId, widget_id: WidgetId, state_id: StateId) {
+    pub fn push(
+        &mut self,
+        path: Box<[u16]>,
+        component_id: ComponentBlueprintId,
+        widget_id: WidgetId,
+        state_id: StateId,
+    ) {
         let entry = CompEntry {
             path,
             component_id,
@@ -218,9 +224,9 @@ pub enum ValueKey<'bp> {
 }
 
 impl ValueKey<'_> {
-    pub fn as_str(&self) -> &str {
+    pub(super) fn as_str(&self) -> &str {
         match self {
-            ValueKey::Value => "value",
+            ValueKey::Value => "[value]",
             ValueKey::Attribute(name) => name,
         }
     }

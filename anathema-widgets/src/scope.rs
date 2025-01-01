@@ -371,7 +371,7 @@ mod test {
     use anathema_templates::{Expression, Globals};
 
     use super::*;
-    use crate::expressions::eval_collection;
+    use crate::expressions::{eval_collection, ExprEvalCtx};
     use crate::AttributeStorage;
 
     #[test]
@@ -384,7 +384,13 @@ mod test {
         let attributes = AttributeStorage::empty();
         let expr = Expression::Ident("list".into());
         let globals = Globals::new(Default::default());
-        eval_collection(&expr, &globals, &scope, &states, &attributes, ValueId::ZERO);
+        let ctx = ExprEvalCtx {
+            scope: &scope,
+            states: &states,
+            attributes: &attributes,
+            globals: &globals,
+        };
+        eval_collection(&expr, &ctx, ValueId::ZERO);
 
         //         let one = [Expression::Primitive(1i64.into())];
 

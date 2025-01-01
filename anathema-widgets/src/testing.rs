@@ -5,11 +5,11 @@ use anathema_state::{Map, State, StateId, States};
 use anathema_store::tree::TreeForEach;
 use anathema_templates::{Expression, Globals};
 
-use crate::expressions::{eval, EvalValue};
+use crate::expressions::{eval, EvalValue, ExprEvalCtx};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
 use crate::scope::Scope;
 use crate::values::{ValueId, ValueIndex};
-use crate::{AttributeStorage, EvalContext, Factory, LayoutChildren, PositionChildren, Value, Widget, WidgetId, WidgetKind};
+use crate::{AttributeStorage, Factory, LayoutChildren, PositionChildren, Value, Widget, WidgetId, WidgetKind};
 
 pub struct NoExpr;
 pub struct WithExpr(Expression);
@@ -68,12 +68,17 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let globals = Globals::new(Default::default());
         let attributes = AttributeStorage::empty();
         scope.insert_state(StateId::ZERO);
+
+        let ctx = ExprEvalCtx {
+            scope: &scope,
+            states: &self.states,
+            attributes: &attributes,
+            globals: &globals,
+        };
+
         let value = eval(
             &self.test_state.0,
-            &globals,
-            &scope,
-            &self.states,
-            &attributes,
+            &ctx,
             value_id,
         );
         f(value)
@@ -89,7 +94,7 @@ impl Widget for TestWidget {
         _children: LayoutChildren<'_, 'bp>,
         _: Constraints,
         _: WidgetId,
-        _: &mut EvalContext<'_, '_, 'bp>,
+        _: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         todo!()
     }

@@ -57,6 +57,15 @@ impl DebugWriter for EvalValueDebug<'_> {
                 });
                 write!(output, "]")
             }
+            EvalValue::TextSegments(segments) => {
+                todo!()
+                // write!(output, "[")?;
+                // list.iter().for_each(|val| {
+                //     EvalValueDebug(val).write(output).unwrap();
+                //     write!(output, ", ").unwrap();
+                // });
+                // write!(output, "]")
+            }
         }
     }
 }

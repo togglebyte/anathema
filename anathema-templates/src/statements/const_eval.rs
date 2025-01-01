@@ -59,6 +59,11 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
             let list = list.into_iter().filter_map(|expr| ce!(expr)).collect();
             E::List(list)
         }
+
+        E::TextSegments(segments) => {
+            let segments = segments.into_iter().filter_map(|expr| ce!(expr)).collect();
+            E::TextSegments(segments)
+        }
         E::Map(map) => {
             let hm = HashMap::from_iter(map.into_iter().flat_map(|(k, v)| Some((k, ce!(v)))));
             E::Map(hm.into())

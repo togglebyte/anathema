@@ -485,7 +485,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         let value = match values.len() {
             0 => panic!("invalid state"),
             1 => values.remove(0),
-            _ => Expression::List(values.into()),
+            _ => Expression::TextSegments(values.into()),
         };
 
         self.next_state();

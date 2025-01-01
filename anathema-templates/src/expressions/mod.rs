@@ -35,6 +35,9 @@ pub enum Expression {
     List(Vec<Self>),
     Map(HashMap<String, Self>),
 
+    // This is specifically for the "value" of a node.
+    TextSegments(Vec<Self>),
+
     // Unary
     Not(Box<Self>),
     Negative(Box<Self>),
@@ -99,6 +102,13 @@ impl Display for Expression {
                     f,
                     "[{}]",
                     list.iter().map(|val| val.to_string()).collect::<Vec<_>>().join(", ")
+                )
+            }
+            Self::TextSegments(segments) => {
+                write!(
+                    f,
+                    "{}",
+                    segments.iter().map(|val| val.to_string()).collect::<Vec<_>>().join("")
                 )
             }
             Self::Map(map) => {

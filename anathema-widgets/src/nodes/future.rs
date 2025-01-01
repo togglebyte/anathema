@@ -204,6 +204,7 @@ mod test {
     use anathema_templates::{Expression, Globals};
 
     use super::*;
+    use crate::expressions::ExprEvalCtx;
     use crate::{AttributeStorage, Scope};
 
     fn future_value(expr: &Expression, value_id: ValueId) {
@@ -216,7 +217,14 @@ mod test {
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 0);
 
-        eval(expr, &globals, &scope, &states, &attributes, value_id);
+        let ctx = ExprEvalCtx {
+            scope: &scope,
+            states: &states,
+            attributes: &attributes,
+            globals: &globals,
+        };
+
+        eval(expr, &ctx, value_id);
 
         drain_futures(&mut futures);
         assert_eq!(futures.len(), 1);
