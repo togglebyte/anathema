@@ -3,7 +3,8 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use anathema_templates::{Globals, ComponentBlueprintId};
+use anathema_strings::Strings;
+use anathema_templates::{ComponentBlueprintId, Globals};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
@@ -31,6 +32,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub components: &'frame mut Components,
     pub(super) force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
+    pub strings: &'frame mut Strings<'bp>,
     pub viewport: Viewport,
 
     // Need these for the eval context
@@ -50,6 +52,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         changelist: &'frame mut ChangeList,
         glyph_map: &'frame mut GlyphMap,
         dirty_widgets: &'frame mut DirtyWidgets,
+        strings: &'frame mut Strings<'bp>,
         viewport: Viewport,
         force_layout: bool,
     ) -> Self {
@@ -65,9 +68,14 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             changelist,
             glyph_map,
             dirty_widgets,
+            strings,
             viewport,
             force_layout,
         }
+    }
+
+    pub fn attributes(&self, node_id: WidgetId) -> &Attributes<'bp> {
+        self.attribute_storage.get(node_id)
     }
 
     pub fn needs_layout(&self, node_id: WidgetId) -> bool {
@@ -79,6 +87,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             floating_widgets: self.floating_widgets,
             attribute_storage: self.attribute_storage,
             states: &mut self.states,
+            strings: &mut self.strings,
             component_registry: self.component_registry,
             components: self.components,
             scope: &self.scope,
@@ -90,11 +99,13 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
 
     pub(super) fn changes<F>(&mut self, widget_id: WidgetId, mut f: F) -> Option<()>
     where
-        F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, Subscriber),
+        F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, &mut Strings<'bp>, Subscriber),
     {
         let changes = self.changelist.drain(widget_id)?;
 
         self.attribute_storage.with_mut(widget_id, |attributes, storage| {
+            let strings = &mut *self.strings;
+
             let ctx = ExprEvalCtx {
                 scope: &self.scope,
                 states: &self.states,
@@ -103,7 +114,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             };
 
             for change in changes {
-                f(attributes, &ctx, change);
+                f(attributes, &ctx, strings, change);
             }
         });
 
@@ -115,23 +126,24 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) floating_widgets: &'frame mut FloatingWidgets,
     pub(super) attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub(super) states: &'frame mut States,
+    pub(super) strings: &'frame mut Strings<'bp>,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
-    scope: &'frame Scope<'bp>,
-    globals: &'bp Globals,
+    pub(super) scope: &'frame Scope<'bp>,
+    pub(super) globals: &'bp Globals,
     pub(super) factory: &'frame Factory,
     pub(super) parent: Option<WidgetId>,
 }
 
 impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
-    pub(super) fn expr_eval_ctx(&'frame self) -> ExprEvalCtx<'frame, 'bp> {
-        ExprEvalCtx {
-            scope: self.scope,
-            states: self.states,
-            attributes: self.attribute_storage,
-            globals: self.globals,
-        }
-    }
+    // pub(super) fn expr_eval_ctx(&'frame self) -> ExprEvalCtx<'frame, 'bp> {
+    //     ExprEvalCtx {
+    //         scope: self.scope,
+    //         states: self.states,
+    //         attributes: self.attribute_storage,
+    //         globals: self.globals,
+    //     }
+    // }
 
     pub(super) fn get_component(
         &mut self,

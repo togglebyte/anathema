@@ -103,16 +103,33 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty(widget_id);
 
         if let Some(expr) = single.value.as_ref() {
-            let expr_eval_ctx = ctx.expr_eval_ctx();
+            // let expr_eval_ctx = ctx.expr_eval_ctx();
+
+            let strings = &mut *ctx.strings;
+            let mut ctx = ExprEvalCtx {
+                scope: ctx.scope,
+                states: ctx.states,
+                attributes: ctx.attribute_storage,
+                globals: ctx.globals,
+            };
+
             let value = attributes.insert_with(ValueKey::Value, |value_index| {
-                eval(expr, &expr_eval_ctx, (widget_id, value_index))
+                eval(expr, &ctx, strings, (widget_id, value_index))
             });
             attributes.value = Some(value);
         }
 
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(expr, &ctx.expr_eval_ctx(), (widget_id, value_index))
+                let strings = &mut *ctx.strings;
+                let ctx = ExprEvalCtx {
+                    scope: ctx.scope,
+                    states: ctx.states,
+                    attributes: ctx.attribute_storage,
+                    globals: ctx.globals,
+                };
+
+                eval(expr, &ctx, strings, (widget_id, value_index))
             });
         }
 
@@ -159,8 +176,14 @@ impl Evaluator for ForLoopEval {
         let transaction = tree.insert(parent);
         let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
 
-        let ctx = ctx.expr_eval_ctx();
-        let collection = eval_collection(&for_loop.data, &ctx, value_id);
+        let strings = &mut *ctx.strings;
+        let ctx = ExprEvalCtx {
+            scope: ctx.scope,
+            states: ctx.states,
+            attributes: ctx.attribute_storage,
+            globals: ctx.globals,
+        };
+        let collection = eval_collection(&for_loop.data, &ctx, strings, value_id);
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
@@ -200,12 +223,19 @@ impl Evaluator for ControlFlowEval {
                 .enumerate()
                 .map(|(i, e)| {
                     let value_index = SmallIndex::from_usize(i);
+                    let strings = &mut *ctx.strings;
+                    let ctx = ExprEvalCtx {
+                        scope: ctx.scope,
+                        states: ctx.states,
+                        attributes: ctx.attribute_storage,
+                        globals: ctx.globals,
+                    };
 
                     controlflow::Else {
                         cond: e
                             .cond
                             .as_ref()
-                            .map(|cond| eval(cond, &ctx.expr_eval_ctx(), (widget_id, SmallIndex::from_usize(i)))),
+                            .map(|cond| eval(cond, &ctx, strings, (widget_id, SmallIndex::from_usize(i)))),
                         body: &e.body,
                         show: false,
                     }
@@ -238,7 +268,15 @@ impl Evaluator for ComponentEval {
 
         for (key, expr) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                eval(expr, &ctx.expr_eval_ctx(), (widget_id, value_index))
+                let strings = &mut *ctx.strings;
+                let ctx = ExprEvalCtx {
+                    scope: ctx.scope,
+                    states: ctx.states,
+                    attributes: ctx.attribute_storage,
+                    globals: ctx.globals,
+                };
+
+                eval(expr, &ctx, strings, (widget_id, value_index))
             });
         }
 

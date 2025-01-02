@@ -215,11 +215,16 @@ pub fn strlit(lit: &str) -> Box<Expression> {
 }
 
 // -----------------------------------------------------------------------------
-//   - List and map -
+//   - List, map and text segment -
 // -----------------------------------------------------------------------------
 pub fn list<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
     let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
     Expression::List(vec.into()).into()
+}
+
+pub fn text_segment<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
+    let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
+    Expression::TextSegments(vec.into()).into()
 }
 
 pub fn map<E: Into<Expression>>(input: impl IntoIterator<Item = (&'static str, E)>) -> Box<Expression> {

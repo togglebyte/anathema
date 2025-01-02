@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 anathema-store = { path = "../anathema-store" }
+
+[lints]
+workspace = true

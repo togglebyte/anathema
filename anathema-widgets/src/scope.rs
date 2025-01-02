@@ -368,6 +368,7 @@ impl<'bp> Scope<'bp> {
 #[cfg(test)]
 mod test {
     use anathema_state::{List, Map, Value};
+    use anathema_strings::Strings;
     use anathema_templates::{Expression, Globals};
 
     use super::*;
@@ -384,13 +385,14 @@ mod test {
         let attributes = AttributeStorage::empty();
         let expr = Expression::Ident("list".into());
         let globals = Globals::new(Default::default());
+        let mut strings = Strings::empty();
         let ctx = ExprEvalCtx {
             scope: &scope,
             states: &states,
             attributes: &attributes,
             globals: &globals,
         };
-        eval_collection(&expr, &ctx, ValueId::ZERO);
+        eval_collection(&expr, &ctx, &mut strings, ValueId::ZERO);
 
         //         let one = [Expression::Primitive(1i64.into())];
 

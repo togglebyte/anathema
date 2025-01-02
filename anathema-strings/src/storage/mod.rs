@@ -1,9 +1,9 @@
 
 use anathema_store::slab::Slab;
 
-pub(super) use self::transaction::Transaction;
+pub use self::transaction::Transaction;
 use crate::region::Region;
-use crate::Hoppstr;
+use crate::StrIndex;
 
 mod transaction;
 
@@ -68,8 +68,8 @@ impl<'slice> Storage<'slice> {
         Transaction::new(self)
     }
 
-    pub fn get(&self, hoppstr: Hoppstr) -> impl Iterator<Item = &str> + Clone {
-        let mut bytes = &self.inner[hoppstr.index..][..hoppstr.len];
+    pub fn get(&self, hoppstr: StrIndex) -> impl Iterator<Item = &str> + Clone {
+        let mut bytes = &self.inner[hoppstr.index as usize..][..hoppstr.len as usize];
 
         std::iter::from_fn(move || {
             if !bytes.is_empty() {
@@ -81,8 +81,8 @@ impl<'slice> Storage<'slice> {
         })
     }
 
-    pub fn remove(&mut self, hoppstr: Hoppstr) {
-        let mut bytes = &self.inner[hoppstr.index..][..hoppstr.len];
+    pub fn remove(&mut self, hoppstr: StrIndex) {
+        let mut bytes = &self.inner[hoppstr.index as usize..][..hoppstr.len as usize];
         remove_slice(&mut bytes, &mut self.slices);
         let region = hoppstr.to_region();
         self.free

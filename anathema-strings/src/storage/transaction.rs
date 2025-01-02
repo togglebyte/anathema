@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use super::{Storage, END};
 use crate::region::Region;
-use crate::{Hoppstr, BUCKET_SIZE};
+use crate::{StrIndex, BUCKET_SIZE};
 
 pub struct Transaction<'a, 'slice> {
     storage: &'a mut Storage<'slice>,
@@ -13,13 +13,14 @@ impl<'a, 'slice> Transaction<'a, 'slice> {
         Self { storage }
     }
 
+    /// Add a slice with the `'slice` lifetime
     pub fn add_slice(&mut self, slice: &'slice str) {
         let key = self.storage.slices.insert(slice);
         assert!(key != u16::MAX);
         self.storage.buffer.extend_from_slice(&key.to_ne_bytes());
     }
 
-    pub fn commit(mut self) -> Hoppstr {
+    pub fn commit(mut self) -> StrIndex {
         let len = self.storage.buffer.len();
 
         // Steps
@@ -42,7 +43,7 @@ impl<'a, 'slice> Transaction<'a, 'slice> {
             let variable_storage = self.get_storage(END - 1);
             variable_storage.sort_unstable_by(|a, b| a.len.cmp(&b.len));
 
-            if let Some(idx) = variable_storage.iter().position(|region| region.len >= len) {
+            if let Some(idx) = variable_storage.iter().position(|region| region.len >= len as u32) {
                 let region = variable_storage.remove(idx);
                 return region.apply(&mut self.storage.inner, &mut self.storage.buffer, len);
             }
@@ -50,22 +51,14 @@ impl<'a, 'slice> Transaction<'a, 'slice> {
 
         // No free region so make a new one
         let start = self.storage.inner.len();
-        self.storage
-            .inner
-            .extend_from_slice(&self.storage.buffer[..len]);
+        self.storage.inner.extend_from_slice(&self.storage.buffer[..len]);
 
-        self.storage
-            .inner
-            .resize(self.storage.inner.len() + padding, 0);
-        Hoppstr::new(start, len)
+        self.storage.inner.resize(self.storage.inner.len() + padding, 0);
+        StrIndex::new(start, len)
     }
 
     fn get_storage(&mut self, index: usize) -> &mut Vec<Region> {
-        let storage = self
-            .storage
-            .free
-            .get_mut(index as u8)
-            .expect("this is pre-generated");
+        let storage = self.storage.free.get_mut(index as u8).expect("this is pre-generated");
         storage
     }
 }

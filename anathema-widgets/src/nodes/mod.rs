@@ -135,23 +135,26 @@ impl<'bp> WidgetContainer<'bp> {
     }
 
     pub(crate) fn resolve_pending_values(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, widget_id: WidgetId) {
-        ctx.changes(widget_id, |attributes, expr_eval_ctx, value_id| match &mut self.kind {
-            WidgetKind::Element(element) => {
-                let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
-                value.reload_val(value_id, expr_eval_ctx);
-            }
-            WidgetKind::For(for_loop) => {
-                for_loop.collection.reload_val(value_id, &expr_eval_ctx);
-            }
-            WidgetKind::ControlFlow(controlflow) => {
-                for value in controlflow.elses.iter_mut().filter_map(|e| e.cond.as_mut()) {
-                    value.reload_val(value_id, &expr_eval_ctx);
+        ctx.changes(
+            widget_id,
+            |attributes, expr_eval_ctx, strings, value_id| match &mut self.kind {
+                WidgetKind::Element(element) => {
+                    let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
+                    value.reload_val(value_id, expr_eval_ctx, strings);
                 }
-            }
-            WidgetKind::ControlFlowContainer(_) => (),
-            WidgetKind::Iteration(iteration) => (),
-            WidgetKind::Component(component) => (),
-        });
+                WidgetKind::For(for_loop) => {
+                    for_loop.collection.reload_val(value_id, expr_eval_ctx, strings);
+                }
+                WidgetKind::ControlFlow(controlflow) => {
+                    for value in controlflow.elses.iter_mut().filter_map(|e| e.cond.as_mut()) {
+                        value.reload_val(value_id, expr_eval_ctx, strings);
+                    }
+                }
+                WidgetKind::ControlFlowContainer(_) => (),
+                WidgetKind::Iteration(iteration) => (),
+                WidgetKind::Component(component) => (),
+            },
+        );
     }
 }
 

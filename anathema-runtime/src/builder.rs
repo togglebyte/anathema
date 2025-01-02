@@ -4,6 +4,7 @@ use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_state::{Changes, FutureValues, States};
+use anathema_strings::Strings;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, FocusQueue};
 use anathema_widgets::layout::Viewport;
@@ -123,6 +124,7 @@ impl Builder {
             floating_widgets: FloatingWidgets::empty(),
             changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
+            strings: Strings::empty(),
             future_values: FutureValues::empty(),
             assoc_events: AssociatedEvents::new(),
             focus_queue: FocusQueue::new(),

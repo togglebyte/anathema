@@ -1,9 +1,13 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::ops::ControlFlow;
 use std::rc::Rc;
 
-use anathema_state::{register_future, CommonVal, Number, Path, PendingValue, SharedState, StateId, States, ValueRef};
+use anathema_state::{
+    register_future, CommonString, CommonVal, Number, Path, PendingValue, SharedState, StateId, States, ValueRef,
+};
+use anathema_strings::{HString, StrIndex, Strings, Transaction};
 use anathema_templates::expressions::{Equality, Op};
 use anathema_templates::{Expression, Globals};
 
@@ -12,8 +16,8 @@ use crate::values::{Collection, ValueId};
 use crate::{AttributeStorage, Value, WidgetId};
 
 pub(crate) struct ExprEvalCtx<'a, 'bp> {
-    pub(crate) scope: &'a Scope<'bp>,
     pub(crate) states: &'a States,
+    pub(crate) scope: &'a Scope<'bp>,
     pub(crate) attributes: &'a AttributeStorage<'bp>,
     pub(crate) globals: &'bp Globals,
 }
@@ -104,7 +108,7 @@ pub enum EvalValue<'bp> {
     // Map(HashMap<&'bp str, EvalValue<'bp>>),
     ExprList(&'bp [Expression]),
     List(Box<[EvalValue<'bp>]>),
-    TextSegments(Box<[Cow<'bp, str>]>),
+    String(StrIndex),
     Map(&'bp HashMap<String, Expression>),
 
     // Operations
@@ -119,62 +123,11 @@ pub enum EvalValue<'bp> {
 }
 
 impl<'bp> EvalValue<'bp> {
-    // fn str_iter_thingy<'frame>(&self) -> Box<dyn Iterator<Item = Cow<'frame, str>> + 'frame> {
-    fn str_iter_thingy(&self) -> Vec<Cow<'bp, str>> {
-        match self {
-            EvalValue::Static(common_val) => vec![Cow::from(*common_val)],
-            EvalValue::Dyn(value_ref) => {
-                let state = value_ref.as_state().unwrap();
-                let common = state.to_common().unwrap();
-                let owned = Cow::from(common);
-                let owned = owned.to_string().into();
-                vec![owned]
-            }
-            EvalValue::Index(eval_value, _) => eval_value.str_iter_thingy(),
-            EvalValue::TextSegments(segments) => panic!(),
-
-            // Equality
-            EvalValue::Not(val) => vec![Cow::Owned((!val.load_bool()).to_string())],
-
-            EvalValue::Equality(lhs, rhs, eq) => {
-                let b = match eq {
-                    Equality::Eq => {
-                        let Some(lhs) = lhs.load_common_val() else { return vec![] },
-                        let Some(rhs) = rhs.load_common_val() else { return vec![] },
-                        lhs.to_common()? == rhs.to_common()?
-                    }
-                    Equality::NotEq => {
-                        let lhs = lhs.load_common_val()?;
-                        let rhs = rhs.load_common_val()?;
-                        lhs.to_common()? != rhs.to_common()?
-                    }
-                    Equality::And => lhs.load_bool() && rhs.load_bool(),
-                    Equality::Or => lhs.load_bool() || rhs.load_bool(),
-                    Equality::Gt => lhs.load_number()? > rhs.load_number()?,
-                    Equality::Gte => lhs.load_number()? >= rhs.load_number()?,
-                    Equality::Lt => lhs.load_number()? < rhs.load_number()?,
-                    Equality::Lte => lhs.load_number()? <= rhs.load_number()?,
-                };
-                Some(CommonVal::from(b).into())
-            }
-
-            EvalValue::List(list) => list.iter().map(|val| val.str_iter_thingy()).flatten().collect(),
-            EvalValue::Map(_) => panic!(),
-            EvalValue::Negative(eval_value) => todo!(),
-            EvalValue::Op(eval_value, eval_value1, op) => todo!(),
-
-            EvalValue::ExprList(_)
-            | EvalValue::Pending(_)
-            | EvalValue::ComponentAttributes(_)
-            | EvalValue::State(_) => unreachable!("can not become a string"),
-            EvalValue::Empty => todo!(),
-        }
-    }
-
     fn copy_with_sub(&self, value_id: ValueId) -> Self {
         match self {
             Self::Static(value) => Self::Static(*value),
             Self::Dyn(val) => Self::Dyn(val.copy_with_sub(value_id)),
+            Self::String(s) => Self::String(*s),
             Self::State(state_id) => Self::State(*state_id),
             Self::ComponentAttributes(component_id) => Self::ComponentAttributes(*component_id),
             Self::Index(value, index) => Self::Index(
@@ -188,9 +141,7 @@ impl<'bp> EvalValue<'bp> {
             //         .collect(),
             // ),
             Self::ExprList(list) => Self::ExprList(list),
-            Self::List(_) | Self::TextSegments(_) => {
-                panic!("copy should not be done on evaluated lists or text segments")
-            }
+            Self::List(_) => panic!("copy should not be done on evaluated lists"),
             Self::Map(map) => Self::Map(map),
             Self::Negative(val) => Self::Negative(val.copy_with_sub(value_id).into()),
             Self::Op(lhs, rhs, op) => Self::Op(
@@ -272,7 +223,7 @@ impl<'bp> EvalValue<'bp> {
             | EvalValue::Op(_, _, _)
             | EvalValue::Not(_)
             | EvalValue::Equality(_, _, _)
-            | EvalValue::TextSegments(_)
+            | EvalValue::String(_)
             | EvalValue::Empty => NameThis::Nothing,
         }
     }
@@ -282,6 +233,7 @@ impl<'bp> EvalValue<'bp> {
         match self {
             Self::Static(val) => Self::Static(*val),
             Self::Pending(val) => Self::Pending(*val),
+            Self::String(val) => Self::String(*val),
             Self::Dyn(val) => Self::Pending(val.to_pending()),
             Self::State(id) => Self::State(*id),
             Self::ComponentAttributes(id) => Self::ComponentAttributes(*id),
@@ -295,9 +247,6 @@ impl<'bp> EvalValue<'bp> {
             // }
             Self::ExprList(list) => Self::ExprList(list),
             Self::List(list) => Self::List(list.iter().map(|val| val.inner_downgrade()).collect()),
-            Self::TextSegments(segments) => {
-                panic!("should these ever be downgraded? Downgrading should only be done in relation to loop data")
-            }
             Self::Map(map) => Self::Map(map),
             Self::Negative(val) => Self::Negative(val.inner_downgrade().into()),
             Self::Op(lhs, rhs, op) => Self::Op(lhs.inner_downgrade().into(), rhs.inner_downgrade().into(), *op),
@@ -315,6 +264,7 @@ impl<'bp> EvalValue<'bp> {
         match self {
             Self::Dyn(_) => unreachable!("the value was downgraded"),
             Self::Static(val) => Self::Static(*val),
+            Self::String(val) => Self::String(*val),
             Self::State(id) => Self::State(*id),
             Self::ComponentAttributes(id) => Self::ComponentAttributes(*id),
             Self::Pending(val) => Self::Dyn(val.to_value(value_id)),
@@ -331,7 +281,6 @@ impl<'bp> EvalValue<'bp> {
             // }
             Self::ExprList(list) => Self::ExprList(list),
             Self::List(list) => Self::List(list.iter().map(|val| val.inner_upgrade(value_id)).collect()),
-            Self::TextSegments(segments) => panic!("see downgrading text segments"),
             Self::Map(map) => Self::Map(map),
             // Self::ExprList(list) => {
             //     let list = list.iter().map(Self::inner_downgrade).collect();
@@ -357,6 +306,7 @@ impl<'bp> EvalValue<'bp> {
         Downgraded(self.inner_downgrade())
     }
 
+    #[deprecated]
     pub fn str_for_each<F>(&self, mut f: F)
     where
         F: FnMut(&str),
@@ -372,6 +322,7 @@ impl<'bp> EvalValue<'bp> {
         };
     }
 
+    #[deprecated]
     pub fn str_iter<F>(&self, mut f: F) -> ControlFlow<()>
     where
         F: FnMut(&str) -> ControlFlow<()>,
@@ -382,6 +333,7 @@ impl<'bp> EvalValue<'bp> {
         }
     }
 
+    #[deprecated]
     fn internal_str_iter<F>(&self, f: &mut F) -> Option<ControlFlow<()>>
     where
         F: FnMut(&str) -> ControlFlow<()>,
@@ -416,12 +368,43 @@ impl<'bp> EvalValue<'bp> {
         Some(val)
     }
 
+    fn to_hoppstr(&self, tx: &mut Transaction<'_, 'bp>) {
+        match self {
+            EvalValue::List(list) => {
+                for value in list.iter() {
+                    value.to_hoppstr(tx);
+                }
+            }
+            EvalValue::Static(val) => {
+                let s = val.to_common_str();
+                match s {
+                    CommonString::Borrowed(s) => tx.add_slice(s),
+                    CommonString::Owned(s) => drop(write!(tx, "{s}")),
+                }
+            }
+            EvalValue::Dyn(val) => {
+                let Some(state) = val.as_state() else { return };
+                let Some(common) = state.to_common() else { return };
+                let s = common.to_common_str();
+                let s = s.as_ref();
+                write!(tx, "{s}");
+            }
+            EvalValue::Index(val, _) => val.to_hoppstr(tx),
+            _ => {
+                let Some(val) = self.load_common_val() else { return };
+                let Some(val) = val.to_common() else { return };
+                write!(tx, "{}", val.to_common_str().as_ref());
+            }
+        }
+    }
+
     /// Load a common value OR a shared state that can become a common value.
     /// This is only used by templates and not widgets / elements.
     pub fn load_common_val(&self) -> Option<Either<'_>> {
         match self {
             EvalValue::Static(val) => Some(Either::Static(*val)),
             EvalValue::Dyn(val) => Some(Either::Dyn(val.as_state()?)),
+            EvalValue::String(val) => panic!("figure out what to do here"),
             EvalValue::State(_) => panic!(),
             EvalValue::ComponentAttributes(_) => None, // There should be no instance where attributes is a single value
             EvalValue::Index(val, _) => val.load_common_val(),
@@ -429,9 +412,6 @@ impl<'bp> EvalValue<'bp> {
             EvalValue::Map(_) => None,
             EvalValue::ExprList(_) => None,
             EvalValue::List(_) => None,
-            EvalValue::TextSegments(segments) => {
-                panic!("need to figure out how we can represent this as an actual string")
-            }
 
             // Operations
             EvalValue::Negative(expr) => expr.load_number().map(|n| -n).map(Into::into),
@@ -491,6 +471,11 @@ impl<'bp> EvalValue<'bp> {
             Either::Static(val) => val.to_number(),
             Either::Dyn(state) => (*state).to_common().and_then(|v| v.to_number()),
         }
+    }
+
+    pub fn load_str<'a>(&'a self, strings: &'a Strings<'bp>) -> Option<HString<impl Iterator<Item = &str> + 'a>> {
+        let EvalValue::String(hstr) = self else { return None };
+        Some(strings.get(*hstr))
     }
 
     // Load a value from an expression.
@@ -589,11 +574,11 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
         }
     }
 
-    pub(crate) fn root(ctx: &'scope ExprEvalCtx<'scope, 'bp>, subscriber: ValueId, deferred: bool) -> Self {
-        Self::new(ctx, subscriber, deferred)
-    }
+    // pub(crate) fn root(ctx: &'scope ExprEvalCtx<'scope, 'bp>, subscriber: ValueId, deferred: bool) -> Self {
+    //     Self::new(ctx, subscriber, deferred)
+    // }
 
-    pub(crate) fn resolve(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
+    pub(crate) fn resolve(&mut self, expression: &'bp Expression, strings: &mut Strings<'bp>) -> EvalValue<'bp> {
         match expression {
             // -----------------------------------------------------------------------------
             //   - Values -
@@ -610,45 +595,54 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
             Expression::Map(map) => EvalValue::Map(map),
             Expression::List(list) if self.deferred => EvalValue::ExprList(list),
             Expression::List(list) => {
-                let inner = list.iter().map(|expr| self.resolve(expr)).collect();
+                let inner = list.iter().map(|expr| self.resolve(expr, strings)).collect();
                 EvalValue::List(inner)
             }
             Expression::TextSegments(segments) => {
-                let inner: Vec<_> = segments.iter().map(|expr| self.resolve(expr)).collect();
-                // for val in inner {
-                // }
-                // EvalValue::TextSegments(inner)
-                panic!()
+                let inner = segments
+                    .iter()
+                    .map(|expr| self.resolve(expr, strings))
+                    .collect::<Vec<_>>();
+
+                let s = strings.insert_with(|tx| {
+                    for i in inner {
+                        i.to_hoppstr(tx);
+                    }
+                });
+
+                EvalValue::String(s)
             }
 
             // -----------------------------------------------------------------------------
             //   - Conditionals -
             // -----------------------------------------------------------------------------
-            Expression::Not(expr) => EvalValue::Not(self.resolve(expr).into()),
-            Expression::Equality(lhs, rhs, eq) => {
-                EvalValue::Equality(self.resolve(lhs).into(), self.resolve(rhs).into(), *eq)
-            }
+            Expression::Not(expr) => EvalValue::Not(self.resolve(expr, strings).into()),
+            Expression::Equality(lhs, rhs, eq) => EvalValue::Equality(
+                self.resolve(lhs, strings).into(),
+                self.resolve(rhs, strings).into(),
+                *eq,
+            ),
 
             // -----------------------------------------------------------------------------
             //   - Lookups -
             // -----------------------------------------------------------------------------
-            Expression::Ident(_) | Expression::Index(_, _) => self.lookup(expression),
+            Expression::Ident(_) | Expression::Index(_, _) => self.lookup(expression, strings),
 
             // -----------------------------------------------------------------------------
             //   - Maths -
             // -----------------------------------------------------------------------------
-            Expression::Negative(expr) => EvalValue::Negative(self.resolve(expr).into()),
+            Expression::Negative(expr) => EvalValue::Negative(self.resolve(expr, strings).into()),
             Expression::Op(lhs, rhs, op) => {
-                let lhs = self.resolve(lhs);
-                let rhs = self.resolve(rhs);
+                let lhs = self.resolve(lhs, strings);
+                let rhs = self.resolve(rhs, strings);
                 EvalValue::Op(lhs.into(), rhs.into(), *op)
             }
 
             // -----------------------------------------------------------------------------
             //   - Either -
             // -----------------------------------------------------------------------------
-            Expression::Either(lhs, rhs) => match self.resolve(lhs) {
-                EvalValue::Empty => self.resolve(rhs),
+            Expression::Either(lhs, rhs) => match self.resolve(lhs, strings) {
+                EvalValue::Empty => self.resolve(rhs, strings),
                 value => value,
             },
 
@@ -659,7 +653,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
         }
     }
 
-    fn lookup(&mut self, expression: &'bp Expression) -> EvalValue<'bp> {
+    fn lookup(&mut self, expression: &'bp Expression, strings: &mut Strings<'bp>) -> EvalValue<'bp> {
         match expression {
             Expression::Ident(ident) => match &**ident {
                 "state" => self.ctx.scope.get_state(),
@@ -672,12 +666,12 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                             EvalValue::Empty
                         }
                         NameThis::Value(eval_value) => eval_value,
-                        NameThis::ResolveThisNow(expr) => self.resolve(expr),
+                        NameThis::ResolveThisNow(expr) => self.resolve(expr, strings),
                     }
                 }
             },
             Expression::Index(lhs, rhs) => {
-                let value = self.resolve(lhs);
+                let value = self.resolve(lhs, strings);
 
                 // The RHS is always the index / ident.
                 // Note that this might still be an op, e.g a + 1
@@ -687,7 +681,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                 let index = match &**rhs {
                     Expression::Str(ident) => Path::from(&**ident),
                     expr => {
-                        let index = self.resolve(expr);
+                        let index = self.resolve(expr, strings);
                         if let EvalValue::Empty = index {
                             self.register_future_value = true;
                             return EvalValue::Empty;
@@ -703,7 +697,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                         EvalValue::Empty
                     }
                     NameThis::Value(value) => value,
-                    NameThis::ResolveThisNow(expr) => self.resolve(expr),
+                    NameThis::ResolveThisNow(expr) => self.resolve(expr, strings),
                 };
 
                 val
@@ -716,12 +710,13 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
 pub(crate) fn eval<'bp>(
     expr: &'bp Expression,
     ctx: &ExprEvalCtx<'_, 'bp>,
+    strings: &mut Strings<'bp>,
     value_id: impl Into<ValueId>,
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(ctx, value_id, false);
-    let value = resolver.resolve(expr);
+    let mut resolver = Resolver::new(ctx, value_id, false);
+    let value = resolver.resolve(expr, strings);
 
     if resolver.register_future_value {
         register_future(value_id);
@@ -730,15 +725,16 @@ pub(crate) fn eval<'bp>(
     Value::new(value, Some(expr))
 }
 
-pub(crate) fn eval_collection<'bp>(
+pub(crate) fn eval_collection<'s, 'bp>(
     expr: &'bp Expression,
     ctx: &ExprEvalCtx<'_, 'bp>,
+    strings: &mut Strings<'bp>,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
     let value_id = value_id.into();
 
-    let mut resolver = Resolver::root(ctx, value_id, true);
-    let value = resolver.resolve(expr);
+    let mut resolver = Resolver::new(ctx, value_id, true);
+    let value = resolver.resolve(expr, strings);
 
     if resolver.register_future_value {
         register_future(value_id);
@@ -763,10 +759,11 @@ mod test {
 
     use anathema_state::{List, Map, Value};
     use anathema_templates::expressions::{
-        add, and, eq, greater_than, greater_than_equal, ident, index, less_than, less_than_equal, mul, neg, not, num,
-        or, strlit, sub,
+        add, and, eq, greater_than, greater_than_equal, ident, index, less_than, less_than_equal, list, mul, neg, not,
+        num, or, strlit, sub, text_segment,
     };
 
+    use super::EvalValue;
     use crate::testing::ScopedTest;
 
     #[test]
@@ -784,7 +781,7 @@ mod test {
                 index(index(index(ident("state"), strlit("a")), num(0)), num(0)),
                 num(115),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let val = value.load::<u32>().unwrap();
                 assert_eq!(val, 8);
             });
@@ -804,7 +801,7 @@ mod test {
                 index(index(index(ident("state"), strlit("list")), num(0)), strlit("val")),
                 num(1),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let val = value.load::<u32>().unwrap();
                 assert_eq!(val, 2);
             });
@@ -816,7 +813,7 @@ mod test {
             .with_state_value("a", 1u32)
             .with_expr(index(ident("state"), strlit("a")));
 
-        t.eval(|value| {
+        t.eval(|value, strings| {
             let val = value.load::<u32>().unwrap();
             assert_eq!(val, 1);
         });
@@ -832,7 +829,7 @@ mod test {
                 index(ident("state"), strlit("b")),
             ));
 
-        t.eval(|value| {
+        t.eval(|value, strings| {
             let val = value.load::<u32>().unwrap();
             assert_eq!(val, 8);
         });
@@ -843,7 +840,7 @@ mod test {
         ScopedTest::new()
             .with_state_value("a", 2i32)
             .with_expr(neg(index(ident("state"), strlit("a"))))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let val = value.load::<i32>().unwrap();
                 assert_eq!(val, -2);
             });
@@ -854,7 +851,7 @@ mod test {
         ScopedTest::new()
             .with_state_value("a", true)
             .with_expr(not(index(ident("state"), strlit("a"))))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let val = value.load::<bool>().unwrap();
                 assert!(!val);
             });
@@ -864,7 +861,7 @@ mod test {
     fn dyn_not_no_val() {
         ScopedTest::<bool, _>::new()
             .with_expr(not(index(ident("state"), strlit("a"))))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let val = value.load::<bool>().unwrap();
                 assert!(val);
             });
@@ -875,7 +872,7 @@ mod test {
         ScopedTest::new()
             .with_state_value("a", true)
             .with_expr(not(not(index(ident("state"), strlit("a")))))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let val = value.load::<bool>().unwrap();
                 assert!(val);
             });
@@ -890,7 +887,7 @@ mod test {
                 add(index(ident("state"), strlit("a")), num(1)),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -905,7 +902,7 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -920,7 +917,7 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -935,7 +932,7 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -950,7 +947,7 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -965,7 +962,7 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -980,7 +977,7 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
@@ -995,12 +992,21 @@ mod test {
                 index(ident("state"), strlit("a")),
                 index(ident("state"), strlit("b")),
             ))
-            .eval(|value| {
+            .eval(|value, strings| {
                 let b = value.load::<bool>().unwrap();
                 assert!(b);
             });
     }
 
     #[test]
-    fn strings() {}
+    fn strings() {
+        ScopedTest::new()
+            .with_state_value("s", "bob")
+            .with_expr(text_segment([strlit("hello "), index(ident("state"), strlit("s"))]))
+            .eval(|value, strings| {
+                let EvalValue::String(value) = *value else { panic!() };
+                let s = strings.get(value);
+                assert_eq!("hello bob", s);
+            });
+    }
 }

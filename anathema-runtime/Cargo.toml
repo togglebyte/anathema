@@ -10,6 +10,7 @@ anathema-default-widgets = { path = "../anathema-default-widgets" }
 anathema-backend = { path = "../anathema-backend" }
 anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
+anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
 anathema-widgets = { path = "../anathema-widgets" }
 flume = { workspace = true }

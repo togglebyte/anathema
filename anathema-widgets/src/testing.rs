@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use anathema_geometry::Size;
 use anathema_state::{Map, State, StateId, States};
 use anathema_store::tree::TreeForEach;
+use anathema_strings::Strings;
 use anathema_templates::{Expression, Globals};
 
 use crate::expressions::{eval, EvalValue, ExprEvalCtx};
@@ -56,7 +57,7 @@ impl<T: 'static + State, S> ScopedTest<T, S> {
 impl<T: 'static + State> ScopedTest<T, WithExpr> {
     pub fn eval<F>(&mut self, f: F)
     where
-        F: FnOnce(Value<'_, EvalValue<'_>>),
+        F: FnOnce(Value<'_, EvalValue<'_>>, &Strings<'_>),
     {
         use std::sync::atomic::{AtomicUsize, Ordering};
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
@@ -69,6 +70,7 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
         let attributes = AttributeStorage::empty();
         scope.insert_state(StateId::ZERO);
 
+        let mut strings = Strings::empty();
         let ctx = ExprEvalCtx {
             scope: &scope,
             states: &self.states,
@@ -76,12 +78,8 @@ impl<T: 'static + State> ScopedTest<T, WithExpr> {
             globals: &globals,
         };
 
-        let value = eval(
-            &self.test_state.0,
-            &ctx,
-            value_id,
-        );
-        f(value)
+        let value = eval(&self.test_state.0, &ctx, &mut strings, value_id);
+        f(value, &strings)
     }
 }
 

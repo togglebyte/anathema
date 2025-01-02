@@ -8,6 +8,7 @@ use anathema_state::{
 };
 use anathema_store::stack::Stack;
 use anathema_store::tree::root_node;
+use anathema_strings::Strings;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::events::Event;
@@ -37,6 +38,7 @@ pub struct Runtime<'bp> {
     pub(super) floating_widgets: FloatingWidgets,
     pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
+    pub(super) strings: Strings<'bp>,
     pub(super) future_values: FutureValues,
     pub(super) assoc_events: AssociatedEvents,
     pub(super) focus_queue: FocusQueue<'static>,
@@ -63,6 +65,7 @@ impl<'bp> Runtime<'bp> {
             &mut self.changelist,
             &mut self.glyph_map,
             &mut self.dirty_widgets,
+            &mut self.strings,
             self.viewport,
             true,
         );

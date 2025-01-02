@@ -8,6 +8,7 @@ anathema-debug = { path = "../anathema-debug" }
 anathema-geometry = { path = "../anathema-geometry" }
 anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
+anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
 flume = { workspace = true }
 unicode-width = { workspace = true }

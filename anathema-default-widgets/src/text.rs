@@ -5,7 +5,9 @@ use anathema_state::CommonVal;
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{
+    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
+};
 
 use crate::{LEFT, RIGHT};
 
@@ -79,21 +81,21 @@ impl Widget for Text {
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        let attributes = ctx.attribute_storage.get(id);
+        let attributes = ctx.attributes(id);
         let wrap = attributes.get(WRAP).unwrap_or_default();
         let size = constraints.max_size();
         self.strings = Strings::new(size, wrap);
         self.strings.set_style(id);
 
         // Layout text
-        attributes.value().map(|value| {
-            value.str_iter(|s| {
-                //meh
-                match self.strings.add_str(s) {
-                    ProcessResult::Break => ControlFlow::Break(()),
-                    ProcessResult::Continue => ControlFlow::Continue(()),
+        attributes.value().map(|text| {
+            let text = text.load_str(ctx.strings).unwrap(); // TODO unwrap
+            for t in text {
+                match self.strings.add_str(t) {
+                    ProcessResult::Break => break,
+                    ProcessResult::Continue => continue,
                 }
-            })
+            }
         });
 
         // Layout text of all the sub-nodes
@@ -103,12 +105,15 @@ impl Widget for Text {
             };
             self.strings.set_style(child.id());
 
-            let attributes = ctx.attribute_storage.get(child.id());
+            let attributes = ctx.attributes(child.id());
             if let Some(text) = attributes.value() {
-                text.str_iter(|s| match self.strings.add_str(s) {
-                    ProcessResult::Break => ControlFlow::Break(()),
-                    ProcessResult::Continue => ControlFlow::Continue(()),
-                })?;
+                let text = text.load_str(ctx.strings).unwrap(); // TODO unwrap
+                for t in text {
+                    match self.strings.add_str(t) {
+                        ProcessResult::Break => break,
+                        ProcessResult::Continue => continue,
+                    }
+                }
 
                 ControlFlow::Continue(())
             } else {

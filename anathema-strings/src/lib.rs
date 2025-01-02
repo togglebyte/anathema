@@ -2,29 +2,40 @@
 //       space with some exceptions
 
 use region::Region;
-use storage::{Transaction, Storage};
+use storage::Storage;
+pub use storage::Transaction;
 
 mod region;
 mod storage;
 
 static BUCKET_SIZE: usize = 128;
 
-pub struct Hoppstr {
-    index: usize,
-    len: usize,
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct StrIndex {
+    index: u32,
+    len: u32,
 }
 
-impl Hoppstr {
+impl StrIndex {
     fn new(index: usize, len: usize) -> Self {
-        Self { index, len }
+        Self {
+            index: index as u32,
+            len: len as u32,
+        }
     }
 
     fn to_region(self) -> Region {
-        let padding = self.len % BUCKET_SIZE;
+        let padding = self.len % BUCKET_SIZE as u32;
         Region {
             start: self.index,
             len: self.len + padding,
         }
+    }
+}
+
+impl From<(u32, u32)> for StrIndex {
+    fn from((index, len): (u32, u32)) -> Self {
+        Self { index, len }
     }
 }
 
@@ -39,21 +50,21 @@ impl<'slice> Strings<'slice> {
         }
     }
 
-    pub fn insert_with<F>(&mut self, mut f: F) -> Hoppstr
+    pub fn insert_with<F>(&mut self, mut f: F) -> StrIndex
     where
-        F: FnMut(&mut Transaction),
+        F: FnOnce(&mut Transaction<'_, 'slice>),
     {
         let mut tx = self.inner.begin_insert();
         f(&mut tx);
         tx.commit()
     }
 
-    pub fn get(&self, hstr: Hoppstr) -> HString<impl Iterator<Item = &str> + Clone> {
+    pub fn get(&self, hstr: StrIndex) -> HString<impl Iterator<Item = &str> + Clone> {
         let iter = self.inner.get(hstr);
         HString { inner: iter }
     }
 
-    pub fn remove(&mut self, hstr: Hoppstr) {
+    pub fn remove(&mut self, hstr: StrIndex) {
         self.inner.remove(hstr);
     }
 }
@@ -62,7 +73,13 @@ pub struct HString<I> {
     inner: I,
 }
 
-impl<'hstr, I> HString<I> where I: Iterator<Item = &'hstr str> {}
+impl<'hstr, I> Iterator for HString<I> where I: Iterator<Item = &'hstr str> {
+    type Item = &'hstr str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
 
 impl<'hstr, I> std::fmt::Debug for HString<I>
 where
@@ -92,6 +109,10 @@ where
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Equality -
+// -----------------------------------------------------------------------------
+
 impl<'hstr, I> PartialEq<str> for HString<I>
 where
     I: Iterator<Item = &'hstr str>,
@@ -110,6 +131,16 @@ where
     }
 }
 
+impl<'hstr, I> PartialEq<&str> for HString<I>
+where
+    I: Iterator<Item = &'hstr str>,
+    I: Clone,
+{
+    fn eq(&self, mut other: &&str) -> bool {
+        self == *other
+    }
+}
+
 impl<'hstr, I> PartialEq<HString<I>> for &str
 where
     I: Iterator<Item = &'hstr str>,
@@ -122,6 +153,7 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::fmt::Write;
     use super::*;
 
     #[test]
@@ -134,6 +166,20 @@ mod test {
         });
         let s = strings.get(hstr);
 
+        assert_eq!("hello world", s);
+    }
+
+    #[test]
+    fn write_borrowed_and_owned() {
+        let mut strings = Strings::empty();
+        let hstr = strings.insert_with(|tx| {
+            tx.add_slice("hello");
+            write!(tx, " ");
+            tx.add_slice("world");
+        });
+        let s = strings.get(hstr);
+
+        assert_eq!(s, "hello world");
         assert_eq!("hello world", s);
     }
 
