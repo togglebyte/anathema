@@ -400,7 +400,7 @@ where
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
         assoc_events: &mut AssociatedEvents,
-        focus_queue: &mut FocusQueue<'static>,
+        focus_queue: &mut FocusQueue,
     ) -> Duration {
         let context = UntypedContext {
             emitter: &self.emitter,
@@ -598,9 +598,10 @@ where
         for (_, widget) in tree.values().into_iter() {
             let WidgetKind::Component(comp) = widget.kind else { continue };
             let ComponentKind::Instance = comp.kind else { continue };
-            let state = states.remove(comp.state_id);
-            self.component_registry
-                .return_component(comp.component_id, comp.dyn_component, state);
+            // let state = states.remove(comp.state_id).consume();
+            panic!();
+            // self.component_registry
+            //     .return_component(comp.component_id, comp.dyn_component, state);
         }
 
         let (blueprint, globals) = self.document.compile()?;
@@ -620,7 +621,7 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         globals: &'bp Globals,
         assoc_events: &mut AssociatedEvents,
-        focus_queue: &mut FocusQueue<'static>,
+        focus_queue: &mut FocusQueue,
     ) -> Result<()> {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
@@ -726,7 +727,7 @@ where
         attribute_storage: &mut AttributeStorage<'bp>,
         dt: Duration,
         assoc_events: &mut AssociatedEvents,
-        focus_queue: &mut FocusQueue<'static>,
+        focus_queue: &mut FocusQueue,
     ) {
         let context = UntypedContext {
             emitter: &self.emitter,

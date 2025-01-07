@@ -123,7 +123,12 @@ mod test {
 
         tree.apply_visitor(&mut Zero);
 
-        let values = tree.values.iter().map(|(_path, value)| value).copied().collect::<Vec<_>>();
+        let values = tree
+            .values
+            .iter()
+            .map(|(_path, value)| value)
+            .copied()
+            .collect::<Vec<_>>();
         assert_eq!(values, vec![0, 0, 0, 0, 0]);
     }
 }

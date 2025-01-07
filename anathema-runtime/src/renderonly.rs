@@ -6,8 +6,8 @@ use anathema_templates::{Document, Globals};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
-    GlyphMap, Scope, WidgetTree,
+    eval_blueprint, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Scope,
+    WidgetTree,
 };
 
 pub use crate::error::Result;

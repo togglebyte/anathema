@@ -145,7 +145,7 @@ impl<'bp> Scope<'bp> {
 
             match entry {
                 // Pending
-                Entry::Pending(_, pending) => break EvalValue::Dyn(pending.to_value(lookup.id)).into(),
+                Entry::Pending(_, pending) => break EvalValue::Dyn(pending.subscribe(lookup.id)).into(),
 
                 // Downgraded
                 Entry::Downgraded(_, downgrade) => break downgrade.upgrade(lookup.id).into(),
@@ -368,7 +368,7 @@ impl<'bp> Scope<'bp> {
 #[cfg(test)]
 mod test {
     use anathema_state::{List, Map, Value};
-    use anathema_strings::Strings;
+    use anathema_strings::HStrings;
     use anathema_templates::{Expression, Globals};
 
     use super::*;
@@ -385,7 +385,7 @@ mod test {
         let attributes = AttributeStorage::empty();
         let expr = Expression::Ident("list".into());
         let globals = Globals::new(Default::default());
-        let mut strings = Strings::empty();
+        let mut strings = HStrings::empty();
         let ctx = ExprEvalCtx {
             scope: &scope,
             states: &states,

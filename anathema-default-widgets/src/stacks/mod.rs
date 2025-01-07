@@ -47,7 +47,8 @@ impl Stack {
             constraints.make_height_tight(height);
         }
 
-        let dir = attributes.get(DIRECTION).unwrap_or_default();
+        // let dir = attributes.get(DIRECTION).unwrap_or_default();
+        let dir = panic!("getting bored of writing resolver everywhere");
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = false;
         let mut many = Many::new(dir, self.0, unconstrained);
@@ -62,7 +63,8 @@ impl Stack {
         mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let direction = attributes.get(DIRECTION).unwrap_or_default();
+        // let direction = attributes.get(DIRECTION).unwrap_or_default();
+        let direction = panic!("rerereresolver");
         let mut pos = ctx.pos;
 
         if let Direction::Backward = direction {

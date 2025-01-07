@@ -39,11 +39,11 @@ impl From<(u32, u32)> for StrIndex {
     }
 }
 
-pub struct Strings<'slice> {
+pub struct HStrings<'slice> {
     inner: Storage<'slice>,
 }
 
-impl<'slice> Strings<'slice> {
+impl<'slice> HStrings<'slice> {
     pub fn empty() -> Self {
         Self {
             inner: Storage::empty(),
@@ -73,7 +73,10 @@ pub struct HString<I> {
     inner: I,
 }
 
-impl<'hstr, I> Iterator for HString<I> where I: Iterator<Item = &'hstr str> {
+impl<'hstr, I> Iterator for HString<I>
+where
+    I: Iterator<Item = &'hstr str>,
+{
     type Item = &'hstr str;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -112,6 +115,31 @@ where
 // -----------------------------------------------------------------------------
 //   - Equality -
 // -----------------------------------------------------------------------------
+
+impl<'hstr, A, B> PartialEq<HString<B>> for HString<A>
+where
+    A: Iterator<Item = &'hstr str>,
+    A: Clone,
+    B: Iterator<Item = &'hstr str>,
+    B: Clone,
+{
+    fn eq(&self, mut other: &HString<B>) -> bool {
+        let mut lhs = self.inner.clone();
+        let mut rhs = other.inner.clone();
+
+        loop {
+            let a = lhs.next();
+            let b = lhs.next();
+            if a != b {
+                return false;
+            }
+
+            if a.is_none() && b.is_none() {
+                break true;
+            }
+        }
+    }
+}
 
 impl<'hstr, I> PartialEq<str> for HString<I>
 where
@@ -154,11 +182,12 @@ where
 #[cfg(test)]
 mod test {
     use std::fmt::Write;
+
     use super::*;
 
     #[test]
     fn basic() {
-        let mut strings = Strings::empty();
+        let mut strings = HStrings::empty();
         let hstr = strings.insert_with(|tx| {
             tx.add_slice("hello");
             tx.add_slice(" ");
@@ -171,7 +200,7 @@ mod test {
 
     #[test]
     fn write_borrowed_and_owned() {
-        let mut strings = Strings::empty();
+        let mut strings = HStrings::empty();
         let hstr = strings.insert_with(|tx| {
             tx.add_slice("hello");
             write!(tx, " ");
@@ -185,7 +214,7 @@ mod test {
 
     #[test]
     fn empty_str() {
-        let mut strings = Strings::empty();
+        let mut strings = HStrings::empty();
         let hstr = strings.insert_with(|_| {});
         let s = strings.get(hstr);
         assert!("hello world" != s);

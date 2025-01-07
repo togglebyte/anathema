@@ -79,7 +79,7 @@ impl<'bp> Attributes<'bp> {
     }
 
     /// Set the value
-    pub fn set(&mut self, key: &'bp str, value: impl Into<CommonVal<'bp>>) {
+    pub fn set(&mut self, key: &'bp str, value: impl Into<CommonVal>) {
         let value = value.into().into();
         self.attribs.set(ValueKey::Attribute(key), value);
     }
@@ -90,12 +90,12 @@ impl<'bp> Attributes<'bp> {
         let key = ValueKey::Attribute(key);
         match self.attribs.get_index(&key) {
             Some(idx) => {
-                let valueref = value.to_value((self.widget_id, idx).into());
+                let valueref = value.subscribe((self.widget_id, idx).into());
                 self.attribs.set(key, valueref.into());
             }
             None => {
                 self.attribs.insert_with(key, |idx| {
-                    let valueref = value.to_value((self.widget_id, idx).into());
+                    let valueref = value.subscribe((self.widget_id, idx).into());
                     valueref.into()
                 });
             }
@@ -126,7 +126,7 @@ impl<'bp> Attributes<'bp> {
     where
         T: 'static,
         T: Copy + PartialEq,
-        for<'a> T: TryFrom<CommonVal<'a>>,
+        T: TryFrom<CommonVal>,
     {
         let value = self.get_val(key)?;
         value.load::<T>()
@@ -203,10 +203,11 @@ impl<'bp> Attributes<'bp> {
 
 impl CellAttributes for Attributes<'_> {
     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
-        let Some(value) = self.get_val(key).and_then(|value| value.load_common_val()) else { return };
-        let Some(value) = value.to_common() else { return };
-        let CommonVal::Str(s) = value else { return };
-        f(s);
+        panic!("maybe this can be removed?");
+        // let Some(value) = self.get_val(key).and_then(|value| value.load_common_val()) else { return };
+        // let Some(value) = value.to_common() else { return };
+        // let CommonVal::Str(s) = value else { return };
+        // f(s);
     }
 
     fn get_i64(&self, key: &str) -> Option<i64> {

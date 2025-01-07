@@ -12,7 +12,6 @@ pub struct SortedList<T> {
 }
 
 impl<T: Ord> SortedList<T> {
-
     /// Create an empty sorted list
     pub fn empty() -> Self {
         Self {
@@ -45,7 +44,7 @@ impl<T: Ord> SortedList<T> {
     }
 
     /// Add a new value to the list.
-    /// This will leave the list in an unsorted state. 
+    /// This will leave the list in an unsorted state.
     /// Next time [`Self::get`] or [`Self::get_mut`] is called, the list will be sorted
     pub fn push(&mut self, value: T) {
         self.inner.push(value);

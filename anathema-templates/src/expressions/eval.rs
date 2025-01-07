@@ -4,12 +4,12 @@ use std::rc::Rc;
 use anathema_store::storage::strings::Strings;
 
 use super::parser::Expr;
-use super::{Expression, Op};
+use super::{Expression, LogicalOp, Op};
 use crate::error::{ParseErrorKind, Result};
 use crate::expressions::Equality;
 use crate::token::Operator;
 
-pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind> {
+pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind> {
     let output = match expr {
         Expr::Primitive(val) => Expression::Primitive(val),
         Expr::Ident(string_id) => {
@@ -56,9 +56,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
             | Operator::GreaterThan
             | Operator::GreaterThanOrEqual
             | Operator::LessThan
-            | Operator::LessThanOrEqual
-            | Operator::And
-            | Operator::Or => {
+            | Operator::LessThanOrEqual => {
                 let equality = match op {
                     Operator::EqualEqual => Equality::Eq,
                     Operator::NotEqual => Equality::NotEq,
@@ -66,11 +64,20 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                     Operator::GreaterThanOrEqual => Equality::Gte,
                     Operator::LessThan => Equality::Lt,
                     Operator::LessThanOrEqual => Equality::Lte,
-                    Operator::And => Equality::And,
-                    Operator::Or => Equality::Or,
                     _ => unreachable!(),
                 };
                 Expression::Equality(eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into(), equality)
+            }
+            Operator::And | Operator::Or => {
+                let logical_op = match op {
+                    Operator::And => LogicalOp::And,
+                    Operator::Or => LogicalOp::Or,
+                    _ => unreachable!(),
+                };
+                let lhs = eval(*lhs, strings)?.into();
+                let rhs = eval(*rhs, strings)?.into();
+
+                Expression::LogicalOp(lhs, rhs, logical_op)
             }
             Operator::Either => {
                 let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());

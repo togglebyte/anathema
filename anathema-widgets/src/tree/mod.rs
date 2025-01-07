@@ -135,11 +135,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 // Generate the next available widget into the tree
 // TODO: break this down into more manageable code.
 //       this is a hot mess
-fn generate<'bp>(
-    parent: Generator<'_, 'bp>,
-    tree: &mut WidgetTreeView<'_, 'bp>,
-    ctx: &mut LayoutCtx<'_, 'bp>,
-) -> bool {
+fn generate<'bp>(parent: Generator<'_, 'bp>, tree: &mut WidgetTreeView<'_, 'bp>, ctx: &mut LayoutCtx<'_, 'bp>) -> bool {
     match parent {
         Generator::Single(blueprints) | Generator::Iteration(_, blueprints) => {
             if blueprints.is_empty() {

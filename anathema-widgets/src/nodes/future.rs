@@ -200,7 +200,7 @@ use crate::{WidgetKind, WidgetTree};
 mod test {
     use anathema_state::{drain_futures, States};
     use anathema_store::stack::Stack;
-    use anathema_strings::Strings;
+    use anathema_strings::HStrings;
     use anathema_templates::expressions::{ident, index, list, map, num, strlit};
     use anathema_templates::{Expression, Globals};
 
@@ -225,7 +225,7 @@ mod test {
             globals: &globals,
         };
 
-        let mut strings = Strings::empty();
+        let mut strings = HStrings::empty();
         eval(expr, &ctx, &mut strings, value_id);
 
         drain_futures(&mut futures);

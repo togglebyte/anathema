@@ -20,7 +20,7 @@ impl ControlFlow<'_> {
 
         let branch_id = self.current_branch_id(children);
 
-        // Check if another branch id before this has become true, 
+        // Check if another branch id before this has become true,
         // if so this has changed.
         if self.elses[..branch_id as usize].iter().any(|e| e.is_true()) {
             return true;

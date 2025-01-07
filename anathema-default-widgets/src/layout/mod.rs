@@ -35,17 +35,17 @@ pub enum Axis {
     Vertical,
 }
 
-impl TryFrom<CommonVal<'_>> for Axis {
-    type Error = ();
+// impl TryFrom<CommonVal> for Axis {
+//     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value.to_common_str().as_ref() {
-            "horz" | "horizontal" => Ok(Self::Horizontal),
-            "vert" | "vertical" => Ok(Self::Vertical),
-            _ => Err(()),
-        }
-    }
-}
+//     fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+//         match value.to_common_str().as_ref() {
+//             "horz" | "horizontal" => Ok(Self::Horizontal),
+//             "vert" | "vertical" => Ok(Self::Vertical),
+//             _ => Err(()),
+//         }
+//     }
+// }
 
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub enum Direction {
@@ -54,14 +54,14 @@ pub enum Direction {
     Backward,
 }
 
-impl TryFrom<CommonVal<'_>> for Direction {
-    type Error = ();
+// impl TryFrom<CommonVal<'_>> for Direction {
+//     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value.to_common_str().as_ref() {
-            "fwd" | "forward" | "forwards" => Ok(Self::Forward),
-            "back" | "backward" | "backwards" => Ok(Self::Backward),
-            _ => Err(()),
-        }
-    }
-}
+//     fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+//         match value.to_common_str().as_ref() {
+//             "fwd" | "forward" | "forwards" => Ok(Self::Forward),
+//             "back" | "backward" | "backwards" => Ok(Self::Backward),
+//             _ => Err(()),
+//         }
+//     }
+// }

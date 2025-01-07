@@ -22,7 +22,8 @@ impl SlabIndex for StateId {
 
     fn from_usize(index: usize) -> Self
     where
-        Self: Sized {
+        Self: Sized,
+    {
         Self(index)
     }
 }
@@ -32,7 +33,7 @@ pub trait AnyState: 'static {
 
     fn to_any_mut(&mut self) -> &mut dyn Any;
 
-    fn to_common(&self) -> Option<CommonVal<'_>>;
+    fn to_common(&self) -> Option<CommonVal>;
 
     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef>;
 
@@ -54,7 +55,7 @@ impl AnyState for Box<dyn AnyState> {
         self.as_mut().to_any_mut()
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         self.as_ref().to_common()
     }
 
@@ -88,7 +89,7 @@ impl<T: State> AnyState for T {
         self
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         <Self as State>::to_common(self)
     }
 
@@ -142,7 +143,7 @@ pub trait State: 'static {
         false
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>>;
+    fn to_common(&self) -> Option<CommonVal>;
 }
 
 impl State for Box<dyn State> {
@@ -162,7 +163,7 @@ impl State for Box<dyn State> {
         self.as_ref().to_bool()
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         self.as_ref().to_common()
     }
 
@@ -188,7 +189,7 @@ impl<T: 'static + State> State for Value<T> {
         self.to_ref().to_bool()
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         None
     }
 
@@ -220,7 +221,7 @@ macro_rules! impl_num_state {
                     .unwrap_or(false)
             }
 
-            fn to_common(&self) -> Option<CommonVal<'_>> {
+            fn to_common(&self) -> Option<CommonVal> {
                 Some(CommonVal::Int(*self as i64))
             }
         }
@@ -240,22 +241,8 @@ macro_rules! impl_float_state {
                     .unwrap_or(false)
             }
 
-            fn to_common(&self) -> Option<CommonVal<'_>> {
+            fn to_common(&self) -> Option<CommonVal> {
                 Some(CommonVal::Float(*self as f64))
-            }
-        }
-    };
-}
-
-macro_rules! impl_str_state {
-    ($t:ty) => {
-        impl State for $t {
-            fn to_bool(&self) -> bool {
-                !self.is_empty()
-            }
-
-            fn to_common(&self) -> Option<CommonVal<'_>> {
-                Some(CommonVal::Str(&*self))
             }
         }
     };
@@ -266,31 +253,31 @@ impl State for bool {
         *self
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         Some(CommonVal::Bool(*self))
     }
 }
 
 impl State for Hex {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         Some(CommonVal::Hex(*self))
     }
 }
 
 impl State for char {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         Some(CommonVal::Char(*self))
     }
 }
 
 impl State for () {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         None
     }
 }
 
 impl<T: State> State for Option<T> {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         self.as_ref()?.to_common()
     }
 
@@ -326,13 +313,9 @@ impl_num_state!(i64);
 impl_num_state!(usize);
 impl_float_state!(f32);
 impl_float_state!(f64);
-impl_str_state!(String);
-impl_str_state!(&'static str);
-impl_str_state!(Box<str>);
-impl_str_state!(Rc<str>);
 
 pub struct States {
-    inner: Slab<StateId, Box<dyn AnyState>>,
+    inner: Slab<StateId, Value<Box<dyn AnyState>>>,
 }
 
 impl States {
@@ -340,37 +323,34 @@ impl States {
         Self { inner: Slab::empty() }
     }
 
-    pub fn insert(&mut self, state: Box<dyn AnyState>) -> StateId {
+    pub fn insert(&mut self, state: Value<Box<dyn AnyState>>) -> StateId {
         self.inner.insert(state)
     }
 
-    pub fn get(&self, state_id: impl Into<StateId>) -> Option<&dyn AnyState> {
-        self.inner.get(state_id.into()).map(|b| &**b)
+    pub fn get(&self, state_id: impl Into<StateId>) -> Option<&Value<Box<dyn AnyState>>> {
+        self.inner.get(state_id.into()).map(|b| b)
     }
 
-    pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut dyn AnyState> {
-        self.inner.get_mut(state_id.into()).map(|b| {
-            let state: &mut dyn AnyState = &mut *b;
-            state
-        })
+    pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut Value<Box<dyn AnyState>>> {
+        self.inner.get_mut(state_id.into())
     }
 
-    pub fn with_mut<F, U>(&mut self, index: impl Into<StateId>, f: F) -> U
-    where
-        F: FnOnce(&mut dyn AnyState, &mut Self) -> U,
-    {
-        let mut ticket = self.inner.checkout(index.into());
-        let ret = f(&mut *ticket, self);
-        self.inner.restore(ticket);
-        ret
-    }
+    // pub fn with_mut<F, U>(&mut self, index: impl Into<StateId>, f: F) -> U
+    // where
+    //     F: FnOnce(&mut dyn AnyState, &mut Self) -> U,
+    // {
+    //     let mut ticket = self.inner.checkout(index.into());
+    //     let ret = f(&mut *ticket, self);
+    //     self.inner.restore(ticket);
+    //     ret
+    // }
 
     /// Remove and return a given state.
     ///
     /// # Panics
     ///
     /// Will panic if the state does not exist.
-    pub fn remove(&mut self, state_id: StateId) -> Box<dyn AnyState> {
+    pub fn remove(&mut self, state_id: StateId) -> Value<Box<dyn AnyState>> {
         self.inner.remove(state_id)
     }
 }

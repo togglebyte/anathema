@@ -41,7 +41,7 @@ pub enum Color {
 }
 
 impl State for Color {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         Some(CommonVal::Color(*self))
     }
 }

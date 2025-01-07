@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
+use anathema_strings::HStrings;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{CellAttributes, Glyph};
 use anathema_widgets::{GlyphMap, WidgetRenderer};
@@ -28,9 +29,7 @@ impl Surface {
     }
 
     fn drain(&mut self) {
-        self.draw.sort_by(|a, b| {
-            a.partial_cmp(&b).unwrap()
-        });
+        self.draw.sort_by(|a, b| a.partial_cmp(&b).unwrap());
     }
 }
 
@@ -73,9 +72,17 @@ impl Backend for TuiScroll {
         glyph_map: &mut GlyphMap,
         widgets: anathema_widgets::PaintChildren<'_, 'bp>,
         attribute_storage: &anathema_widgets::AttributeStorage<'bp>,
+        strings: &HStrings<'bp>,
         ignore_floats: bool,
     ) {
-        anathema_widgets::paint::paint(&mut self.surface, glyph_map, widgets, attribute_storage, ignore_floats);
+        anathema_widgets::paint::paint(
+            &mut self.surface,
+            glyph_map,
+            widgets,
+            attribute_storage,
+            strings,
+            ignore_floats,
+        );
     }
 
     fn render(&mut self, glyph_map: &mut GlyphMap) {

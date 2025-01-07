@@ -2,9 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{
-    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::layout::alignment::{Alignment, ALIGNMENT};
 
@@ -35,7 +33,8 @@ impl Widget for Align {
         mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let alignment = attributes.get(ALIGNMENT).unwrap_or_default();
+        // let alignment = attributes.get(ALIGNMENT).unwrap_or_default();
+        let alignment = panic!();
 
         children.each(|child, children| {
             let width = ctx.inner_size.width as i32;

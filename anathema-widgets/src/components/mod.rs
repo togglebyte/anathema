@@ -204,7 +204,7 @@ impl<'frame, T: 'static> Context<'frame, T> {
             self.state_id,
             parent,
             *external,
-            Box::new(move |state: &dyn AnyState| -> SharedState<'_> {
+            Box::new(move |state: &dyn AnyState| -> SharedState {
                 let state = state
                     .to_any_ref()
                     .downcast_ref::<T>()
@@ -221,7 +221,7 @@ impl<'frame, T: 'static> Context<'frame, T> {
     }
 
     /// Get a value from the component attributes
-    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either<'a>> {
+    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either> {
         let val = self.attributes.get_val(key);
         val.and_then(|val| val.load_common_val())
     }
@@ -235,7 +235,7 @@ impl<'frame, T: 'static> Context<'frame, T> {
 
     /// Queue a focus call to a component that might have
     /// an attribute matching the key and value pair
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal<'static>>) {
+    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal>) {
         self.focus_queue.push(key.into(), value.into());
     }
 }
@@ -293,7 +293,7 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
             self.component_ctx.state_id,
             parent,
             *external,
-            Box::new(move |state: &dyn AnyState| -> SharedState<'_> {
+            Box::new(move |state: &dyn AnyState| -> SharedState {
                 let state = state
                     .to_any_ref()
                     .downcast_ref::<T>()
@@ -310,7 +310,7 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
     }
 
     /// Get a value from the component attributes
-    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either<'a>> {
+    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either> {
         let val = self.component_ctx.attributes.get_val(key);
         val.and_then(|val| val.load_common_val())
     }
@@ -324,7 +324,7 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
 
     /// Queue a focus call to a component that might have
     /// an attribute matching the key and value pair
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal<'static>>) {
+    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal>) {
         self.component_ctx.focus_queue.push(key.into(), value.into());
     }
 }
@@ -365,9 +365,8 @@ pub struct AnyComponentContext<'frame> {
     assoc_functions: &'frame [(StringId, StringId)],
     assoc_events: &'frame mut AssociatedEvents,
     attributes: &'frame Attributes<'frame>,
-    focus_queue: &'frame mut FocusQueue<'static>,
+    focus_queue: &'frame mut FocusQueue,
     pub state: Option<&'frame mut dyn AnyState>,
-    // pub elements: Elements<'frame, 'bp>,
     pub emitter: &'frame Emitter,
     pub viewport: Viewport,
     pub strings: &'frame Strings,
@@ -379,7 +378,7 @@ impl<'frame> AnyComponentContext<'frame> {
         state_id: StateId,
         assoc_functions: &'frame [(StringId, StringId)],
         assoc_events: &'frame mut AssociatedEvents,
-        focus_queue: &'frame mut FocusQueue<'static>,
+        focus_queue: &'frame mut FocusQueue,
         attributes: &'frame Attributes<'frame>,
         state: Option<&'frame mut dyn AnyState>,
         emitter: &'frame Emitter,
@@ -407,7 +406,7 @@ pub struct ComponentContext<'rt> {
     assoc_functions: &'rt [(StringId, StringId)],
     assoc_events: &'rt mut AssociatedEvents,
     attributes: &'rt Attributes<'rt>,
-    focus_queue: &'rt mut FocusQueue<'static>,
+    focus_queue: &'rt mut FocusQueue,
 }
 
 impl<'rt> ComponentContext<'rt> {
@@ -416,7 +415,7 @@ impl<'rt> ComponentContext<'rt> {
         parent: Option<WidgetId>,
         assoc_functions: &'rt [(StringId, StringId)],
         assoc_events: &'rt mut AssociatedEvents,
-        focus_queue: &'rt mut FocusQueue<'static>,
+        focus_queue: &'rt mut FocusQueue,
         attributes: &'rt Attributes<'rt>,
     ) -> Self {
         Self {
@@ -434,7 +433,7 @@ pub struct AssociatedEvent {
     pub state: StateId,
     pub parent: Parent,
     pub external: StringId,
-    pub f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_> + 'static>,
+    pub f: Box<dyn FnMut(&dyn AnyState) -> SharedState + 'static>,
 }
 
 // The reason the component can not have access
@@ -454,7 +453,7 @@ impl AssociatedEvents {
         state: StateId,
         parent: Parent,
         external: StringId,
-        f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_>>,
+        f: Box<dyn FnMut(&dyn AnyState) -> SharedState>,
     ) {
         self.inner.push(AssociatedEvent {
             state,
@@ -469,22 +468,22 @@ impl AssociatedEvents {
     }
 }
 
-pub struct FocusQueue<'rt> {
-    focus_queue: VecDeque<(Cow<'static, str>, CommonVal<'rt>)>,
+pub struct FocusQueue {
+    focus_queue: VecDeque<(Cow<'static, str>, CommonVal)>,
 }
 
-impl<'rt> FocusQueue<'rt> {
+impl FocusQueue {
     pub fn new() -> Self {
         Self {
             focus_queue: VecDeque::new(),
         }
     }
 
-    pub fn push(&mut self, key: Cow<'static, str>, value: CommonVal<'rt>) {
+    pub fn push(&mut self, key: Cow<'static, str>, value: CommonVal) {
         self.focus_queue.push_back((key, value));
     }
 
-    pub fn pop(&mut self) -> Option<(Cow<'static, str>, CommonVal<'rt>)> {
+    pub fn pop(&mut self) -> Option<(Cow<'static, str>, CommonVal)> {
         self.focus_queue.pop_front()
     }
 }
@@ -564,7 +563,7 @@ pub trait Component: 'static {
     fn receive(
         &mut self,
         ident: &str,
-        value: CommonVal<'_>,
+        value: CommonVal,
         state: &mut Self::State,
         mut elements: Elements<'_, '_>,
         mut context: Context<'_, Self::State>,
@@ -604,13 +603,7 @@ pub trait AnyComponent {
 
     fn any_resize(&mut self, elements: Elements<'_, '_>, ctx: AnyComponentContext<'_>);
 
-    fn any_receive(
-        &mut self,
-        elements: Elements<'_, '_>,
-        ctx: AnyComponentContext<'_>,
-        name: &str,
-        value: CommonVal<'_>,
-    );
+    fn any_receive(&mut self, elements: Elements<'_, '_>, ctx: AnyComponentContext<'_>, name: &str, value: CommonVal);
 
     fn any_accept_focus(&self) -> bool;
 }
@@ -697,7 +690,7 @@ where
         elements: Elements<'_, '_>,
         mut ctx: AnyComponentContext<'_>,
         name: &str,
-        value: CommonVal<'_>,
+        value: CommonVal,
     ) {
         let state = ctx
             .state

@@ -1,5 +1,5 @@
-pub(super) mod rc;
 pub(super) mod arc;
+pub(super) mod rc;
 
 /// TODO: document this trait
 pub trait SharedSlab<I, T> {

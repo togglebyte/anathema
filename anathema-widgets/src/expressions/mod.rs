@@ -7,13 +7,17 @@ use std::rc::Rc;
 use anathema_state::{
     register_future, CommonString, CommonVal, Number, Path, PendingValue, SharedState, StateId, States, ValueRef,
 };
-use anathema_strings::{HString, StrIndex, Strings, Transaction};
+use anathema_strings::{HString, HStrings, StrIndex, Transaction};
 use anathema_templates::expressions::{Equality, Op};
 use anathema_templates::{Expression, Globals};
+pub(crate) use values::ValueKind;
 
 use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
 use crate::{AttributeStorage, Value, WidgetId};
+
+// pub(crate) mod resolver;
+pub(crate) mod values;
 
 pub(crate) struct ExprEvalCtx<'a, 'bp> {
     pub(crate) states: &'a States,
@@ -45,12 +49,12 @@ impl<'a> From<EvalValue<'a>> for NameThis<'a> {
     }
 }
 
-pub enum Either<'a> {
-    Static(CommonVal<'a>),
-    Dyn(SharedState<'a>),
+pub enum Either {
+    Static(CommonVal),
+    Dyn(SharedState),
 }
 
-impl<'a> Either<'a> {
+impl Either {
     pub fn load_bool(&self) -> bool {
         match self {
             Either::Static(val) => val.to_bool(),
@@ -65,7 +69,7 @@ impl<'a> Either<'a> {
         }
     }
 
-    pub fn to_common(&'a self) -> Option<CommonVal<'a>> {
+    pub fn to_common(&self) -> Option<CommonVal> {
         match self {
             Either::Static(val) => Some(*val),
             Either::Dyn(state) => state.to_common(),
@@ -73,13 +77,13 @@ impl<'a> Either<'a> {
     }
 }
 
-impl<'a> From<CommonVal<'a>> for Either<'a> {
-    fn from(value: CommonVal<'a>) -> Self {
+impl From<CommonVal> for Either {
+    fn from(value: CommonVal) -> Self {
         Self::Static(value)
     }
 }
 
-impl<'a> From<Number> for Either<'a> {
+impl From<Number> for Either {
     fn from(value: Number) -> Self {
         Self::Static(CommonVal::from(value))
     }
@@ -96,7 +100,7 @@ impl<'bp> Downgraded<'bp> {
 
 #[derive(Debug, PartialEq)]
 pub enum EvalValue<'bp> {
-    Static(CommonVal<'bp>),
+    Static(CommonVal),
     Dyn(ValueRef),
     State(StateId),
     ComponentAttributes(WidgetId),
@@ -123,41 +127,41 @@ pub enum EvalValue<'bp> {
 }
 
 impl<'bp> EvalValue<'bp> {
-    fn copy_with_sub(&self, value_id: ValueId) -> Self {
-        match self {
-            Self::Static(value) => Self::Static(*value),
-            Self::Dyn(val) => Self::Dyn(val.copy_with_sub(value_id)),
-            Self::String(s) => Self::String(*s),
-            Self::State(state_id) => Self::State(*state_id),
-            Self::ComponentAttributes(component_id) => Self::ComponentAttributes(*component_id),
-            Self::Index(value, index) => Self::Index(
-                value.copy_with_sub(value_id).into(),
-                index.copy_with_sub(value_id).into(),
-            ),
-            Self::Pending(_) => panic!("this should not be called on a pending value"),
-            // Self::Map(map) => Self::Map(
-            //     map.iter()
-            //         .map(|(k, v)| (k.clone(), v.copy_with_sub(value_id)))
-            //         .collect(),
-            // ),
-            Self::ExprList(list) => Self::ExprList(list),
-            Self::List(_) => panic!("copy should not be done on evaluated lists"),
-            Self::Map(map) => Self::Map(map),
-            Self::Negative(val) => Self::Negative(val.copy_with_sub(value_id).into()),
-            Self::Op(lhs, rhs, op) => Self::Op(
-                lhs.copy_with_sub(value_id).into(),
-                rhs.copy_with_sub(value_id).into(),
-                *op,
-            ),
-            Self::Not(val) => Self::Not(val.copy_with_sub(value_id).into()),
-            Self::Equality(lhs, rhs, eq) => Self::Equality(
-                lhs.copy_with_sub(value_id).into(),
-                rhs.copy_with_sub(value_id).into(),
-                *eq,
-            ),
-            Self::Empty => Self::Empty,
-        }
-    }
+    // fn copy_with_sub(&self, value_id: ValueId) -> Self {
+    //     match self {
+    //         Self::Static(value) => Self::Static(*value),
+    //         Self::Dyn(val) => Self::Dyn(val.copy_with_sub(value_id)),
+    //         Self::String(s) => Self::String(*s),
+    //         Self::State(state_id) => Self::State(*state_id),
+    //         Self::ComponentAttributes(component_id) => Self::ComponentAttributes(*component_id),
+    //         Self::Index(value, index) => Self::Index(
+    //             value.copy_with_sub(value_id).into(),
+    //             index.copy_with_sub(value_id).into(),
+    //         ),
+    //         Self::Pending(_) => panic!("this should not be called on a pending value"),
+    //         // Self::Map(map) => Self::Map(
+    //         //     map.iter()
+    //         //         .map(|(k, v)| (k.clone(), v.copy_with_sub(value_id)))
+    //         //         .collect(),
+    //         // ),
+    //         Self::ExprList(list) => Self::ExprList(list),
+    //         Self::List(_) => panic!("copy should not be done on evaluated lists"),
+    //         Self::Map(map) => Self::Map(map),
+    //         Self::Negative(val) => Self::Negative(val.copy_with_sub(value_id).into()),
+    //         Self::Op(lhs, rhs, op) => Self::Op(
+    //             lhs.copy_with_sub(value_id).into(),
+    //             rhs.copy_with_sub(value_id).into(),
+    //             *op,
+    //         ),
+    //         Self::Not(val) => Self::Not(val.copy_with_sub(value_id).into()),
+    //         Self::Equality(lhs, rhs, eq) => Self::Equality(
+    //             lhs.copy_with_sub(value_id).into(),
+    //             rhs.copy_with_sub(value_id).into(),
+    //             *eq,
+    //         ),
+    //         Self::Empty => Self::Empty,
+    //     }
+    // }
 
     // This is only used by the expression evaluation `Expression::Index`
     // If the lhs is a list of expression, the selected expression has to be evaluated
@@ -180,7 +184,10 @@ impl<'bp> EvalValue<'bp> {
             },
             EvalValue::List(list) => match path {
                 Path::Index(idx) if idx >= list.len() => NameThis::Nothing,
-                Path::Index(idx) => NameThis::Value(list[idx].copy_with_sub(value_id)),
+                Path::Index(idx) => {
+                    panic!("this should only ever happen when resolving a collection right?");
+                    // NameThis::Value(list[idx].copy_with_sub(value_id)),
+                }
                 Path::Key(_) => NameThis::Nothing,
             },
             EvalValue::Map(map) => match path {
@@ -196,10 +203,13 @@ impl<'bp> EvalValue<'bp> {
                 .map(EvalValue::Dyn)
                 .into(),
             EvalValue::Index(value, _) => value.get(path, value_id, states, attribs),
-            EvalValue::State(id) => states
-                .get(*id)
-                .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn))
-                .into(),
+            EvalValue::State(id) => {
+                // states
+                // .get(*id)
+                // .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn))
+                // .into();
+                panic!()
+            }
             EvalValue::ComponentAttributes(id) => {
                 let Some(attributes) = attribs.try_get(*id) else { return NameThis::Nothing };
                 let value = match path {
@@ -209,7 +219,8 @@ impl<'bp> EvalValue<'bp> {
                     },
                     Path::Index(_) => unreachable!("attributes are not indexed by numbers"),
                 };
-                NameThis::Value(value.copy_with_sub(value_id).into())
+                panic!("figure this out");
+                // NameThis::Value(value.copy_with_sub(value_id).into())
             }
             EvalValue::Pending(_) => {
                 unreachable!("pending values are resolved by the scope and should never exist here")
@@ -267,7 +278,7 @@ impl<'bp> EvalValue<'bp> {
             Self::String(val) => Self::String(*val),
             Self::State(id) => Self::State(*id),
             Self::ComponentAttributes(id) => Self::ComponentAttributes(*id),
-            Self::Pending(val) => Self::Dyn(val.to_value(value_id)),
+            Self::Pending(val) => Self::Dyn(val.subscribe(value_id)),
             Self::Index(value, index) => Self::Index(
                 value.inner_upgrade(value_id).into(),
                 index.inner_upgrade(value_id).into(),
@@ -306,68 +317,6 @@ impl<'bp> EvalValue<'bp> {
         Downgraded(self.inner_downgrade())
     }
 
-    #[deprecated]
-    pub fn str_for_each<F>(&self, mut f: F)
-    where
-        F: FnMut(&str),
-    {
-        let mut wrapped_f = |s: &str| {
-            f(s);
-            ControlFlow::Continue(())
-        };
-
-        match self.internal_str_iter(&mut wrapped_f) {
-            Some(control_flow) => control_flow,
-            None => ControlFlow::Break(()),
-        };
-    }
-
-    #[deprecated]
-    pub fn str_iter<F>(&self, mut f: F) -> ControlFlow<()>
-    where
-        F: FnMut(&str) -> ControlFlow<()>,
-    {
-        match self.internal_str_iter(&mut f) {
-            Some(control_flow) => control_flow,
-            None => ControlFlow::Break(()),
-        }
-    }
-
-    #[deprecated]
-    fn internal_str_iter<F>(&self, f: &mut F) -> Option<ControlFlow<()>>
-    where
-        F: FnMut(&str) -> ControlFlow<()>,
-    {
-        let val = match self {
-            EvalValue::List(list) => {
-                for value in list.iter() {
-                    value.internal_str_iter(f)?;
-                }
-                ControlFlow::Continue(())
-            }
-            EvalValue::Static(val) => {
-                let s = val.to_common_str();
-                let s = s.as_ref();
-                f(s)
-            }
-            EvalValue::Dyn(val) => {
-                let state = val.as_state()?;
-                let common = state.to_common()?;
-                let s = common.to_common_str();
-                let s = s.as_ref();
-                f(s)
-            }
-            EvalValue::Index(val, _) => val.internal_str_iter(f)?,
-            _ => {
-                let val = self.load_common_val()?;
-                let val = val.to_common()?;
-                f(val.to_common_str().as_ref())
-            }
-        };
-
-        Some(val)
-    }
-
     fn to_hoppstr(&self, tx: &mut Transaction<'_, 'bp>) {
         match self {
             EvalValue::List(list) => {
@@ -376,31 +325,29 @@ impl<'bp> EvalValue<'bp> {
                 }
             }
             EvalValue::Static(val) => {
-                let s = val.to_common_str();
-                match s {
-                    CommonString::Borrowed(s) => tx.add_slice(s),
-                    CommonString::Owned(s) => drop(write!(tx, "{s}")),
-                }
+                write!(tx, "{val}");
             }
             EvalValue::Dyn(val) => {
-                let Some(state) = val.as_state() else { return };
-                let Some(common) = state.to_common() else { return };
-                let s = common.to_common_str();
-                let s = s.as_ref();
-                write!(tx, "{s}");
+                panic!("should there ever be a dyn value?");
+                // let Some(state) = val.as_state() else { return };
+                // let Some(common) = state.to_common() else { return };
+                // let s = common.to_common_str();
+                // let s = s.as_ref();
+                // write!(tx, "{s}");
             }
             EvalValue::Index(val, _) => val.to_hoppstr(tx),
             _ => {
-                let Some(val) = self.load_common_val() else { return };
-                let Some(val) = val.to_common() else { return };
-                write!(tx, "{}", val.to_common_str().as_ref());
+                panic!("what do we do here?");
+                // let Some(val) = self.load_common_val() else { return };
+                // let Some(val) = val.to_common() else { return };
+                // write!(tx, "{}", val.to_common_str().as_ref());
             }
         }
     }
 
     /// Load a common value OR a shared state that can become a common value.
     /// This is only used by templates and not widgets / elements.
-    pub fn load_common_val(&self) -> Option<Either<'_>> {
+    pub fn load_common_val(&self) -> Option<Either> {
         match self {
             EvalValue::Static(val) => Some(Either::Static(*val)),
             EvalValue::Dyn(val) => Some(Either::Dyn(val.as_state()?)),
@@ -442,8 +389,8 @@ impl<'bp> EvalValue<'bp> {
                         let rhs = rhs.load_common_val()?;
                         lhs.to_common()? != rhs.to_common()?
                     }
-                    Equality::And => lhs.load_bool() && rhs.load_bool(),
-                    Equality::Or => lhs.load_bool() || rhs.load_bool(),
+                    // Equality::And => lhs.load_bool() && rhs.load_bool(),
+                    // Equality::Or => lhs.load_bool() || rhs.load_bool(),
                     Equality::Gt => lhs.load_number()? > rhs.load_number()?,
                     Equality::Gte => lhs.load_number()? >= rhs.load_number()?,
                     Equality::Lt => lhs.load_number()? < rhs.load_number()?,
@@ -473,7 +420,7 @@ impl<'bp> EvalValue<'bp> {
         }
     }
 
-    pub fn load_str<'a>(&'a self, strings: &'a Strings<'bp>) -> Option<HString<impl Iterator<Item = &str> + 'a>> {
+    pub fn load_str<'a>(&'a self, strings: &'a HStrings<'bp>) -> Option<HString<impl Iterator<Item = &str> + 'a>> {
         let EvalValue::String(hstr) = self else { return None };
         Some(strings.get(*hstr))
     }
@@ -487,7 +434,7 @@ impl<'bp> EvalValue<'bp> {
     pub(crate) fn load<T>(&self) -> Option<T>
     where
         T: 'static,
-        T: for<'a> TryFrom<CommonVal<'a>>,
+        T: TryFrom<CommonVal>,
         T: Copy + PartialEq,
     {
         match self {
@@ -534,8 +481,8 @@ impl From<PendingValue> for EvalValue<'_> {
     }
 }
 
-impl<'bp> From<CommonVal<'bp>> for EvalValue<'bp> {
-    fn from(value: CommonVal<'bp>) -> Self {
+impl<'bp> From<CommonVal> for EvalValue<'bp> {
+    fn from(value: CommonVal) -> Self {
         Self::Static(value)
     }
 }
@@ -543,17 +490,6 @@ impl<'bp> From<CommonVal<'bp>> for EvalValue<'bp> {
 impl From<ValueRef> for EvalValue<'_> {
     fn from(value: ValueRef) -> Self {
         Self::Dyn(value)
-    }
-}
-
-impl<'a> TryFrom<&EvalValue<'a>> for &'a str {
-    type Error = ();
-
-    fn try_from(value: &EvalValue<'a>) -> Result<Self, Self::Error> {
-        match value {
-            EvalValue::Static(CommonVal::Str(s)) => Ok(s),
-            _ => Err(()),
-        }
     }
 }
 
@@ -578,20 +514,16 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
     //     Self::new(ctx, subscriber, deferred)
     // }
 
-    pub(crate) fn resolve(&mut self, expression: &'bp Expression, strings: &mut Strings<'bp>) -> EvalValue<'bp> {
+    pub(crate) fn resolve(&mut self, expression: &'bp Expression, strings: &mut HStrings<'bp>) -> EvalValue<'bp> {
         match expression {
             // -----------------------------------------------------------------------------
             //   - Values -
             // -----------------------------------------------------------------------------
             &Expression::Primitive(val) => EvalValue::Static(val.into()),
-            Expression::Str(s) => EvalValue::Static(CommonVal::Str(s)),
-            // Expression::Map(map) => {
-            //     let inner = map
-            //         .iter()
-            //         .map(|(key, expr)| (key.as_str(), self.resolve(expr)))
-            //         .collect();
-            //     EvalValue::Map(inner)
-            // }
+            Expression::Str(s) => {
+                let s = strings.insert_with(|tx| tx.add_slice(s));
+                EvalValue::String(s)
+            }
             Expression::Map(map) => EvalValue::Map(map),
             Expression::List(list) if self.deferred => EvalValue::ExprList(list),
             Expression::List(list) => {
@@ -622,6 +554,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
                 self.resolve(rhs, strings).into(),
                 *eq,
             ),
+            Expression::LogicalOp(expression, expression1, logical_op) => todo!(),
 
             // -----------------------------------------------------------------------------
             //   - Lookups -
@@ -650,10 +583,11 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
             //   - Function call -
             // -----------------------------------------------------------------------------
             Expression::Call { fun: _, args: _ } => todo!(),
+            Expression::Primitive(primitive) => todo!(),
         }
     }
 
-    fn lookup(&mut self, expression: &'bp Expression, strings: &mut Strings<'bp>) -> EvalValue<'bp> {
+    fn lookup(&mut self, expression: &'bp Expression, strings: &mut HStrings<'bp>) -> EvalValue<'bp> {
         match expression {
             Expression::Ident(ident) => match &**ident {
                 "state" => self.ctx.scope.get_state(),
@@ -710,7 +644,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
 pub(crate) fn eval<'bp>(
     expr: &'bp Expression,
     ctx: &ExprEvalCtx<'_, 'bp>,
-    strings: &mut Strings<'bp>,
+    strings: &mut HStrings<'bp>,
     value_id: impl Into<ValueId>,
 ) -> Value<'bp, EvalValue<'bp>> {
     let value_id = value_id.into();
@@ -728,7 +662,7 @@ pub(crate) fn eval<'bp>(
 pub(crate) fn eval_collection<'s, 'bp>(
     expr: &'bp Expression,
     ctx: &ExprEvalCtx<'_, 'bp>,
-    strings: &mut Strings<'bp>,
+    strings: &mut HStrings<'bp>,
     value_id: ValueId,
 ) -> Value<'bp, Collection<'bp>> {
     let value_id = value_id.into();

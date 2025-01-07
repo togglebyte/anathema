@@ -3,7 +3,9 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{
+    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
+};
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -121,7 +123,8 @@ impl Widget for Overflow {
         // }
 
         let attributes = ctx.attribute_storage.get(id);
-        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+        // let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+        let axis = panic!("needs new resolver");
 
         let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
 
@@ -143,7 +146,8 @@ impl Widget for Overflow {
             constraints.make_height_tight(height);
         }
 
-        self.direction = attributes.get(DIRECTION).unwrap_or_default();
+        // self.direction = attributes.get(DIRECTION).unwrap_or_default();
+        self.direction = panic!("resolver");
 
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = true;
@@ -164,8 +168,10 @@ impl Widget for Overflow {
         mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let direction = attributes.get(DIRECTION).unwrap_or_default();
-        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+        // let direction = attributes.get(DIRECTION).unwrap_or_default();
+        let direction = panic!("resolver");
+        // let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+        let axis = panic!("resolver, new, please");
         let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset

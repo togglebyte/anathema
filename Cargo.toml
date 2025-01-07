@@ -23,6 +23,7 @@ anathema-templates = { path = "./anathema-templates" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-geometry = { path = "./anathema-geometry" }
 anathema-strings = { path = "./anathema-strings" }
+anathema-value-resolver = { path = "./anathema-value-resolver" }
 
 [features]
 default = []
@@ -55,6 +56,7 @@ members = [
     "anathema-strings",
     "anathema-templates", 
     "anathema-widgets", 
+    "anathema-value-resolver", 
 ]
 
 [workspace.lints.rust]

@@ -49,11 +49,21 @@ impl Component for Button {
     type Message = ();
     type State = ButtonState;
 
-    fn on_blur(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: DeprecatedContext<'_, Self::State>) {
+    fn on_blur(
+        &mut self,
+        state: &mut Self::State,
+        _elements: Elements<'_, '_>,
+        _context: DeprecatedContext<'_, Self::State>,
+    ) {
         state.in_focus.set(false);
     }
 
-    fn on_focus(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: DeprecatedContext<'_, Self::State>) {
+    fn on_focus(
+        &mut self,
+        state: &mut Self::State,
+        _elements: Elements<'_, '_>,
+        _context: DeprecatedContext<'_, Self::State>,
+    ) {
         state.in_focus.set(true);
     }
 

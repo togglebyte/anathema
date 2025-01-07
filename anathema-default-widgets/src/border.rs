@@ -59,15 +59,15 @@ impl Default for Sides {
     }
 }
 
-impl TryFrom<&EvalValue<'_>> for Sides {
-    type Error = ();
+// impl TryFrom<&EvalValue<'_>> for Sides {
+//     type Error = ();
 
-    fn try_from(value: &EvalValue<'_>) -> Result<Self, Self::Error> {
-        let mut sides = Sides::EMPTY;
-        value.str_for_each(|s| sides |= s.into());
-        Ok(sides)
-    }
-}
+//     fn try_from(value: &EvalValue<'_>) -> Result<Self, Self::Error> {
+//         let mut sides = Sides::EMPTY;
+//         value.str_for_each(|s| sides |= s.into());
+//         Ok(sides)
+//     }
+// }
 
 impl From<&str> for Sides {
     fn from(value: &str) -> Self {
@@ -395,38 +395,40 @@ impl Widget for Border {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribute_storage.get_mut(id);
-        self.sides = attributes
-            .get_val("sides")
-            .and_then(|s| Sides::try_from(s.deref()).ok())
-            .unwrap_or_default();
+        // self.sides = attributes
+        //     .get_val("sides")
+        //     .and_then(|s| Sides::try_from(s.deref()).ok())
+        //     .unwrap_or_default();
 
+        self.sides = panic!();
         self.border_style = match attributes.get_val(BORDER_STYLE) {
             None => BorderStyle::Thin,
             Some(val) => {
                 let mut edges = DEFAULT_SLIM_EDGES;
                 let mut index = 0;
+                panic!();
 
-                val.str_iter(|s| {
-                    match s {
-                        "thin" => return ControlFlow::Break(()),
-                        "thick" => {
-                            edges = BorderStyle::Thick.edges();
-                            return ControlFlow::Break(());
-                        }
-                        _ => (),
-                    }
+                // val.str_iter(|s| {
+                //     match s {
+                //         "thin" => return ControlFlow::Break(()),
+                //         "thick" => {
+                //             edges = BorderStyle::Thick.edges();
+                //             return ControlFlow::Break(());
+                //         }
+                //         _ => (),
+                //     }
 
-                    let mut glyphs = Glyphs::new(s);
-                    while let Some(g) = glyphs.next(ctx.glyph_map) {
-                        edges[index] = g;
-                        index += 1;
-                        if index >= DEFAULT_SLIM_EDGES.len() {
-                            break;
-                        };
-                    }
+                //     let mut glyphs = Glyphs::new(s);
+                //     while let Some(g) = glyphs.next(ctx.glyph_map) {
+                //         edges[index] = g;
+                //         index += 1;
+                //         if index >= DEFAULT_SLIM_EDGES.len() {
+                //             break;
+                //         };
+                //     }
 
-                    ControlFlow::Break(())
-                });
+                //     ControlFlow::Break(())
+                // });
                 BorderStyle::Custom(edges)
             }
         };
@@ -513,18 +515,19 @@ impl Widget for Border {
 }
 
 pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-    let sides = attributes
-        .get_val("sides")
-        .and_then(|s| Sides::try_from(s.deref()).ok())
-        .unwrap_or_default();
+    panic!("need new value resolver");
+    // let sides = attributes
+    //     .get_val("sides")
+    //     .and_then(|s| Sides::try_from(s.deref()).ok())
+    //     .unwrap_or_default();
 
-    let text = Border {
-        sides,
-        edges: DEFAULT_SLIM_EDGES,
-        border_style: BorderStyle::Thin,
-    };
+    // let text = Border {
+    //     sides,
+    //     edges: DEFAULT_SLIM_EDGES,
+    //     border_style: BorderStyle::Thin,
+    // };
 
-    Box::new(text)
+    // Box::new(text)
 }
 //}
 

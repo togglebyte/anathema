@@ -4,7 +4,7 @@ use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
 use crate::paint::{PainFilter, PaintCtx, Unsized};
 use crate::widget::{ForEach, PaintChildren, PositionChildren};
-use crate::{AttributeStorage, LayoutForEach, LayoutChildren, WidgetId};
+use crate::{AttributeStorage, LayoutChildren, LayoutForEach, WidgetId};
 
 #[derive(Debug)]
 pub struct Element<'bp> {

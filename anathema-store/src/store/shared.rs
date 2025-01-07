@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use super::{OwnedKey};
+use super::OwnedKey;
 use crate::slab::{RcElement, RcSlab, SharedSlab};
 
 // -----------------------------------------------------------------------------

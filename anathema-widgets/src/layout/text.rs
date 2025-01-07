@@ -25,20 +25,20 @@ impl Wrap {
     }
 }
 
-impl TryFrom<CommonVal<'_>> for Wrap {
-    type Error = ();
+// impl TryFrom<CommonVal> for Wrap {
+//     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value {
-            CommonVal::Str(wrap) => match wrap {
-                "normal" => Ok(Wrap::Normal),
-                "break" => Ok(Wrap::WordBreak),
-                _ => Err(()),
-            },
-            _ => Err(()),
-        }
-    }
-}
+//     fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
+//         match value {
+//             CommonVal::Str(wrap) => match wrap {
+//                 "normal" => Ok(Wrap::Normal),
+//                 "break" => Ok(Wrap::WordBreak),
+//                 _ => Err(()),
+//             },
+//             _ => Err(()),
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 pub(crate) struct LineWidth(usize);

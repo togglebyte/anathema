@@ -92,7 +92,7 @@ impl State for Number {
         self.as_int() != 0
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         let val = match self.is_float() {
             true => CommonVal::Float(self.as_float()),
             false => CommonVal::Int(self.as_int()),
@@ -120,6 +120,12 @@ macro_rules! impl_from {
         impl From<$ty> for Number {
             fn from(val: $ty) -> Self {
                 Self::$variant(val)
+            }
+        }
+
+        impl From<&$ty> for Number {
+            fn from(val: &$ty) -> Self {
+                Self::$variant(*val)
             }
         }
     };

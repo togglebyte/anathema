@@ -10,7 +10,7 @@ pub use crate::store::{
     clear_all_changes, clear_all_futures, clear_all_subs, debug, drain_changes, drain_futures, drain_watchers,
     register_future, Change, Changes, FutureValues, Subscriber, Watched,
 };
-pub use crate::value::{List, Map, PendingValue, SharedState, Value, ValueRef};
+pub use crate::value::{List, Map, PendingValue, SharedState, Value, ValueRef, Type};
 
 mod colors;
 mod common;

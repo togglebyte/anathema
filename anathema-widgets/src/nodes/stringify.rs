@@ -4,7 +4,8 @@ use std::ops::ControlFlow;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::ValueId;
 
-use super::{element::Element, WidgetContainer};
+use super::element::Element;
+use super::WidgetContainer;
 use crate::{AttributeStorage, WidgetKind};
 
 /// Stringify the tree.

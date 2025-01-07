@@ -4,7 +4,7 @@ use super::Value;
 use crate::store::changed;
 use crate::{Change, CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
 
-// TODO: Optimisation: changing the list should probably just create one 
+// TODO: Optimisation: changing the list should probably just create one
 //       change instead of two for the list.
 //
 //       Since the list is used with `deref_mut` it creates a `Unique<T>`
@@ -79,7 +79,7 @@ impl<T: 'static + State> Value<List<T>> {
             let list = &mut *self.to_mut();
             let index = list.inner.len();
             let value = value.into();
-            let pending = value.to_pending();
+            let pending = value.reference();
             list.inner.push_back(value);
 
             (index as u32, pending)
@@ -90,7 +90,7 @@ impl<T: 'static + State> Value<List<T>> {
     /// Push a value to the front of the list
     pub fn push_front(&mut self, value: impl Into<Value<T>>) {
         let value = value.into();
-        let pending = value.to_pending();
+        let pending = value.reference();
         self.to_mut().inner.push_front(value);
         changed(self.key, Change::Inserted(0, pending));
     }
@@ -102,7 +102,7 @@ impl<T: 'static + State> Value<List<T>> {
     /// Will panic if the index is out of bounds
     pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
         let value = value.into();
-        let pending = value.to_pending();
+        let pending = value.reference();
         self.to_mut().inner.insert(index, value);
         changed(self.key, Change::Inserted(index as u32, pending));
     }
@@ -158,10 +158,10 @@ impl<T: 'static + State> State for List<T> {
     fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
         let Path::Index(idx) = path else { return None };
         let value = self.inner.get(idx)?;
-        Some(value.to_pending())
+        Some(value.reference())
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         None
     }
 

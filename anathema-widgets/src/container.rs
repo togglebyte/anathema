@@ -3,10 +3,11 @@ use std::ops::ControlFlow;
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_templates::blueprints::Blueprint;
 
+use crate::expressions::EvalValue;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach, PositionChildren};
-use crate::{AttributeStorage, LayoutForEach, LayoutChildren, PaintChildren, WidgetId};
+use crate::{AttributeStorage, LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -110,21 +111,23 @@ impl Container {
                 let mut used_width = 0;
                 loop {
                     let pos = LocalPos::new(used_width, y);
-                    let controlflow = fill.str_iter(|s| {
-                        let glyphs = Glyphs::new(s);
-                        let Some(p) = ctx.place_glyphs(glyphs, pos) else {
-                            return ControlFlow::Break(());
-                        };
-                        used_width += p.x - used_width;
-                        match used_width >= ctx.local_size.width as u16 {
-                            true => ControlFlow::Break(()),
-                            false => ControlFlow::Continue(()),
-                        }
-                    });
 
-                    if let ControlFlow::Break(()) = controlflow {
-                        break;
-                    }
+                    panic!();
+                    // let controlflow = fill.str_iter(|s| {
+                    //     let glyphs = Glyphs::new(s);
+                    //     let Some(p) = ctx.place_glyphs(glyphs, pos) else {
+                    //         return ControlFlow::Break(());
+                    //     };
+                    //     used_width += p.x - used_width;
+                    //     match used_width >= ctx.local_size.width as u16 {
+                    //         true => ControlFlow::Break(()),
+                    //         false => ControlFlow::Continue(()),
+                    //     }
+                    // });
+
+                    // if let ControlFlow::Break(()) = controlflow {
+                    //     break;
+                    // }
                 }
             }
         }

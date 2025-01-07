@@ -3,7 +3,7 @@ use std::rc::Rc;
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
-use crate::{Expression, ComponentBlueprintId};
+use crate::{ComponentBlueprintId, Expression};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {

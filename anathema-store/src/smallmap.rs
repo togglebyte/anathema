@@ -20,7 +20,8 @@ impl SlabIndex for SmallIndex {
 
     fn from_usize(index: usize) -> Self
     where
-        Self: Sized {
+        Self: Sized,
+    {
         Self(index as u8)
     }
 }

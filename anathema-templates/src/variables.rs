@@ -12,6 +12,10 @@ use crate::primitives::Primitive;
 pub struct Globals(HashMap<Rc<str>, Variable>);
 
 impl Globals {
+    pub fn empty() -> Self {
+        Self(HashMap::new())
+    }
+
     pub fn new(hm: HashMap<Rc<str>, Variable>) -> Self {
         Self(hm)
     }
@@ -51,7 +55,6 @@ impl SlabIndex for VarId {
         Self(index)
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub enum Variable {

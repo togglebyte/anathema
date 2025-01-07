@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use anathema_strings::Strings;
+use anathema_strings::HStrings;
 use anathema_templates::{ComponentBlueprintId, Globals};
 
 pub use self::constraints::Constraints;
@@ -32,7 +32,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub components: &'frame mut Components,
     pub(super) force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
-    pub strings: &'frame mut Strings<'bp>,
+    pub strings: &'frame mut HStrings<'bp>,
     pub viewport: Viewport,
 
     // Need these for the eval context
@@ -52,7 +52,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         changelist: &'frame mut ChangeList,
         glyph_map: &'frame mut GlyphMap,
         dirty_widgets: &'frame mut DirtyWidgets,
-        strings: &'frame mut Strings<'bp>,
+        strings: &'frame mut HStrings<'bp>,
         viewport: Viewport,
         force_layout: bool,
     ) -> Self {
@@ -99,7 +99,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
 
     pub(super) fn changes<F>(&mut self, widget_id: WidgetId, mut f: F) -> Option<()>
     where
-        F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, &mut Strings<'bp>, Subscriber),
+        F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
     {
         let changes = self.changelist.drain(widget_id)?;
 
@@ -126,7 +126,7 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) floating_widgets: &'frame mut FloatingWidgets,
     pub(super) attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub(super) states: &'frame mut States,
-    pub(super) strings: &'frame mut Strings<'bp>,
+    pub(super) strings: &'frame mut HStrings<'bp>,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
     pub(super) scope: &'frame Scope<'bp>,
@@ -207,15 +207,16 @@ impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
         match &mut input.kind {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
             WidgetKind::Element(el) => {
-                match self
-                    .attributes
-                    .get(el.id())
-                    .get::<Display>("display")
-                    .unwrap_or_default()
-                {
-                    Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
-                    Display::Exclude => ControlFlow::Continue(None),
-                }
+                panic!("once attributes are combined with strings this will be doable");
+                // match self
+                //     .attributes
+                //     .get(el.id())
+                //     .get::<Display>("display")
+                //     .unwrap_or_default()
+                // {
+                //     Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
+                //     Display::Exclude => ControlFlow::Continue(None),
+                // }
             }
             WidgetKind::ControlFlow(widget) => {
                 // TODO `update` should probably be called `layout`

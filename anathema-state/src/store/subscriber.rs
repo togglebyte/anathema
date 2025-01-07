@@ -87,7 +87,7 @@ pub(crate) struct SubscriberDebug(pub(crate) Subscriber);
 
 impl DebugWriter for SubscriberDebug {
     fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        writeln!(output, "<sub key {:?} | index {}>", self.0 .0, self.0.1.as_usize())
+        writeln!(output, "<sub key {:?} | index {}>", self.0 .0, self.0 .1.as_usize())
     }
 }
 

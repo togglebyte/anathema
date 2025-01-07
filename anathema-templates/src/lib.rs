@@ -1,4 +1,4 @@
-pub use crate::components::{SourceKind, ToSourceKind, ComponentBlueprintId};
+pub use crate::components::{ComponentBlueprintId, SourceKind, ToSourceKind};
 pub use crate::document::Document;
 pub use crate::expressions::Expression;
 pub use crate::lexer::Lexer;

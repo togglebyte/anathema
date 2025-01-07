@@ -3,6 +3,7 @@ use std::fmt::Display;
 use anathema_geometry::{Pos, Size};
 use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeValues};
+use anathema_strings::HStrings;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{CellAttributes, Glyph, GlyphMap};
 use anathema_widgets::{
@@ -46,6 +47,7 @@ impl Backend for TestBackend {
         _: &mut GlyphMap,
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
+        strings: &HStrings<'bp>,
         ignore_floats: bool,
     ) {
         anathema_widgets::paint::paint(
@@ -53,6 +55,7 @@ impl Backend for TestBackend {
             &mut self.glyph_map,
             widgets,
             attribute_storage,
+            strings,
             ignore_floats,
         );
     }

@@ -47,7 +47,7 @@ impl From<(u8, u8, u8)> for Primitive {
     }
 }
 
-impl From<Primitive> for CommonVal<'_> {
+impl From<Primitive> for CommonVal {
     fn from(value: Primitive) -> Self {
         match value {
             Primitive::Bool(val) => Self::Bool(val),

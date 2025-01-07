@@ -1,4 +1,3 @@
-
 use anathema_store::slab::Slab;
 
 pub use self::transaction::Transaction;

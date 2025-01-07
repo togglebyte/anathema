@@ -303,13 +303,13 @@ pub(crate) struct EventCtx<'a, 'rt, 'bp> {
     pub states: &'a mut States,
     pub attribute_storage: &'a mut AttributeStorage<'bp>,
     pub assoc_events: &'a mut AssociatedEvents,
-    pub focus_queue: &'a mut FocusQueue<'static>,
+    pub focus_queue: &'a mut FocusQueue,
     pub context: UntypedContext<'rt>,
 }
 
 pub struct GlobalContext<'rt> {
     emitter: &'rt Emitter,
-    focus_queue: &'rt mut FocusQueue<'static>,
+    focus_queue: &'rt mut FocusQueue,
 }
 
 impl<'rt> GlobalContext<'rt> {
@@ -322,7 +322,7 @@ impl<'rt> GlobalContext<'rt> {
 
     /// Queue a focus call to a component that might have
     /// an attribute matching the key and value pair
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal<'static>>) {
+    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal>) {
         self.focus_queue.push(key.into(), value.into());
     }
 }

@@ -19,6 +19,22 @@ pub enum Op {
 pub enum Equality {
     Eq,
     NotEq,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum LogicalOp {
+    And,
+    Or,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum BoolOp {
+    Eq,
+    NotEq,
     And,
     Or,
     Gt,
@@ -44,6 +60,7 @@ pub enum Expression {
 
     // Conditionals
     Equality(Box<Self>, Box<Self>, Equality),
+    LogicalOp(Box<Self>, Box<Self>, LogicalOp),
 
     // Lookup
     Ident(String),
@@ -125,14 +142,19 @@ impl Display for Expression {
                 let equality = match equality {
                     Equality::Eq => "==",
                     Equality::NotEq => "!=",
-                    Equality::And => "&&",
-                    Equality::Or => "||",
                     Equality::Gt => ">",
                     Equality::Gte => ">=",
                     Equality::Lt => "<",
                     Equality::Lte => "<=",
                 };
                 write!(f, "{lhs} {equality} {rhs}")
+            }
+            Self::LogicalOp(lhs, rhs, op) => {
+                let op = match op {
+                    LogicalOp::And => "&&",
+                    LogicalOp::Or => "||",
+                };
+                write!(f, "{lhs} {op} {rhs}")
             }
             Self::Call { fun, args } => {
                 write!(
@@ -252,9 +274,9 @@ pub fn eq(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
 }
 
 pub fn and(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
-    Expression::Equality(lhs, rhs, Equality::And).into()
+    Expression::LogicalOp(lhs, rhs, LogicalOp::And).into()
 }
 
 pub fn or(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
-    Expression::Equality(lhs, rhs, Equality::Or).into()
+    Expression::LogicalOp(lhs, rhs, LogicalOp::Or).into()
 }

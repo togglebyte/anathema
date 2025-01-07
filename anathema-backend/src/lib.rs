@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
+use anathema_strings::HStrings;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
@@ -27,6 +28,7 @@ pub trait Backend {
         glyph_map: &mut GlyphMap,
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
+        strings: &HStrings<'bp>,
         ignore_floats: bool,
     );
 
@@ -123,7 +125,8 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Paint -
         // -----------------------------------------------------------------------------
         let mut for_each = PaintChildren::new(self.tree.view_mut());
-        self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage, true);
+        self.backend
+            .paint(ctx.glyph_map, for_each, ctx.attribute_storage, ctx.strings, true);
 
         self.floating();
     }

@@ -36,7 +36,7 @@ impl<'tree, 'bp> Elements<'tree, 'bp> {
     pub fn by_attribute<'a>(
         &mut self,
         key: &'a str,
-        value: impl Into<CommonVal<'a>>,
+        value: impl Into<CommonVal>,
     ) -> ElementQuery<'_, 'tree, 'bp, Kind<'a>> {
         self.make_query(Kind::ByAttribute(key, value.into()))
     }
@@ -87,7 +87,7 @@ where
     pub fn by_attribute<'a>(
         self,
         key: &'a str,
-        value: impl Into<CommonVal<'a>>,
+        value: impl Into<CommonVal>,
     ) -> ElementQuery<'el, 'tree, 'bp, Chain<T, Kind<'a>>> {
         ElementQuery {
             query: Query {
@@ -148,9 +148,8 @@ where
 
         match ret_val {
             Some(val) => ControlFlow::Break(val),
-            None => ControlFlow::Continue(())
+            None => ControlFlow::Continue(()),
         }
-
     }
 }
 
@@ -160,7 +159,7 @@ where
 #[derive(Debug, Copy, Clone)]
 pub enum Kind<'a> {
     ByTag(&'a str),
-    ByAttribute(&'a str, CommonVal<'a>),
+    ByAttribute(&'a str, CommonVal),
     AtPosition(Pos),
     ById(WidgetId),
 }

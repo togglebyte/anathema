@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use anathema_state::{PendingValue, ValueRef};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
-use anathema_strings::Strings;
+use anathema_strings::HStrings;
 use anathema_templates::Expression;
 
 use crate::expressions::{Either, EvalValue, ExprEvalCtx};
@@ -64,14 +64,14 @@ impl<'bp, T> Value<'bp, T> {
 }
 
 impl<'bp> Value<'bp, EvalValue<'bp>> {
-    pub fn load_common_val(&self) -> Option<Either<'_>> {
+    pub fn load_common_val(&self) -> Option<Either> {
         self.inner.load_common_val()
     }
 
     /// Re-evaluate the value if it has been removed.
     /// This will replace the inner value with an empty EvalValue
     /// and register the value for future changes
-    pub(crate) fn reload_val(&mut self, id: ValueId, ctx: &ExprEvalCtx<'_, 'bp>, strings: &mut Strings<'bp>) {
+    pub(crate) fn reload_val(&mut self, id: ValueId, ctx: &ExprEvalCtx<'_, 'bp>, strings: &mut HStrings<'bp>) {
         let Some(expr) = self.expr else { return };
         let Value { inner, .. } = crate::expressions::eval(expr, ctx, strings, id);
         self.inner = inner;
@@ -82,7 +82,7 @@ impl<'bp> Value<'bp, Collection<'bp>> {
     /// Re-evaluate the value if it has been removed.
     /// This will replace the inner value with an empty EvalValue
     /// and register the value for future changes
-    pub(crate) fn reload_val(&mut self, id: ValueId, ctx: &ExprEvalCtx<'_, 'bp>, strings: &mut Strings<'bp>) {
+    pub(crate) fn reload_val(&mut self, id: ValueId, ctx: &ExprEvalCtx<'_, 'bp>, strings: &mut HStrings<'bp>) {
         let Some(expr) = self.expr else { return };
         let Value { inner, .. } = crate::expressions::eval_collection(expr, ctx, strings, id);
         self.inner = inner;

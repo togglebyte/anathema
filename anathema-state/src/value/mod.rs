@@ -21,6 +21,34 @@ use crate::{Change, Subscriber};
 mod list;
 mod map;
 
+trait TypeId {
+    const ID: u16;
+}
+
+impl TypeId for String {
+    const ID: u16 = Type::String as u16;
+}
+
+impl TypeId for i64 {
+    const ID: u16 = Type::Int as u16;
+}
+
+impl TypeId for f64 {
+    const ID: u16 = Type::Float as u16;
+}
+
+impl<T> TypeId for List<T> {
+    const ID: u16 = Type::List as u16;
+}
+
+impl<T> TypeId for Map<T> {
+    const ID: u16 = Type::Map as u16;
+}
+
+// impl<T> TypeId for T where T: State {
+//     const ID: u16 = 3;
+// }
+
 /// A value that reacts to change.
 ///
 /// The value is stored in a global store and accessed via the `Value`.
@@ -75,7 +103,7 @@ impl<T: AnyState + 'static> Value<T> {
     /// There can be several shared references to a given value as long as there
     /// is no unique access to the value.
     #[must_use]
-    pub fn to_ref(&self) -> Shared<'_, T> {
+    pub fn to_ref(&self) -> Shared<T> {
         let (key, value) = make_shared(self.key.owned()).expect("the value exists as it's coming directly from `Self`");
 
         Shared {
@@ -99,11 +127,11 @@ impl<T: AnyState + 'static> Value<T> {
 
     /// A Pending value that can later become a value reference when
     /// combined with a subscriber.
-    pub fn to_pending(&self) -> PendingValue {
+    pub fn reference(&self) -> PendingValue {
         PendingValue(self.key)
     }
 
-    pub fn shared_state(&self) -> Option<SharedState<'_>> {
+    pub fn shared_state(&self) -> Option<SharedState> {
         let (key, value) = try_make_shared(self.key.owned())?;
         let shared = SharedState::new(key, value);
         Some(shared)
@@ -119,6 +147,13 @@ impl<T: AnyState + 'static> Value<T> {
     pub fn set(&mut self, new_value: T) {
         *self.to_mut() = new_value;
     }
+
+    // pub fn consume(self) -> Box<dyn AnyState> {
+    //     changed(self.key, Change::Dropped);
+    //     let value = get_unique(self.key.owned());
+    //     std::mem::forget(self);
+    //     value.val
+    // }
 }
 
 /// Copy the inner value from the owned value.
@@ -186,7 +221,10 @@ impl<'a, T> DerefMut for Unique<'a, T> {
 
 impl<'a, T: 'static> Drop for Unique<'a, T> {
     fn drop(&mut self) {
-        let value = self.value.take().expect("`Unique` always has a value as it's checked out");
+        let value = self
+            .value
+            .take()
+            .expect("`Unique` always has a value as it's checked out");
 
         // NOTE: this is the only place where self.value = None
         return_owned(self.key.owned(), value);
@@ -231,12 +269,12 @@ impl ElementState {
     }
 }
 
-pub struct Shared<'a, T: 'static> {
-    state: SharedState<'a>,
+pub struct Shared<T: 'static> {
+    state: SharedState,
     _p: PhantomData<T>,
 }
 
-impl<'a, T> Shared<'a, T> {
+impl<T> Shared<T> {
     fn new(key: SharedKey, value: RcElement<OwnedValue>) -> Self {
         Self {
             state: SharedState::new(key, value),
@@ -249,7 +287,7 @@ impl<'a, T> Shared<'a, T> {
     }
 }
 
-impl<'a, T> Deref for Shared<'a, T> {
+impl<T> Deref for Shared<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -257,13 +295,13 @@ impl<'a, T> Deref for Shared<'a, T> {
     }
 }
 
-impl<T> AsRef<T> for Shared<'_, T> {
+impl<T> AsRef<T> for Shared<T> {
     fn as_ref(&self) -> &T {
         self.deref()
     }
 }
 
-impl<T: Debug> Debug for Shared<'_, T> {
+impl<T: Debug> Debug for Shared<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let state = self
             .state
@@ -279,29 +317,27 @@ impl<T: Debug> Debug for Shared<'_, T> {
 }
 
 /// Shared state
-pub struct SharedState<'a> {
+pub struct SharedState {
     inner: ElementState,
     key: SharedKey,
-    _p: PhantomData<&'a ()>,
 }
 
-impl<'a> SharedState<'a> {
+impl SharedState {
     fn new(key: SharedKey, state: RcElement<OwnedValue>) -> Self {
         Self {
             key,
             inner: ElementState::Alive(state),
-            _p: PhantomData,
         }
     }
 }
 
-impl PartialEq for SharedState<'_> {
+impl PartialEq for SharedState {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
     }
 }
 
-impl<'a> Deref for SharedState<'a> {
+impl Deref for SharedState {
     type Target = Box<dyn AnyState>;
 
     fn deref(&self) -> &Self::Target {
@@ -309,7 +345,7 @@ impl<'a> Deref for SharedState<'a> {
     }
 }
 
-impl<'a> Drop for SharedState<'a> {
+impl Drop for SharedState {
     fn drop(&mut self) {
         self.inner.drop_value();
         return_shared(self.key);
@@ -346,7 +382,7 @@ pub struct ValueRef {
 
 impl ValueRef {
     /// Load the value. This will return `None` if the owner has dropped the value
-    pub fn value<T: 'static>(&self) -> Option<Shared<'_, T>> {
+    pub fn value<T: 'static>(&self) -> Option<Shared<T>> {
         let (key, value) = try_make_shared(self.value_key.owned())?;
         let shared = Shared::new(key, value);
         Some(shared)
@@ -355,7 +391,7 @@ impl ValueRef {
     /// Try to get access to the underlying value as a `dyn AnyState`.
     /// This will return `None` if the `Value<T>` behind this `ValueRef` has
     /// been dropped.
-    pub fn as_state(&self) -> Option<SharedState<'_>> {
+    pub fn as_state(&self) -> Option<SharedState> {
         let (key, value) = try_make_shared(self.value_key.owned())?;
         let shared = SharedState::new(key, value);
         Some(shared)
@@ -390,11 +426,31 @@ impl Drop for ValueRef {
 pub struct PendingValue(ValueKey);
 
 impl PendingValue {
-    pub fn to_value(&self, subscriber: Subscriber) -> ValueRef {
+    pub fn subscribe(self, subscriber: Subscriber) -> ValueRef {
         subscribe(self.0.sub(), subscriber);
         ValueRef {
             value_key: self.0,
             subscriber,
+        }
+    }
+
+    /// Load the value. This will return `None` if the owner has dropped the value
+    pub fn value<T: 'static>(&self) -> Option<Shared<T>> {
+        let (key, value) = try_make_shared(self.0.owned())?;
+        let shared = Shared::new(key, value);
+        Some(shared)
+    }
+
+    pub fn type_info(&self) -> Type {
+        let type_info = self.0.owned().aux();
+        match type_info {
+            1 => Type::Int,
+            2 => Type::Float,
+            4 => Type::String,
+            3 => Type::Map,
+            4 => Type::List,
+            5 => Type::Composite,
+            _ => unreachable!("corrupt type information")
         }
     }
 
@@ -412,6 +468,17 @@ impl PendingValue {
     pub fn monitor(&self, watcher: Watcher) {
         monitor(self.0.owned(), watcher);
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(u16)]
+pub enum Type {
+    Int = 1,
+    Float,
+    String,
+    Map,
+    List,
+    Composite
 }
 
 #[cfg(test)]
@@ -481,7 +548,7 @@ mod test {
         let mut value = Value::new(1);
         assert!(!value.to_mut().is_monitored());
 
-        value.to_pending().monitor(Watcher::new(0));
+        value.reference().monitor(Watcher::new(0));
         assert!(value.to_mut().is_monitored());
 
         // Modify value
@@ -495,7 +562,7 @@ mod test {
     #[test]
     fn monitor_drop() {
         let mut value = Value::new(1);
-        value.to_pending().monitor(Watcher::new(0));
+        value.reference().monitor(Watcher::new(0));
         drop(value);
 
         let mut stack = Stack::empty();
@@ -508,7 +575,7 @@ mod test {
         let mut stack = Stack::empty();
 
         let mut value = Value::new(1);
-        value.to_pending().monitor(Watcher::new(0));
+        value.reference().monitor(Watcher::new(0));
         *value.to_mut() = 2;
 
         // First monitor
@@ -528,7 +595,7 @@ mod test {
         let mut stack = Stack::empty();
 
         let value = Value::new(1);
-        let pending = value.to_pending();
+        let pending = value.reference();
         pending.monitor(Watcher::new(0));
         drop(value);
 

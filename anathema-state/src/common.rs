@@ -43,24 +43,16 @@ impl From<String> for CommonString<'_> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum CommonVal<'frame> {
+pub enum CommonVal {
     Bool(bool),
     Char(char),
     Int(i64),
     Float(f64),
     Hex(Hex),
     Color(Color),
-    Str(&'frame str),
 }
 
-impl<'frame> CommonVal<'frame> {
-    pub fn to_common_str(&self) -> CommonString<'frame> {
-        match self {
-            Self::Str(s) => CommonString::Borrowed(s),
-            _ => self.to_string().into(),
-        }
-    }
-
+impl CommonVal {
     pub fn to_number(&self) -> Option<Number> {
         match self {
             Self::Int(val) => Some(Number::from(*val)),
@@ -72,8 +64,6 @@ impl<'frame> CommonVal<'frame> {
     pub fn to_bool(&self) -> bool {
         match self {
             Self::Bool(b) => *b,
-            Self::Str(s) => !s.is_empty(),
-            Self::Int(i) => *i != 0,
             _ => false,
         }
     }
@@ -91,18 +81,16 @@ impl<'frame> CommonVal<'frame> {
             _ => None,
         }
     }
-}
 
-impl<'a> From<CommonVal<'a>> for Cow<'a, str> {
-    fn from(value: CommonVal<'a>) -> Self {
-        match value {
-            CommonVal::Str(s) => Cow::Borrowed(s),
-            _ => Cow::Owned(format!("{value}")),
+    pub fn to_char(&self) -> Option<char> {
+        match self {
+            Self::Char(c) => Some(*c),
+            _ => None,
         }
     }
 }
 
-impl Display for CommonVal<'_> {
+impl Display for CommonVal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CommonVal::Bool(val) => write!(f, "{val}"),
@@ -111,12 +99,11 @@ impl Display for CommonVal<'_> {
             CommonVal::Float(val) => write!(f, "{val:.4}"),
             CommonVal::Hex(Hex { r, g, b }) => write!(f, "r: {r}, g: {g}, b: {b}"),
             CommonVal::Color(val) => write!(f, "{val}"),
-            CommonVal::Str(val) => write!(f, "{val}"),
         }
     }
 }
 
-impl From<Number> for CommonVal<'_> {
+impl From<Number> for CommonVal {
     fn from(value: Number) -> Self {
         match value.is_float() {
             true => CommonVal::Float(value.as_float()),
@@ -125,40 +112,34 @@ impl From<Number> for CommonVal<'_> {
     }
 }
 
-impl From<(u8, u8, u8)> for CommonVal<'_> {
+impl From<(u8, u8, u8)> for CommonVal {
     fn from(value: (u8, u8, u8)) -> Self {
         CommonVal::Hex(value.into())
     }
 }
 
-impl From<Hex> for CommonVal<'_> {
+impl From<Hex> for CommonVal {
     fn from(value: Hex) -> Self {
         CommonVal::Hex(value)
     }
 }
 
-impl From<Color> for CommonVal<'_> {
+impl From<Color> for CommonVal {
     fn from(value: Color) -> Self {
         CommonVal::Color(value)
     }
 }
 
-impl<'a> From<&'a str> for CommonVal<'a> {
-    fn from(value: &'a str) -> Self {
-        CommonVal::Str(value)
-    }
-}
-
 macro_rules! impl_static {
     ($ty:ty, $variant:ident) => {
-        impl From<$ty> for CommonVal<'_> {
+        impl From<$ty> for CommonVal {
             fn from(value: $ty) -> Self {
                 Self::$variant(value)
             }
         }
     };
     ($ty:ty, $variant:ident, $as:ty) => {
-        impl From<$ty> for CommonVal<'_> {
+        impl From<$ty> for CommonVal {
             fn from(value: $ty) -> Self {
                 Self::$variant(value as $as)
             }
@@ -185,10 +166,10 @@ impl_static!(i8, Int, i64);
 // -----------------------------------------------------------------------------
 //   - Number -
 // -----------------------------------------------------------------------------
-impl TryFrom<CommonVal<'_>> for Number {
+impl TryFrom<CommonVal> for Number {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
         match value {
             CommonVal::Int(n) => Ok(Number::I64(n)),
             CommonVal::Float(n) => Ok(Number::F64(n)),
@@ -197,26 +178,20 @@ impl TryFrom<CommonVal<'_>> for Number {
     }
 }
 
-impl TryFrom<&CommonVal<'_>> for Number {
+impl TryFrom<&CommonVal> for Number {
     type Error = ();
 
-    fn try_from(value: &CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value {
-            CommonVal::Int(n) => Ok(Number::I64(*n)),
-            CommonVal::Float(n) => Ok(Number::F64(*n)),
-            _ => Err(()),
-        }
+    fn try_from(value: &CommonVal) -> Result<Self, Self::Error> {
+        TryFrom::try_from(*value)
     }
 }
 
-impl TryFrom<CommonVal<'_>> for bool {
+impl TryFrom<CommonVal> for bool {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
         match value {
             CommonVal::Bool(b) => Ok(b),
-            CommonVal::Int(n) => Ok(n != 0),
-            CommonVal::Str(s) => Ok(!s.is_empty()),
             _ => Err(()),
         }
     }
@@ -224,10 +199,10 @@ impl TryFrom<CommonVal<'_>> for bool {
 
 macro_rules! impl_try_from_int {
     ($t:ty) => {
-        impl TryFrom<CommonVal<'_>> for $t {
+        impl TryFrom<CommonVal> for $t {
             type Error = ();
 
-            fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+            fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
                 match value {
                     CommonVal::Int(n) => Ok(n as $t),
                     _ => Err(()),
@@ -239,10 +214,10 @@ macro_rules! impl_try_from_int {
 
 macro_rules! impl_try_from_float {
     ($t:ty) => {
-        impl TryFrom<CommonVal<'_>> for $t {
+        impl TryFrom<CommonVal> for $t {
             type Error = ();
 
-            fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+            fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
                 match value {
                     CommonVal::Float(n) => Ok(n as $t),
                     _ => Err(()),

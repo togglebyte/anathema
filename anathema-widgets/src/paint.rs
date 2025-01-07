@@ -5,6 +5,7 @@ use anathema_state::{Color, Hex};
 use anathema_store::indexmap::IndexMap;
 use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
+use anathema_strings::HStrings;
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -135,15 +136,16 @@ impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
         match &mut input.kind {
             WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
             WidgetKind::Element(el) => {
-                match self
-                    .attributes
-                    .get(el.id())
-                    .get::<Display>("display")
-                    .unwrap_or_default()
-                {
-                    Display::Show => ControlFlow::Continue(Some(el)),
-                    Display::Hide | Display::Exclude => ControlFlow::Break(()),
-                }
+                panic!("attributes needs to be combined with &HStrings for this to work");
+                // match self
+                //     .attributes
+                //     .get(el.id())
+                //     .get::<Display>("display")
+                //     .unwrap_or_default()
+                // {
+                //     Display::Show => ControlFlow::Continue(Some(el)),
+                //     Display::Hide | Display::Exclude => ControlFlow::Break(()),
+                // }
             }
             // WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
             // WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
@@ -172,6 +174,7 @@ pub fn paint<'bp>(
     glyph_index: &mut GlyphMap,
     mut widgets: PaintChildren<'_, 'bp>,
     attribute_storage: &AttributeStorage<'bp>,
+    strings: &HStrings<'bp>,
     ignore_floats: bool,
 ) {
     #[cfg(feature = "profile")]
@@ -180,7 +183,7 @@ pub fn paint<'bp>(
     // let filter = PaintFilter::new(ignore_floats, attribute_storage);
     // let children = TreeForEach::new(children, values, &filter);
     widgets.each(|widget, children| {
-        let ctx = PaintCtx::new(surface, None, glyph_index);
+        let ctx = PaintCtx::new(surface, None, glyph_index, strings);
         widget.paint(children, ctx, attribute_storage);
         ControlFlow::Continue(())
     });
@@ -214,6 +217,7 @@ pub struct PaintCtx<'surface, Size> {
     pub clip: Option<Region>,
     pub(crate) state: Size,
     glyph_map: &'surface mut GlyphMap,
+    pub strings: &'surface HStrings<'surface>,
 }
 
 impl<'surface> Deref for PaintCtx<'surface, SizePos> {
@@ -229,12 +233,14 @@ impl<'surface> PaintCtx<'surface, Unsized> {
         surface: &'surface mut dyn WidgetRenderer,
         clip: Option<Region>,
         glyph_map: &'surface mut GlyphMap,
+        strings: &'surface HStrings<'_>,
     ) -> Self {
         Self {
             surface,
             clip,
             state: Unsized,
             glyph_map,
+            strings,
         }
     }
 
@@ -245,13 +251,14 @@ impl<'surface> PaintCtx<'surface, Unsized> {
             glyph_map: self.glyph_map,
             clip: self.clip,
             state: SizePos::new(size, global_pos),
+            strings: self.strings,
         }
     }
 }
 
 impl<'screen> PaintCtx<'screen, SizePos> {
     pub fn to_unsized(&mut self) -> PaintCtx<'_, Unsized> {
-        PaintCtx::new(self.surface, self.clip, self.glyph_map)
+        PaintCtx::new(self.surface, self.clip, self.glyph_map, self.strings)
     }
 
     pub fn update(&mut self, new_size: Size, new_pos: Pos) {

@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
+use anathema_strings::HStrings;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::{
     AttributeStorage, Element, ForEach, GlyphMap, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer,
@@ -169,9 +170,17 @@ impl Backend for TuiBackend {
         glyph_map: &mut GlyphMap,
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
+        strings: &HStrings<'bp>,
         ignore_floats: bool,
     ) {
-        anathema_widgets::paint::paint(&mut self.screen, glyph_map, widgets, attribute_storage, ignore_floats);
+        anathema_widgets::paint::paint(
+            &mut self.screen,
+            glyph_map,
+            widgets,
+            attribute_storage,
+            strings,
+            ignore_floats,
+        );
         // TODO: decide if we need `paint` to return a Result or not
     }
 

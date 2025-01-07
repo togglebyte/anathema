@@ -37,7 +37,7 @@ impl<'tree, 'bp> Components<'tree, 'bp> {
     pub fn by_attribute<'a>(
         &mut self,
         key: &'a str,
-        value: impl Into<CommonVal<'a>>,
+        value: impl Into<CommonVal>,
     ) -> ComponentQuery<'_, 'tree, 'bp, Kind<'a>> {
         self.make_query(Kind::ByAttribute(key, value.into()))
     }
@@ -75,7 +75,7 @@ where
     pub fn by_attribute<'a>(
         self,
         key: &'a str,
-        value: impl Into<CommonVal<'a>>,
+        value: impl Into<CommonVal>,
     ) -> ComponentQuery<'el, 'tree, 'bp, Chain<T, Kind<'a>>> {
         ComponentQuery {
             query: Query {
@@ -143,7 +143,7 @@ where
 #[derive(Debug, Copy, Clone)]
 pub enum Kind<'a> {
     ByName(&'a str),
-    ByAttribute(&'a str, CommonVal<'a>),
+    ByAttribute(&'a str, CommonVal),
 }
 
 impl<'bp> Filter<'bp> for Kind<'_> {

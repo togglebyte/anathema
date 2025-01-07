@@ -8,11 +8,10 @@ pub struct Storage<I, K, V>(Slab<I, (K, V)>);
 /// and associate values with keys
 impl<I, K, V> Storage<I, K, V>
 where
-    I: SlabIndex
-    // I: From<usize>,
-    // I: Into<usize>,
-    // I: Copy,
-    // I: PartialEq,
+    I: SlabIndex, // I: From<usize>,
+                  // I: Into<usize>,
+                  // I: Copy,
+                  // I: PartialEq,
 {
     /// Create an empty store
     pub const fn empty() -> Self {

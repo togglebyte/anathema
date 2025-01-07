@@ -86,7 +86,7 @@ where
 pub trait Filter {
     type Input;
     type Output;
-    
+
     fn filter(&self, value: &mut Self::Input) -> &mut Self::Output;
 }
 
@@ -106,7 +106,8 @@ pub trait Generator<T, C> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{slab::Key, tree::{root_node, Nodes, Tree, TreeValues}};
+    use crate::slab::Key;
+    use crate::tree::{root_node, Nodes, Tree, TreeValues};
 
     type Size = usize;
 

@@ -56,10 +56,10 @@ impl<T: 'static + State> State for Map<T> {
     fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
         let Path::Key(k) = path else { return None };
         let value = self.inner.get(k)?;
-        Some(value.to_pending())
+        Some(value.reference())
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
+    fn to_common(&self) -> Option<CommonVal> {
         None
     }
 }

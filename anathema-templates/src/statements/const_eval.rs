@@ -52,6 +52,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
         E::Not(expr) => E::Not(ce!(*expr)),
         E::Negative(expr) => E::Negative(ce!(*expr)),
         E::Equality(lhs, rhs, eq) => E::Equality(ce!(*lhs), ce!(*rhs), eq),
+        E::LogicalOp(lhs, rhs, op) => E::LogicalOp(ce!(*lhs), ce!(*rhs), op),
 
         E::Ident(_) | E::Index(..) => eval_path(expr, ctx)?,
 

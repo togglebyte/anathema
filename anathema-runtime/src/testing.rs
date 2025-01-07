@@ -44,9 +44,7 @@ impl<'bp> TestRuntime<'bp> {
         assert_eq!(output.trim(), tree.trim(), "tree does match the output");
     }
 
-    pub fn event(&mut self, event: Event) {
-    }
+    pub fn event(&mut self, event: Event) {}
 
-    pub fn next_frame(&mut self) {
-    }
+    pub fn next_frame(&mut self) {}
 }

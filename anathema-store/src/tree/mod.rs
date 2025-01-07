@@ -47,7 +47,12 @@ impl<T> Tree<T> {
     }
 
     pub fn view_mut(&mut self) -> TreeView<'_, T> {
-        TreeView::new(root_node(), &mut self.layout, &mut self.values, &mut self.removed_values)
+        TreeView::new(
+            root_node(),
+            &mut self.layout,
+            &mut self.values,
+            &mut self.removed_values,
+        )
     }
 
     pub fn values(self) -> TreeValues<T> {
@@ -542,6 +547,4 @@ impl Node {
 #[cfg(test)]
 mod test {
     use super::*;
-
-
 }

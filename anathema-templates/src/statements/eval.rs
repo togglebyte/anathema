@@ -6,7 +6,7 @@ use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
 use crate::error::{Error, Result};
 use crate::expressions::Expression;
-use crate::{Primitive, ComponentBlueprintId};
+use crate::{ComponentBlueprintId, Primitive};
 
 pub(crate) struct Scope {
     statements: Statements,

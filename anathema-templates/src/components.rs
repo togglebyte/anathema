@@ -128,7 +128,10 @@ impl ComponentTemplates {
     }
 
     pub(crate) fn name(&self, blueprint_id: ComponentBlueprintId) -> String {
-        let (k, _) = self.components.get(blueprint_id).expect("if a component is registered it has a name");
+        let (k, _) = self
+            .components
+            .get(blueprint_id)
+            .expect("if a component is registered it has a name");
         k.into()
     }
 

@@ -4,14 +4,13 @@ use std::num::NonZeroU16;
 use anathema_store::slab::Slab;
 use anathema_store::store::{Monitor, OwnedKey};
 
-use crate::store::values::with_owned;
-
 use super::{WATCHERS, WATCH_QUEUE};
+use crate::store::values::with_owned;
 
 #[derive(Debug)]
 pub enum Watched {
     Timeout,
-    Triggered
+    Triggered,
 }
 
 /// There can be at most `u16::MAX` watchers at any given time, even though there can be up to

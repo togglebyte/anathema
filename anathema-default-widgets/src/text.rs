@@ -40,21 +40,21 @@ pub enum TextAlignment {
     Right,
 }
 
-impl TryFrom<CommonVal<'_>> for TextAlignment {
-    type Error = ();
+// impl TryFrom<CommonVal> for TextAlignment {
+//     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value {
-            CommonVal::Str(wrap) => match wrap {
-                LEFT => Ok(TextAlignment::Left),
-                RIGHT => Ok(TextAlignment::Right),
-                "centre" | "center" => Ok(TextAlignment::Centre),
-                _ => Err(()),
-            },
-            _ => Err(()),
-        }
-    }
-}
+//     fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
+//         match value {
+//             CommonVal::Str(wrap) => match wrap {
+//                 LEFT => Ok(TextAlignment::Left),
+//                 RIGHT => Ok(TextAlignment::Right),
+//                 "centre" | "center" => Ok(TextAlignment::Centre),
+//                 _ => Err(()),
+//             },
+//             _ => Err(()),
+//         }
+//     }
+// }
 
 /// Text widget
 /// ```ignore
@@ -81,8 +81,12 @@ impl Widget for Text {
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
+        // TODO
+        // Getting attributes for a widget could wrap the attribute with a `Strings<'_>`,
+        // making it possible to get strings
         let attributes = ctx.attributes(id);
-        let wrap = attributes.get(WRAP).unwrap_or_default();
+        // let wrap = attributes.get_str(WRAP).unwrap_or_default();
+        let wrap = panic!("res ol ver");
         let size = constraints.max_size();
         self.strings = Strings::new(size, wrap);
         self.strings.set_style(id);
@@ -132,7 +136,8 @@ impl Widget for Text {
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let lines = self.strings.lines();
-        let alignment = attribute_storage.get(id).get(TEXT_ALIGN).unwrap_or_default();
+        // let alignment = attribute_storage.get(id).get(TEXT_ALIGN).unwrap_or_default();
+        let alignment = panic!("another one of these resolver related things");
 
         let mut pos = LocalPos::ZERO;
         let mut style = attribute_storage.get(id);

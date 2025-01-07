@@ -8,7 +8,7 @@ use anathema_state::{
 };
 use anathema_store::stack::Stack;
 use anathema_store::tree::root_node;
-use anathema_strings::Strings;
+use anathema_strings::HStrings;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_widgets::components::events::Event;
@@ -38,10 +38,10 @@ pub struct Runtime<'bp> {
     pub(super) floating_widgets: FloatingWidgets,
     pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
-    pub(super) strings: Strings<'bp>,
+    pub(super) strings: HStrings<'bp>,
     pub(super) future_values: FutureValues,
     pub(super) assoc_events: AssociatedEvents,
-    pub(super) focus_queue: FocusQueue<'static>,
+    pub(super) focus_queue: FocusQueue,
     pub(super) glyph_map: GlyphMap,
     pub(super) changes: Changes,
     pub(super) viewport: Viewport,
@@ -105,7 +105,7 @@ pub struct Frame<'rt, 'bp> {
     changes: &'rt mut Changes,
     future_values: &'rt mut FutureValues,
     assoc_events: &'rt mut AssociatedEvents,
-    focus_queue: &'rt mut FocusQueue<'static>,
+    focus_queue: &'rt mut FocusQueue,
     sleep_micros: u128,
     emitter: &'rt Emitter,
     message_receiver: &'rt flume::Receiver<ViewMessage>,
@@ -262,6 +262,9 @@ impl<'bp> Frame<'_, 'bp> {
                 .with_mut(widget_id, |attributes, storage| {
                     let mut elements = Elements::new(children, storage, self.layout_ctx.dirty_widgets);
 
+                    let Some(state) = state else { return };
+                    let mut state = state.to_mut();
+
                     let ctx = AnyComponentContext::new(
                         component.parent.map(Into::into),
                         state_id,
@@ -269,7 +272,7 @@ impl<'bp> Frame<'_, 'bp> {
                         self.assoc_events,
                         self.focus_queue,
                         attributes,
-                        state,
+                        Some(&mut *state),
                         self.emitter,
                         self.layout_ctx.viewport,
                         &self.document.strings,
@@ -316,7 +319,8 @@ impl<'bp> Frame<'_, 'bp> {
     pub fn get_state(&mut self, component: WidgetId) -> &dyn AnyState {
         let component = self.layout_ctx.components.get_by_widget_id(component).unwrap();
         let state = self.layout_ctx.states.get(component.state_id).unwrap();
-        state
+        // state
+        panic!()
     }
 
     // TODO: this can't really be called a frame if we can tick it multiple
