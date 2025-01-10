@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
 use anathema_state::{
-    drain_changes, drain_futures, drain_watchers, AnyState, Changes, FutureValues, State, StateId, States, Watched,
+    drain_changes, drain_futures, drain_watchers, AnyValue, Changes, FutureValues, State, StateId, States, Watched,
     Watcher,
 };
 use anathema_store::stack::Stack;
@@ -316,11 +316,11 @@ impl<'bp> Frame<'_, 'bp> {
         )
     }
 
-    pub fn get_state(&mut self, component: WidgetId) -> &dyn AnyState {
+    pub fn get_state(&mut self, component: WidgetId) -> &dyn AnyValue {
         let component = self.layout_ctx.components.get_by_widget_id(component).unwrap();
         let state = self.layout_ctx.states.get(component.state_id).unwrap();
         // state
-        panic!()
+        panic!("I think this is used for testing and was never finished")
     }
 
     // TODO: this can't really be called a frame if we can tick it multiple

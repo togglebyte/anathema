@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::{CommonVal, Hex, Number, Path, PendingValue, Subscriber, Value, ValueRef};
+use crate::{value::TypeId, CommonVal, Hex, Number, Path, PendingValue, Subscriber, Type, Value, ValueRef};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StateId(usize);
@@ -27,6 +27,138 @@ impl SlabIndex for StateId {
         Self(index)
     }
 }
+
+pub trait AnyValue: 'static {
+    fn type_id(&self) -> Type;
+
+    fn to_any_ref(&self) -> &dyn Any;
+
+    fn to_any_mut(&mut self) -> &mut dyn Any;
+
+    fn as_int(&self) -> Option<i64> {
+        None
+    }
+
+    fn as_float(&self) -> Option<f64> {
+        None
+    }
+
+    fn as_char(&self) -> Option<char> {
+        None
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        None
+    }
+
+    fn as_bool(&self) -> Option<bool> {
+        None
+    }
+
+    fn as_any_map(&self) -> Option<&dyn AnyMap> {
+        None
+    }
+
+    fn as_any_list(&self) -> Option<&dyn AnyList> {
+        None
+    }
+}
+
+impl<T: AnyValue> AnyValue for Box<T> {
+    fn type_id(&self) -> Type {
+        self.as_ref().type_id()
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self.as_ref().to_any_ref()
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self.as_mut().to_any_mut()
+    }
+
+    fn as_int(&self) -> Option<i64> {
+        self.as_ref().as_int()
+    }
+
+    fn as_float(&self) -> Option<f64> {
+        self.as_ref().as_float()
+    }
+
+    fn as_char(&self) -> Option<char> {
+        self.as_ref().as_char()
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        self.as_ref().as_str()
+    }
+
+    fn as_bool(&self) -> Option<bool> {
+        self.as_ref().as_bool()
+    }
+
+    fn as_any_map(&self) -> Option<&dyn AnyMap> {
+        self.as_ref().as_any_map()
+    }
+
+    fn as_any_list(&self) -> Option<&dyn AnyList> {
+        self.as_ref().as_any_list()
+    }
+}
+
+impl AnyValue for Box<dyn AnyValue> {
+    fn type_id(&self) -> Type {
+        self.as_ref().type_id()
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self.as_ref().to_any_ref()
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self.as_mut().to_any_mut()
+    }
+
+    fn as_int(&self) -> Option<i64> {
+        self.as_ref().as_int()
+    }
+
+    fn as_float(&self) -> Option<f64> {
+        self.as_ref().as_float()
+    }
+
+    fn as_char(&self) -> Option<char> {
+        self.as_ref().as_char()
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        self.as_ref().as_str()
+    }
+
+    fn as_bool(&self) -> Option<bool> {
+        self.as_ref().as_bool()
+    }
+
+    fn as_any_map(&self) -> Option<&dyn AnyMap> {
+        self.as_ref().as_any_map()
+    }
+
+    fn as_any_list(&self) -> Option<&dyn AnyList> {
+        self.as_ref().as_any_list()
+    }
+}
+
+pub trait AnyMap {
+    fn lookup(&self, key: std::borrow::Cow<'_, str>) -> Option<PendingValue>;
+}
+
+pub trait AnyList {
+    fn lookup(&self, index: usize) -> Option<PendingValue>;
+}
+
+// -----------------------------------------------------------------------------
+//   - Old state -
+// -----------------------------------------------------------------------------
 
 pub trait AnyState: 'static {
     fn to_any_ref(&self) -> &dyn Any;
@@ -172,31 +304,31 @@ impl State for Box<dyn State> {
     }
 }
 
-impl<T: 'static + State> State for Value<T> {
-    fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
-        self.to_ref().state_get(path, sub)
-    }
+// impl<T: 'static + State> State for Value<T> {
+//     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
+//         self.to_ref().state_get(path, sub)
+//     }
 
-    fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
-        self.to_ref().state_lookup(path)
-    }
+//     fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
+//         self.to_ref().state_lookup(path)
+//     }
 
-    fn to_number(&self) -> Option<Number> {
-        self.to_ref().to_number()
-    }
+//     fn to_number(&self) -> Option<Number> {
+//         self.to_ref().to_number()
+//     }
 
-    fn to_bool(&self) -> bool {
-        self.to_ref().to_bool()
-    }
+//     fn to_bool(&self) -> bool {
+//         self.to_ref().to_bool()
+//     }
 
-    fn to_common(&self) -> Option<CommonVal> {
-        None
-    }
+//     fn to_common(&self) -> Option<CommonVal> {
+//         None
+//     }
 
-    fn count(&self) -> usize {
-        self.to_ref().count()
-    }
-}
+//     fn count(&self) -> usize {
+//         self.to_ref().count()
+//     }
+// }
 
 impl Debug for dyn State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -210,6 +342,24 @@ impl Debug for dyn State {
 // -----------------------------------------------------------------------------
 macro_rules! impl_num_state {
     ($t:ty) => {
+        impl AnyValue for $t {
+            fn type_id(&self) -> Type {
+                Type::Int
+            }
+
+            fn to_any_ref(&self) -> &dyn Any {
+                self
+            }
+
+            fn to_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
+            fn as_int(&self) -> Option<i64> {
+                Some(*self as i64)
+            }
+        }
+
         impl State for $t {
             fn to_number(&self) -> Option<Number> {
                 Number::try_from(*self).ok()
@@ -230,6 +380,24 @@ macro_rules! impl_num_state {
 
 macro_rules! impl_float_state {
     ($t:ty) => {
+        impl AnyValue for $t {
+            fn type_id(&self) -> Type {
+                Type::Float
+            }
+
+            fn to_any_ref(&self) -> &dyn Any {
+                self
+            }
+
+            fn to_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
+            fn as_float(&self) -> Option<f64> {
+                Some(*self as f64)
+            }
+        }
+
         impl State for $t {
             fn to_number(&self) -> Option<Number> {
                 Number::try_from(*self).ok()
@@ -246,6 +414,92 @@ macro_rules! impl_float_state {
             }
         }
     };
+}
+
+impl AnyValue for bool {
+    fn type_id(&self) -> Type {
+        Type::Bool
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn as_bool(&self) -> Option<bool> {
+        Some(*self)
+    }
+}
+
+impl AnyValue for String {
+    fn type_id(&self) -> Type {
+        Type::String
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        Some(self)
+    }
+}
+
+impl AnyValue for &'static str {
+    fn type_id(&self) -> Type {
+        Type::String
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        Some(*self)
+    }
+}
+
+impl AnyValue for char {
+    fn type_id(&self) -> Type {
+        Type::Char
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn as_char(&self) -> Option<char> {
+        Some(*self)
+    }
+}
+
+impl AnyValue for () {
+    fn type_id(&self) -> Type {
+        Type::Composite
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl State for bool {
@@ -315,7 +569,7 @@ impl_float_state!(f32);
 impl_float_state!(f64);
 
 pub struct States {
-    inner: Slab<StateId, Value<Box<dyn AnyState>>>,
+    inner: Slab<StateId, Value<Box<dyn AnyValue>>>,
 }
 
 impl States {
@@ -323,15 +577,17 @@ impl States {
         Self { inner: Slab::empty() }
     }
 
-    pub fn insert(&mut self, state: Value<Box<dyn AnyState>>) -> StateId {
+    // pub fn insert(&mut self, state: Value<Box<dyn AnyValue>>) -> StateId {
+    pub fn insert(&mut self, state: impl AnyValue) -> StateId {
+        let state: Value<Box<dyn AnyValue>> = Value::new(Box::new(state));
         self.inner.insert(state)
     }
 
-    pub fn get(&self, state_id: impl Into<StateId>) -> Option<&Value<Box<dyn AnyState>>> {
+    pub fn get(&self, state_id: impl Into<StateId>) -> Option<&Value<Box<dyn AnyValue>>> {
         self.inner.get(state_id.into()).map(|b| b)
     }
 
-    pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut Value<Box<dyn AnyState>>> {
+    pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut Value<Box<dyn AnyValue>>> {
         self.inner.get_mut(state_id.into())
     }
 
@@ -350,7 +606,7 @@ impl States {
     /// # Panics
     ///
     /// Will panic if the state does not exist.
-    pub fn remove(&mut self, state_id: StateId) -> Value<Box<dyn AnyState>> {
+    pub fn remove(&mut self, state_id: StateId) -> Value<Box<dyn AnyValue>> {
         self.inner.remove(state_id)
     }
 }

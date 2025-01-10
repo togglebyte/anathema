@@ -264,74 +264,75 @@ impl<'bp> Scope<'bp> {
     }
 
     pub(crate) fn scope_indexed(&mut self, binding: &'bp str, index: usize, mut offset: Option<usize>) {
-        // 1. find the value by binding
+        panic!("scope has moved to the resolver");
+        // // 1. find the value by binding
 
-        let mut current_offset = offset.unwrap_or(self.storage.len());
+        // let mut current_offset = offset.unwrap_or(self.storage.len());
 
-        loop {
-            let Some((new_offset, entry)) = self.storage[..current_offset]
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(i, e)| e.get(binding.into()).map(|e| (i, e)))
-            else {
-                return;
-            };
+        // loop {
+        //     let Some((new_offset, entry)) = self.storage[..current_offset]
+        //         .iter()
+        //         .enumerate()
+        //         .rev()
+        //         .find_map(|(i, e)| e.get(binding.into()).map(|e| (i, e)))
+        //     else {
+        //         return;
+        //     };
 
-            current_offset = new_offset;
-            offset = Some(new_offset);
+        //     current_offset = new_offset;
+        //     offset = Some(new_offset);
 
-            // Loops only scope pending values or collections
-            match entry {
-                // Pending
-                Entry::Pending(_, pending) => {
-                    let Some(value) = pending.as_state(|state| state.state_lookup(index.into())) else { break };
-                    let entry = Entry::Pending(binding.into(), value);
-                    self.insert_entry(entry);
-                }
-
-                // // Expressions
-                Entry::Expressions(path, expressions) => {
-                    let expression = &expressions[index];
-                    let entry = Entry::Expression(binding.into(), expression);
-                    self.insert_entry(entry);
-                }
-
-                // State value
-                // &Entry::State(state_id) => {
-                //     let state = states.get(state_id)?;
-                //     if let Some(value) = state.state_get(lookup.path, lookup.id) {
-                //         break Some(EvalValue::Dyn(value));
-                //     }
-                // }
-                _ => continue,
-            };
-        }
-
-        // let value_id = ValueId::from((iter.widget_id, SmallIndex::ZERO));
-        // let lookup = ScopeLookup::new(iter.binding, value_id);
-        // match ctx.scope.get_expressions(iter.binding.into()) {
-        //     Some(exprs) => {
-        //         ctx.scope.scope_expression(iter.binding, &exprs[loop_index]);
-        //     }
-        //     None => match ctx.scope.get(lookup, &mut None, ctx.states) {
-        //         crate::expressions::NameThis::Nothing => panic!("missing collection"),
-        //         crate::expressions::NameThis::Value(eval_value) => {
-        //             match eval_value.get(loop_index.into(), value_id, ctx.states, ctx.attribute_storage) {
-        //                 crate::expressions::NameThis::Nothing => todo!(),
-        //                 crate::expressions::NameThis::Value(eval_value) => {
-        //                     ctx.scope.scope_downgrade(iter.binding, eval_value.downgrade())
-        //                 }
-        //                 crate::expressions::NameThis::ResolveThisNow(expr) => {
-        //                     ctx.scope.scope_expression(iter.binding, expr)
-        //                 }
-        //             }
+        //     // Loops only scope pending values or collections
+        //     match entry {
+        //         // Pending
+        //         Entry::Pending(_, pending) => {
+        //             let Some(value) = pending.as_state(|state| state.state_lookup(index.into())) else { break };
+        //             let entry = Entry::Pending(binding.into(), value);
+        //             self.insert_entry(entry);
         //         }
-        //         crate::expressions::NameThis::ResolveThisNow(expr) => {
-        //             unreachable!()
+
+        //         // // Expressions
+        //         Entry::Expressions(path, expressions) => {
+        //             let expression = &expressions[index];
+        //             let entry = Entry::Expression(binding.into(), expression);
+        //             self.insert_entry(entry);
         //         }
-        //     },
+
+        //         // State value
+        //         // &Entry::State(state_id) => {
+        //         //     let state = states.get(state_id)?;
+        //         //     if let Some(value) = state.state_get(lookup.path, lookup.id) {
+        //         //         break Some(EvalValue::Dyn(value));
+        //         //     }
+        //         // }
+        //         _ => continue,
+        //     };
         // }
+
+        // // let value_id = ValueId::from((iter.widget_id, SmallIndex::ZERO));
+        // // let lookup = ScopeLookup::new(iter.binding, value_id);
+        // // match ctx.scope.get_expressions(iter.binding.into()) {
+        // //     Some(exprs) => {
+        // //         ctx.scope.scope_expression(iter.binding, &exprs[loop_index]);
+        // //     }
+        // //     None => match ctx.scope.get(lookup, &mut None, ctx.states) {
+        // //         crate::expressions::NameThis::Nothing => panic!("missing collection"),
+        // //         crate::expressions::NameThis::Value(eval_value) => {
+        // //             match eval_value.get(loop_index.into(), value_id, ctx.states, ctx.attribute_storage) {
+        // //                 crate::expressions::NameThis::Nothing => todo!(),
+        // //                 crate::expressions::NameThis::Value(eval_value) => {
+        // //                     ctx.scope.scope_downgrade(iter.binding, eval_value.downgrade())
+        // //                 }
+        // //                 crate::expressions::NameThis::ResolveThisNow(expr) => {
+        // //                     ctx.scope.scope_expression(iter.binding, expr)
+        // //                 }
+        // //             }
+        // //         }
+        // //         crate::expressions::NameThis::ResolveThisNow(expr) => {
+        // //             unreachable!()
+        // //         }
+        // //     },
+        // // }
     }
 }
 

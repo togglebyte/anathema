@@ -9,6 +9,7 @@ pub use {
     anathema_store as store,                     // store
     anathema_templates as templates,             // templates
     anathema_widgets as widgets,                 // wigets
+    anathema_value_resolver as resolver,         // resolver
 };
 
 pub mod prelude {

@@ -25,21 +25,24 @@
 // * Collections should be subscribed to when they are part of the value (in case a value is
 //   removed from the collection this would shift the selected value)
 // * Maps don't have to have the map itself subscribed to
-// * If the key is a dynamic value then that has to be subscribed to as well, which 
+// * If the key is a dynamic value then that has to be subscribed to as well, which
 //   should happen normally
+
+// TODO: make everything private and enable as needed
 
 use anathema_strings::HStrings;
 use anathema_templates::Expression;
 use immediate::ImmediateResolver;
 
-mod collection;
-mod context;
-mod immediate;
-mod null;
-mod scope;
-mod value;
+pub mod collection;
+pub mod context;
+pub mod expression;
+pub mod immediate;
+pub mod null;
+pub mod scope;
+pub mod value;
 
-trait Resolver<'bp> {
+pub trait Resolver<'bp> {
     type Output;
 
     fn resolve(&self, expr: &'bp Expression) -> Self::Output;

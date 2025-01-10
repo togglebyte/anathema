@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
-use super::Value;
+use super::{Type, Value};
+use crate::states::{AnyList, AnyValue};
 use crate::store::changed;
 use crate::{Change, CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
 
@@ -16,9 +17,19 @@ pub struct List<T> {
     inner: VecDeque<Value<T>>,
 }
 
-impl<T: 'static + State> List<T> {
-    pub fn empty() -> Value<Self> {
-        Value::<Self>::empty()
+impl<T: AnyValue> List<T> {
+    pub fn empty() -> Self {
+        Self { inner: VecDeque::new() }
+    }
+
+    /// Push a value to the list
+    pub fn push(&mut self, value: impl Into<Value<T>>) {
+        self.push_back(value)
+    }
+
+    /// Push a value to the back of the list
+    pub fn push_back(&mut self, value: impl Into<Value<T>>) {
+        self.inner.push_back(value.into());
     }
 
     pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Value<Self> {
@@ -50,9 +61,9 @@ impl<T: 'static + State> List<T> {
     }
 }
 
-impl<T: State> Default for Value<List<T>> {
+impl<T: AnyValue> Default for List<T> {
     fn default() -> Self {
-        List::empty()
+        Self::empty()
     }
 }
 
@@ -62,11 +73,11 @@ impl<T: State> Default for Value<List<T>> {
 /// let mut list = List::empty();
 /// list.push(123);
 /// ```
-impl<T: 'static + State> Value<List<T>> {
-    pub fn empty() -> Self {
-        let list = List { inner: VecDeque::new() };
-        Value::new(list)
-    }
+impl<T: 'static + AnyValue> Value<List<T>> {
+    // pub fn empty() -> Self {
+    //     let list = List { inner: VecDeque::new() };
+    //     Value::new(list)
+    // }
 
     /// Push a value to the list
     pub fn push(&mut self, value: impl Into<Value<T>>) {
@@ -147,32 +158,56 @@ impl<T: 'static + State> Value<List<T>> {
     }
 }
 
-impl<T: 'static + State> State for List<T> {
-    fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
-        let Path::Index(idx) = path else { return None };
-
-        let value = self.inner.get(idx)?;
-        Some(value.value_ref(sub))
-    }
-
-    fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
-        let Path::Index(idx) = path else { return None };
-        let value = self.inner.get(idx)?;
-        Some(value.reference())
-    }
-
-    fn to_common(&self) -> Option<CommonVal> {
-        None
-    }
-
-    fn count(&self) -> usize {
-        self.inner.len()
+impl<T: AnyValue> AnyList for List<T> {
+    fn lookup(&self, index: usize) -> Option<PendingValue> {
+        self.get(index).map(|val| val.reference())
     }
 }
 
+impl<T: AnyValue> AnyValue for List<T> {
+    fn type_id(&self) -> Type {
+        Type::List
+    }
+
+    fn to_any_ref(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn as_any_list(&self) -> Option<&dyn AnyList> {
+        Some(self)
+    }
+}
+
+// impl<T: 'static + AnyValue> State for List<T> {
+//     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
+//         let Path::Index(idx) = path else { return None };
+
+//         let value = self.inner.get(idx)?;
+//         Some(value.value_ref(sub))
+//     }
+
+//     fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
+//         let Path::Index(idx) = path else { return None };
+//         let value = self.inner.get(idx)?;
+//         Some(value.reference())
+//     }
+
+//     fn to_common(&self) -> Option<CommonVal> {
+//         None
+//     }
+
+//     fn count(&self) -> usize {
+//         self.inner.len()
+//     }
+// }
+
 impl<T> FromIterator<T> for Value<List<T>>
 where
-    T: 'static + State,
+    T: 'static + AnyValue,
     Value<T>: From<T>,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {

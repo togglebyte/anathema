@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
-use anathema_state::{AnyState, States, Subscriber};
+use anathema_state::{AnyValue, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
 use anathema_templates::{ComponentBlueprintId, Globals};
@@ -148,7 +148,7 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
     pub(super) fn get_component(
         &mut self,
         component_id: ComponentBlueprintId,
-    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
+    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyValue>)> {
         self.component_registry.get(component_id)
     }
 }

@@ -139,13 +139,14 @@ pub(crate) enum Collection<'bp> {
 
 impl<'bp> Collection<'bp> {
     pub(crate) fn count(&self) -> usize {
-        match self {
-            Self::Static(e) => e.len(),
-            Self::Static2(e) => e.len(),
-            Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
-            Self::Index(collection, _) => collection.count(),
-            Self::Future => 0,
-        }
+        panic!("this should be available as a dyn any list")
+        // match self {
+        //     Self::Static(e) => e.len(),
+        //     Self::Static2(e) => e.len(),
+        //     Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
+        //     Self::Index(collection, _) => collection.count(),
+        //     Self::Future => 0,
+        // }
     }
 
     pub(crate) fn scope_collection(&self, scope: &mut Scope<'bp>, binding: &'bp str) {

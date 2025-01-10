@@ -6,11 +6,12 @@ use values::OwnedValue;
 pub use watchers::Watched;
 use watchers::{Watcher, Watchers};
 
+use crate::Type;
+
 pub(crate) use self::change::changed;
 pub use self::change::{clear_all_changes, drain_changes, Change, Changes};
 pub use self::subscriber::{FutureValues, Subscriber};
 use self::subscriber::{SubKey, SubscriberMap};
-use crate::states::AnyState;
 
 mod change;
 pub mod debug;
@@ -39,6 +40,21 @@ impl ValueKey {
 
     pub(crate) fn sub(&self) -> SubKey {
         self.1
+    }
+
+    pub fn type_info(&self) -> Type {
+        let type_info = self.0.aux();
+        match type_info {
+            1 => Type::Int,
+            2 => Type::Float,
+            3 => Type::Char,
+            4 => Type::String,
+            5 => Type::Bool,
+            6 => Type::Map,
+            7 => Type::List,
+            8 => Type::Composite,
+            _ => unreachable!("corrupt type information")
+        }
     }
 }
 

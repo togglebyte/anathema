@@ -24,41 +24,42 @@ struct EvalValueDebug<'a>(&'a EvalValue<'a>);
 
 impl DebugWriter for EvalValueDebug<'_> {
     fn write(&mut self, output: &mut impl Write) -> std::fmt::Result {
-        match self.0 {
-            EvalValue::Dyn(value_ref) => write!(output, "{} ", value_ref.owned_key().debug_index()),
-            EvalValue::Index(value_ref, index_value_ref) => {
-                write!(output, "source: ")?;
-                Self(value_ref).write(output)?;
-                write!(output, "| index: ")?;
-                Self(index_value_ref).write(output)
-            }
-            EvalValue::Empty => write!(output, "<empty>"),
-            EvalValue::Static(val) => write!(output, "{val:?}"),
-            EvalValue::Pending(pending) => write!(output, "<pending {}>", pending.owned_key().debug_index()),
-            EvalValue::Map(_) => todo!(),
-            EvalValue::Negative(_) => todo!(),
-            EvalValue::Op(lhs, rhs, op) => {
-                write!(output, "<op ")?;
-                EvalValueDebug(lhs).write(output)?;
-                write!(output, " {op:?} ")?;
-                EvalValueDebug(rhs).write(output)?;
-                write!(output, ">")
-            }
-            EvalValue::Not(_) => todo!(),
-            EvalValue::Equality(_, _, _) => todo!(),
-            EvalValue::State(_) => todo!(),
-            EvalValue::ComponentAttributes(_) => todo!(),
-            EvalValue::ExprList(_) => todo!(),
-            EvalValue::List(list) => {
-                write!(output, "[")?;
-                list.iter().for_each(|val| {
-                    EvalValueDebug(val).write(output).unwrap();
-                    write!(output, ", ").unwrap();
-                });
-                write!(output, "]")
-            }
-            EvalValue::String(hoppstr) => todo!(),
-        }
+        panic!()
+        // match self.0 {
+        //     EvalValue::Dyn(value_ref) => write!(output, "{} ", value_ref.owned_key().debug_index()),
+        //     EvalValue::Index(value_ref, index_value_ref) => {
+        //         write!(output, "source: ")?;
+        //         Self(value_ref).write(output)?;
+        //         write!(output, "| index: ")?;
+        //         Self(index_value_ref).write(output)
+        //     }
+        //     EvalValue::Empty => write!(output, "<empty>"),
+        //     EvalValue::Static(val) => write!(output, "{val:?}"),
+        //     EvalValue::Pending(pending) => write!(output, "<pending {}>", pending.owned_key().debug_index()),
+        //     EvalValue::Map(_) => todo!(),
+        //     EvalValue::Negative(_) => todo!(),
+        //     EvalValue::Op(lhs, rhs, op) => {
+        //         write!(output, "<op ")?;
+        //         EvalValueDebug(lhs).write(output)?;
+        //         write!(output, " {op:?} ")?;
+        //         EvalValueDebug(rhs).write(output)?;
+        //         write!(output, ">")
+        //     }
+        //     EvalValue::Not(_) => todo!(),
+        //     EvalValue::Equality(_, _, _) => todo!(),
+        //     EvalValue::State(_) => todo!(),
+        //     EvalValue::ComponentAttributes(_) => todo!(),
+        //     EvalValue::ExprList(_) => todo!(),
+        //     EvalValue::List(list) => {
+        //         write!(output, "[")?;
+        //         list.iter().for_each(|val| {
+        //             EvalValueDebug(val).write(output).unwrap();
+        //             write!(output, ", ").unwrap();
+        //         });
+        //         write!(output, "]")
+        //     }
+        //     EvalValue::String(hoppstr) => todo!(),
+        // }
     }
 }
 
@@ -97,17 +98,18 @@ struct ForDebug<'a>(&'a For<'a>);
 
 impl DebugWriter for ForDebug<'_> {
     fn write(&mut self, output: &mut impl Write) -> std::fmt::Result {
-        write!(output, "<for")?;
-        match self.0.collection() {
-            crate::values::Collection::Dyn(value_ref) => {
-                write!(output, " {} ", value_ref.owned_key().debug_index())
-            }
-            crate::values::Collection::Static(_) => write!(output, " <static> "),
-            crate::values::Collection::Static2(_) => write!(output, " <static> "),
-            crate::values::Collection::Future => write!(output, " <future> "),
-            crate::values::Collection::Index(_, _) => todo!(),
-        }?;
-        write!(output, ">")
+        panic!()
+        // write!(output, "<for")?;
+        // match self.0.collection() {
+        //     crate::values::Collection::Dyn(value_ref) => {
+        //         write!(output, " {} ", value_ref.owned_key().debug_index())
+        //     }
+        //     crate::values::Collection::Static(_) => write!(output, " <static> "),
+        //     crate::values::Collection::Static2(_) => write!(output, " <static> "),
+        //     crate::values::Collection::Future => write!(output, " <future> "),
+        //     crate::values::Collection::Index(_, _) => todo!(),
+        // }?;
+        // write!(output, ">")
     }
 }
 

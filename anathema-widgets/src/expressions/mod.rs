@@ -56,24 +56,27 @@ pub enum Either {
 
 impl Either {
     pub fn load_bool(&self) -> bool {
-        match self {
-            Either::Static(val) => val.to_bool(),
-            Either::Dyn(state) => state.to_common().map(|v| v.to_bool()).unwrap_or(false),
-        }
+        panic!("remove this once the new resolver is in place");
+        // match self {
+        //     Either::Static(val) => val.to_bool(),
+        //     Either::Dyn(state) => state.to_common().map(|v| v.to_bool()).unwrap_or(false),
+        // }
     }
 
     pub fn load_number(&self) -> Option<Number> {
-        match self {
-            Either::Static(val) => val.to_number(),
-            Either::Dyn(state) => state.to_common().and_then(|v| v.to_number()),
-        }
+        panic!("remove this once the new resolver is in place");
+        // match self {
+        //     Either::Static(val) => val.to_number(),
+        //     Either::Dyn(state) => state.to_common().and_then(|v| v.to_number()),
+        // }
     }
 
     pub fn to_common(&self) -> Option<CommonVal> {
-        match self {
-            Either::Static(val) => Some(*val),
-            Either::Dyn(state) => state.to_common(),
-        }
+        panic!("remove this once the new resolver is in place");
+        // match self {
+        //     Either::Static(val) => Some(*val),
+        //     Either::Dyn(state) => state.to_common(),
+        // }
     }
 }
 
@@ -173,70 +176,71 @@ impl<'bp> EvalValue<'bp> {
         states: &States,
         attribs: &AttributeStorage<'bp>,
     ) -> NameThis<'bp> {
-        match self {
-            EvalValue::ExprList(expressions) => match path {
-                Path::Index(idx) if idx >= expressions.len() => NameThis::Nothing,
-                Path::Index(idx) => {
-                    let expr = &expressions[idx];
-                    NameThis::ResolveThisNow(expr)
-                }
-                Path::Key(_) => NameThis::Nothing,
-            },
-            EvalValue::List(list) => match path {
-                Path::Index(idx) if idx >= list.len() => NameThis::Nothing,
-                Path::Index(idx) => {
-                    panic!("this should only ever happen when resolving a collection right?");
-                    // NameThis::Value(list[idx].copy_with_sub(value_id)),
-                }
-                Path::Key(_) => NameThis::Nothing,
-            },
-            EvalValue::Map(map) => match path {
-                Path::Key(key) => match map.get(key) {
-                    Some(expr) => NameThis::ResolveThisNow(expr),
-                    None => NameThis::Nothing,
-                },
-                Path::Index(idx) => NameThis::Nothing,
-            },
-            EvalValue::Dyn(value) => value
-                .as_state()
-                .and_then(|state| state.state_get(path, value_id))
-                .map(EvalValue::Dyn)
-                .into(),
-            EvalValue::Index(value, _) => value.get(path, value_id, states, attribs),
-            EvalValue::State(id) => {
-                // states
-                // .get(*id)
-                // .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn))
-                // .into();
-                panic!()
-            }
-            EvalValue::ComponentAttributes(id) => {
-                let Some(attributes) = attribs.try_get(*id) else { return NameThis::Nothing };
-                let value = match path {
-                    Path::Key(key) => match attributes.get_val(key) {
-                        Some(val) => val,
-                        None => return NameThis::Nothing,
-                    },
-                    Path::Index(_) => unreachable!("attributes are not indexed by numbers"),
-                };
-                panic!("figure this out");
-                // NameThis::Value(value.copy_with_sub(value_id).into())
-            }
-            EvalValue::Pending(_) => {
-                unreachable!("pending values are resolved by the scope and should never exist here")
-            }
-            // EvalValue::Map(map) => match path {
-            //     Path::Key(key) => panic!("see expression list 2, do that here"), //Some(map.get(key).copy_with_sub(value_id)),
-            //     Path::Index(_) => NameThis::Nothing,
-            // },
-            EvalValue::Static(_)
-            | EvalValue::Negative(_)
-            | EvalValue::Op(_, _, _)
-            | EvalValue::Not(_)
-            | EvalValue::Equality(_, _, _)
-            | EvalValue::String(_)
-            | EvalValue::Empty => NameThis::Nothing,
-        }
+        panic!("remove this once the new resolver is in place");
+        // match self {
+        //     EvalValue::ExprList(expressions) => match path {
+        //         Path::Index(idx) if idx >= expressions.len() => NameThis::Nothing,
+        //         Path::Index(idx) => {
+        //             let expr = &expressions[idx];
+        //             NameThis::ResolveThisNow(expr)
+        //         }
+        //         Path::Key(_) => NameThis::Nothing,
+        //     },
+        //     EvalValue::List(list) => match path {
+        //         Path::Index(idx) if idx >= list.len() => NameThis::Nothing,
+        //         Path::Index(idx) => {
+        //             panic!("this should only ever happen when resolving a collection right?");
+        //             // NameThis::Value(list[idx].copy_with_sub(value_id)),
+        //         }
+        //         Path::Key(_) => NameThis::Nothing,
+        //     },
+        //     EvalValue::Map(map) => match path {
+        //         Path::Key(key) => match map.get(key) {
+        //             Some(expr) => NameThis::ResolveThisNow(expr),
+        //             None => NameThis::Nothing,
+        //         },
+        //         Path::Index(idx) => NameThis::Nothing,
+        //     },
+        //     EvalValue::Dyn(value) => value
+        //         .as_state()
+        //         .and_then(|state| state.state_get(path, value_id))
+        //         .map(EvalValue::Dyn)
+        //         .into(),
+        //     EvalValue::Index(value, _) => value.get(path, value_id, states, attribs),
+        //     EvalValue::State(id) => {
+        //         // states
+        //         // .get(*id)
+        //         // .and_then(|state| state.state_get(path, value_id).map(EvalValue::Dyn))
+        //         // .into();
+        //         panic!()
+        //     }
+        //     EvalValue::ComponentAttributes(id) => {
+        //         let Some(attributes) = attribs.try_get(*id) else { return NameThis::Nothing };
+        //         let value = match path {
+        //             Path::Key(key) => match attributes.get_val(key) {
+        //                 Some(val) => val,
+        //                 None => return NameThis::Nothing,
+        //             },
+        //             Path::Index(_) => unreachable!("attributes are not indexed by numbers"),
+        //         };
+        //         panic!("figure this out");
+        //         // NameThis::Value(value.copy_with_sub(value_id).into())
+        //     }
+        //     EvalValue::Pending(_) => {
+        //         unreachable!("pending values are resolved by the scope and should never exist here")
+        //     }
+        //     // EvalValue::Map(map) => match path {
+        //     //     Path::Key(key) => panic!("see expression list 2, do that here"), //Some(map.get(key).copy_with_sub(value_id)),
+        //     //     Path::Index(_) => NameThis::Nothing,
+        //     // },
+        //     EvalValue::Static(_)
+        //     | EvalValue::Negative(_)
+        //     | EvalValue::Op(_, _, _)
+        //     | EvalValue::Not(_)
+        //     | EvalValue::Equality(_, _, _)
+        //     | EvalValue::String(_)
+        //     | EvalValue::Empty => NameThis::Nothing,
+        // }
     }
 
     /// Downgrade any `ValueRef` to `PendingValue`
@@ -405,19 +409,21 @@ impl<'bp> EvalValue<'bp> {
     }
 
     pub(crate) fn load_bool(&self) -> bool {
-        let Some(value) = self.load_common_val() else { return false };
-        match value {
-            Either::Static(val) => val.to_bool(),
-            Either::Dyn(state) => (*state).to_common().map(|v| v.to_bool()).unwrap_or(false),
-        }
+        panic!("remove this once the new resolver is in place");
+        // let Some(value) = self.load_common_val() else { return false };
+        // match value {
+        //     Either::Static(val) => val.to_bool(),
+        //     Either::Dyn(state) => (*state).to_common().map(|v| v.to_bool()).unwrap_or(false),
+        // }
     }
 
     pub(crate) fn load_number(&self) -> Option<Number> {
-        let val = self.load_common_val()?;
-        match val {
-            Either::Static(val) => val.to_number(),
-            Either::Dyn(state) => (*state).to_common().and_then(|v| v.to_number()),
-        }
+        panic!("remove this once the new resolver is in place");
+        // let val = self.load_common_val()?;
+        // match val {
+        //     Either::Static(val) => val.to_number(),
+        //     Either::Dyn(state) => (*state).to_common().and_then(|v| v.to_number()),
+        // }
     }
 
     pub fn load_str<'a>(&'a self, strings: &'a HStrings<'bp>) -> Option<HString<impl Iterator<Item = &str> + 'a>> {
@@ -437,41 +443,42 @@ impl<'bp> EvalValue<'bp> {
         T: TryFrom<CommonVal>,
         T: Copy + PartialEq,
     {
-        match self {
-            EvalValue::Static(p) => (*p).try_into().ok(),
-            EvalValue::Dyn(val) => match val.value::<T>() {
-                Some(value) => value.try_as_ref().copied(),
-                None => val.as_state()?.to_common()?.try_into().ok(),
-            },
-            EvalValue::Index(val, _) => val.load::<T>(),
-            EvalValue::Op(lhs, rhs, op) => {
-                let lhs = lhs.load_number()?;
-                let rhs = rhs.load_number()?;
-                let res = match *op {
-                    Op::Add => Some(lhs + rhs),
-                    Op::Sub => Some(lhs - rhs),
-                    Op::Mul => Some(lhs * rhs),
-                    Op::Div => Some(lhs / rhs),
-                    Op::Mod => Some(lhs % rhs),
-                };
+        panic!("remove this once the new resolver is in place");
+        // match self {
+        //     EvalValue::Static(p) => (*p).try_into().ok(),
+        //     EvalValue::Dyn(val) => match val.value::<T>() {
+        //         Some(value) => value.try_as_ref().copied(),
+        //         None => val.as_state()?.to_common()?.try_into().ok(),
+        //     },
+        //     EvalValue::Index(val, _) => val.load::<T>(),
+        //     EvalValue::Op(lhs, rhs, op) => {
+        //         let lhs = lhs.load_number()?;
+        //         let rhs = rhs.load_number()?;
+        //         let res = match *op {
+        //             Op::Add => Some(lhs + rhs),
+        //             Op::Sub => Some(lhs - rhs),
+        //             Op::Mul => Some(lhs * rhs),
+        //             Op::Div => Some(lhs / rhs),
+        //             Op::Mod => Some(lhs % rhs),
+        //         };
 
-                T::try_from(res?.into()).ok()
-            }
-            expr @ EvalValue::Negative(_) => {
-                let val = expr.load_number()?;
-                T::try_from(val.into()).ok()
-            }
-            EvalValue::Not(expr) => {
-                let val = !expr.load_bool();
-                T::try_from(val.into()).ok()
-            }
-            s @ EvalValue::Equality(..) => {
-                let val = CommonVal::Bool(s.load_bool());
-                T::try_from(val).ok()
-            }
-            EvalValue::Empty => None,
-            e => panic!("{e:?}"),
-        }
+        //         T::try_from(res?.into()).ok()
+        //     }
+        //     expr @ EvalValue::Negative(_) => {
+        //         let val = expr.load_number()?;
+        //         T::try_from(val.into()).ok()
+        //     }
+        //     EvalValue::Not(expr) => {
+        //         let val = !expr.load_bool();
+        //         T::try_from(val.into()).ok()
+        //     }
+        //     s @ EvalValue::Equality(..) => {
+        //         let val = CommonVal::Bool(s.load_bool());
+        //         T::try_from(val).ok()
+        //     }
+        //     EvalValue::Empty => None,
+        //     e => panic!("{e:?}"),
+        // }
     }
 }
 

@@ -7,9 +7,8 @@ use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 
 pub use self::list::List;
 pub use self::map::Map;
-use super::State;
-use crate::states::AnyState;
-use crate::store::subscriber::{subscribe, unsubscribe};
+use crate::states::AnyValue;
+use crate::store::subscriber::{subscribe, unsubscribe, SubKey};
 use crate::store::values::{
     copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, with_owned,
     OwnedValue,
@@ -21,33 +20,29 @@ use crate::{Change, Subscriber};
 mod list;
 mod map;
 
-trait TypeId {
-    const ID: u16;
+pub trait TypeId {
+    const Type: Type = Type::Composite;
 }
 
 impl TypeId for String {
-    const ID: u16 = Type::String as u16;
+    const Type: Type = Type::String;
 }
 
 impl TypeId for i64 {
-    const ID: u16 = Type::Int as u16;
+    const Type: Type = Type::Int;
 }
 
 impl TypeId for f64 {
-    const ID: u16 = Type::Float as u16;
+    const Type: Type = Type::Float;
 }
 
 impl<T> TypeId for List<T> {
-    const ID: u16 = Type::List as u16;
+    const Type: Type = Type::List;
 }
 
 impl<T> TypeId for Map<T> {
-    const ID: u16 = Type::Map as u16;
+    const Type: Type = Type::Map;
 }
-
-// impl<T> TypeId for T where T: State {
-//     const ID: u16 = 3;
-// }
 
 /// A value that reacts to change.
 ///
@@ -66,22 +61,23 @@ pub struct Value<T> {
     _p: PhantomData<*const T>,
 }
 
-impl<T: Default + AnyState + 'static> Default for Value<T> {
+impl<T: Default + AnyValue + 'static> Default for Value<T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-impl<T: AnyState + 'static> From<T> for Value<T> {
+impl<T: AnyValue + 'static> From<T> for Value<T> {
     fn from(value: T) -> Self {
         Value::new(value)
     }
 }
 
-impl<T: AnyState + 'static> Value<T> {
+impl<T: AnyValue + 'static> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
-        let mut key = new_value(Box::new(value));
+        let type_id = value.type_id();
+        let mut key = new_value(Box::new(value), type_id);
         Self { key, _p: PhantomData }
     }
 
@@ -159,7 +155,7 @@ impl<T: AnyState + 'static> Value<T> {
 /// Copy the inner value from the owned value.
 ///
 /// This does not copy any auxillary data attached to the key
-impl<T: State + 'static + Copy> Value<T> {
+impl<T: AnyValue + 'static + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
         copy_val(self.key.owned())
     }
@@ -243,7 +239,7 @@ enum ElementState {
 
 impl ElementState {
     #[allow(clippy::borrowed_box)]
-    fn as_state(&self) -> &Box<dyn AnyState> {
+    fn as_state(&self) -> &Box<dyn AnyValue> {
         match self {
             Self::Dropped => unreachable!(),
             Self::Alive(value) => &value.val,
@@ -338,7 +334,7 @@ impl PartialEq for SharedState {
 }
 
 impl Deref for SharedState {
-    type Target = Box<dyn AnyState>;
+    type Target = Box<dyn AnyValue>;
 
     fn deref(&self) -> &Self::Target {
         self.inner.as_state()
@@ -397,15 +393,20 @@ impl ValueRef {
         Some(shared)
     }
 
+    /// Read the type information for the given value
+    pub fn type_info(&self) -> Type {
+        self.value_key.type_info()
+    }
+
     pub fn to_pending(&self) -> PendingValue {
         PendingValue(self.value_key)
     }
 
-    /// Get a copy of the owned key.
-    /// Used for debugging.
-    pub fn owned_key(&self) -> OwnedKey {
-        self.value_key.owned()
-    }
+    // /// Get a copy of the owned key.
+    // /// Used for debugging.
+    // pub fn owned_key(&self) -> OwnedKey {
+    //     self.value_key.owned()
+    // }
 
     pub fn copy_with_sub(&self, subscriber: Subscriber) -> ValueRef {
         subscribe(self.value_key.sub(), subscriber);
@@ -441,24 +442,18 @@ impl PendingValue {
         Some(shared)
     }
 
-    pub fn type_info(&self) -> Type {
-        let type_info = self.0.owned().aux();
-        match type_info {
-            1 => Type::Int,
-            2 => Type::Float,
-            4 => Type::String,
-            3 => Type::Map,
-            4 => Type::List,
-            5 => Type::Composite,
-            _ => unreachable!("corrupt type information")
-        }
+    /// Try to get access to the underlying value as a `dyn AnyState`.
+    /// This will return `None` if the `Value<T>` behind this `ValueRef` has
+    /// been dropped.
+    pub fn as_state(&self) -> Option<SharedState> {
+        let (key, value) = try_make_shared(self.0.owned())?;
+        let shared = SharedState::new(key, value);
+        Some(shared)
     }
 
-    pub fn as_state<F, T>(&self, f: F) -> T
-    where
-        F: Fn(&dyn AnyState) -> T,
-    {
-        with_owned(self.0.owned(), |val| f(&val.val))
+    /// Read the type information for the given value
+    pub fn type_info(&self) -> Type {
+        self.0.type_info()
     }
 
     pub fn owned_key(&self) -> OwnedKey {
@@ -475,7 +470,9 @@ impl PendingValue {
 pub enum Type {
     Int = 1,
     Float,
+    Char,
     String,
+    Bool,
     Map,
     List,
     Composite
