@@ -457,6 +457,12 @@ impl DebugWriter for VariablesDebug<'_> {
 mod test {
     use super::*;
 
+    impl From<usize> for VarId {
+        fn from(value: usize) -> Self {
+            VarId(value)
+        }
+    }
+
     #[test]
     fn scope_id_next() {
         let id = ScopeId::from([0]);

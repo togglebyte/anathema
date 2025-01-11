@@ -28,8 +28,8 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                 let value = state.reference();
                 match value.type_info() {
                     Type::Int => ValueExpr::Int(Kind::Dyn(value)),
-                    Type::Float => todo!(),
-                    Type::String => todo!(),
+                    Type::Float => ValueExpr::Float(Kind::Dyn(value)),
+                    Type::String => ValueExpr::Str(Kind::Dyn(value)),
                     Type::Bool => todo!(),
                     Type::Char => todo!(),
                     Type::Map => ValueExpr::DynMap(value),
@@ -38,7 +38,10 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                 }
             }
             "properties" => panic!(),
-            global => panic!("{global}"),
+            global => {
+                let Some(expr) = self.ctx.globals.get(global) else { return ValueExpr::Null };
+                self.resolve(expr)
+            }
         }
     }
 }
@@ -70,12 +73,13 @@ impl<'a, 'frame, 'bp> Resolver<'bp> for ImmediateResolver<'a, 'frame, 'bp> {
                 let rhs = self.resolve(rhs).into();
                 ValueExpr::Op(lhs, rhs, *op)
             }
-            Expression::Either(first, second) => match self.resolve(first) {
-                ValueExpr::Null => self.resolve(second),
-                value => value,
-            },
+            Expression::Either(first, second) => {
+                ValueExpr::Either(self.resolve(first).into(), self.resolve(second).into())
+            }
             Expression::Ident(ident) => self.lookup(ident),
-            Expression::Index(source, index) => ValueExpr::Index(self.resolve(source).into(), self.resolve(index).into()),
+            Expression::Index(source, index) => {
+                ValueExpr::Index(self.resolve(source).into(), self.resolve(index).into())
+            }
             Expression::Call { fun, args } => unimplemented!(),
         }
     }

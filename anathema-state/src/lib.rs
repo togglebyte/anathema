@@ -45,7 +45,7 @@ impl<'a> From<&'a str> for Path<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Hex {
     pub r: u8,
     pub g: u8,

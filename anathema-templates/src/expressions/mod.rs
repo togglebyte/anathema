@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use anathema_state::Hex;
+
 use crate::primitives::Primitive;
 
 pub(crate) mod eval;
@@ -179,6 +181,13 @@ pub fn index(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
 }
 
 // -----------------------------------------------------------------------------
+//   - Either -
+// -----------------------------------------------------------------------------
+pub fn either(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Either(lhs, rhs).into()
+}
+
+// -----------------------------------------------------------------------------
 //   - Maths -
 // -----------------------------------------------------------------------------
 pub fn mul(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
@@ -228,6 +237,15 @@ pub fn float(float: f64) -> Box<Expression> {
     Expression::Primitive(float.into()).into()
 }
 
+pub fn chr(c: char) -> Box<Expression> {
+    Expression::Primitive(c.into()).into()
+}
+
+pub fn hex(h: impl Into<Hex>) -> Box<Expression> {
+    let h = h.into();
+    Expression::Primitive(h.into()).into()
+}
+
 pub fn boolean(b: bool) -> Box<Expression> {
     Expression::Primitive(b.into()).into()
 }
@@ -244,7 +262,7 @@ pub fn list<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expr
     Expression::List(vec.into()).into()
 }
 
-pub fn text_segment<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
+pub fn text_segments<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
     let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
     Expression::TextSegments(vec.into()).into()
 }

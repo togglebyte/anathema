@@ -43,6 +43,10 @@ pub trait AnyValue: 'static {
         None
     }
 
+    fn as_hex(&self) -> Option<Hex> {
+        None
+    }
+
     fn as_char(&self) -> Option<char> {
         None
     }
@@ -89,6 +93,10 @@ impl<T: AnyValue> AnyValue for Box<T> {
         self.as_ref().as_char()
     }
 
+    fn as_hex(&self) -> Option<Hex> {
+        self.as_ref().as_hex()
+    }
+
     fn as_str(&self) -> Option<&str> {
         self.as_ref().as_str()
     }
@@ -129,6 +137,10 @@ impl AnyValue for Box<dyn AnyValue> {
 
     fn as_char(&self) -> Option<char> {
         self.as_ref().as_char()
+    }
+
+    fn as_hex(&self) -> Option<Hex> {
+        self.as_ref().as_hex()
     }
 
     fn as_str(&self) -> Option<&str> {
@@ -484,6 +496,24 @@ impl AnyValue for char {
     }
 
     fn as_char(&self) -> Option<char> {
+        Some(*self)
+    }
+}
+
+impl AnyValue for Hex {
+    fn type_id(&self) -> Type {
+        Type::Char
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn as_hex(&self) -> Option<Hex> {
         Some(*self)
     }
 }

@@ -39,6 +39,7 @@ from_value!(f64, Float);
 from_value!(i64, Int);
 from_value!(bool, Bool);
 from_value!(char, Char);
+from_value!(Hex, Hex);
 
 impl From<(u8, u8, u8)> for Primitive {
     fn from(value: (u8, u8, u8)) -> Self {

@@ -349,4 +349,10 @@ mod test {
         let expr = eval_src("[{a: 1}, {b: 89}]");
         assert_eq!(expr.to_string(), "[{a: 1}, {b: 89}]");
     }
+
+    #[test]
+    fn either() {
+        let expr = eval_src("a|b");
+        assert_eq!(expr.to_string(), "a|b");
+    }
 }

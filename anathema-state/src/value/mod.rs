@@ -61,19 +61,19 @@ pub struct Value<T> {
     _p: PhantomData<*const T>,
 }
 
-impl<T: Default + AnyValue + 'static> Default for Value<T> {
+impl<T: Default + AnyValue> Default for Value<T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-impl<T: AnyValue + 'static> From<T> for Value<T> {
+impl<T: AnyValue> From<T> for Value<T> {
     fn from(value: T) -> Self {
         Value::new(value)
     }
 }
 
-impl<T: AnyValue + 'static> Value<T> {
+impl<T: AnyValue> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
         let type_id = value.type_id();
@@ -155,7 +155,7 @@ impl<T: AnyValue + 'static> Value<T> {
 /// Copy the inner value from the owned value.
 ///
 /// This does not copy any auxillary data attached to the key
-impl<T: AnyValue + 'static + Copy> Value<T> {
+impl<T: AnyValue + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
         copy_val(self.key.owned())
     }

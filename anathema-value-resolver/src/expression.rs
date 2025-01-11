@@ -9,6 +9,15 @@ use anathema_templates::{Expression, Primitive};
 
 use crate::value::ValueKind;
 
+macro_rules! or_null {
+    ($val:expr) => {
+        match $val {
+            Some(val) => val,
+            None => return ValueExpr::Null,
+        }
+    };
+}
+
 #[derive(Debug)]
 pub enum Str<'bp> {
     Borrowed(&'bp str),
@@ -49,11 +58,11 @@ impl Kind<i64> {
 
 #[derive(Debug, Clone)]
 pub enum ValueExpr<'bp> {
-    Bool(bool),
-    Char(char),
+    Bool(Kind<bool>),
+    Char(Kind<char>),
     Int(Kind<i64>),
-    Float(f64),
-    Hex(Hex),
+    Float(Kind<f64>),
+    Hex(Kind<Hex>),
     Str(Kind<&'bp str>),
     DynMap(PendingValue),
     DynList(PendingValue),
@@ -76,92 +85,109 @@ pub enum ValueExpr<'bp> {
     Null,
 }
 
-impl<'bp> PartialEq for ValueExpr<'bp> {
-    fn eq(&self, other: &Self) -> bool {
-        todo!()
-    }
-}
-
-impl<'bp> PartialOrd for ValueExpr<'bp> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        todo!()
-    }
-}
-
-impl<'bp> From<PendingValue> for ValueExpr<'bp> {
-    fn from(value: PendingValue) -> Self {
-        match value.type_info() {
-            Type::Int => Self::Int(Kind::Dyn(value)),
-            Type::Float => todo!(),
-            Type::Char => todo!(),
-            Type::String => Self::Str(Kind::Dyn(value)),
-            Type::Bool => todo!(),
-            Type::Map => Self::DynMap(value),
-            Type::List => Self::DynList(value),
-            Type::Composite => todo!(),
-        }
-    }
-}
-
 impl<'bp> From<Primitive> for ValueExpr<'bp> {
     fn from(value: Primitive) -> Self {
         match value {
-            Primitive::Bool(b) => Self::Bool(b),
-            Primitive::Char(c) => Self::Char(c),
+            Primitive::Bool(b) => Self::Bool(Kind::Static(b)),
+            Primitive::Char(c) => Self::Char(Kind::Static(c)),
             Primitive::Int(i) => Self::Int(Kind::Static(i)),
-            Primitive::Float(f) => Self::Float(f),
-            Primitive::Hex(hex) => Self::Hex(hex),
+            Primitive::Float(f) => Self::Float(Kind::Static(f)),
+            Primitive::Hex(hex) => Self::Hex(Kind::Static(hex)),
         }
     }
 }
 
-// impl From<Number> for Value<'_> {
-//     fn from(number: Number) -> Self {
-//         match number {
-//             Number::I64(i) => Value::Int(i),
-//             Number::U64(i) => Value::Int(i as i64),
-//             Number::Usize(i) => Value::Int(i as i64),
-//             Number::Isize(i) => Value::Int(i as i64),
-//             Number::U32(i) => Value::Int(i as i64),
-//             Number::I32(i) => Value::Int(i as i64),
-//             Number::U16(i) => Value::Int(i as i64),
-//             Number::I16(i) => Value::Int(i as i64),
-//             Number::U8(i) => Value::Int(i as i64),
-//             Number::I8(i) => Value::Int(i as i64),
-//             Number::F64(f) => Value::Float(f),
-//             Number::F32(f) => Value::Float(f as f64),
-//         }
-//     }
-// }
-
-impl<'bp> ValueExpr<'bp> {
-    // fn stringify(&self, strings: &HStrings<'_>) {}
-}
-
-trait ValueExprVisitor {}
-
-struct IndexVisitor {}
-
 pub(crate) fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> ValueKind<'bp> {
     match expr {
-        ValueExpr::Bool(_) => todo!(),
-        ValueExpr::Char(_) => todo!(),
-        ValueExpr::Int(kind) => match kind {
-            Kind::Static(i) => ValueKind::Int(*i),
-            Kind::Dyn(pending_value) => {
-                pending_value.subscribe(sub);
-                let state = pending_value.as_state().unwrap();
-                ValueKind::Int(state.as_int().unwrap())
-            }
-        },
-        ValueExpr::Float(_) => todo!(),
-        ValueExpr::Hex(hex) => todo!(),
-        ValueExpr::Str(Kind::Static(s)) => ValueKind::String(Cow::Borrowed(s)),
+        // -----------------------------------------------------------------------------
+        //   - Primitives -
+        // -----------------------------------------------------------------------------
+        ValueExpr::Bool(Kind::Static(b)) => ValueKind::Bool(*b),
+        ValueExpr::Bool(Kind::Dyn(pending)) => {
+            pending.subscribe(sub);
+            let state = pending.as_state().unwrap();
+            ValueKind::Bool(state.as_bool().unwrap())
+        }
+        ValueExpr::Char(Kind::Static(c)) => ValueKind::Char(*c),
+        ValueExpr::Char(Kind::Dyn(pending)) => {
+            pending.subscribe(sub);
+            let state = pending.as_state().unwrap();
+            ValueKind::Char(state.as_char().unwrap())
+        }
+        ValueExpr::Int(Kind::Static(i)) => ValueKind::Int(*i),
+        ValueExpr::Int(Kind::Dyn(pending)) => {
+            pending.subscribe(sub);
+            let state = pending.as_state().unwrap();
+            ValueKind::Int(state.as_int().unwrap())
+        }
+        ValueExpr::Float(Kind::Static(f)) => ValueKind::Float(*f),
+        ValueExpr::Float(Kind::Dyn(pending)) => {
+            pending.subscribe(sub);
+            let state = pending.as_state().unwrap();
+            ValueKind::Float(state.as_float().unwrap())
+        }
+        ValueExpr::Hex(Kind::Static(h)) => ValueKind::Hex(*h),
+        ValueExpr::Hex(Kind::Dyn(pending)) => {
+            pending.subscribe(sub);
+            let state = pending.as_state().unwrap();
+            ValueKind::Hex(state.as_hex().unwrap())
+        }
+        ValueExpr::Str(Kind::Static(s)) => ValueKind::Str(Cow::Borrowed(s)),
         ValueExpr::Str(Kind::Dyn(val)) => {
             let state = val.as_state().unwrap();
             let s = state.as_str().unwrap();
-            ValueKind::String(Cow::Owned(s.to_owned()))
+            ValueKind::Str(Cow::Owned(s.to_owned()))
         }
+
+        // -----------------------------------------------------------------------------
+        //   - Operations and conditionals -
+        // -----------------------------------------------------------------------------
+        ValueExpr::Not(value_expr) => {
+            let ValueKind::Bool(val) = resolve_expr(value_expr, sub) else { return ValueKind::Null };
+            ValueKind::Bool(!val)
+        }
+        ValueExpr::Negative(value_expr) => match resolve_expr(value_expr, sub) {
+            ValueKind::Int(n) => ValueKind::Int(-n),
+            ValueKind::Float(n) => ValueKind::Float(-n),
+            _ => ValueKind::Null,
+        },
+        ValueExpr::Equality(lhs, rhs, equality) => {
+            let lhs = resolve_expr(lhs, sub);
+            let rhs = resolve_expr(rhs, sub);
+            let b = match equality {
+                Equality::Eq => lhs == rhs,
+                Equality::NotEq => lhs != rhs,
+                Equality::Gt => lhs > rhs,
+                Equality::Gte => lhs >= rhs,
+                Equality::Lt => lhs < rhs,
+                Equality::Lte => lhs <= rhs,
+            };
+            ValueKind::Bool(b)
+        }
+        ValueExpr::LogicalOp(lhs, rhs, logical_op) => {
+            let ValueKind::Bool(lhs) = resolve_expr(lhs, sub) else { return ValueKind::Null };
+            let ValueKind::Bool(rhs) = resolve_expr(rhs, sub) else { return ValueKind::Null };
+            let b = match logical_op {
+                LogicalOp::And => lhs && rhs,
+                LogicalOp::Or => lhs || rhs,
+            };
+            ValueKind::Bool(b)
+        }
+        ValueExpr::Op(lhs, rhs, op) => match (resolve_expr(lhs, sub), resolve_expr(rhs, sub)) {
+            (ValueKind::Int(lhs), ValueKind::Int(rhs)) => ValueKind::Int(int_op(lhs, rhs, *op)),
+            (ValueKind::Int(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs as f64, rhs, *op)),
+            (ValueKind::Float(lhs), ValueKind::Int(rhs)) => ValueKind::Float(float_op(lhs, rhs as f64, *op)),
+            (ValueKind::Float(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs, rhs, *op)),
+            _ => ValueKind::Null,
+        },
+        ValueExpr::Either(first, second) => match resolve_expr(first, sub) {
+            ValueKind::Null => resolve_expr(second, sub),
+            first => first,
+        },
+
+        // -----------------------------------------------------------------------------
+        //   - Maps and lists -
+        // -----------------------------------------------------------------------------
         ValueExpr::DynMap(value) => {
             let state = value.as_state().unwrap();
             state.as_any_map();
@@ -174,78 +200,105 @@ pub(crate) fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> Value
             let expr = resolve_index(src, index, sub);
             resolve_expr(&expr, sub)
         }
-        ValueExpr::Not(value_expr) => todo!(),
-        ValueExpr::Negative(value_expr) => todo!(),
-        ValueExpr::Equality(value_expr, value_expr1, equality) => todo!(),
-        ValueExpr::LogicalOp(value_expr, value_expr1, logical_op) => todo!(),
-        ValueExpr::Op(value_expr, value_expr1, op) => todo!(),
-        ValueExpr::Either(value_expr, value_expr1) => todo!(),
+
+        // -----------------------------------------------------------------------------
+        //   - Call -
+        // -----------------------------------------------------------------------------
         ValueExpr::Call => todo!(),
-        ValueExpr::Null => todo!(),
+
+        // -----------------------------------------------------------------------------
+        //   - Null -
+        // -----------------------------------------------------------------------------
+        ValueExpr::Null => ValueKind::Null,
+    }
+}
+
+fn resolve_pending(val: PendingValue, sub: Subscriber) -> ValueExpr<'static> {
+    val.subscribe(sub);
+    match val.type_info() {
+        Type::Int => ValueExpr::Int(Kind::Dyn(val)),
+        Type::Float => ValueExpr::Float(Kind::Dyn(val)),
+        Type::Char => ValueExpr::Char(Kind::Dyn(val)),
+        Type::String => ValueExpr::Str(Kind::Dyn(val)),
+        Type::Bool => ValueExpr::Bool(Kind::Dyn(val)),
+        Type::Map => ValueExpr::DynMap(val),
+        Type::List => ValueExpr::DynList(val),
+        // Type::Composite => ValueKind::Composite,
+        val_type => panic!("{val_type:?}"),
     }
 }
 
 fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, sub: Subscriber) -> ValueExpr<'bp> {
     match src {
         ValueExpr::DynMap(value) => {
-            let s = value.as_state().unwrap();
-            let map = s.as_any_map().expect("a dyn map is always a any_map");
-            let key = resolve_str(index, sub);
-            let val = map.lookup(key.to_str()).unwrap();
-            match val.type_info() {
-                Type::Int => ValueExpr::Int(Kind::Dyn(val)),
-                // Type::Float => ValueKind::Float,
-                // Type::Char => ValueKind::Char,
-                Type::String => ValueExpr::Str(Kind::Dyn(val)),
-                // Type::Bool => ValueKind::Bool,
-                Type::Map => ValueExpr::DynMap(val),
-                // Type::List => ValueKind::List,
-                // Type::Composite => ValueKind::Composite,
-                _ => panic!(),
-            }
+            let s = or_null!(value.as_state());
+            let map = s.as_any_map().expect("a dyn map is always an any_map");
+            let key = or_null!(resolve_str(index, sub));
+            let val = or_null!(map.lookup(key.to_str()));
+            resolve_pending(val, sub)
         }
-        ValueExpr::DynList(pending_value) => todo!(),
+        ValueExpr::DynList(value) => {
+            let s = or_null!(value.as_state());
+            let list = s.as_any_list().expect("a dyn list is always an any_list");
+            let key = resolve_int(index, sub);
+            let val = or_null!(list.lookup(key.to_int() as usize));
+            resolve_pending(val, sub)
+        }
         ValueExpr::List(_) => todo!(),
         ValueExpr::Map(hash_map) => {
-            let key = resolve_str(index, sub);
-            hash_map.get(&*key.to_str()).cloned().unwrap()
+            let key = or_null!(resolve_str(index, sub));
+            or_null!(hash_map.get(&*key.to_str()).cloned())
         }
         ValueExpr::Index(inner_src, inner_index) => {
             let src = resolve_index(inner_src, inner_index, sub);
             resolve_index(&src, index, sub)
         }
-        ValueExpr::Either(value_expr, value_expr1) => todo!(),
+        ValueExpr::Either(first, second) => panic!(),
+        // match resolve_expr(first, sub) {
+        //     ValueKind::Null => resolve_expr(second, sub),
+        //     val => val,
+        // }
         _ => unreachable!(),
     }
 }
 
-fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber) -> Kind<&'bp str> {
+fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber) -> Option<Kind<&'bp str>> {
     match index {
-        ValueExpr::Str(kind) => *kind,
-        ValueExpr::Index(src, index) => {
-            match resolve_index(src, index, sub) {
-                ValueExpr::Str(kind) => kind,
-                _ => unreachable!(),
-            }
-            
-        }
-        ValueExpr::Either(value_expr, value_expr1) => todo!(),
+        ValueExpr::Str(kind) => Some(*kind),
+        ValueExpr::Index(src, index) => match resolve_index(src, index, sub) {
+            ValueExpr::Str(kind) => Some(kind),
+            _ => None,
+        },
+        ValueExpr::Either(first, second) => resolve_str(first, sub).or_else(|| resolve_str(second, sub)),
+        ValueExpr::Null => None,
         ValueExpr::Call => todo!(),
-        ValueExpr::Null => todo!(),
+        _ => None,
+    }
+}
 
-        ValueExpr::Bool(_) => todo!(),
-        ValueExpr::Char(_) => todo!(),
-        ValueExpr::Int(kind) => todo!(),
-        ValueExpr::Float(_) => todo!(),
-        ValueExpr::Hex(hex) => todo!(),
-        ValueExpr::DynMap(pending_value) => todo!(),
-        ValueExpr::DynList(pending_value) => todo!(),
-        ValueExpr::List(_) => todo!(),
-        ValueExpr::Map(hash_map) => todo!(),
-        ValueExpr::Not(value_expr) => todo!(),
-        ValueExpr::Negative(value_expr) => todo!(),
-        ValueExpr::Equality(value_expr, value_expr1, equality) => todo!(),
-        ValueExpr::LogicalOp(value_expr, value_expr1, logical_op) => todo!(),
-        ValueExpr::Op(value_expr, value_expr1, op) => todo!(),
+fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber) -> Kind<i64> {
+    match index {
+        ValueExpr::Int(kind) => *kind,
+        _ => panic!(),
+    }
+}
+
+fn int_op(lhs: i64, rhs: i64, op: Op) -> i64 {
+    match op {
+        Op::Add => lhs + rhs,
+        Op::Sub => lhs - rhs,
+        Op::Div => lhs / rhs,
+        Op::Mul => lhs * rhs,
+        Op::Mod => lhs % rhs,
+    }
+}
+
+fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
+    match op {
+        Op::Add => lhs + rhs,
+        Op::Sub => lhs - rhs,
+        Op::Div => lhs / rhs,
+        Op::Mul => lhs * rhs,
+        Op::Mod => lhs % rhs,
     }
 }

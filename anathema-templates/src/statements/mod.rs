@@ -210,12 +210,14 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use anathema_store::slab::SlabIndex;
 
     pub(crate) fn load_value(expr: impl Into<Expression>) -> Statement {
         Statement::LoadValue(expr.into())
     }
 
-    pub(crate) fn load_attrib(key: impl Into<StringId>, expr: impl Into<Expression>) -> Statement {
+    pub(crate) fn load_attrib(key: usize, expr: impl Into<Expression>) -> Statement {
+        let key = StringId::from_usize(key);
         Statement::LoadAttribute {
             key: key.into(),
             value: expr.into(),
@@ -226,31 +228,35 @@ mod test {
         Statement::Component(id.into())
     }
 
-    pub(crate) fn slot(id: impl Into<StringId>) -> Statement {
+    pub(crate) fn slot(id: usize) -> Statement {
+        let id = StringId::from_usize(id);
         Statement::ComponentSlot(id.into())
     }
 
-    pub(crate) fn associated_fun(internal: impl Into<StringId>, external: impl Into<StringId>) -> Statement {
+    pub(crate) fn associated_fun(internal: usize, external: usize) -> Statement {
         Statement::AssociatedFunction {
-            internal: internal.into(),
-            external: external.into(),
+            internal: StringId::from_usize(internal),
+            external: StringId::from_usize(external),
         }
     }
 
-    pub(crate) fn node(id: impl Into<StringId>) -> Statement {
-        Statement::Node(id.into())
+    pub(crate) fn node(id: usize) -> Statement {
+        let id = SlabIndex::from_usize(id);
+        Statement::Node(id)
     }
 
-    pub(crate) fn for_loop(binding: impl Into<StringId>, data: impl Into<Expression>) -> Statement {
+    pub(crate) fn for_loop(binding: usize, data: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
         Statement::For {
-            binding: binding.into(),
+            binding,
             data: data.into(),
         }
     }
 
-    pub(crate) fn decl(binding: impl Into<StringId>, value: impl Into<Expression>) -> Statement {
+    pub(crate) fn decl(binding: usize, value: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
         Statement::Declaration {
-            binding: binding.into(),
+            binding,
             value: value.into(),
         }
     }

@@ -10,7 +10,7 @@ pub struct Map<T> {
     inner: HashMap<String, Value<T>>,
 }
 
-impl<T: 'static + AnyValue> Map<T> {
+impl<T: AnyValue> Map<T> {
     pub fn empty() -> Self {
         Self { inner: HashMap::new() }
     }

@@ -288,6 +288,8 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
 
 #[cfg(test)]
 mod test {
+    use anathema_store::{slab::SlabIndex, storage::strings::StringId};
+
     use super::*;
     use crate::error::ParseErrorKind;
 
@@ -366,7 +368,7 @@ mod test {
 
         for input in inputs {
             let actual = token_kind(input);
-            let expected = Kind::Value(Value::Ident(0.into()));
+            let expected = Kind::Value(Value::Ident(StringId::from_usize(0)));
             assert_eq!(expected, actual);
         }
     }
