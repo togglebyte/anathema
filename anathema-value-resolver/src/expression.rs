@@ -97,7 +97,8 @@ impl<'bp> From<Primitive> for ValueExpr<'bp> {
     }
 }
 
-pub(crate) fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> ValueKind<'bp> {
+// Resolve an expression to a value kind, this is the final value in the chain
+pub(crate) fn resolve_value<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> ValueKind<'bp> {
     match expr {
         // -----------------------------------------------------------------------------
         //   - Primitives -
@@ -143,17 +144,17 @@ pub(crate) fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> Value
         //   - Operations and conditionals -
         // -----------------------------------------------------------------------------
         ValueExpr::Not(value_expr) => {
-            let ValueKind::Bool(val) = resolve_expr(value_expr, sub) else { return ValueKind::Null };
+            let ValueKind::Bool(val) = resolve_value(value_expr, sub) else { return ValueKind::Null };
             ValueKind::Bool(!val)
         }
-        ValueExpr::Negative(value_expr) => match resolve_expr(value_expr, sub) {
+        ValueExpr::Negative(value_expr) => match resolve_value(value_expr, sub) {
             ValueKind::Int(n) => ValueKind::Int(-n),
             ValueKind::Float(n) => ValueKind::Float(-n),
             _ => ValueKind::Null,
         },
         ValueExpr::Equality(lhs, rhs, equality) => {
-            let lhs = resolve_expr(lhs, sub);
-            let rhs = resolve_expr(rhs, sub);
+            let lhs = resolve_value(lhs, sub);
+            let rhs = resolve_value(rhs, sub);
             let b = match equality {
                 Equality::Eq => lhs == rhs,
                 Equality::NotEq => lhs != rhs,
@@ -165,23 +166,23 @@ pub(crate) fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> Value
             ValueKind::Bool(b)
         }
         ValueExpr::LogicalOp(lhs, rhs, logical_op) => {
-            let ValueKind::Bool(lhs) = resolve_expr(lhs, sub) else { return ValueKind::Null };
-            let ValueKind::Bool(rhs) = resolve_expr(rhs, sub) else { return ValueKind::Null };
+            let ValueKind::Bool(lhs) = resolve_value(lhs, sub) else { return ValueKind::Null };
+            let ValueKind::Bool(rhs) = resolve_value(rhs, sub) else { return ValueKind::Null };
             let b = match logical_op {
                 LogicalOp::And => lhs && rhs,
                 LogicalOp::Or => lhs || rhs,
             };
             ValueKind::Bool(b)
         }
-        ValueExpr::Op(lhs, rhs, op) => match (resolve_expr(lhs, sub), resolve_expr(rhs, sub)) {
+        ValueExpr::Op(lhs, rhs, op) => match (resolve_value(lhs, sub), resolve_value(rhs, sub)) {
             (ValueKind::Int(lhs), ValueKind::Int(rhs)) => ValueKind::Int(int_op(lhs, rhs, *op)),
             (ValueKind::Int(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs as f64, rhs, *op)),
             (ValueKind::Float(lhs), ValueKind::Int(rhs)) => ValueKind::Float(float_op(lhs, rhs as f64, *op)),
             (ValueKind::Float(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs, rhs, *op)),
             _ => ValueKind::Null,
         },
-        ValueExpr::Either(first, second) => match resolve_expr(first, sub) {
-            ValueKind::Null => resolve_expr(second, sub),
+        ValueExpr::Either(first, second) => match resolve_value(first, sub) {
+            ValueKind::Null => resolve_value(second, sub),
             first => first,
         },
 
@@ -198,7 +199,7 @@ pub(crate) fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber) -> Value
         ValueExpr::Map(hash_map) => todo!(),
         ValueExpr::Index(src, index) => {
             let expr = resolve_index(src, index, sub);
-            resolve_expr(&expr, sub)
+            resolve_value(&expr, sub)
         }
 
         // -----------------------------------------------------------------------------
@@ -253,12 +254,36 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, sub: Subscri
             let src = resolve_index(inner_src, inner_index, sub);
             resolve_index(&src, index, sub)
         }
-        ValueExpr::Either(first, second) => panic!(),
-        // match resolve_expr(first, sub) {
-        //     ValueKind::Null => resolve_expr(second, sub),
-        //     val => val,
-        // }
+        ValueExpr::Either(first, second) => {
+            let src = match resolve_expr(first, sub) {
+                None | Some(ValueExpr::Null) => match resolve_expr(second, sub) {
+                    None | Some(ValueExpr::Null) => return ValueExpr::Null,
+                    Some(e) => e,
+                },
+                Some(e) => e,
+            };
+            resolve_index(&src, index, sub)
+        }
+        ValueExpr::Null => ValueExpr::Null,
         _ => unreachable!(),
+    }
+}
+
+fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, sub: Subscriber) -> Option<ValueExpr<'bp>> {
+    match expr {
+        ValueExpr::Either(first, second) => match resolve_expr(first, sub) {
+            None | Some(ValueExpr::Null) => resolve_expr(second, sub),
+            expr => expr,
+        },
+        ValueExpr::Index(src, index) => Some(resolve_index(src, index, sub)),
+        _ => None,
+        // ValueExpr::Bool(_) |
+        // ValueExpr::Char(_) |
+        // ValueExpr::Int(_) |
+        // ValueExpr::Float(_) |
+        // ValueExpr::Hex(_) |
+        // ValueExpr::Str(_) => expr,
+        // _ => panic!(),
     }
 }
 

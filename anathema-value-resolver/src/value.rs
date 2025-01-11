@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use anathema_state::{Hex, Subscriber};
 
-use crate::expression::{resolve_expr, ValueExpr};
+use crate::expression::{resolve_value, ValueExpr};
 
 /// This is the final value for a node attribute / value.
 /// This should be evaluated fully for the `ValueKind`
@@ -15,7 +15,7 @@ pub struct Value<'bp> {
 
 impl<'bp> Value<'bp> {
     pub fn new(expr: ValueExpr<'bp>, sub: Subscriber) -> Self {
-        let kind = resolve_expr(&expr, sub);
+        let kind = resolve_value(&expr, sub);
         Self {
             expr,
             sub,
@@ -24,7 +24,7 @@ impl<'bp> Value<'bp> {
     }
 
     pub fn reload(&mut self) {
-        self.kind = resolve_expr(&self.expr, self.sub);
+        self.kind = resolve_value(&self.expr, self.sub);
     }
 
     pub fn to_int(&self) -> Option<i64> {
