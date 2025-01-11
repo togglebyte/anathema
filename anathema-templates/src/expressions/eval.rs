@@ -158,13 +158,13 @@ mod test {
     #[test]
     fn index() {
         let expr = eval_src("a[x]");
-        assert_eq!(expr.to_string(), "a[x]");
+        assert_eq!(expr.to_string(), "<a>[x]");
     }
 
     #[test]
     fn dot() {
         let expr = eval_src("a.x.y");
-        assert_eq!(expr.to_string(), "a[x][y]");
+        assert_eq!(expr.to_string(), "<<a>[x]>[y]");
     }
 
     #[test]
@@ -182,7 +182,7 @@ mod test {
     #[test]
     fn lookup() {
         let expr = eval_src("a.b.c");
-        assert_eq!(expr.to_string(), "a[b][c]");
+        assert_eq!(expr.to_string(), "<<a>[b]>[c]");
     }
 
     #[test]
@@ -352,7 +352,19 @@ mod test {
 
     #[test]
     fn either() {
-        let expr = eval_src("a|b");
-        assert_eq!(expr.to_string(), "a|b");
+        let expr = eval_src("a?b");
+        assert_eq!(expr.to_string(), "a ? b");
+    }
+
+    #[test]
+    fn either_list_or_list() {
+        let expr = eval_src("(a?b)[0]");
+        assert_eq!(expr.to_string(), "<a ? b>[0]");
+    }
+
+    #[test]
+    fn either_or_list() {
+        let expr = eval_src("a?b[0]");
+        assert_eq!(expr.to_string(), "a ? <b>[0]");
     }
 }

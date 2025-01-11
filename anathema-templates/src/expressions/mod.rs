@@ -102,7 +102,7 @@ impl Display for Expression {
             Self::Primitive(val) => write!(f, "{val}"),
             Self::Str(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
-            Self::Index(lhs, idx) => write!(f, "{lhs}[{idx}]"),
+            Self::Index(lhs, idx) => write!(f, "<{lhs}>[{idx}]"),
             Self::Not(expr) => write!(f, "!{expr}"),
             Self::Negative(expr) => write!(f, "-{expr}"),
             Self::Op(lhs, rhs, op) => {
