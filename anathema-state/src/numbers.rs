@@ -7,7 +7,7 @@
 //! number has to be treated as a float
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
-use crate::{CommonVal, State};
+use crate::{CommonVal, State, Type};
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum Number {
@@ -84,20 +84,44 @@ impl Number {
 }
 
 impl State for Number {
-    fn to_number(&self) -> Option<Number> {
-        Some(*self)
+    fn type_info(&self) -> Type {
+        match self {
+            Number::Usize(_)
+            | Number::Isize(_)
+            | Number::U64(_)
+            | Number::I64(_)
+            | Number::U32(_)
+            | Number::I32(_)
+            | Number::U16(_)
+            | Number::I16(_)
+            | Number::U8(_)
+            | Number::I8(_) => Type::Int,
+            Number::F64(_) | Number::F32(_) => Type::Float,
+        }
     }
 
-    fn to_bool(&self) -> bool {
-        self.as_int() != 0
+    fn as_int(&self) -> Option<i64> {
+        match self {
+            Number::Usize(_) => todo!(),
+            Number::Isize(_) => todo!(),
+            Number::U64(_) => todo!(),
+            Number::I64(_) => todo!(),
+            Number::U32(_) => todo!(),
+            Number::I32(_) => todo!(),
+            Number::U16(_) => todo!(),
+            Number::I16(_) => todo!(),
+            Number::U8(_) => todo!(),
+            Number::I8(_) => todo!(),
+            _ => None,
+        }
     }
 
-    fn to_common(&self) -> Option<CommonVal> {
-        let val = match self.is_float() {
-            true => CommonVal::Float(self.as_float()),
-            false => CommonVal::Int(self.as_int()),
-        };
-        Some(val)
+    fn as_float(&self) -> Option<f64> {
+        match self {
+            Number::F64(_) => todo!(),
+            Number::F32(_) => todo!(),
+            _ => None,
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use anathema_store::store::{OwnedEntry, OwnedKey};
 use super::subscriber::Subscribers;
 use super::values::OwnedValue;
 use super::{CHANGES, FUTURE_VALUES, OWNED, SHARED, SUBSCRIBERS};
-use crate::states::AnyState;
+use crate::states::OldAnyState;
 use crate::store::subscriber::SubscriberDebug;
 use crate::Change;
 

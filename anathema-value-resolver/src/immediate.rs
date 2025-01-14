@@ -34,7 +34,7 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                     Type::Char => todo!(),
                     Type::Map => ValueExpr::DynMap(value),
                     Type::List => todo!(),
-                    Type::Composite => todo!(),
+                    Type::Composite => ValueExpr::DynMap(value),
                 }
             }
             "properties" => panic!(),

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use super::{Type, Value};
-use crate::states::{AnyMap, AnyValue};
+use crate::states::{AnyMap, AnyState};
 use crate::{CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
 
 #[derive(Debug)]
@@ -10,22 +10,26 @@ pub struct Map<T> {
     inner: HashMap<String, Value<T>>,
 }
 
-impl<T: AnyValue> Map<T> {
+impl<T: AnyState> Map<T> {
     pub fn empty() -> Self {
         Self { inner: HashMap::new() }
     }
 
     // TODO if this has to go back into the Value<Self> then remove this function
     // along with having the `empty` funcition return Value<Self> instead of Self
-    pub fn insert(&mut self, map_key: impl Into<String>, value: impl Into<Value<T>>) {
+    pub fn insert(&mut self, map_key: impl Into<String>, value: T) {
         let map_key = map_key.into();
         // let map = &mut *self.to_mut();
         let value = value.into();
         self.inner.insert(map_key, value);
     }
 
-    pub fn get(&self, key: std::borrow::Cow<'_, str>) -> Option<&Value<T>> {
-        self.inner.get(&*key)
+    pub fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
+        self.inner.remove(map_key)
+    }
+
+    pub fn get(&self, key: &str) -> Option<&Value<T>> {
+        self.inner.get(key)
     }
 
     pub fn get_mut(&mut self, key: &str) -> Option<&mut Value<T>> {
@@ -33,7 +37,7 @@ impl<T: AnyValue> Map<T> {
     }
 }
 
-impl<T: 'static + AnyValue> Value<Map<T>> {
+impl<T: 'static + AnyState> Value<Map<T>> {
     // pub fn empty() -> Self {
     //     let map = Map { inner: HashMap::new() };
     //     Value::new(map)
@@ -56,14 +60,14 @@ impl<T: 'static + AnyValue> Value<Map<T>> {
     }
 }
 
-impl<T: AnyValue> AnyMap for Map<T> {
-    fn lookup(&self, key: std::borrow::Cow<'_, str>) -> Option<PendingValue> {
+impl<T: AnyState> AnyMap for Map<T> {
+    fn lookup(&self, key: &str) -> Option<PendingValue> {
         self.get(key).map(|val| val.reference())
     }
 }
 
-impl<T: AnyValue> AnyValue for Map<T> {
-    fn type_id(&self) -> Type {
+impl<T: AnyState> AnyState for Map<T> {
+    fn type_info(&self) -> Type {
         Type::Map
     }
 
@@ -80,24 +84,6 @@ impl<T: AnyValue> AnyValue for Map<T> {
     }
 }
 
-// impl<T: 'static + AnyValue> State for Map<T> {
-//     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
-//         let Path::Key(k) = path else { return None };
-//         let value = self.inner.get(k)?;
-//         Some(value.value_ref(sub))
-//     }
-
-//     fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
-//         let Path::Key(k) = path else { return None };
-//         let value = self.inner.get(k)?;
-//         Some(value.reference())
-//     }
-
-//     fn to_common(&self) -> Option<CommonVal> {
-//         None
-//     }
-// }
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -108,20 +94,18 @@ mod test {
         map.insert("a", 1);
         map.insert("b", 2);
 
-        let r = map.to_ref();
+        let val = map.get("a").unwrap().to_ref();
+        assert_eq!(*val, 1);
 
-        let val = *r.get("a").unwrap().to_ref();
-        assert_eq!(val, 1);
-
-        let val = *r.get("b").unwrap().to_ref();
-        assert_eq!(val, 2);
+        let val = map.get("b").unwrap().to_ref();
+        assert_eq!(*val, 2);
     }
 
     #[test]
     fn remove() {
         let mut map = Map::empty();
         map.insert("a", 1i32);
-        let value_ref = map.to_ref().state_get("a".into(), Subscriber::ZERO).unwrap();
+        let value_ref = map.lookup("a").unwrap();
         map.remove("a");
         assert!(value_ref.value::<i32>().is_none());
     }

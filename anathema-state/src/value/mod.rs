@@ -7,7 +7,7 @@ use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 
 pub use self::list::List;
 pub use self::map::Map;
-use crate::states::AnyValue;
+use crate::states::AnyState;
 use crate::store::subscriber::{subscribe, unsubscribe, SubKey};
 use crate::store::values::{
     copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, with_owned,
@@ -61,22 +61,22 @@ pub struct Value<T> {
     _p: PhantomData<*const T>,
 }
 
-impl<T: Default + AnyValue> Default for Value<T> {
+impl<T: Default + AnyState> Default for Value<T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-impl<T: AnyValue> From<T> for Value<T> {
+impl<T: AnyState> From<T> for Value<T> {
     fn from(value: T) -> Self {
         Value::new(value)
     }
 }
 
-impl<T: AnyValue> Value<T> {
+impl<T: AnyState> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
-        let type_id = value.type_id();
+        let type_id = value.type_info();
         let mut key = new_value(Box::new(value), type_id);
         Self { key, _p: PhantomData }
     }
@@ -87,6 +87,16 @@ impl<T: AnyValue> Value<T> {
     /// Attempting to take a reference to the value using a `ValueRef` will
     /// result in a runtime error.
     pub fn to_mut(&mut self) -> Unique<'_, T> {
+        let value = get_unique(self.key.owned());
+        Unique {
+            value: Some(value),
+            key: self.key,
+            _p: PhantomData,
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn to_mut_cast<U>(&mut self) -> Unique<'_, U> {
         let value = get_unique(self.key.owned());
         Unique {
             value: Some(value),
@@ -155,7 +165,7 @@ impl<T: AnyValue> Value<T> {
 /// Copy the inner value from the owned value.
 ///
 /// This does not copy any auxillary data attached to the key
-impl<T: AnyValue + Copy> Value<T> {
+impl<T: AnyState + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
         copy_val(self.key.owned())
     }
@@ -239,7 +249,7 @@ enum ElementState {
 
 impl ElementState {
     #[allow(clippy::borrowed_box)]
-    fn as_state(&self) -> &Box<dyn AnyValue> {
+    fn as_state(&self) -> &Box<dyn AnyState> {
         match self {
             Self::Dropped => unreachable!(),
             Self::Alive(value) => &value.val,
@@ -334,7 +344,7 @@ impl PartialEq for SharedState {
 }
 
 impl Deref for SharedState {
-    type Target = Box<dyn AnyValue>;
+    type Target = Box<dyn AnyState>;
 
     fn deref(&self) -> &Self::Target {
         self.inner.as_state()
@@ -423,16 +433,16 @@ impl Drop for ValueRef {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub struct PendingValue(ValueKey);
 
 impl PendingValue {
-    pub fn subscribe(self, subscriber: Subscriber) -> ValueRef {
+    pub fn subscribe(self, subscriber: Subscriber) {
         subscribe(self.0.sub(), subscriber);
-        ValueRef {
-            value_key: self.0,
-            subscriber,
-        }
+    }
+
+    pub fn unsubscribe(self, subscriber: Subscriber) {
+        unsubscribe(self.0.sub(), subscriber);
     }
 
     /// Load the value. This will return `None` if the owner has dropped the value
@@ -529,15 +539,15 @@ mod test {
     #[test]
     fn value_ref_to_shared_state() {
         let value = Value::new(1);
-        let r1 = value.value_ref(Subscriber::ZERO);
-        let r2 = value.value_ref(Subscriber::ZERO);
+        let r1 = value.reference();
+        let r2 = value.reference();
 
         let s1 = r1.as_state().unwrap();
         let s2 = r2.as_state().unwrap();
 
-        let val = s1.to_number().unwrap() + s2.to_number().unwrap();
+        let val = s1.as_int().unwrap() + s2.as_int().unwrap();
 
-        assert_eq!(val.as_int(), 2);
+        assert_eq!(val, 2);
     }
 
     #[test]

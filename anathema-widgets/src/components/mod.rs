@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
-use anathema_state::{AnyValue, CommonVal, SharedState, StateId, Value};
+use anathema_state::{AnyState, CommonVal, SharedState, StateId, Value};
 use anathema_store::slab::Slab;
 use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::ComponentBlueprintId;
@@ -21,10 +21,10 @@ use crate::{Attributes, WidgetId};
 pub mod events;
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
-pub type StateFn = dyn FnMut() -> Box<dyn AnyValue>;
+pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
 
 enum ComponentType {
-    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyValue>>),
+    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>),
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
@@ -40,7 +40,7 @@ impl ComponentRegistry {
     /// Both `add_component` and `add_prototype` are using `Slab::insert_at`.
     ///
     /// This is fine as the component ids are generated at the same time.
-    pub fn add_component<S: 'static + AnyValue>(
+    pub fn add_component<S: 'static + AnyState>(
         &mut self,
         id: ComponentBlueprintId,
         component: impl Component + 'static,
@@ -55,7 +55,7 @@ impl ComponentRegistry {
         FC: 'static + Fn() -> C,
         FS: 'static + FnMut() -> S,
         C: Component + 'static,
-        S: AnyValue + 'static,
+        S: AnyState + 'static,
     {
         let comp_type =
             ComponentType::Prototype(Box::new(move || Box::new(proto())), Box::new(move || Box::new(state())));
@@ -70,7 +70,7 @@ impl ComponentRegistry {
     pub fn get(
         &mut self,
         id: ComponentBlueprintId,
-    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyValue>)> {
+    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => Some((ComponentKind::Instance, comp.take()?, state.take()?)),
@@ -89,7 +89,7 @@ impl ComponentRegistry {
         &mut self,
         id: ComponentBlueprintId,
         current_component: Box<dyn AnyComponent>,
-        current_state: Box<dyn AnyValue>,
+        current_state: Box<dyn AnyState>,
     ) {
         match self.0.get_mut(id) {
             Some(component) => match component {
@@ -190,7 +190,7 @@ impl<'frame, T: 'static> Context<'frame, T> {
     pub fn publish<F, V>(&mut self, ident: &str, mut f: F)
     where
         F: FnMut(&T) -> &Value<V> + 'static,
-        V: AnyValue,
+        V: AnyState,
     {
         panic!("implement this once the new resolver is in place");
         // let Some(internal) = self.inner.strings.lookup(ident) else { return };
@@ -280,7 +280,7 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
     pub fn publish<F, V>(&mut self, ident: &str, mut f: F)
     where
         F: FnMut(&T) -> &Value<V> + 'static,
-        V: AnyValue,
+        V: AnyState,
     {
         panic!("implement this once the new resolver is in place");
         // let Some(internal) = self.inner.strings.lookup(ident) else { return };
@@ -347,7 +347,7 @@ impl<'rt, T> DerefMut for DeprecatedContext<'rt, T> {
 
 #[deprecated]
 pub struct AnyEventCtx<'state, 'tree, 'bp> {
-    pub state: Option<&'state mut dyn AnyValue>,
+    pub state: Option<&'state mut dyn AnyState>,
     pub elements: Elements<'tree, 'bp>,
     pub context: UntypedContext<'tree>,
     pub component_ctx: ComponentContext<'tree>,
@@ -368,7 +368,7 @@ pub struct AnyComponentContext<'frame> {
     assoc_events: &'frame mut AssociatedEvents,
     attributes: &'frame Attributes<'frame>,
     focus_queue: &'frame mut FocusQueue,
-    pub state: Option<&'frame mut dyn AnyValue>,
+    pub state: Option<&'frame mut dyn AnyState>,
     pub emitter: &'frame Emitter,
     pub viewport: Viewport,
     pub strings: &'frame Strings,
@@ -382,7 +382,7 @@ impl<'frame> AnyComponentContext<'frame> {
         assoc_events: &'frame mut AssociatedEvents,
         focus_queue: &'frame mut FocusQueue,
         attributes: &'frame Attributes<'frame>,
-        state: Option<&'frame mut dyn AnyValue>,
+        state: Option<&'frame mut dyn AnyState>,
         emitter: &'frame Emitter,
         viewport: Viewport,
         strings: &'frame Strings,
@@ -435,7 +435,7 @@ pub struct AssociatedEvent {
     pub state: StateId,
     pub parent: Parent,
     pub external: StringId,
-    pub f: Box<dyn FnMut(&dyn AnyValue) -> SharedState + 'static>,
+    pub f: Box<dyn FnMut(&dyn AnyState) -> SharedState + 'static>,
 }
 
 // The reason the component can not have access
@@ -455,7 +455,7 @@ impl AssociatedEvents {
         state: StateId,
         parent: Parent,
         external: StringId,
-        f: Box<dyn FnMut(&dyn AnyValue) -> SharedState>,
+        f: Box<dyn FnMut(&dyn AnyState) -> SharedState>,
     ) {
         self.inner.push(AssociatedEvent {
             state,
@@ -491,7 +491,7 @@ impl FocusQueue {
 }
 
 pub trait Component: 'static {
-    type State: AnyValue;
+    type State: AnyState;
     type Message;
 
     #[allow(unused_variables, unused_mut)]

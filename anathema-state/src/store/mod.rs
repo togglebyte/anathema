@@ -29,7 +29,7 @@ thread_local! {
     static WATCH_QUEUE: RefCell<Stack<Watcher>> = const { RefCell::new(Stack::empty()) };
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 /// A value key is a composite from an owned key and a sub key.
 pub struct ValueKey(OwnedKey, SubKey);
 
@@ -117,8 +117,7 @@ mod test {
 
     #[test]
     fn store_value() {
-        let value = Box::new(0usize);
-        let key = new_value(value);
+        let key = new_value(Box::new(0usize), Type::Int);
         assert_eq!(key.owned(), OwnedKey::ZERO);
         assert_eq!(key.sub(), SubKey::from_usize(0));
     }

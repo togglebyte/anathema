@@ -2,7 +2,7 @@ use anathema::{drain_changes, Changes};
 use anathema_backend::test::TestBackend;
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{State, StateId, States, Value};
+use anathema_state::{OldState, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;

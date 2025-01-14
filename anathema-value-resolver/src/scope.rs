@@ -52,3 +52,15 @@ impl Scope {
         *id
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn scope_one() {
+        // let mut scope = Scope::new();
+        // panic!();
+        // scope.scope("key", 
+    }
+}

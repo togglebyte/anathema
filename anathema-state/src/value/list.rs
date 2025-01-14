@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use super::{Type, Value};
-use crate::states::{AnyList, AnyValue};
+use crate::states::{AnyList, AnyState};
 use crate::store::changed;
 use crate::{Change, CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
 
@@ -17,7 +17,7 @@ pub struct List<T> {
     inner: VecDeque<Value<T>>,
 }
 
-impl<T: AnyValue> List<T> {
+impl<T: AnyState> List<T> {
     pub fn empty() -> Self {
         Self { inner: VecDeque::new() }
     }
@@ -30,6 +30,11 @@ impl<T: AnyValue> List<T> {
     /// Push a value to the back of the list
     pub fn push_back(&mut self, value: impl Into<Value<T>>) {
         self.inner.push_back(value.into());
+    }
+
+    /// Push a value to the back of the list
+    pub fn push_front(&mut self, value: impl Into<Value<T>>) {
+        self.inner.push_front(value.into());
     }
 
     pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Value<Self> {
@@ -61,9 +66,11 @@ impl<T: AnyValue> List<T> {
     }
 }
 
-impl<T: AnyValue> Default for List<T> {
+impl<T: AnyState> Default for List<T> {
     fn default() -> Self {
-        Self::empty()
+        Self {
+            inner: VecDeque::new()
+        }
     }
 }
 
@@ -73,11 +80,11 @@ impl<T: AnyValue> Default for List<T> {
 /// let mut list = List::empty();
 /// list.push(123);
 /// ```
-impl<T: 'static + AnyValue> Value<List<T>> {
-    // pub fn empty() -> Self {
-    //     let list = List { inner: VecDeque::new() };
-    //     Value::new(list)
-    // }
+impl<T: AnyState> Value<List<T>> {
+    pub fn empty() -> Self {
+        let list = List { inner: VecDeque::new() };
+        Value::new(list)
+    }
 
     /// Push a value to the list
     pub fn push(&mut self, value: impl Into<Value<T>>) {
@@ -158,14 +165,18 @@ impl<T: 'static + AnyValue> Value<List<T>> {
     }
 }
 
-impl<T: AnyValue> AnyList for List<T> {
+impl<T: AnyState> AnyList for List<T> {
     fn lookup(&self, index: usize) -> Option<PendingValue> {
         self.get(index).map(|val| val.reference())
     }
+
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
-impl<T: AnyValue> AnyValue for List<T> {
-    fn type_id(&self) -> Type {
+impl<T: AnyState> AnyState for List<T> {
+    fn type_info(&self) -> Type {
         Type::List
     }
 
@@ -182,32 +193,9 @@ impl<T: AnyValue> AnyValue for List<T> {
     }
 }
 
-// impl<T: 'static + AnyValue> State for List<T> {
-//     fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
-//         let Path::Index(idx) = path else { return None };
-
-//         let value = self.inner.get(idx)?;
-//         Some(value.value_ref(sub))
-//     }
-
-//     fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
-//         let Path::Index(idx) = path else { return None };
-//         let value = self.inner.get(idx)?;
-//         Some(value.reference())
-//     }
-
-//     fn to_common(&self) -> Option<CommonVal> {
-//         None
-//     }
-
-//     fn count(&self) -> usize {
-//         self.inner.len()
-//     }
-// }
-
 impl<T> FromIterator<T> for Value<List<T>>
 where
-    T: 'static + AnyValue,
+    T: 'static + AnyState,
     Value<T>: From<T>,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -225,21 +213,20 @@ mod test {
 
     #[test]
     fn insert() {
-        let mut list = List::empty();
+        let mut list = Value::new(List::empty());
         list.push_back(1usize);
         list.push_front(0usize);
+        let list = list.to_ref();
 
-        let r = list.to_ref();
+        let val = list.get(0).unwrap().to_ref();
+        assert_eq!(*val, 0);
 
-        let val = *r.get(0).unwrap().to_ref();
-        assert_eq!(val, 0);
-
-        let val = *r.get(1).unwrap().to_ref();
-        assert_eq!(val, 1);
+        let val = list.get(1).unwrap().to_ref();
+        assert_eq!(*val, 1);
     }
 
-    fn setup_map<T: 'static + State>(key: &str, a: T, b: T) -> Value<Map<List<T>>> {
-        let mut map = Map::<List<T>>::empty();
+    fn setup_map<T: 'static + State>(key: &str, a: T, b: T) -> Map<List<T>> {
+        let mut map = Map::empty();
         let mut list = List::empty();
         list.push_back(a);
         list.push_back(b);
@@ -250,10 +237,11 @@ mod test {
     #[test]
     fn notify_insert() {
         let mut map = setup_map("a", 1, 2);
-        let mut map = map.to_mut();
 
         let list = map.get_mut("a").unwrap();
-        let _vr = list.value_ref(Subscriber::ZERO);
+        let list_ref = list.reference();
+        list_ref.subscribe(Subscriber::ZERO);
+
         list.push_back(1);
 
         let (_, change) = drain_changes().remove(0);
@@ -263,10 +251,10 @@ mod test {
     #[test]
     fn notify_remove() {
         let mut map = setup_map("a", 1, 2);
-        let mut map = map.to_mut();
 
         let list = map.get_mut("a").unwrap();
-        let _vr = list.value_ref(Subscriber::ZERO);
+        let list_ref = list.reference();
+        list_ref.subscribe(Subscriber::ZERO);
         list.remove(0);
 
         let change = drain_changes().remove(0);
@@ -276,11 +264,11 @@ mod test {
     #[test]
     fn notify_pop_front() {
         let mut map = setup_map("a", 1, 2);
-        let mut map = map.to_mut();
 
         let list = map.get_mut("a").unwrap();
 
-        let _vr = list.value_ref(Subscriber::ZERO);
+        let list_ref = list.reference();
+        list_ref.subscribe(Subscriber::ZERO);
         list.pop_front();
 
         let change = drain_changes().remove(0);
@@ -290,11 +278,11 @@ mod test {
     #[test]
     fn notify_pop_back() {
         let mut map = setup_map("a", 1, 2);
-        let mut map = map.to_mut();
 
         let list = map.get_mut("a").unwrap();
 
-        let _vr = list.value_ref(Subscriber::ZERO);
+        let list_ref = list.reference();
+        list_ref.subscribe(Subscriber::ZERO);
         list.pop_back();
 
         let change = drain_changes().remove(0);

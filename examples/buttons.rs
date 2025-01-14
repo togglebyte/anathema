@@ -1,6 +1,6 @@
 use anathema_backend::tui::TuiBackend;
 use anathema_runtime::Runtime;
-use anathema_state::{CommonVal, State, Value};
+use anathema_state::{CommonVal, OldState, Value};
 use anathema_templates::Document;
 use anathema_widgets::components::events::{KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{Component, DeprecatedContext};

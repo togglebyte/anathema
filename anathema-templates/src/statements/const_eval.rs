@@ -94,7 +94,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::expressions::{add, div, ident, index, list, mul, num, sub};
+    use crate::expressions::{add, div, either, ident, index, list, mul, num, strlit, sub};
     use crate::statements::with_context;
 
     #[test]
@@ -152,6 +152,23 @@ mod test {
             let expr = index(index(ident("state"), ident("list")), num(2));
             let output = const_eval(expr.clone(), &ctx).unwrap();
             assert_eq!(output, *expr);
+        });
+    }
+
+    #[test]
+    fn const_either() {
+        // TODO: this is yet to be implemented in const folding
+        with_context(|ctx| {
+            let expr = either(strlit("tea time"), ident("thing"));
+            let output = const_eval(expr, &ctx).unwrap();
+            let expected = strlit("tea time");
+            assert_eq!(output, *expected);
+        });
+
+        with_context(|ctx| {
+            let expr = either(ident("tea time"), ident("thing"));
+            let output = const_eval(expr.clone(), &ctx).unwrap();
+            assert_eq!(output, *expected);
         });
     }
 }

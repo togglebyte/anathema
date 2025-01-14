@@ -91,12 +91,14 @@ impl<'bp> Attributes<'bp> {
         match self.attribs.get_index(&key) {
             Some(idx) => {
                 let valueref = value.subscribe((self.widget_id, idx).into());
-                self.attribs.set(key, valueref.into());
+                panic!();
+                // self.attribs.set(key, valueref.into());
             }
             None => {
                 self.attribs.insert_with(key, |idx| {
                     let valueref = value.subscribe((self.widget_id, idx).into());
-                    valueref.into()
+                    panic!()
+                    // valueref.into()
                 });
             }
         }

@@ -145,7 +145,7 @@ impl<'bp> Scope<'bp> {
 
             match entry {
                 // Pending
-                Entry::Pending(_, pending) => break EvalValue::Dyn(pending.subscribe(lookup.id)).into(),
+                Entry::Pending(_, pending) => panic!(),//break EvalValue::Dyn(pending.subscribe(lookup.id)).into(),
 
                 // Downgraded
                 Entry::Downgraded(_, downgrade) => break downgrade.upgrade(lookup.id).into(),

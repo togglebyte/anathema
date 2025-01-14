@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use anathema_geometry::Size;
-use anathema_state::{Map, State, StateId, States};
+use anathema_state::{Map, OldState, StateId, States};
 use anathema_store::tree::TreeForEach;
 use anathema_strings::HStrings;
 use anathema_templates::{Expression, Globals};
@@ -21,7 +21,7 @@ pub struct ScopedTest<T, S> {
     states: States,
 }
 
-impl<T: 'static + State> ScopedTest<T, NoExpr> {
+impl<T: 'static + OldState> ScopedTest<T, NoExpr> {
     pub fn new() -> Self {
         let mut states = States::new();
         let map = Map::<T>::empty();
@@ -42,7 +42,7 @@ impl<T: 'static + State> ScopedTest<T, NoExpr> {
     }
 }
 
-impl<T: 'static + State, S> ScopedTest<T, S> {
+impl<T: 'static + OldState, S> ScopedTest<T, S> {
     pub fn with_state_value(mut self, key: &str, value: T) -> Self {
         let map = self.states.get_mut(StateId::ZERO).unwrap();
         let map = map
@@ -54,7 +54,7 @@ impl<T: 'static + State, S> ScopedTest<T, S> {
     }
 }
 
-impl<T: 'static + State> ScopedTest<T, WithExpr> {
+impl<T: 'static + OldState> ScopedTest<T, WithExpr> {
     pub fn eval<F>(&mut self, f: F)
     where
         F: FnOnce(Value<'_, EvalValue<'_>>, &HStrings<'_>),

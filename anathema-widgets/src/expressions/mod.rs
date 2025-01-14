@@ -282,7 +282,7 @@ impl<'bp> EvalValue<'bp> {
             Self::String(val) => Self::String(*val),
             Self::State(id) => Self::State(*id),
             Self::ComponentAttributes(id) => Self::ComponentAttributes(*id),
-            Self::Pending(val) => Self::Dyn(val.subscribe(value_id)),
+            Self::Pending(val) => panic!(),//Self::Dyn(val.subscribe(value_id)),
             Self::Index(value, index) => Self::Index(
                 value.inner_upgrade(value_id).into(),
                 index.inner_upgrade(value_id).into(),

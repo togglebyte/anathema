@@ -41,8 +41,8 @@ pub enum Color {
 }
 
 impl State for Color {
-    fn to_common(&self) -> Option<CommonVal> {
-        Some(CommonVal::Color(*self))
+    fn type_info(&self) -> crate::Type {
+        todo!()
     }
 }
 

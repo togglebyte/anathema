@@ -34,7 +34,7 @@ impl KeyIndex {
 }
 
 // The key associated with the value that is being subscribed to.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub(crate) struct SubKey(u32);
 
 impl SlabIndex for SubKey {

@@ -30,6 +30,7 @@ pub fn clear_all_changes() {
 }
 
 pub(crate) fn changed(key: ValueKey, change: Change) {
+    let s = key.sub();
     // Notify subscribers
     let subscribers = SUBSCRIBERS.with_borrow(|subs| subs.get(key.sub()));
     if subscribers.is_empty() {
