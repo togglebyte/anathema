@@ -48,7 +48,14 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
     let expr = expr.into();
 
     let expr = match expr {
-        expr @ (E::Primitive(_) | E::Str(_) | E::Either(..)) => expr,
+        expr @ (E::Primitive(_) | E::Str(_))  => expr,
+        E::Either(first, second) => {
+            match const_eval(first, ctx) {
+                Some(expr @ (E::Primitive(_) | E::Str(_))) => expr.into(),
+                Some(expr) => E::Either(expr.into(), ce!(second)),
+                None => return None,
+            }
+        },
         E::Not(expr) => E::Not(ce!(*expr)),
         E::Negative(expr) => E::Negative(ce!(*expr)),
         E::Equality(lhs, rhs, eq) => E::Equality(ce!(*lhs), ce!(*rhs), eq),
@@ -166,9 +173,9 @@ mod test {
         });
 
         with_context(|ctx| {
-            let expr = either(ident("tea time"), ident("thing"));
+            let expr = either(ident("teatime"), ident("thing"));
             let output = const_eval(expr.clone(), &ctx).unwrap();
-            assert_eq!(output, *expected);
+            assert_eq!(output, *expr);
         });
     }
 }

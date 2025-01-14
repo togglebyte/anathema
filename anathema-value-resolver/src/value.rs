@@ -64,7 +64,7 @@ impl Drop for Value<'_> {
 /// This value can never be part of an evaluation chain, only the return value.
 /// It should only ever be the final type that is held by a `Value`, at
 /// the end of an evaluation
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub enum ValueKind<'bp> {
     Int(i64),
     Float(f64),

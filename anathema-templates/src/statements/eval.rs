@@ -219,6 +219,7 @@ mod test {
 
         let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
+        panic!("{blueprint:#?}");
     }
 
     #[test]

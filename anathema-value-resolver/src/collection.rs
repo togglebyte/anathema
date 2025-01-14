@@ -43,15 +43,17 @@ mod test {
     use super::*;
     use crate::testing::setup;
 
-    // #[test]
-    // fn static_collection() {
-    //     let expr = index(index(ident("state"), strlit("list")), num(1));
-    //     let mut list = List::empty();
-    //     list.push(123);
-    //     list.push(456);
+    #[test]
+    fn static_collection() {
+        let expr = index(index(ident("state"), strlit("list")), num(1));
+        let mut list = List::empty();
+        list.push(123);
+        list.push(456);
 
-    //     let test = setup().with_state("list", list).finish();
-    //     let value = test.eval(&*expr);
-    //     let collection = Collection::new(value);
-    // }
+        let test = setup().finish(|mut test| {
+            test.set_state("list", list);
+            let value = test.eval(&*expr);
+            let collection = Collection::new(value);
+        });
+    }
 }
