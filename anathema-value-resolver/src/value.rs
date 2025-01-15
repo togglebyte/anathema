@@ -90,10 +90,30 @@ pub(crate) mod test {
     use anathema_state::{AnyState, Hex, List, Map, StateId, States};
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
-        less_than_equal, map, modulo, mul, neg, not, num, or, strlit, sub,
+        less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub,
     };
 
     use crate::testing::setup;
+
+    #[test]
+    fn expr_list_dyn_index() {
+        let expr = index(list([1, 2, 3]), add(ident("index"), num(1)));
+
+        setup().with_global("index", 0).finish(|mut test| {
+            let value = test.eval(&*expr);
+            assert_eq!(2, value.to_int().unwrap());
+        });
+    }
+
+    #[test]
+    fn expr_list() {
+        let expr = index(list([1, 2, 3]), num(0));
+
+        setup().finish(|mut test| {
+            let value = test.eval(&*expr);
+            assert_eq!(1, value.to_int().unwrap());
+        });
+    }
 
     #[test]
     fn either_index() {

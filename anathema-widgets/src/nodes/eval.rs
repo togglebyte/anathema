@@ -107,7 +107,7 @@ impl Evaluator for SingleEval {
 
             let strings = &mut *ctx.strings;
             let mut ctx = ExprEvalCtx {
-                scope: ctx.scope,
+                scope,
                 states: ctx.states,
                 attributes: ctx.attribute_storage,
                 globals: ctx.globals,

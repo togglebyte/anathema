@@ -5,7 +5,7 @@ use std::ops::Deref;
 use anathema_state::{Hex, Number, PendingValue, Subscriber, Type, ValueRef};
 use anathema_strings::StrIndex;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
-use anathema_templates::{Expression, Primitive};
+use anathema_templates::Primitive;
 
 use crate::value::ValueKind;
 
@@ -293,11 +293,14 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, sub: Subscri
         ValueExpr::DynList(value) => {
             let s = or_null!(value.as_state());
             let list = s.as_any_list().expect("a dyn list is always an any_list");
-            let key = resolve_int(index, sub);
-            let val = or_null!(list.lookup(key.to_int() as usize));
+            let key = rsolve_int(index, sub);
+            let val = or_null!(list.lookup(key as usize));
             resolve_pending(val, sub)
         }
-        ValueExpr::List(_) => todo!(),
+        ValueExpr::List(list) => {
+            let index = resolve_int(index, sub);
+            list[index as usize].clone()
+        }
         ValueExpr::Map(hash_map) => {
             let key = or_null!(resolve_str(index, sub));
             or_null!(hash_map.get(&*key.to_str()).cloned())
@@ -346,10 +349,19 @@ fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber) -> Option<Ki
     }
 }
 
-fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber) -> Kind<i64> {
-    match index {
-        ValueExpr::Int(kind) => *kind,
-        _ => panic!(),
+fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber) -> i64 {
+    match resolve_value(index, sub) {
+        ValueKind::Int(index) => index,
+        ValueKind::Float(_) => todo!(),
+        ValueKind::Bool(_) => todo!(),
+        ValueKind::Char(_) => todo!(),
+        ValueKind::Hex(hex) => todo!(),
+        ValueKind::Str(cow) => todo!(),
+        ValueKind::Composite => todo!(),
+        ValueKind::Null => todo!(),
+        ValueKind::Map => todo!(),
+        ValueKind::List(vec) => todo!(),
+        ValueKind::DynList(pending_value) => todo!(),
     }
 }
 

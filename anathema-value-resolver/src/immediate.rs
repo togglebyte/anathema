@@ -24,13 +24,15 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
         match ident {
             "state" => {
                 let state_id = self.ctx.scopes.get_state();
+                // TODO: There is yet to be a requirement for a state in the root
+                //       so this unwrap can't become an expect until that's in place
                 let state = self.ctx.states.get(state_id).unwrap();
                 let value = state.reference();
                 match value.type_info() {
                     Type::Int => ValueExpr::Int(Kind::Dyn(value)),
                     Type::Float => ValueExpr::Float(Kind::Dyn(value)),
                     Type::String => ValueExpr::Str(Kind::Dyn(value)),
-                    Type::Bool => todo!(),
+                    Type::Bool => todo!("write tests for these"),
                     Type::Char => todo!(),
                     Type::Map => ValueExpr::DynMap(value),
                     Type::List => todo!(),
@@ -38,8 +40,8 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                 }
             }
             "properties" => panic!(),
-            global => {
-                let Some(expr) = self.ctx.globals.get(global) else { return ValueExpr::Null };
+            scope => {
+                let Some(expr) = self.ctx.globals.get(scope) else { return ValueExpr::Null };
                 self.resolve(expr)
             }
         }

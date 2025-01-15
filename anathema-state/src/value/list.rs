@@ -37,10 +37,6 @@ impl<T: AnyState> List<T> {
         self.inner.push_front(value.into());
     }
 
-    pub fn from_iter(iter: impl IntoIterator<Item = T>) -> Value<Self> {
-        Value::from_iter(iter)
-    }
-
     pub fn get(&self, index: usize) -> Option<&Value<T>> {
         self.inner.get(index)
     }
@@ -195,13 +191,23 @@ impl<T: AnyState> AnyState for List<T> {
 
 impl<T> FromIterator<T> for Value<List<T>>
 where
-    T: 'static + AnyState,
+    T: AnyState,
     Value<T>: From<T>,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
         let list = List { inner };
         Value::new(list)
+    }
+}
+
+impl<T: AnyState> FromIterator<T> for List<T>
+where
+    T: AnyState,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
+        List { inner }
     }
 }
 

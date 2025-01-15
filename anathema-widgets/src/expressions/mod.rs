@@ -595,56 +595,56 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
     }
 
     fn lookup(&mut self, expression: &'bp Expression, strings: &mut HStrings<'bp>) -> EvalValue<'bp> {
-        match expression {
-            Expression::Ident(ident) => match &**ident {
-                "state" => self.ctx.scope.get_state(),
-                "attributes" => self.ctx.scope.get_component_attributes(),
-                path => {
-                    let lookup = ScopeLookup::new(Path::from(path), self.subscriber);
-                    match self.ctx.scope.get(lookup, &mut None, self.ctx.states) {
-                        NameThis::Nothing => {
-                            self.register_future_value = true;
-                            EvalValue::Empty
-                        }
-                        NameThis::Value(eval_value) => eval_value,
-                        NameThis::ResolveThisNow(expr) => self.resolve(expr, strings),
-                    }
-                }
-            },
-            Expression::Index(lhs, rhs) => {
-                let value = self.resolve(lhs, strings);
+        // match expression {
+        //     Expression::Ident(ident) => match &**ident {
+        //         "state" => self.ctx.scope.get_state(),
+        //         "attributes" => self.ctx.scope.get_component_attributes(),
+        //         path => {
+        //             let lookup = ScopeLookup::new(Path::from(path), self.subscriber);
+        //             match self.ctx.scope.get(lookup, &mut None, self.ctx.states) {
+        //                 NameThis::Nothing => {
+        //                     self.register_future_value = true;
+        //                     EvalValue::Empty
+        //                 }
+        //                 NameThis::Value(eval_value) => eval_value,
+        //                 NameThis::ResolveThisNow(expr) => self.resolve(expr, strings),
+        //             }
+        //         }
+        //     },
+        //     Expression::Index(lhs, rhs) => {
+        //         let value = self.resolve(lhs, strings);
 
-                // The RHS is always the index / ident.
-                // Note that this might still be an op, e.g a + 1
-                // So the expression has to be evaluated before it can be used as an index.
-                //
-                // Once evaluated it should be either a string or a number
-                let index = match &**rhs {
-                    Expression::Str(ident) => Path::from(&**ident),
-                    expr => {
-                        let index = self.resolve(expr, strings);
-                        if let EvalValue::Empty = index {
-                            self.register_future_value = true;
-                            return EvalValue::Empty;
-                        }
-                        let index = index.load_number().unwrap().as_int() as usize;
-                        Path::from(index)
-                    }
-                };
+        //         // The RHS is always the index / ident.
+        //         // Note that this might still be an op, e.g a + 1
+        //         // So the expression has to be evaluated before it can be used as an index.
+        //         //
+        //         // Once evaluated it should be either a string or a number
+        //         let index = match &**rhs {
+        //             Expression::Str(ident) => Path::from(&**ident),
+        //             expr => {
+        //                 let index = self.resolve(expr, strings);
+        //                 if let EvalValue::Empty = index {
+        //                     self.register_future_value = true;
+        //                     return EvalValue::Empty;
+        //                 }
+        //                 let index = index.load_number().unwrap().as_int() as usize;
+        //                 Path::from(index)
+        //             }
+        //         };
 
-                let val = match value.get(index, self.subscriber, self.ctx.states, self.ctx.attributes) {
-                    NameThis::Nothing => {
-                        self.register_future_value = true;
-                        EvalValue::Empty
-                    }
-                    NameThis::Value(value) => value,
-                    NameThis::ResolveThisNow(expr) => self.resolve(expr, strings),
-                };
+        //         let val = match value.get(index, self.subscriber, self.ctx.states, self.ctx.attributes) {
+        //             NameThis::Nothing => {
+        //                 self.register_future_value = true;
+        //                 EvalValue::Empty
+        //             }
+        //             NameThis::Value(value) => value,
+        //             NameThis::ResolveThisNow(expr) => self.resolve(expr, strings),
+        //         };
 
-                val
-            }
-            _ => unreachable!("lookup only handles ident and index"),
-        }
+        //         val
+        //     }
+        //     _ => unreachable!("lookup only handles ident and index"),
+        // }
     }
 }
 

@@ -1,5 +1,6 @@
 use anathema_state::{AnyState, Hex, List, Map, StateId, States, Subscriber};
 use anathema_templates::{Expression, Globals, Variables};
+use collection::{Collection, CollectionResolver};
 
 use super::*;
 use crate::context::ResolverCtx;
@@ -61,8 +62,14 @@ impl<'bp> TestCase<'bp> {
         let ctx = ResolverCtx::new(&self.globals, &self.scope, self.states);
         let mut resolver = ImmediateResolver::new(&ctx);
         let value_expr = resolver.resolve(expr);
-        let val = Value::new(value_expr, Subscriber::ZERO);
-        val
+        Value::new(value_expr, Subscriber::ZERO)
+    }
+
+    pub(crate) fn eval_collection(&self, expr: &'bp Expression) -> Collection<'bp> {
+        let ctx = ResolverCtx::new(&self.globals, &self.scope, self.states);
+        let mut resolver = CollectionResolver::new(&ctx);
+        let collection_expr = resolver.resolve(expr);
+        Collection::new(collection_expr, Subscriber::ZERO)
     }
 
     pub(crate) fn set_state(&mut self, key: &str, value: impl AnyState) {

@@ -110,6 +110,7 @@ impl<'bp> WidgetContainer<'bp> {
             }
             WidgetKind::Iteration(iter) => {
                 ctx.scope.push();
+                // evaluate experession + index?
                 let loop_index = *iter.loop_index.to_ref() as usize;
                 ctx.scope.scope_indexed(iter.binding, loop_index, None);
             }

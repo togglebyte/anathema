@@ -22,7 +22,7 @@ mod display;
 pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
-    pub(super) scope: Scope<'bp>,
+    // pub(super) scope: Scope<'bp>,
     pub states: &'frame mut States,
     pub(super) globals: &'bp Globals,
     pub dirty_widgets: &'frame mut DirtyWidgets,
@@ -57,7 +57,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         force_layout: bool,
     ) -> Self {
         Self {
-            scope: Scope::new(),
+            // scope: Scope::new(),
             states,
             attribute_storage,
             components,
@@ -90,7 +90,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             strings: &mut self.strings,
             component_registry: self.component_registry,
             components: self.components,
-            scope: &self.scope,
+            // scope: &self.scope,
             globals: self.globals,
             factory: &self.factory,
             parent: None,
@@ -107,7 +107,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             let strings = &mut *self.strings;
 
             let ctx = ExprEvalCtx {
-                scope: &self.scope,
+                // scope: &self.scope,
                 states: &self.states,
                 attributes: storage,
                 globals: self.globals,
@@ -129,7 +129,7 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) strings: &'frame mut HStrings<'bp>,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
-    pub(super) scope: &'frame Scope<'bp>,
+    // pub(super) scope: &'frame Scope<'bp>,
     pub(super) globals: &'bp Globals,
     pub(super) factory: &'frame Factory,
     pub(super) parent: Option<WidgetId>,
