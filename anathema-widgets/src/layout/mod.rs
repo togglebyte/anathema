@@ -5,17 +5,15 @@ use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
 use anathema_templates::{ComponentBlueprintId, Globals};
-use anathema_value_resolver::Scope;
+use anathema_value_resolver::{AttributeStorage, Attributes, ResolverCtx, Scope};
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
-use crate::expressions::ExprEvalCtx;
 use crate::nodes::element::Element;
-use crate::values::ValueId;
 use crate::{
-    AttributeStorage, Attributes, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap,
-    LayoutChildren, Value, WidgetContainer, WidgetId, WidgetKind,
+    ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, LayoutChildren, WidgetContainer,
+    WidgetId, WidgetKind,
 };
 
 mod constraints;
@@ -99,7 +97,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
     // TODO: this should not be on the layout context!
     pub(super) fn changes<F>(&mut self, widget_id: WidgetId, mut f: F) -> Option<()>
     where
-        F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
+        F: FnMut(&mut Attributes<'bp>, &ResolverCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
     {
         let changes = self.changelist.drain(widget_id)?;
 
@@ -107,12 +105,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             let strings = &mut *self.strings;
 
             let scope = Scope::empty();
-            let ctx = ExprEvalCtx {
-                scope: &scope,
-                states: &self.states,
-                attributes: storage,
-                globals: self.globals,
-            };
+            let ctx = ResolverCtx::new(self.globals, &scope, &self.states, storage);
 
             for change in changes {
                 f(attributes, &ctx, strings, change);

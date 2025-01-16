@@ -2,12 +2,12 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_templates::blueprints::Blueprint;
+use anathema_value_resolver::AttributeStorage;
 
-use crate::expressions::EvalValue;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach, PositionChildren};
-use crate::{AttributeStorage, LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
+use crate::{LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -102,11 +102,12 @@ impl Container {
         for y in 0..self.cache.size.height as u16 {
             for x in 0..self.cache.size.width as u16 {
                 let pos = LocalPos::new(x, y);
-                ctx.set_attributes(attributes, pos);
+                panic!("get rid of cell attributes");
+                // ctx.set_attributes(attributes, pos);
             }
         }
 
-        if let Some(fill) = attributes.get_val("fill") {
+        if let Some(fill) = attributes.get("fill") {
             for y in 0..ctx.local_size.height as u16 {
                 let mut used_width = 0;
                 loop {

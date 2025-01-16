@@ -3,10 +3,11 @@ use std::ops::ControlFlow;
 
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::ValueId;
+use anathema_value_resolver::AttributeStorage;
 
 use super::element::Element;
 use super::WidgetContainer;
-use crate::{AttributeStorage, WidgetKind};
+use crate::WidgetKind;
 
 /// Stringify the tree.
 /// Used for debugging
@@ -45,25 +46,17 @@ impl<'a, 'bp> NodeVisitor<WidgetContainer<'_>> for Stringify<'a, 'bp> {
                     // Print attributes
                     let _ = write!(&mut self.output, "[");
                     for (i, (key, val)) in attribs.iter().enumerate() {
-                        if let Some(common_val) = val.load_common_val() {
-                            let v = common_val.to_common().unwrap();
-                            // Write a comma before the values if this is not the first entry
-                            if i > 0 {
-                                let _ = write!(&mut self.output, ", ");
-                            }
-                            let _ = write!(&mut self.output, "{}: {:?}", key.as_str(), v);
+                        // Write a comma before the values if this is not the first entry
+                        if i > 0 {
+                            let _ = write!(&mut self.output, ", ");
                         }
+                        let _ = write!(&mut self.output, "{}: {:?}", key.as_str(), val);
                     }
                     let _ = write!(&mut self.output, "]");
                 }
 
                 if let Some(val) = attribs.value() {
-                    if let Some(common_val) = val.load_common_val() {
-                        let v = common_val.to_common().unwrap();
-                        let _ = write!(&mut self.output, " {:?}", v);
-                    }
-
-                    // let _ = write!(&mut self.output, " (expr: {:?})", val.expr);
+                    let _ = write!(&mut self.output, " {:?}", val);
                 }
             }
             WidgetKind::For(_) => drop(write!(&mut self.output, "<for>")),

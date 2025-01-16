@@ -1,8 +1,61 @@
 use std::borrow::Cow;
+use std::ops::{Deref, DerefMut};
 
 use anathema_state::{Hex, PendingValue, Subscriber};
+use anathema_store::smallmap::SmallMap;
+use anathema_templates::Expression;
 
+use crate::attributes::ValueKey;
 use crate::expression::{resolve_value, ValueExpr};
+use crate::immediate::ImmediateResolver;
+use crate::{Resolver, ResolverCtx};
+
+pub type Values<'bp> = SmallMap<ValueKey<'bp>, Value<'bp>>;
+
+pub fn resolve<'bp>(expr: &'bp Expression, ctx: &ResolverCtx<'_, 'bp>, sub: impl Into<Subscriber>) -> Value<'bp> {
+    let resolver = ImmediateResolver::new(ctx);
+    let value_expr = resolver.resolve(expr);
+    Value::new(value_expr, sub.into())
+}
+
+pub fn resolve_collection<'bp>(
+    expr: &'bp Expression,
+    ctx: &ResolverCtx<'_, 'bp>,
+    sub: impl Into<Subscriber>,
+) -> Collection<'bp> {
+    let value = resolve(expr, ctx, sub);
+    Collection(value)
+}
+
+#[derive(Debug)]
+pub struct Collection<'bp>(Value<'bp>);
+
+impl<'bp> Collection<'bp> {
+    pub fn reload(&mut self) {
+        self.0.reload()
+    }
+
+    pub fn len(&self) -> usize {
+        match &self.0.kind {
+            ValueKind::List(vec) => vec.len(),
+            ValueKind::DynList(value) => {
+                let Some(state) = value.as_state() else { return 0 };
+                let Some(list) = state.as_any_list() else { return 0 };
+                list.len()
+            }
+
+            ValueKind::Int(_)
+            | ValueKind::Float(_)
+            | ValueKind::Bool(_)
+            | ValueKind::Char(_)
+            | ValueKind::Hex(_)
+            | ValueKind::Str(_)
+            | ValueKind::Composite
+            | ValueKind::Null
+            | ValueKind::Map => 0,
+        }
+    }
+}
 
 /// This is the final value for a node attribute / value.
 /// This should be evaluated fully for the `ValueKind`
@@ -24,40 +77,31 @@ impl<'bp> Value<'bp> {
         self.kind = resolve_value(&self.expr, self.sub);
     }
 
-    pub fn to_int(&self) -> Option<i64> {
-        let ValueKind::Int(i) = self.kind else { return None };
-        Some(i)
-    }
-
-    pub fn to_float(&self) -> Option<f64> {
-        let ValueKind::Float(i) = self.kind else { return None };
-        Some(i)
-    }
-
-    pub fn to_bool(&self) -> Option<bool> {
-        let ValueKind::Bool(b) = self.kind else { return None };
-        Some(b)
-    }
-
-    pub fn to_char(&self) -> Option<char> {
-        let ValueKind::Char(i) = self.kind else { return None };
-        Some(i)
-    }
-
-    pub fn to_hex(&self) -> Option<Hex> {
-        let ValueKind::Hex(i) = self.kind else { return None };
-        Some(i)
-    }
-
-    pub fn to_str(&self) -> Option<&str> {
-        let ValueKind::Str(i) = &self.kind else { return None };
-        Some(i)
+    pub fn strings<F>(&self, mut f: F)
+    where
+        F: FnMut(&str) -> bool,
+    {
+        &self.kind.strings(&mut f);
     }
 }
 
 impl Drop for Value<'_> {
     fn drop(&mut self) {
         eprintln!("unsubscribe the value");
+    }
+}
+
+impl<'a> Deref for Value<'a> {
+    type Target = ValueKind<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.kind
+    }
+}
+
+impl<'a> DerefMut for Value<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.kind
     }
 }
 
@@ -72,8 +116,6 @@ pub enum ValueKind<'bp> {
     Char(char),
     Hex(Hex),
     Str(Cow<'bp, str>),
-    // DynMap(PendingValue),
-    // DynList(PendingValue),
     Composite,
     Null,
 
@@ -85,12 +127,71 @@ pub enum ValueKind<'bp> {
     DynList(PendingValue),
 }
 
+impl ValueKind<'_> {
+    pub fn as_int(&self) -> Option<i64> {
+        let ValueKind::Int(i) = self else { return None };
+        Some(*i)
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        let ValueKind::Float(i) = self else { return None };
+        Some(*i)
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        let ValueKind::Bool(b) = self else { return None };
+        Some(*b)
+    }
+
+    pub fn as_char(&self) -> Option<char> {
+        let ValueKind::Char(i) = self else { return None };
+        Some(*i)
+    }
+
+    pub fn as_hex(&self) -> Option<Hex> {
+        let ValueKind::Hex(i) = self else { return None };
+        Some(*i)
+    }
+
+    pub fn as_str(&self) -> Option<&str> {
+        let ValueKind::Str(i) = &self else { return None };
+        Some(&*i)
+    }
+
+
+    fn strings<F>(&self, f: &mut F) -> bool
+    where
+        F: FnMut(&str) -> bool,
+    {
+        match self {
+            ValueKind::Int(n) => f(&n.to_string()),
+            ValueKind::Float(n) => f(&n.to_string()),
+            ValueKind::Bool(b) => f(&b.to_string()),
+            ValueKind::Char(c) => f(&c.to_string()),
+            ValueKind::Hex(x) => f(&x.to_string()),
+            ValueKind::Str(cow) => f(cow.as_ref()),
+            ValueKind::Map => return true,
+            ValueKind::List(vec) => vec.iter().take_while(|val| val.strings(f)).count() == vec.len(),
+            ValueKind::DynList(value) => {
+                let Some(state) = value.as_state() else { return true };
+                let Some(list) = state.as_any_list() else { return true };
+                for i in 0..list.len() {
+                    let value = list.lookup(i).expect("the value exists");
+                }
+                panic!()
+            }
+            ValueKind::Composite => todo!(),
+            ValueKind::Null => return true,
+        }
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{AnyState, Hex, List, Map, StateId, States};
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
-        less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub,
+        less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
 
     use crate::testing::setup;
@@ -101,7 +202,7 @@ pub(crate) mod test {
 
         setup().with_global("index", 0).finish(|mut test| {
             let value = test.eval(&*expr);
-            assert_eq!(2, value.to_int().unwrap());
+            assert_eq!(2, value.as_int().unwrap());
         });
     }
 
@@ -111,7 +212,7 @@ pub(crate) mod test {
 
         setup().finish(|mut test| {
             let value = test.eval(&*expr);
-            assert_eq!(1, value.to_int().unwrap());
+            assert_eq!(1, value.as_int().unwrap());
         });
     }
 
@@ -129,7 +230,7 @@ pub(crate) mod test {
         setup().finish(|mut test| {
             test.set_state("a", list);
             let value = test.eval(&*expr);
-            assert_eq!("a string", value.to_str().unwrap());
+            assert_eq!("a string", value.as_str().unwrap());
         });
     }
 
@@ -150,7 +251,7 @@ pub(crate) mod test {
         setup().finish(|mut test| {
             test.set_state("a", list);
             let value = test.eval(&*expr);
-            assert_eq!("a string", value.to_str().unwrap());
+            assert_eq!("a string", value.as_str().unwrap());
         });
     }
 
@@ -163,12 +264,12 @@ pub(crate) mod test {
             // There is no c, so use b
             let expr = either(index(ident("state"), strlit("c")), index(ident("state"), strlit("b")));
             let value = test.eval(&*expr);
-            assert_eq!(2, value.to_int().unwrap());
+            assert_eq!(2, value.as_int().unwrap());
 
             // There is a, so don't use b
             let expr = either(index(ident("state"), strlit("a")), index(ident("state"), strlit("b")));
             let value = test.eval(&*expr);
-            assert_eq!(1, value.to_int().unwrap());
+            assert_eq!(1, value.as_int().unwrap());
         });
     }
 
@@ -179,7 +280,7 @@ pub(crate) mod test {
             let lookup = index(ident("state"), strlit("num"));
             let expr = modulo(lookup, num(3));
             let value = test.eval(&*expr);
-            assert_eq!(2, value.to_int().unwrap());
+            assert_eq!(2, value.as_int().unwrap());
         });
     }
 
@@ -190,7 +291,7 @@ pub(crate) mod test {
             let lookup = index(ident("state"), strlit("num"));
             let expr = div(lookup, num(2));
             let value = test.eval(&*expr);
-            assert_eq!(3, value.to_int().unwrap());
+            assert_eq!(3, value.as_int().unwrap());
         });
     }
 
@@ -201,7 +302,7 @@ pub(crate) mod test {
             let lookup = index(ident("state"), strlit("num"));
             let expr = mul(lookup, num(2));
             let value = test.eval(&*expr);
-            assert_eq!(4, value.to_int().unwrap());
+            assert_eq!(4, value.as_int().unwrap());
         });
     }
 
@@ -212,7 +313,7 @@ pub(crate) mod test {
             let lookup = index(ident("state"), strlit("num"));
             let expr = sub(lookup, num(2));
             let value = test.eval(&*expr);
-            assert_eq!(-1, value.to_int().unwrap());
+            assert_eq!(-1, value.as_int().unwrap());
         });
     }
 
@@ -223,7 +324,7 @@ pub(crate) mod test {
             let lookup = index(ident("state"), strlit("num"));
             let expr = add(lookup, num(2));
             let value = test.eval(&*expr);
-            assert_eq!(3, value.to_int().unwrap());
+            assert_eq!(3, value.as_int().unwrap());
         });
     }
 
@@ -232,7 +333,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let is_true = or(boolean(false), boolean(true));
             let is_true = test.eval(&*is_true);
-            assert_eq!(true, is_true.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
         });
     }
 
@@ -241,7 +342,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let is_true = and(boolean(true), boolean(true));
             let is_true = test.eval(&*is_true);
-            assert_eq!(true, is_true.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
         });
     }
 
@@ -252,8 +353,8 @@ pub(crate) mod test {
             let is_also_true = less_than_equal(num(1), num(1));
             let is_true = test.eval(&*is_true);
             let is_also_true = test.eval(&*is_also_true);
-            assert_eq!(true, is_true.to_bool().unwrap());
-            assert_eq!(true, is_also_true.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
+            assert_eq!(true, is_also_true.as_bool().unwrap());
         });
     }
 
@@ -264,8 +365,8 @@ pub(crate) mod test {
             let is_false = less_than(num(1), num(1));
             let is_true = test.eval(&*is_true);
             let is_false = test.eval(&*is_false);
-            assert_eq!(true, is_true.to_bool().unwrap());
-            assert_eq!(false, is_false.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
+            assert_eq!(false, is_false.as_bool().unwrap());
         });
     }
 
@@ -276,8 +377,8 @@ pub(crate) mod test {
             let is_also_true = greater_than_equal(num(2), num(2));
             let is_true = test.eval(&*is_true);
             let is_also_true = test.eval(&*is_also_true);
-            assert_eq!(true, is_true.to_bool().unwrap());
-            assert_eq!(true, is_also_true.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
+            assert_eq!(true, is_also_true.as_bool().unwrap());
         });
     }
 
@@ -288,8 +389,8 @@ pub(crate) mod test {
             let is_false = greater_than(num(2), num(2));
             let is_true = test.eval(&*is_true);
             let is_false = test.eval(&*is_false);
-            assert_eq!(true, is_true.to_bool().unwrap());
-            assert_eq!(false, is_false.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
+            assert_eq!(false, is_false.as_bool().unwrap());
         });
     }
 
@@ -300,8 +401,8 @@ pub(crate) mod test {
             let is_true = test.eval(&is_true);
             let is_false = &not(eq(num(1), num(1)));
             let is_false = test.eval(is_false);
-            assert_eq!(true, is_true.to_bool().unwrap());
-            assert_eq!(false, is_false.to_bool().unwrap());
+            assert_eq!(true, is_true.as_bool().unwrap());
+            assert_eq!(false, is_false.as_bool().unwrap());
         });
     }
 
@@ -310,7 +411,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = neg(float(123.1));
             let value = test.eval(&*expr);
-            assert_eq!(-123.1, value.to_float().unwrap());
+            assert_eq!(-123.1, value.as_float().unwrap());
         });
     }
 
@@ -319,7 +420,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = neg(num(123));
             let value = test.eval(&*expr);
-            assert_eq!(-123, value.to_int().unwrap());
+            assert_eq!(-123, value.as_int().unwrap());
         });
     }
 
@@ -328,7 +429,7 @@ pub(crate) mod test {
         let test = setup().finish(|test| {
             let expr = not(boolean(false));
             let value = test.eval(&*expr);
-            assert_eq!(true, value.to_bool().unwrap());
+            assert_eq!(true, value.as_bool().unwrap());
         });
     }
 
@@ -339,7 +440,7 @@ pub(crate) mod test {
             let expr = index(ident("state"), either(ident("empty"), ident("full")));
             test.set_state("key", "a string");
             let value = test.eval(&*expr);
-            assert_eq!("a string", value.to_str().unwrap());
+            assert_eq!("a string", value.as_str().unwrap());
         });
     }
 
@@ -349,7 +450,7 @@ pub(crate) mod test {
             test.set_state("str", "a string");
             let expr = index(ident("state"), strlit("str"));
             let value = test.eval(&*expr);
-            assert_eq!("a string", value.to_str().unwrap());
+            assert_eq!("a string", value.as_str().unwrap());
         });
     }
 
@@ -359,7 +460,7 @@ pub(crate) mod test {
             let expr = index(ident("state"), strlit("float"));
             test.set_state("float", 1.2);
             let value = test.eval(&*expr);
-            assert_eq!(1.2, value.to_float().unwrap());
+            assert_eq!(1.2, value.as_float().unwrap());
         });
     }
 
@@ -368,7 +469,7 @@ pub(crate) mod test {
         setup().with_global("missing", 111).finish(|test| {
             let expr = either(ident("missings"), num(2));
             let value = test.eval(&*expr);
-            assert_eq!(2, value.to_int().unwrap());
+            assert_eq!(2, value.as_int().unwrap());
         });
     }
 
@@ -377,7 +478,7 @@ pub(crate) mod test {
         let test = setup().finish(|test| {
             let expr = hex((1, 2, 3));
             let value = test.eval(&*expr);
-            assert_eq!(Hex::from((1, 2, 3)), value.to_hex().unwrap());
+            assert_eq!(Hex::from((1, 2, 3)), value.as_hex().unwrap());
         });
     }
 
@@ -386,7 +487,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = chr('x');
             let value = test.eval(&*expr);
-            assert_eq!('x', value.to_char().unwrap());
+            assert_eq!('x', value.as_char().unwrap());
         });
     }
 
@@ -395,7 +496,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = float(123.123);
             let value = test.eval(&*expr);
-            assert_eq!(123.123, value.to_float().unwrap());
+            assert_eq!(123.123, value.as_float().unwrap());
         });
     }
 
@@ -404,7 +505,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = num(123);
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -413,7 +514,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = boolean(true);
             let value = test.eval(&*expr);
-            assert!(value.to_bool().unwrap());
+            assert!(value.as_bool().unwrap());
         });
     }
 
@@ -427,7 +528,7 @@ pub(crate) mod test {
 
             let expr = index(index(ident("state"), strlit("list")), num(1));
             let value = test.eval(&*expr);
-            assert_eq!(456, value.to_int().unwrap());
+            assert_eq!(456, value.as_int().unwrap());
         });
     }
 
@@ -437,7 +538,7 @@ pub(crate) mod test {
             let expr = index(map([("value", 123)]), index(ident("state"), strlit("key")));
             test.set_state("key", "value");
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -446,7 +547,7 @@ pub(crate) mod test {
         setup().finish(|test| {
             let expr = index(map([("value", 123)]), strlit("value"));
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -456,7 +557,7 @@ pub(crate) mod test {
             let expr = index(ident("state"), strlit("value"));
             test.set_state("value", 123);
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -466,7 +567,7 @@ pub(crate) mod test {
             let expr = index(ident("state"), strlit("value"));
             test.set_state("value", 123);
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -479,7 +580,7 @@ pub(crate) mod test {
 
             test.set_state("blip", inner_map);
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -497,7 +598,17 @@ pub(crate) mod test {
 
             test.set_state("value", inner_map);
             let value = test.eval(&*expr);
-            assert_eq!(123, value.to_int().unwrap());
+            assert_eq!(123, value.as_int().unwrap());
+        });
+    }
+
+    #[test]
+    fn stringify() {
+        setup().finish(|mut test| {
+            let expr = text_segments(strlit("hello"), strlit(" "), strlit("world"));
+            let value = test.eval(&*expr);
+            let output = value.strings().collect();
+            assert_eq!("hello world", &output);
         });
     }
 }

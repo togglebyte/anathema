@@ -55,7 +55,7 @@ pub fn layout_all_expansions<'bp>(
     nodes.each(ctx, |ctx, node, _children| {
         if node.ident == "expand" {
             let attributes = ctx.attribute_storage.get(node.id());
-            let factor = attributes.get("factor").unwrap_or(DEFAULT_FACTOR);
+            let factor = attributes.get_usize("factor").unwrap_or(DEFAULT_FACTOR);
             factors.push(factor);
         }
 

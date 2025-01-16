@@ -11,9 +11,10 @@ use std::time::Duration;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_store::tree::{Node, TreeValues};
 use anathema_strings::HStrings;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::{
-    AttributeStorage, Element, ForEach, GlyphMap, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer,
+    Element, ForEach, GlyphMap, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer,
 };
 use crossterm::cursor::{RestorePosition, SavePosition};
 use crossterm::execute;

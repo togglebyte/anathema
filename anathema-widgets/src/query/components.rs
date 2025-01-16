@@ -5,11 +5,12 @@ use anathema_state::CommonVal;
 pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{Node, TreeValues};
+use anathema_value_resolver::{AttributeStorage, Attributes};
 
-use super::{Chain, Filter, Nodes, Query};
+use super::{Chain, Filter, Nodes, Query, QueryValue};
 use crate::nodes::component::Component;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, Attributes, DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
+use crate::{DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
 
 fn comptest_delete_this<'tree, 'bp>(components: ComponentQuery<'_, 'tree, 'bp, Kind<'bp>>) {
     let value = components.by_name("").by_name("").by_name("").first(|id, c, a| 123);
@@ -37,7 +38,7 @@ impl<'tree, 'bp> Components<'tree, 'bp> {
     pub fn by_attribute<'a>(
         &mut self,
         key: &'a str,
-        value: impl Into<CommonVal>,
+        value: impl Into<QueryValue<'a>>,
     ) -> ComponentQuery<'_, 'tree, 'bp, Kind<'a>> {
         self.make_query(Kind::ByAttribute(key, value.into()))
     }
@@ -75,7 +76,7 @@ where
     pub fn by_attribute<'a>(
         self,
         key: &'a str,
-        value: impl Into<CommonVal>,
+        value: impl Into<QueryValue<'a>>,
     ) -> ComponentQuery<'el, 'tree, 'bp, Chain<T, Kind<'a>>> {
         ComponentQuery {
             query: Query {
@@ -143,7 +144,7 @@ where
 #[derive(Debug, Copy, Clone)]
 pub enum Kind<'a> {
     ByName(&'a str),
-    ByAttribute(&'a str, CommonVal),
+    ByAttribute(&'a str, QueryValue<'a>),
 }
 
 impl<'bp> Filter<'bp> for Kind<'_> {
@@ -155,12 +156,8 @@ impl<'bp> Filter<'bp> for Kind<'_> {
             Kind::ByAttribute(key, value) => {
                 let attribs = attributes.get(el.widget_id);
                 attribs
-                    .get_val(key)
-                    .and_then(|attribute| {
-                        attribute
-                            .load_common_val()
-                            .and_then(|either| either.to_common().map(|attrib_val| value.eq(&attrib_val)))
-                    })
+                    .get(key)
+                    .map(|attribute| value.eq(attribute))
                     .unwrap_or(false)
             }
         }

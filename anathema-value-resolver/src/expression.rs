@@ -409,7 +409,7 @@ mod test {
 
             let mut value = test.eval(&expr);
 
-            assert_eq!(value.to_int(), None);
+            assert_eq!(value.as_int(), None);
 
             test.with_state(|state| {
                 let list = state.get_mut("list".into()).unwrap();
@@ -426,7 +426,7 @@ mod test {
                 }
             }
 
-            assert_eq!(value.to_int().unwrap(), 1);
+            assert_eq!(value.as_int().unwrap(), 1);
         });
     }
 }

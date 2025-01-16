@@ -2,8 +2,9 @@ use anathema_state::State;
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::Globals;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
-use anathema_widgets::{eval_blueprint, AttributeStorage, Stringify, WidgetTree};
+use anathema_widgets::{eval_blueprint, Stringify, WidgetTree};
 
 pub struct RuntimeSetup {
     globals: Globals,
@@ -29,7 +30,13 @@ impl<'bp> TestRuntime<'bp> {
         let mut tree = WidgetTree::empty();
         let mut view = tree.view_mut();
         let mut ctx = panic!();
-        let res = eval_blueprint(&setup.blueprint, &mut ctx, panic!("missing scope"), root_node(), &mut view);
+        let res = eval_blueprint(
+            &setup.blueprint,
+            &mut ctx,
+            panic!("missing scope"),
+            root_node(),
+            &mut view,
+        );
         Self {
             tree,
             setup,

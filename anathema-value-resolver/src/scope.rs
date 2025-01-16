@@ -1,7 +1,7 @@
 use anathema_state::StateId;
 use anathema_store::slab::Key;
 
-use crate::collection::Collection;
+use crate::Collection;
 use crate::expression::ValueExpr;
 
 pub enum Lookup {
@@ -63,6 +63,13 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         match &self.value {
             Entry::Component { state, .. } => Some(*state),
             _ => self.parent?.get_state(),
+        }
+    }
+
+    pub(crate) fn get_attributes(&self) -> Option<Key> {
+        match &self.value {
+            Entry::Component { component_attributes, .. } => Some(*component_attributes),
+            _ => self.parent?.get_attributes(),
         }
     }
 }

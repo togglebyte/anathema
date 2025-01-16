@@ -31,14 +31,15 @@ use anathema_state::{
 use anathema_store::tree::{root_node, AsNodePath, TreeView};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::{
     AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, FocusQueue, UntypedContext,
     ViewMessage,
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
-    GlyphMap, LayoutForEach, WidgetKind, WidgetTree,
+    eval_blueprint, update_widget, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap,
+    LayoutForEach, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -754,15 +755,4 @@ where
             // tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| a.any_tick(b, dt));
         }
     }
-}
-
-fn deb<'bp>(tree: &mut WidgetTree<'bp>, attrs: &AttributeStorage<'bp>) {
-    let output = anathema_widgets::debug::debug_tree(&mut tree.view_mut(), attrs);
-    use std::io::Write;
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/tmp/log.lol")
-        .unwrap();
-    file.write_all(output.as_bytes());
 }

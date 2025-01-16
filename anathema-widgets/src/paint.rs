@@ -6,12 +6,13 @@ use anathema_store::indexmap::IndexMap;
 use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
+use anathema_value_resolver::AttributeStorage;
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
 use crate::nodes::element::Element;
-use crate::{AttributeStorage, ForEach, PaintChildren, WidgetContainer, WidgetId, WidgetKind};
+use crate::{ForEach, PaintChildren, WidgetContainer, WidgetId, WidgetKind};
 
 pub type GlyphMap = IndexMap<GlyphIndex, String>;
 

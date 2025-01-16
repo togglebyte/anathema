@@ -1,11 +1,10 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region, Size};
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{
-    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 
@@ -41,7 +40,7 @@ impl Widget for Padding {
     ) -> Size {
         let attributes = ctx.attribute_storage.get(id);
         let mut size = Size::ZERO;
-        let padding = attributes.get(PADDING).unwrap_or(0);
+        let padding = attributes.get_int(PADDING).unwrap_or(0) as u16;
 
         self.0.top = attributes
             .get_usize(TOP)

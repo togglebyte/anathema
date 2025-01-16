@@ -2,12 +2,12 @@ use std::iter::Cycle;
 use std::slice::Iter;
 
 use anathema_geometry::{Pos, Region, Size};
-use anathema_state::{AnyState, States, Value};
+use anathema_state::{AnyState, States, Subscriber, Value};
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
 use anathema_templates::{ComponentBlueprintId, Globals};
-use anathema_value_resolver::Scope;
+use anathema_value_resolver::{resolve, resolve_collection, Attributes, ResolverCtx, Scope, ValueKey};
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
@@ -15,13 +15,9 @@ use super::{component, controlflow, WidgetContainer};
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
-use crate::expressions::{eval, eval_collection, ExprEvalCtx};
 use crate::layout::{EvalCtx, Viewport};
-use crate::values::{Collection, ValueId, ValueIndex};
-use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey, WidgetTreeView};
-use crate::{
-    eval_blueprint, AttributeStorage, ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree,
-};
+use crate::widget::{Components, FloatingWidgets, WidgetTreeView};
+use crate::{eval_blueprint, ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree};
 
 /// Evaluation context
 // pub struct EvalContext<'rt, 'bp> {
@@ -106,15 +102,10 @@ impl Evaluator for SingleEval {
 
         if let Some(expr) = single.value.as_ref() {
             let strings = &mut *ctx.strings;
-            let mut ctx = ExprEvalCtx {
-                scope,
-                states: ctx.states,
-                attributes: ctx.attribute_storage,
-                globals: ctx.globals,
-            };
+            let mut ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
 
             let value = attributes.insert_with(ValueKey::Value, |value_index| {
-                eval(expr, &ctx, strings, (widget_id, value_index))
+                resolve(expr, &ctx, (widget_id, value_index))
             });
             attributes.value = Some(value);
         }
@@ -123,14 +114,8 @@ impl Evaluator for SingleEval {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let strings = &mut *ctx.strings;
                 let scope = Scope::empty();
-                let ctx = ExprEvalCtx {
-                    scope: &scope,
-                    states: ctx.states,
-                    attributes: ctx.attribute_storage,
-                    globals: ctx.globals,
-                };
-
-                eval(expr, &ctx, strings, (widget_id, value_index))
+                let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+                resolve(expr, &ctx, (widget_id, value_index))
             });
         }
 
@@ -176,16 +161,11 @@ impl Evaluator for ForLoopEval {
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
-        let value_id = ValueId::from((transaction.node_id(), ValueIndex::ZERO));
+        let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
         let strings = &mut *ctx.strings;
-        let ctx = ExprEvalCtx {
-            scope: &scope,
-            states: ctx.states,
-            attributes: ctx.attribute_storage,
-            globals: ctx.globals,
-        };
-        let collection = eval_collection(&for_loop.data, &ctx, strings, value_id);
+        let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+        let collection = resolve_collection(&for_loop.data, &ctx, value_id);
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
@@ -228,18 +208,13 @@ impl Evaluator for ControlFlowEval {
                     let value_index = SmallIndex::from_usize(i);
                     let strings = &mut *ctx.strings;
                     let scope = Scope::empty();
-                    let ctx = ExprEvalCtx {
-                        scope: &scope,
-                        states: ctx.states,
-                        attributes: ctx.attribute_storage,
-                        globals: ctx.globals,
-                    };
+                    let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
 
                     controlflow::Else {
                         cond: e
                             .cond
                             .as_ref()
-                            .map(|cond| eval(cond, &ctx, strings, (widget_id, SmallIndex::from_usize(i)))),
+                            .map(|cond| resolve(cond, &ctx, (widget_id, SmallIndex::from_usize(i)))),
                         body: &e.body,
                         show: false,
                     }
@@ -274,14 +249,8 @@ impl Evaluator for ComponentEval {
         for (key, expr) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let strings = &mut *ctx.strings;
-                let ctx = ExprEvalCtx {
-                    scope: &scope,
-                    states: ctx.states,
-                    attributes: ctx.attribute_storage,
-                    globals: ctx.globals,
-                };
-
-                eval(expr, &ctx, strings, (widget_id, value_index))
+                let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+                resolve(expr, &ctx, (widget_id, value_index))
             });
         }
 

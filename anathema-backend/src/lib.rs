@@ -4,10 +4,11 @@ use std::time::Duration;
 use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_strings::HStrings;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    AttributeStorage, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
+    DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
     PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
 };
 

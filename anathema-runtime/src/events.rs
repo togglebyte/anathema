@@ -4,11 +4,12 @@ use std::time::{Duration, Instant};
 use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_state::{AnyState, CommonVal, States};
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::query::Elements;
-use anathema_widgets::{AttributeStorage, Components, DirtyWidgets, GlyphMap, WidgetKind, WidgetTree};
+use anathema_widgets::{Components, DirtyWidgets, GlyphMap, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
 use crate::tree::Tree;
@@ -259,21 +260,22 @@ impl<T: GlobalEvents> EventHandler<T> {
                     .expect("components can not change during this call");
 
                 let found = tree.with_value_mut(widget_id, |_, widget, _| {
-                    let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
+                    panic!();
+                    // let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
 
-                    let attributes = event_ctx.attribute_storage.get(component.widget_id);
-                    let Some(val) = attributes.get_val(&key) else { return false };
-                    let Some(either) = val.load_common_val() else { return false };
-                    let Some(cv) = either.to_common() else { return false };
-                    if value != cv {
-                        return false;
-                    }
+                    // let attributes = event_ctx.attribute_storage.get(component.widget_id);
+                    // let Some(val) = attributes.get_val(&key) else { return false };
+                    // let Some(either) = val.load_common_val() else { return false };
+                    // let Some(cv) = either.to_common() else { return false };
+                    // if value != cv {
+                    //     return false;
+                    // }
 
-                    if !component.dyn_component.any_accept_focus() {
-                        return false;
-                    }
+                    // if !component.dyn_component.any_accept_focus() {
+                    //     return false;
+                    // }
 
-                    true
+                    // true
                 });
 
                 // -----------------------------------------------------------------------------

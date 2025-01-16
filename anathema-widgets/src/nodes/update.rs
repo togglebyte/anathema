@@ -1,13 +1,12 @@
-use anathema_state::Change;
+use anathema_state::{Change, Subscriber};
 use anathema_store::tree::PathFinder;
 
 use super::element::Element;
 use super::loops::LOOP_INDEX;
 use super::WidgetContainer;
 use crate::error::Result;
-use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
-use crate::{AttributeStorage, ValueIndex, WidgetKind, WidgetTree};
+use crate::{WidgetKind, WidgetTree};
 
 // struct UpdateTree<'rt, 'bp> {
 //     change: &'a Change,
@@ -35,7 +34,7 @@ use crate::{AttributeStorage, ValueIndex, WidgetKind, WidgetTree};
 pub fn update_widget<'bp>(
     widget: &mut WidgetContainer<'bp>,
     // ctx: &mut EvalContext<'_, 'bp>,
-    value_id: ValueId,
+    value_id: Subscriber,
     change: &Change,
     path: &[u16],
     tree: WidgetTreeView<'_, 'bp>,

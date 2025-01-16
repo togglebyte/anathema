@@ -66,7 +66,7 @@ impl<'a, 'frame, 'bp> CollectionResolver<'a, 'frame, 'bp> {
         match ident {
             "state" => {
                 // TODO: filthy unwraps all over this function
-                let state_id = self.ctx.scopes.get_state().unwrap();
+                let state_id = self.ctx.scope.get_state().unwrap();
 
                 let state = self.ctx.states.get(state_id).unwrap();
                 let value = state.reference();

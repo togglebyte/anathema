@@ -1,10 +1,11 @@
 use anathema_geometry::{Pos, Region, Size};
+use anathema_value_resolver::AttributeStorage;
 
 use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
 use crate::paint::{PainFilter, PaintCtx, Unsized};
 use crate::widget::{ForEach, PaintChildren, PositionChildren};
-use crate::{AttributeStorage, LayoutChildren, LayoutForEach, WidgetId};
+use crate::{LayoutChildren, LayoutForEach, WidgetId};
 
 #[derive(Debug)]
 pub struct Element<'bp> {

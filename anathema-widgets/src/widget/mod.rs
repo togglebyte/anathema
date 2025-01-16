@@ -11,15 +11,14 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::sorted::SortedList;
 use anathema_store::tree::{Tree, TreeForEach, TreeView};
 use anathema_templates::ComponentBlueprintId;
+use anathema_value_resolver::AttributeStorage;
 
-pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, PositionFilter};
 use crate::paint::{PainFilter, PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
 use crate::{WidgetContainer, WidgetKind};
 
-mod attributes;
 mod factory;
 
 pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
@@ -213,28 +212,6 @@ impl ComponentParents {
 
     pub fn get_parent(&self, child: ComponentBlueprintId) -> Option<Parent> {
         self.0.get(child).copied()
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
-pub enum ValueKey<'bp> {
-    #[default]
-    Value,
-    Attribute(&'bp str),
-}
-
-impl ValueKey<'_> {
-    pub(super) fn as_str(&self) -> &str {
-        match self {
-            ValueKey::Value => "[value]",
-            ValueKey::Attribute(name) => name,
-        }
-    }
-}
-
-impl Borrow<str> for ValueKey<'_> {
-    fn borrow(&self) -> &str {
-        self.as_str()
     }
 }
 

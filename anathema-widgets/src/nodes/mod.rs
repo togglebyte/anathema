@@ -6,13 +6,10 @@ use loops::LOOP_INDEX;
 
 pub use self::element::Element;
 use self::eval::{ComponentEval, ControlFlowEval, Evaluator, ForLoopEval, SingleEval};
-// pub use self::future::try_resolve_future_values;
 pub use self::stringify::Stringify;
 pub use self::update::update_widget;
 use crate::error::Result;
-use crate::expressions::ExprEvalCtx;
 use crate::layout::{EvalCtx, LayoutCtx};
-use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
 use crate::{WidgetId, WidgetTree};
 
@@ -20,7 +17,6 @@ pub(crate) mod component;
 pub(crate) mod controlflow;
 pub(crate) mod element;
 pub(crate) mod eval;
-mod future;
 pub(crate) mod loops;
 mod stringify;
 mod update;
@@ -108,14 +104,12 @@ impl<'bp> WidgetContainer<'bp> {
             |attributes, expr_eval_ctx, strings, value_id| match &mut self.kind {
                 WidgetKind::Element(element) => {
                     let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
-                    value.reload_val(value_id, expr_eval_ctx, strings);
+                    value.reload();
                 }
-                WidgetKind::For(for_loop) => {
-                    for_loop.collection.reload_val(value_id, expr_eval_ctx, strings);
-                }
+                WidgetKind::For(for_loop) => for_loop.collection.reload(),
                 WidgetKind::ControlFlow(controlflow) => {
                     for value in controlflow.elses.iter_mut().filter_map(|e| e.cond.as_mut()) {
-                        value.reload_val(value_id, expr_eval_ctx, strings);
+                        value.reload();
                     }
                 }
                 WidgetKind::ControlFlowContainer(_) => (),

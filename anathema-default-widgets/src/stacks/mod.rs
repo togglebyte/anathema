@@ -1,8 +1,9 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, WidgetId};
+use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PositionChildren, WidgetId};
 
 pub use self::column::Column;
 pub use self::hstack::HStack;
@@ -47,8 +48,8 @@ impl Stack {
             constraints.make_height_tight(height);
         }
 
-        // let dir = attributes.get(DIRECTION).unwrap_or_default();
-        let dir = panic!("getting bored of writing resolver everywhere");
+        let dir = attributes.get_as(DIRECTION).unwrap_or_default();
+
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = false;
         let mut many = Many::new(dir, self.0, unconstrained);

@@ -1,9 +1,10 @@
 use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
 use anathema_widgets::{
-    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
+    ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
 };
 use unicode_width::UnicodeWidthChar;
 

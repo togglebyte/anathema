@@ -1,10 +1,10 @@
 use anathema_store::tree::{Node, TreeValues};
 use anathema_templates::blueprints::{self, Blueprint};
+use anathema_value_resolver::Value;
 
 use super::WidgetContainer;
-use crate::expressions::EvalValue;
 use crate::widget::WidgetTreeView;
-use crate::{Value, WidgetKind};
+use crate::WidgetKind;
 
 #[derive(Debug)]
 pub struct ControlFlow<'bp> {
@@ -89,7 +89,7 @@ impl ControlFlow<'_> {
 
 #[derive(Debug)]
 pub struct Else<'bp> {
-    pub cond: Option<Value<'bp, EvalValue<'bp>>>,
+    pub cond: Option<Value<'bp>>,
     pub body: &'bp [Blueprint],
     pub show: bool,
 }
@@ -97,7 +97,7 @@ pub struct Else<'bp> {
 impl Else<'_> {
     pub(crate) fn is_true(&self) -> bool {
         match self.cond.as_ref() {
-            Some(cond) => cond.load_common_val().map(|v| v.load_bool()).unwrap_or(false),
+            Some(cond) => cond.as_bool().unwrap_or(false),
             None => true,
         }
     }

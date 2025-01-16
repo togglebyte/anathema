@@ -1,8 +1,9 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 

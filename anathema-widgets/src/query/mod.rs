@@ -1,13 +1,34 @@
 use std::marker::PhantomData;
 
 use anathema_state::CommonVal;
+use anathema_value_resolver::{AttributeStorage, Value};
 
 pub use self::components::Components;
 pub use self::elements::Elements;
-use crate::{AttributeStorage, DirtyWidgets, WidgetTreeView};
+use crate::{DirtyWidgets, WidgetTreeView};
 
 mod components;
 mod elements;
+
+#[derive(Debug, Copy, Clone)]
+pub enum QueryValue<'a> {
+    Str(&'a str),
+    Int(usize),
+    // TODO: add the rest of the types here
+}
+
+impl<'a> From<&'a str> for QueryValue<'a> {
+    fn from(value: &'a str) -> Self {
+        Self::Str(value)
+    }
+}
+
+impl PartialEq<Value<'_>> for QueryValue<'_> {
+    fn eq(&self, other: &Value<'_>) -> bool {
+        todo!()
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 //   - Elements -
@@ -37,7 +58,7 @@ impl<'tree, 'bp> Nodes<'tree, 'bp> {
 // -----------------------------------------------------------------------------
 pub struct Query<'el, 'tree, 'bp, F, T>
 where
-    F: Filter<'bp, Kind = T> + Copy,
+    F: Filter<'bp, Kind = T>,
 {
     filter: F,
     elements: &'el mut Nodes<'tree, 'bp>,
@@ -45,7 +66,7 @@ where
 
 impl<'el, 'tree, 'bp, F, T> Filter<'bp> for Query<'el, 'tree, 'bp, F, T>
 where
-    F: Filter<'bp, Kind = T> + Copy,
+    F: Filter<'bp, Kind = T>,
 {
     type Kind = T;
 

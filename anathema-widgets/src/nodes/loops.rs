@@ -1,21 +1,19 @@
-use anathema_state::Change;
+use anathema_state::{Change, Subscriber};
 use anathema_store::tree::new_node_path;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::Scope;
+use anathema_value_resolver::{Collection, Scope, Value};
 
 use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
-use crate::expressions::eval_collection;
-use crate::values::{Collection, ValueId};
 use crate::widget::WidgetTreeView;
-use crate::{eval_blueprint, AttributeStorage, Value, WidgetId, WidgetTree};
+use crate::{eval_blueprint, WidgetId, WidgetTree};
 
 pub(super) const LOOP_INDEX: &str = "loop";
 
 #[derive(Debug)]
 pub struct For<'bp> {
     pub(crate) binding: &'bp str,
-    pub(crate) collection: Value<'bp, Collection<'bp>>,
+    pub(crate) collection: Collection<'bp>,
     // TODO: remove the body here as it's attached to the container
     pub(crate) body: &'bp [Blueprint],
 }
@@ -26,15 +24,11 @@ impl<'bp> For<'bp> {
         // self.collection.scope(scope, self.binding, index)
     }
 
-    pub(crate) fn collection(&self) -> &Collection<'_> {
-        self.collection.inner()
-    }
-
     pub(super) fn update(
         &mut self,
         // ctx: &mut EvalContext<'_, '_, 'bp>,
         change: &Change,
-        value_id: ValueId,
+        value_id: Subscriber,
         mut tree: WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         match change {

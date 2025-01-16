@@ -2,12 +2,11 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
 use anathema_state::CommonVal;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{
-    AttributeStorage, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{LEFT, RIGHT};
 
@@ -81,25 +80,18 @@ impl Widget for Text {
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        // TODO
-        // Getting attributes for a widget could wrap the attribute with a `Strings<'_>`,
-        // making it possible to get strings
         let attributes = ctx.attributes(id);
-        // let wrap = attributes.get_str(WRAP).unwrap_or_default();
-        let wrap = panic!("res ol ver");
+        let wrap = attributes.get_as(WRAP).unwrap_or_default();
         let size = constraints.max_size();
         self.strings = Strings::new(size, wrap);
         self.strings.set_style(id);
 
-        // Layout text
+        // // Layout text
         attributes.value().map(|text| {
-            let text = text.load_str(ctx.strings).unwrap(); // TODO unwrap
-            for t in text {
-                match self.strings.add_str(t) {
-                    ProcessResult::Break => break,
-                    ProcessResult::Continue => continue,
-                }
-            }
+            text.strings(|s| match self.strings.add_str(s) {
+                ProcessResult::Break => false,
+                ProcessResult::Continue => true,
+            });
         });
 
         // Layout text of all the sub-nodes
@@ -111,14 +103,10 @@ impl Widget for Text {
 
             let attributes = ctx.attributes(child.id());
             if let Some(text) = attributes.value() {
-                let text = text.load_str(ctx.strings).unwrap(); // TODO unwrap
-                for t in text {
-                    match self.strings.add_str(t) {
-                        ProcessResult::Break => break,
-                        ProcessResult::Continue => continue,
-                    }
-                }
-
+                text.strings(|s| match self.strings.add_str(s) {
+                    ProcessResult::Break => false,
+                    ProcessResult::Continue => true,
+                });
                 ControlFlow::Continue(())
             } else {
                 ControlFlow::Break(())
@@ -161,7 +149,8 @@ impl Widget for Text {
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.
                             for x in pos.x..new_pos.x {
-                                ctx.set_attributes(style, (x, pos.y).into());
+                                panic!("this can not be done until we have style available here");
+                                // ctx.set_attributes(style, (x, pos.y).into());
                             }
                             pos = new_pos;
                         }

@@ -3,6 +3,7 @@ use std::ops::{AddAssign, Deref};
 use anathema_geometry::Size;
 use anathema_state::CommonVal;
 use anathema_store::tree::ValueId;
+use anathema_value_resolver::ValueKind;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::WidgetId;
@@ -25,20 +26,18 @@ impl Wrap {
     }
 }
 
-// impl TryFrom<CommonVal> for Wrap {
-//     type Error = ();
+impl TryFrom<&ValueKind<'_>> for Wrap {
+    type Error = ();
 
-//     fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
-//         match value {
-//             CommonVal::Str(wrap) => match wrap {
-//                 "normal" => Ok(Wrap::Normal),
-//                 "break" => Ok(Wrap::WordBreak),
-//                 _ => Err(()),
-//             },
-//             _ => Err(()),
-//         }
-//     }
-// }
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let s = value.as_str().ok_or(())?;
+        match s {
+            "normal" => Ok(Wrap::Normal),
+            "break" => Ok(Wrap::WordBreak),
+            _ => Err(()),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct LineWidth(usize);

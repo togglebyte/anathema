@@ -42,7 +42,7 @@ pub fn state_derive(input: DeriveInput) -> Result {
         }
 
         impl state::AnyMap for #name {
-            fn lookup(&self, key: std::borrow::Cow<'_, str>) -> Option<PendingValue> {
+            fn lookup(&self, key: &str) -> Option<PendingValue> {
                 match key.as_ref() {
                     #(
                         #field_names => {

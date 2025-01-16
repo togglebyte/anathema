@@ -5,18 +5,18 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
-use anathema_state::{AnyState, CommonVal, SharedState, StateId, Value};
+use anathema_state::{AnyState, CommonVal, SharedState, StateId, Value as StateValue};
 use anathema_store::slab::Slab;
 use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::ComponentBlueprintId;
+use anathema_value_resolver::{Attributes, Value};
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
-use crate::expressions::Either;
 use crate::layout::Viewport;
 use crate::query::Elements;
 use crate::widget::Parent;
-use crate::{Attributes, WidgetId};
+use crate::WidgetId;
 
 pub mod events;
 
@@ -189,7 +189,7 @@ impl<'frame, T: 'static> Context<'frame, T> {
     /// at the time of the invocation.
     pub fn publish<F, V>(&mut self, ident: &str, mut f: F)
     where
-        F: FnMut(&T) -> &Value<V> + 'static,
+        F: FnMut(&T) -> &StateValue<V> + 'static,
         V: AnyState,
     {
         panic!("implement this once the new resolver is in place");
@@ -222,9 +222,8 @@ impl<'frame, T: 'static> Context<'frame, T> {
     }
 
     /// Get a value from the component attributes
-    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either> {
-        let val = self.attributes.get_val(key);
-        val.and_then(|val| val.load_common_val())
+    pub fn attribute(&self, key: &str) -> Option<&Value<'_>> {
+        self.attributes.get(key)
     }
 
     /// Send a message to a given component
@@ -279,7 +278,7 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
     /// at the time of the invocation.
     pub fn publish<F, V>(&mut self, ident: &str, mut f: F)
     where
-        F: FnMut(&T) -> &Value<V> + 'static,
+        F: FnMut(&T) -> &StateValue<V> + 'static,
         V: AnyState,
     {
         panic!("implement this once the new resolver is in place");
@@ -312,9 +311,8 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
     }
 
     /// Get a value from the component attributes
-    pub fn attribute<'a>(&'a self, key: &str) -> Option<Either> {
-        let val = self.component_ctx.attributes.get_val(key);
-        val.and_then(|val| val.load_common_val())
+    pub fn attribute<'a>(&'a self, key: &str) -> Option<&Value<'_>> {
+        self.component_ctx.attributes.get(key)
     }
 
     /// Send a message to a given component
@@ -368,7 +366,7 @@ pub struct AnyComponentContext<'frame> {
     assoc_events: &'frame mut AssociatedEvents,
     attributes: &'frame Attributes<'frame>,
     focus_queue: &'frame mut FocusQueue,
-    pub state: Option<&'frame mut dyn AnyState>,
+    state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
     pub emitter: &'frame Emitter,
     pub viewport: Viewport,
     pub strings: &'frame Strings,
@@ -382,7 +380,7 @@ impl<'frame> AnyComponentContext<'frame> {
         assoc_events: &'frame mut AssociatedEvents,
         focus_queue: &'frame mut FocusQueue,
         attributes: &'frame Attributes<'frame>,
-        state: Option<&'frame mut dyn AnyState>,
+        state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
         emitter: &'frame Emitter,
         viewport: Viewport,
         strings: &'frame Strings,
@@ -616,17 +614,17 @@ where
     T: 'static,
 {
     fn any_event(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>, event: Event) -> Event {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
-            Event::Key(ev) => self.on_key(ev, state, elements, context),
-            Event::Mouse(ev) => self.on_mouse(ev, state, elements, context),
-            Event::Tick(dt) => self.tick(state, elements, context, dt),
+            Event::Key(ev) => self.on_key(ev, &mut *state, elements, context),
+            Event::Mouse(ev) => self.on_mouse(ev, &mut *state, elements, context),
+            Event::Tick(dt) => self.tick(&mut *state, elements, context, dt),
             Event::Resize(_) | Event::Noop | Event::Stop => (),
         }
         event
@@ -637,54 +635,54 @@ where
     }
 
     fn any_message(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>, message: Box<dyn Any>) {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
         let context = Context::<T::State>::new(ctx);
-        self.message(*message, state, elements, context);
+        self.message(*message, &mut *state, elements, context);
     }
 
     fn any_focus(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>) {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.on_focus(state, elements, context);
+        self.on_focus(&mut *state, elements, context);
     }
 
     fn any_blur(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>) {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.on_blur(state, elements, context);
+        self.on_blur(&mut *state, elements, context);
     }
 
     fn any_tick(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>, dt: Duration) {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.tick(state, elements, context, dt);
+        self.tick(&mut *state, elements, context, dt);
     }
 
     fn any_resize(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>) {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.resize(state, elements, context);
+        self.resize(&mut *state, elements, context);
     }
 
     fn any_receive(
@@ -694,15 +692,15 @@ where
         name: &str,
         value: CommonVal,
     ) {
-        let state = ctx
+        let mut state = ctx
             .state
             .take()
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .map(|mut s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
 
         let context = Context::<T::State>::new(ctx);
 
-        self.receive(name, value, state, elements, context);
+        self.receive(name, value, &mut *state, elements, context);
     }
 }
 

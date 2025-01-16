@@ -6,11 +6,10 @@ use anathema_geometry::Size;
 use anathema_state::{Changes, FutureValues, States};
 use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, FocusQueue};
 use anathema_widgets::layout::Viewport;
-use anathema_widgets::{
-    AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree,
-};
+use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree};
 
 pub use crate::error::{Error, Result};
 use crate::runtime::Runtime;

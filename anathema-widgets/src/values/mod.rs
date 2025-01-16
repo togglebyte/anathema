@@ -5,7 +5,6 @@ use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_strings::HStrings;
 use anathema_templates::Expression;
 
-use crate::expressions::{Either, EvalValue, ExprEvalCtx};
 use crate::widget::ValueKey;
 use crate::AttributeStorage;
 

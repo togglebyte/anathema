@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
 use anathema_strings::HStrings;
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{CellAttributes, Glyph};
 use anathema_widgets::{GlyphMap, WidgetRenderer};
@@ -71,7 +72,7 @@ impl Backend for TuiScroll {
         &mut self,
         glyph_map: &mut GlyphMap,
         widgets: anathema_widgets::PaintChildren<'_, 'bp>,
-        attribute_storage: &anathema_widgets::AttributeStorage<'bp>,
+        attribute_storage: &AttributeStorage<'bp>,
         strings: &HStrings<'bp>,
         ignore_floats: bool,
     ) {

@@ -1,12 +1,11 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_widgets::expressions::EvalValue;
+use anathema_value_resolver::{AttributeStorage, Attributes};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{
-    AnyWidget, AttributeStorage, Attributes, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren,
-    Widget, WidgetId,
+    AnyWidget, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
 };
 
 use crate::layout::border::BorderLayout;
@@ -401,7 +400,7 @@ impl Widget for Border {
         //     .unwrap_or_default();
 
         self.sides = panic!();
-        self.border_style = match attributes.get_val(BORDER_STYLE) {
+        self.border_style = match attributes.get(BORDER_STYLE) {
             None => BorderStyle::Thin,
             Some(val) => {
                 let mut edges = DEFAULT_SLIM_EDGES;

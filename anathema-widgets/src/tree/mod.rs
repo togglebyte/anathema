@@ -1,15 +1,14 @@
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
-use anathema_state::Value;
+use anathema_state::Value as StateValue;
 use anathema_store::tree::TreeView;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::Scope;
+use anathema_value_resolver::{Collection, Scope, Value};
 
 use crate::layout::LayoutCtx;
 use crate::nodes::controlflow;
 use crate::nodes::loops::Iteration;
-use crate::values::Collection;
 use crate::widget::WidgetTreeView;
 use crate::{eval_blueprint, Element, WidgetContainer, WidgetKind};
 
@@ -18,7 +17,11 @@ use crate::{eval_blueprint, Element, WidgetContainer, WidgetKind};
 #[derive(Debug, Copy, Clone)]
 pub enum Generator<'widget, 'bp> {
     Single(&'bp [Blueprint]),
-    Loop(&'widget Collection<'bp>, &'bp str, &'bp [Blueprint]),
+    Loop {
+        collection: &'widget Collection<'bp>,
+        binding: &'bp str,
+        body: &'bp [Blueprint],
+    },
     Iteration(&'bp str, &'bp [Blueprint]),
     ControlFlow(&'widget controlflow::ControlFlow<'bp>),
     Parent(()),
@@ -31,7 +34,11 @@ impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'b
                 Self::Single(widget.children)
             }
             WidgetKind::Iteration(iter) => Self::Iteration(iter.binding, widget.children),
-            WidgetKind::For(for_loop) => Self::Loop(&for_loop.collection, for_loop.binding, widget.children),
+            WidgetKind::For(for_loop) => Self::Loop {
+                collection: &for_loop.collection,
+                binding: for_loop.binding,
+                body: widget.children,
+            },
             WidgetKind::ControlFlow(controlflow) => Self::ControlFlow(&controlflow),
             _ => Self::Parent(()),
         }
@@ -134,7 +141,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     children.inner_each(ctx, &scope, f)
                 }
                 WidgetKind::Iteration(iteration) => {
-                let loop_index = *iteration.loop_index.to_ref() as usize;
+                    let loop_index = *iteration.loop_index.to_ref() as usize;
                     let mut scope = Scope::with_index(iteration.binding, loop_index, scope);
                     let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
                     children.inner_each(ctx, &scope, f)
@@ -177,16 +184,20 @@ fn generate<'bp>(
             }
 
             let mut ctx = ctx.eval_ctx();
-            eval_blueprint(&blueprints[index], &mut ctx, panic!("missing scope"), tree.offset, tree);
+            eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree);
             true
         }
-        Generator::Loop(collection, _, _) if collection.count() == tree.layout_len() => false,
-        Generator::Loop(collection, binding, body) => {
+        Generator::Loop { collection, .. } if collection.len() == tree.layout_len() => false,
+        Generator::Loop {
+            collection,
+            binding,
+            body,
+        } => {
             let loop_index = tree.layout_len();
 
             let transaction = tree.insert(tree.offset);
             let widget = WidgetKind::Iteration(Iteration {
-                loop_index: Value::new(loop_index as i64),
+                loop_index: StateValue::new(loop_index as i64),
                 binding,
             });
             let widget = WidgetContainer::new(widget, body);
@@ -252,10 +263,7 @@ fn generate<'bp>(
                     let cond = node
                         .cond
                         .as_ref()
-                        .map(|cond| {
-                            let val = cond.load_bool();
-                            val
-                        })
+                        .and_then(|cond| cond.as_bool())
                         .unwrap_or(true);
                     match cond {
                         true => Some((id, node.body)),

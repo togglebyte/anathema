@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 pub use anathema_state_derive::State;
 use anathema_store::slab::Key;
 
@@ -58,6 +60,12 @@ impl Hex {
     pub const GREEN: Self = Self { r: 0, g: 255, b: 0 };
     pub const RED: Self = Self { r: 255, g: 0, b: 0 };
     pub const WHITE: Self = Self { r: 255, g: 255, b: 255 };
+}
+
+impl Display for Hex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{:x}{:x}{:x}", self.r, self.g, self.b)
+    }
 }
 
 impl From<(u8, u8, u8)> for Hex {

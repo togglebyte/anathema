@@ -24,7 +24,7 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
         match ident {
             "state" => {
                 // TODO: filthy unwraps all over this function
-                let state_id = self.ctx.scopes.get_state().unwrap();
+                let state_id = self.ctx.scope.get_state().unwrap();
                 // TODO: There is yet to be a requirement for a state in the root
                 //       so this unwrap can't become an expect until that's in place
                 let state = self.ctx.states.get(state_id).unwrap();
@@ -40,7 +40,11 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                     Type::Composite => ValueExpr::DynMap(value),
                 }
             }
-            "properties" => panic!(),
+            "properties" => {
+                let component = self.ctx.scope.get_attributes().unwrap();
+                let attributes = self.ctx.attributes.get(component);
+                panic!()
+            }
             scope => {
                 let Some(expr) = self.ctx.globals.get(scope) else { return ValueExpr::Null };
                 self.resolve(expr)
