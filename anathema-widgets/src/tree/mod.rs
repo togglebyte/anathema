@@ -18,7 +18,7 @@ use crate::{eval_blueprint, Element, WidgetContainer, WidgetKind};
 pub enum Generator<'widget, 'bp> {
     Single(&'bp [Blueprint]),
     Loop {
-        collection: &'widget Collection<'bp>,
+        len: usize,
         binding: &'bp str,
         body: &'bp [Blueprint],
     },
@@ -30,15 +30,12 @@ pub enum Generator<'widget, 'bp> {
 impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'bp> {
     fn from(widget: &'widget WidgetContainer<'bp>) -> Self {
         match &widget.kind {
-            WidgetKind::Element(_) | WidgetKind::Component(_) | WidgetKind::ControlFlowContainer(_) => {
+            WidgetKind::Element(_) => panic!("use Self::Single directly"),
+            WidgetKind::For(for_loop) => panic!("use Self::Loop directory"),
+            WidgetKind::Component(_) | WidgetKind::ControlFlowContainer(_) => {
                 Self::Single(widget.children)
             }
             WidgetKind::Iteration(iter) => Self::Iteration(iter.binding, widget.children),
-            WidgetKind::For(for_loop) => Self::Loop {
-                collection: &for_loop.collection,
-                binding: for_loop.binding,
-                body: widget.children,
-            },
             WidgetKind::ControlFlow(controlflow) => Self::ControlFlow(&controlflow),
             _ => Self::Parent(()),
         }
@@ -48,17 +45,23 @@ impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'b
 #[derive(Debug)]
 pub struct LayoutForEach<'a, 'bp> {
     tree: WidgetTreeView<'a, 'bp>,
+    scope: &'a Scope<'a, 'bp>,
     generator: Option<Generator<'a, 'bp>>,
 }
 
 impl<'a, 'bp> LayoutForEach<'a, 'bp> {
-    pub fn new(tree: WidgetTreeView<'a, 'bp>) -> Self {
-        Self { tree, generator: None }
-    }
-
-    fn with_generator(tree: WidgetTreeView<'a, 'bp>, generator: Generator<'a, 'bp>) -> Self {
+    pub fn new(tree: WidgetTreeView<'a, 'bp>, scope: &'a Scope<'a, 'bp>) -> Self {
         Self {
             tree,
+            scope,
+            generator: None,
+        }
+    }
+
+    fn with_generator(tree: WidgetTreeView<'a, 'bp>, scope: &'a Scope<'a, 'bp>, generator: Generator<'a, 'bp>) -> Self {
+        Self {
+            tree,
+            scope,
             generator: Some(generator),
         }
     }
@@ -67,16 +70,15 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
-        let scope = Scope::empty();
-        self.inner_each(ctx, &scope, &mut f)
+        self.inner_each(ctx, &mut f)
     }
 
-    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, scope: &Scope<'_, 'bp>, f: &mut F) -> ControlFlow<()>
+    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
         for index in 0..self.tree.layout_len() {
-            self.process(index, ctx, scope, f)?;
+            self.process(index, ctx, f)?;
         }
 
         // If there is no parent then there can be no children generated
@@ -87,22 +89,16 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         loop {
             let index = self.tree.layout_len();
-            if !generate(parent, &mut self.tree, ctx, scope) {
+            if !generate(parent, &mut self.tree, ctx, self.scope) {
                 break;
             }
-            self.process(index, ctx, scope, f)?;
+            self.process(index, ctx, f)?;
         }
 
         ControlFlow::Continue(())
     }
 
-    fn process<F>(
-        &mut self,
-        index: usize,
-        ctx: &mut LayoutCtx<'_, 'bp>,
-        scope: &Scope<'_, 'bp>,
-        f: &mut F,
-    ) -> ControlFlow<()>
+    fn process<F>(&mut self, index: usize, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
@@ -116,11 +112,12 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         let widget_id = node.value();
         self.tree.with_value_mut(widget_id, |path, widget, mut children| {
-            widget.resolve_pending_values(ctx, widget_id);
+            widget.resolve_pending_values(ctx, self.scope, widget_id);
 
             let cf = match &mut widget.kind {
                 WidgetKind::Element(el) => {
-                    let children = LayoutForEach::with_generator(children, Generator::Single(&widget.children));
+                    let children =
+                        LayoutForEach::with_generator(children, self.scope, Generator::Single(&widget.children));
                     f(ctx, el, children)
                 }
                 WidgetKind::ControlFlow(controlflow) => {
@@ -129,32 +126,34 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         children.relative_remove(&[0]);
                     }
                     let generator = Generator::from(&*widget);
-                    let mut children = LayoutForEach::with_generator(children, generator);
-                    children.inner_each(ctx, &scope, f)
+                    let mut children = LayoutForEach::with_generator(children, self.scope, generator);
+                    children.inner_each(ctx, f)
                 }
                 WidgetKind::For(for_loop) => {
-                    let collection = &for_loop.collection;
-                    let collection = panic!("the loop need a value expr instead");
-                    let mut scope = Scope::with_collection(for_loop.binding, collection, scope);
-
-                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
-                    children.inner_each(ctx, &scope, f)
+                    let mut scope = Scope::with_collection(for_loop.binding, &for_loop.collection, self.scope);
+                    let generator = Generator::Loop {
+                        binding: for_loop.binding,
+                        body: widget.children,
+                        len: for_loop.collection.len(),
+                    };
+                    let mut children = LayoutForEach::with_generator(children, &scope, generator);
+                    children.inner_each(ctx, f)
                 }
                 WidgetKind::Iteration(iteration) => {
                     let loop_index = *iteration.loop_index.to_ref() as usize;
-                    let mut scope = Scope::with_index(iteration.binding, loop_index, scope);
-                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
-                    children.inner_each(ctx, &scope, f)
+                    let scope = Scope::with_index(iteration.binding, loop_index, self.scope);
+                    let mut children = LayoutForEach::with_generator(children, &scope, Generator::from(&*widget));
+                    children.inner_each(ctx, f)
                 }
                 WidgetKind::Component(component) => {
                     let state_id = component.state_id();
-                    let scope = Scope::with_component(state_id, component.widget_id, scope);
-                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
-                    children.inner_each(ctx, &scope, f)
+                    let scope = Scope::with_component(state_id, component.widget_id, self.scope);
+                    let mut children = LayoutForEach::with_generator(children, &scope, Generator::from(&*widget));
+                    children.inner_each(ctx, f)
                 }
                 WidgetKind::ControlFlowContainer(_) => {
-                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
-                    children.inner_each(ctx, &scope, f)
+                    let mut children = LayoutForEach::with_generator(children, self.scope, Generator::from(&*widget));
+                    children.inner_each(ctx, f)
                 }
             };
 
@@ -187,11 +186,11 @@ fn generate<'bp>(
             eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree);
             true
         }
-        Generator::Loop { collection, .. } if collection.len() == tree.layout_len() => false,
+        Generator::Loop { len, .. } if len == tree.layout_len() => false,
         Generator::Loop {
-            collection,
             binding,
             body,
+            ..
         } => {
             let loop_index = tree.layout_len();
 
@@ -260,11 +259,7 @@ fn generate<'bp>(
                 .iter()
                 .enumerate()
                 .filter_map(|(id, node)| {
-                    let cond = node
-                        .cond
-                        .as_ref()
-                        .and_then(|cond| cond.as_bool())
-                        .unwrap_or(true);
+                    let cond = node.cond.as_ref().and_then(|cond| cond.as_bool()).unwrap_or(true);
                     match cond {
                         true => Some((id, node.body)),
                         false => None,

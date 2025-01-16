@@ -165,10 +165,8 @@ impl Widget for Overflow {
         mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        // let direction = attributes.get(DIRECTION).unwrap_or_default();
-        let direction = panic!("resolver");
-        // let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
-        let axis = panic!("resolver, new, please");
+        let direction = attributes.get_as(DIRECTION).unwrap_or_default();
+        let axis = attributes.get_as(AXIS).unwrap_or(Axis::Vertical);
         let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset

@@ -144,7 +144,7 @@ impl<'bp> Frame<'_, 'bp> {
         eval_blueprint(
             blueprint,
             &mut ctx,
-            &Scope::empty(),
+            &Scope::root(),
             root_node(),
             &mut self.tree.view_mut(),
         )?;

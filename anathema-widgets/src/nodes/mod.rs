@@ -98,9 +98,10 @@ impl<'bp> WidgetContainer<'bp> {
         }
     }
 
-    pub(crate) fn resolve_pending_values(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, widget_id: WidgetId) {
+    pub(crate) fn resolve_pending_values(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, scope: &Scope<'_, 'bp>, widget_id: WidgetId) {
         ctx.changes(
             widget_id,
+            scope,
             |attributes, expr_eval_ctx, strings, value_id| match &mut self.kind {
                 WidgetKind::Element(element) => {
                     let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };

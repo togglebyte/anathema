@@ -9,13 +9,15 @@ pub enum Lookup {
     ComponentProperties(Key),
 }
 
+#[derive(Debug)]
 enum Entry<'parent, 'bp> {
     Component { state: StateId, component_attributes: Key },
     Value(&'parent ValueExpr<'bp>),
-    Collection(&'bp str, &'parent ValueExpr<'bp>),
+    Collection(&'bp str, &'parent Collection<'bp>),
     Empty,
 }
 
+#[derive(Debug)]
 pub struct Scope<'parent, 'bp> {
     parent: Option<&'parent Scope<'parent, 'bp>>,
     value: Entry<'parent, 'bp>,
@@ -36,7 +38,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         }
     }
 
-    pub fn with_collection(binding: &'bp str, collection: &'parent ValueExpr<'bp>, parent: &'parent Scope<'parent, 'bp>) -> Self {
+    pub fn with_collection(binding: &'bp str, collection: &'parent Collection<'bp>, parent: &'parent Scope<'parent, 'bp>) -> Self {
         let value = Entry::Collection(binding, collection);
         Self { parent: Some(parent), value }
     }
@@ -49,7 +51,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         panic!()
     }
 
-    pub fn empty() -> Self {
+    pub fn root() -> Self {
         Self::new(Entry::Empty)
     }
 

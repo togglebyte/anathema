@@ -87,7 +87,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             strings: &mut self.strings,
             component_registry: self.component_registry,
             components: self.components,
-            // scope: &self.scope,
             globals: self.globals,
             factory: &self.factory,
             parent: None,
@@ -95,7 +94,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
     }
 
     // TODO: this should not be on the layout context!
-    pub(super) fn changes<F>(&mut self, widget_id: WidgetId, mut f: F) -> Option<()>
+    pub(super) fn changes<F>(&mut self, widget_id: WidgetId, scope: &Scope<'_, 'bp>, mut f: F) -> Option<()>
     where
         F: FnMut(&mut Attributes<'bp>, &ResolverCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
     {
@@ -104,8 +103,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         self.attribute_storage.with_mut(widget_id, |attributes, storage| {
             let strings = &mut *self.strings;
 
-            let scope = Scope::empty();
-            let ctx = ResolverCtx::new(self.globals, &scope, &self.states, storage);
+            let ctx = ResolverCtx::new(self.globals, scope, &self.states, storage);
 
             for change in changes {
                 f(attributes, &ctx, strings, change);

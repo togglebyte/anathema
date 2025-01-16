@@ -4,7 +4,7 @@ use std::time::Duration;
 use anathema_geometry::{Pos, Size};
 use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_strings::HStrings;
-use anathema_value_resolver::AttributeStorage;
+use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
@@ -106,7 +106,8 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
-        let mut for_each = LayoutForEach::new(self.tree.view_mut());
+        let scope = Scope::root();
+        let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope);
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
             widget.layout(children, constraints, ctx);

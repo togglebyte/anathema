@@ -113,7 +113,6 @@ impl Evaluator for SingleEval {
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let strings = &mut *ctx.strings;
-                let scope = Scope::empty();
                 let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
                 resolve(expr, &ctx, (widget_id, value_index))
             });
@@ -207,8 +206,7 @@ impl Evaluator for ControlFlowEval {
                 .map(|(i, e)| {
                     let value_index = SmallIndex::from_usize(i);
                     let strings = &mut *ctx.strings;
-                    let scope = Scope::empty();
-                    let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+                    let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
 
                     controlflow::Else {
                         cond: e

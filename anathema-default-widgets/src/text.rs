@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
 use anathema_state::CommonVal;
-use anathema_value_resolver::AttributeStorage;
+use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
@@ -39,21 +39,19 @@ pub enum TextAlignment {
     Right,
 }
 
-// impl TryFrom<CommonVal> for TextAlignment {
-//     type Error = ();
+impl TryFrom<&ValueKind<'_>> for TextAlignment {
+    type Error = ();
 
-//     fn try_from(value: CommonVal) -> Result<Self, Self::Error> {
-//         match value {
-//             CommonVal::Str(wrap) => match wrap {
-//                 LEFT => Ok(TextAlignment::Left),
-//                 RIGHT => Ok(TextAlignment::Right),
-//                 "centre" | "center" => Ok(TextAlignment::Centre),
-//                 _ => Err(()),
-//             },
-//             _ => Err(()),
-//         }
-//     }
-// }
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let s = value.as_str().ok_or(())?;
+        match s {
+            LEFT => Ok(TextAlignment::Left),
+            RIGHT => Ok(TextAlignment::Right),
+            "centre" | "center" => Ok(TextAlignment::Centre),
+            _ => Err(()),
+        }
+    }
+}
 
 /// Text widget
 /// ```ignore
@@ -124,8 +122,7 @@ impl Widget for Text {
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let lines = self.strings.lines();
-        // let alignment = attribute_storage.get(id).get(TEXT_ALIGN).unwrap_or_default();
-        let alignment = panic!("another one of these resolver related things");
+        let alignment = attribute_storage.get(id).get_as(TEXT_ALIGN).unwrap_or_default();
 
         let mut pos = LocalPos::ZERO;
         let mut style = attribute_storage.get(id);

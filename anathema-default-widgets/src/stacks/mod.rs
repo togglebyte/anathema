@@ -64,8 +64,7 @@ impl Stack {
         mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        // let direction = attributes.get(DIRECTION).unwrap_or_default();
-        let direction = panic!("rerereresolver");
+        let direction = attributes.get_as(DIRECTION).unwrap_or_default();
         let mut pos = ctx.pos;
 
         if let Direction::Backward = direction {
