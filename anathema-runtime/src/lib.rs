@@ -38,7 +38,7 @@ use anathema_widgets::components::{
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
     eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
-    GlyphMap, LayoutForEach, Scope, WidgetKind, WidgetTree,
+    GlyphMap, LayoutForEach, WidgetKind, WidgetTree,
 };
 use events::{EventCtx, EventHandler};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};

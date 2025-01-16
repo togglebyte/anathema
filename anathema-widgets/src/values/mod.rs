@@ -7,7 +7,7 @@ use anathema_templates::Expression;
 
 use crate::expressions::{Either, EvalValue, ExprEvalCtx};
 use crate::widget::ValueKey;
-use crate::{AttributeStorage, Scope};
+use crate::AttributeStorage;
 
 pub(crate) type ValueId = anathema_state::Subscriber;
 pub type ValueIndex = SmallIndex;
@@ -149,21 +149,21 @@ impl<'bp> Collection<'bp> {
         // }
     }
 
-    pub(crate) fn scope_collection(&self, scope: &mut Scope<'bp>, binding: &'bp str) {
-        match self {
-            Collection::Static(_) => panic!("this variant should be removed"),
-            Collection::Static2(expressions) => scope.scope_expressions(binding, expressions),
-            Collection::Dyn(value_ref) => {
-                let pending = value_ref.to_pending();
-                scope.scope_pending(binding, pending);
-            }
-            Collection::Index(collection, eval_value) => collection.scope_collection(scope, binding),
-            Collection::Future => (),
-            // for x in state.list[y[i]]
-            // Values that can change:
-            // * state.list
-            // * y
-            // * i
-        }
-    }
+    // pub(crate) fn scope_collection(&self, scope: &mut Scope<'bp>, binding: &'bp str) {
+    //     match self {
+    //         Collection::Static(_) => panic!("this variant should be removed"),
+    //         Collection::Static2(expressions) => scope.scope_expressions(binding, expressions),
+    //         Collection::Dyn(value_ref) => {
+    //             let pending = value_ref.to_pending();
+    //             scope.scope_pending(binding, pending);
+    //         }
+    //         Collection::Index(collection, eval_value) => collection.scope_collection(scope, binding),
+    //         Collection::Future => (),
+    //         // for x in state.list[y[i]]
+    //         // Values that can change:
+    //         // * state.list
+    //         // * y
+    //         // * i
+    //     }
+    // }
 }

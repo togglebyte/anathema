@@ -4,6 +4,7 @@ use std::ops::ControlFlow;
 use anathema_state::Value;
 use anathema_store::tree::TreeView;
 use anathema_templates::blueprints::Blueprint;
+use anathema_value_resolver::Scope;
 
 use crate::layout::LayoutCtx;
 use crate::nodes::controlflow;
@@ -59,16 +60,16 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
-        self.inner_each(ctx, &mut f)
+        let scope = Scope::empty();
+        self.inner_each(ctx, &scope, &mut f)
     }
 
-    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
+    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, scope: &Scope<'_, 'bp>, f: &mut F) -> ControlFlow<()>
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
-        let layout_len = self.tree.layout_len();
         for index in 0..self.tree.layout_len() {
-            self.process(index, ctx, f)?;
+            self.process(index, ctx, scope, f)?;
         }
 
         // If there is no parent then there can be no children generated
@@ -79,16 +80,22 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         loop {
             let index = self.tree.layout_len();
-            if !generate(parent, &mut self.tree, ctx) {
+            if !generate(parent, &mut self.tree, ctx, scope) {
                 break;
             }
-            self.process(index, ctx, f)?;
+            self.process(index, ctx, scope, f)?;
         }
 
         ControlFlow::Continue(())
     }
 
-    fn process<F>(&mut self, index: usize, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
+    fn process<F>(
+        &mut self,
+        index: usize,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
+        f: &mut F,
+    ) -> ControlFlow<()>
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
@@ -102,8 +109,6 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         let widget_id = node.value();
         self.tree.with_value_mut(widget_id, |path, widget, mut children| {
-            widget.push_scope(ctx);
-
             widget.resolve_pending_values(ctx, widget_id);
 
             let cf = match &mut widget.kind {
@@ -118,15 +123,34 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
                     let generator = Generator::from(&*widget);
                     let mut children = LayoutForEach::with_generator(children, generator);
-                    children.inner_each(ctx, f)
+                    children.inner_each(ctx, &scope, f)
                 }
-                _ => {
+                WidgetKind::For(for_loop) => {
+                    let collection = &for_loop.collection;
+                    let collection = panic!("the loop need a value expr instead");
+                    let mut scope = Scope::with_collection(for_loop.binding, collection, scope);
+
                     let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
-                    children.inner_each(ctx, f)
+                    children.inner_each(ctx, &scope, f)
+                }
+                WidgetKind::Iteration(iteration) => {
+                let loop_index = *iteration.loop_index.to_ref() as usize;
+                    let mut scope = Scope::with_index(iteration.binding, loop_index, scope);
+                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
+                    children.inner_each(ctx, &scope, f)
+                }
+                WidgetKind::Component(component) => {
+                    let state_id = component.state_id();
+                    let scope = Scope::with_component(state_id, component.widget_id, scope);
+                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
+                    children.inner_each(ctx, &scope, f)
+                }
+                WidgetKind::ControlFlowContainer(_) => {
+                    let mut children = LayoutForEach::with_generator(children, Generator::from(&*widget));
+                    children.inner_each(ctx, &scope, f)
                 }
             };
 
-            widget.pop_scope(ctx);
             cf
         })
     }
@@ -135,7 +159,12 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 // Generate the next available widget into the tree
 // TODO: break this down into more manageable code.
 //       this is a hot mess
-fn generate<'bp>(parent: Generator<'_, 'bp>, tree: &mut WidgetTreeView<'_, 'bp>, ctx: &mut LayoutCtx<'_, 'bp>) -> bool {
+fn generate<'bp>(
+    parent: Generator<'_, 'bp>,
+    tree: &mut WidgetTreeView<'_, 'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
+    scope: &Scope<'_, 'bp>,
+) -> bool {
     match parent {
         Generator::Single(blueprints) | Generator::Iteration(_, blueprints) => {
             if blueprints.is_empty() {
@@ -148,7 +177,7 @@ fn generate<'bp>(parent: Generator<'_, 'bp>, tree: &mut WidgetTreeView<'_, 'bp>,
             }
 
             let mut ctx = ctx.eval_ctx();
-            eval_blueprint(&blueprints[index], &mut ctx, tree.offset, tree);
+            eval_blueprint(&blueprints[index], &mut ctx, panic!("missing scope"), tree.offset, tree);
             true
         }
         Generator::Loop(collection, _, _) if collection.count() == tree.layout_len() => false,

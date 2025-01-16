@@ -1,11 +1,11 @@
 use anathema_state::Change;
 use anathema_store::tree::new_node_path;
 use anathema_templates::blueprints::Blueprint;
+use anathema_value_resolver::Scope;
 
 use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
 use crate::expressions::eval_collection;
-use crate::scope::Scope;
 use crate::values::{Collection, ValueId};
 use crate::widget::WidgetTreeView;
 use crate::{eval_blueprint, AttributeStorage, Value, WidgetId, WidgetTree};
@@ -21,7 +21,7 @@ pub struct For<'bp> {
 }
 
 impl<'bp> For<'bp> {
-    pub(super) fn scope_value(&self, scope: &mut Scope<'bp>, index: usize) {
+    pub(super) fn scope_value(&self, scope: &mut Scope<'_, 'bp>, index: usize) {
         panic!("don't use this, this is for the old collections. The Iter should do this part")
         // self.collection.scope(scope, self.binding, index)
     }

@@ -7,6 +7,7 @@ use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
 use anathema_templates::{ComponentBlueprintId, Globals};
+use anathema_value_resolver::Scope;
 
 use super::element::Element;
 use super::loops::{Iteration, LOOP_INDEX};
@@ -19,8 +20,7 @@ use crate::layout::{EvalCtx, Viewport};
 use crate::values::{Collection, ValueId, ValueIndex};
 use crate::widget::{Attributes, Components, FloatingWidgets, ValueKey, WidgetTreeView};
 use crate::{
-    eval_blueprint, AttributeStorage, ChangeList, DirtyWidgets, Factory, GlyphMap, Scope, WidgetId, WidgetKind,
-    WidgetTree,
+    eval_blueprint, AttributeStorage, ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree,
 };
 
 /// Evaluation context
@@ -77,6 +77,7 @@ pub(super) trait Evaluator {
         &mut self,
         input: Self::Input<'bp>,
         context: &mut EvalCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()>;
@@ -91,6 +92,7 @@ impl Evaluator for SingleEval {
         &mut self,
         single: Self::Input<'bp>,
         ctx: &mut EvalCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -103,8 +105,6 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty(widget_id);
 
         if let Some(expr) = single.value.as_ref() {
-            // let expr_eval_ctx = ctx.expr_eval_ctx();
-
             let strings = &mut *ctx.strings;
             let mut ctx = ExprEvalCtx {
                 scope,
@@ -122,8 +122,9 @@ impl Evaluator for SingleEval {
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let strings = &mut *ctx.strings;
+                let scope = Scope::empty();
                 let ctx = ExprEvalCtx {
-                    scope: ctx.scope,
+                    scope: &scope,
                     states: ctx.states,
                     attributes: ctx.attribute_storage,
                     globals: ctx.globals,
@@ -170,6 +171,7 @@ impl Evaluator for ForLoopEval {
         &mut self,
         for_loop: Self::Input<'bp>,
         ctx: &mut EvalCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -178,7 +180,7 @@ impl Evaluator for ForLoopEval {
 
         let strings = &mut *ctx.strings;
         let ctx = ExprEvalCtx {
-            scope: ctx.scope,
+            scope: &scope,
             states: ctx.states,
             attributes: ctx.attribute_storage,
             globals: ctx.globals,
@@ -210,6 +212,7 @@ impl Evaluator for ControlFlowEval {
         &mut self,
         control_flow: Self::Input<'bp>,
         ctx: &mut EvalCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -224,8 +227,9 @@ impl Evaluator for ControlFlowEval {
                 .map(|(i, e)| {
                     let value_index = SmallIndex::from_usize(i);
                     let strings = &mut *ctx.strings;
+                    let scope = Scope::empty();
                     let ctx = ExprEvalCtx {
-                        scope: ctx.scope,
+                        scope: &scope,
                         states: ctx.states,
                         attributes: ctx.attribute_storage,
                         globals: ctx.globals,
@@ -258,6 +262,7 @@ impl Evaluator for ComponentEval {
         &mut self,
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
@@ -270,7 +275,7 @@ impl Evaluator for ComponentEval {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let strings = &mut *ctx.strings;
                 let ctx = ExprEvalCtx {
-                    scope: ctx.scope,
+                    scope: &scope,
                     states: ctx.states,
                     attributes: ctx.attribute_storage,
                     globals: ctx.globals,

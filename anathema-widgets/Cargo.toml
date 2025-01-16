@@ -10,6 +10,7 @@ anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
 anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
+anathema-value-resolver = { path = "../anathema-value-resolver" }
 flume = { workspace = true }
 unicode-width = { workspace = true }
 unicode-segmentation = "1.11.0"

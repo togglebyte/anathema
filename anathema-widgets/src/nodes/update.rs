@@ -7,7 +7,7 @@ use super::WidgetContainer;
 use crate::error::Result;
 use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
-use crate::{AttributeStorage, Scope, ValueIndex, WidgetKind, WidgetTree};
+use crate::{AttributeStorage, ValueIndex, WidgetKind, WidgetTree};
 
 // struct UpdateTree<'rt, 'bp> {
 //     change: &'a Change,

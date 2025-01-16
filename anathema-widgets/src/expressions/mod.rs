@@ -10,9 +10,10 @@ use anathema_state::{
 use anathema_strings::{HString, HStrings, StrIndex, Transaction};
 use anathema_templates::expressions::{Equality, Op};
 use anathema_templates::{Expression, Globals};
+use anathema_value_resolver::Scope;
 pub(crate) use values::ValueKind;
 
-use crate::scope::{Scope, ScopeLookup};
+// use crate::scope::{Scope, ScopeLookup};
 use crate::values::{Collection, ValueId};
 use crate::{AttributeStorage, Value, WidgetId};
 
@@ -21,7 +22,7 @@ pub(crate) mod values;
 
 pub(crate) struct ExprEvalCtx<'a, 'bp> {
     pub(crate) states: &'a States,
-    pub(crate) scope: &'a Scope<'bp>,
+    pub(crate) scope: &'a Scope<'a, 'bp>,
     pub(crate) attributes: &'a AttributeStorage<'bp>,
     pub(crate) globals: &'bp Globals,
 }
@@ -282,7 +283,7 @@ impl<'bp> EvalValue<'bp> {
             Self::String(val) => Self::String(*val),
             Self::State(id) => Self::State(*id),
             Self::ComponentAttributes(id) => Self::ComponentAttributes(*id),
-            Self::Pending(val) => panic!(),//Self::Dyn(val.subscribe(value_id)),
+            Self::Pending(val) => panic!(), //Self::Dyn(val.subscribe(value_id)),
             Self::Index(value, index) => Self::Index(
                 value.inner_upgrade(value_id).into(),
                 index.inner_upgrade(value_id).into(),
@@ -595,6 +596,7 @@ impl<'scope, 'bp> Resolver<'scope, 'bp> {
     }
 
     fn lookup(&mut self, expression: &'bp Expression, strings: &mut HStrings<'bp>) -> EvalValue<'bp> {
+        panic!("I'm wrecking all kinds of havoc here");
         // match expression {
         //     Expression::Ident(ident) => match &**ident {
         //         "state" => self.ctx.scope.get_state(),

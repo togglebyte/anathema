@@ -11,6 +11,7 @@ use anathema_store::tree::root_node;
 use anathema_strings::HStrings;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
+use anathema_value_resolver::Scope;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
     AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentRegistry, Emitter, FocusQueue,
@@ -20,7 +21,7 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Elements;
 use anathema_widgets::{
     eval_blueprint, update_widget, AttributeStorage, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets,
-    GlyphMap, Scope, WidgetId, WidgetKind, WidgetTree, WidgetTreeView,
+    GlyphMap, WidgetId, WidgetKind, WidgetTree, WidgetTreeView,
 };
 
 pub use crate::error::Result;
@@ -140,7 +141,7 @@ impl<'bp> Frame<'_, 'bp> {
     // Should be called only once to initialise the node tree.
     fn init(&mut self, blueprint: &'bp Blueprint) -> Result<()> {
         let mut ctx = self.layout_ctx.eval_ctx();
-        eval_blueprint(blueprint, &mut ctx, root_node(), &mut self.tree.view_mut())?;
+        eval_blueprint(blueprint, &mut ctx, &Scope::empty(), root_node(), &mut self.tree.view_mut())?;
         Ok(())
     }
 

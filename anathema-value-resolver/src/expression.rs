@@ -293,7 +293,7 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, sub: Subscri
         ValueExpr::DynList(value) => {
             let s = or_null!(value.as_state());
             let list = s.as_any_list().expect("a dyn list is always an any_list");
-            let key = rsolve_int(index, sub);
+            let key = resolve_int(index, sub);
             let val = or_null!(list.lookup(key as usize));
             resolve_pending(val, sub)
         }

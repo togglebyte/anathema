@@ -29,7 +29,7 @@ impl<'bp> TestRuntime<'bp> {
         let mut tree = WidgetTree::empty();
         let mut view = tree.view_mut();
         let mut ctx = panic!();
-        let res = eval_blueprint(&setup.blueprint, &mut ctx, root_node(), &mut view);
+        let res = eval_blueprint(&setup.blueprint, &mut ctx, panic!("missing scope"), root_node(), &mut view);
         Self {
             tree,
             setup,

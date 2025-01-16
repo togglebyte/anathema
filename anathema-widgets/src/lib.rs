@@ -1,4 +1,4 @@
-pub use scope::{DebugScope, Scope};
+// pub use scope::{DebugScope, Scope};
 use values::ValueId;
 pub use values::ValueIndex;
 
@@ -27,7 +27,7 @@ pub mod layout;
 mod nodes;
 pub mod paint;
 pub mod query;
-mod scope;
+// mod scope;
 pub mod tree;
 mod values;
 mod widget;

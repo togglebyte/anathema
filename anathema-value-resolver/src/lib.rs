@@ -34,6 +34,8 @@ use anathema_strings::HStrings;
 use anathema_templates::Expression;
 use immediate::ImmediateResolver;
 
+pub use crate::scope::Scope;
+
 pub mod collection;
 pub mod context;
 pub mod expression;

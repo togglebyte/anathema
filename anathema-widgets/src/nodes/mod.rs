@@ -1,6 +1,7 @@
 use anathema_store::smallmap::SmallIndex;
 use anathema_store::tree::Generator;
 use anathema_templates::blueprints::Blueprint;
+use anathema_value_resolver::Scope;
 use loops::LOOP_INDEX;
 
 pub use self::element::Element;
@@ -11,7 +12,6 @@ pub use self::update::update_widget;
 use crate::error::Result;
 use crate::expressions::ExprEvalCtx;
 use crate::layout::{EvalCtx, LayoutCtx};
-use crate::scope::ScopeLookup;
 use crate::values::ValueId;
 use crate::widget::WidgetTreeView;
 use crate::{WidgetId, WidgetTree};
@@ -65,7 +65,7 @@ impl<'rt, 'bp> Generator<WidgetContainer<'bp>, EvalCtx<'rt, 'bp>> for WidgetGene
                 let blueprint = &blueprints[index];
 
                 let parent = tree.offset;
-                eval_blueprint(blueprint, ctx, parent, tree);
+                eval_blueprint(blueprint, ctx, panic!("missing scope"), parent, tree);
                 true
             }
             WidgetGenerator::Single => todo!(),
@@ -102,39 +102,6 @@ impl<'bp> WidgetContainer<'bp> {
         }
     }
 
-    pub(crate) fn push_scope(&self, ctx: &mut LayoutCtx<'_, 'bp>) {
-        match &self.kind {
-            WidgetKind::For(for_loop) => {
-                ctx.scope.push();
-                for_loop.collection.scope_collection(&mut ctx.scope, for_loop.binding);
-            }
-            WidgetKind::Iteration(iter) => {
-                ctx.scope.push();
-                // evaluate experession + index?
-                let loop_index = *iter.loop_index.to_ref() as usize;
-                ctx.scope.scope_indexed(iter.binding, loop_index, None);
-            }
-            WidgetKind::Component(component) => {
-                ctx.scope.push();
-                ctx.scope.scope_component_attributes(component.widget_id);
-
-                // Insert internal state
-                let state_id = component.state_id();
-                ctx.scope.insert_state(state_id);
-            }
-            WidgetKind::Element(_) => (),
-            WidgetKind::ControlFlow(_) => (),
-            WidgetKind::ControlFlowContainer(_) => (),
-        }
-    }
-
-    pub(crate) fn pop_scope(&self, ctx: &mut LayoutCtx<'_, 'bp>) {
-        match &self.kind {
-            WidgetKind::Iteration(_) | WidgetKind::For(_) | WidgetKind::Component(_) => ctx.scope.pop(),
-            _ => (),
-        }
-    }
-
     pub(crate) fn resolve_pending_values(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, widget_id: WidgetId) {
         ctx.changes(
             widget_id,
@@ -162,14 +129,15 @@ impl<'bp> WidgetContainer<'bp> {
 pub fn eval_blueprint<'bp>(
     blueprint: &'bp Blueprint,
     ctx: &mut EvalCtx<'_, 'bp>,
+    scope: &Scope<'_, 'bp>,
     parent: &[u16],
     tree: &mut WidgetTreeView<'_, 'bp>,
 ) -> Result<()> {
     match blueprint {
-        Blueprint::Single(single) => SingleEval.eval(single, ctx, parent, tree),
-        Blueprint::For(for_loop) => ForLoopEval.eval(for_loop, ctx, parent, tree),
-        Blueprint::ControlFlow(flow) => ControlFlowEval.eval(flow, ctx, parent, tree),
-        Blueprint::Component(component) => ComponentEval.eval(component, ctx, parent, tree),
+        Blueprint::Single(single) => SingleEval.eval(single, ctx, scope, parent, tree),
+        Blueprint::For(for_loop) => ForLoopEval.eval(for_loop, ctx, scope, parent, tree),
+        Blueprint::ControlFlow(flow) => ControlFlowEval.eval(flow, ctx, scope, parent, tree),
+        Blueprint::Component(component) => ComponentEval.eval(component, ctx, scope, parent, tree),
     }
 }
 

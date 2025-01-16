@@ -5,6 +5,7 @@ use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
 use anathema_templates::{ComponentBlueprintId, Globals};
+use anathema_value_resolver::Scope;
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
@@ -14,7 +15,7 @@ use crate::nodes::element::Element;
 use crate::values::ValueId;
 use crate::{
     AttributeStorage, Attributes, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap,
-    LayoutChildren, Scope, Value, WidgetContainer, WidgetId, WidgetKind,
+    LayoutChildren, Value, WidgetContainer, WidgetId, WidgetKind,
 };
 
 mod constraints;
@@ -22,7 +23,6 @@ mod display;
 pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
-    // pub(super) scope: Scope<'bp>,
     pub states: &'frame mut States,
     pub(super) globals: &'bp Globals,
     pub dirty_widgets: &'frame mut DirtyWidgets,
@@ -57,7 +57,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         force_layout: bool,
     ) -> Self {
         Self {
-            // scope: Scope::new(),
             states,
             attribute_storage,
             components,
@@ -97,6 +96,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         }
     }
 
+    // TODO: this should not be on the layout context!
     pub(super) fn changes<F>(&mut self, widget_id: WidgetId, mut f: F) -> Option<()>
     where
         F: FnMut(&mut Attributes<'bp>, &ExprEvalCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
@@ -106,8 +106,9 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         self.attribute_storage.with_mut(widget_id, |attributes, storage| {
             let strings = &mut *self.strings;
 
+            let scope = Scope::empty();
             let ctx = ExprEvalCtx {
-                // scope: &self.scope,
+                scope: &scope,
                 states: &self.states,
                 attributes: storage,
                 globals: self.globals,
