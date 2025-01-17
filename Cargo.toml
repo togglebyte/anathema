@@ -27,7 +27,7 @@ anathema-value-resolver = { path = "./anathema-value-resolver" }
 
 [features]
 default = []
-profile = ["anathema-runtime/profile", "anathema-widgets/profile"]
+profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
 
 [lints]
 workspace = true

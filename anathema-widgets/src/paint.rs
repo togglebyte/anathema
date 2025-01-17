@@ -179,23 +179,16 @@ pub fn paint<'bp>(
     strings: &HStrings<'bp>,
     ignore_floats: bool,
 ) {
-    #[cfg(feature = "profile")]
-    puffin::profile_function!();
-
-    // let filter = PaintFilter::new(ignore_floats, attribute_storage);
-    // let children = TreeForEach::new(children, values, &filter);
     widgets.each(|widget, children| {
         let ctx = PaintCtx::new(surface, None, glyph_index, strings);
         widget.paint(children, ctx, attribute_storage);
         ControlFlow::Continue(())
     });
-    // element.paint(children, ctx, attribute_storage);
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Unsized;
 
-// TODO rename this as it contains both size and position
 pub struct SizePos {
     pub local_size: Size,
     pub global_pos: Pos,

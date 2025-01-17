@@ -28,7 +28,7 @@ pub fn resolve_collection<'bp>(
 }
 
 #[derive(Debug)]
-pub struct Collection<'bp>(Value<'bp>);
+pub struct Collection<'bp>(pub(crate) Value<'bp>);
 
 impl<'bp> Collection<'bp> {
     pub fn reload(&mut self) {
@@ -87,7 +87,7 @@ impl<'bp> Value<'bp> {
 
 impl Drop for Value<'_> {
     fn drop(&mut self) {
-        eprintln!("unsubscribe the value");
+        self.expr.unsubscribe(self.sub);
     }
 }
 
@@ -157,7 +157,6 @@ impl ValueKind<'_> {
         let ValueKind::Str(i) = &self else { return None };
         Some(&*i)
     }
-
 
     pub fn strings<F>(&self, f: &mut F) -> bool
     where
@@ -605,10 +604,14 @@ pub(crate) mod test {
     #[test]
     fn stringify() {
         setup().finish(|mut test| {
-            let expr = text_segments(strlit("hello"), strlit(" "), strlit("world"));
+            let expr = text_segments([strlit("hello"), strlit(" "), strlit("world")]);
             let value = test.eval(&*expr);
-            let output = value.strings().collect();
-            assert_eq!("hello world", &output);
+            let mut actual = String::new();
+            value.strings(|st| {
+                actual.push_str(st);
+                true
+            });
+            assert_eq!("hello world", &actual);
         });
     }
 }

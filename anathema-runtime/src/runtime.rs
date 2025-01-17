@@ -55,6 +55,9 @@ pub struct Runtime<'bp> {
 
 impl<'bp> Runtime<'bp> {
     pub fn next_frame(&mut self) -> Result<Frame<'_, 'bp>> {
+        #[cfg(feature = "profile")]
+        puffin::GlobalProfiler::lock().new_frame();
+
         let layout_ctx = LayoutCtx::new(
             self.globals,
             &self.factory,
@@ -115,6 +118,9 @@ pub struct Frame<'rt, 'bp> {
 
 impl<'bp> Frame<'_, 'bp> {
     pub fn event(&mut self, event: Event) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         match event {
             Event::Noop => return,
             Event::Stop => todo!(),
@@ -152,18 +158,24 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Duration {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let now = Instant::now();
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.pull_events(elapsed, now, backend);
         self.apply_changes();
-        self.resolve_future_values();
+        // self.resolve_future_values();
         self.cycle(backend);
         *self.dt = Instant::now();
         now.elapsed()
     }
 
     pub fn present<B: Backend>(&mut self, backend: &mut B) -> Duration {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let now = Instant::now();
         backend.render(self.layout_ctx.glyph_map);
         backend.clear();
@@ -171,6 +183,9 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     pub fn cleanup(&mut self) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         self.changes.clear();
         self.layout_ctx.dirty_widgets.clear();
 
@@ -182,6 +197,9 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn handle_messages(&mut self, fps_now: Instant) -> Duration {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         while let Ok(msg) = self.message_receiver.try_recv() {
             if let Some((widget_id, state_id)) = self
                 .layout_ctx
@@ -220,6 +238,9 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn apply_changes(&mut self) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         drain_changes(self.changes);
 
         if self.changes.is_empty() {
@@ -239,18 +260,18 @@ impl<'bp> Frame<'_, 'bp> {
         });
     }
 
-    fn resolve_future_values(&mut self) {
-        drain_futures(&mut self.future_values);
+    // fn resolve_future_values(&mut self) {
+    //     drain_futures(&mut self.future_values);
 
-        if self.future_values.is_empty() {
-            return;
-        }
+    //     if self.future_values.is_empty() {
+    //         return;
+    //     }
 
-        for sub in self.future_values.drain().rev() {
-            self.layout_ctx.changelist.insert(sub.key(), sub);
-            self.layout_ctx.dirty_widgets.push(sub.key());
-        }
-    }
+    //     for sub in self.future_values.drain().rev() {
+    //         self.layout_ctx.changelist.insert(sub.key(), sub);
+    //         self.layout_ctx.dirty_widgets.push(sub.key());
+    //     }
+    // }
 
     fn poll_event<B: Backend>(&mut self, poll_timeout: Duration, backend: &mut B) {
         let Some(event) = backend.next_event(poll_timeout) else { return };

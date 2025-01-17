@@ -14,6 +14,11 @@ anathema-widgets = { path = "../anathema-widgets" }
 crossterm = { workspace = true }
 unicode-width = { workspace = true }
 bitflags = { workspace = true }
+puffin = { version = "0.19.1", optional = true }
+
+[features]
+default = []
+profile = ["puffin"]
 
 [lints]
 workspace = true

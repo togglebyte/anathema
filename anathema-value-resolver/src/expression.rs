@@ -120,7 +120,7 @@ impl ValueExpr<'_> {
                 rhs.unsubscribe(sub);
             }
             ValueExpr::Call => todo!(),
-            ValueExpr::Null => todo!(),
+            ValueExpr::Null => (),
             _ => {}
         }
     }

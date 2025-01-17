@@ -15,11 +15,10 @@ flume = { workspace = true }
 unicode-width = { workspace = true }
 unicode-segmentation = "1.11.0"
 puffin = { version = "0.19.1", features = ["web"], optional = true }
-puffin_http = { version = "0.16.1", optional = true }
 
 [features]
 default = []
-profile = ["puffin", "puffin_http"]
+profile = ["puffin"]
 
 [lints]
 workspace = true

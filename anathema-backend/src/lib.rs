@@ -106,6 +106,25 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
+        self.layout(ctx);
+
+        // -----------------------------------------------------------------------------
+        //   - Position -
+        // -----------------------------------------------------------------------------
+        self.position(ctx.attribute_storage, ctx.viewport);
+
+        // -----------------------------------------------------------------------------
+        //   - Paint -
+        // -----------------------------------------------------------------------------
+        self.paint(ctx);
+
+        self.floating();
+    }
+
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let scope = Scope::root();
         let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope);
         let constraints = self.constraints;
@@ -113,23 +132,25 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             widget.layout(children, constraints, ctx);
             ControlFlow::Break(())
         });
+    }
 
-        // -----------------------------------------------------------------------------
-        //   - Position -
-        // -----------------------------------------------------------------------------
+    fn position(&mut self, attributes: &AttributeStorage<'bp>, viewport: Viewport) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let mut for_each = PositionChildren::new(self.tree.view_mut());
         for_each.each(|widget, children| {
-            widget.position(children, Pos::ZERO, ctx.attribute_storage, ctx.viewport);
+            widget.position(children, Pos::ZERO, attributes, viewport);
             ControlFlow::Break(())
         });
+    }
 
-        // -----------------------------------------------------------------------------
-        //   - Paint -
-        // -----------------------------------------------------------------------------
+    fn paint(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let mut for_each = PaintChildren::new(self.tree.view_mut());
         self.backend
             .paint(ctx.glyph_map, for_each, ctx.attribute_storage, ctx.strings, true);
-
-        self.floating();
     }
 }

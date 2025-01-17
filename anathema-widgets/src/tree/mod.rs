@@ -32,9 +32,7 @@ impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'b
         match &widget.kind {
             WidgetKind::Element(_) => panic!("use Self::Single directly"),
             WidgetKind::For(for_loop) => panic!("use Self::Loop directory"),
-            WidgetKind::Component(_) | WidgetKind::ControlFlowContainer(_) => {
-                Self::Single(widget.children)
-            }
+            WidgetKind::Component(_) | WidgetKind::ControlFlowContainer(_) => Self::Single(widget.children),
             WidgetKind::Iteration(iter) => Self::Iteration(iter.binding, widget.children),
             WidgetKind::ControlFlow(controlflow) => Self::ControlFlow(&controlflow),
             _ => Self::Parent(()),
@@ -102,6 +100,9 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let node = self
             .tree
             .layout
@@ -171,6 +172,9 @@ fn generate<'bp>(
     ctx: &mut LayoutCtx<'_, 'bp>,
     scope: &Scope<'_, 'bp>,
 ) -> bool {
+    #[cfg(feature = "profile")]
+    puffin::profile_function!();
+
     match parent {
         Generator::Single(blueprints) | Generator::Iteration(_, blueprints) => {
             if blueprints.is_empty() {
@@ -187,11 +191,7 @@ fn generate<'bp>(
             true
         }
         Generator::Loop { len, .. } if len == tree.layout_len() => false,
-        Generator::Loop {
-            binding,
-            body,
-            ..
-        } => {
+        Generator::Loop { binding, body, .. } => {
             let loop_index = tree.layout_len();
 
             let transaction = tree.insert(tree.offset);

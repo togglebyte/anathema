@@ -1,6 +1,6 @@
 use anathema_state::{AnyState, Hex, List, Map, StateId, States, Subscriber};
+use anathema_store::slab::Key;
 use anathema_templates::{Expression, Globals, Variables};
-use collection::{Collection, CollectionResolver};
 
 use super::*;
 use crate::context::ResolverCtx;
@@ -31,17 +31,20 @@ impl TestCaseBuilder {
 
     pub fn finish<F>(mut self, mut f: F)
     where
-        F: FnOnce(TestCase<'_>),
+        F: FnOnce(TestCase<'_, '_>),
     {
         let globals = self.variables.into();
         let state = Box::new(self.state);
         let state_id = self.states.insert(anathema_state::Value::new(state));
+        let mut attributes = AttributeStorage::empty();
 
-        let mut scope = Scope::new();
-        scope.insert_state(state_id);
+        let attributes = AttributeStorage::empty();
+        let root = Scope::root();
+        let mut scope = Scope::with_component(state_id, Key::ZERO, &root);
         let case = TestCase {
             globals: &globals,
-            scope,
+            attributes: &attributes,
+            scope: &scope,
             states: &mut self.states,
             state_id,
         };
@@ -50,26 +53,25 @@ impl TestCaseBuilder {
     }
 }
 
-pub(crate) struct TestCase<'bp> {
+pub(crate) struct TestCase<'frame, 'bp> {
     globals: &'bp Globals,
-    scope: Scope,
+    attributes: &'bp AttributeStorage<'bp>,
+    scope: &'frame Scope<'frame, 'bp>,
     states: &'bp mut States,
     state_id: StateId,
 }
 
-impl<'bp> TestCase<'bp> {
+impl<'bp> TestCase<'_, 'bp> {
     pub(crate) fn eval(&self, expr: &'bp Expression) -> Value<'bp> {
-        let ctx = ResolverCtx::new(&self.globals, &self.scope, self.states);
+        let ctx = ResolverCtx::new(&self.globals, &self.scope, self.states, self.attributes);
         let mut resolver = ImmediateResolver::new(&ctx);
         let value_expr = resolver.resolve(expr);
         Value::new(value_expr, Subscriber::ZERO)
     }
 
     pub(crate) fn eval_collection(&self, expr: &'bp Expression) -> Collection<'bp> {
-        let ctx = ResolverCtx::new(&self.globals, &self.scope, self.states);
-        let mut resolver = CollectionResolver::new(&ctx);
-        let collection_expr = resolver.resolve(expr);
-        Collection::new(collection_expr, Subscriber::ZERO)
+        let value = self.eval(expr);
+        Collection(value)
     }
 
     pub(crate) fn set_state(&mut self, key: &str, value: impl AnyState) {
@@ -77,11 +79,15 @@ impl<'bp> TestCase<'bp> {
     }
 
     pub(crate) fn with_state<F>(&mut self, mut f: F)
-        where F: FnOnce(&mut Map<Box<dyn AnyState>>)
+    where
+        F: FnOnce(&mut Map<Box<dyn AnyState>>),
     {
         let mut state = self.states.get_mut(self.state_id).unwrap();
         let mut state = state.to_mut_cast::<Map<Box<dyn AnyState>>>();
         f(&mut *state);
+    }
+
+    pub(crate) fn set_attribute(&mut self, key: &str, value: ()) {
     }
 }
 
