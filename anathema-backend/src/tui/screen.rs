@@ -1,7 +1,8 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::paint::{CellAttributes, Glyph};
+use anathema_value_resolver::Attributes;
+use anathema_widgets::paint::Glyph;
 use anathema_widgets::{GlyphMap, WidgetRenderer};
 use crossterm::event::EnableMouseCapture;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
@@ -147,7 +148,7 @@ impl WidgetRenderer for Screen {
         self.paint_glyph(c, screen_pos);
     }
 
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, pos: Pos) {
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, pos: Pos) {
         let Ok(screen_pos) = pos.try_into() else { return };
         let style = Style::from_cell_attribs(attribs);
         self.update_cell(style, screen_pos);

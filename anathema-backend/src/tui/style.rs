@@ -2,7 +2,7 @@ use std::io::{Result, Write};
 use std::str::FromStr;
 
 use anathema_state::{Color, Hex};
-use anathema_widgets::paint::CellAttributes;
+use anathema_value_resolver::ValueKind;
 pub use crossterm::style::{Attribute as CrossAttrib, Color as CTColor};
 use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::QueueableCommand;
@@ -69,43 +69,6 @@ pub struct Style {
     pub attributes: Attributes,
 }
 
-impl CellAttributes for Style {
-    fn get_hex(&self, _: &str) -> Option<Hex> {
-        None
-    }
-
-    fn get_color(&self, key: &str) -> Option<Color> {
-        match key {
-            "foreground" => self.fg,
-            "background" => self.bg,
-            _ => None,
-        }
-    }
-
-    fn get_i64(&self, _key: &str) -> Option<i64> {
-        None
-    }
-
-    fn get_u8(&self, _key: &str) -> Option<u8> {
-        None
-    }
-
-    fn with_str(&self, _: &str, _: &mut dyn FnMut(&str)) {}
-
-    fn get_bool(&self, key: &str) -> bool {
-        match key {
-            "bold" => self.attributes.contains(Attributes::BOLD),
-            "dim" => self.attributes.contains(Attributes::DIM),
-            "italic" => self.attributes.contains(Attributes::ITALIC),
-            "underline" => self.attributes.contains(Attributes::UNDERLINED),
-            "crossed-out" => self.attributes.contains(Attributes::CROSSED_OUT),
-            "overline" => self.attributes.contains(Attributes::OVERLINED),
-            "inverse" => self.attributes.contains(Attributes::INVERSE),
-            _ => false,
-        }
-    }
-}
-
 impl Style {
     /// Create a new instance of a `Style`:
     pub const fn new() -> Self {
@@ -117,29 +80,29 @@ impl Style {
     }
 
     /// Create an instance of `Style` from `CellAttributes`.
-    pub fn from_cell_attribs(attributes: &dyn CellAttributes) -> Self {
+    pub fn from_cell_attribs(attributes: &anathema_value_resolver::Attributes<'_>) -> Self {
         let mut style = Self::new();
 
-        match attributes.get_color("foreground") {
-            Some(color) => style.fg = Some(color),
-            None => match attributes.get_hex("foreground") {
-                Some(Hex { r, g, b }) => style.fg = Some(Color::from((r, g, b))),
-                None => match attributes.get_u8("foreground") {
-                    Some(ansi) => style.fg = Some(Color::AnsiVal(ansi)),
-                    None => attributes.with_str("foreground", &mut |s| style.fg = Color::from_str(s).ok()),
-                },
-            },
+        if let Some(color) = attributes.get("foreground") {
+            let color = match color {
+                ValueKind::Hex(Hex { r, g, b }) => Color::from((*r, *g, *b)),
+                ValueKind::Str(cow) => Color::from_str(cow.as_ref()).unwrap_or(Color::Reset),
+                ValueKind::Int(ansi) => Color::AnsiVal(*ansi as u8),
+                _ => Color::Reset,
+            };
+
+            style.fg = Some(color)
         }
 
-        match attributes.get_color("background") {
-            Some(color) => style.bg = Some(color),
-            None => match attributes.get_hex("background") {
-                Some(Hex { r, g, b }) => style.bg = Some(Color::from((r, g, b))),
-                None => match attributes.get_u8("background") {
-                    Some(ansi) => style.bg = Some(Color::AnsiVal(ansi)),
-                    None => attributes.with_str("background", &mut |s| style.bg = Color::from_str(s).ok()),
-                },
-            },
+        if let Some(color) = attributes.get("background") {
+            let color = match color {
+                ValueKind::Hex(Hex { r, g, b }) => Color::from((*r, *g, *b)),
+                ValueKind::Str(cow) => Color::from_str(cow.as_ref()).unwrap_or(Color::Reset),
+                ValueKind::Int(ansi) => Color::AnsiVal(*ansi as u8),
+                _ => Color::Reset,
+            };
+
+            style.bg = Some(color)
         }
 
         if attributes.get_bool("bold") {

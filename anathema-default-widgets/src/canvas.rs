@@ -222,11 +222,12 @@ impl Widget for Canvas {
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        for (pos, c, style) in self.buffer.iter() {
-            ctx.set_attributes(style, pos);
-            let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);
-            ctx.place_glyph(glyph, pos);
-        }
+        panic!()
+        // for (pos, c, style) in self.buffer.iter() {
+        //     ctx.set_style(style, pos);
+        //     let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);
+        //     ctx.place_glyph(glyph, pos);
+        // }
     }
 
     fn needs_reflow(&mut self) -> bool {

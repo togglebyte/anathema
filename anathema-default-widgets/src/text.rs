@@ -86,7 +86,7 @@ impl Widget for Text {
 
         // // Layout text
         attributes.value().map(|text| {
-            text.strings(|s| match self.strings.add_str(s) {
+            text.strings(&mut |s| match self.strings.add_str(s) {
                 ProcessResult::Break => false,
                 ProcessResult::Continue => true,
             });
@@ -101,7 +101,7 @@ impl Widget for Text {
 
             let attributes = ctx.attributes(child.id());
             if let Some(text) = attributes.value() {
-                text.strings(|s| match self.strings.add_str(s) {
+                text.strings(&mut |s| match self.strings.add_str(s) {
                     ProcessResult::Break => false,
                     ProcessResult::Continue => true,
                 });
@@ -141,13 +141,11 @@ impl Widget for Text {
                     Segment::Str(s) => {
                         let glyphs = Glyphs::new(s);
                         if let Some(new_pos) = ctx.place_glyphs(glyphs, pos) {
-                            // TODO: make this better... Somehow
-                            // This isn't very nice, but it works for now.
+                            // TODO: 
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.
                             for x in pos.x..new_pos.x {
-                                panic!("this can not be done until we have style available here");
-                                // ctx.set_attributes(style, (x, pos.y).into());
+                                ctx.set_style(style, (x, pos.y).into());
                             }
                             pos = new_pos;
                         }

@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
 use anathema_strings::HStrings;
-use anathema_value_resolver::AttributeStorage;
+use anathema_value_resolver::{AttributeStorage, Attributes};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::paint::{CellAttributes, Glyph};
+use anathema_widgets::paint::Glyph;
 use anathema_widgets::{GlyphMap, WidgetRenderer};
 use crossterm::cursor::position;
 use crossterm::terminal::size;
@@ -39,7 +39,7 @@ impl WidgetRenderer for Surface {
         todo!()
     }
 
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos) {
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, local_pos: Pos) {
         todo!()
     }
 

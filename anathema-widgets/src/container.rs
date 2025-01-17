@@ -102,8 +102,7 @@ impl Container {
         for y in 0..self.cache.size.height as u16 {
             for x in 0..self.cache.size.width as u16 {
                 let pos = LocalPos::new(x, y);
-                panic!("get rid of cell attributes");
-                // ctx.set_attributes(attributes, pos);
+                ctx.set_style(attributes, pos);
             }
         }
 

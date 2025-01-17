@@ -159,7 +159,7 @@ impl ValueKind<'_> {
     }
 
 
-    fn strings<F>(&self, f: &mut F) -> bool
+    pub fn strings<F>(&self, f: &mut F) -> bool
     where
         F: FnMut(&str) -> bool,
     {

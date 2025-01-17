@@ -4,9 +4,9 @@ use anathema_geometry::{Pos, Size};
 use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeValues};
 use anathema_strings::HStrings;
-use anathema_value_resolver::AttributeStorage;
+use anathema_value_resolver::{AttributeStorage, Attributes};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::paint::{CellAttributes, Glyph, GlyphMap};
+use anathema_widgets::paint::{Glyph, GlyphMap};
 use anathema_widgets::{Element, ForEach, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer};
 
 use crate::Backend;
@@ -100,7 +100,7 @@ impl WidgetRenderer for TestSurface {
         self.size
     }
 
-    fn set_attributes(&mut self, _attribs: &dyn CellAttributes, _local_pos: Pos) {
+    fn set_attributes(&mut self, _attribs: &Attributes<'_>, _local_pos: Pos) {
         // NOTE: currently no attributes are stored on the test surface
     }
 }

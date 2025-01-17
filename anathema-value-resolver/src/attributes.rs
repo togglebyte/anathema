@@ -1,9 +1,11 @@
 use std::borrow::Borrow;
 
 use anathema_state::PendingValue;
-use anathema_store::{slab::{Gen, SecondaryMap}, smallmap::SmallIndex};
+use anathema_store::slab::{Gen, SecondaryMap};
+use anathema_store::smallmap::SmallIndex;
 
-use crate::{value::Values, Value, ValueKind};
+use crate::value::{Value, Values};
+use crate::ValueKind;
 
 type WidgetId = anathema_store::slab::Key;
 
@@ -104,9 +106,9 @@ impl<'bp> Attributes<'bp> {
         }
     }
 
-    /// Set the value
-    pub fn set(&mut self, key: &'bp str, value: impl Into<Value<'bp>>) {
-        let value = value.into().into();
+    /// Set the value. This should only be used when evaluating new widgets,
+    /// and should not be used by user code.
+    pub fn set(&mut self, key: &'bp str, value: Value<'bp>) {
         self.attribs.set(ValueKey::Attribute(key), value);
     }
 
@@ -144,9 +146,9 @@ impl<'bp> Attributes<'bp> {
 
     /// Get the `Value` out of attributes.
     /// This is always the first item
-    pub fn value(&self) -> Option<&Value<'bp>> {
+    pub fn value(&self) -> Option<&ValueKind<'bp>> {
         let idx = self.value?;
-        self.attribs.get_with_index(idx)
+        self.attribs.get_with_index(idx).map(|val| &val.kind)
     }
 
     // TODO: is this ever used?
@@ -176,12 +178,13 @@ impl<'bp> Attributes<'bp> {
     //     self.get_val(key).and_then(|s| T::try_from(s.deref()).ok())
     // }
 
-    pub fn get(&self, key: &str) -> Option<&Value<'bp>> {
-        self.attribs.get(key)
+    pub fn get(&self, key: &str) -> Option<&ValueKind<'bp>> {
+        self.attribs.get(key).map(|val| &val.kind)
     }
 
-    pub fn get_as<T>(&self, key: &str) -> Option<T> 
-        where T: for<'a> TryFrom<&'a ValueKind<'a>>
+    pub fn get_as<T>(&self, key: &str) -> Option<T>
+    where
+        T: for<'a> TryFrom<&'a ValueKind<'a>>,
     {
         self.attribs.get(key).and_then(|val| (&val.kind).try_into().ok())
     }
@@ -217,10 +220,10 @@ impl<'bp> Attributes<'bp> {
 
     /// Iterate over attributes.
     /// This will skip the value
-    pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &Value<'bp>)> {
-        self.attribs.iter().filter(|(key, _)| match key {
-            ValueKey::Value => false,
-            ValueKey::Attribute(_) => true,
+    pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &ValueKind<'bp>)> {
+        self.attribs.iter().filter_map(|(key, val)| match key {
+            ValueKey::Value => None,
+            ValueKey::Attribute(_) => Some((key, &val.kind)),
         })
     }
 

@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use anathema_state::CommonVal;
-use anathema_value_resolver::{AttributeStorage, Value};
+use anathema_value_resolver::{AttributeStorage, ValueKind};
 
 pub use self::components::Components;
 pub use self::elements::Elements;
@@ -23,8 +23,8 @@ impl<'a> From<&'a str> for QueryValue<'a> {
     }
 }
 
-impl PartialEq<Value<'_>> for QueryValue<'_> {
-    fn eq(&self, other: &Value<'_>) -> bool {
+impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
+    fn eq(&self, other: &ValueKind<'_>) -> bool {
         todo!()
     }
 }

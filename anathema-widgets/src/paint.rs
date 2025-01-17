@@ -6,7 +6,7 @@ use anathema_store::indexmap::IndexMap;
 use anathema_store::slab::SlabIndex;
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
-use anathema_value_resolver::AttributeStorage;
+use anathema_value_resolver::{AttributeStorage, Attributes};
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -72,7 +72,7 @@ impl Glyph {
 pub trait WidgetRenderer {
     fn draw_glyph(&mut self, glyph: Glyph, local_pos: Pos);
 
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos);
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, local_pos: Pos);
 
     fn size(&self) -> Size;
 }
@@ -95,19 +95,20 @@ impl SlabIndex for GlyphIndex {
     }
 }
 
-pub trait CellAttributes {
-    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
+// TODO: remove
+// pub trait CellAttributes {
+//     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
 
-    fn get_i64(&self, key: &str) -> Option<i64>;
+//     fn get_i64(&self, key: &str) -> Option<i64>;
 
-    fn get_u8(&self, key: &str) -> Option<u8>;
+//     fn get_u8(&self, key: &str) -> Option<u8>;
 
-    fn get_hex(&self, key: &str) -> Option<Hex>;
+//     fn get_hex(&self, key: &str) -> Option<Hex>;
 
-    fn get_color(&self, key: &str) -> Option<Color>;
+//     fn get_color(&self, key: &str) -> Option<Color>;
 
-    fn get_bool(&self, key: &str) -> bool;
-}
+//     fn get_bool(&self, key: &str) -> bool;
+// }
 
 pub struct PaintFilter<'frame, 'bp> {
     attributes: &'frame AttributeStorage<'bp>,
@@ -335,7 +336,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         Some(pos)
     }
 
-    pub fn set_attributes(&mut self, attrs: &dyn CellAttributes, pos: LocalPos) {
+    pub fn set_style(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {
         // Ensure that the position is inside provided clipping region
         if let Some(clip) = self.clip.as_ref() {
             if !self.clip(pos, clip) {

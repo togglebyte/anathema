@@ -8,8 +8,8 @@ use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, Viewport};
 use anathema_widgets::{
-    DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
-    PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
+    DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren, PositionChildren,
+    WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
 };
 
 pub mod test;

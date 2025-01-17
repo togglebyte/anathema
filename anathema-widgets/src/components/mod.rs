@@ -9,7 +9,7 @@ use anathema_state::{AnyState, CommonVal, SharedState, StateId, Value as StateVa
 use anathema_store::slab::Slab;
 use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::ComponentBlueprintId;
-use anathema_value_resolver::{Attributes, Value};
+use anathema_value_resolver::{Attributes, Value, ValueKind};
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
@@ -222,7 +222,7 @@ impl<'frame, T: 'static> Context<'frame, T> {
     }
 
     /// Get a value from the component attributes
-    pub fn attribute(&self, key: &str) -> Option<&Value<'_>> {
+    pub fn attribute(&self, key: &str) -> Option<&ValueKind<'_>> {
         self.attributes.get(key)
     }
 
@@ -311,7 +311,7 @@ impl<'rt, T: 'static> DeprecatedContext<'rt, T> {
     }
 
     /// Get a value from the component attributes
-    pub fn attribute<'a>(&'a self, key: &str) -> Option<&Value<'_>> {
+    pub fn attribute<'a>(&'a self, key: &str) -> Option<&ValueKind<'_>> {
         self.component_ctx.attributes.get(key)
     }
 
