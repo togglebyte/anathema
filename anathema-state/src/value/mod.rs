@@ -1,3 +1,5 @@
+#![debugger_visualizer(gdb_script_file = "pretty-values.py")]
+
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -472,6 +474,10 @@ impl PendingValue {
 
     pub fn monitor(&self, watcher: Watcher) {
         monitor(self.0.owned(), watcher);
+    }
+    
+    pub fn sub_key(&self) -> SubKey {
+        self.0.sub()
     }
 }
 

@@ -8,6 +8,66 @@ use crate::Key;
 
 pub type FutureValues = Stack<Subscriber>;
 
+/// Store sub keys.
+/// This is used by any type that needs to track any or all the
+/// values that it subscribes to.
+#[derive(Debug, Default)]
+pub enum SubTo {
+    #[default]
+    Zero,
+    One(SubKey),
+    Two(SubKey, SubKey),
+    Three(SubKey, SubKey, SubKey),
+    Four(SubKey, SubKey, SubKey, SubKey),
+    Many(Vec<SubKey>),
+}
+
+impl SubTo {
+    pub fn empty() -> Self {
+        Self::Zero
+    }
+
+    pub fn push(&mut self, key: SubKey) {
+        let this = std::mem::take(self);
+        *self = match this {
+            Self::Zero => Self::One(key),
+            Self::One(key1) => Self::Two(key1, key),
+            Self::Two(key1, key2) => Self::Three(key1, key2, key),
+            Self::Three(key1, key2, key3) => Self::Four(key1, key2, key3, key),
+            Self::Four(key1, key2, key3, key4) => Self::Many(vec![key1, key2, key3, key4]),
+            Self::Many(mut keys) => {
+                keys.push(key);
+                Self::Many(keys)
+            }
+        }
+    }
+
+    pub fn unsubscribe(&mut self, sub: Subscriber) {
+        match std::mem::take(self) {
+            SubTo::Zero => return,
+            SubTo::One(key) => {
+                unsubscribe(key, sub);
+            }
+            SubTo::Two(key1, key2) => {
+                unsubscribe(key1, sub);
+                unsubscribe(key2, sub);
+            }
+            SubTo::Three(key1, key2, key3) => {
+                unsubscribe(key1, sub);
+                unsubscribe(key2, sub);
+                unsubscribe(key3, sub);
+            }
+            SubTo::Four(key1, key2, key3, key4) => {
+                unsubscribe(key1, sub);
+                unsubscribe(key2, sub);
+                unsubscribe(key3, sub);
+                unsubscribe(key4, sub);
+            }
+            SubTo::Many(vec) => vec.into_iter().for_each(|key| unsubscribe(key, sub)),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 #[repr(transparent)]
 pub struct KeyIndex(u8);
@@ -35,7 +95,7 @@ impl KeyIndex {
 
 // The key associated with the value that is being subscribed to.
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
-pub(crate) struct SubKey(u32);
+pub struct SubKey(u32);
 
 impl SlabIndex for SubKey {
     const MAX: usize = u32::MAX as usize;

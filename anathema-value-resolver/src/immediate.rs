@@ -29,26 +29,20 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                 //       so this unwrap can't become an expect until that's in place
                 let state = self.ctx.states.get(state_id).unwrap();
                 let value = state.reference();
-                match value.type_info() {
-                    Type::Int => ValueExpr::Int(Kind::Dyn(value)),
-                    Type::Float => ValueExpr::Float(Kind::Dyn(value)),
-                    Type::String => ValueExpr::Str(Kind::Dyn(value)),
-                    Type::Bool => todo!("write tests for these"),
-                    Type::Char => todo!(),
-                    Type::Map => ValueExpr::DynMap(value),
-                    Type::List => todo!(),
-                    Type::Composite => ValueExpr::DynMap(value),
-                }
+                value.into()
             }
             "properties" => {
                 let component = self.ctx.scope.get_attributes().unwrap();
                 let attributes = self.ctx.attributes.get(component);
                 panic!()
             }
-            scope => {
-                let Some(expr) = self.ctx.globals.get(scope) else { return ValueExpr::Null };
-                self.resolve(expr)
-            }
+            ident => match self.ctx.scope.lookup(ident) {
+                Some(value) => value,
+                None => {
+                    let Some(expr) = self.ctx.globals.get(ident) else { return ValueExpr::Null };
+                    self.resolve(expr)
+                }
+            },
         }
     }
 }

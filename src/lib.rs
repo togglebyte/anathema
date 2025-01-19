@@ -8,8 +8,8 @@ pub use {
     anathema_state_derive as derive,             // derive
     anathema_store as store,                     // store
     anathema_templates as templates,             // templates
-    anathema_widgets as widgets,                 // wigets
     anathema_value_resolver as resolver,         // resolver
+    anathema_widgets as widgets,                 // wigets
 };
 
 pub mod prelude {

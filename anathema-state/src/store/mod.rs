@@ -10,7 +10,7 @@ use crate::Type;
 
 pub(crate) use self::change::changed;
 pub use self::change::{clear_all_changes, drain_changes, Change, Changes};
-pub use self::subscriber::{FutureValues, Subscriber};
+pub use self::subscriber::{FutureValues, Subscriber, SubTo};
 use self::subscriber::{SubKey, SubscriberMap};
 
 mod change;

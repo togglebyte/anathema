@@ -37,6 +37,11 @@ impl<T: AnyState> List<T> {
         self.inner.push_front(value.into());
     }
 
+    /// Push a value to the list
+    pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
+        self.inner.remove(index)
+    }
+
     pub fn get(&self, index: usize) -> Option<&Value<T>> {
         self.inner.get(index)
     }

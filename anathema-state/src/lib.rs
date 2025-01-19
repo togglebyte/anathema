@@ -10,7 +10,7 @@ pub use crate::states::{AnyMap, AnyState, State, StateId, States};
 pub use crate::store::watchers::Watcher;
 pub use crate::store::{
     clear_all_changes, clear_all_futures, clear_all_subs, debug, drain_changes, drain_futures, drain_watchers,
-    register_future, Change, Changes, FutureValues, Subscriber, Watched,
+    register_future, Change, Changes, FutureValues, Subscriber, SubTo, Watched,
 };
 pub use crate::value::{List, Map, PendingValue, SharedState, Type, Value, ValueRef};
 

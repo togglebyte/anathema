@@ -1,14 +1,15 @@
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
-use anathema_state::{Hex, PendingValue, Subscriber};
+use anathema_state::{Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
 use crate::attributes::ValueKey;
 use crate::expression::{resolve_value, ValueExpr};
 use crate::immediate::ImmediateResolver;
-use crate::{Resolver, ResolverCtx};
+use crate::scope::Entry;
+use crate::{Resolver, ResolverCtx, Scope};
 
 pub type Values<'bp> = SmallMap<ValueKey<'bp>, Value<'bp>>;
 
@@ -35,6 +36,24 @@ impl<'bp> Collection<'bp> {
         self.0.reload()
     }
 
+    // pub fn scope<'a>(&'a self, binding: &'bp str, index: usize, parent: &'a Scope<'a, 'bp>) -> Option<Scope<'a, 'bp>> {
+    //     match &self.0.kind {
+    //         ValueKind::List(vec) => {
+    //             let value = vec.get(index)?;
+    //             let scope = Scope::with_valuekind(binding, value, parent);
+    //             Some(scope)
+    //         }
+    //         ValueKind::DynList(value) => {
+    //             let state = value.as_state()?;
+    //             let list = state.as_any_list()?;
+    //             let value = list.lookup(index)?;
+    //             let scope = Scope::with_pending_value(binding, value, parent);
+    //             Some(scope)
+    //         }
+    //         _ => unreachable!("this value can not be a collection"),
+    //     }
+    // }
+
     pub fn len(&self) -> usize {
         match &self.0.kind {
             ValueKind::List(vec) => vec.len(),
@@ -43,7 +62,6 @@ impl<'bp> Collection<'bp> {
                 let Some(list) = state.as_any_list() else { return 0 };
                 list.len()
             }
-
             ValueKind::Int(_)
             | ValueKind::Float(_)
             | ValueKind::Bool(_)
@@ -61,20 +79,27 @@ impl<'bp> Collection<'bp> {
 /// This should be evaluated fully for the `ValueKind`
 #[derive(Debug)]
 pub struct Value<'bp> {
-    expr: ValueExpr<'bp>,
+    pub(crate) expr: ValueExpr<'bp>,
     pub(crate) sub: Subscriber,
     pub(crate) kind: ValueKind<'bp>,
+    sub_to: SubTo,
 }
 
 impl<'bp> Value<'bp> {
     pub fn new(expr: ValueExpr<'bp>, sub: Subscriber) -> Self {
-        let kind = resolve_value(&expr, sub);
-        Self { expr, sub, kind }
+        let mut sub_to = SubTo::Zero;
+        let kind = resolve_value(&expr, sub, &mut sub_to);
+        Self {
+            expr,
+            sub,
+            kind,
+            sub_to,
+        }
     }
 
     pub fn reload(&mut self) {
-        self.expr.unsubscribe(self.sub);
-        self.kind = resolve_value(&self.expr, self.sub);
+        self.sub_to.unsubscribe(self.sub);
+        self.kind = resolve_value(&self.expr, self.sub, &mut self.sub_to);
     }
 
     pub fn strings<F>(&self, mut f: F)
@@ -87,7 +112,7 @@ impl<'bp> Value<'bp> {
 
 impl Drop for Value<'_> {
     fn drop(&mut self) {
-        self.expr.unsubscribe(self.sub);
+        self.sub_to.unsubscribe(self.sub);
     }
 }
 
@@ -119,11 +144,11 @@ pub enum ValueKind<'bp> {
     Composite,
     Null,
 
-    // NOTE: It's not possible to get values out of the map / list without
-    //       having the correct scope, so this should only ever happen with a proper
-    //       resolution context.
+    // NOTE
+    // The map is the final value, and is never used as part
+    // of an index, for that reason the map doesn't hold any values.
     Map,
-    List(Vec<ValueKind<'bp>>),
+    List(Box<[ValueKind<'bp>]>),
     DynList(PendingValue),
 }
 
@@ -194,6 +219,7 @@ pub(crate) mod test {
     };
 
     use crate::testing::setup;
+    use crate::ValueKind;
 
     #[test]
     fn expr_list_dyn_index() {
@@ -429,6 +455,15 @@ pub(crate) mod test {
             let expr = not(boolean(false));
             let value = test.eval(&*expr);
             assert_eq!(true, value.as_bool().unwrap());
+        });
+    }
+
+    #[test]
+    fn map_resolve() {
+        let test = setup().finish(|test| {
+            let expr = map([("a", 123), ("b", 456)]);
+            let value = test.eval(&*expr);
+            assert_eq!(ValueKind::Map, value.kind);
         });
     }
 
