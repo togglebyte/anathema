@@ -192,33 +192,32 @@ impl<'frame, T: 'static> Context<'frame, T> {
         F: FnMut(&T) -> &StateValue<V> + 'static,
         V: AnyState,
     {
-        panic!("implement this once the new resolver is in place");
-        // let Some(internal) = self.inner.strings.lookup(ident) else { return };
+        let Some(internal) = self.inner.strings.lookup(ident) else { return };
 
-        // let ids = self.assoc_functions.iter().find(|(i, _)| *i == internal);
+        let ids = self.assoc_functions.iter().find(|(i, _)| *i == internal);
 
-        // // If there is no parent there is no one to emit the event to.
-        // let Some(parent) = self.parent else { return };
-        // let Some((_, external)) = ids else { return };
+        // If there is no parent there is no one to emit the event to.
+        let Some(parent) = self.parent else { return };
+        let Some((_, external)) = ids else { return };
 
-        // self.inner.assoc_events.push(
-        //     self.state_id,
-        //     parent,
-        //     *external,
-        //     Box::new(move |state: &dyn AnyState| -> SharedState {
-        //         let state = state
-        //             .to_any_ref()
-        //             .downcast_ref::<T>()
-        //             .expect("the state type is associated with the context");
+        self.inner.assoc_events.push(
+            self.state_id,
+            parent,
+            *external,
+            Box::new(move |state: &dyn AnyState| -> SharedState {
+                let state = state
+                    .to_any_ref()
+                    .downcast_ref::<T>()
+                    .expect("the state type is associated with the context");
 
-        //         let value = f(state);
+                let value = f(state);
 
-        //         match value.shared_state() {
-        //             Some(val) => val,
-        //             None => panic!("there is currently a unique reference to this value"),
-        //         }
-        //     }),
-        // );
+                match value.shared_state() {
+                    Some(val) => val,
+                    None => panic!("there is currently a unique reference to this value"),
+                }
+            }),
+        );
     }
 
     /// Get a value from the component attributes
@@ -573,6 +572,10 @@ pub trait Component: 'static {
     fn accept_focus(&self) -> bool {
         true
     }
+
+    fn ticks(&self) -> bool {
+        true
+    }
 }
 
 impl Component for () {
@@ -580,6 +583,10 @@ impl Component for () {
     type State = ();
 
     fn accept_focus(&self) -> bool {
+        false
+    }
+
+    fn ticks(&self) -> bool {
         false
     }
 }
@@ -606,6 +613,8 @@ pub trait AnyComponent {
     fn any_receive(&mut self, elements: Elements<'_, '_>, ctx: AnyComponentContext<'_>, name: &str, value: CommonVal);
 
     fn any_accept_focus(&self) -> bool;
+
+    fn any_ticks(&self) -> bool;
 }
 
 impl<T> AnyComponent for T
@@ -632,6 +641,10 @@ where
 
     fn any_accept_focus(&self) -> bool {
         self.accept_focus()
+    }
+
+    fn any_ticks(&self) -> bool {
+        self.ticks()
     }
 
     fn any_message(&mut self, elements: Elements<'_, '_>, mut ctx: AnyComponentContext<'_>, message: Box<dyn Any>) {

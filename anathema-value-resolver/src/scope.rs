@@ -116,28 +116,6 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
             }
             _ => self.parent?.lookup(key),
         }
-
-        // match self.value {
-        //     Entry::StaticValue(binding, value) if binding == key => {
-        //         let value = match value {
-        //             &ValueKind::Str(Cow::Borrowed(s)) => ValueExpr::Str(Kind::Static(s)),
-        //             ValueKind::Str(_) => unreachable!("only static values can be scoped here"),
-        //             &ValueKind::Int(i) => ValueExpr::Int(Kind::Static(i)),
-        //             &ValueKind::Float(_) => todo!(),
-        //             &ValueKind::Bool(_) => todo!(),
-        //             &ValueKind::Char(_) => todo!(),
-        //             &ValueKind::Hex(hex) => todo!(),
-        //             &ValueKind::Composite => todo!(),
-        //             &ValueKind::Null => todo!(),
-        //             &ValueKind::Map => todo!(),
-        //             ValueKind::List(vec) => todo!(),
-        //             &ValueKind::DynList(list) => ValueExpr::DynList(list),
-        //         };
-        //         Some(value)
-        //     }
-        //     Entry::Pending(binding, value) if binding == key => Some(value.into()),
-        //     _ => self.parent?.lookup(key),
-        // }
     }
 }
 

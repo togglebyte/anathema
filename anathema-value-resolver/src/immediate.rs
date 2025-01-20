@@ -31,7 +31,7 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
                 let value = state.reference();
                 value.into()
             }
-            "properties" => {
+            "attributes" => {
                 let component = self.ctx.scope.get_attributes().unwrap();
                 let attributes = self.ctx.attributes.get(component);
                 panic!()

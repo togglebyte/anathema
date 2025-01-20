@@ -35,8 +35,8 @@ impl Builder {
     /// Registers a component as a template-only component.
     ///
     /// This component has no state or reacts to any events
-    pub fn template<C: Component>(&mut self, ident: impl Into<String>, template: impl ToSourceKind) {
-        _ = self.component(ident, template, (), ());
+    pub fn template(&mut self, ident: impl Into<String>, template: impl ToSourceKind) {
+        _ = self.prototype(ident, template, || (), || ());
     }
 
     /// Registers a [Component] with the runtime.

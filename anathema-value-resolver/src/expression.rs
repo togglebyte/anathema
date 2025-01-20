@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use anathema_state::{Hex, Number, PendingValue, SubTo, Subscriber, Type, ValueRef};
+use anathema_store::slab::Key;
 use anathema_strings::StrIndex;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
 use anathema_templates::Primitive;
@@ -234,7 +235,7 @@ pub(crate) fn resolve_value<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber, sub_to:
             resolve_value(&expr, sub, sub_to)
         }
         ValueExpr::Composite(value) => ValueKind::Composite,
-
+        
         // -----------------------------------------------------------------------------
         //   - Call -
         // -----------------------------------------------------------------------------

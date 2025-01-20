@@ -187,7 +187,8 @@ fn generate<'bp>(
             }
 
             let mut ctx = ctx.eval_ctx();
-            eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree);
+            // TODO: unwrap: this should probagate somewhere useful
+            eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree).unwrap();
             true
         }
         Generator::Loop { len, .. } if len == tree.layout_len() => false,

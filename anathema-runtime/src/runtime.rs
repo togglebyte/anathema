@@ -166,7 +166,6 @@ impl<'bp> Frame<'_, 'bp> {
         let elapsed = self.handle_messages(now);
         self.pull_events(elapsed, now, backend);
         self.apply_changes();
-        // self.resolve_future_values();
         self.cycle(backend);
         *self.dt = Instant::now();
         now.elapsed()
@@ -260,19 +259,6 @@ impl<'bp> Frame<'_, 'bp> {
         });
     }
 
-    // fn resolve_future_values(&mut self) {
-    //     drain_futures(&mut self.future_values);
-
-    //     if self.future_values.is_empty() {
-    //         return;
-    //     }
-
-    //     for sub in self.future_values.drain().rev() {
-    //         self.layout_ctx.changelist.insert(sub.key(), sub);
-    //         self.layout_ctx.dirty_widgets.push(sub.key());
-    //     }
-    // }
-
     fn poll_event<B: Backend>(&mut self, poll_timeout: Duration, backend: &mut B) {
         let Some(event) = backend.next_event(poll_timeout) else { return };
         self.event(event);
@@ -283,6 +269,10 @@ impl<'bp> Frame<'_, 'bp> {
 
         tree.with_value_mut(widget_id, |path, container, children| {
             let WidgetKind::Component(component) = &mut container.kind else { return };
+            if !component.dyn_component.any_ticks() {
+                return;
+            }
+
             let state = self.layout_ctx.states.get_mut(state_id);
 
             self.layout_ctx
