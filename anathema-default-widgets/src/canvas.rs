@@ -1,9 +1,10 @@
-use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
-use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{
+    ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId,
+};
 use unicode_width::UnicodeWidthChar;
 
 use crate::{HEIGHT, WIDTH};
@@ -219,12 +220,11 @@ impl Widget for Canvas {
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        panic!("set style should probably be set attribute for everything else and take an actual style here");
-        // for (pos, c, style) in self.buffer.iter() {
-        //     ctx.set_style(style, pos);
-        //     let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);
-        //     ctx.place_glyph(glyph, pos);
-        // }
+        for (pos, c, style) in self.buffer.iter() {
+            ctx.set_style(*style, pos);
+            let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);
+            ctx.place_glyph(glyph, pos);
+        }
     }
 
     fn needs_reflow(&mut self) -> bool {

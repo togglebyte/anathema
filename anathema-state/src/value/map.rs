@@ -60,13 +60,13 @@ impl<T: 'static + AnyState> Value<Map<T>> {
     }
 }
 
-impl<T: AnyState> AnyMap for Map<T> {
+impl<T: AnyState + 'static> AnyMap for Map<T> {
     fn lookup(&self, key: &str) -> Option<PendingValue> {
         self.get(key).map(|val| val.reference())
     }
 }
 
-impl<T: AnyState> AnyState for Map<T> {
+impl<T: AnyState + 'static> AnyState for Map<T> {
     fn type_info(&self) -> Type {
         Type::Map
     }

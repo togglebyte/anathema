@@ -1,7 +1,8 @@
 use std::ops::{ControlFlow, Deref};
+use std::str::FromStr;
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_value_resolver::{AttributeStorage, Attributes};
+use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{
@@ -58,26 +59,51 @@ impl Default for Sides {
     }
 }
 
-// impl TryFrom<&EvalValue<'_>> for Sides {
-//     type Error = ();
+impl TryFrom<&ValueKind<'_>> for Sides {
+    type Error = ();
 
-//     fn try_from(value: &EvalValue<'_>) -> Result<Self, Self::Error> {
-//         let mut sides = Sides::EMPTY;
-//         value.str_for_each(|s| sides |= s.into());
-//         Ok(sides)
-//     }
-// }
-
-impl From<&str> for Sides {
-    fn from(value: &str) -> Self {
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let mut sides = Sides::EMPTY;
         match value {
+            ValueKind::Str(cow) => Sides::from_str(&*cow),
+            ValueKind::List(list) => {
+                for x in list {
+                    sides |= Sides::try_from(x)?;
+                }
+                Ok(sides)
+            }
+            ValueKind::DynList(value) => {
+                let Some(state) = value.as_state() else { return Err(()) };
+                let Some(list) = state.as_any_list() else { return Err(()) };
+                for i in 0..list.len() {
+                    if sides == Sides::ALL {
+                        break;
+                    }
+                    let value = list.lookup(i).ok_or(())?;
+                    let value = value.as_state().ok_or(())?;
+                    let s = value.as_str().ok_or(())?;
+                    sides |= Sides::from_str(s)?;
+                }
+                Ok(sides)
+            }
+            _ => return Err(()),
+        }
+    }
+}
+
+impl FromStr for Sides {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let sides = match s {
             "all" => Sides::ALL,
             "top" => Sides::TOP,
             "left" => Sides::LEFT,
             "right" => Sides::RIGHT,
             "bottom" => Sides::BOTTOM,
             _ => Sides::EMPTY,
-        }
+        };
+        Ok(sides)
     }
 }
 
@@ -394,41 +420,31 @@ impl Widget for Border {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attributes = ctx.attribute_storage.get_mut(id);
-        // self.sides = attributes
-        //     .get_val("sides")
-        //     .and_then(|s| Sides::try_from(s.deref()).ok())
-        //     .unwrap_or_default();
 
-        self.sides = panic!();
+        self.sides = attributes.get_as::<Sides>("sides").unwrap_or_default();
+
         self.border_style = match attributes.get(BORDER_STYLE) {
             None => BorderStyle::Thin,
             Some(val) => {
+                let s = val.as_str();
                 let mut edges = DEFAULT_SLIM_EDGES;
                 let mut index = 0;
-                panic!();
 
-                // val.str_iter(|s| {
-                //     match s {
-                //         "thin" => return ControlFlow::Break(()),
-                //         "thick" => {
-                //             edges = BorderStyle::Thick.edges();
-                //             return ControlFlow::Break(());
-                //         }
-                //         _ => (),
-                //     }
-
-                //     let mut glyphs = Glyphs::new(s);
-                //     while let Some(g) = glyphs.next(ctx.glyph_map) {
-                //         edges[index] = g;
-                //         index += 1;
-                //         if index >= DEFAULT_SLIM_EDGES.len() {
-                //             break;
-                //         };
-                //     }
-
-                //     ControlFlow::Break(())
-                // });
-                BorderStyle::Custom(edges)
+                match s {
+                    Some("thin") | None => BorderStyle::default(),
+                    Some("thick") => BorderStyle::Thick,
+                    Some(s) => {
+                        let mut glyphs = Glyphs::new(s);
+                        while let Some(g) = glyphs.next(ctx.glyph_map) {
+                            edges[index] = g;
+                            index += 1;
+                            if index >= DEFAULT_SLIM_EDGES.len() {
+                                break;
+                            };
+                        }
+                        BorderStyle::Custom(edges)
+                    }
+                }
             }
         };
         self.edges = self.border_style.edges();
@@ -514,19 +530,15 @@ impl Widget for Border {
 }
 
 pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-    panic!("need new value resolver");
-    // let sides = attributes
-    //     .get_val("sides")
-    //     .and_then(|s| Sides::try_from(s.deref()).ok())
-    //     .unwrap_or_default();
+    let sides = attributes.get_as::<Sides>("sides").unwrap_or_default();
 
-    // let text = Border {
-    //     sides,
-    //     edges: DEFAULT_SLIM_EDGES,
-    //     border_style: BorderStyle::Thin,
-    // };
+    let text = Border {
+        sides,
+        edges: DEFAULT_SLIM_EDGES,
+        border_style: BorderStyle::Thin,
+    };
 
-    // Box::new(text)
+    Box::new(text)
 }
 //}
 

@@ -81,7 +81,7 @@ impl<T: AnyState> Default for List<T> {
 /// let mut list = List::empty();
 /// list.push(123);
 /// ```
-impl<T: AnyState> Value<List<T>> {
+impl<T: AnyState + 'static> Value<List<T>> {
     pub fn empty() -> Self {
         let list = List { inner: VecDeque::new() };
         Value::new(list)
@@ -166,7 +166,7 @@ impl<T: AnyState> Value<List<T>> {
     }
 }
 
-impl<T: AnyState> AnyList for List<T> {
+impl<T: AnyState + 'static> AnyList for List<T> {
     fn lookup(&self, index: usize) -> Option<PendingValue> {
         self.get(index).map(|val| val.reference())
     }
@@ -176,7 +176,7 @@ impl<T: AnyState> AnyList for List<T> {
     }
 }
 
-impl<T: AnyState> AnyState for List<T> {
+impl<T: AnyState + 'static> AnyState for List<T> {
     fn type_info(&self) -> Type {
         Type::List
     }
@@ -196,7 +196,7 @@ impl<T: AnyState> AnyState for List<T> {
 
 impl<T> FromIterator<T> for Value<List<T>>
 where
-    T: AnyState,
+    T: AnyState + 'static,
     Value<T>: From<T>,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -206,9 +206,9 @@ where
     }
 }
 
-impl<T: AnyState> FromIterator<T> for List<T>
+impl<T> FromIterator<T> for List<T>
 where
-    T: AnyState,
+    T: AnyState + 'static,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
