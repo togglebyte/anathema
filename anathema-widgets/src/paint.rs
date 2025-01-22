@@ -329,7 +329,23 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         Some(pos)
     }
 
-    pub fn set_style(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {
+    pub fn set_style(&mut self, style: Style, pos: LocalPos) {
+        // Ensure that the position is inside provided clipping region
+        if let Some(clip) = self.clip.as_ref() {
+            if !self.clip(pos, clip) {
+                return;
+            }
+        }
+
+        let screen_pos = match self.translate_to_global(pos) {
+            Some(pos) => pos,
+            None => return,
+        };
+
+        self.surface.set_attributes(attrs, screen_pos);
+    }
+
+    pub fn set_attributes(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {
         // Ensure that the position is inside provided clipping region
         if let Some(clip) = self.clip.as_ref() {
             if !self.clip(pos, clip) {

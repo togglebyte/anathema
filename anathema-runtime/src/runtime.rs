@@ -165,8 +165,8 @@ impl<'bp> Frame<'_, 'bp> {
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.pull_events(elapsed, now, backend);
-        self.apply_changes();
-        self.cycle(backend);
+        let changed = self.apply_changes();
+        self.cycle(backend, !changed);
         *self.dt = Instant::now();
         now.elapsed()
     }
@@ -231,19 +231,22 @@ impl<'bp> Frame<'_, 'bp> {
         }
     }
 
-    fn cycle<B: Backend>(&mut self, backend: &mut B) {
+    fn cycle<B: Backend>(&mut self, backend: &mut B, skip: bool) {
+        if skip {
+            // return;
+        }
         let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
         cycle.run(&mut self.layout_ctx);
     }
 
-    fn apply_changes(&mut self) {
+    fn apply_changes(&mut self) -> bool {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
         drain_changes(self.changes);
 
         if self.changes.is_empty() {
-            return;
+            return false;
         }
 
         let mut tree = self.tree.view_mut();
@@ -257,6 +260,8 @@ impl<'bp> Frame<'_, 'bp> {
                 });
             });
         });
+
+        true
     }
 
     fn poll_event<B: Backend>(&mut self, poll_timeout: Duration, backend: &mut B) {

@@ -145,7 +145,7 @@ impl Widget for Text {
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.
                             for x in pos.x..new_pos.x {
-                                ctx.set_style(style, (x, pos.y).into());
+                                ctx.set_attributes(style, (x, pos.y).into());
                             }
                             pos = new_pos;
                         }
