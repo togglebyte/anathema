@@ -14,12 +14,14 @@ use anathema_templates::ComponentBlueprintId;
 use anathema_value_resolver::AttributeStorage;
 
 pub use self::factory::Factory;
+pub use self::style::{Attributes, Style};
 use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, PositionFilter};
 use crate::paint::{PainFilter, PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
 use crate::{WidgetContainer, WidgetKind};
 
 mod factory;
+mod style;
 
 pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;

@@ -12,6 +12,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
 use crate::nodes::element::Element;
+use crate::widget::Style;
 use crate::{ForEach, PaintChildren, WidgetContainer, WidgetId, WidgetKind};
 
 pub type GlyphMap = IndexMap<GlyphIndex, String>;
@@ -72,7 +73,13 @@ impl Glyph {
 pub trait WidgetRenderer {
     fn draw_glyph(&mut self, glyph: Glyph, local_pos: Pos);
 
+    fn draw(&mut self) { 
+        todo!("this function is only here to remind us that we should have a raw draw function for Kitty image protocol and such");
+    }
+
     fn set_attributes(&mut self, attribs: &Attributes<'_>, local_pos: Pos);
+
+    fn set_style(&mut self, style: Style, local_pos: Pos);
 
     fn size(&self) -> Size;
 }
@@ -342,7 +349,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
             None => return,
         };
 
-        self.surface.set_attributes(attrs, screen_pos);
+        self.surface.set_style(style, screen_pos);
     }
 
     pub fn set_attributes(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {

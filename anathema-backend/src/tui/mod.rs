@@ -21,7 +21,7 @@ pub use screen::Screen;
 
 pub use self::buffer::Buffer;
 use self::events::Events;
-pub use self::style::{Attributes, Style};
+pub use anathema_widgets::{Attributes, Style};
 use crate::Backend;
 
 mod buffer;

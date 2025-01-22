@@ -3,10 +3,12 @@ use std::io::{Result, Write};
 
 use anathema_geometry::Size;
 use anathema_widgets::paint::{Glyph, GlyphMap};
+use anathema_widgets::Style;
 use crossterm::style::Print;
 use crossterm::{cursor, QueueableCommand};
 
-use super::{LocalPos, Style};
+use super::style::write_style;
+use super::LocalPos;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {
@@ -338,7 +340,7 @@ pub(crate) fn draw_changes(
 
         // Apply style
         if let Some(style) = style {
-            style.write(&mut w)?;
+            write_style(style, &mut w)?;
         }
 
         // Draw changes
@@ -360,7 +362,7 @@ pub(crate) fn draw_changes(
     }
 
     w.queue(cursor::MoveTo(0, 0))?;
-    Style::reset().write(&mut w)?;
+    write_style(&Style::reset(), &mut w)?;
     Ok(())
 }
 

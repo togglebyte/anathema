@@ -12,6 +12,7 @@ anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
 anathema-value-resolver = { path = "../anathema-value-resolver" }
 flume = { workspace = true }
+bitflags = { workspace = true }
 unicode-width = { workspace = true }
 unicode-segmentation = "1.11.0"
 puffin = { version = "0.19.1", features = ["web"], optional = true }

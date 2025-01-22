@@ -43,6 +43,10 @@ impl WidgetRenderer for Surface {
         todo!()
     }
 
+    fn set_style(&mut self, style: anathema_widgets::Style, local_pos: Pos) {
+        todo!()
+    }
+
     fn size(&self) -> Size {
         panic!()
         // Size {

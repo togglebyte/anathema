@@ -7,7 +7,7 @@ pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::widget::{
     AnyWidget, ComponentParents, Components, DirtyWidgets, Factory, FloatingWidgets,
     ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId, WidgetTree,
-    WidgetTreeView,
+    WidgetTreeView, Style, Attributes
 };
 
 pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, Subscriber>;

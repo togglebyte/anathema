@@ -3,13 +3,14 @@ use std::io::{Result, Write};
 use anathema_geometry::{Pos, Size};
 use anathema_value_resolver::Attributes;
 use anathema_widgets::paint::Glyph;
+use anathema_widgets::Style;
 use anathema_widgets::{GlyphMap, WidgetRenderer};
 use crossterm::event::EnableMouseCapture;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, ExecutableCommand, QueueableCommand};
 
 use super::buffer::{diff, draw_changes, Buffer, Change};
-use super::{LocalPos, Style};
+use super::LocalPos;
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
 pub struct Screen {
@@ -149,8 +150,12 @@ impl WidgetRenderer for Screen {
     }
 
     fn set_attributes(&mut self, attribs: &Attributes<'_>, pos: Pos) {
-        let Ok(screen_pos) = pos.try_into() else { return };
         let style = Style::from_cell_attribs(attribs);
+        self.set_style(style, pos)
+    }
+
+    fn set_style(&mut self, style: Style, local_pos: Pos) {
+        let Ok(screen_pos) = local_pos.try_into() else { return };
         self.update_cell(style, screen_pos);
     }
 

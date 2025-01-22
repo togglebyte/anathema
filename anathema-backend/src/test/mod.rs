@@ -103,6 +103,10 @@ impl WidgetRenderer for TestSurface {
     fn set_attributes(&mut self, _attribs: &Attributes<'_>, _local_pos: Pos) {
         // NOTE: currently no attributes are stored on the test surface
     }
+
+    fn set_style(&mut self, style: anathema_widgets::Style, local_pos: Pos) {
+        // This test surface should probably be removed
+    }
 }
 
 impl Display for TestSurface {
