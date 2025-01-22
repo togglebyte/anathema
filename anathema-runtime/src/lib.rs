@@ -373,23 +373,24 @@ where
         states: &mut States,
         attribute_storage: &mut AttributeStorage<'bp>,
     ) {
-        drain_changes(&mut self.changes);
+        panic!("this is the old runtime, this should not be used");
+        // drain_changes(&mut self.changes);
 
-        if self.changes.is_empty() {
-            return;
-        }
+        // if self.changes.is_empty() {
+        //     return;
+        // }
 
-        self.changes.iter().for_each(|(sub, change)| {
-            sub.iter().for_each(|sub| {
-                self.dirty_widgets.push(sub.key());
-                self.changelist.insert(sub.key(), sub);
+        // self.changes.iter().for_each(|(sub, change)| {
+        //     sub.iter().for_each(|sub| {
+        //         self.dirty_widgets.push(sub.key());
+        //         self.changelist.insert(sub.key(), sub);
 
-                let mut tree = tree.view_mut();
-                tree.with_value_mut(sub.key(), |path, widget, tree| {
-                    update_widget(widget, sub, change, path, tree);
-                });
-            });
-        });
+        //         let mut tree = tree.view_mut();
+        //         tree.with_value_mut(sub.key(), |path, widget, tree| {
+        //             update_widget(widget, sub, change, path, tree);
+        //         });
+        //     });
+        // });
     }
 
     // Handles component messages for (ideally) at most half of a tick

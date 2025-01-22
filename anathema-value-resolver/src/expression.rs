@@ -9,6 +9,7 @@ use anathema_templates::expressions::{Equality, LogicalOp, Op};
 use anathema_templates::Primitive;
 
 use crate::value::ValueKind;
+use crate::AttributeStorage;
 
 macro_rules! or_null {
     ($val:expr) => {
@@ -17,6 +18,22 @@ macro_rules! or_null {
             None => return ValueExpr::Null,
         }
     };
+}
+
+pub struct ValueThingy<'a, 'bp> {
+    sub: Subscriber,
+    sub_to: &'a mut SubTo,
+    attribute_storage: &'a AttributeStorage<'bp>,
+}
+
+impl<'a, 'bp> ValueThingy<'a, 'bp> {
+    pub fn new(attribute_storage: &'a AttributeStorage<'bp>, sub: Subscriber, sub_to: &'a mut SubTo) -> Self {
+        Self {
+            attribute_storage,
+            sub,
+            sub_to,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -83,6 +100,7 @@ pub enum ValueExpr<'bp> {
     List(Box<[Self]>),
     Map(HashMap<&'bp str, Self>),
     Index(Box<Self>, Box<Self>),
+    Attributes(Key),
 
     Not(Box<Self>),
     Negative(Box<Self>),
@@ -117,59 +135,59 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
             Type::Float => Self::Float(Kind::Dyn(value)),
             Type::Char => Self::Char(Kind::Dyn(value)),
             Type::String => Self::Str(Kind::Dyn(value)),
-            Type::Bool =>  Self::Bool(Kind::Dyn(value)),
-            Type::Map =>  Self::DynMap(value),
-            Type::List =>  Self::DynList(value),
+            Type::Bool => Self::Bool(Kind::Dyn(value)),
+            Type::Map => Self::DynMap(value),
+            Type::List => Self::DynList(value),
             Type::Composite => Self::Composite(value),
         }
     }
 }
 
 // Resolve an expression to a value kind, this is the final value in the chain
-pub(crate) fn resolve_value<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber, sub_to: &mut SubTo) -> ValueKind<'bp> {
-    match expr {
+pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut ValueThingy<'a, 'bp>) -> ValueKind<'bp> {
+    match value_expr {
         // -----------------------------------------------------------------------------
         //   - Primitives -
         // -----------------------------------------------------------------------------
         ValueExpr::Bool(Kind::Static(b)) => ValueKind::Bool(*b),
         ValueExpr::Bool(Kind::Dyn(pending)) => {
-            pending.subscribe(sub);
-            sub_to.push(pending.sub_key());
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
             ValueKind::Bool(state.as_bool().unwrap())
         }
         ValueExpr::Char(Kind::Static(c)) => ValueKind::Char(*c),
         ValueExpr::Char(Kind::Dyn(pending)) => {
-            pending.subscribe(sub);
-            sub_to.push(pending.sub_key());
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
             ValueKind::Char(state.as_char().unwrap())
         }
         ValueExpr::Int(Kind::Static(i)) => ValueKind::Int(*i),
         ValueExpr::Int(Kind::Dyn(pending)) => {
-            pending.subscribe(sub);
-            sub_to.push(pending.sub_key());
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
             ValueKind::Int(state.as_int().unwrap())
         }
         ValueExpr::Float(Kind::Static(f)) => ValueKind::Float(*f),
         ValueExpr::Float(Kind::Dyn(pending)) => {
-            pending.subscribe(sub);
-            sub_to.push(pending.sub_key());
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
             ValueKind::Float(state.as_float().unwrap())
         }
         ValueExpr::Hex(Kind::Static(h)) => ValueKind::Hex(*h),
         ValueExpr::Hex(Kind::Dyn(pending)) => {
-            pending.subscribe(sub);
-            sub_to.push(pending.sub_key());
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
             ValueKind::Hex(state.as_hex().unwrap())
         }
         ValueExpr::Str(Kind::Static(s)) => ValueKind::Str(Cow::Borrowed(s)),
         ValueExpr::Str(Kind::Dyn(pending)) => {
-            pending.subscribe(sub);
-            sub_to.push(pending.sub_key());
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
             let s = state.as_str().unwrap();
             ValueKind::Str(Cow::Owned(s.to_owned()))
@@ -179,17 +197,17 @@ pub(crate) fn resolve_value<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber, sub_to:
         //   - Operations and conditionals -
         // -----------------------------------------------------------------------------
         ValueExpr::Not(value_expr) => {
-            let ValueKind::Bool(val) = resolve_value(value_expr, sub, sub_to) else { return ValueKind::Null };
+            let ValueKind::Bool(val) = resolve_value(value_expr, ctx) else { return ValueKind::Null };
             ValueKind::Bool(!val)
         }
-        ValueExpr::Negative(value_expr) => match resolve_value(value_expr, sub, sub_to) {
+        ValueExpr::Negative(value_expr) => match resolve_value(value_expr, ctx) {
             ValueKind::Int(n) => ValueKind::Int(-n),
             ValueKind::Float(n) => ValueKind::Float(-n),
             _ => ValueKind::Null,
         },
         ValueExpr::Equality(lhs, rhs, equality) => {
-            let lhs = resolve_value(lhs, sub, sub_to);
-            let rhs = resolve_value(rhs, sub, sub_to);
+            let lhs = resolve_value(lhs, ctx);
+            let rhs = resolve_value(rhs, ctx);
             let b = match equality {
                 Equality::Eq => lhs == rhs,
                 Equality::NotEq => lhs != rhs,
@@ -201,41 +219,45 @@ pub(crate) fn resolve_value<'bp>(expr: &ValueExpr<'bp>, sub: Subscriber, sub_to:
             ValueKind::Bool(b)
         }
         ValueExpr::LogicalOp(lhs, rhs, logical_op) => {
-            let ValueKind::Bool(lhs) = resolve_value(lhs, sub, sub_to) else { return ValueKind::Null };
-            let ValueKind::Bool(rhs) = resolve_value(rhs, sub, sub_to) else { return ValueKind::Null };
+            let ValueKind::Bool(lhs) = resolve_value(lhs, ctx) else { return ValueKind::Null };
+            let ValueKind::Bool(rhs) = resolve_value(rhs, ctx) else { return ValueKind::Null };
             let b = match logical_op {
                 LogicalOp::And => lhs && rhs,
                 LogicalOp::Or => lhs || rhs,
             };
             ValueKind::Bool(b)
         }
-        ValueExpr::Op(lhs, rhs, op) => match (resolve_value(lhs, sub, sub_to), resolve_value(rhs, sub, sub_to)) {
+        ValueExpr::Op(lhs, rhs, op) => match (resolve_value(lhs, ctx), resolve_value(rhs, ctx)) {
             (ValueKind::Int(lhs), ValueKind::Int(rhs)) => ValueKind::Int(int_op(lhs, rhs, *op)),
             (ValueKind::Int(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs as f64, rhs, *op)),
             (ValueKind::Float(lhs), ValueKind::Int(rhs)) => ValueKind::Float(float_op(lhs, rhs as f64, *op)),
             (ValueKind::Float(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs, rhs, *op)),
             _ => ValueKind::Null,
         },
-        ValueExpr::Either(first, second) => match resolve_value(first, sub, sub_to) {
-            ValueKind::Null => resolve_value(second, sub, sub_to),
-            first => first,
-        },
+        ValueExpr::Either(first, second) => {
+            let value = resolve_value(first, ctx);
+            match value {
+                ValueKind::Null => resolve_value(second, ctx),
+                first => first,
+            }
+        }
 
         // -----------------------------------------------------------------------------
         //   - Maps and lists -
         // -----------------------------------------------------------------------------
         ValueExpr::DynMap(_) | ValueExpr::Map(_) => ValueKind::Map,
+        ValueExpr::Attributes(_) => ValueKind::Attributes,
         ValueExpr::DynList(value) => ValueKind::DynList(*value),
         ValueExpr::List(l) => {
-            let values = l.iter().map(|v| resolve_value(v, sub, sub_to)).collect();
+            let values = l.iter().map(|v| resolve_value(v, ctx)).collect();
             ValueKind::List(values)
         }
         ValueExpr::Index(src, index) => {
-            let expr = resolve_index(src, index, sub, sub_to);
-            resolve_value(&expr, sub, sub_to)
+            let expr = resolve_index(src, index, ctx);
+            resolve_value(&expr, ctx)
         }
         ValueExpr::Composite(value) => ValueKind::Composite,
-        
+
         // -----------------------------------------------------------------------------
         //   - Call -
         // -----------------------------------------------------------------------------
@@ -262,12 +284,12 @@ fn resolve_pending(val: PendingValue, sub: Subscriber) -> ValueExpr<'static> {
     }
 }
 
-fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, sub: Subscriber, sub_to: &mut SubTo) -> ValueExpr<'bp> {
+fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> ValueExpr<'bp> {
     match src {
         ValueExpr::DynMap(value) | ValueExpr::Composite(value) => {
             let s = or_null!(value.as_state());
             let map = s.as_any_map().expect("a dyn map is always an any_map");
-            let key = or_null!(resolve_str(index, sub, sub_to));
+            let key = or_null!(resolve_str(index, ctx));
 
             // if the values doesn't exist subscribe to the underlying map to get notified when
             // the value does exist
@@ -276,81 +298,88 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, sub: Subscri
             let val = match val {
                 Some(val) => val,
                 None => {
-                    value.subscribe(sub);
-                    sub_to.push(value.sub_key());
+                    value.subscribe(ctx.sub);
+                    ctx.sub_to.push(value.sub_key());
                     return ValueExpr::Null;
                 }
             };
 
-
-            resolve_pending(val, sub)
+            resolve_pending(val, ctx.sub)
         }
         ValueExpr::DynList(value) => {
-            value.subscribe(sub); 
-            sub_to.push(value.sub_key());
+            value.subscribe(ctx.sub);
+            ctx.sub_to.push(value.sub_key());
             let s = or_null!(value.as_state());
             let list = s.as_any_list().expect("a dyn list is always an any_list");
-            let key = resolve_int(index, sub, sub_to);
+            let key = resolve_int(index, ctx);
             // Always subscribe to a list as any change to the list
             // will possibly have an effect on other subsequent values,
             // like adding or removing values
             let val = or_null!(list.lookup(key as usize));
-            resolve_pending(val, sub)
+            resolve_pending(val, ctx.sub)
+        }
+        ValueExpr::Attributes(widget_id) => {
+            let key = or_null!(resolve_str(index, ctx));
+            let attributes = ctx.attribute_storage.get(*widget_id);
+            match key.with_str(|key| attributes.get_value_expr(key)).flatten() {
+                Some(value) => value,
+                None => ValueExpr::Null,
+            }
         }
         ValueExpr::List(list) => {
-            let index = resolve_int(index, sub, sub_to);
+            let index = resolve_int(index, ctx);
             list[index as usize].clone()
         }
         ValueExpr::Map(hash_map) => {
-            let key = or_null!(resolve_str(index, sub, sub_to));
+            let key = or_null!(resolve_str(index, ctx));
             or_null!(hash_map.get(&*key.to_str()).cloned())
         }
         ValueExpr::Index(inner_src, inner_index) => {
-            let src = resolve_index(inner_src, inner_index, sub, sub_to);
-            resolve_index(&src, index, sub, sub_to)
+            let src = resolve_index(inner_src, inner_index, ctx);
+            resolve_index(&src, index, ctx)
         }
         ValueExpr::Either(first, second) => {
-            let src = match resolve_expr(first, sub, sub_to) {
-                None | Some(ValueExpr::Null) => match resolve_expr(second, sub, sub_to) {
+            let src = match resolve_expr(first, ctx) {
+                None | Some(ValueExpr::Null) => match resolve_expr(second, ctx) {
                     None | Some(ValueExpr::Null) => return ValueExpr::Null,
                     Some(e) => e,
                 },
                 Some(e) => e,
             };
-            resolve_index(&src, index, sub, sub_to)
+            resolve_index(&src, index, ctx)
         }
         ValueExpr::Null => ValueExpr::Null,
         _ => unreachable!(),
     }
 }
 
-fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, sub: Subscriber, sub_to: &mut SubTo) -> Option<ValueExpr<'bp>> {
+fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> Option<ValueExpr<'bp>> {
     match expr {
-        ValueExpr::Either(first, second) => match resolve_expr(first, sub, sub_to) {
-            None | Some(ValueExpr::Null) => resolve_expr(second, sub, sub_to),
+        ValueExpr::Either(first, second) => match resolve_expr(first, ctx) {
+            None | Some(ValueExpr::Null) => resolve_expr(second, ctx),
             expr => expr,
         },
-        ValueExpr::Index(src, index) => Some(resolve_index(src, index, sub, sub_to)),
+        ValueExpr::Index(src, index) => Some(resolve_index(src, index, ctx)),
         _ => None,
     }
 }
 
-fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber, sub_to: &mut SubTo) -> Option<Kind<&'bp str>> {
+fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> Option<Kind<&'bp str>> {
     match index {
         ValueExpr::Str(kind) => Some(*kind),
-        ValueExpr::Index(src, index) => match resolve_index(src, index, sub, sub_to) {
+        ValueExpr::Index(src, index) => match resolve_index(src, index, ctx) {
             ValueExpr::Str(kind) => Some(kind),
             _ => None,
         },
-        ValueExpr::Either(first, second) => resolve_str(first, sub, sub_to).or_else(|| resolve_str(second, sub, sub_to)),
+        ValueExpr::Either(first, second) => resolve_str(first, ctx).or_else(|| resolve_str(second, ctx)),
         ValueExpr::Null => None,
         ValueExpr::Call => todo!(),
         _ => None,
     }
 }
 
-fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber, sub_to: &mut SubTo) -> i64 {
-    match resolve_value(index, sub, sub_to) {
+fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> i64 {
+    match resolve_value(index, ctx) {
         ValueKind::Int(index) => index,
         ValueKind::Float(_) => todo!(),
         ValueKind::Bool(_) => todo!(),
@@ -360,6 +389,7 @@ fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, sub: Subscriber, sub_to: &mut
         ValueKind::Composite => todo!(),
         ValueKind::Null => todo!(),
         ValueKind::Map => todo!(),
+        ValueKind::Attributes => todo!(),
         ValueKind::List(vec) => todo!(),
         ValueKind::DynList(pending_value) => todo!(),
     }
@@ -387,7 +417,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{drain_changes, Changes, List};
+    use anathema_state::{drain_changes, Changes, List, States};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use super::*;
@@ -401,7 +431,8 @@ mod test {
         drain_changes(&mut changes);
         assert!(changes.is_empty());
 
-        setup().finish(|mut test| {
+        let mut states = States::new();
+        setup(&mut states, Default::default(), |test| {
             let expr = index(index(ident("state"), strlit("list")), num(0));
 
             let mut list = List::<u32>::empty();
@@ -421,7 +452,7 @@ mod test {
             for (subs, change) in changes.drain() {
                 for sub in subs.iter() {
                     if sub == value.sub {
-                        value.reload();
+                        value.reload(&test.attributes);
                     }
                 }
             }
@@ -434,7 +465,8 @@ mod test {
     fn list_preceding_value_removed() {
         let mut changes = Changes::empty();
 
-        setup().finish(|mut test| {
+        let mut states = States::new();
+        setup(&mut states, Default::default(), |test| {
             let expr = index(index(ident("state"), strlit("list")), num(1));
 
             let mut list = List::<u32>::empty();
@@ -457,7 +489,7 @@ mod test {
             for (subs, change) in changes.drain() {
                 for sub in subs.iter() {
                     if sub == value.sub {
-                        value.reload();
+                        value.reload(&test.attributes);
                     }
                 }
             }

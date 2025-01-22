@@ -1,6 +1,6 @@
 use anathema_strings::HStrings;
 use anathema_templates::Expression;
-use immediate::ImmediateResolver;
+use immediate::Resolver;
 
 pub use crate::attributes::{AttributeStorage, Attributes, ValueKey};
 pub use crate::context::ResolverCtx;
@@ -17,9 +17,3 @@ mod value;
 
 // #[cfg(test)]
 pub(crate) mod testing;
-
-pub trait Resolver<'bp> {
-    type Output;
-
-    fn resolve(&self, expr: &'bp Expression) -> Self::Output;
-}

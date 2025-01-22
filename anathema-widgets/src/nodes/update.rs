@@ -1,5 +1,6 @@
 use anathema_state::{Change, Subscriber};
 use anathema_store::tree::PathFinder;
+use anathema_value_resolver::AttributeStorage;
 
 use super::element::Element;
 use super::loops::LOOP_INDEX;
@@ -38,18 +39,17 @@ pub fn update_widget<'bp>(
     change: &Change,
     path: &[u16],
     tree: WidgetTreeView<'_, 'bp>,
+    attribute_storage: &mut AttributeStorage<'bp>,
 ) -> Result<()> {
     match &mut widget.kind {
-        WidgetKind::Element(..) => {
-            // Reflow of the layout will be triggered by the runtime and not in this step
+        WidgetKind::Element(element) => {
+            attribute_storage.with_mut(element.container.id, |attributes, storage| {
+                let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
+                value.reload(storage);
+            });
 
-            // Any dropped dyn value should register for future updates.
-            // This is done by reloading the value, making it empty
-
-            // TODO
-            // Can we pass in the attribute storage here and just set the value to a future value?
-            // Is this even needed given the layout for_each?
             if let Change::Dropped = change {
+                // TODO: figure out why this is still here?
                 // ctx.attribute_storage
                 //     .with_mut(value_id.key(), |attributes, attribute_storage| {
                 //         if let Some(value) = attributes.get_mut_with_index(value_id.index()) {

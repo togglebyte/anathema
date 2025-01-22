@@ -181,28 +181,27 @@ impl Widget for Canvas {
     fn layout<'bp>(
         &mut self,
         children: LayoutForEach<'_, 'bp>,
-        constraints: Constraints,
+        mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
-        panic!()
-        // let attribs = ctx.attribs.get(id);
+        let attribs = ctx.attribute_storage.get(id);
 
-        // if let Some(width) = attribs.get_usize(WIDTH) {
-        //     constraints.set_max_width(width);
-        // }
+        if let Some(width) = attribs.get_usize(WIDTH) {
+            constraints.set_max_width(width);
+        }
 
-        // if let Some(height) = attribs.get_usize(HEIGHT) {
-        //     constraints.set_max_height(height);
-        // }
+        if let Some(height) = attribs.get_usize(HEIGHT) {
+            constraints.set_max_height(height);
+        }
 
-        // let size = constraints.max_size();
+        let size = constraints.max_size();
 
-        // if self.buffer.size != size {
-        //     self.buffer = Buffer::copy_from(&mut self.buffer, size);
-        // }
+        if self.buffer.size != size {
+            self.buffer = Buffer::copy_from(&mut self.buffer, size);
+        }
 
-        // self.buffer.size
+        self.buffer.size
     }
 
     fn position<'bp>(
@@ -222,7 +221,7 @@ impl Widget for Canvas {
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        panic!()
+        panic!("set style should probably be set attribute for everything else and take an actual style here");
         // for (pos, c, style) in self.buffer.iter() {
         //     ctx.set_style(style, pos);
         //     let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);

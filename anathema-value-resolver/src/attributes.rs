@@ -4,6 +4,7 @@ use anathema_state::PendingValue;
 use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
+use crate::expression::ValueExpr;
 use crate::value::{Value, Values};
 use crate::ValueKind;
 
@@ -231,5 +232,10 @@ impl<'bp> Attributes<'bp> {
     pub fn contains(&self, key: &'bp str) -> bool {
         let key = ValueKey::Attribute(key);
         self.attribs.get(&key).is_some()
+    }
+
+    pub(crate) fn get_value_expr(&self, key: &str) -> Option<ValueExpr<'bp>> {
+        let value = self.attribs.get(key)?;
+        Some(value.expr.clone())
     }
 }

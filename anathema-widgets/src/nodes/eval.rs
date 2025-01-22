@@ -19,52 +19,6 @@ use crate::layout::{EvalCtx, Viewport};
 use crate::widget::{Components, FloatingWidgets, WidgetTreeView};
 use crate::{eval_blueprint, ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree};
 
-/// Evaluation context
-// pub struct EvalContext<'rt, 'bp> {
-//     pub viewport: Viewport,
-//     pub(crate) scope: Scope<'bp>,
-//     pub(crate) states: States,
-//     pub(crate) globals: &'bp Globals,
-//     pub(crate) parent: Option<WidgetId>,
-//     pub sidecar: &'rt mut Sidecar<'rt, 'bp>,
-//     pub(crate) force_layout: bool,
-// }
-
-// impl<'rt, 'bp> EvalContext<'rt, 'bp> {
-//     pub fn new(
-//         globals: &'bp Globals,
-//         factory: &'rt Factory,
-//         scope: Scope<'bp>,
-//         states: States,
-//         viewport: Viewport,
-//         sidecar: &'rt mut Sidecar<'rt, 'bp>,
-//         force_layout: bool,
-//     ) -> Self {
-//         Self {
-//             globals,
-//             scope,
-//             states,
-//             parent: None,
-//             viewport,
-//             sidecar,
-//             force_layout,
-//         }
-//     }
-
-//     pub fn needs_layout(&self, node_id: WidgetId) -> bool {
-//         self.sidecar.dirty_widgets.contains(node_id) || self.force_layout
-//     }
-
-//     pub(crate) fn expr_eval_ctx(&self) -> ExprEvalCtx<'_, 'bp> {
-//         ExprEvalCtx {
-//             scope: &self.scope,
-//             states: &self.states,
-//             attributes: &*self.sidecar.attribute_storage,
-//             globals: self.globals,
-//         }
-//     }
-// }
-
 /// Evaluate a node kind
 pub(super) trait Evaluator {
     type Input<'bp>;

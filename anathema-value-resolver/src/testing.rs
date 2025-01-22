@@ -1,97 +1,70 @@
-use anathema_state::{AnyState, Hex, List, Map, StateId, States, Subscriber};
+use anathema_state::{AnyState, Hex, List, Map, StateId, States, SubTo, Subscriber};
 use anathema_store::slab::Key;
 use anathema_templates::{Expression, Globals, Variables};
+use expression::ValueExpr;
 
 use super::*;
 use crate::context::ResolverCtx;
-use crate::immediate::ImmediateResolver;
+use crate::immediate::Resolver;
 use crate::scope::Scope;
 use crate::value::Value;
-use crate::Resolver;
 
-pub(crate) struct TestCaseBuilder {
-    variables: Variables,
-    states: States,
-    state: Map<Box<dyn AnyState>>,
+pub(crate) struct TestCase<'a, 'bp> {
+    globals: &'static Globals,
+    states: &'a mut States,
+    pub attributes: AttributeStorage<'bp>,
 }
 
-impl TestCaseBuilder {
-    pub fn new(states: States) -> Self {
+impl<'a, 'bp> TestCase<'a, 'bp> {
+    pub fn new(states: &'a mut States, globals: Globals) -> Self {
+        let mut attributes = AttributeStorage::empty();
+        attributes.insert(Key::ZERO, Attributes::empty(Key::ZERO));
+
         Self {
-            variables: Variables::new(),
+            globals: Box::leak(globals.into()),
             states,
-            state: Map::empty(),
+            attributes,
         }
     }
 
-    pub fn with_global(mut self, key: &str, value: impl Into<Expression>) -> Self {
-        self.variables.declare(key, value);
-        self
-    }
-
-    pub fn finish<F>(mut self, mut f: F)
-    where
-        F: FnOnce(TestCase<'_, '_>),
-    {
-        let globals = self.variables.into();
-        let state = Box::new(self.state);
-        let state_id = self.states.insert(anathema_state::Value::new(state));
-        let mut attributes = AttributeStorage::empty();
-
-        let attributes = AttributeStorage::empty();
-        let root = Scope::root();
-        let mut scope = Scope::with_component(state_id, Key::ZERO, &root);
-        let case = TestCase {
-            globals: &globals,
-            attributes: &attributes,
-            scope: &scope,
-            states: &mut self.states,
-            state_id,
-        };
-
-        f(case);
-    }
-}
-
-pub(crate) struct TestCase<'frame, 'bp> {
-    globals: &'bp Globals,
-    attributes: &'bp AttributeStorage<'bp>,
-    scope: &'frame Scope<'frame, 'bp>,
-    states: &'bp mut States,
-    state_id: StateId,
-}
-
-impl<'bp> TestCase<'_, 'bp> {
     pub(crate) fn eval(&self, expr: &'bp Expression) -> Value<'bp> {
-        let ctx = ResolverCtx::new(&self.globals, &self.scope, self.states, self.attributes);
-        let mut resolver = ImmediateResolver::new(&ctx);
+        let root = Scope::root();
+        let state_id = StateId::ZERO;
+        let mut scope = Scope::with_component(state_id, Key::ZERO, &root);
+
+        let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, &self.attributes);
+        let mut resolver = Resolver::new(&ctx);
         let value_expr = resolver.resolve(expr);
-        Value::new(value_expr, Subscriber::ZERO)
+        let value = Value::new(value_expr, Subscriber::ZERO, ctx.attribute_storage);
+        value
     }
 
-    pub(crate) fn eval_collection(&self, expr: &'bp Expression) -> Collection<'bp> {
-        let value = self.eval(expr);
-        Collection(value)
-    }
-
-    pub(crate) fn set_state(&mut self, key: &str, value: impl AnyState) {
-        self.with_state(|state| state.insert(key, Box::new(value)));
+    pub fn set_attribute(&mut self, key: &'bp str, value: Value<'bp>) {
+        let attributes = self.attributes.get_mut(Key::ZERO);
+        attributes.set(key, value);
     }
 
     pub(crate) fn with_state<F>(&mut self, mut f: F)
     where
         F: FnOnce(&mut Map<Box<dyn AnyState>>),
     {
-        let mut state = self.states.get_mut(self.state_id).unwrap();
+        let mut state = self.states.get_mut(StateId::ZERO).unwrap();
         let mut state = state.to_mut_cast::<Map<Box<dyn AnyState>>>();
         f(&mut *state);
     }
 
-    pub(crate) fn set_attribute(&mut self, key: &str, value: ()) {
+    pub(crate) fn set_state(&mut self, key: &str, value: impl AnyState) {
+        self.with_state(|state| state.insert(key, Box::new(value)));
     }
 }
 
-pub(crate) fn setup() -> TestCaseBuilder {
-    let mut states = States::new();
-    TestCaseBuilder::new(states)
+pub(crate) fn setup<'bp, F>(states: &mut States, globals: Variables, mut f: F)
+where
+    F: FnMut(&mut TestCase<'_, 'bp>),
+{
+    let state: Map<Box<dyn AnyState>> = Map::empty();
+    let state = Box::new(state);
+    states.insert(anathema_state::Value::new(state));
+    let mut test = TestCase::new(states, globals.into());
+    f(&mut test)
 }

@@ -246,14 +246,14 @@ impl<'bp> Frame<'_, 'bp> {
             return;
         }
 
+        let mut tree = self.tree.view_mut();
         self.changes.iter().for_each(|(sub, change)| {
-            sub.iter().for_each(|sub| {
-                self.layout_ctx.dirty_widgets.push(sub.key());
-                self.layout_ctx.changelist.insert(sub.key(), sub);
+            sub.iter().for_each(|value_id| {
+                let widget_id = value_id.key();
+                self.layout_ctx.dirty_widgets.push(widget_id);
 
-                let mut tree = self.tree.view_mut();
-                tree.with_value_mut(sub.key(), |path, widget, tree| {
-                    update_widget(widget, sub, change, path, tree);
+                tree.with_value_mut(widget_id, |path, widget, tree| {
+                    update_widget(widget, value_id, change, path, tree, self.layout_ctx.attribute_storage);
                 });
             });
         });

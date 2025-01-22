@@ -25,7 +25,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub(super) globals: &'bp Globals,
     pub dirty_widgets: &'frame mut DirtyWidgets,
     factory: &'frame Factory,
-    pub changelist: &'frame mut ChangeList,
+    // pub changelist: &'frame mut ChangeList,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
     pub(super) force_layout: bool,
@@ -62,7 +62,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             globals,
             factory,
             floating_widgets,
-            changelist,
+            // changelist,
             glyph_map,
             dirty_widgets,
             strings,
@@ -93,25 +93,25 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         }
     }
 
-    // TODO: this should not be on the layout context!
-    pub(super) fn changes<F>(&mut self, widget_id: WidgetId, scope: &Scope<'_, 'bp>, mut f: F) -> Option<()>
-    where
-        F: FnMut(&mut Attributes<'bp>, &ResolverCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
-    {
-        let changes = self.changelist.drain(widget_id)?;
+    // TODO: this should probably be removed
+    // pub(super) fn changes<F>(&mut self, widget_id: WidgetId, scope: &Scope<'_, 'bp>, mut f: F) -> Option<()>
+    // where
+    //     F: FnMut(&mut Attributes<'bp>, &ResolverCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
+    // {
+    //     let changes = self.changelist.drain(widget_id)?;
 
-        self.attribute_storage.with_mut(widget_id, |attributes, storage| {
-            let strings = &mut *self.strings;
+    //     self.attribute_storage.with_mut(widget_id, |attributes, storage| {
+    //         let strings = &mut *self.strings;
 
-            let ctx = ResolverCtx::new(self.globals, scope, &self.states, storage);
+    //         let ctx = ResolverCtx::new(self.globals, scope, &self.states, storage);
 
-            for change in changes {
-                f(attributes, &ctx, strings, change);
-            }
-        });
+    //         for change in changes {
+    //             f(attributes, &ctx, strings, change);
+    //         }
+    //     });
 
-        Some(())
-    }
+    //     Some(())
+    // }
 }
 
 pub struct EvalCtx<'frame, 'bp> {

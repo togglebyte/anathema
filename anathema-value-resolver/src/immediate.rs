@@ -8,14 +8,12 @@ use anathema_templates::{Expression, Primitive};
 use crate::context::ResolverCtx;
 use crate::expression::{Kind, ValueExpr};
 use crate::null::Null;
-use crate::scope::Lookup;
-use crate::Resolver;
 
-pub struct ImmediateResolver<'a, 'frame, 'bp> {
+pub struct Resolver<'a, 'frame, 'bp> {
     ctx: &'a ResolverCtx<'frame, 'bp>,
 }
 
-impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
+impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
     pub fn new(ctx: &'a ResolverCtx<'frame, 'bp>) -> Self {
         Self { ctx }
     }
@@ -33,8 +31,7 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
             }
             "attributes" => {
                 let component = self.ctx.scope.get_attributes().unwrap();
-                let attributes = self.ctx.attributes.get(component);
-                panic!()
+                ValueExpr::Attributes(component)
             }
             ident => match self.ctx.scope.lookup(ident) {
                 Some(value) => value,
@@ -45,12 +42,8 @@ impl<'a, 'frame, 'bp> ImmediateResolver<'a, 'frame, 'bp> {
             },
         }
     }
-}
 
-impl<'a, 'frame, 'bp> Resolver<'bp> for ImmediateResolver<'a, 'frame, 'bp> {
-    type Output = ValueExpr<'bp>;
-
-    fn resolve(&self, expr: &'bp Expression) -> ValueExpr<'bp> {
+    pub(crate) fn resolve(&self, expr: &'bp Expression) -> ValueExpr<'bp> {
         match expr {
             Expression::Primitive(primitive) => ValueExpr::from(*primitive),
             Expression::Str(s) => ValueExpr::Str(Kind::Static(s)),

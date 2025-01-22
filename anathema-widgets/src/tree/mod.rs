@@ -113,7 +113,8 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         let widget_id = node.value();
         self.tree.with_value_mut(widget_id, |path, widget, mut children| {
-            widget.resolve_pending_values(ctx, self.scope, widget_id);
+            // TODO: remove this
+            // widget.resolve_pending_values(ctx, self.scope, widget_id);
 
             let cf = match &mut widget.kind {
                 WidgetKind::Element(el) => {

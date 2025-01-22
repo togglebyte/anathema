@@ -6,11 +6,6 @@ use anathema_store::slab::Key;
 use crate::expression::{Kind, ValueExpr};
 use crate::{Collection, ValueKind};
 
-pub enum Lookup {
-    State(StateId),
-    ComponentProperties(Key),
-}
-
 #[derive(Debug)]
 pub(crate) enum Entry<'parent, 'bp> {
     Component { state: StateId, component_attributes: Key },
