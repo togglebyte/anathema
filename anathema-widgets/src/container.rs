@@ -98,36 +98,39 @@ impl Container {
 
         let size = self.cache.size;
 
-        // Apply all attributes
-        for y in 0..self.cache.size.height as u16 {
-            for x in 0..self.cache.size.width as u16 {
-                let pos = LocalPos::new(x, y);
-                ctx.set_attributes(attributes, pos);
+        // Apply all attributes to the widget
+        // as long as it's **not** a floating widget.
+        if !self.inner.any_floats() {
+            for y in 0..self.cache.size.height as u16 {
+                for x in 0..self.cache.size.width as u16 {
+                    let pos = LocalPos::new(x, y);
+                    ctx.set_attributes(attributes, pos);
+                }
             }
-        }
 
-        if let Some(fill) = attributes.get("fill") {
-            for y in 0..ctx.local_size.height as u16 {
-                let mut used_width = 0;
-                loop {
-                    let pos = LocalPos::new(used_width, y);
+            if let Some(fill) = attributes.get("fill") {
+                for y in 0..ctx.local_size.height as u16 {
+                    let mut used_width = 0;
+                    loop {
+                        let pos = LocalPos::new(used_width, y);
 
-                    panic!();
-                    // let controlflow = fill.str_iter(|s| {
-                    //     let glyphs = Glyphs::new(s);
-                    //     let Some(p) = ctx.place_glyphs(glyphs, pos) else {
-                    //         return ControlFlow::Break(());
-                    //     };
-                    //     used_width += p.x - used_width;
-                    //     match used_width >= ctx.local_size.width as u16 {
-                    //         true => ControlFlow::Break(()),
-                    //         false => ControlFlow::Continue(()),
-                    //     }
-                    // });
+                        panic!();
+                        // let controlflow = fill.str_iter(|s| {
+                        //     let glyphs = Glyphs::new(s);
+                        //     let Some(p) = ctx.place_glyphs(glyphs, pos) else {
+                        //         return ControlFlow::Break(());
+                        //     };
+                        //     used_width += p.x - used_width;
+                        //     match used_width >= ctx.local_size.width as u16 {
+                        //         true => ControlFlow::Break(()),
+                        //         false => ControlFlow::Continue(()),
+                        //     }
+                        // });
 
-                    // if let ControlFlow::Break(()) = controlflow {
-                    //     break;
-                    // }
+                        // if let ControlFlow::Break(()) = controlflow {
+                        //     break;
+                        // }
+                    }
                 }
             }
         }
