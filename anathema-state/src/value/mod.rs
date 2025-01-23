@@ -156,12 +156,9 @@ impl<T: AnyState> Value<T> {
         *self.to_mut() = new_value;
     }
 
-    // pub fn consume(self) -> Box<dyn AnyState> {
-    //     changed(self.key, Change::Dropped);
-    //     let value = get_unique(self.key.owned());
-    //     std::mem::forget(self);
-    //     value.val
-    // }
+    pub fn take(self) -> Box<dyn AnyState> {
+        drop_value(self.key).val
+    }
 }
 
 /// Copy the inner value from the owned value.
@@ -176,7 +173,7 @@ impl<T: AnyState + Copy> Value<T> {
 impl<T> Drop for Value<T> {
     fn drop(&mut self) {
         changed(self.key, Change::Dropped);
-        drop_value(self.key);
+        let _ = drop_value(self.key);
     }
 }
 

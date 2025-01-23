@@ -170,7 +170,6 @@ impl Backend for TuiBackend {
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         strings: &HStrings<'bp>,
-        ignore_floats: bool,
     ) {
         anathema_widgets::paint::paint(
             &mut self.screen,
@@ -178,7 +177,6 @@ impl Backend for TuiBackend {
             widgets,
             attribute_storage,
             strings,
-            ignore_floats,
         );
         // TODO: decide if we need `paint` to return a Result or not
     }

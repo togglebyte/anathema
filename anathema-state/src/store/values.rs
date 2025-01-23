@@ -121,13 +121,15 @@ pub(crate) fn return_shared(key: SharedKey) {
 }
 
 // Remove a value and it's associated subscribers
-pub(crate) fn drop_value(key: ValueKey) {
+pub(crate) fn drop_value(key: ValueKey) -> OwnedValue {
     let mut value = OWNED.with(|owned| owned.remove(key.0));
     let _ = SUBSCRIBERS.with_borrow_mut(|subscribers| subscribers.remove(key.1));
 
     if value.monitor.is_set() {
         queue_monitor(&mut value.monitor);
     }
+
+    value
 }
 
 pub(crate) fn copy_val<T: 'static + Copy>(key: OwnedKey) -> T {

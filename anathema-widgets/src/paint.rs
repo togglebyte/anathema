@@ -124,15 +124,20 @@ impl<'bp> crate::widget::Filter<'bp> for PaintFilter {
         &self,
         widget: &'a mut WidgetContainer<'bp>,
         attribute_storage: &AttributeStorage<'_>,
-    ) -> FilterOutput<&'a mut Self::Output> {
+    ) -> FilterOutput<&'a mut Self::Output, Self> {
         match &mut widget.kind {
             WidgetKind::Element(element) => {
                 let attributes = attribute_storage.get(element.id());
                 match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
                     Display::Show => match self.0 {
-                        WidgetPositionFilter::Floating if element.is_floating() => FilterOutput::Include(element),
-                        WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(element),
-                        _ => FilterOutput::Exclude,
+                        WidgetPositionFilter::Floating => match element.is_floating() {
+                            true => FilterOutput::Include(element, PaintFilter::fixed()),
+                            false => FilterOutput::Continue,
+                        },
+                        WidgetPositionFilter::Fixed => match element.is_floating() {
+                            false => FilterOutput::Include(element, *self),
+                            true => FilterOutput::Exclude,
+                        },
                     },
                     Display::Hide | Display::Exclude => FilterOutput::Exclude,
                 }
@@ -148,7 +153,6 @@ pub fn paint<'bp>(
     mut widgets: PaintChildren<'_, 'bp>,
     attribute_storage: &AttributeStorage<'bp>,
     strings: &HStrings<'bp>,
-    ignore_floats: bool,
 ) {
     widgets.each(|widget, children| {
         let ctx = PaintCtx::new(surface, None, glyph_index, strings);

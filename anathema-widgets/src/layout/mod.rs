@@ -27,7 +27,6 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub(super) globals: &'bp Globals,
     pub dirty_widgets: &'frame mut DirtyWidgets,
     factory: &'frame Factory,
-    // pub changelist: &'frame mut ChangeList,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
     pub force_layout: bool,
@@ -141,6 +140,44 @@ impl Viewport {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub struct LayoutFilter(WidgetPositionFilter);
+
+impl LayoutFilter {
+    pub fn fixed() -> Self {
+        Self(WidgetPositionFilter::Fixed)
+    }
+
+    pub fn floating() -> Self {
+        Self(WidgetPositionFilter::Floating)
+    }
+}
+
+impl<'bp> crate::widget::Filter<'bp> for LayoutFilter {
+    type Output = WidgetContainer<'bp>;
+
+    fn filter<'a>(
+        &self,
+        widget: &'a mut WidgetContainer<'bp>,
+        attribute_storage: &AttributeStorage<'_>,
+    ) -> FilterOutput<&'a mut Self::Output, Self> {
+        match &mut widget.kind {
+            WidgetKind::Element(element) => {
+                let attributes = attribute_storage.get(element.id());
+                match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
+                    Display::Show | Display::Hide => match self.0 {
+                        WidgetPositionFilter::Floating => FilterOutput::Include(widget, *self),
+                        WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(widget, *self),
+                        _ => FilterOutput::Exclude,
+                    },
+                    Display::Exclude => FilterOutput::Exclude,
+                }
+            }
+            _ => FilterOutput::Continue,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,
@@ -167,16 +204,24 @@ impl<'bp> crate::widget::Filter<'bp> for PositionFilter {
         &self,
         widget: &'a mut WidgetContainer<'bp>,
         attribute_storage: &AttributeStorage<'_>,
-    ) -> FilterOutput<&'a mut Self::Output> {
+    ) -> FilterOutput<&'a mut Self::Output, Self> {
         match &mut widget.kind {
+            // If this is the floating widget step then once a floating widget is found
+            // the filter should change for the children of the floating widget to be a fixed
+            // filter instead.
             WidgetKind::Element(element) => {
                 let attributes = attribute_storage.get(element.id());
                 match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
                     Display::Show | Display::Hide => match self.0 {
-                        WidgetPositionFilter::Floating if element.is_floating() => FilterOutput::Include(element),
-                        WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(element),
-                        _ => FilterOutput::Exclude,
-                    }
+                        WidgetPositionFilter::Floating => match element.is_floating() {
+                            true => FilterOutput::Include(element, PositionFilter::fixed()),
+                            false => FilterOutput::Continue,
+                        },
+                        WidgetPositionFilter::Fixed => match element.is_floating() {
+                            false => FilterOutput::Include(element, *self),
+                            true => FilterOutput::Exclude,
+                        },
+                    },
                     Display::Exclude => FilterOutput::Exclude,
                 }
             }

@@ -78,7 +78,6 @@ impl Backend for TuiScroll {
         widgets: anathema_widgets::PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         strings: &HStrings<'bp>,
-        ignore_floats: bool,
     ) {
         anathema_widgets::paint::paint(
             &mut self.surface,
@@ -86,7 +85,6 @@ impl Backend for TuiScroll {
             widgets,
             attribute_storage,
             strings,
-            ignore_floats,
         );
     }
 

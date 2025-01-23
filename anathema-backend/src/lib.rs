@@ -6,7 +6,7 @@ use anathema_store::tree::{AsNodePath, Node, TreeValues};
 use anathema_strings::HStrings;
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
-use anathema_widgets::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
+use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFilter, Viewport};
 use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::tree::WidgetPositionFilter;
 use anathema_widgets::{
@@ -32,7 +32,6 @@ pub trait Backend {
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         strings: &HStrings<'bp>,
-        ignore_floats: bool,
     );
 
     /// Called by the runtime at the end of the frame.
@@ -64,72 +63,42 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
     }
 
     fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
-        // let tree = self.tree.view_mut();
-        // // Floating widgets
-        // for widget_id in ctx.floating_widgets.iter() {
-        //     // Find the parent widget and get the position
-        //     // If no parent element is found assume Pos::ZERO
-        //     let mut parent = tree.path_ref(*widget_id).parent();
-        //     let (pos, constraints) = loop {
-        //         match parent {
-        //             None => break (Pos::ZERO, self.constraints),
-        //             Some(p) => match tree.get_ref_by_path(p) {
-        //                 Some(WidgetContainer {
-        //                     kind: WidgetKind::Element(el),
-        //                     ..
-        //                 }) => {
-        //                     let bounds = el.inner_bounds();
-        //                     break (bounds.from, Constraints::from(bounds));
-        //                 }
-        //                 _ => parent = p.parent(),
-        //             },
-        //         }
-        //     };
+        // -----------------------------------------------------------------------------
+        //   - Layout -
+        // -----------------------------------------------------------------------------
+        self.layout(ctx, LayoutFilter::floating());
 
-        //     let scope = Scope::root();
-        //     let mut for_each = LayoutForEach::new(tree, &scope);
-        //     for_each.each(ctx, |ctx, widget, children| {
-        //         widget.layout(children, constraints, ctx);
-        //         ControlFlow::Break(())
-        //     });
+        // -----------------------------------------------------------------------------
+        //   - Position -
+        // -----------------------------------------------------------------------------
+        self.position(ctx.attribute_storage, ctx.viewport, PositionFilter::floating());
 
-        //     // tree.with_nodes_and_values(*widget_id, |widget, children, values| {
-        //     //     let WidgetKind::Element(el) = &mut widget.kind else {
-        //     //         unreachable!("this is always a floating widget")
-        //     //     };
-
-        //     //     //         layout_widget(el, children, values, constraints, &mut layout_ctx, true);
-
-        //     //     //         // Position
-        //     //     //         position_widget(pos, el, children, values, self.attribute_storage, true, self.viewport);
-
-        //     //     //         // Paint
-        //     //     //         self.backend
-        //     //     //             .paint(self.glyph_map, el, children, values, self.attribute_storage, true);
-        //     // });
-        // }
+        // -----------------------------------------------------------------------------
+        //   - Paint -
+        // -----------------------------------------------------------------------------
+        self.paint(ctx, PaintFilter::floating());
     }
 
     pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
-        self.layout(ctx);
+        self.layout(ctx, LayoutFilter::fixed());
 
         // -----------------------------------------------------------------------------
         //   - Position -
         // -----------------------------------------------------------------------------
-        self.position(ctx.attribute_storage, ctx.viewport);
+        self.position(ctx.attribute_storage, ctx.viewport, PositionFilter::fixed());
 
         // -----------------------------------------------------------------------------
         //   - Paint -
         // -----------------------------------------------------------------------------
-        self.paint(ctx);
+        self.paint(ctx, PaintFilter::fixed());
 
         self.floating(ctx);
     }
 
-    fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
@@ -138,7 +107,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         }
 
         let scope = Scope::root();
-        let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope);
+        let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope, filter);
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
             widget.layout(children, constraints, ctx);
@@ -146,23 +115,23 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         });
     }
 
-    fn position(&mut self, attributes: &AttributeStorage<'bp>, viewport: Viewport) {
+    fn position(&mut self, attributes: &AttributeStorage<'bp>, viewport: Viewport, filter: PositionFilter) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let mut for_each = PositionChildren::new(self.tree.view_mut(), attributes, PositionFilter::fixed());
+        let mut for_each = PositionChildren::new(self.tree.view_mut(), attributes, filter);
         for_each.each(|widget, children| {
             widget.position(children, Pos::ZERO, attributes, viewport);
             ControlFlow::Break(())
         });
     }
 
-    fn paint(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+    fn paint(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: PaintFilter) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let mut for_each = PaintChildren::new(self.tree.view_mut(), ctx.attribute_storage, PaintFilter::fixed());
+        let mut for_each = PaintChildren::new(self.tree.view_mut(), ctx.attribute_storage, filter);
         self.backend
-            .paint(ctx.glyph_map, for_each, ctx.attribute_storage, ctx.strings, true);
+            .paint(ctx.glyph_map, for_each, ctx.attribute_storage, ctx.strings);
     }
 }

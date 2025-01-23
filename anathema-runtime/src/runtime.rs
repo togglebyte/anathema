@@ -14,8 +14,8 @@ use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentRegistry, Emitter, FocusQueue,
-    UntypedContext, ViewMessage,
+    AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentKind, ComponentRegistry, Emitter,
+    FocusQueue, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Elements;
@@ -98,6 +98,26 @@ impl<'bp> Runtime<'bp> {
         let blueprint = self.blueprint;
         let mut first_frame = self.next_frame(true)?;
         first_frame.init(blueprint);
+        Ok(())
+    }
+
+    fn reload(&mut self) -> Result<()> {
+        // Reload templates
+        self.document.reload_templates()?;
+        
+        // Reset the tree
+        let mut tree = WidgetTree::empty();
+        std::mem::swap(&mut tree, &mut self.tree);
+
+        // Return all states
+        for (_, widget) in tree.values().into_iter() {
+            let WidgetKind::Component(comp) = widget.kind else { continue };
+            let ComponentKind::Instance = comp.kind else { continue };
+            let state = self.states.remove(comp.state_id).take();
+            self.component_registry
+                .return_component(comp.component_id, comp.dyn_component, state);
+        }
+
         Ok(())
     }
 }
@@ -232,11 +252,7 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn cycle<B: Backend>(&mut self, backend: &mut B) {
-        let mut cycle = WidgetCycle::new(
-            backend,
-            self.tree,
-            self.layout_ctx.viewport.constraints(),
-        );
+        let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
         cycle.run(&mut self.layout_ctx);
     }
 
@@ -335,13 +351,6 @@ impl<'bp> Frame<'_, 'bp> {
             self.layout_ctx.attribute_storage,
             self.layout_ctx.dirty_widgets,
         )
-    }
-
-    pub fn get_state(&mut self, component: WidgetId) -> &dyn AnyState {
-        let component = self.layout_ctx.components.get_by_widget_id(component).unwrap();
-        let state = self.layout_ctx.states.get(component.state_id).unwrap();
-        // state
-        panic!("I think this is used for testing and was never finished")
     }
 
     // TODO: this can't really be called a frame if we can tick it multiple

@@ -47,7 +47,6 @@ impl Backend for TestBackend {
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
         strings: &HStrings<'bp>,
-        ignore_floats: bool,
     ) {
         anathema_widgets::paint::paint(
             &mut self.surface,
@@ -55,7 +54,6 @@ impl Backend for TestBackend {
             widgets,
             attribute_storage,
             strings,
-            ignore_floats,
         );
     }
 
