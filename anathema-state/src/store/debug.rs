@@ -3,7 +3,7 @@ use anathema_store::store::{OwnedEntry, OwnedKey};
 
 use super::subscriber::Subscribers;
 use super::values::OwnedValue;
-use super::{CHANGES, FUTURE_VALUES, OWNED, SHARED, SUBSCRIBERS};
+use super::{CHANGES, OWNED, SHARED, SUBSCRIBERS};
 use crate::states::OldAnyState;
 use crate::store::subscriber::SubscriberDebug;
 use crate::Change;
@@ -133,21 +133,6 @@ impl DebugWriter for ChangesDebug {
             changes
                 .iter()
                 .for_each(|(subscribers, change)| ChangeDebug(subscribers, *change).write(output).unwrap())
-        });
-
-        Ok(())
-    }
-}
-
-/// Debug output of FUTURE_VALUES
-pub struct DebugFutures;
-
-impl DebugWriter for DebugFutures {
-    fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        FUTURE_VALUES.with_borrow(|futures| {
-            futures.iter().cloned().map(SubscriberDebug).for_each(|mut sub| {
-                sub.write(output).unwrap();
-            });
         });
 
         Ok(())

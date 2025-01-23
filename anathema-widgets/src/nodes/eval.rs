@@ -55,7 +55,6 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty(widget_id);
 
         if let Some(expr) = single.value.as_ref() {
-            let strings = &mut *ctx.strings;
             let mut ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
 
             let value = attributes.insert_with(ValueKey::Value, |value_index| {
@@ -66,7 +65,6 @@ impl Evaluator for SingleEval {
 
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                let strings = &mut *ctx.strings;
                 let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
                 resolve(expr, &ctx, (widget_id, value_index))
             });
@@ -116,7 +114,6 @@ impl Evaluator for ForLoopEval {
         let transaction = tree.insert(parent);
         let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
-        let strings = &mut *ctx.strings;
         let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
         let collection = resolve_collection(&for_loop.data, &ctx, value_id);
 
@@ -159,7 +156,6 @@ impl Evaluator for ControlFlowEval {
                 .enumerate()
                 .map(|(i, e)| {
                     let value_index = SmallIndex::from_usize(i);
-                    let strings = &mut *ctx.strings;
                     let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
 
                     controlflow::Else {
@@ -200,7 +196,6 @@ impl Evaluator for ComponentEval {
 
         for (key, expr) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                let strings = &mut *ctx.strings;
                 let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
                 resolve(expr, &ctx, (widget_id, value_index))
             });

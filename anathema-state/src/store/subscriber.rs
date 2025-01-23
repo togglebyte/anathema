@@ -6,8 +6,6 @@ use anathema_store::stack::Stack;
 use super::SUBSCRIBERS;
 use crate::Key;
 
-pub type FutureValues = Stack<Subscriber>;
-
 /// Store sub keys.
 /// This is used by any type that needs to track any or all the
 /// values that it subscribes to.

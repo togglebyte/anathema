@@ -46,14 +46,12 @@ impl Backend for TestBackend {
         _: &mut GlyphMap,
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
-        strings: &HStrings<'bp>,
     ) {
         anathema_widgets::paint::paint(
             &mut self.surface,
             &mut self.glyph_map,
             widgets,
             attribute_storage,
-            strings,
         );
     }
 

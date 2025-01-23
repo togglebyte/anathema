@@ -77,15 +77,8 @@ impl Backend for TuiScroll {
         glyph_map: &mut GlyphMap,
         widgets: anathema_widgets::PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
-        strings: &HStrings<'bp>,
     ) {
-        anathema_widgets::paint::paint(
-            &mut self.surface,
-            glyph_map,
-            widgets,
-            attribute_storage,
-            strings,
-        );
+        anathema_widgets::paint::paint(&mut self.surface, glyph_map, widgets, attribute_storage);
     }
 
     fn render(&mut self, glyph_map: &mut GlyphMap) {

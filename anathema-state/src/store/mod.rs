@@ -6,12 +6,11 @@ use values::OwnedValue;
 pub use watchers::Watched;
 use watchers::{Watcher, Watchers};
 
-use crate::Type;
-
 pub(crate) use self::change::changed;
 pub use self::change::{clear_all_changes, drain_changes, Change, Changes};
-pub use self::subscriber::{FutureValues, Subscriber, SubTo};
 use self::subscriber::{SubKey, SubscriberMap};
+pub use self::subscriber::{SubTo, Subscriber};
+use crate::Type;
 
 mod change;
 pub mod debug;
@@ -24,7 +23,6 @@ thread_local! {
     static SHARED: Shared<OwnedValue> = const { Shared::empty() };
     static SUBSCRIBERS: RefCell<SubscriberMap> = const { RefCell::new(SubscriberMap::empty()) };
     static CHANGES: RefCell<Changes> = const { RefCell::new(Stack::empty()) };
-    static FUTURE_VALUES: RefCell<FutureValues> = const { RefCell::new(Stack::empty()) };
     static WATCHERS: RefCell<Watchers> = const { RefCell::new(Watchers::new()) };
     static WATCH_QUEUE: RefCell<Stack<Watcher>> = const { RefCell::new(Stack::empty()) };
 }
@@ -53,24 +51,9 @@ impl ValueKey {
             6 => Type::Map,
             7 => Type::List,
             8 => Type::Composite,
-            _ => unreachable!("corrupt type information")
+            _ => unreachable!("corrupt type information"),
         }
     }
-}
-
-/// Register a slab key that has an interest in a future value.
-pub fn register_future(sub: Subscriber) {
-    FUTURE_VALUES.with_borrow_mut(|futures| futures.push(sub));
-}
-
-/// Drain values from FUTURE_VALUES into the local stack.
-pub fn drain_futures(local: &mut Stack<Subscriber>) {
-    FUTURE_VALUES.with_borrow_mut(|futures| futures.drain_copy_into(local));
-}
-
-/// Clear all FUTURE_VALUES
-pub fn clear_all_futures() {
-    FUTURE_VALUES.with_borrow_mut(|futures| futures.clear());
 }
 
 /// Drain values from WATCH_QUEUE into the local stack.

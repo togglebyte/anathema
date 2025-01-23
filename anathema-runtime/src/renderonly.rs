@@ -1,5 +1,5 @@
 use anathema_backend::{Backend, WidgetCycle};
-use anathema_state::{Changes, FutureValues, States};
+use anathema_state::{Changes, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
@@ -23,7 +23,6 @@ pub struct OneShot<T> {
     pub(super) components: Components,
     pub(super) dirty_widgets: DirtyWidgets,
     pub(super) changes: Changes,
-    pub(super) future_values: FutureValues,
     pub(super) component_registry: ComponentRegistry,
     pub(super) floating_widgets: FloatingWidgets,
     pub(super) changelist: ChangeList,

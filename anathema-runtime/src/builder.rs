@@ -1,18 +1,21 @@
+use std::sync::atomic::Ordering;
 use std::time::Instant;
 
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
-use anathema_state::{Changes, FutureValues, States};
+use anathema_state::{Changes, States};
 use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, FocusQueue};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree};
+use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub use crate::error::{Error, Result};
 use crate::runtime::Runtime;
+use crate::REBUILD;
 
 pub struct Builder {
     factory: Factory,
@@ -100,8 +103,16 @@ impl Builder {
 
     pub fn finish<F, U>(&mut self, size: Size, mut f: F) -> Result<U>
     where
-        F: FnOnce(Runtime<'_>) -> Result<U>,
+        F: FnMut(&mut Runtime<'_>) -> Result<U>,
     {
+        #[cfg(feature = "profile")]
+        let _puffin_server = {
+            let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
+            let server = puffin_http::Server::new(&server_addr).unwrap();
+            puffin::set_scopes_on(true);
+            server
+        };
+
         let (blueprint, globals) = self.document.compile()?;
         let tree = WidgetTree::empty();
         let attribute_storage = AttributeStorage::empty();
@@ -111,6 +122,8 @@ impl Builder {
         let sleep_micros: u128 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u128;
 
         let (message_sender, message_receiver) = flume::unbounded();
+
+        let watcher = self.set_watcher()?;
 
         let mut inst = Runtime {
             component_registry: &mut self.component_registry,
@@ -123,8 +136,6 @@ impl Builder {
             floating_widgets: FloatingWidgets::empty(),
             changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
-            strings: HStrings::empty(),
-            future_values: FutureValues::empty(),
             assoc_events: AssociatedEvents::new(),
             focus_queue: FocusQueue::new(),
             glyph_map: GlyphMap::empty(),
@@ -137,18 +148,43 @@ impl Builder {
             fps,
             sleep_micros,
             dt: Instant::now(),
-        };
-
-        #[cfg(feature = "profile")]
-        let _puffin_server = {
-            let server_addr = format!("127.0.0.1:{}", puffin_http::DEFAULT_PORT);
-            let server = puffin_http::Server::new(&server_addr).unwrap();
-            puffin::set_scopes_on(true);
-            server
+            _watcher: Some(watcher),
         };
 
         inst.init();
 
-        f(inst)
+        loop {
+            f(&mut inst)?;
+        }
+    }
+
+    fn set_watcher(&mut self) -> Result<RecommendedWatcher> {
+        let paths = self
+            .document
+            .template_paths()
+            .filter_map(|p| p.canonicalize().ok())
+            .collect::<Vec<_>>();
+
+        let mut watcher = recommended_watcher(move |event: std::result::Result<Event, _>| match event {
+            Ok(event) => match event.kind {
+                notify::EventKind::Create(_) | notify::EventKind::Remove(_) | notify::EventKind::Modify(_) => {
+                    if paths.iter().any(|p| event.paths.contains(p)) {
+                        REBUILD.store(true, Ordering::Relaxed);
+                    }
+                }
+                notify::EventKind::Any | notify::EventKind::Access(_) | notify::EventKind::Other => (),
+            },
+            Err(_err) => (),
+        })?;
+
+        for path in self.document.template_paths() {
+            let path = path.canonicalize().unwrap();
+
+            if let Some(parent) = path.parent() {
+                watcher.watch(parent, RecursiveMode::NonRecursive)?;
+            }
+        }
+
+        Ok(watcher)
     }
 }

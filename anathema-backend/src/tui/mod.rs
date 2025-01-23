@@ -13,6 +13,7 @@ use anathema_store::tree::{Node, TreeValues};
 use anathema_strings::HStrings;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
+pub use anathema_widgets::{Attributes, Style};
 use anathema_widgets::{Element, ForEach, GlyphMap, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer};
 use crossterm::cursor::{RestorePosition, SavePosition};
 use crossterm::execute;
@@ -21,7 +22,6 @@ pub use screen::Screen;
 
 pub use self::buffer::Buffer;
 use self::events::Events;
-pub use anathema_widgets::{Attributes, Style};
 use crate::Backend;
 
 mod buffer;
@@ -169,15 +169,8 @@ impl Backend for TuiBackend {
         glyph_map: &mut GlyphMap,
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
-        strings: &HStrings<'bp>,
     ) {
-        anathema_widgets::paint::paint(
-            &mut self.screen,
-            glyph_map,
-            widgets,
-            attribute_storage,
-            strings,
-        );
+        anathema_widgets::paint::paint(&mut self.screen, glyph_map, widgets, attribute_storage);
         // TODO: decide if we need `paint` to return a Result or not
     }
 

@@ -31,7 +31,6 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub components: &'frame mut Components,
     pub force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
-    pub strings: &'frame mut HStrings<'bp>,
     pub viewport: Viewport,
 
     // Need these for the eval context
@@ -51,7 +50,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         changelist: &'frame mut ChangeList,
         glyph_map: &'frame mut GlyphMap,
         dirty_widgets: &'frame mut DirtyWidgets,
-        strings: &'frame mut HStrings<'bp>,
         viewport: Viewport,
         force_layout: bool,
     ) -> Self {
@@ -65,7 +63,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             floating_widgets,
             glyph_map,
             dirty_widgets,
-            strings,
             viewport,
             force_layout,
         }
@@ -84,7 +81,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             floating_widgets: self.floating_widgets,
             attribute_storage: self.attribute_storage,
             states: &mut self.states,
-            strings: &mut self.strings,
             component_registry: self.component_registry,
             components: self.components,
             globals: self.globals,
@@ -98,7 +94,6 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) floating_widgets: &'frame mut FloatingWidgets,
     pub(super) attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub(super) states: &'frame mut States,
-    pub(super) strings: &'frame mut HStrings<'bp>,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
     pub(super) globals: &'bp Globals,

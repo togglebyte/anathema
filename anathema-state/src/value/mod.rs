@@ -157,7 +157,11 @@ impl<T: AnyState> Value<T> {
     }
 
     pub fn take(self) -> Box<dyn AnyState> {
-        drop_value(self.key).val
+        let value = drop_value(self.key).val;
+        // Prevent the drop function from being called
+        // as that would try to free the value from storage again
+        std::mem::ManuallyDrop::new(self);
+        value
     }
 }
 

@@ -1,10 +1,11 @@
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
 use anathema_state::{
-    drain_changes, drain_futures, drain_watchers, AnyState, Changes, FutureValues, State, StateId, States, Watched,
-    Watcher,
+    clear_all_changes, clear_all_subs, drain_changes, drain_watchers, AnyState, Changes, State, StateId, States,
+    Watched, Watcher,
 };
 use anathema_store::stack::Stack;
 use anathema_store::tree::root_node;
@@ -23,8 +24,10 @@ use anathema_widgets::{
     eval_blueprint, update_widget, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId,
     WidgetKind, WidgetTree, WidgetTreeView,
 };
+use notify::RecommendedWatcher;
 
 pub use crate::error::Result;
+use crate::REBUILD;
 
 pub struct Runtime<'bp> {
     pub(super) blueprint: &'bp Blueprint,
@@ -39,8 +42,6 @@ pub struct Runtime<'bp> {
     pub(super) floating_widgets: FloatingWidgets,
     pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
-    pub(super) strings: HStrings<'bp>,
-    pub(super) future_values: FutureValues,
     pub(super) assoc_events: AssociatedEvents,
     pub(super) focus_queue: FocusQueue,
     pub(super) glyph_map: GlyphMap,
@@ -51,9 +52,23 @@ pub struct Runtime<'bp> {
     pub(super) sleep_micros: u128,
     pub(super) message_receiver: flume::Receiver<ViewMessage>,
     pub(super) dt: Instant,
+    pub(super) _watcher: Option<RecommendedWatcher>,
 }
 
 impl<'bp> Runtime<'bp> {
+    pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
+        let mut frame = self.next_frame(true)?;
+
+        loop {
+            frame.tick(backend);
+            frame.present(backend);
+            frame.cleanup();
+            std::thread::sleep_ms(16 * 2);
+        }
+
+        Ok(())
+    }
+
     pub fn next_frame(&mut self, force_layout: bool) -> Result<Frame<'_, 'bp>> {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
@@ -69,7 +84,6 @@ impl<'bp> Runtime<'bp> {
             &mut self.changelist,
             &mut self.glyph_map,
             &mut self.dirty_widgets,
-            &mut self.strings,
             self.viewport,
             force_layout,
         );
@@ -79,7 +93,6 @@ impl<'bp> Runtime<'bp> {
             tree: &mut self.tree,
             layout_ctx,
             changes: &mut self.changes,
-            future_values: &mut self.future_values,
             sleep_micros: self.sleep_micros,
 
             focus_queue: &mut self.focus_queue,
@@ -102,9 +115,16 @@ impl<'bp> Runtime<'bp> {
     }
 
     fn reload(&mut self) -> Result<()> {
+        clear_all_changes();
+        clear_all_subs();
+
+        self.components = Components::new();
+        self.attribute_storage = AttributeStorage::empty();
+        self.floating_widgets = FloatingWidgets::empty();
+
         // Reload templates
         self.document.reload_templates()?;
-        
+
         // Reset the tree
         let mut tree = WidgetTree::empty();
         std::mem::swap(&mut tree, &mut self.tree);
@@ -118,6 +138,12 @@ impl<'bp> Runtime<'bp> {
                 .return_component(comp.component_id, comp.dyn_component, state);
         }
 
+        let (blueprint, globals) = self.document.compile()?;
+        // self.blueprint = blueprint;
+        // self.globals = globals;
+
+        self.init()?;
+
         Ok(())
     }
 }
@@ -127,7 +153,6 @@ pub struct Frame<'rt, 'bp> {
     tree: &'rt mut WidgetTree<'bp>,
     layout_ctx: LayoutCtx<'rt, 'bp>,
     changes: &'rt mut Changes,
-    future_values: &'rt mut FutureValues,
     assoc_events: &'rt mut AssociatedEvents,
     focus_queue: &'rt mut FocusQueue,
     sleep_micros: u128,
@@ -226,8 +251,8 @@ impl<'bp> Frame<'_, 'bp> {
                 .get_by_component_id(msg.recipient())
                 .map(|e| (e.widget_id, e.state_id))
             {
-                // tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| {
-                //     a.any_message(msg.payload(), b)
+                // self.tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| {
+                // //     a.any_message(msg.payload(), b)
                 // });
             }
 

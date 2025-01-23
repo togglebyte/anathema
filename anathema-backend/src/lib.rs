@@ -31,7 +31,6 @@ pub trait Backend {
         glyph_map: &mut GlyphMap,
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
-        strings: &HStrings<'bp>,
     );
 
     /// Called by the runtime at the end of the frame.
@@ -131,7 +130,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         puffin::profile_function!();
 
         let mut for_each = PaintChildren::new(self.tree.view_mut(), ctx.attribute_storage, filter);
-        self.backend
-            .paint(ctx.glyph_map, for_each, ctx.attribute_storage, ctx.strings);
+        self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage);
     }
 }
