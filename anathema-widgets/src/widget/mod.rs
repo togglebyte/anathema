@@ -15,8 +15,8 @@ use anathema_value_resolver::AttributeStorage;
 
 pub use self::factory::Factory;
 pub use self::style::{Attributes, Style};
-use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx, PositionFilter};
-use crate::paint::{PainFilter, PaintCtx, PaintFilter, SizePos};
+use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter};
+use crate::paint::{PaintFilter, PaintCtx, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
 use crate::{WidgetContainer, WidgetKind};
 
@@ -27,7 +27,7 @@ pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
 pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
 pub type LayoutChildren<'a, 'bp> = LayoutForEach<'a, 'bp>;
 pub type PositionChildren<'a, 'bp> = ForEach<'a, 'bp, PositionFilter>;
-pub type PaintChildren<'a, 'bp> = ForEach<'a, 'bp, PainFilter>;
+pub type PaintChildren<'a, 'bp> = ForEach<'a, 'bp, PaintFilter>;
 pub type WidgetId = anathema_store::slab::Key;
 
 #[derive(Debug)]
@@ -241,7 +241,7 @@ pub trait AnyWidget {
 
     fn any_paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp, PainFilter>,
+        children: ForEach<'_, 'bp, PaintFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -285,7 +285,7 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_paint<'bp>(
         &mut self,
-        children: ForEach<'_, 'bp, PainFilter>,
+        children: ForEach<'_, 'bp, PaintFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -323,7 +323,7 @@ pub trait Widget {
 
     fn paint<'bp>(
         &mut self,
-        mut children: ForEach<'_, 'bp, PainFilter>,
+        mut children: ForEach<'_, 'bp, PaintFilter>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,

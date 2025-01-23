@@ -10,8 +10,10 @@ use anathema_value_resolver::{AttributeStorage, Attributes};
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+use crate::layout::display::DISPLAY;
 use crate::layout::Display;
 use crate::nodes::element::Element;
+use crate::tree::{FilterOutput, WidgetPositionFilter};
 use crate::widget::Style;
 use crate::{ForEach, PaintChildren, WidgetContainer, WidgetId, WidgetKind};
 
@@ -73,7 +75,7 @@ impl Glyph {
 pub trait WidgetRenderer {
     fn draw_glyph(&mut self, glyph: Glyph, local_pos: Pos);
 
-    fn draw(&mut self) { 
+    fn draw(&mut self) {
         todo!("this function is only here to remind us that we should have a raw draw function for Kitty image protocol and such");
     }
 
@@ -102,78 +104,40 @@ impl SlabIndex for GlyphIndex {
     }
 }
 
-// TODO: remove
-// pub trait CellAttributes {
-//     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
+#[derive(Debug, Copy, Clone)]
+pub struct PaintFilter(WidgetPositionFilter);
 
-//     fn get_i64(&self, key: &str) -> Option<i64>;
+impl PaintFilter {
+    pub fn fixed() -> Self {
+        Self(WidgetPositionFilter::Fixed)
+    }
 
-//     fn get_u8(&self, key: &str) -> Option<u8>;
-
-//     fn get_hex(&self, key: &str) -> Option<Hex>;
-
-//     fn get_color(&self, key: &str) -> Option<Color>;
-
-//     fn get_bool(&self, key: &str) -> bool;
-// }
-
-pub struct PaintFilter<'frame, 'bp> {
-    attributes: &'frame AttributeStorage<'bp>,
-    ignore_floats: bool,
-}
-
-impl<'frame, 'bp> PaintFilter<'frame, 'bp> {
-    pub fn new(ignore_floats: bool, attributes: &'frame AttributeStorage<'bp>) -> Self {
-        Self {
-            attributes,
-            ignore_floats,
-        }
+    pub fn floating() -> Self {
+        Self(WidgetPositionFilter::Floating)
     }
 }
 
-impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
-    type Input = WidgetContainer<'bp>;
+impl<'bp> crate::widget::Filter<'bp> for PaintFilter {
     type Output = Element<'bp>;
 
-    fn filter<'val>(
+    fn filter<'a>(
         &self,
-        _widget_id: WidgetId,
-        input: &'val mut Self::Input,
-        _children: &[Node],
-        _widgets: &mut TreeValues<WidgetContainer<'bp>>,
-    ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
-        match &mut input.kind {
-            WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => {
-                panic!("attributes needs to be combined with &HStrings for this to work");
-                // match self
-                //     .attributes
-                //     .get(el.id())
-                //     .get::<Display>("display")
-                //     .unwrap_or_default()
-                // {
-                //     Display::Show => ControlFlow::Continue(Some(el)),
-                //     Display::Hide | Display::Exclude => ControlFlow::Break(()),
-                // }
-            }
-            // WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
-            // WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
-            _ => ControlFlow::Continue(None),
-        }
-    }
-}
-
-// TODO: rename to paint filter and remove the old one
-// TODO: filter out all exclude / hide widgets
-pub struct PainFilter;
-
-impl<'bp> crate::widget::Filter<'bp> for PainFilter {
-    type Output = Element<'bp>;
-
-    fn filter<'a>(widget: &'a mut WidgetContainer<'bp>) -> Option<&'a mut Self::Output> {
+        widget: &'a mut WidgetContainer<'bp>,
+        attribute_storage: &AttributeStorage<'_>,
+    ) -> FilterOutput<&'a mut Self::Output> {
         match &mut widget.kind {
-            WidgetKind::Element(element) => Some(element),
-            _ => None,
+            WidgetKind::Element(element) => {
+                let attributes = attribute_storage.get(element.id());
+                match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
+                    Display::Show => match self.0 {
+                        WidgetPositionFilter::Floating if element.is_floating() => FilterOutput::Include(element),
+                        WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(element),
+                        _ => FilterOutput::Exclude,
+                    },
+                    Display::Hide | Display::Exclude => FilterOutput::Exclude,
+                }
+            }
+            _ => FilterOutput::Continue,
         }
     }
 }

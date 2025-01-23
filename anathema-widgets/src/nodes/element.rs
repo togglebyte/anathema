@@ -3,7 +3,7 @@ use anathema_value_resolver::AttributeStorage;
 
 use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
-use crate::paint::{PainFilter, PaintCtx, Unsized};
+use crate::paint::{PaintFilter, PaintCtx, Unsized};
 use crate::widget::{ForEach, PaintChildren, PositionChildren};
 use crate::{LayoutChildren, LayoutForEach, WidgetId};
 
@@ -51,7 +51,7 @@ impl<'bp> Element<'bp> {
     /// Draw an element to the surface
     pub fn paint(
         &mut self,
-        children: ForEach<'_, 'bp, PainFilter>,
+        children: ForEach<'_, 'bp, PaintFilter>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
@@ -98,5 +98,10 @@ impl<'bp> Element<'bp> {
     /// Get the position of the container
     pub fn get_pos(&self) -> Pos {
         self.container.pos
+    }
+
+    /// Returns true if the widget is a floating widget
+    pub(crate) fn is_floating(&self) -> bool {
+        self.container.inner.any_floats()
     }
 }

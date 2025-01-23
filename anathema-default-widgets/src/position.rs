@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
-use anathema_value_resolver::AttributeStorage;
+use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{
@@ -36,20 +36,20 @@ pub enum Placement {
     Absolute,
 }
 
-// impl TryFrom<CommonVal<'_>> for Placement {
-//     type Error = ();
+impl TryFrom<&ValueKind<'_>> for Placement {
+    type Error = ();
 
-//     fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-//         match value {
-//             CommonVal::Str(wrap) => match wrap {
-//                 RELATIVE => Ok(Placement::Relative),
-//                 ABSOLUTE => Ok(Placement::Absolute),
-//                 _ => Err(()),
-//             },
-//             _ => Err(()),
-//         }
-//     }
-// }
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        match value {
+            ValueKind::Str(wrap) => match wrap.as_ref() {
+                RELATIVE => Ok(Placement::Relative),
+                ABSOLUTE => Ok(Placement::Absolute),
+                _ => Err(()),
+            },
+            _ => Err(()),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Position {
@@ -81,8 +81,7 @@ impl Widget for Position {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         let attribs = ctx.attribute_storage.get(id);
-        // self.placement = attribs.get(PLACEMENT).unwrap_or_default();
-        self.placement = panic!("some day we'll have a new value resolver for this");
+        self.placement = attribs.get_as::<Placement>(PLACEMENT).unwrap_or_default();
 
         self.horz_edge = match attribs.get_int(LEFT) {
             Some(left) => HorzEdge::Left(left as u32),

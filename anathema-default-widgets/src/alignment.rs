@@ -34,8 +34,7 @@ impl Widget for Align {
         mut ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        // let alignment = attributes.get(ALIGNMENT).unwrap_or_default();
-        let alignment = panic!();
+        let alignment = attributes.get_as::<Alignment>(ALIGNMENT).unwrap_or_default();
 
         children.each(|child, children| {
             let width = ctx.inner_size.width as i32;

@@ -97,32 +97,6 @@ impl<'bp> WidgetContainer<'bp> {
             children: blueprints,
         }
     }
-
-    // TODO: remove this once it's confirmed that its working inside the runtime
-    // pub(crate) fn resolve_pending_values(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, scope: &Scope<'_, 'bp>, widget_id: WidgetId) {
-    //     #[cfg(feature = "profile")]
-    //     puffin::profile_function!();
-
-    //     ctx.changes(
-    //         widget_id,
-    //         scope,
-    //         |attributes, expr_eval_ctx, strings, value_id| match &mut self.kind {
-    //             WidgetKind::Element(element) => {
-    //                 let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
-    //                 value.reload();
-    //             }
-    //             WidgetKind::For(for_loop) => for_loop.collection.reload(),
-    //             WidgetKind::ControlFlow(controlflow) => {
-    //                 for value in controlflow.elses.iter_mut().filter_map(|e| e.cond.as_mut()) {
-    //                     value.reload();
-    //                 }
-    //             }
-    //             WidgetKind::ControlFlowContainer(_) => (),
-    //             WidgetKind::Iteration(iteration) => (),
-    //             WidgetKind::Component(component) => (),
-    //         },
-    //     );
-    // }
 }
 
 pub fn eval_blueprint<'bp>(

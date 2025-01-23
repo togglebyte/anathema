@@ -4,15 +4,24 @@ use std::ops::ControlFlow;
 use anathema_state::Value as StateValue;
 use anathema_store::tree::TreeView;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{Collection, Scope, Value};
+use anathema_value_resolver::{AttributeStorage, Collection, Scope, Value};
 
-use crate::layout::LayoutCtx;
+use crate::layout::display::DISPLAY;
+use crate::layout::{Display, LayoutCtx};
 use crate::nodes::controlflow;
 use crate::nodes::loops::Iteration;
 use crate::widget::WidgetTreeView;
 use crate::{eval_blueprint, Element, WidgetContainer, WidgetKind};
 
 // TODO: Add the option to "skip" values with an offset for `inner_each` (this is for overflow widgets)
+
+/// Determine what kind of widgets that should be laid out:
+/// Fixed or floating.
+#[derive(Debug, Copy, Clone)]
+pub enum WidgetPositionFilter {
+    Floating,
+    Fixed,
+}
 
 #[derive(Debug, Copy, Clone)]
 pub enum Generator<'widget, 'bp> {
@@ -113,14 +122,20 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         let widget_id = node.value();
         self.tree.with_value_mut(widget_id, |path, widget, mut children| {
-            // TODO: remove this
-            // widget.resolve_pending_values(ctx, self.scope, widget_id);
-
             let cf = match &mut widget.kind {
                 WidgetKind::Element(el) => {
-                    let children =
-                        LayoutForEach::with_generator(children, self.scope, Generator::Single(&widget.children));
-                    f(ctx, el, children)
+                    let attributes = ctx.attribute_storage.get(el.id());
+                    match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
+                        Display::Show | Display::Hide => {
+                            let children = LayoutForEach::with_generator(
+                                children,
+                                self.scope,
+                                Generator::Single(&widget.children),
+                            );
+                            f(ctx, el, children)
+                        }
+                        Display::Exclude => ControlFlow::Break(()),
+                    }
                 }
                 WidgetKind::ControlFlow(controlflow) => {
                     if controlflow.has_changed(&children) {
@@ -211,14 +226,6 @@ fn generate<'bp>(
             let child_count = tree.layout_len();
             assert_eq!(child_count.saturating_sub(1), 0, "too many branches have been created");
 
-            // What if we don't store the condition, but rather a container and somehow identify
-            // the container against an id instead? if = 0, elses = N
-            //
-            // During an update the tree can be cleared and the container can be regenerated.
-            //
-            // Should probably move the generation function to it's own function for the control
-            // flow since it's a bit messy
-
             // TODO: this could probably be replaced with the functionality in
             // ControlFlow::has_changed
 
@@ -250,12 +257,6 @@ fn generate<'bp>(
                 return false;
             }
 
-            // if controlflow.if_node.cond.load_bool() {
-            //     let kind = WidgetKind::ControlFlowContainer(0);
-            //     let widget = WidgetContainer::new(kind, controlflow.if_node.body);
-            //     let transaction = tree.insert(tree.offset);
-            //     transaction.commit_child(widget);
-            // } else {
             let thing = controlflow
                 .elses
                 .iter()
@@ -284,29 +285,39 @@ fn generate<'bp>(
         }
         Generator::Parent(()) => {
             todo!("what is this even for?")
-        } // WidgetKind::ControlFlow(_) => todo!(),
-          // WidgetKind::If(_) => todo!(),
-          // WidgetKind::Else(_) => todo!(),
+        }
     }
 }
 
-pub trait Filter<'bp> {
+pub enum FilterOutput<T> {
+    Include(T),
+    Exclude,
+    Continue,
+}
+
+pub trait Filter<'bp>: Copy {
     type Output;
 
-    fn filter<'a>(widget: &'a mut WidgetContainer<'bp>) -> Option<&'a mut Self::Output>;
+    fn filter<'a>(
+        &self,
+        widget: &'a mut WidgetContainer<'bp>,
+        attribute_storage: &AttributeStorage<'_>,
+    ) -> FilterOutput<&'a mut Self::Output>;
 }
 
 #[derive(Debug)]
 pub struct ForEach<'a, 'bp, Fltr> {
     tree: WidgetTreeView<'a, 'bp>,
-    _filter: PhantomData<Fltr>,
+    attribute_storage: &'a AttributeStorage<'bp>,
+    filter: Fltr,
 }
 
 impl<'a, 'bp, Fltr: Filter<'bp>> ForEach<'a, 'bp, Fltr> {
-    pub fn new(tree: WidgetTreeView<'a, 'bp>) -> Self {
+    pub fn new(tree: WidgetTreeView<'a, 'bp>, attribute_storage: &'a AttributeStorage<'bp>, filter: Fltr) -> Self {
         Self {
             tree,
-            _filter: PhantomData,
+            attribute_storage,
+            filter,
         }
     }
 
@@ -334,18 +345,12 @@ impl<'a, 'bp, Fltr: Filter<'bp>> ForEach<'a, 'bp, Fltr> {
     {
         let Some(node) = self.tree.layout.get(index) else { panic!() };
         self.tree.with_value_mut(node.value(), |path, widget, children| {
-            let mut children = ForEach::new(children);
+            let mut children = ForEach::new(children, self.attribute_storage, self.filter);
 
-            if let Some(el) = Fltr::filter(widget) {
-                f(el, children)
-            } else {
-                children.inner_each(Some(widget), f)
-                // WidgetKind::Component(_) => children.inner_each(Some(widget), f),
-                // WidgetKind::For(_) => todo!(),
-                // WidgetKind::Iteration(_) => todo!(),
-                // WidgetKind::ControlFlow(_) => todo!(),
-                // WidgetKind::If(_) => todo!(),
-                // WidgetKind::Else(_) => todo!(),
+            match self.filter.filter(widget, self.attribute_storage) {
+                FilterOutput::Include(el) => f(el, children),
+                FilterOutput::Exclude => ControlFlow::Break(()),
+                FilterOutput::Continue => children.inner_each(Some(widget), f),
             }
         })
     }

@@ -54,7 +54,7 @@ pub struct Runtime<'bp> {
 }
 
 impl<'bp> Runtime<'bp> {
-    pub fn next_frame(&mut self) -> Result<Frame<'_, 'bp>> {
+    pub fn next_frame(&mut self, force_layout: bool) -> Result<Frame<'_, 'bp>> {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
 
@@ -71,7 +71,7 @@ impl<'bp> Runtime<'bp> {
             &mut self.dirty_widgets,
             &mut self.strings,
             self.viewport,
-            true,
+            force_layout,
         );
 
         let inst = Frame {
@@ -96,7 +96,7 @@ impl<'bp> Runtime<'bp> {
 
     pub(crate) fn init(&mut self) -> Result<()> {
         let blueprint = self.blueprint;
-        let mut first_frame = self.next_frame()?;
+        let mut first_frame = self.next_frame(true)?;
         first_frame.init(blueprint);
         Ok(())
     }
@@ -165,8 +165,8 @@ impl<'bp> Frame<'_, 'bp> {
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.pull_events(elapsed, now, backend);
-        let changed = self.apply_changes();
-        self.cycle(backend, !changed);
+        self.apply_changes();
+        self.cycle(backend);
         *self.dt = Instant::now();
         now.elapsed()
     }
@@ -231,22 +231,23 @@ impl<'bp> Frame<'_, 'bp> {
         }
     }
 
-    fn cycle<B: Backend>(&mut self, backend: &mut B, skip: bool) {
-        if skip {
-            // return;
-        }
-        let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
+    fn cycle<B: Backend>(&mut self, backend: &mut B) {
+        let mut cycle = WidgetCycle::new(
+            backend,
+            self.tree,
+            self.layout_ctx.viewport.constraints(),
+        );
         cycle.run(&mut self.layout_ctx);
     }
 
-    fn apply_changes(&mut self) -> bool {
+    fn apply_changes(&mut self) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
         drain_changes(self.changes);
 
         if self.changes.is_empty() {
-            return false;
+            return;
         }
 
         let mut tree = self.tree.view_mut();
@@ -260,8 +261,6 @@ impl<'bp> Frame<'_, 'bp> {
                 });
             });
         });
-
-        true
     }
 
     fn poll_event<B: Backend>(&mut self, poll_timeout: Duration, backend: &mut B) {

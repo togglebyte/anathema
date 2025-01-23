@@ -6,18 +6,20 @@ use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
 use anathema_templates::{ComponentBlueprintId, Globals};
 use anathema_value_resolver::{AttributeStorage, Attributes, ResolverCtx, Scope};
+use display::DISPLAY;
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::nodes::element::Element;
+use crate::tree::{FilterOutput, WidgetPositionFilter};
 use crate::{
     ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, LayoutChildren, WidgetContainer,
     WidgetId, WidgetKind,
 };
 
 mod constraints;
-mod display;
+pub mod display;
 pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
@@ -28,7 +30,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     // pub changelist: &'frame mut ChangeList,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
-    pub(super) force_layout: bool,
+    pub force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
     pub strings: &'frame mut HStrings<'bp>,
     pub viewport: Viewport,
@@ -62,7 +64,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             globals,
             factory,
             floating_widgets,
-            // changelist,
             glyph_map,
             dirty_widgets,
             strings,
@@ -92,26 +93,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             parent: None,
         }
     }
-
-    // TODO: this should probably be removed
-    // pub(super) fn changes<F>(&mut self, widget_id: WidgetId, scope: &Scope<'_, 'bp>, mut f: F) -> Option<()>
-    // where
-    //     F: FnMut(&mut Attributes<'bp>, &ResolverCtx<'_, 'bp>, &mut HStrings<'bp>, Subscriber),
-    // {
-    //     let changes = self.changelist.drain(widget_id)?;
-
-    //     self.attribute_storage.with_mut(widget_id, |attributes, storage| {
-    //         let strings = &mut *self.strings;
-
-    //         let ctx = ResolverCtx::new(self.globals, scope, &self.states, storage);
-
-    //         for change in changes {
-    //             f(attributes, &ctx, strings, change);
-    //         }
-    //     });
-
-    //     Some(())
-    // }
 }
 
 pub struct EvalCtx<'frame, 'bp> {
@@ -121,22 +102,12 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) strings: &'frame mut HStrings<'bp>,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
-    // pub(super) scope: &'frame Scope<'bp>,
     pub(super) globals: &'bp Globals,
     pub(super) factory: &'frame Factory,
     pub(super) parent: Option<WidgetId>,
 }
 
 impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
-    // pub(super) fn expr_eval_ctx(&'frame self) -> ExprEvalCtx<'frame, 'bp> {
-    //     ExprEvalCtx {
-    //         scope: self.scope,
-    //         states: self.states,
-    //         attributes: self.attribute_storage,
-    //         globals: self.globals,
-    //     }
-    // }
-
     pub(super) fn get_component(
         &mut self,
         component_id: ComponentBlueprintId,
@@ -169,132 +140,6 @@ impl Viewport {
     }
 }
 
-/// Filter out widgets that are excluded.
-/// This includes both `Show` and `Hide` as part of the layout.
-pub struct LayoutFilter<'frame, 'bp> {
-    attributes: &'frame AttributeStorage<'bp>,
-    ignore_floats: bool,
-}
-
-impl<'frame, 'bp> LayoutFilter<'frame, 'bp> {
-    pub fn new(ignore_floats: bool, attributes: &'frame AttributeStorage<'bp>) -> Self {
-        Self {
-            attributes,
-            ignore_floats,
-        }
-    }
-}
-
-impl<'frame, 'bp> TreeFilter for LayoutFilter<'frame, 'bp> {
-    type Input = WidgetContainer<'bp>;
-    type Output = Element<'bp>;
-
-    fn filter<'val>(
-        &self,
-        _value_id: WidgetId,
-        input: &'val mut Self::Input,
-        children: &[Node],
-        widgets: &mut TreeValues<WidgetContainer<'bp>>,
-    ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
-        match &mut input.kind {
-            WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => {
-                panic!("once attributes are combined with strings this will be doable");
-                // match self
-                //     .attributes
-                //     .get(el.id())
-                //     .get::<Display>("display")
-                //     .unwrap_or_default()
-                // {
-                //     Display::Show | Display::Hide => ControlFlow::Continue(Some(el)),
-                //     Display::Exclude => ControlFlow::Continue(None),
-                // }
-            }
-            WidgetKind::ControlFlow(widget) => {
-                // TODO `update` should probably be called `layout`
-                //       as it does not update during an update step.
-                //
-                //       That is not possible since the child widget is
-                //       checked out already, so iterating over the children
-                //       of ControlFlow does not work
-                // widget.update(children, widgets);
-                panic!();
-                ControlFlow::Continue(None)
-            }
-            WidgetKind::ControlFlowContainer(_) => {
-                panic!("this should be replaced with the ForEach from widgets/tree.rs")
-            }
-            // WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
-            // WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
-            _ => ControlFlow::Continue(None),
-        }
-    }
-}
-
-// // TODO remove this?
-// pub struct LayoutCtx<'a, 'bp> {
-//     pub attribs: &'a AttributeStorage<'bp>,
-//     pub dirty_widgets: &'a DirtyWidgets,
-//     pub viewport: &'a Viewport,
-//     pub glyph_map: &'a mut GlyphMap,
-//     pub force_layout: bool,
-// }
-
-// impl<'a, 'bp> LayoutCtx<'a, 'bp> {
-//     pub fn new(
-//         attribs: &'a AttributeStorage<'bp>,
-//         dirty_widgets: &'a DirtyWidgets,
-//         viewport: &'a Viewport,
-//         glyph_map: &'a mut GlyphMap,
-//         force_layout: bool,
-//     ) -> Self {
-//         Self {
-//             attribs,
-//             dirty_widgets,
-//             viewport,
-//             glyph_map,
-//             force_layout,
-//         }
-//     }
-
-//     pub fn needs_layout(&self, node_id: WidgetId) -> bool {
-//         self.dirty_widgets.contains(node_id) || self.force_layout
-//     }
-// }
-
-// TODO: remove this as it's no longer needed -TB 2024-11-20
-// pub fn layout_widget<'bp>(
-//     element: &mut Element<'bp>,
-//     children: &[Node],
-//     values: &mut TreeValues<WidgetContainer<'bp>>,
-//     constraints: Constraints,
-//     ctx: &mut LayoutCtx<'_, 'bp>,
-//     ignore_floats: bool,
-// ) {
-//     #[cfg(feature = "profile")]
-//     puffin::profile_function!();
-
-//     let filter = LayoutFilter::new(ignore_floats, ctx.attribs);
-//     let children = TreeForEach::new(children, values, &filter);
-//     element.layout(children, constraints, ctx);
-// }
-
-// pub fn position_widget<'bp>(
-//     pos: Pos,
-//     element: &mut Element<'bp>,
-//     children: &[Node],
-//     values: &mut TreeValues<WidgetContainer<'bp>>,
-//     attribute_storage: &AttributeStorage<'bp>,
-//     ignore_floats: bool,
-//     viewport: Viewport,
-// ) {
-//     #[cfg(feature = "profile")]
-//     puffin::profile_function!();
-//     let filter = LayoutFilter::new(ignore_floats, attribute_storage);
-//     let children = TreeForEach::new(children, values, &filter);
-//     element.position(children, pos, attribute_storage, viewport);
-// }
-
 #[derive(Debug, Copy, Clone)]
 pub struct PositionCtx {
     pub inner_size: Size,
@@ -302,17 +147,40 @@ pub struct PositionCtx {
     pub viewport: Viewport,
 }
 
-// TODO: filter out all exclude / hide widgets
 #[derive(Debug, Copy, Clone)]
-pub struct PositionFilter;
+pub struct PositionFilter(WidgetPositionFilter);
+
+impl PositionFilter {
+    pub fn fixed() -> Self {
+        Self(WidgetPositionFilter::Fixed)
+    }
+
+    pub fn floating() -> Self {
+        Self(WidgetPositionFilter::Floating)
+    }
+}
 
 impl<'bp> crate::widget::Filter<'bp> for PositionFilter {
     type Output = Element<'bp>;
 
-    fn filter<'a>(widget: &'a mut WidgetContainer<'bp>) -> Option<&'a mut Self::Output> {
+    fn filter<'a>(
+        &self,
+        widget: &'a mut WidgetContainer<'bp>,
+        attribute_storage: &AttributeStorage<'_>,
+    ) -> FilterOutput<&'a mut Self::Output> {
         match &mut widget.kind {
-            WidgetKind::Element(element) => Some(element),
-            _ => None,
+            WidgetKind::Element(element) => {
+                let attributes = attribute_storage.get(element.id());
+                match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
+                    Display::Show | Display::Hide => match self.0 {
+                        WidgetPositionFilter::Floating if element.is_floating() => FilterOutput::Include(element),
+                        WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(element),
+                        _ => FilterOutput::Exclude,
+                    }
+                    Display::Exclude => FilterOutput::Exclude,
+                }
+            }
+            _ => FilterOutput::Continue,
         }
     }
 }
