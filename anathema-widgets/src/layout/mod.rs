@@ -31,11 +31,11 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub components: &'frame mut Components,
     pub force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
-    pub viewport: Viewport,
+    pub viewport: &'frame mut Viewport,
 
     // Need these for the eval context
     pub floating_widgets: &'frame mut FloatingWidgets,
-    component_registry: &'frame mut ComponentRegistry,
+    pub component_registry: &'frame mut ComponentRegistry,
 }
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
@@ -50,7 +50,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         changelist: &'frame mut ChangeList,
         glyph_map: &'frame mut GlyphMap,
         dirty_widgets: &'frame mut DirtyWidgets,
-        viewport: Viewport,
+        viewport: &'frame mut Viewport,
         force_layout: bool,
     ) -> Self {
         Self {

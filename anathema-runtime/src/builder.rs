@@ -8,7 +8,7 @@ use anathema_state::{Changes, States};
 use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
-use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, FocusQueue};
+use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, FocusQueue, ViewMessage};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -21,6 +21,8 @@ pub struct Builder {
     factory: Factory,
     document: Document,
     component_registry: ComponentRegistry,
+    emitter: Emitter,
+    message_receiver: flume::Receiver<ViewMessage>,
 }
 
 impl Builder {
@@ -28,11 +30,22 @@ impl Builder {
     pub fn new(document: Document) -> Self {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
+
+        let (tx, message_receiver) = flume::unbounded();
+        let emitter = tx.into();
+
         Self {
             factory,
             document,
             component_registry: ComponentRegistry::new(),
+            emitter,
+            message_receiver,
         }
+    }
+    
+    /// Returns an [Emitter] to send messages to components
+    pub fn emitter(&self) -> Emitter {
+        self.emitter.clone()
     }
 
     /// Registers a component as a template-only component.
@@ -101,9 +114,9 @@ impl Builder {
         Ok(())
     }
 
-    pub fn finish<F, U>(&mut self, size: Size, mut f: F) -> Result<U>
+    pub fn finish<F, U>(mut self, size: Size, mut f: F) -> Result<U>
     where
-        F: FnMut(&mut Runtime<'_>) -> Result<U>,
+        F: FnMut(&mut Runtime) -> Result<U>,
     {
         #[cfg(feature = "profile")]
         let _puffin_server = {
@@ -114,47 +127,40 @@ impl Builder {
         };
 
         let (blueprint, globals) = self.document.compile()?;
-        let tree = WidgetTree::empty();
-        let attribute_storage = AttributeStorage::empty();
         let viewport = Viewport::new(size);
 
         let fps = 30;
         let sleep_micros: u128 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u128;
 
-        let (message_sender, message_receiver) = flume::unbounded();
-
         let watcher = self.set_watcher()?;
 
         let mut inst = Runtime {
-            component_registry: &mut self.component_registry,
+            component_registry: self.component_registry,
             components: Components::new(),
-            document: &mut self.document,
-            factory: &self.factory,
-            tree,
+            document: self.document,
+            factory: self.factory,
             states: States::new(),
-            attribute_storage,
             floating_widgets: FloatingWidgets::empty(),
             changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
             assoc_events: AssociatedEvents::new(),
             focus_queue: FocusQueue::new(),
             glyph_map: GlyphMap::empty(),
-            blueprint: &blueprint,
-            globals: &globals,
+            blueprint,
+            globals,
             changes: Changes::empty(),
             viewport,
-            emitter: message_sender.into(),
-            message_receiver,
+            message_receiver: self.message_receiver,
+            emitter: self.emitter,
             fps,
             sleep_micros,
             dt: Instant::now(),
             _watcher: Some(watcher),
         };
 
-        inst.init();
-
         loop {
             f(&mut inst)?;
+            inst.reload();
         }
     }
 

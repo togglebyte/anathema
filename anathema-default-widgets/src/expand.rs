@@ -24,15 +24,14 @@ impl Widget for Expand {
         let mut size = single_layout(children, constraints, ctx);
 
         let attributes = ctx.attribute_storage.get(id);
-        panic!();
-        // match attributes.get("axis") {
-        //     Some(Axis::Horizontal) => size.width = constraints.max_width(),
-        //     Some(Axis::Vertical) => size.height = constraints.max_height(),
-        //     None => {
-        //         size.width = constraints.max_width();
-        //         size.height = constraints.max_height();
-        //     }
-        // }
+        match attributes.get_as::<Axis>("axis") {
+            Some(Axis::Horizontal) => size.width = constraints.max_width(),
+            Some(Axis::Vertical) => size.height = constraints.max_height(),
+            None => {
+                size.width = constraints.max_width();
+                size.height = constraints.max_height();
+            }
+        }
 
         size
     }

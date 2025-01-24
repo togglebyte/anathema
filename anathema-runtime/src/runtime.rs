@@ -15,8 +15,8 @@ use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentKind, ComponentRegistry, Emitter,
-    FocusQueue, UntypedContext, ViewMessage,
+    AnyComponent, AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentKind,
+    ComponentRegistry, Emitter, FocusQueue, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Elements;
@@ -29,16 +29,14 @@ use notify::RecommendedWatcher;
 pub use crate::error::Result;
 use crate::REBUILD;
 
-pub struct Runtime<'bp> {
-    pub(super) blueprint: &'bp Blueprint,
-    pub(super) globals: &'bp Globals,
-    pub(super) factory: &'bp Factory,
-    pub(super) tree: WidgetTree<'bp>,
+pub struct Runtime {
+    pub(super) blueprint: Blueprint,
+    pub(super) globals: Globals,
+    pub(super) factory: Factory,
     pub(super) states: States,
-    pub(super) attribute_storage: AttributeStorage<'bp>,
-    pub(super) component_registry: &'bp mut ComponentRegistry,
+    pub(super) component_registry: ComponentRegistry,
     pub(super) components: Components,
-    pub(super) document: &'bp mut Document,
+    pub(super) document: Document,
     pub(super) floating_widgets: FloatingWidgets,
     pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
@@ -55,42 +53,57 @@ pub struct Runtime<'bp> {
     pub(super) _watcher: Option<RecommendedWatcher>,
 }
 
-impl<'bp> Runtime<'bp> {
+impl Runtime {
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
-        let mut frame = self.next_frame(true)?;
+        let mut tree = WidgetTree::empty();
+        let mut attribute_storage = AttributeStorage::empty();
+        let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
+        frame.init();
+        frame.tick(backend, true);
 
         loop {
-            frame.tick(backend);
+            frame.tick(backend, false);
             frame.present(backend);
             frame.cleanup();
+            // std::thread::sleep_ms(1000);
             std::thread::sleep_ms(16 * 2);
+
+            if REBUILD.swap(false, Ordering::Relaxed) {
+                frame.return_state();
+                break;
+            }
         }
 
         Ok(())
     }
 
-    pub fn next_frame(&mut self, force_layout: bool) -> Result<Frame<'_, 'bp>> {
+    pub fn next_frame<'frame, 'bp>(
+        &'bp mut self,
+        tree: &'frame mut WidgetTree<'bp>,
+        attribute_storage: &'frame mut AttributeStorage<'bp>,
+    ) -> Result<Frame<'frame, 'bp>> {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
 
         let layout_ctx = LayoutCtx::new(
-            self.globals,
+            &self.globals,
             &self.factory,
             &mut self.states,
-            &mut self.attribute_storage,
+            attribute_storage,
             &mut self.components,
             &mut self.component_registry,
             &mut self.floating_widgets,
             &mut self.changelist,
             &mut self.glyph_map,
             &mut self.dirty_widgets,
-            self.viewport,
-            force_layout,
+            &mut self.viewport,
+            false,
         );
 
         let inst = Frame {
-            document: self.document,
-            tree: &mut self.tree,
+            document: &self.document,
+            blueprint: &self.blueprint,
+            tree,
             layout_ctx,
             changes: &mut self.changes,
             sleep_micros: self.sleep_micros,
@@ -107,49 +120,27 @@ impl<'bp> Runtime<'bp> {
         Ok(inst)
     }
 
-    pub(crate) fn init(&mut self) -> Result<()> {
-        let blueprint = self.blueprint;
-        let mut first_frame = self.next_frame(true)?;
-        first_frame.init(blueprint);
-        Ok(())
-    }
-
-    fn reload(&mut self) -> Result<()> {
+    pub(super) fn reload(&mut self) -> Result<()> {
         clear_all_changes();
         clear_all_subs();
 
         self.components = Components::new();
-        self.attribute_storage = AttributeStorage::empty();
         self.floating_widgets = FloatingWidgets::empty();
 
         // Reload templates
         self.document.reload_templates()?;
 
-        // Reset the tree
-        let mut tree = WidgetTree::empty();
-        std::mem::swap(&mut tree, &mut self.tree);
-
-        // Return all states
-        for (_, widget) in tree.values().into_iter() {
-            let WidgetKind::Component(comp) = widget.kind else { continue };
-            let ComponentKind::Instance = comp.kind else { continue };
-            let state = self.states.remove(comp.state_id).take();
-            self.component_registry
-                .return_component(comp.component_id, comp.dyn_component, state);
-        }
-
         let (blueprint, globals) = self.document.compile()?;
-        // self.blueprint = blueprint;
-        // self.globals = globals;
-
-        self.init()?;
+        self.blueprint = blueprint;
+        self.globals = globals;
 
         Ok(())
     }
 }
 
 pub struct Frame<'rt, 'bp> {
-    document: &'rt mut Document,
+    document: &'bp Document,
+    blueprint: &'bp Blueprint,
     tree: &'rt mut WidgetTree<'bp>,
     layout_ctx: LayoutCtx<'rt, 'bp>,
     changes: &'rt mut Changes,
@@ -173,7 +164,7 @@ impl<'bp> Frame<'_, 'bp> {
                 let Some((widget_id, state_id)) = self.layout_ctx.components.current() else { return };
                 self.send_event_to_component(event, widget_id, state_id);
             }
-            Event::Mouse(mouse_event) => {
+            Event::Mouse(_) | Event::Resize(_) => {
                 for i in 0..self.layout_ctx.components.len() {
                     let (widget_id, state_id) = self
                         .layout_ctx
@@ -184,16 +175,15 @@ impl<'bp> Frame<'_, 'bp> {
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
-            Event::Resize(size) => todo!(),
             Event::Tick(_) => panic!("this event should never be sent to the runtime"),
         }
     }
 
     // Should be called only once to initialise the node tree.
-    fn init(&mut self, blueprint: &'bp Blueprint) -> Result<()> {
+    pub fn init(&mut self) -> Result<()> {
         let mut ctx = self.layout_ctx.eval_ctx();
         eval_blueprint(
-            blueprint,
+            self.blueprint,
             &mut ctx,
             &Scope::root(),
             root_node(),
@@ -202,16 +192,22 @@ impl<'bp> Frame<'_, 'bp> {
         Ok(())
     }
 
-    pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Duration {
+    pub fn tick<B: Backend>(&mut self, backend: &mut B, force_layout: bool) -> Duration {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
+
+        self.layout_ctx.force_layout = force_layout;
 
         let now = Instant::now();
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
-        self.pull_events(elapsed, now, backend);
+        self.poll_events(elapsed, now, backend);
         self.apply_changes();
         self.cycle(backend);
+
+        // reset force_layout
+        self.layout_ctx.force_layout = false;
+
         *self.dt = Instant::now();
         now.elapsed()
     }
@@ -251,9 +247,9 @@ impl<'bp> Frame<'_, 'bp> {
                 .get_by_component_id(msg.recipient())
                 .map(|e| (e.widget_id, e.state_id))
             {
-                // self.tree.with_component(widget_id, state_id, &mut event_ctx, |a, b| {
-                // //     a.any_message(msg.payload(), b)
-                // });
+                self.with_component(widget_id, state_id, |comp, elements, ctx| {
+                    comp.any_message(elements, ctx, msg.payload())
+                });
             }
 
             // Make sure event handling isn't holding up the rest of the event loop.
@@ -265,8 +261,14 @@ impl<'bp> Frame<'_, 'bp> {
         fps_now.elapsed()
     }
 
-    fn pull_events<B: Backend>(&mut self, remaining: Duration, fps_now: Instant, backend: &mut B) {
+    fn poll_events<B: Backend>(&mut self, remaining: Duration, fps_now: Instant, backend: &mut B) {
         while let Some(event) = backend.next_event(remaining) {
+            if let Event::Resize(size) = event {
+                self.layout_ctx.viewport.resize(size);
+                self.layout_ctx.force_layout = true;
+                backend.resize(size, self.layout_ctx.glyph_map);
+            }
+
             self.event(event);
 
             // Make sure event handling isn't holding up the rest of the event loop.
@@ -304,12 +306,14 @@ impl<'bp> Frame<'_, 'bp> {
         });
     }
 
-    fn poll_event<B: Backend>(&mut self, poll_timeout: Duration, backend: &mut B) {
-        let Some(event) = backend.next_event(poll_timeout) else { return };
-        self.event(event);
+    fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
+        self.with_component(widget_id, state_id, |comp, elements, ctx| comp.any_event(elements, ctx, event));
     }
 
-    fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
+    fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, mut f: F)
+    where
+        F: FnOnce(&mut Box<dyn AnyComponent>, Elements<'_, '_>, AnyComponentContext<'_>) -> U,
+    {
         let mut tree = self.tree.view_mut();
 
         tree.with_value_mut(widget_id, |path, container, children| {
@@ -340,7 +344,7 @@ impl<'bp> Frame<'_, 'bp> {
                         &self.document.strings,
                     );
 
-                    component.dyn_component.any_event(elements, ctx, event);
+                    f(&mut component.dyn_component, elements, ctx);
                 });
         });
     }
@@ -396,7 +400,7 @@ impl<'bp> Frame<'_, 'bp> {
         }
 
         loop {
-            let dur = self.tick(backend);
+            let dur = self.tick(backend, false);
             self.present(backend);
             self.cleanup();
 
@@ -412,6 +416,22 @@ impl<'bp> Frame<'_, 'bp> {
 
             let sleep = self.sleep_micros - dur.as_micros();
             std::thread::sleep(Duration::from_micros(sleep as u64));
+        }
+    }
+
+    // Return the state for each component back into the component registry
+    fn return_state(mut self) {
+        // Return all states
+        let mut tree = WidgetTree::empty();
+        std::mem::swap(&mut tree, self.tree);
+
+        for (_, widget) in tree.values().into_iter() {
+            let WidgetKind::Component(comp) = widget.kind else { continue };
+            let ComponentKind::Instance = comp.kind else { continue };
+            let state = self.layout_ctx.states.remove(comp.state_id).take();
+            self.layout_ctx
+                .component_registry
+                .return_component(comp.component_id, comp.dyn_component, state);
         }
     }
 }

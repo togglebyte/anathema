@@ -367,7 +367,7 @@ pub struct AnyComponentContext<'frame> {
     focus_queue: &'frame mut FocusQueue,
     state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
     pub emitter: &'frame Emitter,
-    pub viewport: Viewport,
+    pub viewport: &'frame Viewport,
     pub strings: &'frame Strings,
 }
 
@@ -381,7 +381,7 @@ impl<'frame> AnyComponentContext<'frame> {
         attributes: &'frame Attributes<'frame>,
         state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
         emitter: &'frame Emitter,
-        viewport: Viewport,
+        viewport: &'frame Viewport,
         strings: &'frame Strings,
     ) -> Self {
         Self {
@@ -634,7 +634,8 @@ where
             Event::Key(ev) => self.on_key(ev, &mut *state, elements, context),
             Event::Mouse(ev) => self.on_mouse(ev, &mut *state, elements, context),
             Event::Tick(dt) => self.tick(&mut *state, elements, context, dt),
-            Event::Resize(_) | Event::Noop | Event::Stop => (),
+            Event::Resize(_) => self.resize(&mut *state, elements, context),
+            Event::Noop | Event::Stop => (),
         }
         event
     }

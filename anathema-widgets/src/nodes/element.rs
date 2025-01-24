@@ -55,7 +55,7 @@ impl<'bp> Element<'bp> {
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        self.container.paint(children, ctx, attribute_storage)
+        self.container.paint(children, ctx, attribute_storage);
     }
 
     pub fn size(&self) -> Size {

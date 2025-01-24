@@ -10,8 +10,7 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFil
 use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::tree::WidgetPositionFilter;
 use anathema_widgets::{
-    DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren, PositionChildren,
-    WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
+    awful_debug, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree
 };
 
 pub mod test;
@@ -70,7 +69,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Position -
         // -----------------------------------------------------------------------------
-        self.position(ctx.attribute_storage, ctx.viewport, PositionFilter::floating());
+        self.position(ctx.attribute_storage, *ctx.viewport, PositionFilter::floating());
 
         // -----------------------------------------------------------------------------
         //   - Paint -
@@ -78,7 +77,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         self.paint(ctx, PaintFilter::floating());
     }
 
-    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+    fn fixed(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
@@ -87,13 +86,16 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // -----------------------------------------------------------------------------
         //   - Position -
         // -----------------------------------------------------------------------------
-        self.position(ctx.attribute_storage, ctx.viewport, PositionFilter::fixed());
+        self.position(ctx.attribute_storage, *ctx.viewport, PositionFilter::fixed());
 
         // -----------------------------------------------------------------------------
         //   - Paint -
         // -----------------------------------------------------------------------------
         self.paint(ctx, PaintFilter::fixed());
+    }
 
+    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+        self.fixed(ctx);
         self.floating(ctx);
     }
 
@@ -104,6 +106,16 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         if ctx.dirty_widgets.is_empty() && !ctx.force_layout {
             return;
         }
+
+        // TODO: this is a hack.
+        // This forces the entire tree to be laid out.
+        //
+        // This is just intermediary until we figure out how we are going to 
+        // do this.
+        //
+        // One way would be to call layout directly on the widget and if it affects
+        // the size then propagate the change outwards
+        ctx.force_layout = true;
 
         let scope = Scope::root();
         let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope, filter);
