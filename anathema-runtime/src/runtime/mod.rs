@@ -319,7 +319,9 @@ impl<'bp> Frame<'_, 'bp> {
 
     fn drain_assoc_events(&mut self) {
         while let Some(mut event) = self.assoc_events.next() {
-            let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(event.parent.into()) else { return };
+            let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(event.parent.into()) else {
+                return;
+            };
 
             let Some(remote_state) = self.layout_ctx.states.get(event.state) else { return };
             let Some(remote_state) = remote_state.shared_state() else { return };
@@ -360,7 +362,11 @@ impl<'bp> Frame<'_, 'bp> {
 
     fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
         self.with_component(widget_id, state_id, |comp, elements, ctx| {
-            comp.any_event(elements, ctx, event)
+            if !comp.any_ticks() && matches!(event, Event::Tick(_)) {
+                return;
+            }
+
+            comp.any_event(elements, ctx, event);
         });
     }
 
@@ -372,9 +378,6 @@ impl<'bp> Frame<'_, 'bp> {
 
         tree.with_value_mut(widget_id, |path, container, children| {
             let WidgetKind::Component(component) = &mut container.kind else { return };
-            if !component.dyn_component.any_ticks() {
-                return;
-            }
 
             let state = self.layout_ctx.states.get_mut(state_id);
 

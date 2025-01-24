@@ -9,7 +9,7 @@ mod key;
 mod mouse;
 
 /// An event
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Event {
     /// No op
     Noop,
