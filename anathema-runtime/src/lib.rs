@@ -52,7 +52,6 @@ static REBUILD: AtomicBool = AtomicBool::new(false);
 mod error;
 mod events;
 mod renderonly;
-mod testing;
 mod tree;
 
 pub mod builder;

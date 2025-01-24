@@ -1,4 +1,3 @@
-use anathema::CommonVal;
 use anathema_value_resolver::ValueKind;
 
 pub const ALIGNMENT: &str = "alignment";

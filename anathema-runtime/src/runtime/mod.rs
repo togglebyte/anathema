@@ -13,13 +13,14 @@ use anathema_strings::HStrings;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
+use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
     AnyComponent, AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentKind,
     ComponentRegistry, Emitter, FocusQueue, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
-use anathema_widgets::query::Elements;
+use anathema_widgets::query::{Children, Elements};
 use anathema_widgets::{
     eval_blueprint, update_widget, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId,
     WidgetKind, WidgetTree, WidgetTreeView,
@@ -28,6 +29,8 @@ use notify::RecommendedWatcher;
 
 pub use crate::error::Result;
 use crate::REBUILD;
+
+mod testing;
 
 pub struct Runtime {
     pub(super) blueprint: Blueprint,
@@ -51,6 +54,7 @@ pub struct Runtime {
     pub(super) message_receiver: flume::Receiver<ViewMessage>,
     pub(super) dt: Instant,
     pub(super) _watcher: Option<RecommendedWatcher>,
+    pub(super) deferred_components: DeferredComponents,
 }
 
 impl Runtime {
@@ -110,6 +114,7 @@ impl Runtime {
 
             focus_queue: &mut self.focus_queue,
             assoc_events: &mut self.assoc_events,
+            deferred_components: &mut self.deferred_components,
 
             emitter: &self.emitter,
             message_receiver: &self.message_receiver,
@@ -142,6 +147,7 @@ pub struct Frame<'rt, 'bp> {
     document: &'bp Document,
     blueprint: &'bp Blueprint,
     tree: &'rt mut WidgetTree<'bp>,
+    deferred_components: &'rt mut DeferredComponents,
     layout_ctx: LayoutCtx<'rt, 'bp>,
     changes: &'rt mut Changes,
     assoc_events: &'rt mut AssociatedEvents,
@@ -202,6 +208,8 @@ impl<'bp> Frame<'_, 'bp> {
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.poll_events(elapsed, now, backend);
+        self.drain_deferred_commands();
+        self.drain_assoc_events();
         self.apply_changes();
         self.cycle(backend);
 
@@ -278,6 +286,50 @@ impl<'bp> Frame<'_, 'bp> {
         }
     }
 
+    fn drain_deferred_commands(&mut self) {
+        // TODO don't cause a bunch of allocations here.
+        // Possibly drain into a new list
+        let commands = self.deferred_components.drain().collect::<Vec<_>>();
+        for mut cmd in commands {
+            let Some((widget_id, state_id)) =
+                cmd.filter_components(self.tree.view_mut(), self.layout_ctx.attribute_storage)
+            else {
+                continue;
+            };
+
+            match cmd.kind {
+                CommandKind::SendMessage(msg) => {
+                    self.with_component(widget_id, state_id, |comp, elements, ctx| {
+                        comp.any_message(elements, ctx, msg)
+                    });
+                }
+                CommandKind::Focus => {
+                    // Blur old focus
+                    if let Some((widget_id, state_id)) = self.layout_ctx.components.current() {
+                        self.with_component(widget_id, state_id, |comp, children, ctx| comp.any_blur(children, ctx));
+                    }
+
+                    // Set new focus
+                    self.layout_ctx.components.set(widget_id);
+                    self.with_component(widget_id, state_id, |comp, children, ctx| comp.any_focus(children, ctx));
+                }
+            }
+        }
+    }
+
+    fn drain_assoc_events(&mut self) {
+        while let Some(mut event) = self.assoc_events.next() {
+            let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(event.parent.into()) else { return };
+
+            let Some(remote_state) = self.layout_ctx.states.get(event.state) else { return };
+            let Some(remote_state) = remote_state.shared_state() else { return };
+            self.with_component(widget_id, state_id, |comp, children, ctx| {
+                let event_ident = self.document.strings.get_ref_unchecked(event.external);
+                comp.any_receive(children, ctx, event_ident, &*remote_state);
+            });
+        }
+    }
+
     fn cycle<B: Backend>(&mut self, backend: &mut B) {
         let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
         cycle.run(&mut self.layout_ctx);
@@ -307,12 +359,14 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
-        self.with_component(widget_id, state_id, |comp, elements, ctx| comp.any_event(elements, ctx, event));
+        self.with_component(widget_id, state_id, |comp, elements, ctx| {
+            comp.any_event(elements, ctx, event)
+        });
     }
 
     fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, mut f: F)
     where
-        F: FnOnce(&mut Box<dyn AnyComponent>, Elements<'_, '_>, AnyComponentContext<'_>) -> U,
+        F: FnOnce(&mut Box<dyn AnyComponent>, Children<'_, '_>, AnyComponentContext<'_>) -> U,
     {
         let mut tree = self.tree.view_mut();
 
@@ -327,7 +381,7 @@ impl<'bp> Frame<'_, 'bp> {
             self.layout_ctx
                 .attribute_storage
                 .with_mut(widget_id, |attributes, storage| {
-                    let mut elements = Elements::new(children, storage, self.layout_ctx.dirty_widgets);
+                    let mut elements = Children::new(children, storage, self.layout_ctx.dirty_widgets);
 
                     let Some(state) = state else { return };
 
@@ -337,6 +391,7 @@ impl<'bp> Frame<'_, 'bp> {
                         component.assoc_functions,
                         self.assoc_events,
                         self.focus_queue,
+                        self.deferred_components,
                         attributes,
                         Some(state),
                         self.emitter,
@@ -359,63 +414,6 @@ impl<'bp> Frame<'_, 'bp> {
 
             let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
-        }
-    }
-
-    // -----------------------------------------------------------------------------
-    //   - Used with test driver -
-    // -----------------------------------------------------------------------------
-
-    pub fn components(&mut self) -> anathema_widgets::query::Components<'_, 'bp> {
-        anathema_widgets::query::Components::new(
-            self.tree.view_mut(),
-            self.layout_ctx.attribute_storage,
-            self.layout_ctx.dirty_widgets,
-        )
-    }
-
-    pub fn elements(&mut self) -> Elements<'_, 'bp> {
-        Elements::new(
-            self.tree.view_mut(),
-            self.layout_ctx.attribute_storage,
-            self.layout_ctx.dirty_widgets,
-        )
-    }
-
-    // TODO: this can't really be called a frame if we can tick it multiple
-    // times. Maybe RuntimeMut or something less mental
-    pub fn wait_for_monitor<B: Backend>(
-        &mut self,
-        backend: &mut B,
-        watcher: Watcher,
-        mut timeout: Duration,
-    ) -> Result<Watched> {
-        let now = Instant::now();
-
-        let mut watchers = Stack::empty();
-        drain_watchers(&mut watchers);
-
-        if watchers.contains(&watcher) {
-            return Ok(Watched::Triggered);
-        }
-
-        loop {
-            let dur = self.tick(backend, false);
-            self.present(backend);
-            self.cleanup();
-
-            drain_watchers(&mut watchers);
-
-            if watchers.contains(&watcher) {
-                return Ok(Watched::Triggered);
-            }
-
-            if timeout.saturating_sub(now.elapsed()).is_zero() {
-                break Ok(Watched::Timeout);
-            }
-
-            let sleep = self.sleep_micros - dur.as_micros();
-            std::thread::sleep(Duration::from_micros(sleep as u64));
         }
     }
 

@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use super::{Type, Value};
 use crate::states::{AnyList, AnyState};
 use crate::store::changed;
-use crate::{Change, CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
+use crate::{Change, Path, PendingValue, State, Subscriber, ValueRef};
 
 // TODO: Optimisation: changing the list should probably just create one
 //       change instead of two for the list.

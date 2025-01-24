@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
-use anathema_state::CommonVal;
 use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};

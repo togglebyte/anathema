@@ -1,6 +1,5 @@
 use std::ops::ControlFlow;
 
-use anathema::CommonVal;
 use anathema_geometry::Size;
 use anathema_value_resolver::ValueKind;
 use anathema_widgets::layout::{Constraints, LayoutCtx};

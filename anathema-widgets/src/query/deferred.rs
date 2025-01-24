@@ -15,11 +15,11 @@ fn comptest_delete_this<'tree, 'bp>(components: ComponentQuery<'_, 'tree, 'bp, K
     let value = components.by_name("").by_name("").by_name("").first(|id, c, a| 123);
 }
 
-pub struct Components<'children, 'tree, 'bp> {
+pub struct DeferredComponents {
     pub(super) elements: &'children mut Nodes<'tree, 'bp>,
 }
 
-impl<'children, 'tree, 'bp> Components<'children, 'tree, 'bp> {
+impl<'children, 'tree, 'bp> DeferredComponents<'children, 'tree, 'bp> {
     pub fn by_name<'a>(&mut self, name: &'a str) -> ComponentQuery<'_, 'tree, 'bp, Kind<'a>> {
         self.make_query(Kind::ByName(name))
     }
@@ -92,6 +92,44 @@ where
         self.query(&mut f, true);
     }
 
+    fn queryold<U>(
+        self,
+        f: &mut impl FnMut(WidgetId, &mut Component<'_>, &mut Attributes<'_>) -> U,
+        continuous: bool,
+    ) -> Option<U> {
+        let len = self.query.elements.children.layout.len();
+        for i in 0..self.query.elements.children.layout.len() {
+            let node = &self.query.elements.children.layout[i];
+            let Some((_path, container)) = self.query.elements.children.values.get_mut(node.value()) else {
+                continue;
+            };
+
+            let WidgetKind::Component(ref mut component) = container.kind else { continue };
+
+            if !self.query.filter.filter(component, self.query.elements.attributes) {
+                continue;
+            }
+
+            let attributes = self.query.elements.attributes.get_mut(component.widget_id);
+            let retval = f(component.widget_id, component, attributes);
+
+            if !continuous {
+                return Some(retval);
+            }
+
+            let mut query = ComponentQuery {
+                query: Query {
+                    elements: self.query.elements,
+                    filter: self.query.filter,
+                },
+            };
+
+            query.query(f, continuous);
+        }
+
+        None
+    }
+
     fn query<F, U>(self, mut f: &mut F, continuous: bool) -> ControlFlow<U>
     where
         F: FnMut(WidgetId, &mut Component<'_>, &mut Attributes<'_>) -> U,
@@ -153,3 +191,4 @@ impl<'bp> Filter<'bp> for Kind<'_> {
         }
     }
 }
+

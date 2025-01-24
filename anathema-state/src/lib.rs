@@ -4,7 +4,6 @@ pub use anathema_state_derive::State;
 use anathema_store::slab::Key;
 
 pub use crate::colors::{Color, FromColor};
-pub use crate::common::{CommonString, CommonVal};
 pub use crate::numbers::Number;
 pub use crate::states::{AnyMap, AnyState, State, StateId, States};
 pub use crate::store::watchers::Watcher;

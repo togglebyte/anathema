@@ -8,6 +8,7 @@ use anathema_state::{Changes, States};
 use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, FocusQueue, ViewMessage};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree};
@@ -156,6 +157,7 @@ impl Builder {
             sleep_micros,
             dt: Instant::now(),
             _watcher: Some(watcher),
+            deferred_components: DeferredComponents::new(),
         };
 
         loop {

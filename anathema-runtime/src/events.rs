@@ -3,12 +3,12 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
 use anathema_geometry::Size;
-use anathema_state::{AnyState, CommonVal, States};
-use anathema_value_resolver::AttributeStorage;
+use anathema_state::{AnyState, States};
+use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
 use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
-use anathema_widgets::query::Elements;
+use anathema_widgets::query::{Children, Elements};
 use anathema_widgets::{Components, DirtyWidgets, GlyphMap, WidgetKind, WidgetTree};
 
 use crate::error::{Error, Result};
@@ -324,7 +324,8 @@ impl<'rt> GlobalContext<'rt> {
 
     /// Queue a focus call to a component that might have
     /// an attribute matching the key and value pair
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal>) {
+    #[deprecated(note = "use components.query.focus")]
+    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<ValueKind<'static>>) {
         self.focus_queue.push(key.into(), value.into());
     }
 }
@@ -334,7 +335,7 @@ pub trait GlobalEvents {
     /// This is called for each event before the event reaches a component.
     ///
     /// If `None` is returned here the event will never reach a component.
-    fn handle(&mut self, event: Event, elements: &mut Elements<'_, '_>, ctx: &mut GlobalContext<'_>) -> Option<Event>;
+    fn handle(&mut self, event: Event, elements: &mut Children<'_, '_>, ctx: &mut GlobalContext<'_>) -> Option<Event>;
 
     /// Return `false` here to disable using tab and backtab to cycle through component focus
     fn enable_tab_navigation(&mut self) -> bool {
@@ -343,7 +344,7 @@ pub trait GlobalEvents {
 }
 
 impl GlobalEvents for () {
-    fn handle(&mut self, event: Event, _: &mut Elements<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
+    fn handle(&mut self, event: Event, _: &mut Children<'_, '_>, _: &mut GlobalContext<'_>) -> Option<Event> {
         match event {
             Event::Key(KeyEvent {
                 code: KeyCode::Char('c'),

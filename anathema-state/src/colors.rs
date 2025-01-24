@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::{CommonVal, Hex, State};
+use crate::{Hex, State};
 
 pub trait FromColor {
     fn from_color<T>(color: Color) -> T;

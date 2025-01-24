@@ -1,7 +1,6 @@
 use std::ops::{AddAssign, Deref};
 
 use anathema_geometry::Size;
-use anathema_state::CommonVal;
 use anathema_store::tree::ValueId;
 use anathema_value_resolver::ValueKind;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};

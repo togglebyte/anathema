@@ -19,8 +19,8 @@ pub mod prelude {
     pub use crate::widgets::components::Context;
 }
 pub mod component {
-    pub use crate::state::{Color, CommonVal, List, Map, State, Value};
+    pub use crate::state::{AnyState, Color, List, Map, State, Value};
     pub use crate::widgets::components::events::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseState};
     pub use crate::widgets::components::{Component, ComponentId, Context, Emitter};
-    pub use crate::widgets::query::Elements;
+    pub use crate::widgets::query::Children;
 }

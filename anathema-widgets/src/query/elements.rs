@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region};
-use anathema_state::CommonVal;
 pub use anathema_store::tree::visitor::apply_visitor;
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::{Node, TreeValues};
@@ -11,21 +10,11 @@ use super::{Chain, Filter, Nodes, Query, QueryValue};
 use crate::nodes::element::Element;
 use crate::{DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
 
-pub struct Elements<'tree, 'bp> {
-    elements: Nodes<'tree, 'bp>,
+pub struct Elements<'children, 'tree, 'bp> {
+    pub(super) elements: &'children mut Nodes<'tree, 'bp>,
 }
 
-impl<'tree, 'bp> Elements<'tree, 'bp> {
-    pub fn new(
-        children: WidgetTreeView<'tree, 'bp>,
-        attribute_storage: &'tree mut AttributeStorage<'bp>,
-        dirty_widgets: &'tree mut DirtyWidgets,
-    ) -> Self {
-        Self {
-            elements: Nodes::new(children, attribute_storage, dirty_widgets),
-        }
-    }
-
+impl<'children, 'tree, 'bp> Elements<'children, 'tree, 'bp> {
     pub fn by_tag<'a>(&mut self, tag: &'a str) -> ElementQuery<'_, 'tree, 'bp, Kind<'a>> {
         self.make_query(Kind::ByTag(tag))
     }

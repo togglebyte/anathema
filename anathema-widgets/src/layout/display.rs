@@ -1,4 +1,4 @@
-use anathema_state::{CommonVal, State};
+use anathema_state::State;
 use anathema_value_resolver::ValueKind;
 
 pub const DISPLAY: &str = "display";

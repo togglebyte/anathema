@@ -100,6 +100,11 @@ impl Components {
         self.inner.push(entry);
     }
 
+    pub fn set(&mut self, widget_id: WidgetId) {
+        let Some(index) = self.widget_ids.get(&widget_id) else { return };
+        self.tab_index = *index;
+    }
+
     pub fn remove(&mut self, widget_id: WidgetId) {
         let Some(index) = self.widget_ids.remove(&widget_id) else { return };
         let entry = self.inner.remove(index);
@@ -120,9 +125,9 @@ impl Components {
         self.inner.get(*index)
     }
 
-    pub fn get_by_widget_id(&mut self, id: WidgetId) -> Option<&CompEntry> {
+    pub fn get_by_widget_id(&mut self, id: WidgetId) -> Option<(WidgetId, StateId)> {
         let index = self.widget_ids.get(&id)?;
-        self.inner.get(*index)
+        self.inner.get(*index).map(|e| (e.widget_id, e.state_id))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {

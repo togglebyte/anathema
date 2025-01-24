@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 
-use anathema_state::CommonVal;
 use anathema_value_resolver::{AttributeStorage, ValueKind};
 
 pub use self::components::Components;
@@ -9,6 +8,30 @@ use crate::{DirtyWidgets, WidgetTreeView};
 
 mod components;
 mod elements;
+
+pub struct Children<'tree, 'bp>(Nodes<'tree, 'bp>);
+
+impl<'tree, 'bp> Children<'tree, 'bp> {
+    pub fn new(
+        children: WidgetTreeView<'tree, 'bp>,
+        attribute_storage: &'tree mut AttributeStorage<'bp>,
+        dirty_widgets: &'tree mut DirtyWidgets,
+    ) -> Self {
+        Self(Nodes::new(children, attribute_storage, dirty_widgets))
+    }
+
+    pub fn elements(&mut self) -> Elements<'_, 'tree, 'bp> {
+        Elements {
+            elements: &mut self.0
+        }
+    }
+
+    pub fn components(&mut self) -> Components<'_, 'tree, 'bp> {
+        Components {
+            elements: &mut self.0
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone)]
 pub enum QueryValue<'a> {
@@ -25,10 +48,18 @@ impl<'a> From<&'a str> for QueryValue<'a> {
 
 impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
     fn eq(&self, other: &ValueKind<'_>) -> bool {
-        todo!()
+        match self {
+            QueryValue::Str(lhs) => match other {
+                ValueKind::Str(rhs) => lhs == rhs,
+                _ => false,
+            },
+            &QueryValue::Int(lhs) => match other {
+                &ValueKind::Int(rhs) => lhs as i64 == rhs,
+                _ => false,
+            },
+        }
     }
 }
-
 
 // -----------------------------------------------------------------------------
 //   - Elements -

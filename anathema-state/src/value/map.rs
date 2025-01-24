@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use super::{Type, Value};
 use crate::states::{AnyMap, AnyState};
-use crate::{CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
+use crate::{Path, PendingValue, State, Subscriber, ValueRef};
 
 #[derive(Debug)]
 pub struct Map<T> {
