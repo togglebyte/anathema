@@ -187,7 +187,7 @@ impl<'bp> Frame<'_, 'bp> {
 
     // Should be called only once to initialise the node tree.
     pub fn init(&mut self) -> Result<()> {
-        let mut ctx = self.layout_ctx.eval_ctx();
+        let mut ctx = self.layout_ctx.eval_ctx(None);
         eval_blueprint(
             self.blueprint,
             &mut ctx,

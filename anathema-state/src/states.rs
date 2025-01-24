@@ -150,6 +150,19 @@ pub trait AnyState: 'static {
     }
 }
 
+impl dyn AnyState {
+    pub fn try_to<T: 'static>(&self) -> Option<&T> {
+        self.to_any_ref().downcast_ref()
+    }
+
+    pub fn to<T: 'static>(&self) -> &T {
+        match self.try_to() {
+            Some(val) => val,
+            None => panic!("invalid type"),
+        }
+    }
+}
+
 impl AnyState for Box<dyn AnyState> {
     fn type_info(&self) -> Type {
         self.as_ref().type_info()

@@ -10,7 +10,8 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFil
 use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::tree::WidgetPositionFilter;
 use anathema_widgets::{
-    awful_debug, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree
+    awful_debug, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
+    PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
 };
 
 pub mod test;
@@ -110,7 +111,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         // TODO: this is a hack.
         // This forces the entire tree to be laid out.
         //
-        // This is just intermediary until we figure out how we are going to 
+        // This is just intermediary until we figure out how we are going to
         // do this.
         //
         // One way would be to call layout directly on the widget and if it affects
@@ -118,7 +119,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         ctx.force_layout = true;
 
         let scope = Scope::root();
-        let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope, filter);
+        let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope, filter, None);
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
             widget.layout(children, constraints, ctx);

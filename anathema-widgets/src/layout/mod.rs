@@ -76,7 +76,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         self.dirty_widgets.contains(node_id) || self.force_layout
     }
 
-    pub fn eval_ctx(&mut self) -> EvalCtx<'_, 'bp> {
+    pub fn eval_ctx(&mut self, parent_component: Option<WidgetId>) -> EvalCtx<'_, 'bp> {
         EvalCtx {
             floating_widgets: self.floating_widgets,
             attribute_storage: self.attribute_storage,
@@ -85,7 +85,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             components: self.components,
             globals: self.globals,
             factory: &self.factory,
-            parent: None,
+            parent_component,
         }
     }
 }
@@ -98,7 +98,7 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) components: &'frame mut Components,
     pub(super) globals: &'bp Globals,
     pub(super) factory: &'frame Factory,
-    pub(super) parent: Option<WidgetId>,
+    pub(super) parent_component: Option<WidgetId>,
 }
 
 impl<'frame, 'bp> EvalCtx<'frame, 'bp> {

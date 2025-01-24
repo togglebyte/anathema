@@ -214,7 +214,7 @@ impl Evaluator for ComponentEval {
             widget_id,
             kind,
             &input.assoc_functions,
-            ctx.parent,
+            ctx.parent_component,
         );
 
         let widget = WidgetKind::Component(comp_widget);
