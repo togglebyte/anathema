@@ -58,6 +58,7 @@ pub struct LayoutForEach<'a, 'bp> {
     generator: Option<Generator<'a, 'bp>>,
     parent_component: Option<WidgetId>,
     filter: LayoutFilter,
+    offset: usize,
 }
 
 impl<'a, 'bp> LayoutForEach<'a, 'bp> {
@@ -73,7 +74,13 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
             generator: None,
             parent_component,
             filter,
+            offset: 0,
         }
+    }
+
+    pub fn skip(&mut self, count: usize) -> &mut Self {
+        self.offset = count;
+        self
     }
 
     fn with_generator(
@@ -89,6 +96,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
             generator: Some(generator),
             filter,
             parent_component,
+            offset: 0,
         }
     }
 
@@ -103,8 +111,10 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
-        for index in 0..self.tree.layout_len() {
+        let mut processed_count = 0;
+        for index in self.offset..self.tree.layout_len() {
             self.process(index, ctx, f)?;
+            processed_count += 1;
         }
 
         // If there is no parent then there can be no children generated
@@ -250,7 +260,8 @@ fn generate<'bp>(
             }
 
             let mut ctx = ctx.eval_ctx(parent_component);
-            // TODO: unwrap: this should probagate somewhere useful
+            // TODO: unwrap.
+            // this should propagate somewhere useful
             eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree).unwrap();
             true
         }

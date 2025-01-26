@@ -27,6 +27,7 @@ use anathema_widgets::{
 };
 use notify::RecommendedWatcher;
 
+use crate::builder::Builder;
 pub use crate::error::Result;
 use crate::REBUILD;
 
@@ -58,6 +59,10 @@ pub struct Runtime {
 }
 
 impl Runtime {
+    pub fn builder(doc: Document) -> Builder {
+        Builder::new(doc)
+    }
+
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();

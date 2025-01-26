@@ -133,7 +133,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
         let mut for_each = PositionChildren::new(self.tree.view_mut(), attributes, filter);
         for_each.each(|widget, children| {
-            widget.position(children, Pos::ZERO, attributes, viewport);
+            let region = widget.position(children, Pos::ZERO, attributes, viewport);
             ControlFlow::Break(())
         });
     }

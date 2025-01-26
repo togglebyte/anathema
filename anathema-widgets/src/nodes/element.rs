@@ -44,8 +44,8 @@ impl<'bp> Element<'bp> {
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
-    ) {
-        self.container.position(children, pos, attribute_storage, viewport);
+    ) -> Region {
+        self.container.position(children, pos, attribute_storage, viewport)
     }
 
     /// Draw an element to the surface

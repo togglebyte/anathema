@@ -79,6 +79,7 @@ impl Many {
         mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
+        offset: usize,
     ) -> Size {
         let max_constraints = constraints;
 
@@ -87,7 +88,7 @@ impl Many {
 
         let mut size = Size::ZERO;
 
-        children.each(ctx, |ctx, node, children| {
+        children.skip(offset).each(ctx, |ctx, node, children| {
             if ["spacer", "expand"].contains(&node.ident) {
                 return ControlFlow::Continue(());
             }

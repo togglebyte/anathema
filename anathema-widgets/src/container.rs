@@ -69,7 +69,7 @@ impl Container {
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
-    ) {
+    ) -> Region {
         self.pos = pos;
         let ctx = PositionCtx {
             inner_size: self.cache.size,
@@ -78,6 +78,7 @@ impl Container {
         };
         self.inner.any_position(children, self.id, attribute_storage, ctx);
         self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.cache.size);
+        Region::from((self.pos, self.cache.size))
     }
 
     pub(crate) fn paint<'bp>(
