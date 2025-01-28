@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::StateId;
-use anathema_store::slab::SecondaryMap;
+use anathema_store::slab::{Key, SecondaryMap, Slab};
 use anathema_store::smallmap::SmallMap;
 use anathema_store::sorted::SortedList;
 use anathema_store::tree::{Tree, TreeForEach, TreeView};
@@ -63,22 +63,25 @@ impl PartialEq for CompEntry {
 /// This handles tab indexing and the list of component positions in the tree
 pub struct Components {
     /// Current selected component
-    pub tab_index: usize,
+    pub tab_index: u32,
     /// All components
-    inner: SortedList<CompEntry>,
+    inner: Slab<u32, CompEntry>,
     /// Map the widget id to the component entry
-    widget_ids: SmallMap<WidgetId, usize>,
+    widget_ids: SmallMap<WidgetId, u32>,
     /// Map the widget component id to the component entry
-    comp_ids: SmallMap<ComponentBlueprintId, usize>,
+    comp_ids: SmallMap<ComponentBlueprintId, u32>,
+
+    len: usize,
 }
 
 impl Components {
     pub fn new() -> Self {
         Self {
             tab_index: 0,
-            inner: SortedList::empty(),
+            inner: Slab::empty(),
             widget_ids: SmallMap::empty(),
             comp_ids: SmallMap::empty(),
+            len: 0,
         }
     }
 
@@ -95,9 +98,11 @@ impl Components {
             widget_id,
             state_id,
         };
-        self.widget_ids.set(widget_id, self.inner.len());
-        self.comp_ids.set(component_id, self.inner.len());
-        self.inner.push(entry);
+
+        let key = self.inner.insert(entry);
+        self.widget_ids.set(widget_id, key);
+        self.comp_ids.set(component_id, key);
+        self.len += 1;
     }
 
     pub fn set(&mut self, widget_id: WidgetId) {
@@ -109,6 +114,7 @@ impl Components {
         let Some(index) = self.widget_ids.remove(&widget_id) else { return };
         let entry = self.inner.remove(index);
         self.comp_ids.remove(&entry.component_id);
+        self.len -= 1;
     }
 
     pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
@@ -116,7 +122,7 @@ impl Components {
     }
 
     // This needs mutable access to self as it will sort the list if needed
-    pub fn get(&mut self, index: usize) -> Option<(WidgetId, StateId)> {
+    pub fn get(&mut self, index: u32) -> Option<(WidgetId, StateId)> {
         self.inner.get(index).map(|e| (e.widget_id, e.state_id))
     }
 
@@ -131,11 +137,11 @@ impl Components {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {
-        self.inner.iter()
+        self.inner.iter_values()
     }
 
     pub fn len(&self) -> usize {
-        self.inner.len()
+        self.len
     }
 }
 

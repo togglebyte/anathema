@@ -44,7 +44,7 @@ impl<'bp> Element<'bp> {
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
-    ) -> Region {
+    ) {
         self.container.position(children, pos, attribute_storage, viewport)
     }
 

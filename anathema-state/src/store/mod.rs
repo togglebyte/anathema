@@ -48,9 +48,10 @@ impl ValueKey {
             3 => Type::Char,
             4 => Type::String,
             5 => Type::Bool,
-            6 => Type::Map,
-            7 => Type::List,
-            8 => Type::Composite,
+            6 => Type::Hex,
+            7 => Type::Map,
+            8 => Type::List,
+            9 => Type::Composite,
             _ => unreachable!("corrupt type information"),
         }
     }

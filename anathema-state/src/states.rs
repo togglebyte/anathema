@@ -325,7 +325,7 @@ impl AnyState for char {
 
 impl AnyState for Hex {
     fn type_info(&self) -> Type {
-        Type::Char
+        Type::Hex
     }
 
     fn to_any_ref(&self) -> &dyn Any {

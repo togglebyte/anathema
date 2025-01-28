@@ -62,7 +62,7 @@ impl<'bp> Frame<'_, 'bp> {
                 break Ok(Watched::Timeout);
             }
 
-            let sleep = self.sleep_micros - dur.as_micros();
+            let sleep = self.sleep_micros - dur.as_micros() as u64;
             std::thread::sleep(Duration::from_micros(sleep as u64));
         }
     }

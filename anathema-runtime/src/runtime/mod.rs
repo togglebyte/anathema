@@ -50,8 +50,7 @@ pub struct Runtime {
     pub(super) changes: Changes,
     pub(super) viewport: Viewport,
     pub(super) emitter: Emitter,
-    pub(super) fps: usize,
-    pub(super) sleep_micros: u128,
+    pub(super) sleep_micros: u64,
     pub(super) message_receiver: flume::Receiver<ViewMessage>,
     pub(super) dt: Instant,
     pub(super) _watcher: Option<RecommendedWatcher>,
@@ -66,6 +65,7 @@ impl Runtime {
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
+        let sleep_micros = self.sleep_micros;
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
         frame.init();
         frame.tick(backend, true);
@@ -74,8 +74,7 @@ impl Runtime {
             frame.tick(backend, false);
             frame.present(backend);
             frame.cleanup();
-            // std::thread::sleep_ms(1000);
-            std::thread::sleep_ms(16 * 2);
+            std::thread::sleep(Duration::from_micros(sleep_micros));
 
             if REBUILD.swap(false, Ordering::Relaxed) {
                 frame.return_state();
@@ -157,7 +156,7 @@ pub struct Frame<'rt, 'bp> {
     changes: &'rt mut Changes,
     assoc_events: &'rt mut AssociatedEvents,
     focus_queue: &'rt mut FocusQueue,
-    sleep_micros: u128,
+    sleep_micros: u64,
     emitter: &'rt Emitter,
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
@@ -177,12 +176,7 @@ impl<'bp> Frame<'_, 'bp> {
             }
             Event::Mouse(_) | Event::Resize(_) => {
                 for i in 0..self.layout_ctx.components.len() {
-                    let (widget_id, state_id) = self
-                        .layout_ctx
-                        .components
-                        .get(i)
-                        .expect("components can not change during this call");
-
+                    let Some((widget_id, state_id)) = self.layout_ctx.components.get(i as u32) else { continue };
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
@@ -266,7 +260,7 @@ impl<'bp> Frame<'_, 'bp> {
             }
 
             // Make sure event handling isn't holding up the rest of the event loop.
-            if fps_now.elapsed().as_micros() > self.sleep_micros / 2 {
+            if fps_now.elapsed().as_micros() as u64 > self.sleep_micros / 2 {
                 break;
             }
         }
@@ -285,7 +279,7 @@ impl<'bp> Frame<'_, 'bp> {
             self.event(event);
 
             // Make sure event handling isn't holding up the rest of the event loop.
-            if fps_now.elapsed().as_micros() > self.sleep_micros {
+            if fps_now.elapsed().as_micros() as u64 > self.sleep_micros {
                 break;
             }
         }
@@ -358,6 +352,11 @@ impl<'bp> Frame<'_, 'bp> {
                 let widget_id = value_id.key();
                 self.layout_ctx.dirty_widgets.push(widget_id);
 
+                // check that the node hasn't already been removed
+                if !tree.contains(widget_id) {
+                    return;
+                }
+
                 tree.with_value_mut(widget_id, |path, widget, tree| {
                     update_widget(widget, value_id, change, path, tree, self.layout_ctx.attribute_storage);
                 });
@@ -414,12 +413,7 @@ impl<'bp> Frame<'_, 'bp> {
 
     fn tick_components(&mut self, dt: Duration) {
         for i in 0..self.layout_ctx.components.len() {
-            let (widget_id, state_id) = self
-                .layout_ctx
-                .components
-                .get(i)
-                .expect("components can not change during this call");
-
+            let Some((widget_id, state_id)) = self.layout_ctx.components.get(i as u32) else { continue };
             let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
         }

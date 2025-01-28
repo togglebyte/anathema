@@ -92,14 +92,14 @@ fn tab<'bp>(event_ctx: &mut EventCtx<'_, '_, 'bp>, tree: &mut WidgetTree<'bp>, e
 
     // Mouse events are global
     if let Event::Mouse(_) = event {
-        for i in 0..event_ctx.components.len() {
-            let (widget_id, state_id) = event_ctx
-                .components
-                .get(i)
-                .expect("components can not change during this call");
+        // for i in 0..event_ctx.components.len() {
+        //     let (widget_id, state_id) = event_ctx
+        //         .components
+        //         .get(i as u32)
+        //         .expect("components can not change during this call");
 
-            // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
-        }
+        //     tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_event(ctx, event));
+        // }
     }
 
     Some(event)
@@ -252,45 +252,45 @@ impl<T: GlobalEvents> EventHandler<T> {
         //   - Drain focus queue -
         // -----------------------------------------------------------------------------
         while let Some((key, value)) = event_ctx.focus_queue.pop() {
-            let len = event_ctx.components.len();
-            for i in 0..len {
-                let (widget_id, state_id) = event_ctx
-                    .components
-                    .get(i)
-                    .expect("components can not change during this call");
+            // let len = event_ctx.components.len();
+            // for i in 0..len {
+            //     let (widget_id, state_id) = event_ctx
+            //         .components
+            //         .get(i)
+            //         .expect("components can not change during this call");
 
-                let found = tree.with_value_mut(widget_id, |_, widget, _| {
-                    panic!();
-                    // let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
+            //     let found = tree.with_value_mut(widget_id, |_, widget, _| {
+            //         panic!();
+            //         // let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
 
-                    // let attributes = event_ctx.attribute_storage.get(component.widget_id);
-                    // let Some(val) = attributes.get_val(&key) else { return false };
-                    // let Some(either) = val.load_common_val() else { return false };
-                    // let Some(cv) = either.to_common() else { return false };
-                    // if value != cv {
-                    //     return false;
-                    // }
+            //         // let attributes = event_ctx.attribute_storage.get(component.widget_id);
+            //         // let Some(val) = attributes.get_val(&key) else { return false };
+            //         // let Some(either) = val.load_common_val() else { return false };
+            //         // let Some(cv) = either.to_common() else { return false };
+            //         // if value != cv {
+            //         //     return false;
+            //         // }
 
-                    // if !component.dyn_component.any_accept_focus() {
-                    //     return false;
-                    // }
+            //         // if !component.dyn_component.any_accept_focus() {
+            //         //     return false;
+            //         // }
 
-                    // true
-                });
+            //         // true
+            //     });
 
-                // -----------------------------------------------------------------------------
-                //   - Blur -
-                // -----------------------------------------------------------------------------
-                if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
-                    // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
-                }
+            //     // -----------------------------------------------------------------------------
+            //     //   - Blur -
+            //     // -----------------------------------------------------------------------------
+            //     if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+            //         // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+            //     }
 
-                if found {
-                    event_ctx.components.tab_index = i;
-                    // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
-                    break;
-                }
-            }
+            //     if found {
+            //         event_ctx.components.tab_index = i;
+            //         // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+            //         break;
+            //     }
+            // }
         }
 
         Ok(())

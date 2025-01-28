@@ -10,6 +10,7 @@ class PendingValuePrinter:
         'Char',
         'String',
         'Bool',
+        'Hex',
         'Map',
         'List',
         'Composite',

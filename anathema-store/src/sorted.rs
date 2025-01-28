@@ -32,7 +32,7 @@ impl<T: Ord> SortedList<T> {
     /// Get a reference from the list.
     /// This requires mutable access as it might result in the list getting sorted
     pub fn get(&mut self, index: usize) -> Option<&T> {
-        self.sort();
+        // self.sort();
         self.inner.get(index)
     }
 

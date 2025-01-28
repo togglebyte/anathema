@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{AnyState, States, Subscriber};
 use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
 use anathema_strings::HStrings;
@@ -114,15 +114,22 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
 /// A viewport represents the available space in the root
 pub struct Viewport {
     size: Size,
+    region: Region,
 }
 
 impl Viewport {
     pub fn new(size: impl Into<Size>) -> Self {
-        Self { size: size.into() }
+        let size = size.into();
+        let region = Region::from((Pos::ZERO, size));
+        Self { size, region }
     }
 
     pub fn size(&self) -> Size {
         self.size
+    }
+
+    pub fn region(&self) -> &Region {
+        &self.region
     }
 
     pub fn constraints(&self) -> Constraints {
@@ -131,6 +138,11 @@ impl Viewport {
 
     pub fn resize(&mut self, size: Size) {
         self.size = size;
+        self.region = Region::from((Pos::ZERO, size));
+    }
+
+    pub fn contains(&self, region: Region) -> bool {
+        self.region.intersects(&region)
     }
 }
 
@@ -177,6 +189,12 @@ pub struct PositionCtx {
     pub inner_size: Size,
     pub pos: Pos,
     pub viewport: Viewport,
+}
+
+impl PositionCtx {
+    pub fn region(&self) -> Region {
+        Region::from((self.pos, self.inner_size))
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

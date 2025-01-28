@@ -136,6 +136,7 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
             Type::Char => Self::Char(Kind::Dyn(value)),
             Type::String => Self::Str(Kind::Dyn(value)),
             Type::Bool => Self::Bool(Kind::Dyn(value)),
+            Type::Hex => Self::Hex(Kind::Dyn(value)),
             Type::Map => Self::DynMap(value),
             Type::List => Self::DynList(value),
             Type::Composite => Self::Composite(value),
@@ -161,7 +162,11 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
             let state = pending.as_state().unwrap();
-            ValueKind::Char(state.as_char().unwrap())
+            match state.as_char() {
+                Some(c) => ValueKind::Char(c),
+                None => ValueKind::Null,
+            }
+
         }
         ValueExpr::Int(Kind::Static(i)) => ValueKind::Int(*i),
         ValueExpr::Int(Kind::Dyn(pending)) => {
@@ -247,7 +252,11 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         // -----------------------------------------------------------------------------
         ValueExpr::DynMap(_) | ValueExpr::Map(_) => ValueKind::Map,
         ValueExpr::Attributes(_) => ValueKind::Attributes,
-        ValueExpr::DynList(value) => ValueKind::DynList(*value),
+        ValueExpr::DynList(value) => {
+            value.subscribe(ctx.sub);
+            ctx.sub_to.push(value.sub_key());
+            ValueKind::DynList(*value)
+        }
         ValueExpr::List(l) => {
             let values = l.iter().map(|v| resolve_value(v, ctx)).collect();
             ValueKind::List(values)
@@ -277,9 +286,9 @@ fn resolve_pending(val: PendingValue, sub: Subscriber) -> ValueExpr<'static> {
         Type::Char => ValueExpr::Char(Kind::Dyn(val)),
         Type::String => ValueExpr::Str(Kind::Dyn(val)),
         Type::Bool => ValueExpr::Bool(Kind::Dyn(val)),
-        Type::Map => ValueExpr::DynMap(val),
+        Type::Hex => ValueExpr::Hex(Kind::Dyn(val)),
+        Type::Map | Type::Composite => ValueExpr::DynMap(val),
         Type::List => ValueExpr::DynList(val),
-        // Type::Composite => ValueKind::Composite,
         val_type => panic!("{val_type:?}"),
     }
 }
@@ -349,7 +358,7 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
             resolve_index(&src, index, ctx)
         }
         ValueExpr::Null => ValueExpr::Null,
-        _ => unreachable!(),
+        _ => unreachable!("this should return null eventually"),
     }
 }
 

@@ -490,6 +490,7 @@ pub enum Type {
     Char,
     String,
     Bool,
+    Hex,
     Map,
     List,
     Composite

@@ -1,10 +1,12 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{
+    awful_debug, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
+};
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -188,6 +190,7 @@ impl Widget for Overflow {
             Direction::Backward => pos + self.offset,
         };
 
+        let mut count = 0;
         children.each(|node, children| {
             // TODO
             // ----
@@ -198,7 +201,22 @@ impl Widget for Overflow {
             // so all widgets can benefit from this.
             match direction {
                 Direction::Forward => {
-                    node.position(children, pos, attribute_storage, ctx.viewport);
+                    let region = Region::from((pos, node.size()));
+                    let self_region = ctx.region();
+                    let intersects = self_region.intersects(&region);
+                    // awful_debug!(
+                    //     "reg: {intersects:?} | self: f: {} y: {} | child f: {} t: {}",
+                    //     self_region.from.y,
+                    //     self_region.to.y,
+                    //     region.from.y,
+                    //     region.to.y
+                    // );
+
+                    match intersects {
+                        true => node.position(children, pos, attribute_storage, ctx.viewport),
+                        false => {}
+                    }
+
                     match axis {
                         Axis::Horizontal => pos.x += node.size().width as i32,
                         Axis::Vertical => pos.y += node.size().height as i32,
@@ -213,8 +231,11 @@ impl Widget for Overflow {
                 }
             }
 
+            count += 1;
             ControlFlow::Continue(())
         });
+
+        awful_debug!("count: {count}");
     }
 
     fn paint<'bp>(

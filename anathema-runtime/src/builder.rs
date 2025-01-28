@@ -11,7 +11,7 @@ use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, FocusQueue, ViewMessage};
 use anathema_widgets::layout::Viewport;
-use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetTree};
+use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget, WidgetTree};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub use crate::error::{Error, Result};
@@ -24,6 +24,7 @@ pub struct Builder {
     component_registry: ComponentRegistry,
     emitter: Emitter,
     message_receiver: flume::Receiver<ViewMessage>,
+    fps: u32,
 }
 
 impl Builder {
@@ -41,7 +42,16 @@ impl Builder {
             component_registry: ComponentRegistry::new(),
             emitter,
             message_receiver,
+            fps: 30,
         }
+    }
+
+    pub fn register_widget<T: Widget + Default + 'static>(&mut self, ident: &'static str) {
+        self.factory.register_default::<T>(ident);
+    }
+
+    pub fn fps(&mut self, fps: u32) {
+        self.fps = fps;
     }
     
     /// Returns an [Emitter] to send messages to components
@@ -130,8 +140,7 @@ impl Builder {
         let (blueprint, globals) = self.document.compile()?;
         let viewport = Viewport::new(size);
 
-        let fps = 30;
-        let sleep_micros: u128 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u128;
+        let sleep_micros: u64 = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u64;
 
         let watcher = self.set_watcher()?;
 
@@ -153,11 +162,10 @@ impl Builder {
             viewport,
             message_receiver: self.message_receiver,
             emitter: self.emitter,
-            fps,
-            sleep_micros,
             dt: Instant::now(),
             _watcher: Some(watcher),
             deferred_components: DeferredComponents::new(),
+            sleep_micros,
         };
 
         loop {

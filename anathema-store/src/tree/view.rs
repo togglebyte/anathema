@@ -26,6 +26,10 @@ impl<'tree, T> TreeView<'tree, T> {
         }
     }
 
+    pub fn contains(&self, key: ValueId) -> bool {
+        self.values.get(key).is_some()
+    }
+
     pub fn layout_len(&self) -> usize {
         self.layout.len()
     }

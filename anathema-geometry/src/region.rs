@@ -20,11 +20,11 @@ impl Region {
 
     /// Check if another region is intersecting with this region
     pub const fn intersects(&self, other: &Region) -> bool {
-        if other.to.x < self.from.x || other.from.x >= self.to.x {
+        if other.to.x <= self.from.x || other.from.x >= self.to.x {
             return false;
         }
 
-        if other.to.y < self.from.y || other.from.y >= self.to.y {
+        if other.from.y >= self.to.y || other.to.y <= self.from.y {
             return false;
         }
 
