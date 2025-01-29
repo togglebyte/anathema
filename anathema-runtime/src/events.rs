@@ -6,7 +6,7 @@ use anathema_geometry::Size;
 use anathema_state::{AnyState, States};
 use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, FocusQueue, UntypedContext};
+use anathema_widgets::components::{AssociatedEvents, ComponentId, Emitter, UntypedContext};
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::query::{Children, Elements};
 use anathema_widgets::{Components, DirtyWidgets, GlyphMap, WidgetKind, WidgetTree};
@@ -251,47 +251,47 @@ impl<T: GlobalEvents> EventHandler<T> {
         // -----------------------------------------------------------------------------
         //   - Drain focus queue -
         // -----------------------------------------------------------------------------
-        while let Some((key, value)) = event_ctx.focus_queue.pop() {
-            // let len = event_ctx.components.len();
-            // for i in 0..len {
-            //     let (widget_id, state_id) = event_ctx
-            //         .components
-            //         .get(i)
-            //         .expect("components can not change during this call");
+        // while let Some((key, value)) = event_ctx.focus_queue.pop() {
+        //     // let len = event_ctx.components.len();
+        //     // for i in 0..len {
+        //     //     let (widget_id, state_id) = event_ctx
+        //     //         .components
+        //     //         .get(i)
+        //     //         .expect("components can not change during this call");
 
-            //     let found = tree.with_value_mut(widget_id, |_, widget, _| {
-            //         panic!();
-            //         // let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
+        //     //     let found = tree.with_value_mut(widget_id, |_, widget, _| {
+        //     //         panic!();
+        //     //         // let WidgetKind::Component(component) = &widget.kind else { unreachable!() };
 
-            //         // let attributes = event_ctx.attribute_storage.get(component.widget_id);
-            //         // let Some(val) = attributes.get_val(&key) else { return false };
-            //         // let Some(either) = val.load_common_val() else { return false };
-            //         // let Some(cv) = either.to_common() else { return false };
-            //         // if value != cv {
-            //         //     return false;
-            //         // }
+        //     //         // let attributes = event_ctx.attribute_storage.get(component.widget_id);
+        //     //         // let Some(val) = attributes.get_val(&key) else { return false };
+        //     //         // let Some(either) = val.load_common_val() else { return false };
+        //     //         // let Some(cv) = either.to_common() else { return false };
+        //     //         // if value != cv {
+        //     //         //     return false;
+        //     //         // }
 
-            //         // if !component.dyn_component.any_accept_focus() {
-            //         //     return false;
-            //         // }
+        //     //         // if !component.dyn_component.any_accept_focus() {
+        //     //         //     return false;
+        //     //         // }
 
-            //         // true
-            //     });
+        //     //         // true
+        //     //     });
 
-            //     // -----------------------------------------------------------------------------
-            //     //   - Blur -
-            //     // -----------------------------------------------------------------------------
-            //     if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
-            //         // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
-            //     }
+        //     //     // -----------------------------------------------------------------------------
+        //     //     //   - Blur -
+        //     //     // -----------------------------------------------------------------------------
+        //     //     if let Some((widget_id, state_id)) = event_ctx.components.get(event_ctx.components.tab_index) {
+        //     //         // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_blur(ctx));
+        //     //     }
 
-            //     if found {
-            //         event_ctx.components.tab_index = i;
-            //         // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
-            //         break;
-            //     }
-            // }
-        }
+        //     //     if found {
+        //     //         event_ctx.components.tab_index = i;
+        //     //         // tree.with_component(widget_id, state_id, event_ctx, |comp, ctx| comp.any_focus(ctx));
+        //     //         break;
+        //     //     }
+        //     // }
+        // }
 
         Ok(())
     }
@@ -305,13 +305,12 @@ pub(crate) struct EventCtx<'a, 'rt, 'bp> {
     pub states: &'a mut States,
     pub attribute_storage: &'a mut AttributeStorage<'bp>,
     pub assoc_events: &'a mut AssociatedEvents,
-    pub focus_queue: &'a mut FocusQueue,
     pub context: UntypedContext<'rt>,
 }
 
+// TODO: this only holds the emitter, so let's get rid of it
 pub struct GlobalContext<'rt> {
     emitter: &'rt Emitter,
-    focus_queue: &'rt mut FocusQueue,
 }
 
 impl<'rt> GlobalContext<'rt> {
@@ -320,13 +319,6 @@ impl<'rt> GlobalContext<'rt> {
         self.emitter
             .emit(recipient, value)
             .expect("this will not fail unless the runtime is droped")
-    }
-
-    /// Queue a focus call to a component that might have
-    /// an attribute matching the key and value pair
-    #[deprecated(note = "use components.query.focus")]
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<ValueKind<'static>>) {
-        self.focus_queue.push(key.into(), value.into());
     }
 }
 

@@ -14,10 +14,10 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::{Event, KeyEvent};
 use anathema_widgets::components::{
     AnyComponent, AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentKind,
-    ComponentRegistry, Emitter, FocusQueue, UntypedContext, ViewMessage,
+    ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::{Children, Elements};
@@ -45,7 +45,6 @@ pub struct Runtime {
     pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
     pub(super) assoc_events: AssociatedEvents,
-    pub(super) focus_queue: FocusQueue,
     pub(super) glyph_map: GlyphMap,
     pub(super) changes: Changes,
     pub(super) viewport: Viewport,
@@ -116,7 +115,6 @@ impl Runtime {
             changes: &mut self.changes,
             sleep_micros: self.sleep_micros,
 
-            focus_queue: &mut self.focus_queue,
             assoc_events: &mut self.assoc_events,
             deferred_components: &mut self.deferred_components,
 
@@ -155,7 +153,6 @@ pub struct Frame<'rt, 'bp> {
     layout_ctx: LayoutCtx<'rt, 'bp>,
     changes: &'rt mut Changes,
     assoc_events: &'rt mut AssociatedEvents,
-    focus_queue: &'rt mut FocusQueue,
     sleep_micros: u64,
     emitter: &'rt Emitter,
     message_receiver: &'rt flume::Receiver<ViewMessage>,
@@ -274,6 +271,10 @@ impl<'bp> Frame<'_, 'bp> {
                 self.layout_ctx.viewport.resize(size);
                 self.layout_ctx.force_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
+            }
+
+            if event.is_ctrl_c() {
+                panic!("ctrl c quit, this is a hack");
             }
 
             self.event(event);
@@ -397,7 +398,6 @@ impl<'bp> Frame<'_, 'bp> {
                         state_id,
                         component.assoc_functions,
                         self.assoc_events,
-                        self.focus_queue,
                         self.deferred_components,
                         attributes,
                         Some(state),

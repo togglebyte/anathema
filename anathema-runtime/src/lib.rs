@@ -30,8 +30,7 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::{
-    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, FocusQueue, UntypedContext,
-    ViewMessage,
+    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
@@ -44,8 +43,9 @@ use renderonly::OneShot;
 use tree::Tree;
 
 pub use self::events::{GlobalContext, GlobalEvents};
+pub use crate::builder::Builder;
 pub use crate::error::{Error, Result};
-pub use crate::runtime::{Runtime, Frame};
+pub use crate::runtime::{Frame, Runtime};
 
 static REBUILD: AtomicBool = AtomicBool::new(false);
 

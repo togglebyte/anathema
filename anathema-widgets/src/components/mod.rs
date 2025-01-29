@@ -213,12 +213,6 @@ impl<'frame, T: 'static> Context<'frame, T> {
             .emit(recipient, value)
             .expect("this will not fail unless the runtime is droped")
     }
-
-    /// Queue a focus call to a component that might have
-    /// an attribute matching the key and value pair
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<ValueKind<'static>>) {
-        self.focus_queue.push(key.into(), value.into());
-    }
 }
 
 impl<'frame, T> Deref for Context<'frame, T> {
@@ -257,7 +251,6 @@ pub struct AnyComponentContext<'frame> {
     assoc_functions: &'frame [(StringId, StringId)],
     assoc_events: &'frame mut AssociatedEvents,
     attributes: &'frame Attributes<'frame>,
-    focus_queue: &'frame mut FocusQueue,
     state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
     pub emitter: &'frame Emitter,
     pub viewport: &'frame Viewport,
@@ -271,7 +264,6 @@ impl<'frame> AnyComponentContext<'frame> {
         state_id: StateId,
         assoc_functions: &'frame [(StringId, StringId)],
         assoc_events: &'frame mut AssociatedEvents,
-        focus_queue: &'frame mut FocusQueue,
         components: &'frame mut DeferredComponents,
         attributes: &'frame Attributes<'frame>,
         state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
@@ -285,7 +277,6 @@ impl<'frame> AnyComponentContext<'frame> {
             assoc_functions,
             assoc_events,
             attributes,
-            focus_queue,
             components,
             state,
             emitter,
@@ -301,7 +292,6 @@ pub struct ComponentContext<'rt> {
     assoc_functions: &'rt [(StringId, StringId)],
     assoc_events: &'rt mut AssociatedEvents,
     attributes: &'rt Attributes<'rt>,
-    focus_queue: &'rt mut FocusQueue,
 }
 
 impl<'rt> ComponentContext<'rt> {
@@ -310,7 +300,6 @@ impl<'rt> ComponentContext<'rt> {
         parent: Option<WidgetId>,
         assoc_functions: &'rt [(StringId, StringId)],
         assoc_events: &'rt mut AssociatedEvents,
-        focus_queue: &'rt mut FocusQueue,
         attributes: &'rt Attributes<'rt>,
     ) -> Self {
         Self {
@@ -318,7 +307,6 @@ impl<'rt> ComponentContext<'rt> {
             state_id,
             assoc_functions,
             assoc_events,
-            focus_queue,
             attributes,
         }
     }
@@ -352,28 +340,6 @@ impl AssociatedEvents {
 
     pub fn next(&mut self) -> Option<AssociatedEvent> {
         self.inner.pop()
-    }
-}
-
-// TODO: remove this one
-#[deprecated]
-pub struct FocusQueue {
-    focus_queue: VecDeque<(Cow<'static, str>, ValueKind<'static>)>,
-}
-
-impl FocusQueue {
-    pub fn new() -> Self {
-        Self {
-            focus_queue: VecDeque::new(),
-        }
-    }
-
-    pub fn push(&mut self, key: Cow<'static, str>, value: ValueKind<'static>) {
-        self.focus_queue.push_back((key, value));
-    }
-
-    pub fn pop(&mut self) -> Option<(Cow<'static, str>, ValueKind<'static>)> {
-        self.focus_queue.pop_front()
     }
 }
 

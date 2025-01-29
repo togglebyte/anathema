@@ -9,7 +9,7 @@ use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::deferred::DeferredComponents;
-use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, FocusQueue, ViewMessage};
+use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget, WidgetTree};
 use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -154,7 +154,6 @@ impl Builder {
             changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
             assoc_events: AssociatedEvents::new(),
-            focus_queue: FocusQueue::new(),
             glyph_map: GlyphMap::empty(),
             blueprint,
             globals,

@@ -40,4 +40,14 @@ impl Event {
             _ => None,
         }
     }
+
+    pub fn is_ctrl_c(&self) -> bool {
+        match self {
+            Self::Key(event) => match event.code {
+                KeyCode::Char('c') => event.ctrl,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }

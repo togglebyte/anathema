@@ -13,8 +13,8 @@ pub use {
 };
 
 pub mod prelude {
-    pub use crate::backend::Backend;
     pub use crate::backend::tui::TuiBackend;
+    pub use crate::backend::Backend;
     pub use crate::runtime::{GlobalContext, GlobalEvents, Runtime};
     pub use crate::templates::{ComponentBlueprintId, Document, SourceKind, ToSourceKind};
     pub use crate::widgets::components::Context;
