@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::{value::TypeId, Hex, Number, Path, PendingValue, Subscriber, Type, Value, ValueRef};
+use crate::value::TypeId;
+use crate::{Hex, Number, Path, PendingValue, Subscriber, Type, Value, ValueRef};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StateId(usize);

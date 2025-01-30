@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 
 #[cfg(not(target_os = "windows"))]
 use anathema_debug::DebugWriter;
@@ -9,14 +8,14 @@ use crate::expressions::Expression;
 use crate::primitives::Primitive;
 
 #[derive(Debug, Default, Clone)]
-pub struct Globals(HashMap<Rc<str>, Variable>);
+pub struct Globals(HashMap<String, Variable>);
 
 impl Globals {
     pub fn empty() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn new(hm: HashMap<Rc<str>, Variable>) -> Self {
+    pub fn new(hm: HashMap<String, Variable>) -> Self {
         Self(hm)
     }
 
@@ -84,7 +83,7 @@ pub enum Variable {
 /// into the scope tree.
 /// E.g `[0, 1, 0]` would point to `root.children[0].children[1].children[0]`.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct ScopeId(Rc<[u16]>);
+pub struct ScopeId(Box<[u16]>);
 
 impl ScopeId {
     // Create the next child id.
@@ -223,7 +222,7 @@ impl RootScope {
 /// A scope stores versioned values
 #[derive(Debug)]
 pub struct Scope {
-    variables: HashMap<Rc<str>, Vec<VarId>>,
+    variables: HashMap<String, Vec<VarId>>,
     id: ScopeId,
     children: Vec<Scope>,
 }
@@ -252,21 +251,21 @@ impl Scope {
     }
 
     // Every call to `insert` will shadow the previous value, not replace it.
-    fn insert(&mut self, ident: impl Into<Rc<str>>, value: VarId) {
+    fn insert(&mut self, ident: impl Into<String>, value: VarId) {
         let entry = self.variables.entry(ident.into()).or_default();
         entry.push(value);
     }
 }
 
 #[derive(Debug)]
-struct Declarations(HashMap<Rc<str>, Vec<(ScopeId, VarId)>>);
+struct Declarations(HashMap<String, Vec<(ScopeId, VarId)>>);
 
 impl Declarations {
     fn new() -> Self {
         Self(HashMap::new())
     }
 
-    fn add(&mut self, ident: impl Into<Rc<str>>, id: impl Into<ScopeId>, value_id: impl Into<VarId>) {
+    fn add(&mut self, ident: impl Into<String>, id: impl Into<ScopeId>, value_id: impl Into<VarId>) {
         let value_id = value_id.into();
         let ids = self.0.entry(ident.into()).or_default();
         ids.push((id.into(), value_id));
@@ -321,7 +320,7 @@ impl Variables {
         std::mem::take(self)
     }
 
-    fn declare_at(&mut self, ident: impl Into<Rc<str>>, var_id: VarId, id: ScopeId) -> VarId {
+    fn declare_at(&mut self, ident: impl Into<String>, var_id: VarId, id: ScopeId) -> VarId {
         let ident = ident.into();
         let scope = self.root.get_scope_mut(id);
         scope.insert(ident.clone(), var_id);
@@ -329,14 +328,14 @@ impl Variables {
         var_id
     }
 
-    pub fn declare(&mut self, ident: impl Into<Rc<str>>, value: impl Into<Expression>) -> VarId {
+    pub fn declare(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> VarId {
         let value = value.into();
         let var_id = self.store.insert(Variable::Global(value.into()));
         let scope_id = self.current.clone();
         self.declare_at(ident, var_id, scope_id)
     }
 
-    pub fn declare_local(&mut self, ident: impl Into<Rc<str>>) -> VarId {
+    pub fn declare_local(&mut self, ident: impl Into<String>) -> VarId {
         let value = Variable::LocalIdent;
         let var_id = self.store.insert(value);
         let scope_id = self.current.clone();
@@ -386,7 +385,7 @@ impl Variables {
     }
 }
 
-impl From<Variables> for HashMap<Rc<str>, Variable> {
+impl From<Variables> for HashMap<String, Variable> {
     fn from(mut vars: Variables) -> Self {
         let mut hm = HashMap::new();
 
