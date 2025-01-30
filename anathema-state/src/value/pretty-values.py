@@ -14,6 +14,7 @@ class PendingValuePrinter:
         'Map',
         'List',
         'Composite',
+        'Unit',
     ]
 
     def __init__(self, val):

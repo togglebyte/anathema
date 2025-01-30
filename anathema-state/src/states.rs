@@ -343,7 +343,7 @@ impl AnyState for Hex {
 
 impl AnyState for () {
     fn type_info(&self) -> Type {
-        Type::Composite
+        Type::Unit
     }
 
     fn to_any_ref(&self) -> &dyn Any {

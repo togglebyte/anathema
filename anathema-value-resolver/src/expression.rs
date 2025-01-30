@@ -140,6 +140,7 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
             Type::Map => Self::DynMap(value),
             Type::List => Self::DynList(value),
             Type::Composite => Self::Composite(value),
+            Type::Unit => Self::Null,
         }
     }
 }

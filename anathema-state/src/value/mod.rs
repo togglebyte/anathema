@@ -493,7 +493,8 @@ pub enum Type {
     Hex,
     Map,
     List,
-    Composite
+    Composite,
+    Unit,
 }
 
 #[cfg(test)]

@@ -199,6 +199,13 @@ impl ValueKind<'_> {
     }
 }
 
+// TODO: add more from impls for the other values
+impl From<&'static str> for ValueKind<'static> {
+    fn from(value: &'static str) -> Self {
+        ValueKind::Str(Cow::Borrowed(value))
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{AnyState, Hex, List, Map, StateId, States};
