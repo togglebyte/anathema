@@ -59,16 +59,17 @@ impl Component for C {
 fn main() {
     let doc = Document::new("@main");
 
-    let backend = TuiBackend::builder()
+    let mut backend = TuiBackend::builder()
         .enable_alt_screen()
         .enable_raw_mode()
         .hide_cursor()
         .finish()
         .unwrap();
+    backend.finalize();
 
-    let mut runtime = Runtime::builder(doc, backend);
+    let mut runtime = Runtime::builder(doc);
     runtime
-        .register_component(
+        .component(
             "main",
             "examples/templates/animate/animate.aml",
             C { val: 0.0 },
@@ -81,4 +82,7 @@ fn main() {
 
     let mut runtime = runtime.finish().unwrap();
     runtime.run();
+    builder
+        .finish(backend.size(), |mut runtime| runtime.run(&mut backend))
+        .unwrap();
 }

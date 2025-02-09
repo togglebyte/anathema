@@ -57,8 +57,8 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn builder(doc: Document) -> Builder {
-        Builder::new(doc)
+    pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder {
+        Builder::new(doc, backend.size())
     }
 
     pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>

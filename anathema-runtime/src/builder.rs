@@ -25,11 +25,12 @@ pub struct Builder {
     emitter: Emitter,
     message_receiver: flume::Receiver<ViewMessage>,
     fps: u32,
+    size: Size,
 }
 
 impl Builder {
     /// Create a new builder
-    pub fn new(document: Document) -> Self {
+    pub fn new(document: Document, size: Size) -> Self {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
 
@@ -43,6 +44,7 @@ impl Builder {
             emitter,
             message_receiver,
             fps: 30,
+            size,
         }
     }
 
@@ -125,7 +127,7 @@ impl Builder {
         Ok(())
     }
 
-    pub fn finish<F, U>(mut self, size: Size, mut f: F) -> Result<U>
+    pub fn finish<F, U>(mut self, mut f: F) -> Result<U>
     where
         F: FnMut(&mut Runtime) -> Result<U>,
     {
@@ -138,7 +140,7 @@ impl Builder {
         };
 
         let (blueprint, globals) = self.document.compile()?;
-        let viewport = Viewport::new(size);
+        let viewport = Viewport::new(self.size);
 
         let sleep_micros: u64 = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u64;
 
