@@ -358,30 +358,14 @@ impl State for bool {
         Type::Bool
     }
 
-    // fn to_any_ref(&self) -> &dyn Any {
-    //     self
-    // }
-
-    // fn to_any_mut(&mut self) -> &mut dyn Any {
-    //     self
-    // }
-
     fn as_bool(&self) -> Option<bool> {
         Some(*self)
     }
 }
 
-impl AnyState for String {
+impl State for String {
     fn type_info(&self) -> Type {
         Type::String
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 
     fn as_str(&self) -> Option<&str> {
@@ -389,17 +373,9 @@ impl AnyState for String {
     }
 }
 
-impl AnyState for &'static str {
+impl State for &'static str {
     fn type_info(&self) -> Type {
         Type::String
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 
     fn as_str(&self) -> Option<&str> {
@@ -407,17 +383,9 @@ impl AnyState for &'static str {
     }
 }
 
-impl AnyState for char {
+impl State for char {
     fn type_info(&self) -> Type {
         Type::Char
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 
     fn as_char(&self) -> Option<char> {
@@ -425,17 +393,9 @@ impl AnyState for char {
     }
 }
 
-impl AnyState for Hex {
+impl State for Hex {
     fn type_info(&self) -> Type {
         Type::Hex
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 
     fn as_hex(&self) -> Option<Hex> {
@@ -443,17 +403,9 @@ impl AnyState for Hex {
     }
 }
 
-impl AnyState for Color {
+impl State for Color {
     fn type_info(&self) -> Type {
         Type::Color
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 
     fn as_color(&self) -> Option<Color> {
@@ -461,17 +413,9 @@ impl AnyState for Color {
     }
 }
 
-impl AnyState for () {
+impl State for () {
     fn type_info(&self) -> Type {
         Type::Unit
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }
 

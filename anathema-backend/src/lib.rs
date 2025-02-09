@@ -98,7 +98,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
 
     pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
         self.fixed(ctx);
-        // self.floating(ctx);
+        self.floating(ctx);
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) {
