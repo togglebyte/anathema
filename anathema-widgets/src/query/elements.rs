@@ -109,6 +109,7 @@ where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>) -> U,
     {
         let ret_val = self.query.elements.children.for_each(|_path, container, children| {
+            let x = 1;
             if let WidgetKind::Element(ref mut element) = container.kind {
                 if self.query.filter.filter(element, self.query.elements.attributes) {
                     let attributes = self.query.elements.attributes.get_mut(element.id());

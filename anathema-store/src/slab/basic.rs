@@ -423,6 +423,12 @@ where
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
+
+    /// This is the total length of the underlying storage,
+    /// this is not the total number of values in the slab.
+    pub fn total_len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 impl<I, T> Slab<I, T>

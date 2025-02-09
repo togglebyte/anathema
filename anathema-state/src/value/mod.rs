@@ -156,6 +156,10 @@ impl<T: AnyState> Value<T> {
         *self.to_mut() = new_value;
     }
 
+    /// Take the value out of the value storage.
+    /// This will prevent the value from being dropped
+    /// and subsequently no `Change::Dropped` will be issued as a result of this.
+    /// However a `Change::Remove(_)` will be issued if the value was removed from a list.
     pub fn take(self) -> Box<dyn AnyState> {
         let value = drop_value(self.key).val;
         // Prevent the drop function from being called

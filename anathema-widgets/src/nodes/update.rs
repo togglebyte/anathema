@@ -44,6 +44,7 @@ pub fn update_widget<'bp>(
     match &mut widget.kind {
         WidgetKind::Element(element) => {
             attribute_storage.with_mut(element.container.id, |attributes, storage| {
+                let plarp = element;
                 let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
                 value.reload(storage);
             });

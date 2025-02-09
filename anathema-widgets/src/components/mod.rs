@@ -347,6 +347,8 @@ pub trait Component: 'static {
     type State: AnyState;
     type Message;
 
+    const TICKS: bool = true;
+
     #[allow(unused_variables, unused_mut)]
     fn on_blur(
         &mut self,
@@ -428,21 +430,15 @@ pub trait Component: 'static {
     fn accept_focus(&self) -> bool {
         false
     }
-
-    fn ticks(&self) -> bool {
-        true
-    }
 }
 
 impl Component for () {
     type Message = ();
     type State = ();
 
-    fn accept_focus(&self) -> bool {
-        false
-    }
+    const TICKS: bool = false;
 
-    fn ticks(&self) -> bool {
+    fn accept_focus(&self) -> bool {
         false
     }
 }
@@ -507,7 +503,7 @@ where
     }
 
     fn any_ticks(&self) -> bool {
-        self.ticks()
+        T::TICKS
     }
 
     fn any_message(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>, message: Box<dyn Any>) {

@@ -23,22 +23,22 @@ impl<T: AnyState> List<T> {
     }
 
     /// Push a value to the list
-    pub fn push(&mut self, value: impl Into<Value<T>>) {
+    fn push(&mut self, value: impl Into<Value<T>>) {
         self.push_back(value)
     }
 
     /// Push a value to the back of the list
-    pub fn push_back(&mut self, value: impl Into<Value<T>>) {
+    fn push_back(&mut self, value: impl Into<Value<T>>) {
         self.inner.push_back(value.into());
     }
 
-    /// Push a value to the back of the list
-    pub fn push_front(&mut self, value: impl Into<Value<T>>) {
+    /// Push a value to the front of the list
+    fn push_front(&mut self, value: impl Into<Value<T>>) {
         self.inner.push_front(value.into());
     }
 
-    /// Push a value to the list
-    pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
+    /// Remove a value from the list
+    fn remove(&mut self, index: usize) -> Option<Value<T>> {
         self.inner.remove(index)
     }
 
@@ -129,9 +129,9 @@ impl<T: AnyState + 'static> Value<List<T>> {
     /// Remove a value from the list.
     /// If the value isn't in the list `None` is returned.
     pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
-        let value = self.to_mut().inner.remove(index);
+        let value = self.to_mut().inner.remove(index)?;
         changed(self.key, Change::Removed(index as u32));
-        value
+        Some(value)
     }
 
     /// Pop a value from the front of the list
@@ -153,6 +153,11 @@ impl<T: AnyState + 'static> Value<List<T>> {
         Some(value)
     }
 
+    /// Alias for `pop_back`
+    pub fn pop(&mut self) -> Option<Value<T>> {
+        self.pop_back()
+    }
+
     pub fn for_each<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T),
@@ -163,6 +168,12 @@ impl<T: AnyState + 'static> Value<List<T>> {
 
     pub fn len(&self) -> usize {
         self.to_ref().len()
+    }
+
+    pub fn merge(&mut self, other: &mut Self) {
+        while let Some(val) = other.pop_front() {
+            self.push_back(val);
+        }
     }
 }
 

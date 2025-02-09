@@ -36,6 +36,10 @@ pub struct CompEntry {
     pub state_id: StateId,
     /// The components id in the widget tree
     pub widget_id: WidgetId,
+
+    /// Does the component accept tick events
+    pub accept_ticks: bool,
+
     component_id: ComponentBlueprintId,
     path: Box<[u16]>,
 }
@@ -75,6 +79,14 @@ pub struct Components {
 }
 
 impl Components {
+    pub fn debug(&self) {
+        for entry in self.inner.iter_values() {
+            crate::awful_debug!("{entry:?}");
+        }
+
+        crate::awful_debug!("\n{:#?}\n", self.inner);
+    }
+
     pub fn new() -> Self {
         Self {
             tab_index: 0,
@@ -91,18 +103,30 @@ impl Components {
         component_id: ComponentBlueprintId,
         widget_id: WidgetId,
         state_id: StateId,
+        accept_ticks: bool,
     ) {
         let entry = CompEntry {
             path,
             component_id,
             widget_id,
             state_id,
+            accept_ticks,
         };
 
         let key = self.inner.insert(entry);
+        crate::awful_debug!("-> component: {widget_id:?}");
         self.widget_ids.set(widget_id, key);
         self.comp_ids.set(component_id, key);
         self.len += 1;
+    }
+
+    pub fn try_remove(&mut self, widget_id: WidgetId) {
+        crate::awful_debug!("trying to remove {widget_id:?} (might not be a component)");
+        let Some(index) = self.widget_ids.remove(&widget_id) else { return };
+        let entry = self.inner.remove(index);
+        crate::awful_debug!("<- component: {:?}", entry.widget_id);
+        self.comp_ids.remove(&entry.component_id);
+        self.len -= 1;
     }
 
     pub fn set(&mut self, widget_id: WidgetId) {
@@ -110,20 +134,12 @@ impl Components {
         self.tab_index = *index;
     }
 
-    pub fn remove(&mut self, widget_id: WidgetId) {
-        let Some(index) = self.widget_ids.remove(&widget_id) else { return };
-        let entry = self.inner.remove(index);
-        self.comp_ids.remove(&entry.component_id);
-        self.len -= 1;
-    }
-
     pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
-        self.get(self.tab_index)
+        self.get(self.tab_index).map(|(widget_id, state_id, _)| (widget_id, state_id))
     }
 
-    // This needs mutable access to self as it will sort the list if needed
-    pub fn get(&mut self, index: u32) -> Option<(WidgetId, StateId)> {
-        self.inner.get(index).map(|e| (e.widget_id, e.state_id))
+    pub fn get(&self, index: u32) -> Option<(WidgetId, StateId, bool)> {
+        self.inner.get(index).map(|e| (e.widget_id, e.state_id, e.accept_ticks))
     }
 
     pub fn get_by_component_id(&mut self, id: ComponentBlueprintId) -> Option<&CompEntry> {
@@ -140,8 +156,8 @@ impl Components {
         self.inner.iter_values()
     }
 
-    pub fn len(&self) -> usize {
-        self.len
+    pub fn total_len(&self) -> usize {
+        self.inner.total_len()
     }
 }
 

@@ -5,6 +5,7 @@ use anathema_value_resolver::{Collection, Scope, Value};
 
 use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
+use crate::tree::debug::DebugTree;
 use crate::widget::WidgetTreeView;
 use crate::{eval_blueprint, WidgetId, WidgetTree};
 
@@ -71,17 +72,7 @@ impl<'bp> For<'bp> {
                 tree.relative_remove(&[*index as u16]);
             }
             Change::Dropped => {
-                tree.relative_remove(&[]);
-
-                // // TODO unwrap, ewww
-                // self.collection = eval_collection(
-                //     self.collection.expr.unwrap(), // Map None to an error
-                //     ctx.globals,
-                //     ctx.scope,
-                //     ctx.states,
-                //     ctx.attribute_storage,
-                //     value_id,
-                // );
+                tree.truncate_children();
 
                 // for index in 0..self.collection.count() {
                 //     self.scope_value(ctx.scope, index);

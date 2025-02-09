@@ -61,25 +61,40 @@ impl Runtime {
         Builder::new(doc)
     }
 
-    pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
+    pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
+    where
+        B: Backend,
+        F: FnMut(&mut B, Frame<'_, '_>),
+    {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
-        let sleep_micros = self.sleep_micros;
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
         frame.init();
-        frame.tick(backend, true);
+        frame.layout_ctx.force_layout = true;
+        // frame.cycle(backend);
+        f(backend, frame);
+        Ok(())
+    }
 
-        loop {
-            frame.tick(backend, false);
+    pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
+        let sleep_micros = self.sleep_micros;
+        let mut initial = true;
+        self.with_frame(backend, |backend, mut frame| loop {
+            frame.tick(backend, initial);
+
+            let len = frame.tree.value_len();
+            anathema_widgets::awful_debug!("find this: values: {len}");
+
             frame.present(backend);
             frame.cleanup();
+            initial = false;
             std::thread::sleep(Duration::from_micros(sleep_micros));
 
             if REBUILD.swap(false, Ordering::Relaxed) {
                 frame.return_state();
                 break;
             }
-        }
+        })?;
 
         Ok(())
     }
@@ -89,9 +104,6 @@ impl Runtime {
         tree: &'frame mut WidgetTree<'bp>,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
     ) -> Result<Frame<'frame, 'bp>> {
-        #[cfg(feature = "profile")]
-        puffin::GlobalProfiler::lock().new_frame();
-
         let layout_ctx = LayoutCtx::new(
             &self.globals,
             &self.factory,
@@ -148,7 +160,7 @@ impl Runtime {
 pub struct Frame<'rt, 'bp> {
     document: &'bp Document,
     blueprint: &'bp Blueprint,
-    tree: &'rt mut WidgetTree<'bp>,
+    pub tree: &'rt mut WidgetTree<'bp>,
     deferred_components: &'rt mut DeferredComponents,
     layout_ctx: LayoutCtx<'rt, 'bp>,
     changes: &'rt mut Changes,
@@ -172,8 +184,8 @@ impl<'bp> Frame<'_, 'bp> {
                 self.send_event_to_component(event, widget_id, state_id);
             }
             Event::Mouse(_) | Event::Resize(_) => {
-                for i in 0..self.layout_ctx.components.len() {
-                    let Some((widget_id, state_id)) = self.layout_ctx.components.get(i as u32) else { continue };
+                for i in 0..self.layout_ctx.components.total_len() {
+                    let Some((widget_id, state_id, _)) = self.layout_ctx.components.get(i as u32) else { continue };
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
@@ -196,18 +208,26 @@ impl<'bp> Frame<'_, 'bp> {
 
     pub fn tick<B: Backend>(&mut self, backend: &mut B, force_layout: bool) -> Duration {
         #[cfg(feature = "profile")]
-        puffin::profile_function!();
+        puffin::GlobalProfiler::lock().new_frame();
 
         self.layout_ctx.force_layout = force_layout;
 
         let now = Instant::now();
         self.tick_components(self.dt.elapsed());
+        // anathema_widgets::debug_tree!(self.tree);
         let elapsed = self.handle_messages(now);
+        // anathema_widgets::debug_tree!(self.tree);
         self.poll_events(elapsed, now, backend);
+        // anathema_widgets::debug_tree!(self.tree);
         self.drain_deferred_commands();
+        // anathema_widgets::debug_tree!(self.tree);
         self.drain_assoc_events();
+        // anathema_widgets::debug_tree!(self.tree);
         self.apply_changes();
+        // anathema_widgets::debug_tree!(self.tree);
         self.cycle(backend);
+        anathema_widgets::awful_debug!("cycle done");
+        anathema_widgets::debug_tree!(self.tree);
 
         // reset force_layout
         self.layout_ctx.force_layout = false;
@@ -236,7 +256,7 @@ impl<'bp> Frame<'_, 'bp> {
         for key in self.tree.drain_removed() {
             self.layout_ctx.attribute_storage.try_remove(key);
             self.layout_ctx.floating_widgets.try_remove(key);
-            self.layout_ctx.components.remove(key);
+            self.layout_ctx.components.try_remove(key);
         }
     }
 
@@ -257,7 +277,7 @@ impl<'bp> Frame<'_, 'bp> {
             }
 
             // Make sure event handling isn't holding up the rest of the event loop.
-            if fps_now.elapsed().as_micros() as u64 > self.sleep_micros / 2 {
+            if fps_now.elapsed().as_micros() as u64 >= self.sleep_micros / 2 {
                 break;
             }
         }
@@ -287,6 +307,9 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn drain_deferred_commands(&mut self) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         // TODO don't cause a bunch of allocations here.
         // Possibly drain into a new list
         let commands = self.deferred_components.drain().collect::<Vec<_>>();
@@ -318,6 +341,9 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn drain_assoc_events(&mut self) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         while let Some(mut event) = self.assoc_events.next() {
             let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(event.parent.into()) else {
                 return;
@@ -333,6 +359,9 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn cycle<B: Backend>(&mut self, backend: &mut B) {
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
         let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
         cycle.run(&mut self.layout_ctx);
     }
@@ -347,6 +376,7 @@ impl<'bp> Frame<'_, 'bp> {
             return;
         }
 
+        let len = self.changes.len();
         let mut tree = self.tree.view_mut();
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|value_id| {
@@ -361,16 +391,14 @@ impl<'bp> Frame<'_, 'bp> {
                 tree.with_value_mut(widget_id, |path, widget, tree| {
                     update_widget(widget, value_id, change, path, tree, self.layout_ctx.attribute_storage);
                 });
+
+                anathema_widgets::debug_tree!(tree);
             });
         });
     }
 
     fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
         self.with_component(widget_id, state_id, |comp, elements, ctx| {
-            if !comp.any_ticks() && matches!(event, Event::Tick(_)) {
-                return;
-            }
-
             comp.any_event(elements, ctx, event);
         });
     }
@@ -412,8 +440,18 @@ impl<'bp> Frame<'_, 'bp> {
     }
 
     fn tick_components(&mut self, dt: Duration) {
-        for i in 0..self.layout_ctx.components.len() {
-            let Some((widget_id, state_id)) = self.layout_ctx.components.get(i as u32) else { continue };
+        #[cfg(feature = "profile")]
+        puffin::profile_function!();
+
+        self.layout_ctx.components.debug();
+
+        let len = self.layout_ctx.components.total_len();
+        for i in 0..len {
+            let Some((widget_id, state_id, ticks)) = self.layout_ctx.components.get(i as u32) else { continue };
+
+            if !ticks {
+                continue
+            }
             let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
         }

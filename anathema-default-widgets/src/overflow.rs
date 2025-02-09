@@ -234,8 +234,6 @@ impl Widget for Overflow {
             count += 1;
             ControlFlow::Continue(())
         });
-
-        awful_debug!("count: {count}");
     }
 
     fn paint<'bp>(

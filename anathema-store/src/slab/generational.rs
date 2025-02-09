@@ -1,4 +1,4 @@
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Display};
 use std::marker::PhantomData;
 use std::ops::Deref;
 
@@ -28,6 +28,12 @@ impl Deref for Gen {
 impl From<usize> for Gen {
     fn from(val: usize) -> Self {
         Self(val as u16)
+    }
+}
+
+impl Display for Gen {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "G:{}", self.0)
     }
 }
 
@@ -105,7 +111,8 @@ impl Key {
         self.0 = (self.0 << Self::INDEX_OFFSET >> Self::INDEX_OFFSET) | gen;
     }
 
-    pub(super) const fn index(&self) -> usize {
+    /// The index
+    pub const fn index(&self) -> usize {
         (self.0 << Self::INDEX_OFFSET >> Self::INDEX_OFFSET) as usize
     }
 

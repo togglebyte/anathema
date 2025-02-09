@@ -5,9 +5,9 @@ pub use crate::nodes::{
 };
 pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::widget::{
-    AnyWidget, ComponentParents, Components, DirtyWidgets, Factory, FloatingWidgets,
-    ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId, WidgetTree,
-    WidgetTreeView, Style, Attributes
+    AnyWidget, Attributes, ComponentParents, Components, DirtyWidgets, Factory, FloatingWidgets, ForEach,
+    LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId, WidgetTree,
+    WidgetTreeView,
 };
 
 pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, Subscriber>;
@@ -25,14 +25,39 @@ pub mod query;
 pub mod tree;
 mod widget;
 
-#[macro_export]
-macro_rules! awful_debug {
-    ($($arg:tt)*) => {
-        use ::std::io::Write;
-        let mut file = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/log.lol").unwrap();
-        let payload = format!($($arg)*);
-        file.write_all(payload.as_bytes()).unwrap();
-        file.write(b"\n").unwrap();
-        file.flush();
+#[cfg(feature = "debuggy")]
+pub mod macros {
+    #[macro_export]
+    macro_rules! awful_debug {
+        ($($arg:tt)*) => {
+            use ::std::io::Write as _;
+            let mut file = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/log.lol").unwrap();
+            let payload = format!($($arg)*);
+            file.write_all(payload.as_bytes()).unwrap();
+            file.write(b"\n").unwrap();
+            file.flush();
+        }
+    }
+
+    #[macro_export]
+    macro_rules! debug_tree {
+        ($tree:expr) => {
+            let mut d = $crate::tree::debug::DebugTree::new();
+            $tree.apply_visitor(&mut d);
+            $crate::awful_debug!("{}", d.output);
+        }
+    }
+}
+
+#[cfg(not(feature = "debuggy"))]
+pub mod macros {
+    #[macro_export]
+    macro_rules! awful_debug {
+        ($($arg:tt)*) => {};
+    }
+
+    #[macro_export]
+    macro_rules! debug_tree {
+        ($tree:expr) => {}
     }
 }

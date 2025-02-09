@@ -127,6 +127,11 @@ impl<'tree, T> TreeView<'tree, T> {
         InsertTransaction::new(self, parent)
     }
 
+    /// Remove all the nodes in this view
+    pub fn truncate_children(&mut self) {
+        self.layout.clear(&mut self.values, &mut self.removed_values);
+    }
+
     /// Remove a `Node` and value from the tree.
     /// This will also remove all the children and associated values.
     pub fn relative_remove(&mut self, path: &[u16]) {

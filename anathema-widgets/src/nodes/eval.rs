@@ -205,6 +205,8 @@ impl Evaluator for ComponentEval {
         ctx.attribute_storage.insert(widget_id, attributes);
         let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
         let state_id = ctx.states.insert(Value::new(state));
+        let accept_ticks = component.any_ticks();
+
         let comp_widget = component::Component::new(
             &input.name,
             &input.body,
@@ -220,9 +222,11 @@ impl Evaluator for ComponentEval {
         let widget = WidgetKind::Component(comp_widget);
         let widget = WidgetContainer::new(widget, &input.body);
         let widget_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        crate::awful_debug!("created {}: {widget_id:?}", input.name);
 
         let path = tree.path(widget_id);
-        ctx.components.push(path, component_id, widget_id, state_id);
+        ctx.components
+            .push(path, component_id, widget_id, state_id, accept_ticks);
 
         Ok(())
     }

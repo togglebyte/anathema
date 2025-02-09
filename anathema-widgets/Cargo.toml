@@ -20,6 +20,7 @@ puffin = { version = "0.19.1", features = ["web"], optional = true }
 [features]
 default = []
 profile = ["puffin"]
+debuggy = []
 
 [lints]
 workspace = true

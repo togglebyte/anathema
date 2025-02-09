@@ -59,6 +59,11 @@ impl<T> Tree<T> {
         self.values
     }
 
+    // TODO: remove this gross function
+    pub fn value_len(&self) -> usize {
+        self.values.iter().count()
+    }
+
     /// Split the tree into values and structure
     pub fn split(&mut self) -> (&Nodes, &mut TreeValues<T>) {
         (&self.layout, &mut self.values)

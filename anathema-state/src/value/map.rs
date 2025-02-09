@@ -17,14 +17,14 @@ impl<T: AnyState> Map<T> {
 
     // TODO if this has to go back into the Value<Self> then remove this function
     // along with having the `empty` funcition return Value<Self> instead of Self
-    pub fn insert(&mut self, map_key: impl Into<String>, value: T) {
+    fn insert(&mut self, map_key: impl Into<String>, value: T) {
         let map_key = map_key.into();
         // let map = &mut *self.to_mut();
         let value = value.into();
         self.inner.insert(map_key, value);
     }
 
-    pub fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
+    fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
         self.inner.remove(map_key)
     }
 
