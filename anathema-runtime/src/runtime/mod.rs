@@ -71,7 +71,6 @@ impl Runtime {
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
         frame.init();
         frame.layout_ctx.force_layout = true;
-        // frame.cycle(backend);
         f(backend, frame);
         Ok(())
     }
@@ -83,7 +82,6 @@ impl Runtime {
             frame.tick(backend, initial);
 
             let len = frame.tree.value_len();
-            anathema_widgets::awful_debug!("find this: values: {len}");
 
             frame.present(backend);
             frame.cleanup();
@@ -214,20 +212,12 @@ impl<'bp> Frame<'_, 'bp> {
 
         let now = Instant::now();
         self.tick_components(self.dt.elapsed());
-        // anathema_widgets::debug_tree!(self.tree);
         let elapsed = self.handle_messages(now);
-        // anathema_widgets::debug_tree!(self.tree);
         self.poll_events(elapsed, now, backend);
-        // anathema_widgets::debug_tree!(self.tree);
         self.drain_deferred_commands();
-        // anathema_widgets::debug_tree!(self.tree);
         self.drain_assoc_events();
-        // anathema_widgets::debug_tree!(self.tree);
         self.apply_changes();
-        // anathema_widgets::debug_tree!(self.tree);
         self.cycle(backend);
-        anathema_widgets::awful_debug!("cycle done");
-        anathema_widgets::debug_tree!(self.tree);
 
         // reset force_layout
         self.layout_ctx.force_layout = false;
@@ -378,9 +368,11 @@ impl<'bp> Frame<'_, 'bp> {
 
         let len = self.changes.len();
         let mut tree = self.tree.view_mut();
+        anathema_widgets::debug_tree!(tree);
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|value_id| {
                 let widget_id = value_id.key();
+                anathema_widgets::awful_debug!("{widget_id:?}");
                 self.layout_ctx.dirty_widgets.push(widget_id);
 
                 // check that the node hasn't already been removed
@@ -391,8 +383,6 @@ impl<'bp> Frame<'_, 'bp> {
                 tree.with_value_mut(widget_id, |path, widget, tree| {
                     update_widget(widget, value_id, change, path, tree, self.layout_ctx.attribute_storage);
                 });
-
-                anathema_widgets::debug_tree!(tree);
             });
         });
     }
@@ -442,8 +432,6 @@ impl<'bp> Frame<'_, 'bp> {
     fn tick_components(&mut self, dt: Duration) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
-
-        self.layout_ctx.components.debug();
 
         let len = self.layout_ctx.components.total_len();
         for i in 0..len {

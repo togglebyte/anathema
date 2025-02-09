@@ -13,6 +13,12 @@ impl SmallIndex {
     pub const ZERO: Self = Self(0);
 }
 
+impl From<SmallIndex> for NUM_TYPE {
+    fn from(value: SmallIndex) -> Self {
+        value.0
+    }
+}
+
 impl SlabIndex for SmallIndex {
     const MAX: usize = NUM_TYPE::MAX as usize;
 

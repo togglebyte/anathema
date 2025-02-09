@@ -79,14 +79,6 @@ pub struct Components {
 }
 
 impl Components {
-    pub fn debug(&self) {
-        for entry in self.inner.iter_values() {
-            crate::awful_debug!("{entry:?}");
-        }
-
-        crate::awful_debug!("\n{:#?}\n", self.inner);
-    }
-
     pub fn new() -> Self {
         Self {
             tab_index: 0,
@@ -114,17 +106,14 @@ impl Components {
         };
 
         let key = self.inner.insert(entry);
-        crate::awful_debug!("-> component: {widget_id:?}");
         self.widget_ids.set(widget_id, key);
         self.comp_ids.set(component_id, key);
         self.len += 1;
     }
 
     pub fn try_remove(&mut self, widget_id: WidgetId) {
-        crate::awful_debug!("trying to remove {widget_id:?} (might not be a component)");
         let Some(index) = self.widget_ids.remove(&widget_id) else { return };
         let entry = self.inner.remove(index);
-        crate::awful_debug!("<- component: {:?}", entry.widget_id);
         self.comp_ids.remove(&entry.component_id);
         self.len -= 1;
     }

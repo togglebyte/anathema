@@ -1,6 +1,7 @@
+use anathema_state::Change;
 use anathema_store::tree::{Node, TreeValues};
 use anathema_templates::blueprints::{self, Blueprint};
-use anathema_value_resolver::Value;
+use anathema_value_resolver::{AttributeStorage, Value};
 
 use super::WidgetContainer;
 use crate::widget::WidgetTreeView;
@@ -11,14 +12,38 @@ pub struct ControlFlow<'bp> {
     pub elses: Vec<Else<'bp>>,
 }
 
+impl<'bp>ControlFlow<'bp> {
+    pub(crate) fn update(
+        &mut self,
+        change: &Change,
+        branch_id: u16,
+        attribute_storage: &AttributeStorage<'bp>,
+    ) {
+        match change {
+            Change::Changed => {
+                let Some(el) = self.elses.get_mut(branch_id as usize) else { return };
+                el.update(attribute_storage);
+                let Some(cond) = el.cond.as_mut() else { return };
+                cond.reload(attribute_storage)
+            }
+            Change::Dropped => todo!(),
+            Change::Inserted(_, pending_value) => unreachable!(),
+            Change::Removed(_) => unreachable!(),
+        }
+    }
+
+}
+
 impl ControlFlow<'_> {
     pub(crate) fn has_changed(&self, children: &WidgetTreeView<'_, '_>) -> bool {
         let child_count = children.layout_len();
         if child_count != 1 {
+            crate::awful_debug!("has changed");
             return true;
         }
 
         let branch_id = self.current_branch_id(children);
+        crate::awful_debug!("branch id {branch_id}");
 
         // Check if another branch id before this has become true,
         // if so this has changed.
@@ -94,8 +119,14 @@ pub struct Else<'bp> {
     pub show: bool,
 }
 
+impl<'bp> Else<'bp> {
+    fn update(&mut self, attributes: &AttributeStorage<'bp>) {
+    }
+}
+
 impl Else<'_> {
     pub(crate) fn is_true(&self) -> bool {
+        crate::awful_debug!("what is the cond?  {:?}", self.cond);
         match self.cond.as_ref() {
             Some(cond) => cond.as_bool().unwrap_or(false),
             None => true,

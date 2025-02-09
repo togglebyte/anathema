@@ -61,18 +61,7 @@ pub fn update_widget<'bp>(
         }
         WidgetKind::For(for_loop) => for_loop.update(change, value_id, tree)?,
         WidgetKind::Iteration(_) => todo!(),
-        WidgetKind::ControlFlow(controlflow) => {
-            // TODO: is this even needed? - TB 2024-12-21
-            // controlflow
-            //     .elses
-            //     .iter_mut()
-            //     .enumerate()
-            //     .filter_map(|(id, cf)| cf.cond.as_mut().map(|cond| (id, cond)))
-            //     .for_each(|(id, cond)| {
-            //         if ValueIndex::from(id) == value_id.index() {
-            //         }
-            //     });
-        }
+        WidgetKind::ControlFlow(controlflow) => controlflow.update(change, value_id.index().into(), attribute_storage),
         WidgetKind::ControlFlowContainer(_) => unreachable!("control flow containers have no values"),
         WidgetKind::Component(component) => {
             if let Change::Dropped = change {

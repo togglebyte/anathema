@@ -27,7 +27,6 @@ impl<'bp> For<'bp> {
 
     pub(super) fn update(
         &mut self,
-        // ctx: &mut EvalContext<'_, '_, 'bp>,
         change: &Change,
         value_id: Subscriber,
         mut tree: WidgetTreeView<'_, 'bp>,
