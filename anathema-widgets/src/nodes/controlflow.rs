@@ -38,12 +38,10 @@ impl ControlFlow<'_> {
     pub(crate) fn has_changed(&self, children: &WidgetTreeView<'_, '_>) -> bool {
         let child_count = children.layout_len();
         if child_count != 1 {
-            crate::awful_debug!("has changed");
             return true;
         }
 
         let branch_id = self.current_branch_id(children);
-        crate::awful_debug!("branch id {branch_id}");
 
         // Check if another branch id before this has become true,
         // if so this has changed.
@@ -126,7 +124,6 @@ impl<'bp> Else<'bp> {
 
 impl Else<'_> {
     pub(crate) fn is_true(&self) -> bool {
-        crate::awful_debug!("what is the cond?  {:?}", self.cond);
         match self.cond.as_ref() {
             Some(cond) => cond.as_bool().unwrap_or(false),
             None => true,

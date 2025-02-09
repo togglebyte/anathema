@@ -4,8 +4,51 @@ use std::rc::Rc;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::value::TypeId;
-use crate::{Hex, Number, Path, PendingValue, Subscriber, Type, Value, ValueRef};
+use crate::{Color, Hex, Number, Path, PendingValue, Subscriber, Type, Value, ValueRef};
+
+pub trait TypeId {
+    const Type: Type = Type::Composite;
+}
+
+impl TypeId for i64 {
+    const Type: Type = Type::Int;
+}
+
+impl TypeId for f64 {
+    const Type: Type = Type::Float;
+}
+
+impl TypeId for char {
+    const Type: Type = Type::Char;
+}
+
+impl TypeId for String {
+    const Type: Type = Type::String;
+}
+
+impl TypeId for bool {
+    const Type: Type = Type::Bool;
+}
+
+impl TypeId for Hex {
+    const Type: Type = Type::Hex;
+}
+
+impl<T> TypeId for crate::Map<T> {
+    const Type: Type = Type::Map;
+}
+
+impl<T> TypeId for crate::List<T> {
+    const Type: Type = Type::List;
+}
+
+impl TypeId for () {
+    const Type: Type = Type::Unit;
+}
+
+impl TypeId for Color {
+    const Type: Type = Type::Color;
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StateId(usize);
@@ -41,6 +84,10 @@ pub trait State: 'static {
     }
 
     fn as_hex(&self) -> Option<Hex> {
+        None
+    }
+
+    fn as_color(&self) -> Option<Color> {
         None
     }
 
@@ -90,6 +137,10 @@ impl<T: State> AnyState for T {
         <Self as State>::as_hex(self)
     }
 
+    fn as_color(&self) -> Option<Color> {
+        <Self as State>::as_color(self)
+    }
+
     fn as_char(&self) -> Option<char> {
         <Self as State>::as_char(self)
     }
@@ -127,6 +178,10 @@ pub trait AnyState: 'static {
     }
 
     fn as_hex(&self) -> Option<Hex> {
+        None
+    }
+
+    fn as_color(&self) -> Option<Color> {
         None
     }
 
@@ -193,6 +248,10 @@ impl AnyState for Box<dyn AnyState> {
         self.as_ref().as_hex()
     }
 
+    fn as_color(&self) -> Option<Color> {
+        self.as_ref().as_color()
+    }
+
     fn as_str(&self) -> Option<&str> {
         self.as_ref().as_str()
     }
@@ -224,6 +283,48 @@ pub trait AnyList {
 //   - State implementation... -
 //   State implementation for primitives and non-state types
 // -----------------------------------------------------------------------------
+impl<T: State + TypeId> State for Option<T> {
+    fn type_info(&self) -> Type {
+        T::Type
+    }
+
+    fn as_int(&self) -> Option<i64> {
+        self.as_ref()?.as_int()
+    }
+
+    fn as_float(&self) -> Option<f64> {
+        self.as_ref()?.as_float()
+    }
+
+    fn as_hex(&self) -> Option<Hex> {
+        self.as_ref()?.as_hex()
+    }
+
+    fn as_color(&self) -> Option<Color> {
+        self.as_ref()?.as_color()
+    }
+
+    fn as_char(&self) -> Option<char> {
+        self.as_ref()?.as_char()
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        self.as_ref()?.as_str()
+    }
+
+    fn as_bool(&self) -> Option<bool> {
+        self.as_ref()?.as_bool()
+    }
+
+    fn as_any_map(&self) -> Option<&dyn AnyMap> {
+        self.as_ref()?.as_any_map()
+    }
+
+    fn as_any_list(&self) -> Option<&dyn AnyList> {
+        self.as_ref()?.as_any_list()
+    }
+}
+
 macro_rules! impl_num_state {
     ($t:ty) => {
         impl State for $t {
@@ -252,18 +353,18 @@ macro_rules! impl_float_state {
     };
 }
 
-impl AnyState for bool {
+impl State for bool {
     fn type_info(&self) -> Type {
         Type::Bool
     }
 
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
+    // fn to_any_ref(&self) -> &dyn Any {
+    //     self
+    // }
 
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
+    // fn to_any_mut(&mut self) -> &mut dyn Any {
+    //     self
+    // }
 
     fn as_bool(&self) -> Option<bool> {
         Some(*self)
@@ -338,6 +439,24 @@ impl AnyState for Hex {
     }
 
     fn as_hex(&self) -> Option<Hex> {
+        Some(*self)
+    }
+}
+
+impl AnyState for Color {
+    fn type_info(&self) -> Type {
+        Type::Color
+    }
+
+    fn to_any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn to_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn as_color(&self) -> Option<Color> {
         Some(*self)
     }
 }

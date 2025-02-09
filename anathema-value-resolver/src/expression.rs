@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use anathema_state::{Hex, Number, PendingValue, SubTo, Subscriber, Type, ValueRef};
+use anathema_state::{Color, Hex, Number, PendingValue, SubTo, Subscriber, Type, ValueRef};
 use anathema_store::slab::Key;
 use anathema_strings::StrIndex;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
@@ -93,6 +93,7 @@ pub enum ValueExpr<'bp> {
     Int(Kind<i64>),
     Float(Kind<f64>),
     Hex(Kind<Hex>),
+    Color(Kind<Color>),
     Str(Kind<&'bp str>),
     DynMap(PendingValue),
     DynList(PendingValue),
@@ -137,6 +138,7 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
             Type::String => Self::Str(Kind::Dyn(value)),
             Type::Bool => Self::Bool(Kind::Dyn(value)),
             Type::Hex => Self::Hex(Kind::Dyn(value)),
+            Type::Color => Self::Color(Kind::Dyn(value)),
             Type::Map => Self::DynMap(value),
             Type::List => Self::DynList(value),
             Type::Composite => Self::Composite(value),
@@ -155,48 +157,71 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Bool(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().unwrap();
-            ValueKind::Bool(state.as_bool().unwrap())
+            let state = pending.as_state().expect("type info is encoded");
+            match state.as_bool() {
+                Some(b) => ValueKind::Bool(b),
+                None => ValueKind::Null,
+            }
         }
         ValueExpr::Char(Kind::Static(c)) => ValueKind::Char(*c),
         ValueExpr::Char(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().unwrap();
+            let state = pending.as_state().expect("type info is encoded");
             match state.as_char() {
                 Some(c) => ValueKind::Char(c),
                 None => ValueKind::Null,
             }
-
         }
         ValueExpr::Int(Kind::Static(i)) => ValueKind::Int(*i),
         ValueExpr::Int(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().unwrap();
-            ValueKind::Int(state.as_int().unwrap())
+            let state = pending.as_state().expect("type info is encoded");
+            match state.as_int() {
+                Some(i) => ValueKind::Int(i),
+                None => ValueKind::Null,
+            }
         }
         ValueExpr::Float(Kind::Static(f)) => ValueKind::Float(*f),
         ValueExpr::Float(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().unwrap();
-            ValueKind::Float(state.as_float().unwrap())
+            let state = pending.as_state().expect("type info is encoded");
+            match state.as_float() {
+                Some(f) => ValueKind::Float(f),
+                None => ValueKind::Null,
+            }
         }
         ValueExpr::Hex(Kind::Static(h)) => ValueKind::Hex(*h),
         ValueExpr::Hex(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().unwrap();
-            ValueKind::Hex(state.as_hex().unwrap())
+            let state = pending.as_state().expect("type info is encoded");
+            match state.as_hex() {
+                Some(h) => ValueKind::Hex(h),
+                None => ValueKind::Null,
+            }
+        }
+        ValueExpr::Color(Kind::Static(h)) => ValueKind::Color(*h),
+        ValueExpr::Color(Kind::Dyn(pending)) => {
+            pending.subscribe(ctx.sub);
+            ctx.sub_to.push(pending.sub_key());
+            let state = pending.as_state().expect("type info is encoded");
+            match state.as_color() {
+                Some(h) => ValueKind::Color(h),
+                None => ValueKind::Null,
+            }
         }
         ValueExpr::Str(Kind::Static(s)) => ValueKind::Str(Cow::Borrowed(s)),
         ValueExpr::Str(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().unwrap();
-            let s = state.as_str().unwrap();
-            ValueKind::Str(Cow::Owned(s.to_owned()))
+            let state = pending.as_state().expect("type info is encoded");
+            match state.as_str() {
+                Some(s) => ValueKind::Str(Cow::Owned(s.to_owned())),
+                None => ValueKind::Null,
+            }
         }
 
         // -----------------------------------------------------------------------------
@@ -288,9 +313,11 @@ fn resolve_pending(val: PendingValue, sub: Subscriber) -> ValueExpr<'static> {
         Type::String => ValueExpr::Str(Kind::Dyn(val)),
         Type::Bool => ValueExpr::Bool(Kind::Dyn(val)),
         Type::Hex => ValueExpr::Hex(Kind::Dyn(val)),
+        Type::Color => ValueExpr::Color(Kind::Dyn(val)),
         Type::Map | Type::Composite => ValueExpr::DynMap(val),
         Type::List => ValueExpr::DynList(val),
-        val_type => panic!("{val_type:?}"),
+        Type::Unit => ValueExpr::Null,
+        // val_type => panic!("{val_type:?}"),
     }
 }
 
@@ -298,7 +325,14 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
     match src {
         ValueExpr::DynMap(value) | ValueExpr::Composite(value) => {
             let s = or_null!(value.as_state());
-            let map = s.as_any_map().expect("a dyn map is always an any_map");
+            let map = match s.as_any_map() {
+                Some(map) => map,
+                None => {
+                    value.subscribe(ctx.sub);
+                    ctx.sub_to.push(value.sub_key());
+                    return ValueExpr::Null;
+                }
+            };
             let key = or_null!(resolve_str(index, ctx));
 
             // if the values doesn't exist subscribe to the underlying map to get notified when
@@ -394,7 +428,8 @@ fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
         ValueKind::Float(_) => todo!(),
         ValueKind::Bool(_) => todo!(),
         ValueKind::Char(_) => todo!(),
-        ValueKind::Hex(hex) => todo!(),
+        ValueKind::Hex(_) => todo!(),
+        ValueKind::Color(_) => todo!(),
         ValueKind::Str(cow) => todo!(),
         ValueKind::Composite => todo!(),
         ValueKind::Null => todo!(),

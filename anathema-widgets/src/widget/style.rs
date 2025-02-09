@@ -64,6 +64,7 @@ impl Style {
 
         if let Some(color) = attributes.get("background") {
             let color = match color {
+                ValueKind::Color(color) => *color,
                 ValueKind::Hex(Hex { r, g, b }) => Color::from((*r, *g, *b)),
                 ValueKind::Str(cow) => Color::from_str(cow.as_ref()).unwrap_or(Color::Reset),
                 ValueKind::Int(ansi) => Color::AnsiVal(*ansi as u8),

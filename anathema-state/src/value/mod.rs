@@ -17,34 +17,10 @@ use crate::store::values::{
 };
 use crate::store::watchers::{monitor, queue_monitor, Watcher};
 use crate::store::{changed, ValueKey};
-use crate::{Change, Subscriber};
+use crate::{Change, Color, Subscriber};
 
 mod list;
 mod map;
-
-pub trait TypeId {
-    const Type: Type = Type::Composite;
-}
-
-impl TypeId for String {
-    const Type: Type = Type::String;
-}
-
-impl TypeId for i64 {
-    const Type: Type = Type::Int;
-}
-
-impl TypeId for f64 {
-    const Type: Type = Type::Float;
-}
-
-impl<T> TypeId for List<T> {
-    const Type: Type = Type::List;
-}
-
-impl<T> TypeId for Map<T> {
-    const Type: Type = Type::Map;
-}
 
 /// A value that reacts to change.
 ///
@@ -480,7 +456,7 @@ impl PendingValue {
     pub fn monitor(&self, watcher: Watcher) {
         monitor(self.0.owned(), watcher);
     }
-    
+
     pub fn sub_key(&self) -> SubKey {
         self.0.sub()
     }
@@ -490,15 +466,16 @@ impl PendingValue {
 #[repr(u16)]
 pub enum Type {
     Int = 1,
-    Float,
-    Char,
-    String,
-    Bool,
-    Hex,
-    Map,
-    List,
-    Composite,
-    Unit,
+    Float = 2,
+    Char = 3,
+    String = 4,
+    Bool = 5,
+    Hex = 6,
+    Map = 7,
+    List = 8,
+    Composite = 9,
+    Unit = 10,
+    Color = 11,
 }
 
 #[cfg(test)]

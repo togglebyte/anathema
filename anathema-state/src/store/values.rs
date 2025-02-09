@@ -4,7 +4,7 @@ use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 use super::watchers::queue_monitor;
 use super::{ValueKey, OWNED, SHARED, SUBSCRIBERS};
 use crate::states::AnyState;
-use crate::value::TypeId;
+use crate::states::TypeId;
 use crate::Type;
 
 pub(crate) struct OwnedValue {

@@ -15,6 +15,7 @@ class PendingValuePrinter:
         'List',
         'Composite',
         'Unit',
+        'Color',
     ]
 
     def __init__(self, val):

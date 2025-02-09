@@ -31,6 +31,11 @@ pub fn state_derive(input: DeriveInput) -> Result {
     Ok(quote! {
         # use ::anathema::state::{self, AnyMap, Type, Value, ValueRef, PendingValue, Path, state, Subscriber, CommonVal};
         # use ::std::any::Any;
+
+        impl state::TypeId for #name {
+            const r#Type: Type = Type::Composite;
+        }
+
         impl state::State for #name {
             fn type_info(&self) -> Type {
                 Type::Composite

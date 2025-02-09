@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use anathema_state::Value as StateValue;
 use anathema_store::tree::TreeView;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{AttributeStorage, Collection, Scope, Value};
+use anathema_value_resolver::{AttributeStorage, Collection, Scope, Value, ValueKind};
 
 use crate::layout::display::DISPLAY;
 use crate::layout::{Display, LayoutCtx, LayoutFilter};
@@ -208,7 +208,8 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 WidgetKind::ControlFlow(controlflow) => {
                     if controlflow.has_changed(&children) {
                         let path = children.offset;
-                        children.relative_remove(&[0]);
+                        crate::debug_tree!(children);
+                        children.truncate_children();
                     }
                     let generator = Generator::from(&*widget);
                     let mut children = LayoutForEach::with_generator(
@@ -370,7 +371,13 @@ fn generate<'bp>(
                 .iter()
                 .enumerate()
                 .filter_map(|(id, node)| {
-                    let cond = node.cond.as_ref().and_then(|cond| cond.as_bool()).unwrap_or(true);
+                    // If there is a condition but it's not a bool, then it's false
+                    // If there is no condition then it's true (a conditionless else)
+                    // Everything else is down to the value
+                    let cond = match node.cond.as_ref() {
+                        Some(val) => val.try_as::<bool>().unwrap_or(false),
+                        None => true
+                    };
                     match cond {
                         true => Some((id, node.body)),
                         false => None,

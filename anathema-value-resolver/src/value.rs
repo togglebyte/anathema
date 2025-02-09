@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
-use anathema_state::{Hex, PendingValue, SubTo, Subscriber, Type};
+use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
@@ -49,6 +49,7 @@ impl<'bp> Collection<'bp> {
             | ValueKind::Bool(_)
             | ValueKind::Char(_)
             | ValueKind::Hex(_)
+            | ValueKind::Color(_)
             | ValueKind::Str(_)
             | ValueKind::Composite
             | ValueKind::Attributes
@@ -85,6 +86,13 @@ impl<'bp> Value<'bp> {
         self.sub_to.unsubscribe(self.sub);
         let mut ctx = ValueThingy::new(attribute_storage, self.sub, &mut self.sub_to);
         self.kind = resolve_value(&self.expr, &mut ctx);
+    }
+
+    pub fn try_as<T>(&self) -> Option<T>
+    where
+        T: for<'a> TryFrom<&'a ValueKind<'a>>,
+    {
+        (&self.kind).try_into().ok()
     }
 
     pub fn strings<F>(&self, mut f: F)
@@ -125,6 +133,7 @@ pub enum ValueKind<'bp> {
     Bool(bool),
     Char(char),
     Hex(Hex),
+    Color(Color),
     Str(Cow<'bp, str>),
     Composite,
     Null,
@@ -167,6 +176,11 @@ impl ValueKind<'_> {
         Some(*i)
     }
 
+    pub fn as_color(&self) -> Option<Color> {
+        let ValueKind::Color(i) = self else { return None };
+        Some(*i)
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         let ValueKind::Str(i) = &self else { return None };
         Some(&*i)
@@ -182,6 +196,7 @@ impl ValueKind<'_> {
             ValueKind::Bool(b) => f(&b.to_string()),
             ValueKind::Char(c) => f(&c.to_string()),
             ValueKind::Hex(x) => f(&x.to_string()),
+            ValueKind::Color(col) => f(&col.to_string()),
             ValueKind::Str(cow) => f(cow.as_ref()),
             ValueKind::Map => return true,
             ValueKind::List(vec) => vec.iter().take_while(|val| val.strings(f)).count() == vec.len(),
@@ -203,6 +218,66 @@ impl ValueKind<'_> {
 impl From<&'static str> for ValueKind<'static> {
     fn from(value: &'static str) -> Self {
         ValueKind::Str(Cow::Borrowed(value))
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Try From -
+// -----------------------------------------------------------------------------
+macro_rules! try_from_valuekind {
+    ($t:ty, $kind:ident) => {
+        impl TryFrom<&ValueKind<'_>> for $t {
+            type Error = ();
+
+            fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+                match value {
+                    ValueKind::$kind(val) => Ok(*val),
+                    _ => Err(()),
+                }
+            }
+        }
+    };
+}
+
+macro_rules! try_from_valuekind_int {
+    ($t:ty, $kind:ident) => {
+        impl TryFrom<&ValueKind<'_>> for $t {
+            type Error = ();
+
+            fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+                match value {
+                    ValueKind::$kind(val) => Ok(*val as $t),
+                    _ => Err(()),
+                }
+            }
+        }
+    };
+}
+
+try_from_valuekind!(i64, Int);
+try_from_valuekind!(f64, Float);
+try_from_valuekind!(bool, Bool);
+try_from_valuekind!(char, Char);
+try_from_valuekind!(Hex, Hex);
+try_from_valuekind!(Color, Color);
+
+try_from_valuekind_int!(i32, Int);
+try_from_valuekind_int!(i16, Int);
+try_from_valuekind_int!(i8, Int);
+try_from_valuekind_int!(u32, Int);
+try_from_valuekind_int!(u16, Int);
+try_from_valuekind_int!(u8, Int);
+
+try_from_valuekind_int!(f32, Float);
+
+impl<'a> TryFrom<&'a ValueKind<'_>> for &'a str {
+    type Error = ();
+
+    fn try_from(value: &'a ValueKind<'_>) -> Result<Self, Self::Error> {
+        match value {
+            ValueKind::Str(val) => Ok(val.as_ref()),
+            _ => Err(()),
+        }
     }
 }
 
