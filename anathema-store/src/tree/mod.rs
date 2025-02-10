@@ -141,22 +141,6 @@ impl<T> Tree<T> {
         Some(path)
     }
 
-    // /// Being an insert transaction.
-    // /// The transaction has to be committed before the value is written to
-    // /// the tree.
-    // /// ```
-    // /// # use anathema_store::tree::*;
-    // /// let mut tree = Tree::empty();
-    // /// let transaction = tree.insert(&[]);
-    // /// let value_id = transaction.commit_child(1usize).unwrap();
-    // /// let one = tree.get_ref_by_id(value_id).unwrap();
-    // /// assert_eq!(*one, 1);
-    // /// ```
-    // pub fn insert<'tree>(&'tree mut self, parent: &'tree [u16]) -> InsertTransaction<'_, 'tree, T> {
-    //     panic!()
-    //     // InsertTransaction::new(self, parent)
-    // }
-
     /// Get a reference to a `Node` via a path.
     pub fn get_node_by_path(&mut self, path: &[u16]) -> Option<(&Node, &mut TreeValues<T>)> {
         self.layout.with(path, |node| node).map(|node| (node, &mut self.values))

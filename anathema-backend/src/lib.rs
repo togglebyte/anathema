@@ -109,6 +109,23 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
             return;
         }
 
+        self.tree.view_mut().each_value(|widget| {
+            // Reset the depth / count thingy here
+        });
+
+        // Can we do the layout here where if there are dirty widgets we just grab that widget
+        // and do a layout on it, we set the iteration depth / count and then run it.
+        
+        // If the widget returns a separate size we grab the parent 
+        // and do a layout there.
+
+        // Keep going all the way back, however we don't perform a layout on any widget
+        // with a separate depth / count on it
+
+        // We do need to tell all the values to reset the count afterwards though
+
+
+
         // TODO: this is a hack.
         // This forces the entire tree to be laid out.
         //

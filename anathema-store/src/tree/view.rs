@@ -210,6 +210,12 @@ impl<'tree, T> TreeView<'tree, T> {
         let ret = f(&value.0, &value.1, self);
         Some(ret)
     }
+
+    pub fn each_value<F>(&mut self, mut f: F) 
+        where F: FnMut(&mut T)
+    {
+        self.values.iter_mut().map(|(_, val)| val).for_each(f);
+    }
 }
 
 #[cfg(test)]
