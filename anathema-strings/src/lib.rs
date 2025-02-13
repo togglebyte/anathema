@@ -50,7 +50,7 @@ impl<'slice> HStrings<'slice> {
         }
     }
 
-    pub fn insert_with<F>(&mut self, mut f: F) -> StrIndex
+    pub fn insert_with<F>(&mut self, f: F) -> StrIndex
     where
         F: FnOnce(&mut Transaction<'_, 'slice>),
     {
@@ -123,9 +123,9 @@ where
     B: Iterator<Item = &'hstr str>,
     B: Clone,
 {
-    fn eq(&self, mut other: &HString<B>) -> bool {
+    fn eq(&self, other: &HString<B>) -> bool {
         let mut lhs = self.inner.clone();
-        let mut rhs = other.inner.clone();
+        let rhs = other.inner.clone();
 
         loop {
             let a = lhs.next();
@@ -164,7 +164,7 @@ where
     I: Iterator<Item = &'hstr str>,
     I: Clone,
 {
-    fn eq(&self, mut other: &&str) -> bool {
+    fn eq(&self, other: &&str) -> bool {
         self == *other
     }
 }

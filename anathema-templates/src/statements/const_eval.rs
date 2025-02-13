@@ -48,13 +48,11 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
     let expr = expr.into();
 
     let expr = match expr {
-        expr @ (E::Primitive(_) | E::Str(_))  => expr,
-        E::Either(first, second) => {
-            match const_eval(first, ctx) {
-                Some(expr @ (E::Primitive(_) | E::Str(_))) => expr.into(),
-                Some(expr) => E::Either(expr.into(), ce!(second)),
-                None => return None,
-            }
+        expr @ (E::Primitive(_) | E::Str(_)) => expr,
+        E::Either(first, second) => match const_eval(first, ctx) {
+            Some(expr @ (E::Primitive(_) | E::Str(_))) => expr.into(),
+            Some(expr) => E::Either(expr.into(), ce!(second)),
+            None => return None,
         },
         E::Not(expr) => E::Not(ce!(*expr)),
         E::Negative(expr) => E::Negative(ce!(*expr)),

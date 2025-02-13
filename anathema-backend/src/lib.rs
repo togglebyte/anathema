@@ -2,17 +2,11 @@ use std::ops::ControlFlow;
 use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
-use anathema_store::tree::{AsNodePath, Node, TreeValues};
-use anathema_strings::HStrings;
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFilter, Viewport};
 use anathema_widgets::paint::PaintFilter;
-use anathema_widgets::tree::WidgetPositionFilter;
-use anathema_widgets::{
-    awful_debug, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
-    PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree, WidgetTreeView,
-};
+use anathema_widgets::{awful_debug, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
 
 pub mod test;
 pub mod tui;
@@ -110,7 +104,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
     fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
-        let mut tree = self.tree.view_mut();
+        let tree = self.tree.view_mut();
 
         let scope = Scope::root();
         let mut for_each = LayoutForEach::new(tree, &scope, filter, None);
@@ -136,7 +130,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let mut for_each = PaintChildren::new(self.tree.view_mut(), ctx.attribute_storage, filter);
+        let for_each = PaintChildren::new(self.tree.view_mut(), ctx.attribute_storage, filter);
         self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage);
     }
 }

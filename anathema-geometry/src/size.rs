@@ -11,11 +11,10 @@ pub struct Size {
 }
 
 impl Size {
-    /// Zero size
-    pub const ZERO: Self = Self::new(0, 0);
-
     /// Max size
     pub const MAX: Self = Self::new(usize::MAX, usize::MAX);
+    /// Zero size
+    pub const ZERO: Self = Self::new(0, 0);
 
     /// Create a new Size
     pub const fn new(width: usize, height: usize) -> Self {

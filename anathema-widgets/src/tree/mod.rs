@@ -376,7 +376,7 @@ fn generate<'bp>(
                     // Everything else is down to the value
                     let cond = match node.cond.as_ref() {
                         Some(val) => val.try_as::<bool>().unwrap_or(false),
-                        None => true
+                        None => true,
                     };
                     match cond {
                         true => Some((id, node.body)),

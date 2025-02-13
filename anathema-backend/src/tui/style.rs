@@ -1,8 +1,6 @@
 use std::io::{Result, Write};
-use std::str::FromStr;
 
-use anathema_state::{Color, Hex};
-use anathema_value_resolver::ValueKind;
+use anathema_state::Color;
 use anathema_widgets::{Attributes, Style};
 pub use crossterm::style::{Attribute as CrossAttrib, Color as CTColor};
 use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};

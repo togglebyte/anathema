@@ -4,9 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{
-    ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 

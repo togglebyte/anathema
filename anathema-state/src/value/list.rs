@@ -69,9 +69,7 @@ impl<T: AnyState> List<T> {
 
 impl<T: AnyState> Default for List<T> {
     fn default() -> Self {
-        Self {
-            inner: VecDeque::new()
-        }
+        Self { inner: VecDeque::new() }
     }
 }
 

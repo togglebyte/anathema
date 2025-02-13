@@ -45,7 +45,7 @@ pub mod macros {
             let mut d = $crate::tree::debug::DebugTree::new();
             $tree.apply_visitor(&mut d);
             $crate::awful_debug!("{}", d.output);
-        }
+        };
     }
 }
 
@@ -58,6 +58,6 @@ pub mod macros {
 
     #[macro_export]
     macro_rules! debug_tree {
-        ($tree:expr) => {}
+        ($tree:expr) => {};
     }
 }

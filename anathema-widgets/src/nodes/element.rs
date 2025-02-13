@@ -34,10 +34,7 @@ impl<'bp> Element<'bp> {
     }
 
     pub(crate) fn new(ident: &'bp str, container: Container) -> Self {
-        Self {
-            ident,
-            container,
-        }
+        Self { ident, container }
     }
 
     pub fn layout(
@@ -61,13 +58,13 @@ impl<'bp> Element<'bp> {
                 //
                 // Example:
                 // If the current node is a border with a fixed width and height,
-                // it would create a new constraint for the child node that is the 
+                // it would create a new constraint for the child node that is the
                 // width and height - the border size.
                 //
                 // However the border does not store this constraint, it's stored
                 // on the node itself.
                 // Therefore we pass the nodes its own constraint.
-                
+
                 let constraints = match node.container.cache.constraints() {
                     None => constraints,
                     Some(constraints) => constraints,

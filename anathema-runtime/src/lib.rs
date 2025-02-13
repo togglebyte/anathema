@@ -50,5 +50,5 @@ static REBUILD: AtomicBool = AtomicBool::new(false);
 mod error;
 
 pub mod builder;
-pub mod runtime;
 mod events;
+pub mod runtime;

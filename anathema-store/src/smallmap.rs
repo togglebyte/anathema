@@ -52,7 +52,7 @@ impl SlabIndex for SmallIndex {
 // }
 
 /// A small map used to store a small amount of values.
-/// 
+///
 /// The `SmallMap` can store up to 256 values.
 /// ```
 /// # use anathema_store::smallmap::*;

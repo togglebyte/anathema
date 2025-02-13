@@ -16,7 +16,7 @@ use anathema_value_resolver::AttributeStorage;
 pub use self::factory::Factory;
 pub use self::style::{Attributes, Style};
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter};
-use crate::paint::{PaintFilter, PaintCtx, SizePos};
+use crate::paint::{PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
 use crate::{WidgetContainer, WidgetKind};
 
@@ -124,7 +124,8 @@ impl Components {
     }
 
     pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
-        self.get(self.tab_index).map(|(widget_id, state_id, _)| (widget_id, state_id))
+        self.get(self.tab_index)
+            .map(|(widget_id, state_id, _)| (widget_id, state_id))
     }
 
     pub fn get(&self, index: u32) -> Option<(WidgetId, StateId, bool)> {
@@ -198,7 +199,7 @@ impl DirtyWidgets {
     pub fn contains(&self, id: WidgetId) -> bool {
         self.inner.iter().any(|wid| id.eq(wid))
     }
-    
+
     pub fn pop(&mut self) -> Option<WidgetId> {
         self.inner.pop()
     }

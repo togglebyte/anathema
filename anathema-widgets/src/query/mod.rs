@@ -21,15 +21,11 @@ impl<'tree, 'bp> Children<'tree, 'bp> {
     }
 
     pub fn elements(&mut self) -> Elements<'_, 'tree, 'bp> {
-        Elements {
-            elements: &mut self.0
-        }
+        Elements { elements: &mut self.0 }
     }
 
     pub fn components(&mut self) -> Components<'_, 'tree, 'bp> {
-        Components {
-            elements: &mut self.0
-        }
+        Components { elements: &mut self.0 }
     }
 }
 

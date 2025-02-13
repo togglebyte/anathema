@@ -2,12 +2,10 @@ use std::fmt::Display;
 
 use anathema_geometry::{Pos, Size};
 use anathema_store::slab::SlabIndex;
-use anathema_store::tree::{Node, TreeValues};
-use anathema_strings::HStrings;
 use anathema_value_resolver::{AttributeStorage, Attributes};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{Glyph, GlyphMap};
-use anathema_widgets::{Element, ForEach, PaintChildren, WidgetContainer, WidgetKind, WidgetRenderer};
+use anathema_widgets::{PaintChildren, WidgetRenderer};
 
 use crate::Backend;
 
@@ -47,12 +45,7 @@ impl Backend for TestBackend {
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        anathema_widgets::paint::paint(
-            &mut self.surface,
-            &mut self.glyph_map,
-            widgets,
-            attribute_storage,
-        );
+        anathema_widgets::paint::paint(&mut self.surface, &mut self.glyph_map, widgets, attribute_storage);
     }
 
     fn clear(&mut self) {

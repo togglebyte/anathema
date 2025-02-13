@@ -1,13 +1,11 @@
-use std::ops::{ControlFlow, Deref};
+use std::ops::ControlFlow;
 use std::str::FromStr;
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{
-    AnyWidget, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{AnyWidget, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::border::BorderLayout;
 use crate::layout::Axis;

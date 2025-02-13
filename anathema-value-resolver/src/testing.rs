@@ -55,7 +55,7 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
 
     pub(crate) fn set_state(&mut self, key: &str, value: impl AnyState) {
         panic!("insert no longer exists directly on the map, it can't as it needs to trigger changes");
-    //     self.with_state(|state| state.insert(key, Box::new(value)));
+        //     self.with_state(|state| state.insert(key, Box::new(value)));
     }
 }
 

@@ -547,7 +547,7 @@ impl Iterator for Parser<'_, '_, '_> {
 mod test {
     use super::*;
     use crate::error::Error;
-    use crate::expressions::{ident, list, map, num, strlit, text_segments};
+    use crate::expressions::{ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
         associated_fun, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node,
@@ -807,7 +807,10 @@ mod test {
         let src = "a 'a' 'b'";
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), node(0));
-        assert_eq!(statements.remove(0), load_value(text_segments([strlit("a"), strlit("b")])));
+        assert_eq!(
+            statements.remove(0),
+            load_value(text_segments([strlit("a"), strlit("b")]))
+        );
     }
 
     #[test]

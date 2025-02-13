@@ -7,16 +7,16 @@ use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::query::Children;
 
-use crate::Frame;
 use crate::error::Result;
+use crate::Frame;
 
 // -----------------------------------------------------------------------------
 //   - Used with test driver -
 //   These functions should not be used outside of testing
 // -----------------------------------------------------------------------------
-impl<'bp, G> Frame<'_, 'bp, G> 
-    where
-        G: Fn(Event, &mut DeferredComponents) -> Option<Event>,
+impl<'bp, G> Frame<'_, 'bp, G>
+where
+    G: Fn(Event, &mut DeferredComponents) -> Option<Event>,
 {
     pub fn components(&mut self) -> anathema_widgets::query::Components<'_, '_, 'bp> {
         panic!()

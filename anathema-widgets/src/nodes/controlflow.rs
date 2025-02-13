@@ -12,13 +12,8 @@ pub struct ControlFlow<'bp> {
     pub elses: Vec<Else<'bp>>,
 }
 
-impl<'bp>ControlFlow<'bp> {
-    pub(crate) fn update(
-        &mut self,
-        change: &Change,
-        branch_id: u16,
-        attribute_storage: &AttributeStorage<'bp>,
-    ) {
+impl<'bp> ControlFlow<'bp> {
+    pub(crate) fn update(&mut self, change: &Change, branch_id: u16, attribute_storage: &AttributeStorage<'bp>) {
         match change {
             Change::Changed => {
                 let Some(el) = self.elses.get_mut(branch_id as usize) else { return };
@@ -31,7 +26,6 @@ impl<'bp>ControlFlow<'bp> {
             Change::Removed(_) => unreachable!(),
         }
     }
-
 }
 
 impl ControlFlow<'_> {
@@ -118,8 +112,7 @@ pub struct Else<'bp> {
 }
 
 impl<'bp> Else<'bp> {
-    fn update(&mut self, attributes: &AttributeStorage<'bp>) {
-    }
+    fn update(&mut self, attributes: &AttributeStorage<'bp>) {}
 }
 
 impl Else<'_> {

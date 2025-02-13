@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::{LayoutChildren, LayoutForEach};
+use anathema_widgets::LayoutForEach;
 
 use crate::border::BorderSize;
 

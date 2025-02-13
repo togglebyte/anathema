@@ -5,7 +5,6 @@ use anathema_debug::DebugWriter;
 use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::expressions::Expression;
-use crate::primitives::Primitive;
 
 #[derive(Debug, Default, Clone)]
 pub struct Globals(HashMap<String, Variable>);

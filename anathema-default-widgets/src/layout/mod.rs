@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_value_resolver::ValueKind;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::{LayoutChildren, LayoutForEach};
+use anathema_widgets::LayoutForEach;
 
 pub static DIRECTION: &str = "direction";
 pub static AXIS: &str = "axis";

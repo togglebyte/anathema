@@ -1,5 +1,6 @@
-use std::{any::Any, ops::ControlFlow};
+use std::any::Any;
 use std::borrow::Cow;
+use std::ops::ControlFlow;
 
 use anathema_state::StateId;
 use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
@@ -111,39 +112,33 @@ impl Filter {
         Self::Chain(Box::new(self), Box::new(other))
     }
 
-    // The filter only works with primitives, this excludes maps, lists and composite 
+    // The filter only works with primitives, this excludes maps, lists and composite
     // values
     fn filter(&mut self, component: &Component<'_>, attributes: &Attributes<'_>) -> bool {
         match self {
             Filter::Name(cow) => component.name == cow,
-            Filter::Attribute { key, value: rhs } => {
-                match attributes.get(key) {
-                    Some(lhs) => {
-                        match (lhs, rhs) {
-                            (ValueKind::Int(lhs), ValueKind::Int(rhs)) => lhs == rhs,
-                            (ValueKind::Float(lhs), ValueKind::Float(rhs)) => lhs == rhs,
-                            (ValueKind::Bool(lhs), ValueKind::Bool(rhs)) => lhs == rhs,
-                            (ValueKind::Char(lhs), ValueKind::Char(rhs)) => lhs == rhs,
-                            (ValueKind::Hex(lhs), ValueKind::Hex(rhs)) => lhs == rhs,
-                            (ValueKind::Str(lhs), ValueKind::Str(rhs)) => lhs == rhs,
-                            (ValueKind::Null, ValueKind::Null) => true,
-                            _ => false,
-                        }
-                    }
-                    None => false,
-                }
-            }
+            Filter::Attribute { key, value: rhs } => match attributes.get(key) {
+                Some(lhs) => match (lhs, rhs) {
+                    (ValueKind::Int(lhs), ValueKind::Int(rhs)) => lhs == rhs,
+                    (ValueKind::Float(lhs), ValueKind::Float(rhs)) => lhs == rhs,
+                    (ValueKind::Bool(lhs), ValueKind::Bool(rhs)) => lhs == rhs,
+                    (ValueKind::Char(lhs), ValueKind::Char(rhs)) => lhs == rhs,
+                    (ValueKind::Hex(lhs), ValueKind::Hex(rhs)) => lhs == rhs,
+                    (ValueKind::Str(lhs), ValueKind::Str(rhs)) => lhs == rhs,
+                    (ValueKind::Null, ValueKind::Null) => true,
+                    _ => false,
+                },
+                None => false,
+            },
             Filter::Nth(0) => true,
             Filter::Nth(nth) => {
                 *nth -= 1;
                 false
             }
-            Filter::Chain(first, second) => {
-                match first.filter(component, attributes) {
-                    true => second.filter(component, attributes),
-                    false => false,
-                }
-            }
+            Filter::Chain(first, second) => match first.filter(component, attributes) {
+                true => second.filter(component, attributes),
+                false => false,
+            },
         }
     }
 }

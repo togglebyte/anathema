@@ -4,9 +4,7 @@ use anathema_geometry::{Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{
-    awful_debug, ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -165,7 +163,7 @@ impl Widget for Overflow {
         mut children: PositionChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        mut ctx: PositionCtx,
+        ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let direction = attributes.get_as(DIRECTION).unwrap_or_default();

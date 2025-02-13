@@ -14,7 +14,10 @@ impl GlobalEventHandler for () {
     }
 }
 
-impl<T> GlobalEventHandler for T where T: Fn(Event, &mut DeferredComponents) -> Option<Event> {
+impl<T> GlobalEventHandler for T
+where
+    T: Fn(Event, &mut DeferredComponents) -> Option<Event>,
+{
     fn handle(&self, event: Event, components: &mut DeferredComponents) -> Option<Event> {
         self(event, components)
     }

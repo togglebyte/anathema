@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
-use anathema_strings::HStrings;
 use anathema_value_resolver::{AttributeStorage, Attributes};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::Glyph;

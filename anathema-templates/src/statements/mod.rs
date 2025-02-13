@@ -209,8 +209,9 @@ where
 // -----------------------------------------------------------------------------
 #[cfg(test)]
 mod test {
-    use super::*;
     use anathema_store::slab::SlabIndex;
+
+    use super::*;
 
     pub(crate) fn load_value(expr: impl Into<Expression>) -> Statement {
         Statement::LoadValue(expr.into())

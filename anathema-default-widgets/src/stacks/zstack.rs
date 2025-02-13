@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PositionChildren, Widget, WidgetId};
 
 #[derive(Default)]
 pub struct ZStack;
@@ -31,7 +31,7 @@ impl Widget for ZStack {
         mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        mut ctx: PositionCtx,
+        ctx: PositionCtx,
     ) {
         children.each(|child, children| {
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);

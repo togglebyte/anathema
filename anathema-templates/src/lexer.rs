@@ -288,7 +288,8 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
 
 #[cfg(test)]
 mod test {
-    use anathema_store::{slab::SlabIndex, storage::strings::StringId};
+    use anathema_store::slab::SlabIndex;
+    use anathema_store::storage::strings::StringId;
 
     use super::*;
     use crate::error::ParseErrorKind;

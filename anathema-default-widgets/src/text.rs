@@ -5,7 +5,7 @@ use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{LEFT, RIGHT};
 
@@ -140,7 +140,7 @@ impl Widget for Text {
                     Segment::Str(s) => {
                         let glyphs = Glyphs::new(s);
                         if let Some(new_pos) = ctx.place_glyphs(glyphs, pos) {
-                            // TODO: 
+                            // TODO:
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.
                             for x in pos.x..new_pos.x {

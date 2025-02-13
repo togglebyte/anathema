@@ -17,18 +17,17 @@ pub struct Constraints {
 }
 
 impl Constraints {
-    pub const ZERO: Self = Self {
-        min_width: 0,
-        min_height: 0,
-        max_width: 0,
-        max_height: 0,
-    };
-
     pub const MAX: Self = Self {
         min_width: usize::MAX,
         min_height: usize::MAX,
         max_width: usize::MAX,
         max_height: usize::MAX,
+    };
+    pub const ZERO: Self = Self {
+        min_width: 0,
+        min_height: 0,
+        max_width: 0,
+        max_height: 0,
     };
 
     pub fn max_height(&self) -> usize {

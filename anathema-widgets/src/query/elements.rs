@@ -163,10 +163,7 @@ impl<'bp, 'a> Filter<'bp> for Kind<'a> {
             Kind::ByTag(tag) => el.ident == *tag,
             Kind::ByAttribute(key, value) => {
                 let attribs = attributes.get(el.container.id);
-                attribs
-                    .get(key)
-                    .map(|attribute| value.eq(attribute))
-                    .unwrap_or(false)
+                attribs.get(key).map(|attribute| value.eq(attribute)).unwrap_or(false)
             }
             Kind::AtPosition(pos) => {
                 let region = Region::from((el.container.pos, el.size()));

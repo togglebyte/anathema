@@ -4,9 +4,7 @@ use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{
-    ForEach, LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::{single_layout, Axis};
 
@@ -41,7 +39,7 @@ impl Widget for Expand {
         mut children: PositionChildren<'_, 'bp>,
         _attributes: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        mut ctx: PositionCtx,
+        ctx: PositionCtx,
     ) {
         children.each(|node, children| {
             node.position(children, ctx.pos, attribute_storage, ctx.viewport);

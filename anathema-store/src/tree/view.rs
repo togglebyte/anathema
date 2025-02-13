@@ -224,8 +224,9 @@ impl<'tree, T> TreeView<'tree, T> {
         Some(ret)
     }
 
-    pub fn each_value<F>(&mut self, mut f: F) 
-        where F: FnMut(&mut T)
+    pub fn each_value<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T),
     {
         self.values.iter_mut().map(|(_, val)| val).for_each(f);
     }

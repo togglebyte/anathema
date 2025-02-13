@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::{Pos, Size};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PositionChildren, Widget, WidgetId};
 
 use crate::layout::alignment::{Alignment, ALIGNMENT};
 
@@ -31,7 +31,7 @@ impl Widget for Align {
         mut children: PositionChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        mut ctx: PositionCtx,
+        ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let alignment = attributes.get_as::<Alignment>(ALIGNMENT).unwrap_or_default();

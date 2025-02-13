@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{ForEach, LayoutChildren, LayoutForEach, PositionChildren, WidgetId};
+use anathema_widgets::{LayoutForEach, PositionChildren, WidgetId};
 
 pub use self::column::Column;
 pub use self::hstack::HStack;
@@ -25,7 +25,7 @@ pub struct Stack(Axis);
 impl Stack {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutForEach<'_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
@@ -61,7 +61,7 @@ impl Stack {
         mut children: PositionChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
-        mut ctx: PositionCtx,
+        ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
         let direction = attributes.get_as(DIRECTION).unwrap_or_default();
