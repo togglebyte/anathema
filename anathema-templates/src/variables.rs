@@ -209,7 +209,7 @@ impl RootScope {
     }
 
     #[cfg(test)]
-    fn insert(&mut self, ident: impl Into<Rc<str>>, var: VarId) {
+    fn insert(&mut self, ident: impl Into<String>, var: VarId) {
         self.0.insert(ident.into(), var)
     }
 

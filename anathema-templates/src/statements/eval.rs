@@ -209,20 +209,6 @@ mod test {
     }
 
     #[test]
-    fn for_loop_scoping() {
-        let src = "
-            let x = [1, 2, 3]
-
-            for x in x
-                text x
-        ";
-
-        let mut doc = Document::new(src);
-        let (blueprint, _) = doc.compile().unwrap();
-        panic!("{blueprint:#?}");
-    }
-
-    #[test]
     fn if_else() {
         let src = "
             if 1 == 2
