@@ -9,16 +9,18 @@ use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::deferred::DeferredComponents;
+use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget, WidgetTree};
-use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub use crate::error::{Error, Result};
+use crate::events::GlobalEventHandler;
 use crate::runtime::Runtime;
 use crate::REBUILD;
 
-pub struct Builder {
+pub struct Builder<G: GlobalEventHandler> {
     factory: Factory,
     document: Document,
     component_registry: ComponentRegistry,
@@ -26,11 +28,12 @@ pub struct Builder {
     message_receiver: flume::Receiver<ViewMessage>,
     fps: u32,
     size: Size,
+    global_event_handler: G,
 }
 
-impl Builder {
+impl<G: GlobalEventHandler> Builder<G> {
     /// Create a new builder
-    pub fn new(document: Document, size: Size) -> Self {
+    pub(super) fn new(document: Document, size: Size, global_event_handler: G) -> Self {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
 
@@ -45,6 +48,7 @@ impl Builder {
             message_receiver,
             fps: 30,
             size,
+            global_event_handler,
         }
     }
 
@@ -55,7 +59,7 @@ impl Builder {
     pub fn fps(&mut self, fps: u32) {
         self.fps = fps;
     }
-    
+
     /// Returns an [Emitter] to send messages to components
     pub fn emitter(&self) -> Emitter {
         self.emitter.clone()
@@ -127,9 +131,25 @@ impl Builder {
         Ok(())
     }
 
+    pub fn with_global_event_handler<W>(self, global_event_handler: W) -> Builder<W>
+    where
+        W: Fn(Event, &mut DeferredComponents) -> Option<Event>,
+    {
+        Builder {
+            factory: self.factory,
+            document: self.document,
+            component_registry: self.component_registry,
+            emitter: self.emitter,
+            message_receiver: self.message_receiver,
+            fps: self.fps,
+            size: self.size,
+            global_event_handler,
+        }
+    }
+
     pub fn finish<F, U>(mut self, mut f: F) -> Result<U>
     where
-        F: FnMut(&mut Runtime) -> Result<U>,
+        F: FnMut(&mut Runtime<G>) -> Result<U>,
     {
         #[cfg(feature = "profile")]
         let _puffin_server = {
@@ -167,13 +187,17 @@ impl Builder {
             _watcher: Some(watcher),
             deferred_components: DeferredComponents::new(),
             sleep_micros,
+            global_event_handler: self.global_event_handler,
         };
 
-        // TODO: this enabeld hot reload,
-        //       however with this enabled the `with_frame` function 
+        // TODO: this enables hot reload,
+        //       however with this enabled the `with_frame` function
         //       on the runtime will repeat
         loop {
-            f(&mut inst)?;
+            match f(&mut inst) {
+                Ok(val) => break Ok(val),
+                e => break e,
+            }
             inst.reload();
         }
     }
@@ -185,7 +209,7 @@ impl Builder {
             .filter_map(|p| p.canonicalize().ok())
             .collect::<Vec<_>>();
 
-        let mut watcher = recommended_watcher(move |event: std::result::Result<Event, _>| match event {
+        let mut watcher = recommended_watcher(move |event: std::result::Result<NotifyEvent, _>| match event {
             Ok(event) => match event.kind {
                 notify::EventKind::Create(_) | notify::EventKind::Remove(_) | notify::EventKind::Modify(_) => {
                     if paths.iter().any(|p| event.paths.contains(p)) {

@@ -29,11 +29,12 @@ use notify::RecommendedWatcher;
 
 use crate::builder::Builder;
 pub use crate::error::Result;
-use crate::REBUILD;
+use crate::events::GlobalEventHandler;
+use crate::{Error, REBUILD};
 
 mod testing;
 
-pub struct Runtime {
+pub struct Runtime<G> {
     pub(super) blueprint: Blueprint,
     pub(super) globals: Globals,
     pub(super) factory: Factory,
@@ -54,24 +55,26 @@ pub struct Runtime {
     pub(super) dt: Instant,
     pub(super) _watcher: Option<RecommendedWatcher>,
     pub(super) deferred_components: DeferredComponents,
+    pub(super) global_event_handler: G,
 }
 
-impl Runtime {
-    pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder {
-        Builder::new(doc, backend.size())
+impl Runtime<()> {
+    pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder<()> {
+        Builder::new(doc, backend.size(), ())
     }
+}
 
+impl<G: GlobalEventHandler> Runtime<G> {
     pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
     where
         B: Backend,
-        F: FnMut(&mut B, Frame<'_, '_>),
+        F: FnMut(&mut B, Frame<'_, '_, G>) -> Result<()>,
     {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
         frame.init();
-        f(backend, frame);
-        Ok(())
+        f(backend, frame)
     }
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
@@ -79,6 +82,9 @@ impl Runtime {
         let mut initial = true;
         self.with_frame(backend, |backend, mut frame| loop {
             frame.tick(backend, initial);
+            if frame.stop {
+                return Err(Error::Stop);
+            }
 
             let len = frame.tree.value_len();
 
@@ -89,7 +95,7 @@ impl Runtime {
 
             if REBUILD.swap(false, Ordering::Relaxed) {
                 frame.return_state();
-                break;
+                break Ok(());
             }
         })?;
 
@@ -100,7 +106,7 @@ impl Runtime {
         &'bp mut self,
         tree: &'frame mut WidgetTree<'bp>,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
-    ) -> Result<Frame<'frame, 'bp>> {
+    ) -> Result<Frame<'frame, 'bp, G>> {
         let layout_ctx = LayoutCtx::new(
             &self.globals,
             &self.factory,
@@ -131,6 +137,9 @@ impl Runtime {
 
             dt: &mut self.dt,
             needs_layout: true,
+            stop: false,
+
+            global_event_handler: &self.global_event_handler,
         };
 
         Ok(inst)
@@ -154,7 +163,7 @@ impl Runtime {
     }
 }
 
-pub struct Frame<'rt, 'bp> {
+pub struct Frame<'rt, 'bp, G> {
     document: &'bp Document,
     blueprint: &'bp Blueprint,
     pub tree: &'rt mut WidgetTree<'bp>,
@@ -167,12 +176,28 @@ pub struct Frame<'rt, 'bp> {
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
     needs_layout: bool,
+    stop: bool,
+    global_event_handler: &'rt G,
 }
 
-impl<'bp> Frame<'_, 'bp> {
+impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
+    pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
+        self.global_event_handler.handle(event, &mut self.deferred_components)
+    }
+
     pub fn event(&mut self, event: Event) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
+
+        let Some(event) = self.handle_global_event(event) else { return };
+        if let Event::Stop = event {
+            self.stop = true;
+            return;
+        }
+
+        // if event.is_ctrl_c() {
+        //     panic!("ctrl c quit, this is a hack");
+        // }
 
         match event {
             Event::Noop => return,
@@ -276,10 +301,6 @@ impl<'bp> Frame<'_, 'bp> {
                 self.layout_ctx.viewport.resize(size);
                 self.needs_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
-            }
-
-            if event.is_ctrl_c() {
-                panic!("ctrl c quit, this is a hack");
             }
 
             self.event(event);

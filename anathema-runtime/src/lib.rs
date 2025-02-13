@@ -29,6 +29,8 @@ use anathema_store::tree::{root_node, AsNodePath, TreeView};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::components::deferred::DeferredComponents;
+use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
     AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
 };
@@ -37,12 +39,8 @@ use anathema_widgets::{
     eval_blueprint, update_widget, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap,
     LayoutForEach, WidgetKind, WidgetTree,
 };
-use events::{EventCtx, EventHandler};
-use notify::{recommended_watcher, Event, RecommendedWatcher, RecursiveMode, Watcher};
-use renderonly::OneShot;
-use tree::Tree;
+use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
 
-pub use self::events::{GlobalContext, GlobalEvents};
 pub use crate::builder::Builder;
 pub use crate::error::{Error, Result};
 pub use crate::runtime::{Frame, Runtime};
@@ -50,9 +48,7 @@ pub use crate::runtime::{Frame, Runtime};
 static REBUILD: AtomicBool = AtomicBool::new(false);
 
 mod error;
-mod events;
-mod renderonly;
-mod tree;
 
 pub mod builder;
 pub mod runtime;
+mod events;
