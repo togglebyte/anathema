@@ -117,7 +117,7 @@ impl Widget for Position {
         let mut size = Size::ZERO;
 
         children.each(ctx, |ctx, child, children| {
-            size = child.layout(children, constraints, ctx);
+            size = child.layout(children, constraints, ctx).into();
             ControlFlow::Break(())
         });
 

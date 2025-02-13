@@ -26,6 +26,19 @@ impl<'tree, T> TreeView<'tree, T> {
         }
     }
 
+    pub fn view_mut(&mut self) -> TreeView<'_, T> {
+        TreeView::new(
+            self.offset,
+            &mut self.layout,
+            &mut self.values,
+            &mut self.removed_values,
+        )
+    }
+
+    pub fn get_mut(&mut self, value_id: ValueId) -> Option<&mut T> {
+        self.values.get_mut(value_id).map(|(_, value)| value)
+    }
+
     pub fn contains(&self, key: ValueId) -> bool {
         self.values.get(key).is_some()
     }

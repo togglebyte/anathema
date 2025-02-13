@@ -70,7 +70,6 @@ impl Runtime {
         let mut attribute_storage = AttributeStorage::empty();
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
         frame.init();
-        frame.layout_ctx.force_layout = true;
         f(backend, frame);
         Ok(())
     }
@@ -114,7 +113,6 @@ impl Runtime {
             &mut self.glyph_map,
             &mut self.dirty_widgets,
             &mut self.viewport,
-            false,
         );
 
         let inst = Frame {
@@ -132,6 +130,7 @@ impl Runtime {
             message_receiver: &self.message_receiver,
 
             dt: &mut self.dt,
+            needs_layout: true,
         };
 
         Ok(inst)
@@ -167,6 +166,7 @@ pub struct Frame<'rt, 'bp> {
     emitter: &'rt Emitter,
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
+    needs_layout: bool,
 }
 
 impl<'bp> Frame<'_, 'bp> {
@@ -208,8 +208,6 @@ impl<'bp> Frame<'_, 'bp> {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
 
-        self.layout_ctx.force_layout = force_layout;
-
         let now = Instant::now();
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
@@ -218,9 +216,6 @@ impl<'bp> Frame<'_, 'bp> {
         self.drain_assoc_events();
         self.apply_changes();
         self.cycle(backend);
-
-        // reset force_layout
-        self.layout_ctx.force_layout = false;
 
         *self.dt = Instant::now();
         now.elapsed()
@@ -279,7 +274,7 @@ impl<'bp> Frame<'_, 'bp> {
         while let Some(event) = backend.next_event(remaining) {
             if let Event::Resize(size) = event {
                 self.layout_ctx.viewport.resize(size);
-                self.layout_ctx.force_layout = true;
+                self.needs_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
             }
 
@@ -352,8 +347,9 @@ impl<'bp> Frame<'_, 'bp> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let mut cycle = WidgetCycle::new(backend, self.tree, self.layout_ctx.viewport.constraints());
-        cycle.run(&mut self.layout_ctx);
+        let mut cycle = WidgetCycle::new(backend, self.tree.view_mut(), self.layout_ctx.viewport.constraints());
+        cycle.run(&mut self.layout_ctx, self.needs_layout);
+        self.needs_layout = false;
     }
 
     fn apply_changes(&mut self) {
@@ -366,14 +362,20 @@ impl<'bp> Frame<'_, 'bp> {
             return;
         }
 
-        let len = self.changes.len();
+        self.needs_layout = true;
         let mut tree = self.tree.view_mut();
-        anathema_widgets::debug_tree!(tree);
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|value_id| {
                 let widget_id = value_id.key();
-                anathema_widgets::awful_debug!("{widget_id:?}");
-                self.layout_ctx.dirty_widgets.push(widget_id);
+
+                if let Some(widget) = tree.get_mut(widget_id) {
+                    if let WidgetKind::Element(element) = &mut widget.kind {
+                        element.invalidate_cache();
+                    }
+                }
+
+                // anathema_widgets::awful_debug!("{widget_id:?}");
+                // self.layout_ctx.dirty_widgets.push(widget_id);
 
                 // check that the node hasn't already been removed
                 if !tree.contains(widget_id) {
@@ -385,6 +387,14 @@ impl<'bp> Frame<'_, 'bp> {
                 });
             });
         });
+
+        // while let Some(id) = self.layout_ctx.dirty_widgets.pop() {
+        //     let Some(widget) = self.tree.get_mut(id) else { continue };
+        //     match &mut widget.kind {
+        //         WidgetKind::Element(element) => element.dirty = true,
+        //         _ => continue,
+        //     }
+        // }
     }
 
     fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
@@ -438,7 +448,7 @@ impl<'bp> Frame<'_, 'bp> {
             let Some((widget_id, state_id, ticks)) = self.layout_ctx.components.get(i as u32) else { continue };
 
             if !ticks {
-                continue
+                continue;
             }
             let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);

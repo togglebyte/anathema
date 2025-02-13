@@ -71,7 +71,7 @@ impl BorderLayout {
 
             child_constraints.sub_max_width((border_size.left + border_size.right) as usize);
             child_constraints.sub_max_height((border_size.top + border_size.bottom) as usize);
-            let mut child_size = child.layout(children, child_constraints, ctx);
+            let mut child_size = Size::from(child.layout(children, child_constraints, ctx));
             child_size += border_size.as_size();
             size.width = child_size.width.max(size.width);
             size.height = child_size.height.max(size.height);

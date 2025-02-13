@@ -29,7 +29,6 @@ pub struct LayoutCtx<'frame, 'bp> {
     factory: &'frame Factory,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
-    pub force_layout: bool,
     pub glyph_map: &'frame mut GlyphMap,
     pub viewport: &'frame mut Viewport,
 
@@ -51,7 +50,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         glyph_map: &'frame mut GlyphMap,
         dirty_widgets: &'frame mut DirtyWidgets,
         viewport: &'frame mut Viewport,
-        force_layout: bool,
     ) -> Self {
         Self {
             states,
@@ -64,16 +62,11 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             glyph_map,
             dirty_widgets,
             viewport,
-            force_layout,
         }
     }
 
     pub fn attributes(&self, node_id: WidgetId) -> &Attributes<'bp> {
         self.attribute_storage.get(node_id)
-    }
-
-    pub fn needs_layout(&self, node_id: WidgetId) -> bool {
-        self.dirty_widgets.contains(node_id) || self.force_layout
     }
 
     pub fn eval_ctx(&mut self, parent_component: Option<WidgetId>) -> EvalCtx<'_, 'bp> {

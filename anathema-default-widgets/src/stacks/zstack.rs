@@ -18,7 +18,7 @@ impl Widget for ZStack {
     ) -> Size {
         let mut size = Size::ZERO;
         children.each(ctx, |ctx, child, children| {
-            let child_size = child.layout(children, constraints, ctx);
+            let child_size = Size::from(child.layout(children, constraints, ctx));
             size.width = size.width.max(child_size.width);
             size.height = size.height.max(child_size.height);
             ControlFlow::Continue(())

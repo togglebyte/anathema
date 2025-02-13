@@ -65,7 +65,7 @@ impl Widget for Padding {
             let mut child_constraints = constraints;
             child_constraints.sub_max_width(padding_size.width);
             child_constraints.sub_max_height(padding_size.height);
-            let mut child_size = child.layout(children, child_constraints, ctx);
+            let mut child_size = Size::from(child.layout(children, child_constraints, ctx));
             child_size += padding_size;
             size.width = child_size.width.max(size.width);
             size.height = child_size.height.max(size.height);

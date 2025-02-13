@@ -5,6 +5,7 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::AttributeStorage;
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
+use crate::nodes::element::Layout;
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach, PositionChildren};
 use crate::{LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
@@ -13,13 +14,38 @@ use crate::{LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
 pub struct Cache {
     pub(super) size: Size,
     constraints: Constraints,
+    valid: bool,
 }
 
 impl Cache {
-    pub(crate) const ZERO: Self = Self::new(Size::ZERO, Constraints::ZERO);
+    pub(crate) const ZERO: Self = Self {
+        size: Size::ZERO,
+        constraints: Constraints::ZERO,
+        valid: false,
+    };
 
     const fn new(size: Size, constraints: Constraints) -> Self {
-        Self { size, constraints }
+        Self {
+            size,
+            constraints,
+            valid: true,
+        }
+    }
+
+    // Get the size if the constraints are matching, but only
+    // if the size is not max, as that would be an invalid cache
+    pub(super) fn size(&self) -> Option<Size> {
+        self.valid.then(|| self.size)
+    }
+
+    pub(super) fn invalidate(&mut self) {
+        self.valid = false;
+    }
+
+    fn changed(&mut self, cache: Cache) -> bool {
+        let changed = self.size != cache.size;
+        *self = cache;
+        changed
     }
 }
 
@@ -30,7 +56,7 @@ pub(crate) struct Container {
     pub id: WidgetId,
     pub pos: Pos,
     pub inner_bounds: Region,
-    pub cache: Cache,
+    pub(super) cache: Cache,
 }
 
 impl Container {
@@ -39,28 +65,24 @@ impl Container {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Layout {
         // NOTE: The layout is possibly skipped in the Element::layout call
 
         let size = self.inner.any_layout(children, constraints, self.id, ctx);
         let cache = Cache::new(size, constraints);
 
-        if cache != self.cache {
-            // If this was the target node to layout and nothing has changed,
-            // then there is no reason to continue the layout.
-            ctx.force_layout = true;
-            self.cache = cache;
+        let changed = self.cache.changed(cache);
+        match changed {
+            true => Layout::Changed(self.cache.size),
+            false => Layout::Unchanged(self.cache.size),
         }
-
-        // If the size does not match the previous size, or the constraints are
-        // different than last frame, then this needs to layout everything.
 
         // Floating widgets always report a zero size
         // as they should not affect their parents
-        match self.inner.any_floats() {
-            true => Size::ZERO,
-            false => self.cache.size,
-        }
+        // match self.inner.any_floats() {
+        //     true => Layout::Unchanged(Size::ZERO),
+        //     false => self.cache.size,
+        // }
     }
 
     pub(crate) fn position<'bp>(
@@ -86,10 +108,6 @@ impl Container {
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        // if !matches!(self.needs, WidgetNeeds::Paint) {
-        //     return;
-        // }
-
         let mut ctx = ctx.into_sized(self.cache.size, self.pos);
         let region = ctx.create_region();
         ctx.set_clip_region(region);
@@ -114,7 +132,8 @@ impl Container {
                     loop {
                         let pos = LocalPos::new(used_width, y);
 
-                        panic!();
+                        // TODO: reimplement fill
+                        panic!("figure out what to do with this one");
                         // let controlflow = fill.str_iter(|s| {
                         //     let glyphs = Glyphs::new(s);
                         //     let Some(p) = ctx.place_glyphs(glyphs, pos) else {

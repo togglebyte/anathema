@@ -14,6 +14,11 @@ use anathema_widgets::{Components, DirtyWidgets, GlyphMap, WidgetKind, WidgetTre
 use crate::error::{Error, Result};
 use crate::tree::Tree;
 
+// pub struct GlobalEvents {
+//     // f: F
+//     // this should have access components
+// }
+
 // If the event is tab/back tab then the event is consumed
 fn tab<'bp>(event_ctx: &mut EventCtx<'_, '_, 'bp>, tree: &mut WidgetTree<'bp>, event: Event) -> Option<Event> {
     // -----------------------------------------------------------------------------

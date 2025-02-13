@@ -47,7 +47,7 @@ pub fn layout_all_spacers<'bp>(
             return ControlFlow::Continue(());
         }
 
-        let size = node.layout(children, constraints, ctx);
+        let size = Size::from(node.layout(children, constraints, ctx));
 
         match axis {
             Axis::Horizontal => {

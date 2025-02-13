@@ -100,7 +100,7 @@ pub fn layout_all_expansions<'bp>(
             }
         };
 
-        let widget_size = node.layout(children, constraints, ctx);
+        let widget_size = Size::from(node.layout(children, constraints, ctx));
 
         match axis {
             Axis::Horizontal => {

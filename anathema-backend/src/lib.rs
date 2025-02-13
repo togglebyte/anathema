@@ -11,7 +11,7 @@ use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::tree::WidgetPositionFilter;
 use anathema_widgets::{
     awful_debug, DirtyWidgets, Element, FloatingWidgets, ForEach, GlyphMap, LayoutForEach, PaintChildren,
-    PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree,
+    PositionChildren, WidgetContainer, WidgetGenerator, WidgetKind, WidgetTree, WidgetTreeView,
 };
 
 pub mod test;
@@ -48,12 +48,12 @@ pub trait Backend {
 // a less silly name
 pub struct WidgetCycle<'rt, 'bp, T> {
     backend: &'rt mut T,
-    tree: &'rt mut WidgetTree<'bp>,
+    tree: WidgetTreeView<'rt, 'bp>,
     constraints: Constraints,
 }
 
 impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
-    pub fn new(backend: &'rt mut T, tree: &'rt mut WidgetTree<'bp>, constraints: Constraints) -> Self {
+    pub fn new(backend: &'rt mut T, tree: WidgetTreeView<'rt, 'bp>, constraints: Constraints) -> Self {
         Self {
             backend,
             tree,
@@ -61,11 +61,14 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         }
     }
 
-    fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+    fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
-        self.layout(ctx, LayoutFilter::floating());
+        if needs_layout {
+            let filter = LayoutFilter::floating();
+            self.layout(ctx, filter);
+        }
 
         // -----------------------------------------------------------------------------
         //   - Position -
@@ -78,12 +81,15 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         self.paint(ctx, PaintFilter::floating());
     }
 
-    fn fixed(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
+    fn fixed(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
-        let filter = LayoutFilter::fixed();
-        self.layout(ctx, filter);
+        if needs_layout {
+            awful_debug!("fixed layout");
+            let filter = LayoutFilter::fixed();
+            self.layout(ctx, filter);
+        }
 
         // -----------------------------------------------------------------------------
         //   - Position -
@@ -96,48 +102,18 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         self.paint(ctx, PaintFilter::fixed());
     }
 
-    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) {
-        self.fixed(ctx);
-        self.floating(ctx);
+    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) {
+        self.fixed(ctx, needs_layout);
+        // self.floating(ctx);
     }
 
     fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
-
-        if ctx.dirty_widgets.is_empty() && !ctx.force_layout {
-            return;
-        }
-
-        self.tree.view_mut().each_value(|widget| {
-            // Reset the depth / count thingy here
-        });
-
-        // Can we do the layout here where if there are dirty widgets we just grab that widget
-        // and do a layout on it, we set the iteration depth / count and then run it.
-        
-        // If the widget returns a separate size we grab the parent 
-        // and do a layout there.
-
-        // Keep going all the way back, however we don't perform a layout on any widget
-        // with a separate depth / count on it
-
-        // We do need to tell all the values to reset the count afterwards though
-
-
-
-        // TODO: this is a hack.
-        // This forces the entire tree to be laid out.
-        //
-        // This is just intermediary until we figure out how we are going to
-        // do this.
-        //
-        // One way would be to call layout directly on the widget and if it affects
-        // the size then propagate the change outwards
-        ctx.force_layout = true;
+        let mut tree = self.tree.view_mut();
 
         let scope = Scope::root();
-        let mut for_each = LayoutForEach::new(self.tree.view_mut(), &scope, filter, None);
+        let mut for_each = LayoutForEach::new(tree, &scope, filter, None);
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
             widget.layout(children, constraints, ctx);

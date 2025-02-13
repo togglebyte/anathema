@@ -47,7 +47,7 @@ impl Widget for Container {
         }
 
         children.each(ctx, |ctx, child, children| {
-            size = child.layout(children, constraints, ctx);
+            size = child.layout(children, constraints, ctx).into();
             ControlFlow::Break(())
         });
 

@@ -24,6 +24,13 @@ impl Constraints {
         max_height: 0,
     };
 
+    pub const MAX: Self = Self {
+        min_width: usize::MAX,
+        min_height: usize::MAX,
+        max_width: usize::MAX,
+        max_height: usize::MAX,
+    };
+
     pub fn max_height(&self) -> usize {
         self.max_height
     }

@@ -198,6 +198,10 @@ impl DirtyWidgets {
     pub fn contains(&self, id: WidgetId) -> bool {
         self.inner.iter().any(|wid| id.eq(wid))
     }
+    
+    pub fn pop(&mut self) -> Option<WidgetId> {
+        self.inner.pop()
+    }
 }
 
 /// Parent in a component relationship

@@ -1,11 +1,26 @@
+use std::ops::ControlFlow;
+
 use anathema_geometry::{Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
 
 use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
-use crate::paint::{PaintFilter, PaintCtx, Unsized};
+use crate::paint::{PaintCtx, PaintFilter, Unsized};
 use crate::widget::{ForEach, PaintChildren, PositionChildren};
 use crate::{LayoutChildren, LayoutForEach, WidgetId};
+
+pub enum Layout {
+    Changed(Size),
+    Unchanged(Size),
+}
+
+impl From<Layout> for Size {
+    fn from(value: Layout) -> Self {
+        match value {
+            Layout::Changed(size) | Layout::Unchanged(size) => size,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Element<'bp> {
@@ -19,22 +34,48 @@ impl<'bp> Element<'bp> {
     }
 
     pub(crate) fn new(ident: &'bp str, container: Container) -> Self {
-        Self { ident, container }
+        Self {
+            ident,
+            container,
+        }
     }
 
     pub fn layout(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        // If the context doesn't force layout, and the id is not in the list of dirty widgets
-        // (currently this path ctl) then return the cached value
-        if !ctx.needs_layout(self.id()) {
-            return self.size();
+    ) -> Layout {
+        // 1. Check cache
+        // 2. Check cache of children
+        //
+        // If one of the children returns a `Changed` layout result
+        // the transition the widget into full layout mode
+
+        if let Some(size) = self.cached_size() {
+            let mut rebuild = false;
+            children.each(ctx, |ctx, node, children| {
+                match node.layout(children, constraints, ctx) {
+                    Layout::Changed(_) => {
+                        rebuild = true;
+                        return ControlFlow::Break(());
+                    }
+                    Layout::Unchanged(_) => return ControlFlow::Continue(()),
+                }
+            });
+
+            if !rebuild {
+                return Layout::Unchanged(size);
+            }
         }
 
+        crate::awful_debug!("rebuild for {}", self.ident);
         self.container.layout(children, constraints, ctx)
+        // Layout::Changed(size)
+    }
+
+    pub fn invalidate_cache(&mut self) {
+        self.container.cache.invalidate();
     }
 
     /// Position the element
@@ -56,6 +97,12 @@ impl<'bp> Element<'bp> {
         attribute_storage: &AttributeStorage<'bp>,
     ) {
         self.container.paint(children, ctx, attribute_storage);
+    }
+
+    /// Return the cached size if the constraints are matching
+    /// the cached constraints.
+    pub fn cached_size(&self) -> Option<Size> {
+        self.container.cache.size()
     }
 
     pub fn size(&self) -> Size {

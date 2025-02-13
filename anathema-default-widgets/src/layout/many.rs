@@ -104,7 +104,7 @@ impl Many {
                 constraints
             };
 
-            let widget_size = node.layout(children, widget_constraints, ctx);
+            let widget_size = node.layout(children, widget_constraints, ctx).into();
 
             self.used_size.apply(widget_size);
 

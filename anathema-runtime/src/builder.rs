@@ -172,10 +172,10 @@ impl Builder {
         // TODO: this enabeld hot reload,
         //       however with this enabled the `with_frame` function 
         //       on the runtime will repeat
-        // loop {
-            f(&mut inst)
-            // inst.reload();
-        // }
+        loop {
+            f(&mut inst)?;
+            inst.reload();
+        }
     }
 
     fn set_watcher(&mut self) -> Result<RecommendedWatcher> {

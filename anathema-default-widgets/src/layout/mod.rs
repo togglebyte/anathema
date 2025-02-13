@@ -22,7 +22,7 @@ pub(crate) fn single_layout<'bp>(
     let mut size = Size::ZERO;
 
     children.each(ctx, |ctx, node, children| {
-        size = node.layout(children, constraints, ctx);
+        size = node.layout(children, constraints, ctx).into();
         ControlFlow::Break(())
     });
 
