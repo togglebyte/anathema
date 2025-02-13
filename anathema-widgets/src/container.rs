@@ -133,26 +133,18 @@ impl Container {
             if let Some(fill) = attributes.get("fill") {
                 for y in 0..ctx.local_size.height as u16 {
                     let mut used_width = 0;
-                    loop {
+                    while used_width < ctx.local_size.width as u16 {
                         let pos = LocalPos::new(used_width, y);
 
-                        // TODO: reimplement fill
-                        panic!("figure out what to do with this one");
-                        // let controlflow = fill.str_iter(|s| {
-                        //     let glyphs = Glyphs::new(s);
-                        //     let Some(p) = ctx.place_glyphs(glyphs, pos) else {
-                        //         return ControlFlow::Break(());
-                        //     };
-                        //     used_width += p.x - used_width;
-                        //     match used_width >= ctx.local_size.width as u16 {
-                        //         true => ControlFlow::Break(()),
-                        //         false => ControlFlow::Continue(()),
-                        //     }
-                        // });
-
-                        // if let ControlFlow::Break(()) = controlflow {
-                        //     break;
-                        // }
+                        fill.strings(|s| {
+                            let glyphs = Glyphs::new(s);
+                            let Some(p) = ctx.place_glyphs(glyphs, pos) else {
+                                return false;
+                            };
+                            let width = ctx.local_size.width;
+                            used_width = p.x;
+                            true
+                        });
                     }
                 }
             }

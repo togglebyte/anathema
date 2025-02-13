@@ -186,7 +186,14 @@ impl ValueKind<'_> {
         Some(&*i)
     }
 
-    pub fn strings<F>(&self, f: &mut F) -> bool
+    pub fn strings<F>(&self, mut f: F) -> bool
+    where
+        F: FnMut(&str) -> bool,
+    {
+        self.internal_strings(&mut f)
+    }
+
+    fn internal_strings<F>(&self, f: &mut F) -> bool
     where
         F: FnMut(&str) -> bool,
     {
@@ -199,7 +206,7 @@ impl ValueKind<'_> {
             ValueKind::Color(col) => f(&col.to_string()),
             ValueKind::Str(cow) => f(cow.as_ref()),
             ValueKind::Map => return true,
-            ValueKind::List(vec) => vec.iter().take_while(|val| val.strings(f)).count() == vec.len(),
+            ValueKind::List(vec) => vec.iter().take_while(|val| val.internal_strings(f)).count() == vec.len(),
             ValueKind::DynList(value) => {
                 let Some(state) = value.as_state() else { return true };
                 let Some(list) = state.as_any_list() else { return true };

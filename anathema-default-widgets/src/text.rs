@@ -85,7 +85,7 @@ impl Widget for Text {
 
         // // Layout text
         attributes.value().map(|text| {
-            text.strings(&mut |s| match self.strings.add_str(s) {
+            text.strings(|s| match self.strings.add_str(s) {
                 ProcessResult::Break => false,
                 ProcessResult::Continue => true,
             });
@@ -100,7 +100,7 @@ impl Widget for Text {
 
             let attributes = ctx.attributes(child.id());
             if let Some(text) = attributes.value() {
-                text.strings(&mut |s| match self.strings.add_str(s) {
+                text.strings(|s| match self.strings.add_str(s) {
                     ProcessResult::Break => false,
                     ProcessResult::Continue => true,
                 });
