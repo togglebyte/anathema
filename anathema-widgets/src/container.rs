@@ -13,21 +13,21 @@ use crate::{LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
 #[derive(Debug, PartialEq)]
 pub struct Cache {
     pub(super) size: Size,
-    constraints: Constraints,
+    constraints: Option<Constraints>,
     valid: bool,
 }
 
 impl Cache {
     pub(crate) const ZERO: Self = Self {
         size: Size::ZERO,
-        constraints: Constraints::ZERO,
+        constraints: None,
         valid: false,
     };
 
     const fn new(size: Size, constraints: Constraints) -> Self {
         Self {
             size,
-            constraints,
+            constraints: Some(constraints),
             valid: true,
         }
     }
@@ -46,6 +46,10 @@ impl Cache {
         let changed = self.size != cache.size;
         *self = cache;
         changed
+    }
+
+    pub(crate) fn constraints(&self) -> Option<Constraints> {
+        self.constraints
     }
 }
 

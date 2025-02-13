@@ -55,6 +55,24 @@ impl<'bp> Element<'bp> {
         if let Some(size) = self.cached_size() {
             let mut rebuild = false;
             children.each(ctx, |ctx, node, children| {
+                // If we are here it's because the current node has a valid cache.
+                // We need to use the constraint for the given node in this case as
+                // the constraint is not managed by the current node.
+                //
+                // Example:
+                // If the current node is a border with a fixed width and height,
+                // it would create a new constraint for the child node that is the 
+                // width and height - the border size.
+                //
+                // However the border does not store this constraint, it's stored
+                // on the node itself.
+                // Therefore we pass the nodes its own constraint.
+                
+                let constraints = match node.container.cache.constraints() {
+                    None => constraints,
+                    Some(constraints) => constraints,
+                };
+
                 match node.layout(children, constraints, ctx) {
                     Layout::Changed(_) => {
                         rebuild = true;
