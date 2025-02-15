@@ -195,7 +195,7 @@ impl<G: GlobalEventHandler> Builder<G> {
         //       on the runtime will repeat
         loop {
             match f(&mut inst) {
-                Ok(val) => break Ok(val),
+                Ok(val) => continue,
                 e => break e,
             }
             inst.reload();
