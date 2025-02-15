@@ -28,14 +28,14 @@ impl DebugTree {
 }
 
 impl<'a> NodeVisitor<WidgetContainer<'a>> for DebugTree {
-    fn visit(&mut self, value: &mut WidgetContainer<'_>, path: &[u16], value_id: Key) -> ControlFlow<bool> {
+    fn visit(&mut self, value: &mut WidgetContainer<'_>, _: &[u16], value_id: Key) -> ControlFlow<bool> {
         match &value.kind {
             WidgetKind::Element(element) => self.write(element.ident, value_id),
             WidgetKind::For(_) => self.write("<for>", value_id),
-            WidgetKind::Iteration(iteration) => self.write("<iter>", value_id),
-            WidgetKind::ControlFlow(control_flow) => self.write("<control flow>", value_id),
+            WidgetKind::Iteration(_) => self.write("<iter>", value_id),
+            WidgetKind::ControlFlow(_) => self.write("<control flow>", value_id),
             WidgetKind::ControlFlowContainer(_) => self.write("<control flow container>", value_id),
-            WidgetKind::Component(component) => self.write("<component>", value_id),
+            WidgetKind::Component(_) => self.write("<component>", value_id),
             WidgetKind::Slot => self.write("<slot>", value_id),
         }
 

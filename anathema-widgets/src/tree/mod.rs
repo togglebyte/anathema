@@ -1,13 +1,10 @@
-use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 use anathema_state::Value as StateValue;
-use anathema_store::tree::TreeView;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{AttributeStorage, Collection, Scope, Value, ValueKind};
+use anathema_value_resolver::{AttributeStorage, Scope};
 
-use crate::layout::display::DISPLAY;
-use crate::layout::{Display, LayoutCtx, LayoutFilter};
+use crate::layout::{LayoutCtx, LayoutFilter};
 use crate::nodes::loops::Iteration;
 use crate::nodes::{controlflow, eval_blueprint};
 use crate::widget::WidgetTreeView;
@@ -55,7 +52,7 @@ impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'b
     fn from(widget: &'widget WidgetContainer<'bp>) -> Self {
         match &widget.kind {
             WidgetKind::Element(_) => panic!("use Self::Single directly"),
-            WidgetKind::For(for_loop) => panic!("use Self::Loop directory"),
+            WidgetKind::For(_) => panic!("use Self::Loop directory"),
             WidgetKind::ControlFlowContainer(_) => Self::ControlFlowContainer(widget.children),
             WidgetKind::Component(comp) => Self::Single {
                 ident: comp.name,
@@ -66,7 +63,7 @@ impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'b
                 body: widget.children,
             },
             WidgetKind::ControlFlow(controlflow) => Self::ControlFlow(&controlflow),
-            WidgetKind::Slot => Self::Slot(widget.children)
+            WidgetKind::Slot => Self::Slot(widget.children),
         }
     }
 }
@@ -127,25 +124,6 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
     where
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
     {
-        match self.generator {
-            Some(parent) => match parent {
-                Generator::Single { ident, body } => {
-                    // crate::awful_debug!("each [start] | {ident}");
-                }
-                Generator::Loop { len, binding, body } => {
-                    // crate::awful_debug!("each [start] | <for> {binding}");
-                }
-                Generator::Iteration { binding, body } => {
-                    // crate::awful_debug!("each [start] | <iter> {binding}");
-                }
-                Generator::ControlFlow(_) => todo!(),
-                Generator::ControlFlowContainer(_) => todo!(),
-                Generator::Slot(_) => todo!(),
-            },
-            None => {
-                // crate::awful_debug!("each [start] | root");
-            }
-        }
         self.inner_each(ctx, &mut f)
     }
 
@@ -186,7 +164,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
         let widget_id = node.value();
 
-        self.tree.with_value_mut(widget_id, |path, widget, mut children| {
+        self.tree.with_value_mut(widget_id, |_, widget, mut children| {
             match self.filter.filter(widget, ctx.attribute_storage) {
                 FilterOutput::Exclude => return ControlFlow::Continue(()),
                 _ => {}
@@ -208,7 +186,6 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 }
                 WidgetKind::ControlFlow(controlflow) => {
                     if controlflow.has_changed(&children) {
-                        let path = children.offset;
                         crate::debug_tree!(children);
                         children.truncate_children();
                     }
@@ -228,7 +205,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         return ControlFlow::Break(());
                     }
 
-                    let mut scope =
+                    let scope =
                         Scope::with_collection(for_loop.binding, &for_loop.collection, self.scope, self.scope.outer);
                     let mut children = LayoutForEach::with_generator(
                         children,
@@ -368,7 +345,7 @@ fn generate<'bp>(
                     true
                 } else {
                     let node_id = tree.layout[0].value();
-                    let (path, widget) = tree
+                    let (_, widget) = tree
                         .values
                         .get(node_id)
                         .expect("because the node exists, the value exist");
@@ -464,10 +441,10 @@ impl<'a, 'bp, Fltr: Filter<'bp>> ForEach<'a, 'bp, Fltr> {
     where
         F: FnMut(&mut Fltr::Output, ForEach<'_, 'bp, Fltr>) -> ControlFlow<()>,
     {
-        self.inner_each(None, &mut f)
+        self.inner_each(&mut f)
     }
 
-    fn inner_each<F>(&mut self, parent: Option<&WidgetContainer<'bp>>, f: &mut F) -> ControlFlow<()>
+    fn inner_each<F>(&mut self, f: &mut F) -> ControlFlow<()>
     where
         F: FnMut(&mut Fltr::Output, ForEach<'_, 'bp, Fltr>) -> ControlFlow<()>,
     {
@@ -483,13 +460,11 @@ impl<'a, 'bp, Fltr: Filter<'bp>> ForEach<'a, 'bp, Fltr> {
         F: FnMut(&mut Fltr::Output, ForEach<'_, 'bp, Fltr>) -> ControlFlow<()>,
     {
         let Some(node) = self.tree.layout.get(index) else { panic!() };
-        self.tree.with_value_mut(node.value(), |path, widget, children| {
+        self.tree.with_value_mut(node.value(), |_, widget, children| {
             match self.filter.filter(widget, self.attribute_storage) {
                 FilterOutput::Include(el, filter) => f(el, ForEach::new(children, self.attribute_storage, filter)),
                 FilterOutput::Exclude => ControlFlow::Break(()),
-                FilterOutput::Continue => {
-                    ForEach::new(children, self.attribute_storage, self.filter).inner_each(Some(widget), f)
-                }
+                FilterOutput::Continue => ForEach::new(children, self.attribute_storage, self.filter).inner_each(f),
             }
         })
     }

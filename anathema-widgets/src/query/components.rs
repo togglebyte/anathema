@@ -1,19 +1,10 @@
 use std::ops::ControlFlow;
 
-use anathema_geometry::{Pos, Region};
-pub use anathema_store::tree::visitor::apply_visitor;
-use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{Node, TreeValues};
 use anathema_value_resolver::{AttributeStorage, Attributes};
 
 use super::{Chain, Filter, Nodes, Query, QueryValue};
 use crate::nodes::component::Component;
-use crate::nodes::element::Element;
-use crate::{DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
-
-fn comptest_delete_this<'tree, 'bp>(components: ComponentQuery<'_, 'tree, 'bp, Kind<'bp>>) {
-    let value = components.by_name("").by_name("").by_name("").first(|id, c, a| 123);
-}
+use crate::{WidgetId, WidgetKind};
 
 pub struct Components<'children, 'tree, 'bp> {
     pub(super) elements: &'children mut Nodes<'tree, 'bp>,
@@ -92,7 +83,7 @@ where
         self.query(&mut f, true);
     }
 
-    fn query<F, U>(self, mut f: &mut F, continuous: bool) -> ControlFlow<U>
+    fn query<F, U>(self, f: &mut F, continuous: bool) -> ControlFlow<U>
     where
         F: FnMut(WidgetId, &mut Component<'_>, &mut Attributes<'_>) -> U,
     {
@@ -114,7 +105,7 @@ where
                 self.query.elements.dirty_widgets,
             );
 
-            let mut query = ComponentQuery {
+            let query = ComponentQuery {
                 query: Query {
                     elements: &mut elements,
                     filter: self.query.filter,

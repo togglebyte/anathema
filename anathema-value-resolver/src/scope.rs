@@ -9,8 +9,7 @@ use crate::{Collection, ValueKind};
 #[derive(Debug)]
 pub(crate) enum Entry<'parent, 'bp> {
     Component { state: StateId, component_attributes: Key },
-    Value(&'parent ValueExpr<'bp>),
-    Collection(&'bp str, &'parent Collection<'bp>),
+    Collection(&'parent Collection<'bp>),
     Index(&'bp str, usize),
     Empty,
 }
@@ -23,7 +22,7 @@ pub struct Scope<'parent, 'bp> {
 }
 
 impl<'parent, 'bp> Scope<'parent, 'bp> {
-    pub fn new(value: Entry<'parent, 'bp>) -> Self {
+    fn new(value: Entry<'parent, 'bp>) -> Self {
         Self {
             parent: None,
             outer: None,
@@ -48,7 +47,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         parent: &'parent Scope<'parent, 'bp>,
         outer: Option<&'parent Scope<'parent, 'bp>>,
     ) -> Self {
-        let value = Entry::Collection(binding, collection);
+        let value = Entry::Collection(collection);
         Self {
             outer,
             parent: Some(parent),
@@ -98,7 +97,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         match self.value {
             Entry::Index(binding, index) if key == binding => {
                 match self.parent.expect("the parent can only be a collection").value {
-                    Entry::Collection(_, collection) => {
+                    Entry::Collection(collection) => {
                         match collection.0.kind {
                             ValueKind::List(_) => {
                                 // Since this is a static list we can just clone the value

@@ -1,11 +1,8 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_state::{Color, Hex};
 use anathema_store::indexmap::IndexMap;
 use anathema_store::slab::SlabIndex;
-use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use anathema_strings::HStrings;
 use anathema_value_resolver::{AttributeStorage, Attributes};
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -15,7 +12,7 @@ use crate::layout::Display;
 use crate::nodes::element::Element;
 use crate::tree::{FilterOutput, WidgetPositionFilter};
 use crate::widget::Style;
-use crate::{ForEach, PaintChildren, WidgetContainer, WidgetId, WidgetKind};
+use crate::{PaintChildren, WidgetContainer, WidgetKind};
 
 pub type GlyphMap = IndexMap<GlyphIndex, String>;
 

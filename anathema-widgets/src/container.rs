@@ -1,14 +1,11 @@
-use std::ops::ControlFlow;
-
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::AttributeStorage;
 
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
 use crate::nodes::element::Layout;
 use crate::paint::{Glyphs, PaintCtx, Unsized};
-use crate::widget::{AnyWidget, ForEach, PositionChildren};
-use crate::{LayoutChildren, LayoutForEach, PaintChildren, WidgetId};
+use crate::widget::{AnyWidget, ForEach};
+use crate::{LayoutForEach, PaintChildren, WidgetId};
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -118,8 +115,6 @@ impl Container {
 
         let attributes = attribute_storage.get(self.id);
 
-        let size = self.cache.size;
-
         // Apply all attributes to the widget
         // as long as it's **not** a floating widget.
         if !self.inner.any_floats() {
@@ -141,7 +136,6 @@ impl Container {
                             let Some(p) = ctx.place_glyphs(glyphs, pos) else {
                                 return false;
                             };
-                            let width = ctx.local_size.width;
                             used_width = p.x;
                             true
                         });

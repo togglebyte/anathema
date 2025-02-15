@@ -16,8 +16,7 @@ use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::{Event, KeyEvent};
 use anathema_widgets::components::{
-    AnyComponent, AnyComponentContext, AnyEventCtx, AssociatedEvents, ComponentContext, ComponentKind,
-    ComponentRegistry, Emitter, UntypedContext, ViewMessage,
+    AnyComponent, AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::{Children, Elements};
@@ -115,7 +114,6 @@ impl<G: GlobalEventHandler> Runtime<G> {
             &mut self.components,
             &mut self.component_registry,
             &mut self.floating_widgets,
-            &mut self.changelist,
             &mut self.glyph_map,
             &mut self.dirty_widgets,
             &mut self.viewport,
@@ -404,7 +402,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
                 }
 
                 tree.with_value_mut(widget_id, |path, widget, tree| {
-                    update_widget(widget, value_id, change, path, tree, self.layout_ctx.attribute_storage);
+                    update_widget(widget, value_id, change, tree, self.layout_ctx.attribute_storage);
                 });
             });
         });

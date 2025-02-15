@@ -1,4 +1,3 @@
-use anathema_state::State;
 use anathema_value_resolver::ValueKind;
 
 pub const DISPLAY: &str = "display";

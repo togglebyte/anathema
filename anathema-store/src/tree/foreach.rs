@@ -2,87 +2,6 @@ use std::ops::ControlFlow;
 
 use super::TreeView;
 
-// NOTE
-// * A generator can not have a blueprint since it can be an `Iter` of a `Loop`
-// * It can have a body?
-// * Loop -> Iter -> &[Blueprint]
-//
-// A blueprint becomes a widget and gets a generator?
-
-pub struct ForEach2<'tree, V, T, G, C> {
-    tree: TreeView<'tree, V>,
-    traverser: &'tree T,
-    generator: G,
-    _p: std::marker::PhantomData<C>,
-}
-
-impl<'tree, 'bp, V, T, G, C> ForEach2<'tree, V, T, G, C>
-where
-    G: Generator<V, C>,
-    T: Traverser<V>,
-{
-    pub fn new(tree: TreeView<'tree, V>, traverser: &'tree T, generator: G) -> Self {
-        Self {
-            tree,
-            traverser,
-            generator,
-            _p: Default::default(),
-        }
-    }
-
-    pub fn each<F>(&mut self, ctx: &mut C, mut f: F) -> ControlFlow<()>
-    where
-        for<'a> F: FnMut(&mut C, &mut V, ForEach2<'a, V, T, G, C>) -> ControlFlow<()>,
-    {
-        self.inner_each(ctx, &mut f)
-    }
-
-    fn inner_each<F>(&mut self, ctx: &mut C, f: &mut F) -> ControlFlow<()>
-    where
-        for<'a> F: FnMut(&mut C, &mut V, ForEach2<'a, V, T, G, C>) -> ControlFlow<()>,
-    {
-        for index in 0..self.tree.layout.len() {
-            self.process(index, ctx, f)?;
-        }
-
-        // -----------------------------------------------------------------------------
-        //   - Generation of values -
-        // -----------------------------------------------------------------------------
-        loop {
-            let index = self.tree.layout.len();
-            if !self.generator.generate(&mut self.tree, ctx) {
-                return ControlFlow::Continue(());
-            }
-            self.process(index, ctx, f)?;
-        }
-    }
-
-    fn process<F>(&mut self, index: usize, ctx: &mut C, f: &mut F) -> ControlFlow<()>
-    where
-        T: Traverser<V>,
-        G: Generator<V, C>,
-        for<'a> F: FnMut(&mut C, &mut V, ForEach2<'a, V, T, G, C>) -> ControlFlow<()>,
-    {
-        let Some(node) = self.tree.layout.inner.get_mut(index) else { return ControlFlow::Continue(()) };
-
-        self.tree.values.with_mut(node.value, |(path, value), values| {
-            let mut children = TreeView::new(path, &mut node.children, values, self.tree.removed_values);
-            let generator = G::from_value(value, ctx);
-            let mut children = ForEach2::new(children, self.traverser, generator);
-
-            // -----------------------------------------------------------------------------
-            //   - Traverse children or perform op on current child -
-            //   * If the current value is a continer of values (e.g for-loop or control flow)
-            //     then it should "bundle" the children with the current level
-            // -----------------------------------------------------------------------------
-            match self.traverser.traverse(value) {
-                true => children.inner_each(ctx, f),
-                false => f(ctx, value, children),
-            }
-        })
-    }
-}
-
 pub trait Filter {
     type Input;
     type Output;
@@ -96,11 +15,13 @@ pub trait Traverser<T> {
 
 /// The generator should generate child nodes, created from a parent node.
 pub trait Generator<T, C> {
+    type Output;
+
     fn from_value(value: &mut T, ctx: &mut C) -> Self
     where
         Self: Sized;
 
-    fn generate(&mut self, tree: &mut TreeView<'_, T>, ctx: &mut C) -> bool;
+    fn generate(&mut self, tree: &mut TreeView<'_, T>, ctx: &mut C) -> Self::Output;
 }
 
 #[cfg(test)]

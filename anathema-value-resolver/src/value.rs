@@ -99,7 +99,7 @@ impl<'bp> Value<'bp> {
     where
         F: FnMut(&str) -> bool,
     {
-        &self.kind.strings(&mut f);
+        self.kind.strings(&mut f);
     }
 }
 
@@ -186,11 +186,11 @@ impl ValueKind<'_> {
         Some(&*i)
     }
 
-    pub fn strings<F>(&self, mut f: F) -> bool
+    pub fn strings<F>(&self, mut f: F)
     where
         F: FnMut(&str) -> bool,
     {
-        self.internal_strings(&mut f)
+        self.internal_strings(&mut f);
     }
 
     fn internal_strings<F>(&self, f: &mut F) -> bool
@@ -207,18 +207,41 @@ impl ValueKind<'_> {
             ValueKind::Str(cow) => f(cow.as_ref()),
             ValueKind::Map => return true,
             ValueKind::List(vec) => vec.iter().take_while(|val| val.internal_strings(f)).count() == vec.len(),
-            ValueKind::DynList(value) => {
-                let Some(state) = value.as_state() else { return true };
-                let Some(list) = state.as_any_list() else { return true };
-                for i in 0..list.len() {
-                    let value = list.lookup(i).expect("the value exists");
-                }
-                panic!()
-            }
+            ValueKind::DynList(value) => dyn_string(*value, f),
             ValueKind::Composite | ValueKind::Attributes => todo!(),
             ValueKind::Null => return true,
         }
     }
+}
+
+fn dyn_string<F>(value: PendingValue, f: &mut F) -> bool
+where
+    F: FnMut(&str) -> bool,
+{
+    let Some(state) = value.as_state() else { return true };
+    let Some(list) = state.as_any_list() else { return true };
+    for i in 0..list.len() {
+        let value = list.lookup(i).expect("the value exists");
+        let Some(state) = value.as_state() else { continue };
+        let should_continue = match value.type_info() {
+            Type::Int => f(&state.as_int().expect("type info dictates this").to_string()),
+            Type::Float => f(&state.as_float().expect("type info dictates this").to_string()),
+            Type::Char => f(&state.as_char().expect("type info dictates this").to_string()),
+            Type::String => f(&state.as_str().expect("type info dictates this")),
+            Type::Bool => f(&state.as_bool().expect("type info dictates this").to_string()),
+            Type::Hex => f(&state.as_hex().expect("type info dictates this").to_string()),
+            Type::Map => f("<map>"),
+            Type::List => dyn_string(value, f),
+            Type::Composite => f(&state.as_hex().expect("type info dictates this").to_string()),
+            Type::Unit => f(""),
+            Type::Color => f(&state.as_color().expect("type info dictates this").to_string()),
+        };
+
+        if !should_continue {
+            return false;
+        }
+    }
+    true
 }
 
 // TODO: add more from impls for the other values

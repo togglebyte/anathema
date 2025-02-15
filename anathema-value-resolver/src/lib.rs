@@ -11,9 +11,8 @@ mod attributes;
 mod context;
 mod expression;
 mod immediate;
-mod null;
 mod scope;
 mod value;
 
-// #[cfg(test)]
+#[cfg(test)]
 pub(crate) mod testing;

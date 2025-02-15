@@ -36,12 +36,6 @@ impl<'a, 'bp> ValueThingy<'a, 'bp> {
     }
 }
 
-#[derive(Debug)]
-pub enum Str<'bp> {
-    Borrowed(&'bp str),
-    Owned(ValueRef, String),
-}
-
 #[derive(Debug, Copy, Clone)]
 pub enum Kind<T> {
     Static(T),
@@ -67,19 +61,6 @@ impl<'bp> Kind<&'bp str> {
             Kind::Dyn(pending_value) => pending_value
                 .as_state()
                 .map(|s| s.as_str().unwrap().to_owned())
-                .unwrap()
-                .into(),
-        }
-    }
-}
-
-impl Kind<i64> {
-    pub(crate) fn to_int(&self) -> i64 {
-        match self {
-            Kind::Static(s) => *s,
-            Kind::Dyn(pending_value) => pending_value
-                .as_state()
-                .map(|s| s.as_int().unwrap().to_owned())
                 .unwrap()
                 .into(),
         }

@@ -1,23 +1,17 @@
-use std::iter::Cycle;
-use std::slice::Iter;
-
-use anathema_geometry::{Pos, Region, Size};
-use anathema_state::{AnyState, States, Subscriber, Value};
+use anathema_geometry::{Pos, Region};
+use anathema_state::{Subscriber, Value};
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
-use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
-use anathema_templates::{ComponentBlueprintId, Globals};
+use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, Single};
 use anathema_value_resolver::{resolve, resolve_collection, Attributes, ResolverCtx, Scope, ValueKey};
 
 use super::element::Element;
-use super::loops::{Iteration, LOOP_INDEX};
 use super::{component, controlflow, WidgetContainer};
-use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
-use crate::layout::{EvalCtx, Viewport};
-use crate::widget::{Components, FloatingWidgets, WidgetTreeView};
-use crate::{ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree};
+use crate::layout::EvalCtx;
+use crate::widget::WidgetTreeView;
+use crate::WidgetKind;
 
 /// Evaluate a node kind
 pub(super) trait Evaluator {
@@ -55,7 +49,7 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty(widget_id);
 
         if let Some(expr) = single.value.as_ref() {
-            let mut ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
+            let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
 
             let value = attributes.insert_with(ValueKey::Value, |value_index| {
                 resolve(expr, &ctx, (widget_id, value_index))
@@ -126,9 +120,7 @@ impl Evaluator for ForLoopEval {
         let body = for_loop.body;
         let widget = WidgetKind::For(for_loop);
         let widget = WidgetContainer::new(widget, body);
-
-        let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
-
+        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         Ok(())
     }
 }
@@ -155,7 +147,6 @@ impl Evaluator for ControlFlowEval {
                 .iter()
                 .enumerate()
                 .map(|(i, e)| {
-                    let value_index = SmallIndex::from_usize(i);
                     let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
 
                     controlflow::Else {
@@ -170,8 +161,7 @@ impl Evaluator for ControlFlowEval {
                 .collect(),
         });
         let widget = WidgetContainer::new(widget, &[]);
-        let for_loop_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
-        let parent = tree.path(for_loop_id);
+        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         Ok(())
     }
 }
@@ -245,10 +235,8 @@ impl Evaluator for SlotEval {
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
-        let widget_id = transaction.node_id();
         let widget = WidgetContainer::new(WidgetKind::Slot, input);
-        let id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
-        let parent = tree.path(id);
+        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         Ok(())
     }
 }

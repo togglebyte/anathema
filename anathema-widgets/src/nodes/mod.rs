@@ -1,18 +1,14 @@
-use anathema_store::smallmap::SmallIndex;
-use anathema_store::tree::Generator;
 use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::Scope;
 use eval::SlotEval;
-use loops::LOOP_INDEX;
 
 pub use self::element::Element;
 use self::eval::{ComponentEval, ControlFlowEval, Evaluator, ForLoopEval, SingleEval};
 pub use self::stringify::Stringify;
 pub use self::update::update_widget;
 use crate::error::Result;
-use crate::layout::{EvalCtx, LayoutCtx};
+use crate::layout::EvalCtx;
 use crate::widget::WidgetTreeView;
-use crate::{WidgetId, WidgetTree};
 
 pub(crate) mod component;
 pub(crate) mod controlflow;
@@ -32,48 +28,6 @@ pub enum WidgetGenerator<'bp> {
     Loop(&'bp [Blueprint]),
     ControlFlow,
     Noop,
-}
-
-impl<'rt, 'bp> Generator<WidgetContainer<'bp>, EvalCtx<'rt, 'bp>> for WidgetGenerator<'bp> {
-    fn from_value(value: &mut WidgetContainer<'bp>, ctx: &mut EvalCtx<'rt, 'bp>) -> Self
-    where
-        Self: Sized,
-    {
-        match &value.kind {
-            WidgetKind::Element(_) | WidgetKind::ControlFlowContainer(_) => WidgetGenerator::Children(value.children),
-            WidgetKind::For(for_loop) => WidgetGenerator::Loop(value.children),
-            WidgetKind::Slot => WidgetGenerator::Slot(value.children),
-            WidgetKind::Iteration(iter) => todo!(),
-            WidgetKind::ControlFlow(cf) => todo!(),
-            WidgetKind::Component(_) => todo!(),
-        }
-    }
-
-    fn generate(&mut self, tree: &mut WidgetTreeView<'_, 'bp>, ctx: &mut EvalCtx<'_, 'bp>) -> bool {
-        match self {
-            WidgetGenerator::Children(blueprints) => {
-                if blueprints.is_empty() {
-                    return false;
-                }
-
-                let index = tree.layout_len();
-                if index >= blueprints.len() {
-                    return false;
-                }
-
-                let blueprint = &blueprints[index];
-
-                let parent = tree.offset;
-                eval_blueprint(blueprint, ctx, panic!("missing scope"), parent, tree);
-                true
-            }
-            WidgetGenerator::Single => todo!(),
-            WidgetGenerator::Loop(_) => todo!(),
-            WidgetGenerator::ControlFlow => todo!(),
-            WidgetGenerator::Noop => false,
-            WidgetGenerator::Slot(_) => todo!(),
-        }
-    }
 }
 
 #[derive(Debug)]

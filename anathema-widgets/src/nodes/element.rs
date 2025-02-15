@@ -6,8 +6,8 @@ use anathema_value_resolver::AttributeStorage;
 use crate::container::Container;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
 use crate::paint::{PaintCtx, PaintFilter, Unsized};
-use crate::widget::{ForEach, PaintChildren, PositionChildren};
-use crate::{LayoutChildren, LayoutForEach, WidgetId};
+use crate::widget::ForEach;
+use crate::{LayoutForEach, WidgetId};
 
 pub enum Layout {
     Changed(Size),

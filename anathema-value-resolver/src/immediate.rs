@@ -7,7 +7,6 @@ use anathema_templates::{Expression, Primitive};
 
 use crate::context::ResolverCtx;
 use crate::expression::{Kind, ValueExpr};
-use crate::null::Null;
 
 pub struct Resolver<'a, 'frame, 'bp> {
     ctx: &'a ResolverCtx<'frame, 'bp>,

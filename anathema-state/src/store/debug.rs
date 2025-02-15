@@ -39,11 +39,7 @@ impl DebugWriter for ChangeDebug<'_> {
 
         // Change
         match self.1 {
-            Change::Inserted(idx, pending) => write!(
-                output,
-                "<inserted at {idx} | value {}>",
-                pending.owned_key().debug_index()
-            ),
+            Change::Inserted(idx) => write!(output, "<inserted at {idx}>"),
             Change::Removed(idx) => write!(output, "<removed {idx}>"),
             Change::Dropped => write!(output, "<dropped>"),
             Change::Changed => write!(output, "<changed>"),

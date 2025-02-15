@@ -10,7 +10,7 @@ pub type Changes = Stack<(Subscribers, Change)>;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
     /// A value was inserted into a list
-    Inserted(u32, PendingValue),
+    Inserted(u32),
     /// A value was removed from a list
     Removed(u32),
     /// A value has changed

@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use anathema_value_resolver::{AttributeStorage, ValueKind};
 
 pub use self::components::Components;

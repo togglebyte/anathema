@@ -32,7 +32,7 @@ use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, UntypedContext, ViewMessage,
+    AssociatedEvents, Component, ComponentId, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
 };
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{

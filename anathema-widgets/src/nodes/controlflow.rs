@@ -1,9 +1,7 @@
 use anathema_state::Change;
-use anathema_store::tree::{Node, TreeValues};
-use anathema_templates::blueprints::{self, Blueprint};
+use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::{AttributeStorage, Value};
 
-use super::WidgetContainer;
 use crate::widget::WidgetTreeView;
 use crate::WidgetKind;
 
@@ -17,13 +15,11 @@ impl<'bp> ControlFlow<'bp> {
         match change {
             Change::Changed => {
                 let Some(el) = self.elses.get_mut(branch_id as usize) else { return };
-                el.update(attribute_storage);
                 let Some(cond) = el.cond.as_mut() else { return };
                 cond.reload(attribute_storage)
             }
             Change::Dropped => todo!(),
-            Change::Inserted(_, pending_value) => unreachable!(),
-            Change::Removed(_) => unreachable!(),
+            Change::Inserted(_) | Change::Removed(_) => unreachable!(),
         }
     }
 }
@@ -51,7 +47,7 @@ impl ControlFlow<'_> {
 
     fn current_branch_id(&self, children: &WidgetTreeView<'_, '_>) -> u16 {
         let node_id = children.layout[0].value();
-        let (path, widget) = children
+        let (_, widget) = children
             .values
             .get(node_id)
             .expect("because the node exists, the value exist");
@@ -109,10 +105,6 @@ pub struct Else<'bp> {
     pub cond: Option<Value<'bp>>,
     pub body: &'bp [Blueprint],
     pub show: bool,
-}
-
-impl<'bp> Else<'bp> {
-    fn update(&mut self, attributes: &AttributeStorage<'bp>) {}
 }
 
 impl Else<'_> {

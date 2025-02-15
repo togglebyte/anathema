@@ -1,23 +1,20 @@
 use std::any::Any;
-use std::borrow::Cow;
-use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
-use anathema_state::{AnyState, SharedState, StateId, Value as StateValue};
+use anathema_state::{AnyState, StateId, Value as StateValue};
 use anathema_store::slab::Slab;
 use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::ComponentBlueprintId;
-use anathema_value_resolver::{Attributes, Value, ValueKind};
+use anathema_value_resolver::{Attributes, ValueKind};
 use deferred::DeferredComponents;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
 use crate::layout::Viewport;
-use crate::query::{Children, Elements};
+use crate::query::Children;
 use crate::widget::Parent;
-use crate::WidgetId;
 
 pub mod deferred;
 pub mod events;
@@ -229,22 +226,6 @@ impl<'frame, T> DerefMut for Context<'frame, T> {
     }
 }
 
-#[deprecated]
-pub struct AnyEventCtx<'state, 'tree, 'bp> {
-    pub state: Option<&'state mut dyn AnyState>,
-    pub elements: crate::query::Children<'tree, 'bp>,
-    pub context: UntypedContext<'tree>,
-    pub component_ctx: ComponentContext<'tree>,
-}
-
-#[derive(Copy, Clone)]
-#[deprecated]
-pub struct UntypedContext<'rt> {
-    pub emitter: &'rt Emitter,
-    pub viewport: Viewport,
-    pub strings: &'rt Strings,
-}
-
 pub struct AnyComponentContext<'frame> {
     parent: Option<Parent>,
     state_id: StateId,
@@ -282,32 +263,6 @@ impl<'frame> AnyComponentContext<'frame> {
             emitter,
             viewport,
             strings,
-        }
-    }
-}
-
-pub struct ComponentContext<'rt> {
-    parent: Option<Parent>,
-    state_id: StateId,
-    assoc_functions: &'rt [(StringId, StringId)],
-    assoc_events: &'rt mut AssociatedEvents,
-    attributes: &'rt Attributes<'rt>,
-}
-
-impl<'rt> ComponentContext<'rt> {
-    pub fn new(
-        state_id: StateId,
-        parent: Option<WidgetId>,
-        assoc_functions: &'rt [(StringId, StringId)],
-        assoc_events: &'rt mut AssociatedEvents,
-        attributes: &'rt Attributes<'rt>,
-    ) -> Self {
-        Self {
-            parent: parent.map(Into::into),
-            state_id,
-            assoc_functions,
-            assoc_events,
-            attributes,
         }
     }
 }
@@ -484,7 +439,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         match event {
@@ -510,7 +465,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
         let context = Context::<T::State>::new(ctx);
@@ -521,7 +476,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         self.on_focus(&mut *state, elements, context);
@@ -531,7 +486,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         self.on_blur(&mut *state, elements, context);
@@ -541,7 +496,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         self.tick(&mut *state, elements, context, dt);
@@ -551,7 +506,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         self.resize(&mut *state, elements, context);
@@ -567,7 +522,7 @@ where
         let mut state = ctx
             .state
             .take()
-            .map(|mut s| s.to_mut_cast::<T::State>())
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
 
         let context = Context::<T::State>::new(ctx);

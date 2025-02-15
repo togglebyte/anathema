@@ -92,24 +92,22 @@ impl<T: AnyState + 'static> Value<List<T>> {
 
     /// Push a value to the back of the list
     pub fn push_back(&mut self, value: impl Into<Value<T>>) {
-        let (index, value) = {
+        let index = {
             let list = &mut *self.to_mut();
             let index = list.inner.len();
             let value = value.into();
-            let pending = value.reference();
             list.inner.push_back(value);
 
-            (index as u32, pending)
+            index as u32
         };
-        changed(self.key, Change::Inserted(index, value));
+        changed(self.key, Change::Inserted(index));
     }
 
     /// Push a value to the front of the list
     pub fn push_front(&mut self, value: impl Into<Value<T>>) {
         let value = value.into();
-        let pending = value.reference();
         self.to_mut().inner.push_front(value);
-        changed(self.key, Change::Inserted(0, pending));
+        changed(self.key, Change::Inserted(0));
     }
 
     /// Insert a value at a given index.
@@ -119,9 +117,8 @@ impl<T: AnyState + 'static> Value<List<T>> {
     /// Will panic if the index is out of bounds
     pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
         let value = value.into();
-        let pending = value.reference();
         self.to_mut().inner.insert(index, value);
-        changed(self.key, Change::Inserted(index as u32, pending));
+        changed(self.key, Change::Inserted(index as u32));
     }
 
     /// Remove a value from the list.

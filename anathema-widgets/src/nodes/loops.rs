@@ -1,15 +1,10 @@
-use anathema_state::{Change, Subscriber};
-use anathema_store::tree::new_node_path;
+use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{Collection, Scope, Value};
+use anathema_value_resolver::Collection;
 
 use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
-use crate::tree::debug::DebugTree;
 use crate::widget::WidgetTreeView;
-use crate::{WidgetId, WidgetTree};
-
-pub(super) const LOOP_INDEX: &str = "loop";
 
 #[derive(Debug)]
 pub struct For<'bp> {
@@ -20,19 +15,13 @@ pub struct For<'bp> {
 }
 
 impl<'bp> For<'bp> {
-    pub(super) fn scope_value(&self, scope: &mut Scope<'_, 'bp>, index: usize) {
-        panic!("don't use this, this is for the old collections. The Iter should do this part")
-        // self.collection.scope(scope, self.binding, index)
-    }
-
     pub(super) fn update(
         &mut self,
         change: &Change,
-        value_id: Subscriber,
         mut tree: WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         match change {
-            Change::Inserted(index, value) => {
+            Change::Inserted(index) => {
                 // 1. Declare insert path
                 // 2. Create new iteration
                 // 3. Insert new iteration
@@ -59,17 +48,11 @@ impl<'bp> For<'bp> {
                             ..
                         },
                     )) = iter_widget
-                    else {
-                        unreachable!()
-                    };
+                    else { unreachable!("this can only ever be an iteration") };
                     *iter.loop_index.to_mut() += 1;
                 }
             }
-            Change::Removed(index) => {
-                let path = [*index as u16];
-                let child_to_remove = new_node_path(&path, *index as u16);
-                tree.relative_remove(&[*index as u16]);
-            }
+            Change::Removed(index) => tree.relative_remove(&[*index as u16]),
             Change::Dropped => {
                 tree.truncate_children();
 

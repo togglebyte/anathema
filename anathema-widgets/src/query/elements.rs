@@ -1,14 +1,11 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region};
-pub use anathema_store::tree::visitor::apply_visitor;
-use anathema_store::tree::visitor::NodeVisitor;
-use anathema_store::tree::{Node, TreeValues};
 use anathema_value_resolver::{AttributeStorage, Attributes};
 
 use super::{Chain, Filter, Nodes, Query, QueryValue};
 use crate::nodes::element::Element;
-use crate::{DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
+use crate::{WidgetId, WidgetKind};
 
 pub struct Elements<'children, 'tree, 'bp> {
     pub(super) elements: &'children mut Nodes<'tree, 'bp>,
@@ -104,12 +101,11 @@ where
         self.query(&mut f, true);
     }
 
-    fn query<F, U>(self, mut f: &mut F, continuous: bool) -> ControlFlow<U>
+    fn query<F, U>(self, f: &mut F, continuous: bool) -> ControlFlow<U>
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>) -> U,
     {
         let ret_val = self.query.elements.children.for_each(|_path, container, children| {
-            let x = 1;
             if let WidgetKind::Element(ref mut element) = container.kind {
                 if self.query.filter.filter(element, self.query.elements.attributes) {
                     let attributes = self.query.elements.attributes.get_mut(element.id());
@@ -127,7 +123,7 @@ where
                 self.query.elements.dirty_widgets,
             );
 
-            let mut query = ElementQuery {
+            let query = ElementQuery {
                 query: Query {
                     elements: &mut elements,
                     filter: self.query.filter,
