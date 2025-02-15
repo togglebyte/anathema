@@ -24,12 +24,6 @@ pub struct ControlFlow {
     pub elses: Vec<Else>,
 }
 
-// #[derive(Debug, Clone, PartialEq)]
-// pub struct If {
-//     pub cond: Expression,
-//     pub body: Vec<Blueprint>,
-// }
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Else {
     pub cond: Option<Expression>,
@@ -54,6 +48,9 @@ pub enum Blueprint {
     For(For),
     ControlFlow(ControlFlow),
     Component(Component),
+    Slot(Vec<Self>),
+    // PushParentScope,
+    // PopParentScope,
 }
 
 #[macro_export]

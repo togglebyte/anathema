@@ -17,7 +17,7 @@ use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
 use crate::layout::{EvalCtx, Viewport};
 use crate::widget::{Components, FloatingWidgets, WidgetTreeView};
-use crate::{eval_blueprint, ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree};
+use crate::{ChangeList, DirtyWidgets, Factory, GlyphMap, WidgetId, WidgetKind, WidgetTree};
 
 /// Evaluate a node kind
 pub(super) trait Evaluator {
@@ -227,6 +227,28 @@ impl Evaluator for ComponentEval {
         ctx.components
             .push(path, component_id, widget_id, state_id, accept_ticks);
 
+        Ok(())
+    }
+}
+
+pub(super) struct SlotEval;
+
+impl Evaluator for SlotEval {
+    type Input<'bp> = &'bp [Blueprint];
+
+    fn eval<'bp>(
+        &mut self,
+        input: Self::Input<'bp>,
+        _: &mut EvalCtx<'_, 'bp>,
+        _: &Scope<'_, 'bp>,
+        parent: &[u16],
+        tree: &mut WidgetTreeView<'_, 'bp>,
+    ) -> Result<()> {
+        let transaction = tree.insert(parent);
+        let widget_id = transaction.node_id();
+        let widget = WidgetContainer::new(WidgetKind::Slot, input);
+        let id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        let parent = tree.path(id);
         Ok(())
     }
 }

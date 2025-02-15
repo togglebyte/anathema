@@ -30,7 +30,7 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     pub(crate) fn eval(&self, expr: &'bp Expression) -> Value<'bp> {
         let root = Scope::root();
         let state_id = StateId::ZERO;
-        let mut scope = Scope::with_component(state_id, Key::ZERO, &root);
+        let mut scope = Scope::with_component(state_id, Key::ZERO, None);
 
         let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, &self.attributes);
         let mut resolver = Resolver::new(&ctx);

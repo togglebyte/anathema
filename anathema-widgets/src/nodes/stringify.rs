@@ -84,6 +84,7 @@ impl<'a, 'bp> NodeVisitor<WidgetContainer<'_>> for Stringify<'a, 'bp> {
             //     None => drop(write!(&mut self.output, "<else>")),
             // },
             WidgetKind::Component(_) => drop(write!(&mut self.output, "<component>")),
+            WidgetKind::Slot => todo!(),
         }
 
         let _ = writeln!(&mut self.output);

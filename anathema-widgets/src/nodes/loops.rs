@@ -7,7 +7,7 @@ use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
 use crate::tree::debug::DebugTree;
 use crate::widget::WidgetTreeView;
-use crate::{eval_blueprint, WidgetId, WidgetTree};
+use crate::{WidgetId, WidgetTree};
 
 pub(super) const LOOP_INDEX: &str = "loop";
 

@@ -37,7 +37,7 @@ impl Scope {
                 }
                 Statement::ComponentSlot(slot_id) => {
                     if let Some(bp) = ctx.slots.get(&slot_id).cloned() {
-                        output.extend(bp);
+                        output.push(Blueprint::Slot(bp));
                     }
                 }
 
@@ -255,6 +255,7 @@ mod test {
         doc.add_component("comp", comp_src.to_template()).unwrap();
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
+        panic!("{blueprint:#?}");
     }
 
     #[test]

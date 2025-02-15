@@ -2,6 +2,7 @@ use anathema_store::smallmap::SmallIndex;
 use anathema_store::tree::Generator;
 use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::Scope;
+use eval::SlotEval;
 use loops::LOOP_INDEX;
 
 pub use self::element::Element;
@@ -27,6 +28,7 @@ mod update;
 pub enum WidgetGenerator<'bp> {
     Children(&'bp [Blueprint]),
     Single,
+    Slot(&'bp [Blueprint]),
     Loop(&'bp [Blueprint]),
     ControlFlow,
     Noop,
@@ -40,6 +42,7 @@ impl<'rt, 'bp> Generator<WidgetContainer<'bp>, EvalCtx<'rt, 'bp>> for WidgetGene
         match &value.kind {
             WidgetKind::Element(_) | WidgetKind::ControlFlowContainer(_) => WidgetGenerator::Children(value.children),
             WidgetKind::For(for_loop) => WidgetGenerator::Loop(value.children),
+            WidgetKind::Slot => WidgetGenerator::Slot(value.children),
             WidgetKind::Iteration(iter) => todo!(),
             WidgetKind::ControlFlow(cf) => todo!(),
             WidgetKind::Component(_) => todo!(),
@@ -68,6 +71,7 @@ impl<'rt, 'bp> Generator<WidgetContainer<'bp>, EvalCtx<'rt, 'bp>> for WidgetGene
             WidgetGenerator::Loop(_) => todo!(),
             WidgetGenerator::ControlFlow => todo!(),
             WidgetGenerator::Noop => false,
+            WidgetGenerator::Slot(_) => todo!(),
         }
     }
 }
@@ -79,9 +83,8 @@ pub enum WidgetKind<'bp> {
     Iteration(loops::Iteration<'bp>),
     ControlFlow(controlflow::ControlFlow<'bp>),
     ControlFlowContainer(u16),
-    // If(controlflow::If<'bp>),
-    // Else(controlflow::Else<'bp>),
     Component(component::Component<'bp>),
+    Slot,
 }
 
 #[derive(Debug)]
@@ -111,6 +114,7 @@ pub fn eval_blueprint<'bp>(
         Blueprint::For(for_loop) => ForLoopEval.eval(for_loop, ctx, scope, parent, tree),
         Blueprint::ControlFlow(flow) => ControlFlowEval.eval(flow, ctx, scope, parent, tree),
         Blueprint::Component(component) => ComponentEval.eval(component, ctx, scope, parent, tree),
+        Blueprint::Slot(blueprints) => SlotEval.eval(blueprints, ctx, scope, parent, tree),
     }
 }
 

@@ -8,8 +8,8 @@ use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    eval_blueprint, update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory,
-    FloatingWidgets, GlyphMap, Scope, WidgetRenderer as _, WidgetTree,
+    update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory, FloatingWidgets, GlyphMap,
+    Scope, WidgetRenderer as _, WidgetTree,
 };
 
 use crate::register_default_widgets;

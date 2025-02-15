@@ -36,6 +36,7 @@ impl<'a> NodeVisitor<WidgetContainer<'a>> for DebugTree {
             WidgetKind::ControlFlow(control_flow) => self.write("<control flow>", value_id),
             WidgetKind::ControlFlowContainer(_) => self.write("<control flow container>", value_id),
             WidgetKind::Component(component) => self.write("<component>", value_id),
+            WidgetKind::Slot => self.write("<slot>", value_id),
         }
 
         ControlFlow::Continue(())

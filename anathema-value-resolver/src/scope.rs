@@ -17,18 +17,24 @@ pub(crate) enum Entry<'parent, 'bp> {
 
 #[derive(Debug)]
 pub struct Scope<'parent, 'bp> {
+    pub outer: Option<&'parent Scope<'parent, 'bp>>,
     parent: Option<&'parent Scope<'parent, 'bp>>,
     value: Entry<'parent, 'bp>,
 }
 
 impl<'parent, 'bp> Scope<'parent, 'bp> {
     pub fn new(value: Entry<'parent, 'bp>) -> Self {
-        Self { parent: None, value }
+        Self {
+            parent: None,
+            outer: None,
+            value,
+        }
     }
 
-    pub fn with_component(state: StateId, attributes: Key, parent: &'parent Scope<'parent, 'bp>) -> Self {
+    pub fn with_component(state: StateId, attributes: Key, outer: Option<&'parent Scope<'parent, 'bp>>) -> Self {
         Self {
-            parent: Some(parent),
+            outer,
+            parent: None,
             value: Entry::Component {
                 state,
                 component_attributes: attributes,
@@ -40,19 +46,27 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         binding: &'bp str,
         collection: &'parent Collection<'bp>,
         parent: &'parent Scope<'parent, 'bp>,
+        outer: Option<&'parent Scope<'parent, 'bp>>,
     ) -> Self {
         let value = Entry::Collection(binding, collection);
         Self {
+            outer,
             parent: Some(parent),
             value,
         }
     }
 
-    pub fn with_index(binding: &'bp str, index: usize, parent: &'parent Scope<'parent, 'bp>) -> Self {
+    pub fn with_index(
+        binding: &'bp str,
+        index: usize,
+        parent: &'parent Scope<'parent, 'bp>,
+        outer: Option<&'parent Scope<'parent, 'bp>>,
+    ) -> Self {
         let value = Entry::Index(binding, index);
         Self {
             value,
             parent: Some(parent),
+            outer,
         }
     }
 

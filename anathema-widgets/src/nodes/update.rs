@@ -73,6 +73,9 @@ pub fn update_widget<'bp>(
                 //     });
             }
         }
+        WidgetKind::Slot => {
+            todo!()
+        }
     }
 
     Ok(())
