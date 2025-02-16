@@ -208,7 +208,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         return Ok(ControlFlow::Break(()));
                     }
 
-                    let scope = Scope::with_collection(&for_loop.collection, self.scope, self.scope.outer);
+                    let scope = Scope::with_collection(&for_loop.collection, self.scope);
                     let mut children = LayoutForEach::with_generator(
                         children,
                         &scope,
@@ -221,7 +221,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 }
                 WidgetKind::Iteration(iteration) => {
                     let loop_index = *iteration.loop_index.to_ref() as usize;
-                    let scope = Scope::with_index(iteration.binding, loop_index, self.scope, self.scope.outer);
+                    let scope = Scope::with_index(iteration.binding, loop_index, self.scope);
                     let mut children = LayoutForEach::with_generator(
                         children,
                         &scope,
@@ -257,7 +257,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 WidgetKind::Slot => {
                     let mut children = LayoutForEach::with_generator(
                         children,
-                        self.scope.outer.expect("slots always have an outer scope"),
+                        self.scope.outer(),
                         Generator::from(&*widget),
                         self.filter,
                         self.parent_component,
@@ -313,7 +313,7 @@ fn generate<'bp>(
 
             let mut ctx = ctx.eval_ctx(parent_component);
             // TODO: this `expect` needs dealing with
-            let scope = scope.outer.expect("it's there son!");
+            // let scope = scope.outer.expect("it's there son!");
             eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree).unwrap();
             Ok(true)
         }

@@ -14,7 +14,7 @@ pub(crate) enum Entry<'parent, 'bp> {
 
 #[derive(Debug)]
 pub struct Scope<'parent, 'bp> {
-    pub outer: Option<&'parent Scope<'parent, 'bp>>,
+    outer: Option<&'parent Scope<'parent, 'bp>>,
     parent: Option<&'parent Scope<'parent, 'bp>>,
     value: Entry<'parent, 'bp>,
 }
@@ -42,11 +42,10 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
     pub fn with_collection(
         collection: &'parent Collection<'bp>,
         parent: &'parent Scope<'parent, 'bp>,
-        outer: Option<&'parent Scope<'parent, 'bp>>,
     ) -> Self {
         let value = Entry::Collection(collection);
         Self {
-            outer,
+            outer: None,
             parent: Some(parent),
             value,
         }
@@ -56,13 +55,12 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         binding: &'bp str,
         index: usize,
         parent: &'parent Scope<'parent, 'bp>,
-        outer: Option<&'parent Scope<'parent, 'bp>>,
     ) -> Self {
         let value = Entry::Index(binding, index);
         Self {
             value,
             parent: Some(parent),
-            outer,
+            outer: None,
         }
     }
 
@@ -120,6 +118,22 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
                 }
             }
             _ => self.parent?.lookup(key),
+        }
+    }
+
+    /// Get the outer scope
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the outer scope has been set incorrectly
+    /// or there is no parent scope.
+    pub fn outer(&self) -> &'parent Scope<'parent, 'bp> {
+        match self.outer {
+            Some(scope) => scope,
+            None => match self.parent {
+                Some(parent) => parent.outer(),
+                None => panic!("no outer scope, no parent")
+            }
         }
     }
 }
