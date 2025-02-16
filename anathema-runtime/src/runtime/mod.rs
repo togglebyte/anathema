@@ -2,8 +2,7 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
-use anathema_geometry::Size;
-use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, AnyState, Changes, State, StateId, States};
+use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};

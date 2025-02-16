@@ -177,7 +177,7 @@ impl Default for Canvas {
 impl Widget for Canvas {
     fn layout<'bp>(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
+        _: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
@@ -203,7 +203,7 @@ impl Widget for Canvas {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, 'bp>,
+        _: PositionChildren<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,

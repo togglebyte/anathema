@@ -4,14 +4,12 @@ use std::time::Instant;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_state::{Changes, States};
-use anathema_strings::HStrings;
 use anathema_templates::{Document, ToSourceKind};
-use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::layout::Viewport;
-use anathema_widgets::{ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget, WidgetTree};
+use anathema_widgets::{Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget};
 use notify::{recommended_watcher, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub use crate::error::{Error, Result};

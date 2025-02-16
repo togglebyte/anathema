@@ -165,7 +165,6 @@ impl Widget for Position {
                 }
             }
 
-            let pos = ctx.pos;
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });

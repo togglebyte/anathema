@@ -115,7 +115,7 @@ impl Widget for Text {
 
     fn paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, 'bp>,
+        _: PaintChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
@@ -159,10 +159,10 @@ impl Widget for Text {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, 'bp>,
-        _attributes: WidgetId,
-        _attribute_storage: &AttributeStorage<'bp>,
-        _ctx: PositionCtx,
+        _: PositionChildren<'_, 'bp>,
+        _: WidgetId,
+        _: &AttributeStorage<'bp>,
+        _: PositionCtx,
     ) {
         // NOTE
         // No positioning is done in here, it's all done when painting
@@ -175,10 +175,10 @@ pub struct Span;
 impl Widget for Span {
     fn layout<'bp>(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
-        constraints: Constraints,
-        id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        _: LayoutForEach<'_, 'bp>,
+        _: Constraints,
+        _: WidgetId,
+        _: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         // Everything is handled by the parent text
         panic!("this should never be called");
@@ -186,7 +186,7 @@ impl Widget for Span {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, 'bp>,
+        _: PositionChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PositionCtx,

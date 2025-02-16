@@ -38,7 +38,6 @@ impl Widget for Align {
 
         children.each(|child, children| {
             let width = ctx.inner_size.width as i32;
-            let height = ctx.inner_size.height;
             let height = ctx.inner_size.height as i32;
             let child_width = child.size().width as i32;
             let child_height = child.size().height as i32;

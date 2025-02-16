@@ -19,7 +19,7 @@ pub fn layout_all_spacers<'bp>(
 ) -> Size {
     let mut final_size = Size::ZERO;
     let mut count = 0;
-    nodes.each(ctx, |ctx, node, _| {
+    nodes.each(ctx, |_, node, _| {
         if node.ident == "spacer" {
             count += 1;
         }

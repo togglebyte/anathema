@@ -10,17 +10,17 @@ pub struct Spacer;
 impl Widget for Spacer {
     fn layout<'bp>(
         &mut self,
-        children: LayoutForEach<'_, 'bp>,
+        _: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        id: WidgetId,
-        ctx: &mut LayoutCtx<'_, 'bp>,
+        _: WidgetId,
+        _: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         Size::new(constraints.min_width, constraints.min_height)
     }
 
     fn paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, 'bp>,
+        _: PaintChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PaintCtx<'_, SizePos>,
@@ -30,7 +30,7 @@ impl Widget for Spacer {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, 'bp>,
+        _: PositionChildren<'_, 'bp>,
         _: WidgetId,
         _: &AttributeStorage<'bp>,
         _: PositionCtx,
