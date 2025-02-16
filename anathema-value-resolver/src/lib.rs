@@ -1,7 +1,3 @@
-use anathema_strings::HStrings;
-use anathema_templates::Expression;
-use immediate::Resolver;
-
 pub use crate::attributes::{AttributeStorage, Attributes, ValueKey};
 pub use crate::context::ResolverCtx;
 pub use crate::scope::Scope;

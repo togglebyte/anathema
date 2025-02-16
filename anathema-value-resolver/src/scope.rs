@@ -1,9 +1,7 @@
-use std::borrow::Cow;
-
-use anathema_state::{PendingValue, StateId};
+use anathema_state::StateId;
 use anathema_store::slab::Key;
 
-use crate::expression::{Kind, ValueExpr};
+use crate::expression::ValueExpr;
 use crate::{Collection, ValueKind};
 
 #[derive(Debug)]
@@ -42,7 +40,6 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
     }
 
     pub fn with_collection(
-        binding: &'bp str,
         collection: &'parent Collection<'bp>,
         parent: &'parent Scope<'parent, 'bp>,
         outer: Option<&'parent Scope<'parent, 'bp>>,

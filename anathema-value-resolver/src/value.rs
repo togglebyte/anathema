@@ -8,8 +8,7 @@ use anathema_templates::Expression;
 use crate::attributes::ValueKey;
 use crate::expression::{resolve_value, ValueExpr, ValueThingy};
 use crate::immediate::Resolver;
-use crate::scope::Entry;
-use crate::{AttributeStorage, ResolverCtx, Scope};
+use crate::{AttributeStorage, ResolverCtx};
 
 pub type Values<'bp> = SmallMap<ValueKey<'bp>, Value<'bp>>;
 

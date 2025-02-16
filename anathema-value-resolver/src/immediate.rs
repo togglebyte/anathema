@@ -1,9 +1,4 @@
-use std::marker::PhantomData;
-
-use anathema_state::{Number, Path, Subscriber, Type};
-use anathema_strings::HStrings;
-use anathema_templates::expressions::{Equality, LogicalOp, Op};
-use anathema_templates::{Expression, Primitive};
+use anathema_templates::Expression;
 
 use crate::context::ResolverCtx;
 use crate::expression::{Kind, ValueExpr};
@@ -73,7 +68,7 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
             Expression::Index(source, index) => {
                 ValueExpr::Index(self.resolve(source).into(), self.resolve(index).into())
             }
-            Expression::Call { fun, args } => unimplemented!(),
+            Expression::Call { .. } => unimplemented!(),
         }
     }
 }

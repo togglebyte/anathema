@@ -206,7 +206,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
 
                     let scope =
-                        Scope::with_collection(for_loop.binding, &for_loop.collection, self.scope, self.scope.outer);
+                        Scope::with_collection(&for_loop.collection, self.scope, self.scope.outer);
                     let mut children = LayoutForEach::with_generator(
                         children,
                         &scope,

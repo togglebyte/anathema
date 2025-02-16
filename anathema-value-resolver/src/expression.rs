@@ -1,10 +1,8 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::ops::Deref;
 
-use anathema_state::{Color, Hex, Number, PendingValue, SubTo, Subscriber, Type, ValueRef};
+use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::Key;
-use anathema_strings::StrIndex;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
 use anathema_templates::Primitive;
 
@@ -272,7 +270,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
             let expr = resolve_index(src, index, ctx);
             resolve_value(&expr, ctx)
         }
-        ValueExpr::Composite(value) => ValueKind::Composite,
+        ValueExpr::Composite(_) => ValueKind::Composite,
 
         // -----------------------------------------------------------------------------
         //   - Call -
@@ -286,7 +284,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
     }
 }
 
-fn resolve_pending(val: PendingValue, sub: Subscriber) -> ValueExpr<'static> {
+fn resolve_pending(val: PendingValue) -> ValueExpr<'static> {
     match val.type_info() {
         Type::Int => ValueExpr::Int(Kind::Dyn(val)),
         Type::Float => ValueExpr::Float(Kind::Dyn(val)),
@@ -329,7 +327,7 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
                 }
             };
 
-            resolve_pending(val, ctx.sub)
+            resolve_pending(val)
         }
         ValueExpr::DynList(value) => {
             value.subscribe(ctx.sub);
@@ -341,7 +339,7 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
             // will possibly have an effect on other subsequent values,
             // like adding or removing values
             let val = or_null!(list.lookup(key as usize));
-            resolve_pending(val, ctx.sub)
+            resolve_pending(val)
         }
         ValueExpr::Attributes(widget_id) => {
             let key = or_null!(resolve_str(index, ctx));
@@ -406,18 +404,18 @@ fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
 fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> i64 {
     match resolve_value(index, ctx) {
         ValueKind::Int(index) => index,
-        ValueKind::Float(_) => todo!(),
-        ValueKind::Bool(_) => todo!(),
-        ValueKind::Char(_) => todo!(),
-        ValueKind::Hex(_) => todo!(),
-        ValueKind::Color(_) => todo!(),
-        ValueKind::Str(cow) => todo!(),
-        ValueKind::Composite => todo!(),
-        ValueKind::Null => todo!(),
-        ValueKind::Map => todo!(),
-        ValueKind::Attributes => todo!(),
-        ValueKind::List(vec) => todo!(),
-        ValueKind::DynList(pending_value) => todo!(),
+        ValueKind::Float(_)
+        | ValueKind::Bool(_)
+        | ValueKind::Char(_)
+        | ValueKind::Hex(_)
+        | ValueKind::Color(_)
+        | ValueKind::Str(_)
+        | ValueKind::Composite
+        | ValueKind::Null
+        | ValueKind::Map
+        | ValueKind::Attributes
+        | ValueKind::List(_)
+        | ValueKind::DynList(_) => todo!(),
     }
 }
 
