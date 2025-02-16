@@ -6,6 +6,7 @@ use crate::nodes::element::Layout;
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach};
 use crate::{LayoutForEach, PaintChildren, WidgetId};
+use crate::error::Result;
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -66,17 +67,18 @@ impl Container {
         children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Layout {
+    ) -> Result<Layout> {
         // NOTE: The layout is possibly skipped in the Element::layout call
 
-        let size = self.inner.any_layout(children, constraints, self.id, ctx);
+        let size = self.inner.any_layout(children, constraints, self.id, ctx)?;
         let cache = Cache::new(size, constraints);
 
         let changed = self.cache.changed(cache);
-        match changed {
+        let layout = match changed {
             true => Layout::Changed(self.cache.size),
             false => Layout::Unchanged(self.cache.size),
-        }
+        };
+        Ok(layout)
 
         // Floating widgets always report a zero size
         // as they should not affect their parents

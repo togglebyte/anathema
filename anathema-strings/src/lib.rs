@@ -125,11 +125,11 @@ where
 {
     fn eq(&self, other: &HString<B>) -> bool {
         let mut lhs = self.inner.clone();
-        let rhs = other.inner.clone();
+        let mut rhs = other.inner.clone();
 
         loop {
             let a = lhs.next();
-            let b = lhs.next();
+            let b = rhs.next();
             if a != b {
                 return false;
             }

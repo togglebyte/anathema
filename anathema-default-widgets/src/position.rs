@@ -5,6 +5,7 @@ use anathema_value_resolver::{AttributeStorage, ValueKind};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 
@@ -76,7 +77,7 @@ impl Widget for Position {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let attribs = ctx.attribute_storage.get(id);
         self.placement = attribs.get_as::<Placement>(PLACEMENT).unwrap_or_default();
 
@@ -115,9 +116,9 @@ impl Widget for Position {
         let mut size = Size::ZERO;
 
         children.each(ctx, |ctx, child, children| {
-            size = child.layout(children, constraints, ctx).into();
-            ControlFlow::Break(())
-        });
+            size = child.layout(children, constraints, ctx)?.into();
+            Ok(ControlFlow::Break(()))
+        })?;
 
         size.width = match self.horz_edge {
             HorzEdge::Left(left) => size.width + left as usize,
@@ -129,7 +130,7 @@ impl Widget for Position {
             VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
         };
 
-        size
+        Ok(size)
     }
 
     fn position<'bp>(

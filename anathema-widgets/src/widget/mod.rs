@@ -17,6 +17,7 @@ use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter};
 use crate::paint::{PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
 use crate::WidgetContainer;
+use crate::error::Result;
 
 mod factory;
 mod style;
@@ -248,7 +249,7 @@ pub trait AnyWidget {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size;
+    ) -> Result<Size>;
 
     fn any_position<'bp>(
         &mut self,
@@ -288,7 +289,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         self.layout(children, constraints, id, ctx)
     }
 
@@ -338,7 +339,7 @@ pub trait Widget {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size;
+    ) -> Result<Size>;
 
     fn paint<'bp>(
         &mut self,

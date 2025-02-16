@@ -5,6 +5,7 @@ use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::layout::many::Many;
 use crate::layout::{Axis, Direction, AXIS, DIRECTION};
@@ -111,16 +112,7 @@ impl Widget for Overflow {
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        // TODO: remove this -TB 2024-10-31
-        // // horrid log
-        // {
-        //     use std::io::Write;
-        //     let mut file = std::fs::OpenOptions::new().append(true).create(true).open("/tmp/log.lol").unwrap();
-        //     file.write(b"layout\n");
-        //     file.flush();
-        // }
-
+    ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get(id);
         let axis = attributes.get_as(AXIS).unwrap_or(Axis::Vertical);
         let offset = attributes.get_usize("offest").unwrap_or_default();
@@ -151,11 +143,12 @@ impl Widget for Overflow {
         let unconstrained = true;
         let mut many = Many::new(self.direction, axis, unconstrained);
 
-        let _size = many.layout(children, constraints, ctx, offset);
+        // NOTE: we use the inner size here from many.layout
+        _ = many.layout(children, constraints, ctx, offset)?;
 
         self.inner_size = many.used_size.inner_size();
 
-        output_size
+        Ok(output_size)
     }
 
     fn position<'bp>(

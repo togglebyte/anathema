@@ -157,7 +157,10 @@ impl<'bp> crate::widget::Filter<'bp> for LayoutFilter {
                 let attributes = attribute_storage.get(element.id());
                 match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
                     Display::Show | Display::Hide => match self.0 {
+                        // Floating
                         WidgetPositionFilter::Floating => FilterOutput::Include(widget, *self),
+
+                        // Fixed
                         WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(widget, *self),
                         _ => FilterOutput::Exclude,
                     },

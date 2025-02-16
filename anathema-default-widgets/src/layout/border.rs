@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 
 use crate::border::BorderSize;
 
@@ -22,7 +23,7 @@ impl BorderLayout {
         mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let mut size = Size::ZERO;
 
         if let Some(min_width) = self.min_width {
@@ -71,17 +72,17 @@ impl BorderLayout {
 
             child_constraints.sub_max_width((border_size.left + border_size.right) as usize);
             child_constraints.sub_max_height((border_size.top + border_size.bottom) as usize);
-            let mut child_size = Size::from(child.layout(children, child_constraints, ctx));
+            let mut child_size = Size::from(child.layout(children, child_constraints, ctx)?);
             child_size += border_size.as_size();
             size.width = child_size.width.max(size.width);
             size.height = child_size.height.max(size.height);
 
-            ControlFlow::Break(())
-        });
+            Ok(ControlFlow::Break(()))
+        })?;
 
         size.width = constraints.min_width.max(size.width).min(constraints.max_width());
         size.height = constraints.min_height.max(size.height).min(constraints.max_height());
 
-        size
+        Ok(size)
     }
 }

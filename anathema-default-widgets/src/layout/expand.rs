@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 
 use super::Axis;
 
@@ -49,7 +50,7 @@ pub fn layout_all_expansions<'bp>(
     constraints: Constraints,
     axis: Axis,
     ctx: &mut LayoutCtx<'_, 'bp>,
-) -> Size {
+) -> Result<Size> {
     let mut factors = vec![];
 
     nodes.each(ctx, |ctx, node, _children| {
@@ -59,13 +60,13 @@ pub fn layout_all_expansions<'bp>(
             factors.push(factor);
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
     let mut size = Size::ZERO;
 
     if factors.is_empty() {
-        return size;
+        return Ok(size);
     }
 
     // Distribute the available space
@@ -77,7 +78,7 @@ pub fn layout_all_expansions<'bp>(
     let mut index = 0;
     nodes.each(ctx, |ctx, node, children| {
         if node.ident != "expand" {
-            return ControlFlow::Continue(());
+            return Ok(ControlFlow::Continue(()));
         }
 
         let sub_size = sizes[index];
@@ -100,7 +101,7 @@ pub fn layout_all_expansions<'bp>(
             }
         };
 
-        let widget_size = Size::from(node.layout(children, constraints, ctx));
+        let widget_size = Size::from(node.layout(children, constraints, ctx)?);
 
         match axis {
             Axis::Horizontal => {
@@ -113,8 +114,8 @@ pub fn layout_all_expansions<'bp>(
             }
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
-    size
+    Ok(size)
 }

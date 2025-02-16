@@ -17,6 +17,12 @@ use crate::events::GlobalEventHandler;
 use crate::runtime::Runtime;
 use crate::REBUILD;
 
+fn error_doc() -> Document {
+    let template = "text 'you goofed up'";
+    let doc = Document::new(template);
+    doc
+}
+
 pub struct Builder<G: GlobalEventHandler> {
     factory: Factory,
     document: Document,
@@ -29,7 +35,7 @@ pub struct Builder<G: GlobalEventHandler> {
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
-    /// Create a new builder
+    /// Create a new runtime builder
     pub(super) fn new(document: Document, size: Size, global_event_handler: G) -> Self {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
@@ -144,9 +150,9 @@ impl<G: GlobalEventHandler> Builder<G> {
         }
     }
 
-    pub fn finish<F, U>(mut self, mut f: F) -> Result<U>
+    pub fn finish<F>(mut self, mut f: F) -> Result<()>
     where
-        F: FnMut(&mut Runtime<G>) -> Result<U>,
+        F: FnMut(&mut Runtime<G>) -> Result<()>,
     {
         #[cfg(feature = "profile")]
         let _puffin_server = {
@@ -156,45 +162,40 @@ impl<G: GlobalEventHandler> Builder<G> {
             server
         };
 
-        let (blueprint, globals) = self.document.compile()?;
-        let viewport = Viewport::new(self.size);
-
-        let sleep_micros: u64 = ((1.0 / self.fps as f64) * 1000.0 * 1000.0) as u64;
-
         let watcher = self.set_watcher()?;
 
-        let mut inst = Runtime {
-            component_registry: self.component_registry,
-            components: Components::new(),
-            document: self.document,
-            factory: self.factory,
-            states: States::new(),
-            floating_widgets: FloatingWidgets::empty(),
-            dirty_widgets: DirtyWidgets::empty(),
-            assoc_events: AssociatedEvents::new(),
-            glyph_map: GlyphMap::empty(),
-            blueprint,
-            globals,
-            changes: Changes::empty(),
-            viewport,
-            message_receiver: self.message_receiver,
-            emitter: self.emitter,
-            dt: Instant::now(),
-            _watcher: Some(watcher),
-            deferred_components: DeferredComponents::new(),
-            sleep_micros,
-            global_event_handler: self.global_event_handler,
-        };
+        let mut inst = Runtime::new(
+            self.component_registry,
+            self.document,
+            error_doc(),
+            self.factory,
+            self.message_receiver,
+            self.emitter,
+            Some(watcher),
+            self.size,
+            self.fps,
+            self.global_event_handler,
+        )?;
 
         // TODO: this enables hot reload,
         //       however with this enabled the `with_frame` function
         //       on the runtime will repeat
         loop {
             match f(&mut inst) {
-                Ok(val) => (),
-                e => break e,
+                Ok(()) => (),
+                e => match e {
+                    Ok(_) => continue,
+                    Err(Error::Template(error)) => todo!(),
+                    Err(Error::Widget(error)) => {}
+                    Err(e) => break Err(e),
+                },
             }
-            inst.reload();
+            match inst.reload() {
+                Ok(()) => continue,
+                Err(Error::Template(error)) => todo!(),
+                Err(Error::Widget(error)) => todo!(),
+                Err(e) => break Err(e),
+            }
         }
     }
 

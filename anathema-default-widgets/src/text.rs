@@ -6,6 +6,7 @@ use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::{LEFT, RIGHT};
 
@@ -76,7 +77,7 @@ impl Widget for Text {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let attributes = ctx.attributes(id);
         let wrap = attributes.get_as(WRAP).unwrap_or_default();
         let size = constraints.max_size();
@@ -94,7 +95,7 @@ impl Widget for Text {
         // Layout text of all the sub-nodes
         children.each(ctx, |ctx, child, _| {
             let Some(_span) = child.try_to_ref::<Span>() else {
-                return ControlFlow::Continue(());
+                return Ok(ControlFlow::Continue(()));
             };
             self.strings.set_style(child.id());
 
@@ -104,13 +105,13 @@ impl Widget for Text {
                     ProcessResult::Break => false,
                     ProcessResult::Continue => true,
                 });
-                ControlFlow::Continue(())
+                Ok(ControlFlow::Continue(()))
             } else {
-                ControlFlow::Break(())
+                Ok(ControlFlow::Break(()))
             }
-        });
+        })?;
 
-        self.strings.finish()
+        Ok(self.strings.finish())
     }
 
     fn paint<'bp>(
@@ -179,7 +180,7 @@ impl Widget for Span {
         _: Constraints,
         _: WidgetId,
         _: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         // Everything is handled by the parent text
         panic!("this should never be called");
     }

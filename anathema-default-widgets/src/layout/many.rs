@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 
 use super::{expand, spacers, Axis, Direction};
 
@@ -80,7 +81,7 @@ impl Many {
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
         offset: usize,
-    ) -> Size {
+    ) -> Result<Size> {
         let max_constraints = constraints;
 
         self.used_size.axis = self.axis;
@@ -90,7 +91,7 @@ impl Many {
 
         children.skip(offset).each(ctx, |ctx, node, children| {
             if ["spacer", "expand"].contains(&node.ident) {
-                return ControlFlow::Continue(());
+                return Ok(ControlFlow::Continue(()));
             }
 
             let widget_constraints = {
@@ -104,24 +105,24 @@ impl Many {
                 constraints
             };
 
-            let widget_size = node.layout(children, widget_constraints, ctx).into();
+            let widget_size = node.layout(children, widget_constraints, ctx)?.into();
 
             self.used_size.apply(widget_size);
 
             match self.used_size.no_space_left() {
-                true => ControlFlow::Break(()),
-                false => ControlFlow::Continue(()),
+                true => Ok(ControlFlow::Break(())),
+                false => Ok(ControlFlow::Continue(())),
             }
-        });
+        })?;
 
         // Apply spacer and expand if the layout is constrained and we have remaining space
         if !self.unconstrained && !self.used_size.no_space_left() {
             let constraints = self.used_size.to_constraints();
-            let expanded_size = expand::layout_all_expansions(&mut children, constraints, self.axis, ctx);
+            let expanded_size = expand::layout_all_expansions(&mut children, constraints, self.axis, ctx)?;
             self.used_size.apply(expanded_size);
 
             let constraints = self.used_size.to_constraints();
-            let spacer_size = spacers::layout_all_spacers(&mut children, constraints, self.axis, ctx);
+            let spacer_size = spacers::layout_all_spacers(&mut children, constraints, self.axis, ctx)?;
             self.used_size.apply(spacer_size);
         }
 
@@ -153,6 +154,6 @@ impl Many {
             }
         }
 
-        size
+        Ok(size)
     }
 }

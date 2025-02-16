@@ -5,6 +5,7 @@ use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::layout::{single_layout, Axis};
 
@@ -18,8 +19,8 @@ impl Widget for Expand {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let mut size = single_layout(children, constraints, ctx);
+    ) -> Result<Size> {
+        let mut size = single_layout(children, constraints, ctx)?;
 
         let attributes = ctx.attribute_storage.get(id);
         match attributes.get_as::<Axis>("axis") {
@@ -31,7 +32,7 @@ impl Widget for Expand {
             }
         }
 
-        size
+        Ok(size)
     }
 
     fn position<'bp>(

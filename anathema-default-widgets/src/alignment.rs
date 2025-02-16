@@ -4,6 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::layout::alignment::{Alignment, ALIGNMENT};
 
@@ -17,13 +18,13 @@ impl Widget for Align {
         constraints: Constraints,
         _: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         children.each(ctx, |ctx, widget, children| {
             _ = widget.layout(children, constraints, ctx);
-            ControlFlow::Break(())
-        });
+            Ok(ControlFlow::Break(()))
+        })?;
 
-        constraints.max_size()
+        Ok(constraints.max_size())
     }
 
     fn position<'bp>(

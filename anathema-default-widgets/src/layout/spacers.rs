@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use anathema_geometry::Size;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 
 use super::Axis;
 
@@ -16,7 +17,7 @@ pub fn layout_all_spacers<'bp>(
     mut constraints: Constraints,
     axis: Axis,
     ctx: &mut LayoutCtx<'_, 'bp>,
-) -> Size {
+) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let mut count = 0;
     nodes.each(ctx, |_, node, _| {
@@ -24,11 +25,11 @@ pub fn layout_all_spacers<'bp>(
             count += 1;
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
     if count == 0 {
-        return final_size;
+        return Ok(final_size);
     }
 
     match axis {
@@ -44,10 +45,10 @@ pub fn layout_all_spacers<'bp>(
 
     nodes.each(ctx, |ctx, node, children| {
         if node.ident != "spacer" {
-            return ControlFlow::Continue(());
+            return Ok(ControlFlow::Continue(()));
         }
 
-        let size = Size::from(node.layout(children, constraints, ctx));
+        let size = Size::from(node.layout(children, constraints, ctx)?);
 
         match axis {
             Axis::Horizontal => {
@@ -60,8 +61,8 @@ pub fn layout_all_spacers<'bp>(
             }
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
-    final_size
+    Ok(final_size)
 }

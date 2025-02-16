@@ -4,6 +4,7 @@ use anathema_geometry::{Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
 
 use crate::container::Container;
+use crate::error::Result;
 use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
 use crate::paint::{PaintCtx, PaintFilter, Unsized};
 use crate::widget::ForEach;
@@ -42,7 +43,7 @@ impl<'bp> Element<'bp> {
         mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Layout {
+    ) -> Result<Layout> {
         // 1. Check cache
         // 2. Check cache of children
         //
@@ -70,23 +71,22 @@ impl<'bp> Element<'bp> {
                     Some(constraints) => constraints,
                 };
 
-                match node.layout(children, constraints, ctx) {
+                match node.layout(children, constraints, ctx)? {
                     Layout::Changed(_) => {
                         rebuild = true;
-                        return ControlFlow::Break(());
+                        return Ok(ControlFlow::Break(()));
                     }
-                    Layout::Unchanged(_) => return ControlFlow::Continue(()),
+                    Layout::Unchanged(_) => return Ok(ControlFlow::Continue(())),
                 }
-            });
+            })?;
 
             if !rebuild {
-                return Layout::Unchanged(size);
+                return Ok(Layout::Unchanged(size));
             }
         }
 
         crate::awful_debug!("rebuild for {}", self.ident);
         self.container.layout(children, constraints, ctx)
-        // Layout::Changed(size)
     }
 
     pub fn invalidate_cache(&mut self) {

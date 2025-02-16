@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use anathema::component::*;
 use anathema::prelude::*;
-use anathema_widgets::components::events::KeyState;
 
 #[derive(State)]
 struct Num {
@@ -28,8 +27,8 @@ impl Component for C {
     fn tick(
         &mut self,
         state: &mut Self::State,
-        _: Elements<'_, '_>,
-        context: DeprecatedContext<'_, Self::State>,
+        mut elements: Children<'_, '_>,
+        context: Context<'_, Self::State>,
         dt: Duration,
     ) {
         let x = dt.as_millis() as f64;
@@ -43,8 +42,8 @@ impl Component for C {
         &mut self,
         key: KeyEvent,
         state: &mut Self::State,
-        _: Elements<'_, '_>,
-        _: DeprecatedContext<'_, Self::State>,
+        mut elements: Children<'_, '_>,
+        mut context: Context<'_, Self::State>,
     ) {
         if matches!(key.state, KeyState::Press) {
             match key.code {
@@ -67,8 +66,8 @@ fn main() {
         .unwrap();
     backend.finalize();
 
-    let mut runtime = Runtime::builder(doc);
-    runtime
+    let mut builder = Runtime::builder(doc, &backend);
+    builder
         .component(
             "main",
             "examples/templates/animate/animate.aml",
@@ -80,9 +79,7 @@ fn main() {
         )
         .unwrap();
 
-    let mut runtime = runtime.finish().unwrap();
-    runtime.run();
     builder
-        .finish(backend.size(), |mut runtime| runtime.run(&mut backend))
+        .finish(|mut runtime| runtime.run(&mut backend))
         .unwrap();
 }

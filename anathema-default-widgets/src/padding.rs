@@ -5,6 +5,7 @@ use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 
@@ -37,7 +38,7 @@ impl Widget for Padding {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get(id);
         let mut size = Size::ZERO;
         let padding = attributes.get_int(PADDING).unwrap_or(0) as u16;
@@ -65,18 +66,18 @@ impl Widget for Padding {
             let mut child_constraints = constraints;
             child_constraints.sub_max_width(padding_size.width);
             child_constraints.sub_max_height(padding_size.height);
-            let mut child_size = Size::from(child.layout(children, child_constraints, ctx));
+            let mut child_size = Size::from(child.layout(children, child_constraints, ctx)?);
             child_size += padding_size;
             size.width = child_size.width.max(size.width);
             size.height = child_size.height.max(size.height);
 
-            ControlFlow::Break(())
-        });
+            Ok(ControlFlow::Break(()))
+        })?;
 
         size.width = constraints.min_width.max(size.width).min(constraints.max_width());
         size.height = constraints.min_height.max(size.height).min(constraints.max_height());
 
-        size
+        Ok(size)
     }
 
     fn position<'bp>(

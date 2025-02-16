@@ -4,6 +4,7 @@ use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 #[derive(Default)]
 pub struct ZStack;
@@ -15,15 +16,15 @@ impl Widget for ZStack {
         constraints: Constraints,
         _: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let mut size = Size::ZERO;
         children.each(ctx, |ctx, child, children| {
-            let child_size = Size::from(child.layout(children, constraints, ctx));
+            let child_size = Size::from(child.layout(children, constraints, ctx)?);
             size.width = size.width.max(child_size.width);
             size.height = size.height.max(child_size.height);
-            ControlFlow::Continue(())
-        });
-        size
+            Ok(ControlFlow::Continue(()))
+        })?;
+        Ok(size)
     }
 
     fn position<'bp>(

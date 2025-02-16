@@ -4,6 +4,7 @@ use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::layout::Axis;
 use crate::stacks::Stack;
@@ -23,7 +24,7 @@ impl Widget for Row {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         self.0.layout(children, constraints, id, ctx)
     }
 

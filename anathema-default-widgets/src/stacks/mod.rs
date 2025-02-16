@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{LayoutForEach, PositionChildren, WidgetId};
 
@@ -29,7 +30,7 @@ impl Stack {
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get_mut(id);
 
         if let Some(width) = attributes.get_usize(MIN_WIDTH) {

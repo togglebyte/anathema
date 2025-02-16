@@ -19,7 +19,6 @@
 
 use std::sync::atomic::AtomicBool;
 
-
 pub use crate::builder::Builder;
 pub use crate::error::{Error, Result};
 pub use crate::runtime::{Frame, Runtime};

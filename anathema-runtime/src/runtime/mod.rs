@@ -2,6 +2,7 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
+use anathema_geometry::Size;
 use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
@@ -18,7 +19,8 @@ use anathema_widgets::{
     eval_blueprint, update_widget, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId, WidgetKind,
     WidgetTree,
 };
-use notify::RecommendedWatcher;
+use flume::Receiver;
+use notify::{INotifyWatcher, RecommendedWatcher};
 
 use crate::builder::Builder;
 pub use crate::error::Result;
@@ -57,6 +59,48 @@ impl Runtime<()> {
 }
 
 impl<G: GlobalEventHandler> Runtime<G> {
+    pub(crate) fn new(
+        component_registry: ComponentRegistry,
+        mut document: Document,
+        mut err_document: Document,
+        factory: Factory,
+        message_receiver: Receiver<ViewMessage>,
+        emitter: Emitter,
+        watcher: Option<INotifyWatcher>,
+        size: Size,
+        fps: u32,
+        global_event_handler: G,
+    ) -> Result<Self> {
+        let (blueprint, globals) = document.compile()?;
+        let Ok((err_blueprint, err_globals)) = err_document.compile() else { panic!("the error display failed to compile") };
+
+        let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
+
+        let inst = Self {
+            component_registry,
+            components: Components::new(),
+            document,
+            factory,
+            states: States::new(),
+            floating_widgets: FloatingWidgets::empty(),
+            dirty_widgets: DirtyWidgets::empty(),
+            assoc_events: AssociatedEvents::new(),
+            glyph_map: GlyphMap::empty(),
+            blueprint,
+            globals,
+            changes: Changes::empty(),
+            viewport: Viewport::new(size),
+            message_receiver,
+            emitter,
+            dt: Instant::now(),
+            _watcher: watcher,
+            deferred_components: DeferredComponents::new(),
+            sleep_micros,
+            global_event_handler,
+        };
+        Ok(inst)
+    }
+
     pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
     where
         B: Backend,
@@ -65,14 +109,14 @@ impl<G: GlobalEventHandler> Runtime<G> {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
-        frame.init();
+        frame.init_tree()?;
         f(backend, frame)
     }
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let sleep_micros = self.sleep_micros;
         self.with_frame(backend, |backend, mut frame| loop {
-            frame.tick(backend);
+            frame.tick(backend)?;
             if frame.stop {
                 return Err(Error::Stop);
             }
@@ -204,7 +248,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
     }
 
     // Should be called only once to initialise the node tree.
-    pub fn init(&mut self) -> Result<()> {
+    pub fn init_tree(&mut self) -> Result<()> {
         let mut ctx = self.layout_ctx.eval_ctx(None);
         eval_blueprint(
             self.blueprint,
@@ -216,7 +260,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         Ok(())
     }
 
-    pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Duration {
+    pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Result<Duration> {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
 
@@ -226,11 +270,11 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         self.poll_events(elapsed, now, backend);
         self.drain_deferred_commands();
         self.drain_assoc_events();
-        self.apply_changes();
-        self.cycle(backend);
+        self.apply_changes()?;
+        self.cycle(backend)?;
 
         *self.dt = Instant::now();
-        now.elapsed()
+        Ok(now.elapsed())
     }
 
     pub fn present<B: Backend>(&mut self, backend: &mut B) -> Duration {
@@ -351,29 +395,30 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         }
     }
 
-    fn cycle<B: Backend>(&mut self, backend: &mut B) {
+    fn cycle<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
         let mut cycle = WidgetCycle::new(backend, self.tree.view_mut(), self.layout_ctx.viewport.constraints());
-        cycle.run(&mut self.layout_ctx, self.needs_layout);
+        cycle.run(&mut self.layout_ctx, self.needs_layout)?;
         self.needs_layout = false;
+        Ok(())
     }
 
-    fn apply_changes(&mut self) {
+    fn apply_changes(&mut self) -> Result<()> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
         drain_changes(self.changes);
 
         if self.changes.is_empty() {
-            return;
+            return Ok(());
         }
 
         self.needs_layout = true;
         let mut tree = self.tree.view_mut();
-        self.changes.iter().for_each(|(sub, change)| {
-            sub.iter().for_each(|value_id| {
+        self.changes.iter().try_for_each(|(sub, change)| {
+            sub.iter().try_for_each(|value_id| {
                 let widget_id = value_id.key();
 
                 if let Some(widget) = tree.get_mut(widget_id) {
@@ -382,27 +427,22 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
                     }
                 }
 
-                // anathema_widgets::awful_debug!("{widget_id:?}");
-                // self.layout_ctx.dirty_widgets.push(widget_id);
-
                 // check that the node hasn't already been removed
                 if !tree.contains(widget_id) {
-                    return;
+                    return Result::Ok(());
                 }
 
                 tree.with_value_mut(widget_id, |_path, widget, tree| {
-                    update_widget(widget, value_id, change, tree, self.layout_ctx.attribute_storage);
-                });
-            });
-        });
+                    update_widget(widget, value_id, change, tree, self.layout_ctx.attribute_storage)
+                })?;
 
-        // while let Some(id) = self.layout_ctx.dirty_widgets.pop() {
-        //     let Some(widget) = self.tree.get_mut(id) else { continue };
-        //     match &mut widget.kind {
-        //         WidgetKind::Element(element) => element.dirty = true,
-        //         _ => continue,
-        //     }
-        // }
+                Ok(())
+            })?;
+
+            Result::Ok(())
+        })?;
+
+        Ok(())
     }
 
     fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
@@ -477,5 +517,10 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
                 .component_registry
                 .return_component(comp.component_id, comp.dyn_component, state);
         }
+    }
+
+    fn display_error(&mut self, backend: &mut impl Backend) {
+        let tpl = "text 'you goofed up'";
+        backend.render(self.layout_ctx.glyph_map);
     }
 }

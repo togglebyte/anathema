@@ -4,6 +4,7 @@ use anathema_state::Value as StateValue;
 use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::{AttributeStorage, Scope};
 
+use crate::error::Result;
 use crate::layout::{LayoutCtx, LayoutFilter};
 use crate::nodes::loops::Iteration;
 use crate::nodes::{controlflow, eval_blueprint};
@@ -120,41 +121,41 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
         }
     }
 
-    pub fn each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, mut f: F) -> ControlFlow<()>
+    pub fn each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, mut f: F) -> Result<ControlFlow<()>>
     where
-        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
+        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> Result<ControlFlow<()>>,
     {
         self.inner_each(ctx, &mut f)
     }
 
-    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
+    fn inner_each<F>(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> Result<ControlFlow<()>>
     where
-        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
+        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> Result<ControlFlow<()>>,
     {
         for index in self.offset..self.tree.layout_len() {
             self.process(index, ctx, f)?;
         }
 
         // If there is no parent then there can be no children generated
-        let Some(parent) = self.generator else { return ControlFlow::Continue(()) };
+        let Some(parent) = self.generator else { return Ok(ControlFlow::Continue(())) };
 
         // NOTE: Generate will never happen unless the preceeding iteration returns `Continue(())`.
         //       Therefore there is no need to worry about excessive creation of `Iter`s for loops.
-
         loop {
             let index = self.tree.layout_len();
-            if !generate(parent, &mut self.tree, ctx, self.scope, self.parent_component) {
+            if !generate(parent, &mut self.tree, ctx, self.scope, self.parent_component)? {
                 break;
             }
             self.process(index, ctx, f)?;
         }
 
-        ControlFlow::Continue(())
+        Ok(ControlFlow::Continue(()))
     }
 
-    fn process<F>(&mut self, index: usize, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> ControlFlow<()>
+    // TODO: this function is gross and large
+    fn process<F>(&mut self, index: usize, ctx: &mut LayoutCtx<'_, 'bp>, f: &mut F) -> Result<ControlFlow<()>>
     where
-        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> ControlFlow<()>,
+        F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> Result<ControlFlow<()>>,
     {
         let node = self
             .tree
@@ -165,11 +166,13 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
         let widget_id = node.value();
 
         self.tree.with_value_mut(widget_id, |_, widget, mut children| {
-            match self.filter.filter(widget, ctx.attribute_storage) {
-                FilterOutput::Exclude => return ControlFlow::Continue(()),
-                _ => {}
+            let output = self.filter.filter(widget, ctx.attribute_storage);
+            match output {
+                FilterOutput::Exclude => return Ok(ControlFlow::Continue(())),
+                _ => ()
             }
 
+            let filter = self.filter;
             let cf = match &mut widget.kind {
                 WidgetKind::Element(el) => {
                     let children = LayoutForEach::with_generator(
@@ -202,7 +205,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 WidgetKind::For(for_loop) => {
                     let len = for_loop.collection.len();
                     if len == 0 {
-                        return ControlFlow::Break(());
+                        return Ok(ControlFlow::Break(()));
                     }
 
                     let scope = Scope::with_collection(&for_loop.collection, self.scope, self.scope.outer);
@@ -214,9 +217,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         self.parent_component,
                     );
 
-                    let cf = children.inner_each(ctx, f);
-                    // crate::awful_debug!("for ({len}) > {cf:?}");
-                    cf
+                    children.inner_each(ctx, f)
                 }
                 WidgetKind::Iteration(iteration) => {
                     let loop_index = *iteration.loop_index.to_ref() as usize;
@@ -256,7 +257,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 WidgetKind::Slot => {
                     let mut children = LayoutForEach::with_generator(
                         children,
-                        self.scope,
+                        self.scope.outer.expect("slots always have an outer scope"),
                         Generator::from(&*widget),
                         self.filter,
                         self.parent_component,
@@ -279,45 +280,44 @@ fn generate<'bp>(
     ctx: &mut LayoutCtx<'_, 'bp>,
     scope: &Scope<'_, 'bp>,
     parent_component: Option<WidgetId>,
-) -> bool {
+) -> Result<bool> {
     match parent {
         Generator::Single { body: blueprints, .. }
         | Generator::Iteration { body: blueprints, .. }
         | Generator::ControlFlowContainer(blueprints) => {
             if blueprints.is_empty() {
-                return false;
+                return Ok(false);
             }
 
             let index = tree.layout_len();
             if index >= blueprints.len() {
-                return false;
+                return Ok(false);
             }
 
             let mut ctx = ctx.eval_ctx(parent_component);
             // TODO: unwrap.
             // this should propagate somewhere useful
-            eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree).unwrap();
-            true
+            eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree)?;
+            Ok(true)
         }
 
         Generator::Slot(blueprints) => {
             if blueprints.is_empty() {
-                return false;
+                return Ok(false);
             }
 
             let index = tree.layout_len();
             if index >= blueprints.len() {
-                return false;
+                return Ok(false);
             }
 
             let mut ctx = ctx.eval_ctx(parent_component);
-            // TODO: unwrap.
-            // this should propagate somewhere useful
+            // TODO: this `expect` needs dealing with
             let scope = scope.outer.expect("it's there son!");
             eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree).unwrap();
-            true
+            Ok(true)
         }
-        Generator::Loop { len, .. } if len == tree.layout_len() => false,
+        Generator::Loop { len, .. } if len == tree.layout_len() => Ok(false),
         Generator::Loop { binding, body, .. } => {
             let loop_index = tree.layout_len();
 
@@ -327,10 +327,10 @@ fn generate<'bp>(
                 binding,
             });
             let widget = WidgetContainer::new(widget, body);
-            // TODO: unwrap, ewww...
+            // TODO: for this to fail one of the values along the path would have to
+            // have been removed
             transaction.commit_child(widget).unwrap();
-
-            true
+            Ok(true)
         }
         Generator::ControlFlow(controlflow) => {
             let child_count = tree.layout_len();
@@ -356,7 +356,7 @@ fn generate<'bp>(
 
                     // The condition no longer holds so the branch has to be trimmed
                     if is_true {
-                        return false;
+                        return Ok(false);
                     }
 
                     is_true
@@ -364,7 +364,7 @@ fn generate<'bp>(
             };
 
             if !should_create {
-                return false;
+                return Ok(false);
             }
 
             let thing = controlflow
@@ -393,10 +393,10 @@ fn generate<'bp>(
                     let transaction = tree.insert(tree.offset);
                     transaction.commit_child(widget);
                 }
-                None => return false,
+                None => return Ok(false),
             }
 
-            true
+            Ok(true)
         }
     }
 }

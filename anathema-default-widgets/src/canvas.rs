@@ -3,6 +3,7 @@ use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId};
+use anathema_widgets::error::Result;
 use unicode_width::UnicodeWidthChar;
 
 use crate::{HEIGHT, WIDTH};
@@ -181,7 +182,7 @@ impl Widget for Canvas {
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let attribs = ctx.attribute_storage.get(id);
 
         if let Some(width) = attribs.get_usize(WIDTH) {
@@ -198,7 +199,7 @@ impl Widget for Canvas {
             self.buffer = Buffer::copy_from(&mut self.buffer, size);
         }
 
-        self.buffer.size
+        Ok(self.buffer.size)
     }
 
     fn position<'bp>(

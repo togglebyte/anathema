@@ -7,10 +7,9 @@ use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFilter, Viewport};
 use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::{awful_debug, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
+use anathema_widgets::error::Result;
 
-pub mod test;
 pub mod tui;
-pub mod tuiscroll;
 
 pub trait Backend {
     fn size(&self) -> Size;
@@ -55,13 +54,13 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         }
     }
 
-    fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) {
+    fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
         if needs_layout {
             let filter = LayoutFilter::floating();
-            self.layout(ctx, filter);
+            self.layout(ctx, filter)?;
         }
 
         // -----------------------------------------------------------------------------
@@ -73,16 +72,18 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Paint -
         // -----------------------------------------------------------------------------
         self.paint(ctx, PaintFilter::floating());
+
+        Ok(())
     }
 
-    fn fixed(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) {
+    fn fixed(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
         if needs_layout {
             awful_debug!("fixed layout");
             let filter = LayoutFilter::fixed();
-            self.layout(ctx, filter);
+            self.layout(ctx, filter)?;
         }
 
         // -----------------------------------------------------------------------------
@@ -94,14 +95,17 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Paint -
         // -----------------------------------------------------------------------------
         self.paint(ctx, PaintFilter::fixed());
+
+        Ok(())
     }
 
-    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) {
-        self.fixed(ctx, needs_layout);
-        self.floating(ctx, needs_layout);
+    pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
+        self.fixed(ctx, needs_layout)?;
+        self.floating(ctx, needs_layout)?;
+        Ok(())
     }
 
-    fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) {
+    fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) -> Result<()> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
         let tree = self.tree.view_mut();
@@ -110,9 +114,10 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         let mut for_each = LayoutForEach::new(tree, &scope, filter, None);
         let constraints = self.constraints;
         for_each.each(ctx, |ctx, widget, children| {
-            widget.layout(children, constraints, ctx);
-            ControlFlow::Break(())
-        });
+            let _ = widget.layout(children, constraints, ctx)?;
+            Ok(ControlFlow::Break(()))
+        })?;
+        Ok(())
     }
 
     fn position(&mut self, attributes: &AttributeStorage<'bp>, viewport: Viewport, filter: PositionFilter) {

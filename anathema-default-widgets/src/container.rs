@@ -4,6 +4,7 @@ use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::{LayoutForEach, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 
@@ -17,7 +18,7 @@ impl Widget for Container {
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let mut size = Size::ZERO;
 
         let attribs = ctx.attribute_storage.get(id);
@@ -47,14 +48,14 @@ impl Widget for Container {
         }
 
         children.each(ctx, |ctx, child, children| {
-            size = child.layout(children, constraints, ctx).into();
-            ControlFlow::Break(())
-        });
+            size = child.layout(children, constraints, ctx)?.into();
+            Ok(ControlFlow::Break(()))
+        })?;
 
         size.width = size.width.max(constraints.min_width);
         size.height = size.height.max(constraints.min_height);
 
-        size
+        Ok(size)
     }
 
     fn position<'bp>(

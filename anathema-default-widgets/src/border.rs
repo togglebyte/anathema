@@ -6,6 +6,7 @@ use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{AnyWidget, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::error::Result;
 
 use crate::layout::border::BorderLayout;
 use crate::layout::Axis;
@@ -416,7 +417,7 @@ impl Widget for Border {
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get_mut(id);
 
         self.sides = attributes.get_as::<Sides>("sides").unwrap_or_default();

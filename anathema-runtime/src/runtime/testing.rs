@@ -53,7 +53,7 @@ where
         }
 
         loop {
-            let dur = self.tick(backend);
+            let dur = self.tick(backend)?;
             self.present(backend);
             self.cleanup();
 

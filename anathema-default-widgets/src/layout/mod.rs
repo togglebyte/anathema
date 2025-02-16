@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_value_resolver::ValueKind;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
 
@@ -18,15 +19,15 @@ pub(crate) fn single_layout<'bp>(
     mut children: LayoutForEach<'_, 'bp>,
     constraints: Constraints,
     ctx: &mut LayoutCtx<'_, 'bp>,
-) -> Size {
+) -> Result<Size> {
     let mut size = Size::ZERO;
 
     children.each(ctx, |ctx, node, children| {
-        size = node.layout(children, constraints, ctx).into();
-        ControlFlow::Break(())
-    });
+        size = node.layout(children, constraints, ctx)?.into();
+        Ok(ControlFlow::Break(()))
+    })?;
 
-    size
+    Ok(size)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
