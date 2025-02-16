@@ -1,53 +1,52 @@
 use std::any::Any;
 use std::fmt::Debug;
-use std::rc::Rc;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::{Color, Hex, Number, Path, PendingValue, Subscriber, Type, Value, ValueRef};
+use crate::{Color, Hex, PendingValue, Type, Value};
 
 pub trait TypeId {
-    const Type: Type = Type::Composite;
+    const TYPE: Type = Type::Composite;
 }
 
 impl TypeId for i64 {
-    const Type: Type = Type::Int;
+    const TYPE: Type = Type::Int;
 }
 
 impl TypeId for f64 {
-    const Type: Type = Type::Float;
+    const TYPE: Type = Type::Float;
 }
 
 impl TypeId for char {
-    const Type: Type = Type::Char;
+    const TYPE: Type = Type::Char;
 }
 
 impl TypeId for String {
-    const Type: Type = Type::String;
+    const TYPE: Type = Type::String;
 }
 
 impl TypeId for bool {
-    const Type: Type = Type::Bool;
+    const TYPE: Type = Type::Bool;
 }
 
 impl TypeId for Hex {
-    const Type: Type = Type::Hex;
+    const TYPE: Type = Type::Hex;
 }
 
 impl<T> TypeId for crate::Map<T> {
-    const Type: Type = Type::Map;
+    const TYPE: Type = Type::Map;
 }
 
 impl<T> TypeId for crate::List<T> {
-    const Type: Type = Type::List;
+    const TYPE: Type = Type::List;
 }
 
 impl TypeId for () {
-    const Type: Type = Type::Unit;
+    const TYPE: Type = Type::Unit;
 }
 
 impl TypeId for Color {
-    const Type: Type = Type::Color;
+    const TYPE: Type = Type::Color;
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -285,7 +284,7 @@ pub trait AnyList {
 // -----------------------------------------------------------------------------
 impl<T: State + TypeId> State for Option<T> {
     fn type_info(&self) -> Type {
-        T::Type
+        T::TYPE
     }
 
     fn as_int(&self) -> Option<i64> {

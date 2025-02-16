@@ -1,7 +1,5 @@
-use anathema_debug::DebugWriter;
 use anathema_store::slab::{Slab, SlabIndex};
 use anathema_store::smallmap::SmallIndex;
-use anathema_store::stack::Stack;
 
 use super::SUBSCRIBERS;
 use crate::Key;
@@ -138,14 +136,6 @@ impl From<(Key, SmallIndex)> for Subscriber {
 impl From<Subscriber> for Key {
     fn from(Subscriber(value, _): Subscriber) -> Self {
         value
-    }
-}
-
-pub(crate) struct SubscriberDebug(pub(crate) Subscriber);
-
-impl DebugWriter for SubscriberDebug {
-    fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        writeln!(output, "<sub key {:?} | index {}>", self.0 .0, self.0 .1.as_usize())
     }
 }
 

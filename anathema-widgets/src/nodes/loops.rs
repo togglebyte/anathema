@@ -15,11 +15,7 @@ pub struct For<'bp> {
 }
 
 impl<'bp> For<'bp> {
-    pub(super) fn update(
-        &mut self,
-        change: &Change,
-        mut tree: WidgetTreeView<'_, 'bp>,
-    ) -> Result<()> {
+    pub(super) fn update(&mut self, change: &Change, mut tree: WidgetTreeView<'_, 'bp>) -> Result<()> {
         match change {
             Change::Inserted(index) => {
                 // 1. Declare insert path
@@ -48,7 +44,9 @@ impl<'bp> For<'bp> {
                             ..
                         },
                     )) = iter_widget
-                    else { unreachable!("this can only ever be an iteration") };
+                    else {
+                        unreachable!("this can only ever be an iteration")
+                    };
                     *iter.loop_index.to_mut() += 1;
                 }
             }

@@ -5,19 +5,18 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use anathema_store::slab::RcElement;
-use anathema_store::store::{Monitor, OwnedKey, SharedKey};
+use anathema_store::store::{OwnedKey, SharedKey};
 
 pub use self::list::List;
 pub use self::map::Map;
 use crate::states::AnyState;
 use crate::store::subscriber::{subscribe, unsubscribe, SubKey};
 use crate::store::values::{
-    copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, with_owned,
-    OwnedValue,
+    copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, OwnedValue,
 };
 use crate::store::watchers::{monitor, queue_monitor, Watcher};
 use crate::store::{changed, ValueKey};
-use crate::{Change, Color, Subscriber};
+use crate::{Change, Subscriber};
 
 mod list;
 mod map;
@@ -55,7 +54,7 @@ impl<T: AnyState> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
         let type_id = value.type_info();
-        let mut key = new_value(Box::new(value), type_id);
+        let key = new_value(Box::new(value), type_id);
         Self { key, _p: PhantomData }
     }
 
@@ -140,7 +139,7 @@ impl<T: AnyState> Value<T> {
         let value = drop_value(self.key).val;
         // Prevent the drop function from being called
         // as that would try to free the value from storage again
-        std::mem::ManuallyDrop::new(self);
+        _ = std::mem::ManuallyDrop::new(self);
         value
     }
 }

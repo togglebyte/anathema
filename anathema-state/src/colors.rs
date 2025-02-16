@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::{Hex, State, Type};
+use crate::Hex;
 
 pub trait FromColor {
     fn from_color<T>(color: Color) -> T;

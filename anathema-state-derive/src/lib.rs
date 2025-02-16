@@ -33,7 +33,7 @@ pub fn state_derive(input: DeriveInput) -> Result {
         # use ::std::any::Any;
 
         impl state::TypeId for #name {
-            const r#Type: Type = Type::Composite;
+            const TYPE: Type = Type::Composite;
         }
 
         impl state::State for #name {

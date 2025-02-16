@@ -205,8 +205,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         return ControlFlow::Break(());
                     }
 
-                    let scope =
-                        Scope::with_collection(&for_loop.collection, self.scope, self.scope.outer);
+                    let scope = Scope::with_collection(&for_loop.collection, self.scope, self.scope.outer);
                     let mut children = LayoutForEach::with_generator(
                         children,
                         &scope,

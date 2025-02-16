@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use super::{Type, Value};
 use crate::states::{AnyMap, AnyState};
-use crate::{Path, PendingValue, State, Subscriber, ValueRef};
+use crate::PendingValue;
 
 #[derive(Debug)]
 pub struct Map<T> {
@@ -13,19 +12,6 @@ pub struct Map<T> {
 impl<T: AnyState> Map<T> {
     pub fn empty() -> Self {
         Self { inner: HashMap::new() }
-    }
-
-    // TODO if this has to go back into the Value<Self> then remove this function
-    // along with having the `empty` funcition return Value<Self> instead of Self
-    fn insert(&mut self, map_key: impl Into<String>, value: T) {
-        let map_key = map_key.into();
-        // let map = &mut *self.to_mut();
-        let value = value.into();
-        self.inner.insert(map_key, value);
-    }
-
-    fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
-        self.inner.remove(map_key)
     }
 
     pub fn get(&self, key: &str) -> Option<&Value<T>> {
@@ -38,11 +24,6 @@ impl<T: AnyState> Map<T> {
 }
 
 impl<T: 'static + AnyState> Value<Map<T>> {
-    // pub fn empty() -> Self {
-    //     let map = Map { inner: HashMap::new() };
-    //     Value::new(map)
-    // }
-
     /// Insert a value into the `Map`.
     /// The value will be wrapped in a `Value<T>` so it's not advisable to insert pre-wrapped
     /// value.

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use anathema_store::stack::Stack;
-use anathema_store::store::{Monitor, Owned, OwnedKey, Shared};
+use anathema_store::store::{Owned, OwnedKey, Shared};
 use values::OwnedValue;
 pub use watchers::Watched;
 use watchers::{Watcher, Watchers};
@@ -13,7 +13,6 @@ pub use self::subscriber::{SubTo, Subscriber};
 use crate::Type;
 
 mod change;
-pub mod debug;
 pub(crate) mod subscriber;
 pub(crate) mod values;
 pub(crate) mod watchers;

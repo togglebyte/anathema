@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use super::{Type, Value};
 use crate::states::{AnyList, AnyState};
 use crate::store::changed;
-use crate::{Change, Path, PendingValue, State, Subscriber, ValueRef};
+use crate::{Change, PendingValue};
 
 // TODO: Optimisation: changing the list should probably just create one
 //       change instead of two for the list.
@@ -20,26 +20,6 @@ pub struct List<T> {
 impl<T: AnyState> List<T> {
     pub fn empty() -> Self {
         Self { inner: VecDeque::new() }
-    }
-
-    /// Push a value to the list
-    fn push(&mut self, value: impl Into<Value<T>>) {
-        self.push_back(value)
-    }
-
-    /// Push a value to the back of the list
-    fn push_back(&mut self, value: impl Into<Value<T>>) {
-        self.inner.push_back(value.into());
-    }
-
-    /// Push a value to the front of the list
-    fn push_front(&mut self, value: impl Into<Value<T>>) {
-        self.inner.push_front(value.into());
-    }
-
-    /// Remove a value from the list
-    fn remove(&mut self, index: usize) -> Option<Value<T>> {
-        self.inner.remove(index)
     }
 
     pub fn get(&self, index: usize) -> Option<&Value<T>> {
