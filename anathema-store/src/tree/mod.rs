@@ -4,7 +4,6 @@ pub use self::foreach::Generator;
 pub use self::iter::{TreeFilter, TreeForEach};
 pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
-pub use self::pathlist::{PathList, PathListCtl};
 pub use self::transactions::InsertTransaction;
 pub use self::view::TreeView;
 use self::visitor::NodeVisitor;
@@ -15,11 +14,9 @@ mod foreach;
 mod iter;
 mod nodepath;
 mod pathfinder;
-mod pathlist;
 mod transactions;
 mod view;
 pub mod visitor;
-// mod walker;
 
 pub type TreeValues<T> = GenSlab<(Box<[u16]>, T)>;
 
@@ -359,7 +356,7 @@ impl Nodes {
     pub fn iter_with_values<'a, T>(
         &'a self,
         values: &'a TreeValues<T>,
-    ) -> impl Iterator<Item = (&Node, &Box<[u16]>, &T)> {
+    ) -> impl Iterator<Item = (&'a Node, &'a Box<[u16]>, &'a T)> {
         self.inner.iter().filter_map(|node| {
             let (path, value) = values.get(node.value)?;
             Some((node, path, value))

@@ -39,7 +39,7 @@ use anathema_widgets::{
     update_widget, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, LayoutForEach, WidgetKind,
     WidgetTree,
 };
-use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{recommended_watcher, RecommendedWatcher, RecursiveMode};
 
 pub use crate::builder::Builder;
 pub use crate::error::{Error, Result};

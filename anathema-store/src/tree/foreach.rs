@@ -1,17 +1,4 @@
-use std::ops::ControlFlow;
-
 use super::TreeView;
-
-pub trait Filter {
-    type Input;
-    type Output;
-
-    fn filter(&self, value: &mut Self::Input) -> &mut Self::Output;
-}
-
-pub trait Traverser<T> {
-    fn traverse(&self, input: &mut T) -> bool;
-}
 
 /// The generator should generate child nodes, created from a parent node.
 pub trait Generator<T, C> {

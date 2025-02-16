@@ -41,7 +41,7 @@ where
         &mut self,
         backend: &mut B,
         watcher: Watcher,
-        mut timeout: Duration,
+        timeout: Duration,
     ) -> Result<Watched> {
         let now = Instant::now();
 
@@ -53,7 +53,7 @@ where
         }
 
         loop {
-            let dur = self.tick(backend, false);
+            let dur = self.tick(backend);
             self.present(backend);
             self.cleanup();
 

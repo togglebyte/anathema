@@ -224,7 +224,7 @@ impl<'tree, T> TreeView<'tree, T> {
         Some(ret)
     }
 
-    pub fn each_value<F>(&mut self, mut f: F)
+    pub fn each_value<F>(&mut self, f: F)
     where
         F: FnMut(&mut T),
     {

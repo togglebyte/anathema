@@ -1,7 +1,6 @@
-use std::ops::{Range, RangeBounds};
+use std::ops::Range;
 
 use crate::slab::{Index, SecondaryMap};
-use crate::stack::Stack;
 
 #[derive(Debug)]
 struct Entry {

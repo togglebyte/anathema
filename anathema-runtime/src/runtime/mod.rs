@@ -3,26 +3,21 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{
-    clear_all_changes, clear_all_subs, drain_changes, drain_watchers, AnyState, Changes, State, StateId, States,
-    Watched, Watcher,
-};
-use anathema_store::stack::Stack;
+use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, AnyState, Changes, State, StateId, States};
 use anathema_store::tree::root_node;
-use anathema_strings::HStrings;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
-use anathema_widgets::components::events::{Event, KeyEvent};
+use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
     AnyComponent, AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
-use anathema_widgets::query::{Children, Elements};
+use anathema_widgets::query::Children;
 use anathema_widgets::{
-    eval_blueprint, update_widget, ChangeList, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId,
-    WidgetKind, WidgetTree, WidgetTreeView,
+    eval_blueprint, update_widget, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId, WidgetKind,
+    WidgetTree,
 };
 use notify::RecommendedWatcher;
 
@@ -42,7 +37,6 @@ pub struct Runtime<G> {
     pub(super) components: Components,
     pub(super) document: Document,
     pub(super) floating_widgets: FloatingWidgets,
-    pub(super) changelist: ChangeList,
     pub(super) dirty_widgets: DirtyWidgets,
     pub(super) assoc_events: AssociatedEvents,
     pub(super) glyph_map: GlyphMap,
@@ -78,18 +72,14 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let sleep_micros = self.sleep_micros;
-        let mut initial = true;
         self.with_frame(backend, |backend, mut frame| loop {
-            frame.tick(backend, initial);
+            frame.tick(backend);
             if frame.stop {
                 return Err(Error::Stop);
             }
 
-            let len = frame.tree.value_len();
-
             frame.present(backend);
             frame.cleanup();
-            initial = false;
             std::thread::sleep(Duration::from_micros(sleep_micros));
 
             if REBUILD.swap(false, Ordering::Relaxed) {
@@ -227,7 +217,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         Ok(())
     }
 
-    pub fn tick<B: Backend>(&mut self, backend: &mut B, force_layout: bool) -> Duration {
+    pub fn tick<B: Backend>(&mut self, backend: &mut B) -> Duration {
         #[cfg(feature = "profile")]
         puffin::GlobalProfiler::lock().new_frame();
 
@@ -348,7 +338,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        while let Some(mut event) = self.assoc_events.next() {
+        while let Some(event) = self.assoc_events.next() {
             let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(event.parent.into()) else {
                 return;
             };
@@ -401,7 +391,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
                     return;
                 }
 
-                tree.with_value_mut(widget_id, |path, widget, tree| {
+                tree.with_value_mut(widget_id, |_path, widget, tree| {
                     update_widget(widget, value_id, change, tree, self.layout_ctx.attribute_storage);
                 });
             });
@@ -422,13 +412,13 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         });
     }
 
-    fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, mut f: F)
+    fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, f: F)
     where
         F: FnOnce(&mut Box<dyn AnyComponent>, Children<'_, '_>, AnyComponentContext<'_>) -> U,
     {
         let mut tree = self.tree.view_mut();
 
-        tree.with_value_mut(widget_id, |path, container, children| {
+        tree.with_value_mut(widget_id, |_path, container, children| {
             let WidgetKind::Component(component) = &mut container.kind else { return };
 
             let state = self.layout_ctx.states.get_mut(state_id);
@@ -436,7 +426,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
             self.layout_ctx
                 .attribute_storage
                 .with_mut(widget_id, |attributes, storage| {
-                    let mut elements = Children::new(children, storage, self.layout_ctx.dirty_widgets);
+                    let elements = Children::new(children, storage, self.layout_ctx.dirty_widgets);
 
                     let Some(state) = state else { return };
 
@@ -475,7 +465,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
     }
 
     // Return the state for each component back into the component registry
-    fn return_state(mut self) {
+    fn return_state(self) {
         // Return all states
         let mut tree = WidgetTree::empty();
         std::mem::swap(&mut tree, self.tree);

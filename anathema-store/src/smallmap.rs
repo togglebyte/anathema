@@ -2,25 +2,25 @@ use std::borrow::Borrow;
 
 use crate::slab::{Slab, SlabIndex};
 
-type NUM_TYPE = u16;
+type NumType = u16;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct SmallIndex(NUM_TYPE);
+pub struct SmallIndex(NumType);
 
 impl SmallIndex {
-    pub const MAX: Self = Self(NUM_TYPE::MAX);
+    pub const MAX: Self = Self(NumType::MAX);
     pub const ONE: Self = Self(1);
     pub const ZERO: Self = Self(0);
 }
 
-impl From<SmallIndex> for NUM_TYPE {
+impl From<SmallIndex> for NumType {
     fn from(value: SmallIndex) -> Self {
         value.0
     }
 }
 
 impl SlabIndex for SmallIndex {
-    const MAX: usize = NUM_TYPE::MAX as usize;
+    const MAX: usize = NumType::MAX as usize;
 
     fn as_usize(&self) -> usize {
         self.0 as usize
@@ -30,7 +30,7 @@ impl SlabIndex for SmallIndex {
     where
         Self: Sized,
     {
-        Self(index as NUM_TYPE)
+        Self(index as NumType)
     }
 }
 

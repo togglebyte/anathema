@@ -1,5 +1,4 @@
 use std::fmt::{self, Debug, Display};
-use std::marker::PhantomData;
 use std::ops::Deref;
 
 use super::{Index, Ticket};
@@ -135,8 +134,7 @@ impl Debug for Key {
 
 impl From<(usize, usize)> for Key {
     fn from((index, gen): (usize, usize)) -> Self {
-        let mut this = Self::new(index as u32, gen as u16);
-        this
+        Self::new(index as u32, gen as u16)
     }
 }
 

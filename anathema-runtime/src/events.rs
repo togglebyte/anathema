@@ -6,7 +6,7 @@ pub trait GlobalEventHandler {
 }
 
 impl GlobalEventHandler for () {
-    fn handle(&self, event: Event, components: &mut DeferredComponents) -> Option<Event> {
+    fn handle(&self, event: Event, _: &mut DeferredComponents) -> Option<Event> {
         if event.is_ctrl_c() {
             return Some(Event::Stop);
         }

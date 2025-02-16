@@ -1,7 +1,6 @@
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
-use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_state::{Changes, States};
@@ -173,7 +172,6 @@ impl<G: GlobalEventHandler> Builder<G> {
             factory: self.factory,
             states: States::new(),
             floating_widgets: FloatingWidgets::empty(),
-            changelist: ChangeList::empty(),
             dirty_widgets: DirtyWidgets::empty(),
             assoc_events: AssociatedEvents::new(),
             glyph_map: GlyphMap::empty(),

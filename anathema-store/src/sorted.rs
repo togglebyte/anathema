@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 /// A sorted list of T.
 /// The list is sorted, if needed when the list is accessed.
 ///
