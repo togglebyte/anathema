@@ -19,7 +19,7 @@ impl Widget for Align {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Size {
         children.each(ctx, |ctx, widget, children| {
-            let s = widget.layout(children, constraints, ctx);
+            _ = widget.layout(children, constraints, ctx);
             ControlFlow::Break(())
         });
 
