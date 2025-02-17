@@ -196,7 +196,7 @@ impl<'bp> Attributes<'bp> {
     pub fn get_int(&self, key: &str) -> Option<i64> {
         let key = ValueKey::Attribute(key);
         let value = self.attribs.get(&key)?;
-        value.as_int()
+        value.to_int()
     }
 
     /// Get an unsigned integer regardless of how the value was stored.

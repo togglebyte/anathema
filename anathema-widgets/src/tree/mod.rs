@@ -169,7 +169,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
             let output = self.filter.filter(widget, ctx.attribute_storage);
             match output {
                 FilterOutput::Exclude => return Ok(ControlFlow::Continue(())),
-                _ => ()
+                _ => (),
             }
 
             let filter = self.filter;
@@ -312,8 +312,6 @@ fn generate<'bp>(
             }
 
             let mut ctx = ctx.eval_ctx(parent_component);
-            // TODO: this `expect` needs dealing with
-            // let scope = scope.outer.expect("it's there son!");
             eval_blueprint(&blueprints[index], &mut ctx, scope, tree.offset, tree).unwrap();
             Ok(true)
         }

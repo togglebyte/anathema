@@ -116,7 +116,7 @@ impl Widget for Position {
         let mut size = Size::ZERO;
 
         children.each(ctx, |ctx, child, children| {
-            size = child.layout(children, constraints, ctx)?.into();
+            _ = child.layout(children, constraints, ctx)?;//.into();
             Ok(ControlFlow::Break(()))
         })?;
 
@@ -145,11 +145,6 @@ impl Widget for Position {
         }
 
         children.each(|child, children| {
-            // let (pos, size) = match self.placement {
-            //     Placement::Relative => (ctx.pos, child.size()),
-            //     Placement::Absolute => (Pos::ZERO, ctx.viewport.size()),
-            // };
-
             match self.horz_edge {
                 HorzEdge::Left(left) => ctx.pos.x += left as i32,
                 HorzEdge::Right(right) => {

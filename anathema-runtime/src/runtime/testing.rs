@@ -6,6 +6,7 @@ use anathema_store::stack::Stack;
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::query::Children;
+use anathema_widgets::Components;
 
 use crate::error::Result;
 use crate::Frame;

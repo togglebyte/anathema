@@ -31,6 +31,8 @@ impl Component for C {
         context: Context<'_, Self::State>,
         dt: Duration,
     ) {
+
+        // *state.x.to_mut() += 1;
         let x = dt.as_millis() as f64;
 
         self.val += x / 1000.0 * *state.speed.to_ref();

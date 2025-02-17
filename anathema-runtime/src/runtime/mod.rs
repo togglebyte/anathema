@@ -72,7 +72,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
         global_event_handler: G,
     ) -> Result<Self> {
         let (blueprint, globals) = document.compile()?;
-        let Ok((err_blueprint, err_globals)) = err_document.compile() else { panic!("the error display failed to compile") };
+        let Ok((err_blueprint, err_globals)) = err_document.compile() else {
+            panic!("the error display failed to compile")
+        };
 
         let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
 

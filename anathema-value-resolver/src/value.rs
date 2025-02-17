@@ -150,6 +150,13 @@ pub enum ValueKind<'bp> {
 }
 
 impl ValueKind<'_> {
+    pub fn to_int(&self) -> Option<i64> {
+        match self.as_int() {
+            Some(val) => Some(val),
+            None => Some(self.as_float()? as i64),
+        }
+    }
+
     pub fn as_int(&self) -> Option<i64> {
         let ValueKind::Int(i) = self else { return None };
         Some(*i)

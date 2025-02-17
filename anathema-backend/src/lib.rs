@@ -102,6 +102,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
     pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
         self.fixed(ctx, needs_layout)?;
         self.floating(ctx, needs_layout)?;
+
         Ok(())
     }
 

@@ -22,6 +22,7 @@ pub mod layout;
 mod nodes;
 pub mod paint;
 pub mod query;
+pub mod tabindex;
 pub mod tree;
 mod widget;
 

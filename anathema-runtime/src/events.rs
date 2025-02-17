@@ -1,5 +1,6 @@
 use anathema_widgets::components::deferred::DeferredComponents;
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
+use anathema_widgets::Components;
 
 pub trait GlobalEventHandler {
     fn handle(&self, event: Event, components: &mut DeferredComponents) -> Option<Event>;
@@ -7,6 +8,13 @@ pub trait GlobalEventHandler {
 
 impl GlobalEventHandler for () {
     fn handle(&self, event: Event, _: &mut DeferredComponents) -> Option<Event> {
+        if let Event::Key(KeyEvent { code: KeyCode::Tab, .. }) = event {}
+
+        if let Event::Key(KeyEvent {
+            code: KeyCode::BackTab, ..
+        }) = event
+        {}
+
         if event.is_ctrl_c() {
             return Some(Event::Stop);
         }
