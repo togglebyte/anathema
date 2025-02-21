@@ -56,6 +56,7 @@ impl Style {
                 ValueKind::Hex(Hex { r, g, b }) => Color::from((*r, *g, *b)),
                 ValueKind::Str(cow) => Color::from_str(cow.as_ref()).unwrap_or(Color::Reset),
                 ValueKind::Int(ansi) => Color::AnsiVal(*ansi as u8),
+                ValueKind::Color(c) => *c,
                 _ => Color::Reset,
             };
 
@@ -68,6 +69,7 @@ impl Style {
                 ValueKind::Hex(Hex { r, g, b }) => Color::from((*r, *g, *b)),
                 ValueKind::Str(cow) => Color::from_str(cow.as_ref()).unwrap_or(Color::Reset),
                 ValueKind::Int(ansi) => Color::AnsiVal(*ansi as u8),
+                ValueKind::Color(c) => *c,
                 _ => Color::Reset,
             };
 

@@ -1,5 +1,6 @@
 use anathema_state::Subscriber;
 
+pub use crate::nodes::component::Component;
 pub use crate::nodes::{
     eval_blueprint, update_widget, Element, Stringify, WidgetContainer, WidgetGenerator, WidgetKind,
 };

@@ -20,6 +20,7 @@ pub struct Component<'bp> {
     pub parent: Option<WidgetId>,
     pub kind: ComponentKind,
     pub assoc_functions: &'bp [(StringId, StringId)],
+    pub tabindex: u16,
 }
 
 impl<'bp> Component<'bp> {
@@ -44,6 +45,7 @@ impl<'bp> Component<'bp> {
             kind,
             assoc_functions,
             parent,
+            tabindex: 0,
         }
     }
 

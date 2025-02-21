@@ -81,7 +81,6 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Layout -
         // -----------------------------------------------------------------------------
         if needs_layout {
-            awful_debug!("fixed layout");
             let filter = LayoutFilter::fixed();
             self.layout(ctx, filter)?;
         }

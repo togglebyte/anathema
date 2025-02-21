@@ -85,7 +85,6 @@ impl<'bp> Element<'bp> {
             }
         }
 
-        crate::awful_debug!("rebuild for {}", self.ident);
         self.container.layout(children, constraints, ctx)
     }
 

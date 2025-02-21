@@ -9,6 +9,7 @@ use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::layout::Viewport;
+use anathema_widgets::tabindex::TabIndex;
 use anathema_widgets::{Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget};
 use notify::{recommended_watcher, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 
@@ -23,7 +24,7 @@ fn error_doc() -> Document {
     doc
 }
 
-pub struct Builder<G: GlobalEventHandler> {
+pub struct Builder<G> {
     factory: Factory,
     document: Document,
     component_registry: ComponentRegistry,
@@ -134,9 +135,9 @@ impl<G: GlobalEventHandler> Builder<G> {
         Ok(())
     }
 
-    pub fn with_global_event_handler<W>(self, global_event_handler: W) -> Builder<W>
+    pub fn with_global_event_handler<Eh>(self, global_event_handler: Eh) -> Builder<Eh>
     where
-        W: Fn(Event, &mut DeferredComponents) -> Option<Event>,
+        Eh: Fn(Event, TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>
     {
         Builder {
             factory: self.factory,

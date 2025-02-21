@@ -9,6 +9,7 @@ use anathema_widgets::query::Children;
 use anathema_widgets::Components;
 
 use crate::error::Result;
+use crate::events::GlobalEventHandler;
 use crate::Frame;
 
 // -----------------------------------------------------------------------------
@@ -17,7 +18,7 @@ use crate::Frame;
 // -----------------------------------------------------------------------------
 impl<'bp, G> Frame<'_, 'bp, G>
 where
-    G: Fn(Event, &mut DeferredComponents) -> Option<Event>,
+    G: GlobalEventHandler,
 {
     pub fn components(&mut self) -> anathema_widgets::query::Components<'_, '_, 'bp> {
         panic!()

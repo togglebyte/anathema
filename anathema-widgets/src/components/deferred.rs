@@ -6,7 +6,8 @@ use anathema_state::StateId;
 use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
 
 use crate::nodes::component::Component;
-use crate::{WidgetId, WidgetKind, WidgetTreeView};
+use crate::query::Children;
+use crate::{Components, WidgetId, WidgetKind, WidgetTreeView};
 
 pub struct DeferredComponents {
     queue: Vec<Command>,
@@ -149,24 +150,12 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn filter_components<'tree, 'bp>(
+    pub fn filter_component(
         &mut self,
-        mut tree: WidgetTreeView<'tree, 'bp>,
-        attribute_storage: &'tree mut AttributeStorage<'bp>,
-    ) -> Option<(WidgetId, StateId)> {
-        tree.for_each(|_path, container, children| {
-            if let WidgetKind::Component(ref mut component) = container.kind {
-                let attributes = attribute_storage.get(component.widget_id);
-                if self.filter.filter(component, attributes) {
-                    return ControlFlow::Break((component.widget_id, component.state_id));
-                }
-            }
-
-            match self.filter_components(children, attribute_storage) {
-                Some(val) => ControlFlow::Break(val),
-                None => ControlFlow::Continue(()),
-            }
-        })
+        component: &Component<'_>,
+        attributes: &Attributes<'_>,
+    ) -> bool {
+        self.filter.filter(component, attributes)
     }
 }
 

@@ -15,9 +15,10 @@ use anathema_widgets::components::{
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
+use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    eval_blueprint, update_widget, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId, WidgetKind,
-    WidgetTree,
+    eval_blueprint, update_widget, Component, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId,
+    WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use notify::{INotifyWatcher, RecommendedWatcher};
@@ -173,6 +174,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             stop: false,
 
             global_event_handler: &self.global_event_handler,
+            tabindex: None,
         };
 
         Ok(inst)
@@ -211,11 +213,35 @@ pub struct Frame<'rt, 'bp, G> {
     needs_layout: bool,
     stop: bool,
     global_event_handler: &'rt G,
+    tabindex: Option<Index>,
 }
 
 impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
     pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
-        self.global_event_handler.handle(event, &mut self.deferred_components)
+        let mut changed = false;
+        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut(), &mut changed);
+
+        let event = self
+            .global_event_handler
+            .handle(event, &mut tabindex, &mut self.deferred_components);
+
+        let prev = tabindex.consume();
+
+        if changed {
+            if let Some(prev) = prev {
+                self.with_component(prev.widget_id, prev.state_id, |comp, children, ctx| {
+                    comp.dyn_component.any_blur(children, ctx)
+                });
+            }
+
+            if let Some(current) = self.tabindex.as_ref() {
+                self.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
+                    comp.dyn_component.any_focus(children, ctx)
+                });
+            }
+        }
+
+        event
     }
 
     pub fn event(&mut self, event: Event) {
@@ -228,20 +254,21 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
             return;
         }
 
-        // if event.is_ctrl_c() {
-        //     panic!("ctrl c quit, this is a hack");
-        // }
-
         match event {
             Event::Noop => return,
             Event::Stop => todo!(),
             Event::Blur | Event::Focus | Event::Key(_) => {
-                let Some((widget_id, state_id)) = self.layout_ctx.components.current() else { return };
+                let Some(Index {
+                    widget_id, state_id, ..
+                }) = self.tabindex
+                else {
+                    return;
+                };
                 self.send_event_to_component(event, widget_id, state_id);
             }
             Event::Mouse(_) | Event::Resize(_) => {
-                for i in 0..self.layout_ctx.components.total_len() {
-                    let Some((widget_id, state_id, _)) = self.layout_ctx.components.get(i as u32) else { continue };
+                for i in 0..self.layout_ctx.components.len() {
+                    let Some((widget_id, state_id)) = self.layout_ctx.components.get(i) else { continue };
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
@@ -315,7 +342,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
                 .map(|e| (e.widget_id, e.state_id))
             {
                 self.with_component(widget_id, state_id, |comp, elements, ctx| {
-                    comp.any_message(elements, ctx, msg.payload())
+                    comp.dyn_component.any_message(elements, ctx, msg.payload())
                 });
             }
 
@@ -349,32 +376,33 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        // TODO don't cause a bunch of allocations here.
-        // Possibly drain into a new list
         let commands = self.deferred_components.drain().collect::<Vec<_>>();
         for mut cmd in commands {
-            let Some((widget_id, state_id)) =
-                cmd.filter_components(self.tree.view_mut(), self.layout_ctx.attribute_storage)
-            else {
-                continue;
-            };
+            // Blur the current component if the message is a `Focus` message
+            if let CommandKind::Focus = cmd.kind {
+                let Some(current) = &self.tabindex else { panic!() };
+                self.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
+                    comp.dyn_component.any_blur(children, ctx)
+                });
+            }
 
-            match cmd.kind {
-                CommandKind::SendMessage(msg) => {
-                    self.with_component(widget_id, state_id, |comp, elements, ctx| {
-                        comp.any_message(elements, ctx, msg)
-                    });
-                }
-                CommandKind::Focus => {
-                    // Blur old focus
-                    if let Some((widget_id, state_id)) = self.layout_ctx.components.current() {
-                        self.with_component(widget_id, state_id, |comp, children, ctx| comp.any_blur(children, ctx));
+            for index in 0..self.layout_ctx.components.len() {
+                let Some((widget_id, state_id)) = self.layout_ctx.components.get(index) else { continue };
+                self.with_component(widget_id, state_id, |comp, children, ctx| {
+                    if !cmd.filter_component(comp, ctx.attributes) {
+                        return;
                     }
 
-                    // Set new focus
-                    self.layout_ctx.components.set(widget_id);
-                    self.with_component(widget_id, state_id, |comp, children, ctx| comp.any_focus(children, ctx));
-                }
+                    // TODO: this should break the loop as we can't focus on multiple
+                    //       components at once. Also this will fix the issue with the message
+                    //       being moved once it's sent
+                    match cmd.kind {
+                        CommandKind::Focus => comp.dyn_component.any_focus(children, ctx),
+                        CommandKind::SendMessage(_) => {
+                            //comp.dyn_component.any_message(children, ctx, msg),
+                        }
+                    }
+                });
             }
         }
     }
@@ -392,7 +420,8 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
             let Some(remote_state) = remote_state.shared_state() else { return };
             self.with_component(widget_id, state_id, |comp, children, ctx| {
                 let event_ident = self.document.strings.get_ref_unchecked(event.external);
-                comp.any_receive(children, ctx, event_ident, &*remote_state);
+                comp.dyn_component
+                    .any_receive(children, ctx, event_ident, &*remote_state);
             });
         }
     }
@@ -449,18 +478,18 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
 
     fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
         self.with_component(widget_id, state_id, |comp, elements, ctx| {
-            comp.any_event(elements, ctx, event);
+            comp.dyn_component.any_event(elements, ctx, event);
         });
     }
 
     fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, f: F)
     where
-        F: FnOnce(&mut Box<dyn AnyComponent>, Children<'_, '_>, AnyComponentContext<'_>) -> U,
+        F: FnOnce(&mut Component<'_>, Children<'_, '_>, AnyComponentContext<'_>) -> U,
     {
         let mut tree = self.tree.view_mut();
 
         tree.with_value_mut(widget_id, |_path, container, children| {
-            let WidgetKind::Component(component) = &mut container.kind else { return };
+            let WidgetKind::Component(ref mut component) = &mut container.kind else { return None };
 
             let state = self.layout_ctx.states.get_mut(state_id);
 
@@ -484,8 +513,8 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
                         &self.document.strings,
                     );
 
-                    f(&mut component.dyn_component, elements, ctx);
-                });
+                    f(component, elements, ctx);
+                })
         });
     }
 
@@ -493,13 +522,8 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let len = self.layout_ctx.components.total_len();
-        for i in 0..len {
-            let Some((widget_id, state_id, ticks)) = self.layout_ctx.components.get(i as u32) else { continue };
-
-            if !ticks {
-                continue;
-            }
+        for i in 0..self.layout_ctx.components.len() {
+            let Some((widget_id, state_id)) = self.layout_ctx.components.get_ticking(i) else { continue };
             let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
         }

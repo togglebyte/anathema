@@ -63,28 +63,15 @@ impl PartialEq for CompEntry {
     }
 }
 
-/// This handles tab indexing and the list of component positions in the tree
+/// Store a list of components currently in the tree
 pub struct Components {
-    /// Current selected component
-    pub tab_index: u32,
-    /// All components
-    inner: Slab<u32, CompEntry>,
-    /// Map the widget id to the component entry
-    widget_ids: SmallMap<WidgetId, u32>,
-    /// Map the widget component id to the component entry
-    comp_ids: SmallMap<ComponentBlueprintId, u32>,
-
-    len: usize,
+    inner: Vec<CompEntry>,
 }
 
 impl Components {
     pub fn new() -> Self {
         Self {
-            tab_index: 0,
-            inner: Slab::empty(),
-            widget_ids: SmallMap::empty(),
-            comp_ids: SmallMap::empty(),
-            len: 0,
+            inner: vec![],
         }
     }
 
@@ -104,50 +91,46 @@ impl Components {
             accept_ticks,
         };
 
-        let key = self.inner.insert(entry);
-        self.widget_ids.set(widget_id, key);
-        self.comp_ids.set(component_id, key);
-        self.len += 1;
+        self.inner.push(entry)
     }
 
     pub fn try_remove(&mut self, widget_id: WidgetId) {
-        let Some(index) = self.widget_ids.remove(&widget_id) else { return };
-        let entry = self.inner.remove(index);
-        self.comp_ids.remove(&entry.component_id);
-        self.len -= 1;
+        self.inner.retain(|entry| entry.widget_id != widget_id);
     }
 
-    pub fn set(&mut self, widget_id: WidgetId) {
-        let Some(index) = self.widget_ids.get(&widget_id) else { return };
-        self.tab_index = *index;
+    /// Get the component by its index
+    pub fn get(&mut self, index: usize) -> Option<(WidgetId, StateId)> {
+        self.inner.get(index).map(|e| (e.widget_id, e.state_id))
     }
 
-    pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
-        self.get(self.tab_index)
-            .map(|(widget_id, state_id, _)| (widget_id, state_id))
-    }
 
-    pub fn get(&self, index: u32) -> Option<(WidgetId, StateId, bool)> {
-        self.inner.get(index).map(|e| (e.widget_id, e.state_id, e.accept_ticks))
-    }
-
+    /// This is used to send messages to components.
+    /// The `ComponentBlueprintId` is only available to components that were added
+    /// as a singular component, not prototypes
     pub fn get_by_component_id(&mut self, id: ComponentBlueprintId) -> Option<&CompEntry> {
-        let index = self.comp_ids.get(&id)?;
-        self.inner.get(*index)
+        panic!()
+        // let index = self.comp_ids.get(&id)?;
+        // self.inner.get(*index)
     }
 
+    /// Get the component by its widget id
     pub fn get_by_widget_id(&mut self, id: WidgetId) -> Option<(WidgetId, StateId)> {
-        let index = self.widget_ids.get(&id)?;
-        self.inner.get(*index).map(|e| (e.widget_id, e.state_id))
+        self.inner.iter().find(|entry| entry.widget_id == id).map(|e| (e.widget_id, e.state_id))
+    }
+
+    /// Get widget id and state id for a component that accepts tick events
+    pub fn get_ticking(&self, index: usize) -> Option<(WidgetId, StateId)> {
+        self.inner.get(index).and_then(|e| e.accept_ticks.then(|| (e.widget_id, e.state_id)))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {
-        self.inner.iter_values()
+        self.inner.iter()
     }
 
-    pub fn total_len(&self) -> usize {
-        self.inner.total_len()
+    pub fn len(&self) -> usize {
+        self.inner.len()
     }
+
 }
 
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);

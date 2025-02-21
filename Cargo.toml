@@ -1,6 +1,6 @@
 [package]
 name = "anathema"
-edition = "2021"
+edition = "2024"
 version = "0.2.0"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"

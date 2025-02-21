@@ -231,7 +231,7 @@ pub struct AnyComponentContext<'frame> {
     state_id: StateId,
     assoc_functions: &'frame [(StringId, StringId)],
     assoc_events: &'frame mut AssociatedEvents,
-    attributes: &'frame Attributes<'frame>,
+    pub attributes: &'frame Attributes<'frame>,
     state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
     pub emitter: &'frame Emitter,
     pub viewport: &'frame Viewport,
@@ -383,7 +383,7 @@ pub trait Component: 'static {
     }
 
     fn accept_focus(&self) -> bool {
-        false
+        true
     }
 }
 

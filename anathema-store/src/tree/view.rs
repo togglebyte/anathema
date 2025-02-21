@@ -124,6 +124,14 @@ impl<'tree, T> TreeView<'tree, T> {
         self.values.get(id).map(|(_, val)| val)
     }
 
+    /// Get a reference to the value and the value id
+    /// This has an additional cost since the value id has to
+    /// be found first.
+    pub fn get_node_and_value(&self, path: &[u16]) -> Option<(ValueId, &T)> {
+        let id = self.id(path)?;
+        self.values.get(id).map(|(_, val)| (id, val))
+    }
+
     /// Being an insert transaction.
     /// The transaction has to be committed before the value is written to
     /// the tree.
