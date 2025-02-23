@@ -9,7 +9,7 @@ pub use self::display::Display;
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
 use crate::nodes::element::Element;
 use crate::tree::{FilterOutput, WidgetPositionFilter};
-use crate::{Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind};
+use crate::{Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind};
 
 mod constraints;
 pub mod display;
@@ -18,7 +18,6 @@ pub mod text;
 pub struct LayoutCtx<'frame, 'bp> {
     pub states: &'frame mut States,
     pub(super) globals: &'bp Globals,
-    pub dirty_widgets: &'frame mut DirtyWidgets,
     factory: &'frame Factory,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
@@ -40,7 +39,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         component_registry: &'frame mut ComponentRegistry,
         floating_widgets: &'frame mut FloatingWidgets,
         glyph_map: &'frame mut GlyphMap,
-        dirty_widgets: &'frame mut DirtyWidgets,
         viewport: &'frame mut Viewport,
     ) -> Self {
         Self {
@@ -52,7 +50,6 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             factory,
             floating_widgets,
             glyph_map,
-            dirty_widgets,
             viewport,
         }
     }

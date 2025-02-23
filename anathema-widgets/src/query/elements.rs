@@ -105,6 +105,7 @@ where
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>) -> U,
     {
+                    *self.query.elements.needs_layout = true;
         let ret_val = self.query.elements.children.for_each(|_path, container, children| {
             if let WidgetKind::Element(ref mut element) = container.kind {
                 if self.query.filter.filter(element, self.query.elements.attributes) {
@@ -121,7 +122,7 @@ where
             let mut elements = Nodes::new(
                 children,
                 self.query.elements.attributes,
-                self.query.elements.dirty_widgets,
+                self.query.elements.needs_layout,
             );
 
             let query = ElementQuery {

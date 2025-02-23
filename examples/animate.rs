@@ -6,7 +6,7 @@ use anathema::prelude::*;
 
 #[derive(State)]
 struct Num {
-    x: Value<f64>,
+    x: Value<i32>,
     speed: Value<f64>,
 }
 
@@ -28,16 +28,15 @@ impl Component for C {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        context: Context<'_, Self::State>,
+        context: Context<'_, '_, Self::State>,
         dt: Duration,
     ) {
 
-        // *state.x.to_mut() += 1;
         let x = dt.as_millis() as f64;
 
         self.val += x / 1000.0 * *state.speed.to_ref();
         let x = ease_in_out(self.val) * (context.viewport.size().width - 8) as f64;
-        state.x.set(x);
+        state.x.set(x as i32);
     }
 
     fn on_key(
@@ -45,7 +44,7 @@ impl Component for C {
         key: KeyEvent,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
         if matches!(key.state, KeyState::Press) {
             match key.code {
@@ -75,7 +74,7 @@ fn main() {
             "examples/templates/animate/animate.aml",
             C { val: 0.0 },
             Num {
-                x: 0.0.into(),
+                x: 0.into(),
                 speed: 0.1.into(),
             },
         )

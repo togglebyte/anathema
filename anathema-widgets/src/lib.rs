@@ -6,7 +6,7 @@ pub use crate::nodes::{
 };
 pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::widget::{
-    AnyWidget, Attributes, ComponentParents, Components, DirtyWidgets, Factory, FloatingWidgets, ForEach,
+    AnyWidget, Attributes, ComponentParents, Components, Factory, FloatingWidgets, ForEach,
     LayoutChildren, LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId, WidgetTree,
     WidgetTreeView,
 };

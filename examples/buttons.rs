@@ -20,7 +20,7 @@ impl Component for App {
         value: &dyn AnyState,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
         if ident == "increment" {
             *state.number.to_mut() += 1;
@@ -52,7 +52,7 @@ impl Component for Button {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
         state.in_focus.set(false);
     }
@@ -61,7 +61,7 @@ impl Component for Button {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
         state.in_focus.set(true);
     }
@@ -71,7 +71,7 @@ impl Component for Button {
         key: KeyEvent,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
         if matches!(key.state, KeyState::Press) {
             if let KeyCode::Enter = key.code {

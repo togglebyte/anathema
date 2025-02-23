@@ -17,8 +17,8 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    eval_blueprint, update_widget, Component, Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, WidgetId,
-    WidgetKind, WidgetTree,
+    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetId, WidgetKind,
+    WidgetTree,
 };
 use flume::Receiver;
 use notify::{INotifyWatcher, RecommendedWatcher};
@@ -39,7 +39,6 @@ pub struct Runtime<G> {
     pub(super) components: Components,
     pub(super) document: Document,
     pub(super) floating_widgets: FloatingWidgets,
-    pub(super) dirty_widgets: DirtyWidgets,
     pub(super) assoc_events: AssociatedEvents,
     pub(super) glyph_map: GlyphMap,
     pub(super) changes: Changes,
@@ -86,7 +85,6 @@ impl<G: GlobalEventHandler> Runtime<G> {
             factory,
             states: States::new(),
             floating_widgets: FloatingWidgets::empty(),
-            dirty_widgets: DirtyWidgets::empty(),
             assoc_events: AssociatedEvents::new(),
             glyph_map: GlyphMap::empty(),
             blueprint,
@@ -151,7 +149,6 @@ impl<G: GlobalEventHandler> Runtime<G> {
             &mut self.component_registry,
             &mut self.floating_widgets,
             &mut self.glyph_map,
-            &mut self.dirty_widgets,
             &mut self.viewport,
         );
 
@@ -257,6 +254,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         match event {
             Event::Noop => return,
             Event::Stop => todo!(),
+            // Component specific event
             Event::Blur | Event::Focus | Event::Key(_) => {
                 let Some(Index {
                     widget_id, state_id, ..
@@ -321,7 +319,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::profile_function!();
 
         self.changes.clear();
-        self.layout_ctx.dirty_widgets.clear();
 
         for key in self.tree.drain_removed() {
             self.layout_ctx.attribute_storage.try_remove(key);
@@ -496,7 +493,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             self.layout_ctx
                 .attribute_storage
                 .with_mut(widget_id, |attributes, storage| {
-                    let elements = Children::new(children, storage, self.layout_ctx.dirty_widgets);
+                    let elements = Children::new(children, storage, &mut self.needs_layout);
 
                     let Some(state) = state else { return };
 

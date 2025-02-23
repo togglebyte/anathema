@@ -33,7 +33,7 @@ where
         Children::new(
             self.tree.view_mut(),
             self.layout_ctx.attribute_storage,
-            self.layout_ctx.dirty_widgets,
+            &mut self.needs_layout,
         )
     }
 

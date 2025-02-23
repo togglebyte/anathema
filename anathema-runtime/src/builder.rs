@@ -10,7 +10,7 @@ use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::layout::Viewport;
 use anathema_widgets::tabindex::TabIndex;
-use anathema_widgets::{Components, DirtyWidgets, Factory, FloatingWidgets, GlyphMap, Widget};
+use anathema_widgets::{Components, Factory, FloatingWidgets, GlyphMap, Widget};
 use notify::{recommended_watcher, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 
 pub use crate::error::{Error, Result};

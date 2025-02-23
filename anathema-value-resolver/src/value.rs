@@ -366,13 +366,12 @@ try_from_valuekind!(Color, Color);
 
 try_from_valuekind_int!(usize, Int);
 try_from_valuekind_int!(i32, Int);
+try_from_valuekind_int!(f32, Float);
 try_from_valuekind_int!(i16, Int);
 try_from_valuekind_int!(i8, Int);
 try_from_valuekind_int!(u32, Int);
 try_from_valuekind_int!(u16, Int);
 try_from_valuekind_int!(u8, Int);
-
-try_from_valuekind_int!(f32, Float);
 
 impl<'a> TryFrom<&'a ValueKind<'_>> for &'a str {
     type Error = ();

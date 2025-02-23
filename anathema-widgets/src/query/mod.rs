@@ -2,7 +2,7 @@ use anathema_value_resolver::{AttributeStorage, ValueKind};
 
 pub use self::components::Components;
 pub use self::elements::Elements;
-use crate::{DirtyWidgets, WidgetTreeView};
+use crate::WidgetTreeView;
 
 mod components;
 mod elements;
@@ -13,9 +13,9 @@ impl<'tree, 'bp> Children<'tree, 'bp> {
     pub fn new(
         children: WidgetTreeView<'tree, 'bp>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
-        dirty_widgets: &'tree mut DirtyWidgets,
+        needs_layout: &'tree mut bool,
     ) -> Self {
-        Self(Nodes::new(children, attribute_storage, dirty_widgets))
+        Self(Nodes::new(children, attribute_storage, needs_layout))
     }
 
     pub fn elements(&mut self) -> Elements<'_, 'tree, 'bp> {
@@ -61,19 +61,19 @@ impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
 pub struct Nodes<'tree, 'bp> {
     children: WidgetTreeView<'tree, 'bp>,
     attributes: &'tree mut AttributeStorage<'bp>,
-    dirty_widgets: &'tree mut DirtyWidgets,
+    needs_layout: &'tree mut bool,
 }
 
 impl<'tree, 'bp> Nodes<'tree, 'bp> {
     pub fn new(
         children: WidgetTreeView<'tree, 'bp>,
         attribute_storage: &'tree mut AttributeStorage<'bp>,
-        dirty_widgets: &'tree mut DirtyWidgets,
+        needs_layout: &'tree mut bool,
     ) -> Self {
         Self {
             children,
             attributes: attribute_storage,
-            dirty_widgets,
+            needs_layout,
         }
     }
 }
