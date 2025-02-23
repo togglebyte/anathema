@@ -33,19 +33,19 @@ impl Stack {
     ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get_mut(id);
 
-        if let Some(width) = attributes.get_usize(MIN_WIDTH) {
+        if let Some(width) = attributes.get_as::<usize>(MIN_WIDTH) {
             constraints.min_width = width;
         }
 
-        if let Some(height) = attributes.get_usize(MIN_HEIGHT) {
+        if let Some(height) = attributes.get_as::<usize>(MIN_HEIGHT) {
             constraints.min_height = height;
         }
 
-        if let Some(width) = attributes.get_usize(WIDTH) {
+        if let Some(width) = attributes.get_as::<usize>(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get_usize(HEIGHT) {
+        if let Some(height) = attributes.get_as::<usize>(HEIGHT) {
             constraints.make_height_tight(height);
         }
 

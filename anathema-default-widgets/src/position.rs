@@ -81,18 +81,18 @@ impl Widget for Position {
         let attribs = ctx.attribute_storage.get(id);
         self.placement = attribs.get_as::<Placement>(PLACEMENT).unwrap_or_default();
 
-        self.horz_edge = match attribs.get_int(LEFT) {
-            Some(left) => HorzEdge::Left(left as u32),
-            None => match attribs.get_int(RIGHT) {
-                Some(right) => HorzEdge::Right(right as u32),
+        self.horz_edge = match attribs.get_as::<u32>(LEFT) {
+            Some(left) => HorzEdge::Left(left),
+            None => match attribs.get_as::<u32>(RIGHT) {
+                Some(right) => HorzEdge::Right(right),
                 None => HorzEdge::Left(0),
             },
         };
 
-        self.vert_edge = match attribs.get_int(TOP) {
-            Some(top) => VertEdge::Top(top as u32),
-            None => match attribs.get_int(BOTTOM) {
-                Some(bottom) => VertEdge::Bottom(bottom as u32),
+        self.vert_edge = match attribs.get_as::<u32>(TOP) {
+            Some(top) => VertEdge::Top(top),
+            None => match attribs.get_as::<u32>(BOTTOM) {
+                Some(bottom) => VertEdge::Bottom(bottom),
                 None => VertEdge::Top(0),
             },
         };

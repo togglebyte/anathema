@@ -76,31 +76,31 @@ impl Style {
             style.bg = Some(color)
         }
 
-        if attributes.get_bool("bold") {
+        if attributes.get_as::<bool>("bold").unwrap_or_default() {
             style.attributes |= Attributes::BOLD;
         }
 
-        if attributes.get_bool("dim") {
+        if attributes.get_as::<bool>("dim").unwrap_or_default() {
             style.attributes |= Attributes::DIM;
         }
 
-        if attributes.get_bool("italic") {
+        if attributes.get_as::<bool>("italic").unwrap_or_default() {
             style.attributes |= Attributes::ITALIC;
         }
 
-        if attributes.get_bool("underline") {
+        if attributes.get_as::<bool>("underline").unwrap_or_default() {
             style.attributes |= Attributes::UNDERLINED;
         }
 
-        if attributes.get_bool("crossed-out") {
+        if attributes.get_as::<bool>("crossed-out").unwrap_or_default() {
             style.attributes |= Attributes::CROSSED_OUT;
         }
 
-        if attributes.get_bool("overline") {
+        if attributes.get_as::<bool>("overline").unwrap_or_default() {
             style.attributes |= Attributes::OVERLINED;
         }
 
-        if attributes.get_bool("inverse") {
+        if attributes.get_as::<bool>("inverse").unwrap_or_default() {
             style.attributes |= Attributes::INVERSE;
         }
 

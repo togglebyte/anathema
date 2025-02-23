@@ -216,7 +216,7 @@ pub struct Frame<'rt, 'bp, G> {
     tabindex: Option<Index>,
 }
 
-impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
+impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
         let mut changed = false;
         let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut(), &mut changed);
@@ -484,7 +484,7 @@ impl<'bp, G: GlobalEventHandler> Frame<'_, 'bp, G> {
 
     fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, f: F)
     where
-        F: FnOnce(&mut Component<'_>, Children<'_, '_>, AnyComponentContext<'_>) -> U,
+        F: FnOnce(&mut Component<'_>, Children<'_, '_>, AnyComponentContext<'_, '_>) -> U,
     {
         let mut tree = self.tree.view_mut();
 

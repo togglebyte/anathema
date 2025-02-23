@@ -250,9 +250,76 @@ where
     true
 }
 
-// TODO: add more from impls for the other values
-impl From<&'static str> for ValueKind<'static> {
-    fn from(value: &'static str) -> Self {
+// -----------------------------------------------------------------------------
+//   - From impls -
+// -----------------------------------------------------------------------------
+macro_rules! from_int {
+    ($int:ty) => {
+        impl From<$int> for ValueKind<'_> {
+            fn from(value: $int) -> Self {
+                ValueKind::Int(value as i64)
+            }
+        }
+    };
+}
+
+from_int!(i64);
+from_int!(i32);
+from_int!(i16);
+from_int!(i8);
+from_int!(u64);
+from_int!(u32);
+from_int!(u16);
+from_int!(u8);
+
+impl From<f64> for ValueKind<'_> {
+    fn from(value: f64) -> Self {
+        ValueKind::Float(value)
+    }
+}
+
+impl From<f32> for ValueKind<'_> {
+    fn from(value: f32) -> Self {
+        ValueKind::Float(value as f64)
+    }
+}
+
+impl From<bool> for ValueKind<'_> {
+    fn from(value: bool) -> Self {
+        ValueKind::Bool(value)
+    }
+}
+
+impl From<char> for ValueKind<'_> {
+    fn from(value: char) -> Self {
+        ValueKind::Char(value)
+    }
+}
+
+impl From<Hex> for ValueKind<'_> {
+    fn from(value: Hex) -> Self {
+        ValueKind::Hex(value)
+    }
+}
+
+impl From<Color> for ValueKind<'_> {
+    fn from(value: Color) -> Self {
+        ValueKind::Color(value)
+    }
+}
+
+impl<'bp, T> From<Vec<T>> for ValueKind<'bp>
+where
+    T: Into<ValueKind<'bp>>,
+{
+    fn from(value: Vec<T>) -> Self {
+        let list = value.into_iter().map(T::into).collect();
+        ValueKind::List(list)
+    }
+}
+
+impl<'a> From<&'a str> for ValueKind<'a> {
+    fn from(value: &'a str) -> Self {
         ValueKind::Str(Cow::Borrowed(value))
     }
 }
@@ -297,6 +364,7 @@ try_from_valuekind!(char, Char);
 try_from_valuekind!(Hex, Hex);
 try_from_valuekind!(Color, Color);
 
+try_from_valuekind_int!(usize, Int);
 try_from_valuekind_int!(i32, Int);
 try_from_valuekind_int!(i16, Int);
 try_from_valuekind_int!(i8, Int);

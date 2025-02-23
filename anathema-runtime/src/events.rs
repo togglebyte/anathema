@@ -4,13 +4,19 @@ use anathema_widgets::tabindex::TabIndex;
 use anathema_widgets::Components;
 
 pub trait GlobalEventHandler {
-    fn handle(&self, event: Event, tabindex: &mut TabIndex<'_, '_>, components: &mut DeferredComponents) -> Option<Event>;
+    fn handle(
+        &self,
+        event: Event,
+        tabindex: &mut TabIndex<'_, '_>,
+        components: &mut DeferredComponents,
+    ) -> Option<Event>;
 }
 
 impl GlobalEventHandler for () {
     fn handle(&self, event: Event, tabindex: &mut TabIndex<'_, '_>, _: &mut DeferredComponents) -> Option<Event> {
         if let Event::Key(KeyEvent { code: KeyCode::Tab, .. }) = event {
             tabindex.next();
+            return None;
         }
 
         if let Event::Key(KeyEvent {
@@ -18,6 +24,7 @@ impl GlobalEventHandler for () {
         }) = event
         {
             tabindex.prev();
+            return None;
         }
 
         if event.is_ctrl_c() {
@@ -31,7 +38,12 @@ impl<T> GlobalEventHandler for T
 where
     T: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>,
 {
-    fn handle(&self, event: Event, tabindex: &mut TabIndex<'_, '_>, components: &mut DeferredComponents) -> Option<Event> {
+    fn handle(
+        &self,
+        event: Event,
+        tabindex: &mut TabIndex<'_, '_>,
+        components: &mut DeferredComponents,
+    ) -> Option<Event> {
         self(event, tabindex, components)
     }
 }

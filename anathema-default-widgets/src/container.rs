@@ -23,27 +23,27 @@ impl Widget for Container {
 
         let attribs = ctx.attribute_storage.get(id);
 
-        if let Some(width) = attribs.get_usize(WIDTH) {
+        if let Some(width) = attribs.get_as::<usize>(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attribs.get_usize(HEIGHT) {
+        if let Some(height) = attribs.get_as::<usize>(HEIGHT) {
             constraints.make_height_tight(height);
         }
 
-        if let Some(width) = attribs.get_usize(MIN_WIDTH) {
+        if let Some(width) = attribs.get_as::<usize>(MIN_WIDTH) {
             constraints.min_width = width;
         }
 
-        if let Some(height) = attribs.get_usize(MIN_HEIGHT) {
+        if let Some(height) = attribs.get_as::<usize>(MIN_HEIGHT) {
             constraints.min_height = height;
         }
 
-        if let Some(width) = attribs.get_usize(MAX_WIDTH) {
+        if let Some(width) = attribs.get_as::<usize>(MAX_WIDTH) {
             constraints.set_max_width(width);
         }
 
-        if let Some(height) = attribs.get_usize(MAX_HEIGHT) {
+        if let Some(height) = attribs.get_as::<usize>(MAX_HEIGHT) {
             constraints.set_max_height(height);
         }
 

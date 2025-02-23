@@ -185,11 +185,11 @@ impl Widget for Canvas {
     ) -> Result<Size> {
         let attribs = ctx.attribute_storage.get(id);
 
-        if let Some(width) = attribs.get_usize(WIDTH) {
+        if let Some(width) = attribs.get_as::<usize>(WIDTH) {
             constraints.set_max_width(width);
         }
 
-        if let Some(height) = attribs.get_usize(HEIGHT) {
+        if let Some(height) = attribs.get_as::<usize>(HEIGHT) {
             constraints.set_max_height(height);
         }
 

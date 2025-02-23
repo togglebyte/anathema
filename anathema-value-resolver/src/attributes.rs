@@ -97,6 +97,12 @@ pub struct Attributes<'bp> {
     widget_id: WidgetId,
 }
 
+// TODO
+// Only get, set and remove should be part of the interface
+// that is exposed to the end user.
+//
+// The rest is for widget creation and should be moved to its own type.
+
 impl<'bp> Attributes<'bp> {
     /// Create an empty set of attributes
     pub fn empty(widget_id: WidgetId) -> Self {
@@ -107,30 +113,17 @@ impl<'bp> Attributes<'bp> {
         }
     }
 
-    /// Set the value. This should only be used when evaluating new widgets,
-    /// and should not be used by user code.
-    pub fn set(&mut self, key: &'bp str, value: Value<'bp>) {
-        self.attribs.set(ValueKey::Attribute(key), value);
-    }
-
-    /// Resolve the value from a state and track it from the attributes.
-    /// This means changes to the state value will update the attribute automatically
-    pub fn set_pending(&mut self, key: &'bp str, value: PendingValue) {
+    pub fn set(&mut self, key: &'bp str, value: impl Into<ValueKind<'bp>>) {
         let key = ValueKey::Attribute(key);
-        match self.attribs.get_index(&key) {
-            Some(idx) => {
-                let valueref = value.subscribe((self.widget_id, idx).into());
-                panic!();
-                // self.attribs.set(key, valueref.into());
-            }
-            None => {
-                self.attribs.insert_with(key, |idx| {
-                    let valueref = value.subscribe((self.widget_id, idx).into());
-                    panic!()
-                    // valueref.into()
-                });
-            }
-        }
+        let value = value.into();
+        let value = Value {
+            expr: ValueExpr::Null, 
+            kind: value, 
+            sub: anathema_state::Subscriber::MAX,
+            sub_to: anathema_state::SubTo::Zero,
+        };
+    
+        self.attribs.set(key, value);
     }
 
     pub fn insert_with<F>(&mut self, key: ValueKey<'bp>, f: F) -> SmallIndex
@@ -152,33 +145,6 @@ impl<'bp> Attributes<'bp> {
         self.attribs.get_with_index(idx).map(|val| &val.kind)
     }
 
-    // TODO: is this ever used?
-    // /// Get a copy of a value
-    // pub fn get<T>(&self, key: &'bp str) -> Option<T>
-    // where
-    //     T: 'static,
-    //     T: Copy + PartialEq,
-    //     T: TryFrom<Value<'bp>>,
-    // {
-    //     let value = self.get_val(key)?;
-    //     value.load::<T>()
-    // }
-
-    // TODO: is this ever used?
-    // /// Get a reference to value
-    // /// ```
-    // /// # use anathema_widgets::{Attributes, WidgetId};
-    // /// let mut attributes = Attributes::empty(WidgetId::ZERO);
-    // /// let s = String::from("hello");
-    // /// attributes.set("str", s.as_ref());
-    // /// attributes.set("num", 123u32);
-    // /// assert_eq!("hello", attributes.get_ref::<&str>("str").unwrap());
-    // /// assert_eq!(123, attributes.get::<u32>("num").unwrap());
-    // /// ```
-    // pub fn get_ref<'a, T: TryFrom<&'a Value<'bp>>>(&'a self, key: &'bp str) -> Option<T> {
-    //     self.get_val(key).and_then(|s| T::try_from(s.deref()).ok())
-    // }
-
     pub fn get(&self, key: &str) -> Option<&ValueKind<'bp>> {
         self.attribs.get(key).map(|val| &val.kind)
     }
@@ -190,33 +156,8 @@ impl<'bp> Attributes<'bp> {
         self.attribs.get(key).and_then(|val| (&val.kind).try_into().ok())
     }
 
-    /// Get an integer regardless of how the value was stored.
-    /// This will convert any state value of any numerical type
-    /// into a `i64`.
-    pub fn get_int(&self, key: &str) -> Option<i64> {
-        let key = ValueKey::Attribute(key);
-        let value = self.attribs.get(&key)?;
-        value.to_int()
-    }
-
-    /// Get an unsigned integer regardless of how the value was stored.
-    /// This will convert any state value of any numerical type
-    /// into a `usize`.
-    /// This will truncate any bits don't fit into a usize.
-    pub fn get_usize(&self, key: &str) -> Option<usize> {
-        self.get_int(key).map(|val| val as usize)
-    }
-
     pub fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp>> {
         self.attribs.get_mut_with_index(index)
-    }
-
-    /// Treat the underlying value as a boolean.
-    /// If it isn't it will default to false
-    pub fn get_bool(&self, key: &'bp str) -> bool {
-        let key = ValueKey::Attribute(key);
-        let Some(value) = self.attribs.get(&key) else { return false };
-        value.as_bool().unwrap_or(false)
     }
 
     /// Iterate over attributes.
@@ -228,13 +169,7 @@ impl<'bp> Attributes<'bp> {
         })
     }
 
-    /// Returns true if the attributes contains the key
-    pub fn contains(&self, key: &'bp str) -> bool {
-        let key = ValueKey::Attribute(key);
-        self.attribs.get(&key).is_some()
-    }
-
-    pub(crate) fn get_value_expr(&self, key: &str) -> Option<ValueExpr<'bp>> {
+    pub(super) fn get_value_expr(&self, key: &str) -> Option<ValueExpr<'bp>> {
         let value = self.attribs.get(key)?;
         Some(value.expr.clone())
     }

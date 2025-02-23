@@ -110,6 +110,7 @@ where
                 if self.query.filter.filter(element, self.query.elements.attributes) {
                     let attributes = self.query.elements.attributes.get_mut(element.id());
                     let ret_val = f(element, attributes);
+                    element.invalidate_cache();
 
                     if !continuous {
                         return ControlFlow::Break(ret_val);

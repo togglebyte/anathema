@@ -170,13 +170,13 @@ impl Emitter {
     }
 }
 
-pub struct Context<'frame, T> {
-    inner: AnyComponentContext<'frame>,
+pub struct Context<'frame, 'bp, T> {
+    inner: AnyComponentContext<'frame, 'bp>,
     _p: PhantomData<T>,
 }
 
-impl<'frame, T: 'static> Context<'frame, T> {
-    pub fn new(inner: AnyComponentContext<'frame>) -> Self {
+impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
+    pub fn new(inner: AnyComponentContext<'frame, 'bp>) -> Self {
         Self { inner, _p: PhantomData }
     }
 
@@ -212,26 +212,26 @@ impl<'frame, T: 'static> Context<'frame, T> {
     }
 }
 
-impl<'frame, T> Deref for Context<'frame, T> {
-    type Target = AnyComponentContext<'frame>;
+impl<'frame, 'bp, T> Deref for Context<'frame, 'bp, T> {
+    type Target = AnyComponentContext<'frame, 'bp>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<'frame, T> DerefMut for Context<'frame, T> {
+impl<'frame, 'bp, T> DerefMut for Context<'frame, 'bp, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-pub struct AnyComponentContext<'frame> {
+pub struct AnyComponentContext<'frame, 'bp> {
     parent: Option<Parent>,
     state_id: StateId,
     assoc_functions: &'frame [(StringId, StringId)],
     assoc_events: &'frame mut AssociatedEvents,
-    pub attributes: &'frame Attributes<'frame>,
+    pub attributes: &'frame mut Attributes<'bp>,
     state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
     pub emitter: &'frame Emitter,
     pub viewport: &'frame Viewport,
@@ -239,14 +239,14 @@ pub struct AnyComponentContext<'frame> {
     pub components: &'frame mut DeferredComponents,
 }
 
-impl<'frame> AnyComponentContext<'frame> {
+impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
     pub fn new(
         parent: Option<Parent>,
         state_id: StateId,
         assoc_functions: &'frame [(StringId, StringId)],
         assoc_events: &'frame mut AssociatedEvents,
         components: &'frame mut DeferredComponents,
-        attributes: &'frame Attributes<'frame>,
+        attributes: &'frame mut Attributes<'bp>,
         state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
         emitter: &'frame Emitter,
         viewport: &'frame Viewport,
@@ -309,7 +309,7 @@ pub trait Component: 'static {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -318,7 +318,7 @@ pub trait Component: 'static {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -328,7 +328,7 @@ pub trait Component: 'static {
         key: KeyEvent,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -338,7 +338,7 @@ pub trait Component: 'static {
         mouse: MouseEvent,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -347,7 +347,7 @@ pub trait Component: 'static {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        context: Context<'_, Self::State>,
+        context: Context<'_, '_, Self::State>,
         dt: Duration,
     ) {
     }
@@ -358,7 +358,7 @@ pub trait Component: 'static {
         message: Self::Message,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -367,7 +367,7 @@ pub trait Component: 'static {
         &mut self,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -378,7 +378,7 @@ pub trait Component: 'static {
         value: &dyn AnyState,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -405,22 +405,22 @@ pub enum ComponentKind {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_>, ev: Event) -> Event;
+    fn any_event(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, ev: Event) -> Event;
 
-    fn any_message(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_>, message: Box<dyn Any>);
+    fn any_message(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>);
 
-    fn any_tick(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_>, dt: Duration);
+    fn any_tick(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, dt: Duration);
 
-    fn any_focus(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_>);
+    fn any_focus(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_blur(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_>);
+    fn any_blur(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_resize(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_>);
+    fn any_resize(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
     fn any_receive(
         &mut self,
         elements: Children<'_, '_>,
-        ctx: AnyComponentContext<'_>,
+        ctx: AnyComponentContext<'_, '_>,
         name: &str,
         value: &dyn AnyState,
     );
@@ -435,7 +435,7 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>, event: Event) -> Event {
+    fn any_event(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, event: Event) -> Event {
         let mut state = ctx
             .state
             .take()
@@ -461,7 +461,7 @@ where
         T::TICKS
     }
 
-    fn any_message(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>, message: Box<dyn Any>) {
+    fn any_message(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>) {
         let mut state = ctx
             .state
             .take()
@@ -472,7 +472,7 @@ where
         self.message(*message, &mut *state, elements, context);
     }
 
-    fn any_focus(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>) {
+    fn any_focus(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
         let mut state = ctx
             .state
             .take()
@@ -482,7 +482,7 @@ where
         self.on_focus(&mut *state, elements, context);
     }
 
-    fn any_blur(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>) {
+    fn any_blur(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
         let mut state = ctx
             .state
             .take()
@@ -492,7 +492,7 @@ where
         self.on_blur(&mut *state, elements, context);
     }
 
-    fn any_tick(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>, dt: Duration) {
+    fn any_tick(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, dt: Duration) {
         let mut state = ctx
             .state
             .take()
@@ -502,7 +502,7 @@ where
         self.tick(&mut *state, elements, context, dt);
     }
 
-    fn any_resize(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_>) {
+    fn any_resize(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
         let mut state = ctx
             .state
             .take()
@@ -515,7 +515,7 @@ where
     fn any_receive(
         &mut self,
         elements: Children<'_, '_>,
-        mut ctx: AnyComponentContext<'_>,
+        mut ctx: AnyComponentContext<'_, '_>,
         name: &str,
         value: &dyn AnyState,
     ) {

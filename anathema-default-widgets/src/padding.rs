@@ -41,22 +41,22 @@ impl Widget for Padding {
     ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get(id);
         let mut size = Size::ZERO;
-        let padding = attributes.get_int(PADDING).unwrap_or(0) as u16;
+        let padding = attributes.get_as::<u16>(PADDING).unwrap_or(0);
 
         self.0.top = attributes
-            .get_usize(TOP)
+            .get_as::<usize>(TOP)
             .and_then(|v| v.try_into().ok())
             .unwrap_or(padding);
         self.0.right = attributes
-            .get_usize(RIGHT)
+            .get_as::<usize>(RIGHT)
             .and_then(|v| v.try_into().ok())
             .unwrap_or(padding);
         self.0.bottom = attributes
-            .get_usize(BOTTOM)
+            .get_as::<usize>(BOTTOM)
             .and_then(|v| v.try_into().ok())
             .unwrap_or(padding);
         self.0.left = attributes
-            .get_usize(LEFT)
+            .get_as::<usize>(LEFT)
             .and_then(|v| v.try_into().ok())
             .unwrap_or(padding);
 
