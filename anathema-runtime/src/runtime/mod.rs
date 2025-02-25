@@ -284,6 +284,11 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             root_node(),
             &mut self.tree.view_mut(),
         )?;
+
+        let mut changed = false;
+        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut(), &mut changed);
+        tabindex.next();
+
         Ok(())
     }
 

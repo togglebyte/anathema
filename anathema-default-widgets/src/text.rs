@@ -84,7 +84,7 @@ impl Widget for Text {
         self.strings = Strings::new(size, wrap);
         self.strings.set_style(id);
 
-        // // Layout text
+        // Layout text
         attributes.value().map(|text| {
             text.strings(|s| match self.strings.add_str(s) {
                 ProcessResult::Break => false,
@@ -182,7 +182,7 @@ impl Widget for Span {
         _: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<Size> {
         // Everything is handled by the parent text
-        panic!("this should never be called");
+        Ok(Size::ZERO)
     }
 
     fn position<'bp>(
@@ -193,7 +193,7 @@ impl Widget for Span {
         _: PositionCtx,
     ) {
         // Everything is handled by the parent text
-        panic!("this should never be called");
+        // panic!("this should never be called");
     }
 }
 

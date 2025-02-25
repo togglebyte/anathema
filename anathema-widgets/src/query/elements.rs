@@ -105,13 +105,13 @@ where
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>) -> U,
     {
-                    *self.query.elements.needs_layout = true;
         let ret_val = self.query.elements.children.for_each(|_path, container, children| {
             if let WidgetKind::Element(ref mut element) = container.kind {
                 if self.query.filter.filter(element, self.query.elements.attributes) {
                     let attributes = self.query.elements.attributes.get_mut(element.id());
                     let ret_val = f(element, attributes);
                     element.invalidate_cache();
+                    *self.query.elements.needs_layout = true;
 
                     if !continuous {
                         return ControlFlow::Break(ret_val);
