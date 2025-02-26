@@ -186,6 +186,7 @@ impl<G: GlobalEventHandler> Builder<G> {
                 Ok(()) => (),
                 e => match e {
                     Ok(_) => continue,
+                    Err(Error::Stop) => break Ok(()),
                     Err(Error::Template(error)) => todo!(),
                     Err(Error::Widget(error)) => {}
                     Err(e) => break Err(e),
@@ -193,6 +194,7 @@ impl<G: GlobalEventHandler> Builder<G> {
             }
             match inst.reload() {
                 Ok(()) => continue,
+                Err(Error::Stop) => todo!(),
                 Err(Error::Template(error)) => todo!(),
                 Err(Error::Widget(error)) => todo!(),
                 Err(e) => break Err(e),

@@ -108,9 +108,7 @@ impl Components {
     /// The `ComponentBlueprintId` is only available to components that were added
     /// as a singular component, not prototypes
     pub fn get_by_component_id(&mut self, id: ComponentBlueprintId) -> Option<&CompEntry> {
-        panic!()
-        // let index = self.comp_ids.get(&id)?;
-        // self.inner.get(*index)
+        self.inner.iter().find(|e| e.component_id == id)
     }
 
     /// Get the component by its widget id
