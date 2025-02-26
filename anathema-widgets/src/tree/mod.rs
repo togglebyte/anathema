@@ -221,6 +221,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                 }
                 WidgetKind::Iteration(iteration) => {
                     let loop_index = *iteration.loop_index.to_ref() as usize;
+                    // TODO: scope the loop index here
                     let scope = Scope::with_index(iteration.binding, loop_index, self.scope);
                     let mut children = LayoutForEach::with_generator(
                         children,
@@ -268,6 +269,10 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
 
             cf
         })
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.tree.layout_len()
     }
 }
 

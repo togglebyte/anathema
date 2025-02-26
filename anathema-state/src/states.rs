@@ -427,6 +427,7 @@ impl_num_state!(i32);
 impl_num_state!(u64);
 impl_num_state!(i64);
 impl_num_state!(usize);
+impl_num_state!(isize);
 impl_float_state!(f32);
 impl_float_state!(f64);
 

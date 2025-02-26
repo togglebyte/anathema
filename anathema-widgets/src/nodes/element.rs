@@ -50,8 +50,10 @@ impl<'bp> Element<'bp> {
         // If one of the children returns a `Changed` layout result
         // the transition the widget into full layout mode
 
+        let count = children.len();
+        let mut rebuild = self.container.cache.count_check(count);
+
         if let Some(size) = self.cached_size() {
-            let mut rebuild = false;
             children.each(ctx, |ctx, node, children| {
                 // If we are here it's because the current node has a valid cache.
                 // We need to use the constraint for the given node in this case as
@@ -79,6 +81,10 @@ impl<'bp> Element<'bp> {
                     Layout::Unchanged(_) => return Ok(ControlFlow::Continue(())),
                 }
             })?;
+
+            if !self.container.cache.count_check(count) {
+                rebuild = true;
+            }
 
             if !rebuild {
                 return Ok(Layout::Unchanged(size));

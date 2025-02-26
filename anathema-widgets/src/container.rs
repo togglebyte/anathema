@@ -12,6 +12,7 @@ use crate::error::Result;
 pub struct Cache {
     pub(super) size: Size,
     constraints: Option<Constraints>,
+    pub(super) child_count: usize,
     valid: bool,
 }
 
@@ -19,6 +20,7 @@ impl Cache {
     pub(crate) const ZERO: Self = Self {
         size: Size::ZERO,
         constraints: None,
+        child_count: 0,
         valid: false,
     };
 
@@ -26,6 +28,7 @@ impl Cache {
         Self {
             size,
             constraints: Some(constraints),
+            child_count: 0,
             valid: true,
         }
     }
@@ -40,14 +43,21 @@ impl Cache {
         self.valid = false;
     }
 
-    fn changed(&mut self, cache: Cache) -> bool {
+    fn changed(&mut self, mut cache: Cache) -> bool {
         let changed = self.size != cache.size;
+        cache.child_count = self.child_count;
         *self = cache;
         changed
     }
 
     pub(crate) fn constraints(&self) -> Option<Constraints> {
         self.constraints
+    }
+
+    pub(crate) fn count_check(&mut self, count: usize) -> bool {
+        let c = self.child_count;
+        self.child_count = count;
+        c != count
     }
 }
 

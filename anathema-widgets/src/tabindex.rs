@@ -7,6 +7,12 @@ use anathema_store::tree::visitor::NodeVisitor;
 
 use crate::{WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
 
+// TODO
+// Test this with
+// * One component
+// * Many components
+// * No components that accepts focus
+
 pub struct Index {
     path: Box<[u16]>,
     index: u16,

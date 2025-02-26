@@ -43,6 +43,7 @@ impl<'tree, T> TreeView<'tree, T> {
         self.values.get(key).is_some()
     }
 
+    /// The number of children (not counting childrens children)
     pub fn layout_len(&self) -> usize {
         self.layout.len()
     }

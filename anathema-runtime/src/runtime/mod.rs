@@ -450,6 +450,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         self.needs_layout = true;
         let mut tree = self.tree.view_mut();
+
         self.changes.iter().try_for_each(|(sub, change)| {
             sub.iter().try_for_each(|value_id| {
                 let widget_id = value_id.key();
