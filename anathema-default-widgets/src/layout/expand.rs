@@ -7,7 +7,7 @@ use anathema_widgets::error::Result;
 
 use super::Axis;
 
-const DEFAULT_FACTOR: usize = 1;
+const DEFAULT_FACTOR: u16 = 1;
 
 /// Distributes the total size over a list of weights
 ///
@@ -15,19 +15,19 @@ const DEFAULT_FACTOR: usize = 1;
 ///
 /// Panics when called with more weights than the total number of available size.
 /// Allocates a minimum of one to each weight.
-fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
-    assert!(total > weights.len());
+fn distribute_size(weights: &[u16], mut total: u16) -> Vec<u16> {
+    assert!(total > weights.len() as u16);
 
     let mut indexed = weights
         .iter()
         .copied()
         .enumerate()
-        .map(|(i, w)| (i, w, 1usize))
+        .map(|(i, w)| (i, w, 1u16))
         .collect::<Vec<_>>();
 
-    total -= weights.len();
+    total -= weights.len() as u16;
 
-    fn pop(n: &mut usize) -> bool {
+    fn pop(n: &mut u16) -> bool {
         if let Some(nn) = n.checked_sub(1) {
             *n = nn;
             true
@@ -56,7 +56,7 @@ pub fn layout_all_expansions<'bp>(
     nodes.each(ctx, |ctx, node, _children| {
         if node.ident == "expand" {
             let attributes = ctx.attribute_storage.get(node.id());
-            let factor = attributes.get_as::<usize>("factor").unwrap_or(DEFAULT_FACTOR);
+            let factor = attributes.get_as::<u16>("factor").unwrap_or(DEFAULT_FACTOR);
             factors.push(factor);
         }
 

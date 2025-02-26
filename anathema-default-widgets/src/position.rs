@@ -15,14 +15,14 @@ const PLACEMENT: &str = "placement";
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum HorzEdge {
-    Left(u32),
-    Right(u32),
+    Left(i32),
+    Right(i32),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VertEdge {
-    Top(u32),
-    Bottom(u32),
+    Top(i32),
+    Bottom(i32),
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
@@ -74,24 +74,24 @@ impl Widget for Position {
     fn layout<'bp>(
         &mut self,
         mut children: LayoutForEach<'_, 'bp>,
-        constraints: Constraints,
+        _constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<Size> {
         let attribs = ctx.attribute_storage.get(id);
         self.placement = attribs.get_as::<Placement>(PLACEMENT).unwrap_or_default();
 
-        self.horz_edge = match attribs.get_as::<u32>(LEFT) {
+        self.horz_edge = match attribs.get_as::<i32>(LEFT) {
             Some(left) => HorzEdge::Left(left),
-            None => match attribs.get_as::<u32>(RIGHT) {
+            None => match attribs.get_as::<i32>(RIGHT) {
                 Some(right) => HorzEdge::Right(right),
                 None => HorzEdge::Left(0),
             },
         };
 
-        self.vert_edge = match attribs.get_as::<u32>(TOP) {
+        self.vert_edge = match attribs.get_as::<i32>(TOP) {
             Some(top) => VertEdge::Top(top),
-            None => match attribs.get_as::<u32>(BOTTOM) {
+            None => match attribs.get_as::<i32>(BOTTOM) {
                 Some(bottom) => VertEdge::Bottom(bottom),
                 None => VertEdge::Top(0),
             },
@@ -108,27 +108,29 @@ impl Widget for Position {
         // Position relative to the viewport,
         // Has no constraints
 
-        let constraints = match self.placement {
-            Placement::Relative => constraints,
-            Placement::Absolute => ctx.viewport.constraints(),
-        };
+        // let constraints = match self.placement {
+        //     Placement::Relative => constraints,
+        //     Placement::Absolute => ctx.viewport.constraints(),
+        // };
+
+        let constraints = ctx.viewport.constraints();
 
         let mut size = Size::ZERO;
 
         children.each(ctx, |ctx, child, children| {
-            _ = child.layout(children, constraints, ctx)?;//.into();
+            size = child.layout(children, constraints, ctx)?.into();
             Ok(ControlFlow::Break(()))
         })?;
 
-        size.width = match self.horz_edge {
-            HorzEdge::Left(left) => size.width + left as usize,
-            HorzEdge::Right(right) => constraints.max_width() - right as usize,
-        };
+        // size.width = match self.horz_edge {
+        //     HorzEdge::Left(left) => size.width + left as usize,
+        //     HorzEdge::Right(right) => constraints.max_width() - right as usize,
+        // };
 
-        size.height = match self.vert_edge {
-            VertEdge::Top(top) => size.height + top as usize,
-            VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
-        };
+        // size.height = match self.vert_edge {
+        //     VertEdge::Top(top) => size.height + top as usize,
+        //     VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
+        // };
 
         Ok(size)
     }
@@ -146,17 +148,17 @@ impl Widget for Position {
 
         children.each(|child, children| {
             match self.horz_edge {
-                HorzEdge::Left(left) => ctx.pos.x += left as i32,
+                HorzEdge::Left(left) => ctx.pos.x += left,
                 HorzEdge::Right(right) => {
-                    let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right as i32;
+                    let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right;
                     ctx.pos.x = offset;
                 }
             }
 
             match self.vert_edge {
-                VertEdge::Top(top) => ctx.pos.y += top as i32,
+                VertEdge::Top(top) => ctx.pos.y += top,
                 VertEdge::Bottom(bottom) => {
-                    let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom as i32;
+                    let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom;
                     ctx.pos.y = offset;
                 }
             }

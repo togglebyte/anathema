@@ -255,8 +255,8 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         clip.contains(pos)
     }
 
-    fn pos_inside_local_region(&self, pos: LocalPos, width: usize) -> bool {
-        (pos.x as usize) + width <= self.local_size.width && (pos.y as usize) < self.local_size.height
+    fn pos_inside_local_region(&self, pos: LocalPos, width: u16) -> bool {
+        pos.x + width <= self.local_size.width && pos.y < self.local_size.height
     }
 
     // Translate local coordinates to screen coordinates.
@@ -278,7 +278,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
 
     fn newline(&mut self, pos: LocalPos) -> Option<LocalPos> {
         let y = pos.y + 1; // next line
-        if y as usize >= self.local_size.height {
+        if y >= self.local_size.height {
             None
         } else {
             Some(LocalPos { x: 0, y })
@@ -335,9 +335,9 @@ impl<'screen> PaintCtx<'screen, SizePos> {
     //
     // The `output_pos` is the same as the `input_pos` unless clipping has been applied.
     pub fn place_glyph(&mut self, glyph: Glyph, input_pos: LocalPos) -> Option<LocalPos> {
-        let width = glyph.width();
+        let width = glyph.width() as u16;
         let next = LocalPos {
-            x: input_pos.x + width as u16,
+            x: input_pos.x + width,
             y: input_pos.y,
         };
 
@@ -368,11 +368,11 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         self.surface.draw_glyph(glyph, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)
-        if input_pos.x >= self.local_size.width as u16 {
+        if input_pos.x >= self.local_size.width {
             self.newline(input_pos)
         } else {
             Some(LocalPos {
-                x: input_pos.x + width as u16,
+                x: input_pos.x + width,
                 y: input_pos.y,
             })
         }

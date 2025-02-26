@@ -8,12 +8,12 @@ use anathema_widgets::error::Result;
 use crate::border::BorderSize;
 
 pub struct BorderLayout {
-    pub min_width: Option<usize>,
-    pub min_height: Option<usize>,
-    pub max_width: Option<usize>,
-    pub max_height: Option<usize>,
-    pub width: Option<usize>,
-    pub height: Option<usize>,
+    pub min_width: Option<u16>,
+    pub min_height: Option<u16>,
+    pub max_width: Option<u16>,
+    pub max_height: Option<u16>,
+    pub width: Option<u16>,
+    pub height: Option<u16>,
     pub border_size: BorderSize,
 }
 
@@ -70,8 +70,8 @@ impl BorderLayout {
             //     border [min-width: 10]
             //         ...
 
-            child_constraints.sub_max_width((border_size.left + border_size.right) as usize);
-            child_constraints.sub_max_height((border_size.top + border_size.bottom) as usize);
+            child_constraints.sub_max_width((border_size.left + border_size.right) as u16);
+            child_constraints.sub_max_height((border_size.top + border_size.bottom) as u16);
             let mut child_size = Size::from(child.layout(children, child_constraints, ctx)?);
             child_size += border_size.as_size();
             size.width = child_size.width.max(size.width);

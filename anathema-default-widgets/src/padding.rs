@@ -21,10 +21,7 @@ struct PaddingValues {
 
 impl PaddingValues {
     fn size(&self) -> Size {
-        Size {
-            height: (self.top + self.bottom) as usize,
-            width: (self.left + self.right) as usize,
-        }
+        Size::new(self.left + self.right, self.top + self.bottom)
     }
 }
 
@@ -119,8 +116,8 @@ impl Widget for Padding {
     fn inner_bounds(&self, mut pos: Pos, mut size: Size) -> Region {
         pos.x += self.0.left as i32;
         pos.y += self.0.top as i32;
-        size.width = size.width.saturating_sub(self.0.right as usize);
-        size.height = size.height.saturating_sub(self.0.bottom as usize);
+        size.width = size.width.saturating_sub(self.0.right);
+        size.height = size.height.saturating_sub(self.0.bottom);
         Region::from((pos, size))
     }
 }

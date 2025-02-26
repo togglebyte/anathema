@@ -24,7 +24,7 @@ struct Buffer {
 impl Buffer {
     pub fn new(size: Size) -> Self {
         Self {
-            positions: vec![Cell::Empty; size.width * size.height].into_boxed_slice(),
+            positions: vec![Cell::Empty; size.area()].into_boxed_slice(),
             size,
         }
     }
@@ -32,7 +32,7 @@ impl Buffer {
     fn put(&mut self, c: char, style: Style, pos: impl Into<LocalPos>) {
         let pos = pos.into();
 
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return;
         }
         let index = pos.to_index(self.size.width);
@@ -43,7 +43,7 @@ impl Buffer {
 
     fn get(&self, pos: impl Into<LocalPos>) -> Option<&Cell> {
         let pos = pos.into();
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return None;
         }
 
@@ -56,7 +56,7 @@ impl Buffer {
 
     fn get_mut(&mut self, pos: impl Into<LocalPos>) -> Option<&mut Cell> {
         let pos = pos.into();
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return None;
         }
 
@@ -69,7 +69,7 @@ impl Buffer {
 
     fn remove(&mut self, pos: impl Into<LocalPos>) {
         let pos = pos.into();
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return;
         }
 
@@ -84,7 +84,7 @@ impl Buffer {
         let mut new_buffer = Buffer::new(size);
 
         for (pos, c, attrs) in other.drain() {
-            if pos.x >= size.width as u16 || pos.y >= size.height as u16 {
+            if pos.x >= size.width || pos.y >= size.height {
                 continue;
             }
             new_buffer.put(c, attrs, pos);
@@ -101,9 +101,9 @@ impl Buffer {
             match old {
                 Cell::Empty => None,
                 Cell::Occupied(c, attribs) => {
-                    let y = index / self.size.width;
-                    let x = index % self.size.width;
-                    let pos = LocalPos::new(x as u16, y as u16);
+                    let y = index as u16 / self.size.width;
+                    let x = index as u16 % self.size.width;
+                    let pos = LocalPos::new(x, y);
                     Some((pos, c, attribs))
                 }
             }
@@ -112,9 +112,9 @@ impl Buffer {
 
     fn iter(&self) -> impl Iterator<Item = (LocalPos, char, &Style)> + '_ {
         self.positions.iter().enumerate().filter_map(|(index, cell)| {
-            let x = index % self.size.width;
-            let y = index / self.size.width;
-            let pos = LocalPos::new(x as u16, y as u16);
+            let x = index as u16 % self.size.width;
+            let y = index as u16 / self.size.width;
+            let pos = LocalPos::new(x, y);
             //
             match cell {
                 Cell::Empty => None,
@@ -185,11 +185,11 @@ impl Widget for Canvas {
     ) -> Result<Size> {
         let attribs = ctx.attribute_storage.get(id);
 
-        if let Some(width) = attribs.get_as::<usize>(WIDTH) {
+        if let Some(width) = attribs.get_as::<u16>(WIDTH) {
             constraints.set_max_width(width);
         }
 
-        if let Some(height) = attribs.get_as::<usize>(HEIGHT) {
+        if let Some(height) = attribs.get_as::<u16>(HEIGHT) {
             constraints.set_max_height(height);
         }
 

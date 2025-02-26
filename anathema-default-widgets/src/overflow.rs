@@ -129,11 +129,11 @@ impl Widget for Overflow {
             constraints.unbound_height();
         }
 
-        if let Some(width) = attributes.get_as::<usize>(WIDTH) {
+        if let Some(width) = attributes.get_as::<u16>(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get_as::<usize>(HEIGHT) {
+        if let Some(height) = attributes.get_as::<u16>(HEIGHT) {
             constraints.make_height_tight(height);
         }
 

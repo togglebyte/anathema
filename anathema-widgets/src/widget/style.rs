@@ -76,32 +76,46 @@ impl Style {
             style.bg = Some(color)
         }
 
-        if attributes.get_as::<bool>("bold").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("bold") {
             style.attributes |= Attributes::BOLD;
+        } else if let Some(false) = attributes.get_as::<bool>("bold") {
+            style.attributes |= Attributes::NORMAL;
         }
 
-        if attributes.get_as::<bool>("dim").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("dim") {
             style.attributes |= Attributes::DIM;
+        } else if let Some(false) = attributes.get_as::<bool>("dim") {
+            style.attributes |= Attributes::NOT_DIM;
         }
 
-        if attributes.get_as::<bool>("italic").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("italic") {
             style.attributes |= Attributes::ITALIC;
+        } else if let Some(false) = attributes.get_as::<bool>("italic") {
+            style.attributes |= Attributes::NOT_ITALIC;
         }
 
-        if attributes.get_as::<bool>("underline").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("underline") {
             style.attributes |= Attributes::UNDERLINED;
+        } else if let Some(false) = attributes.get_as::<bool>("underline") {
+            style.attributes |= Attributes::NOT_UNDERLINED;
         }
 
-        if attributes.get_as::<bool>("crossed-out").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("crossed_out") {
             style.attributes |= Attributes::CROSSED_OUT;
+        } else if let Some(false) = attributes.get_as::<bool>("crossed_out") {
+            style.attributes |= Attributes::NOT_CROSSED_OUT;
         }
 
-        if attributes.get_as::<bool>("overline").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("overline") {
             style.attributes |= Attributes::OVERLINED;
+        } else if let Some(false) = attributes.get_as::<bool>("overline") {
+            style.attributes |= Attributes::NOT_OVERLINED;
         }
 
-        if attributes.get_as::<bool>("inverse").unwrap_or_default() {
+        if let Some(true) = attributes.get_as::<bool>("inverse") {
             style.attributes |= Attributes::INVERSE;
+        } else if let Some(false) = attributes.get_as::<bool>("inverse") {
+            style.attributes |= Attributes::NOT_INVERSE;
         }
 
         style
@@ -207,21 +221,38 @@ impl Style {
 bitflags::bitflags! {
     /// Style attributes
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-    pub struct Attributes: u8 {
-        /// Make the characters bold (in supported output)
-        const BOLD =        0b0000_0001;
-        /// Make the characters dim (in supported output)
-        const DIM =         0b0000_0010;
-        /// Make the characters italic (in supported output)
-        const ITALIC =      0b0000_0100;
-        /// Make the characters underlined (in supported output)
-        const UNDERLINED =  0b0000_1000;
-        /// Make the characters crossed out (in supported output)
-        const CROSSED_OUT = 0b0001_0000;
-        /// Make the characters overlined (in supported output)
-        const OVERLINED =   0b0010_0000;
-        /// Make the characters inverse (in supported output)
-        const INVERSE =     0b0100_0000;
+    pub struct Attributes: u16 {
+        // Turn style on
+        /// Make the characters bold
+        const BOLD =            0b0000_0000_0000_0001;
+        /// Make the characters dim
+        const DIM =             0b0000_0000_0000_0010;
+        /// Make the characters italic
+        const ITALIC =          0b0000_0000_0000_0100;
+        /// Make the characters underlined
+        const UNDERLINED =      0b0000_0000_0000_1000;
+        /// Make the characters crossed out
+        const CROSSED_OUT =     0b0000_0000_0001_0000;
+        /// Make the characters overlined
+        const OVERLINED =       0b0000_0000_0010_0000;
+        /// Make the characters inverse
+        const INVERSE =         0b0000_0000_0100_0000;
+
+        // Turn style off
+        /// Make the characters not bold
+        const NORMAL =          0b0000_0000_1000_0000;
+        /// Make the characters not dim
+        const NOT_DIM =         0b0000_0001_0000_0000;
+        /// Make the characters not italic
+        const NOT_ITALIC =      0b0000_0010_0000_0000;
+        /// Make the characters not underlined
+        const NOT_UNDERLINED =  0b0000_0100_0000_0000;
+        /// Make the characters not crossed out
+        const NOT_CROSSED_OUT = 0b0000_1000_0000_0000;
+        /// Make the characters not overlined
+        const NOT_OVERLINED =   0b0001_0000_0000_0000;
+        /// Make the characters not inverse
+        const NOT_INVERSE =     0b0010_0000_0000_0000;
     }
 }
 

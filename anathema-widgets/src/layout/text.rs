@@ -293,11 +293,11 @@ impl Strings {
     }
 
     fn update_width(&mut self) {
-        self.size.width = self.size.width.max(*self.current_width);
+        self.size.width = self.size.width.max(*self.current_width as u16);
     }
 
     fn chomp(&mut self, c: char) -> ProcessResult {
-        let width = c.width().unwrap_or(0);
+        let width = c.width().unwrap_or(0) as u16;
 
         // NOTE
         // Special case: the character is too wide to ever fit so it's removed,
@@ -325,7 +325,7 @@ impl Strings {
 
         // NOTE
         // If the trailing whitespace should be removed, do so here
-        while width + *self.current_width > self.max.width {
+        while width + *self.current_width as u16 > self.max.width {
             if c.is_whitespace() {
                 // 1. Make this the next word boundary
                 // 2. Insert a newline here
@@ -349,7 +349,7 @@ impl Strings {
         }
 
         self.chomper.chomp(c, self.wrap);
-        self.current_width += width;
+        self.current_width += width as usize;
 
         ProcessResult::Continue
     }

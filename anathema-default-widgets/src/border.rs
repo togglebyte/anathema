@@ -3,10 +3,10 @@ use std::str::FromStr;
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{AnyWidget, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
-use anathema_widgets::error::Result;
 
 use crate::layout::border::BorderLayout;
 use crate::layout::Axis;
@@ -293,7 +293,7 @@ impl BorderPainter {
             start_cap: None,
             middle: (border_size.right > 0).then(|| Brush::new(glyphs[3], border_size.right)),
             end_cap: None,
-            start: LocalPos::new((size.width - border_size.right as usize) as u16, offset),
+            start: LocalPos::new(size.width - border_size.right as u16, offset),
             axis: Axis::Vertical,
             end: height as u16,
         };
@@ -332,13 +332,10 @@ pub(crate) struct BorderSize {
 
 impl BorderSize {
     pub(crate) fn as_size(&self) -> Size {
-        let left_width = self.left.max(self.top_left).max(self.bottom_left);
-        let right_width = self.right.max(self.top_right).max(self.bottom_right);
+        let left_width = self.left.max(self.top_left).max(self.bottom_left) as u16;
+        let right_width = self.right.max(self.top_right).max(self.bottom_right) as u16;
 
-        Size {
-            width: (left_width + right_width) as usize,
-            height: (self.top + self.bottom) as usize,
-        }
+        Size::new(left_width + right_width, (self.top + self.bottom) as u16)
     }
 }
 
@@ -449,12 +446,12 @@ impl Widget for Border {
         self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
-            min_width: attributes.get_as::<usize>(MIN_WIDTH),
-            min_height: attributes.get_as::<usize>(MIN_HEIGHT),
-            max_width: attributes.get_as::<usize>(MAX_WIDTH),
-            max_height: attributes.get_as::<usize>(MAX_HEIGHT),
-            height: attributes.get_as::<usize>(HEIGHT),
-            width: attributes.get_as::<usize>(WIDTH),
+            min_width: attributes.get_as::<u16>(MIN_WIDTH),
+            min_height: attributes.get_as::<u16>(MIN_HEIGHT),
+            max_width: attributes.get_as::<u16>(MAX_WIDTH),
+            max_height: attributes.get_as::<u16>(MAX_HEIGHT),
+            height: attributes.get_as::<u16>(HEIGHT),
+            width: attributes.get_as::<u16>(WIDTH),
             border_size: self.border_size(self.sides),
         };
 
@@ -522,8 +519,8 @@ impl Widget for Border {
         pos.y += bs.top as i32;
         size.width = size
             .width
-            .saturating_sub(bs.top_right.max(bs.bottom_right).max(bs.right) as usize);
-        size.height = size.height.saturating_sub(bs.bottom as usize);
+            .saturating_sub(bs.top_right.max(bs.bottom_right).max(bs.right) as u16);
+        size.height = size.height.saturating_sub(bs.bottom as u16);
         Region::from((pos, size))
     }
 }

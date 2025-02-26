@@ -145,8 +145,8 @@ impl LocalPos {
         Self { x, y }
     }
 
-    pub const fn to_index(self, width: usize) -> usize {
-        self.y as usize * width + self.x as usize
+    pub const fn to_index(self, width: u16) -> usize {
+        (self.y  * width + self.x) as usize
     }
 
     pub const fn saturating_sub(mut self, other: Self) -> Self {

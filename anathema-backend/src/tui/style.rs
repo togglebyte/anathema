@@ -51,7 +51,9 @@ pub(crate) fn write_style(style: &Style, w: &mut impl Write) -> Result<()> {
         w.queue(SetAttribute(CrossAttrib::NormalIntensity))?;
     }
 
-    if style.attributes.contains(Attributes::BOLD) {
+    if style.attributes.contains(Attributes::NORMAL) {
+        w.queue(SetAttribute(CrossAttrib::NormalIntensity))?;
+    } else if style.attributes.contains(Attributes::BOLD) {
         w.queue(SetAttribute(CrossAttrib::Bold))?;
     }
 
@@ -59,34 +61,34 @@ pub(crate) fn write_style(style: &Style, w: &mut impl Write) -> Result<()> {
         w.queue(SetAttribute(CrossAttrib::Dim))?;
     }
 
-    if style.attributes.contains(Attributes::ITALIC) {
-        w.queue(SetAttribute(CrossAttrib::Italic))?;
-    } else {
+    if style.attributes.contains(Attributes::NOT_ITALIC) {
         w.queue(SetAttribute(CrossAttrib::NoItalic))?;
+    } else if style.attributes.contains(Attributes::ITALIC) {
+        w.queue(SetAttribute(CrossAttrib::Italic))?;
     }
 
-    if style.attributes.contains(Attributes::UNDERLINED) {
-        w.queue(SetAttribute(CrossAttrib::Underlined))?;
-    } else {
+    if style.attributes.contains(Attributes::NOT_UNDERLINED) {
         w.queue(SetAttribute(CrossAttrib::NoUnderline))?;
+    } else if style.attributes.contains(Attributes::UNDERLINED) {
+        w.queue(SetAttribute(CrossAttrib::Underlined))?;
     }
 
-    if style.attributes.contains(Attributes::OVERLINED) {
-        w.queue(SetAttribute(CrossAttrib::OverLined))?;
-    } else {
+    if style.attributes.contains(Attributes::NOT_OVERLINED) {
         w.queue(SetAttribute(CrossAttrib::NotOverLined))?;
+    } else if style.attributes.contains(Attributes::OVERLINED) {
+        w.queue(SetAttribute(CrossAttrib::OverLined))?;
     }
 
-    if style.attributes.contains(Attributes::CROSSED_OUT) {
-        w.queue(SetAttribute(CrossAttrib::CrossedOut))?;
-    } else {
+    if style.attributes.contains(Attributes::NOT_CROSSED_OUT) {
         w.queue(SetAttribute(CrossAttrib::NotCrossedOut))?;
+    } else if style.attributes.contains(Attributes::CROSSED_OUT) {
+        w.queue(SetAttribute(CrossAttrib::CrossedOut))?;
     }
 
-    if style.attributes.contains(Attributes::INVERSE) {
-        w.queue(SetAttribute(CrossAttrib::Reverse))?;
-    } else {
+    if style.attributes.contains(Attributes::NOT_INVERSE) {
         w.queue(SetAttribute(CrossAttrib::NoReverse))?;
+    } else if style.attributes.contains(Attributes::INVERSE) {
+        w.queue(SetAttribute(CrossAttrib::Reverse))?;
     }
 
     Ok(())

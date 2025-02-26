@@ -87,7 +87,7 @@ impl Buffer {
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::empty(); size.width * size.height].into_boxed_slice(),
+            inner: vec![Cell::empty(); (size.width * size.height) as usize].into_boxed_slice(),
             size,
         }
     }
@@ -96,7 +96,7 @@ impl Buffer {
     pub(crate) fn reset(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::reset(); size.width * size.height].into_boxed_slice(),
+            inner: vec![Cell::reset(); (size.width * size.height) as usize].into_boxed_slice(),
             size,
         }
     }
@@ -110,12 +110,12 @@ impl Buffer {
     pub fn resize(&mut self, size: Size) {
         let mut new_buf = Buffer::new(size);
         for (y, line) in self.cell_lines().enumerate() {
-            if y >= size.height {
+            if y >= size.height as usize {
                 break;
             }
 
             for (x, cell) in line.iter().enumerate() {
-                if x >= size.width {
+                if x >= size.width as usize {
                     break;
                 }
 
@@ -131,7 +131,7 @@ impl Buffer {
     /// Put a character with a style at a given position.
     pub fn put_glyph(&mut self, glyph: Glyph, pos: LocalPos) {
         assert!(
-            (pos.x as usize) < self.size.width && (pos.y as usize) < self.size.height,
+            pos.x < self.size.width && pos.y < self.size.height,
             "position out of bounds"
         );
 
@@ -146,7 +146,7 @@ impl Buffer {
     /// Update the attributes at a given cell.
     /// If there is no character at that cell, then write an empty space into it
     pub fn update_cell(&mut self, style: Style, pos: LocalPos) {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return;
         }
 
@@ -170,7 +170,7 @@ impl Buffer {
 
     /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get(&self, pos: LocalPos) -> Option<(&Glyph, &Style)> {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return None;
         }
 
@@ -184,7 +184,7 @@ impl Buffer {
 
     /// Get a mutable reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get_mut(&mut self, pos: LocalPos) -> Option<(&mut Glyph, &mut Style)> {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return None;
         }
 
@@ -207,7 +207,7 @@ impl Buffer {
     }
 
     fn index(&self, pos: LocalPos) -> usize {
-        pos.y as usize * self.size.width + pos.x as usize
+        (pos.y * self.size.width + pos.x) as usize
     }
 
     fn put(&mut self, mut cell: Cell, pos: LocalPos) {
@@ -246,7 +246,7 @@ impl Buffer {
     }
 
     fn cell_lines(&self) -> impl Iterator<Item = &[Cell]> {
-        self.inner.chunks(self.size.width)
+        self.inner.chunks(self.size.width as usize)
     }
 }
 

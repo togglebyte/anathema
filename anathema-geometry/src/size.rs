@@ -5,38 +5,42 @@ use std::ops::{Add, AddAssign, Sub};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Size {
     /// Width
-    pub width: usize,
+    pub width: u16,
     /// Height
-    pub height: usize,
+    pub height: u16,
 }
 
 impl Size {
     /// Max size
-    pub const MAX: Self = Self::new(usize::MAX, usize::MAX);
+    pub const MAX: Self = Self::new(u16::MAX, u16::MAX);
     /// Zero size
     pub const ZERO: Self = Self::new(0, 0);
 
     /// Create a new Size
-    pub const fn new(width: usize, height: usize) -> Self {
+    pub const fn new(width: u16, height: u16) -> Self {
         Self { width, height }
     }
-}
 
-impl From<(usize, usize)> for Size {
-    fn from(parts: (usize, usize)) -> Self {
-        Size::new(parts.0, parts.1)
-    }
-}
-
-impl From<(i32, i32)> for Size {
-    fn from(parts: (i32, i32)) -> Self {
-        Size::new(parts.0 as usize, parts.1 as usize)
+    pub const fn area(self) -> usize {
+        (self.width * self.height) as usize
     }
 }
 
 impl From<(u16, u16)> for Size {
     fn from(parts: (u16, u16)) -> Self {
-        Size::new(parts.0 as usize, parts.1 as usize)
+        Size::new(parts.0, parts.1)
+    }
+}
+
+impl From<(usize, usize)> for Size {
+    fn from(parts: (usize, usize)) -> Self {
+        Size::new(parts.0 as u16, parts.1 as u16)
+    }
+}
+
+impl From<(i32, i32)> for Size {
+    fn from(parts: (i32, i32)) -> Self {
+        Size::new(parts.0 as u16, parts.1 as u16)
     }
 }
 
