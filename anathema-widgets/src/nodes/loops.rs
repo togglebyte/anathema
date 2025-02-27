@@ -50,7 +50,24 @@ impl<'bp> For<'bp> {
                     *iter.loop_index.to_mut() += 1;
                 }
             }
-            Change::Removed(index) => tree.relative_remove(&[*index as u16]),
+            Change::Removed(index) => {
+                for child in &tree.layout[*index as usize + 1..] {
+                    let iter_widget = tree.values.get_mut(child.value());
+                    let Some((
+                        _,
+                        WidgetContainer {
+                            kind: WidgetKind::Iteration(iter),
+                            ..
+                        },
+                    )) = iter_widget
+                    else {
+                        unreachable!("this can only ever be an iteration")
+                    };
+                    *iter.loop_index.to_mut() -= 1;
+                }
+
+                tree.relative_remove(&[*index as u16])
+            }
             Change::Dropped => {
                 tree.truncate_children();
 

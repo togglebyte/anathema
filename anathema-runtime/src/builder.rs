@@ -137,7 +137,7 @@ impl<G: GlobalEventHandler> Builder<G> {
 
     pub fn with_global_event_handler<Eh>(self, global_event_handler: Eh) -> Builder<Eh>
     where
-        Eh: Fn(Event, TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>
+        Eh: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>
     {
         Builder {
             factory: self.factory,

@@ -1,14 +1,14 @@
-use anathema_state::StateId;
+use anathema_state::{PendingValue, StateId};
 use anathema_store::slab::Key;
 
-use crate::expression::ValueExpr;
+use crate::expression::{Kind, ValueExpr};
 use crate::{Collection, ValueKind};
 
 #[derive(Debug)]
 pub(crate) enum Entry<'parent, 'bp> {
     Component { state: StateId, component_attributes: Key },
     Collection(&'parent Collection<'bp>),
-    Index(&'bp str, usize),
+    Index(&'bp str, usize, PendingValue),
     Empty,
 }
 
@@ -55,8 +55,9 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         binding: &'bp str,
         index: usize,
         parent: &'parent Scope<'parent, 'bp>,
+        loop_index: PendingValue,
     ) -> Self {
-        let value = Entry::Index(binding, index);
+        let value = Entry::Index(binding, index, loop_index);
         Self {
             value,
             parent: Some(parent),
@@ -90,7 +91,8 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
 
     pub(crate) fn lookup(&self, key: &str) -> Option<ValueExpr<'bp>> {
         match self.value {
-            Entry::Index(binding, index) if key == binding => {
+            Entry::Index(_, _, loop_index) if key == "loop" => Some(ValueExpr::Int(Kind::Dyn(loop_index))),
+            Entry::Index(binding, index, _) if key == binding => {
                 match self.parent.expect("the parent can only be a collection").value {
                     Entry::Collection(collection) => {
                         match collection.0.kind {
