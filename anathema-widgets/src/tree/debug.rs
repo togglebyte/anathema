@@ -20,7 +20,7 @@ impl DebugTree {
 
     fn write(&mut self, s: &str, key: Key) {
         let indent = " ".repeat(self.level * 4);
-        self.output.push_str(&format!("{}:{} ", key.index(), key.gen()));
+        self.output.push_str(&format!("{}:{} ", key.index(), key.generation()));
         self.output.push_str(&indent);
         self.output.push_str(s);
         self.output.push('\n');

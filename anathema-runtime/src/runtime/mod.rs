@@ -323,9 +323,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     pub fn cleanup(&mut self) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
-
-        self.changes.clear();
-
         for key in self.tree.drain_removed() {
             self.layout_ctx.attribute_storage.try_remove(key);
             self.layout_ctx.floating_widgets.try_remove(key);
@@ -481,6 +478,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
             Result::Ok(())
         })?;
+
+        self.changes.clear();
 
         Ok(())
     }

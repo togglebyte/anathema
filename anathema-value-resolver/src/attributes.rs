@@ -75,13 +75,13 @@ impl<'bp> AttributeStorage<'bp> {
     ///
     /// This will overwrite any existing attributes at that location
     pub fn insert(&mut self, widget_id: WidgetId, attribs: Attributes<'bp>) {
-        self.0.insert(widget_id, (widget_id.gen(), attribs))
+        self.0.insert(widget_id, (widget_id.generation(), attribs))
     }
 
     /// Try to remove attributes for a specific widget
     pub fn try_remove(&mut self, id: WidgetId) -> Option<Attributes<'bp>> {
         self.0
-            .remove_if(id, |(current_gen, _)| *current_gen == id.gen())
+            .remove_if(id, |(current_gen, _)| *current_gen == id.generation())
             .map(|(_, value)| value)
     }
 }
