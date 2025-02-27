@@ -438,6 +438,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let mut cycle = WidgetCycle::new(backend, self.tree.view_mut(), self.layout_ctx.viewport.constraints());
         cycle.run(&mut self.layout_ctx, self.needs_layout)?;
+
         self.needs_layout = false;
         Ok(())
     }
