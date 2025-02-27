@@ -50,8 +50,6 @@ pub struct QueryBuilder<'a> {
     filter: Filter,
 }
 
-// context.components.by_name("some_name").send(some_message);
-
 impl<'a> QueryBuilder<'a> {
     fn new(queue: &'a mut Vec<Command>, filter: Filter) -> Self {
         Self { queue, filter }

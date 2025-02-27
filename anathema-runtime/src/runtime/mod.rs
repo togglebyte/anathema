@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
@@ -17,8 +18,8 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetId, WidgetKind,
-    WidgetTree,
+    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer,
+    WidgetId, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use notify::{INotifyWatcher, RecommendedWatcher};
@@ -390,21 +391,24 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
             for index in 0..self.layout_ctx.components.len() {
                 let Some((widget_id, state_id)) = self.layout_ctx.components.get(index) else { continue };
-                self.with_component(widget_id, state_id, |comp, children, ctx| {
-                    if !cmd.filter_component(comp, ctx.attributes) {
-                        return;
-                    }
+                let Some(comp) = self.tree.get_ref(widget_id) else { continue };
+                let WidgetContainer {
+                    kind: WidgetKind::Component(comp),
+                    ..
+                } = comp
+                else {
+                    continue;
+                };
+                let attributes = self.layout_ctx.attribute_storage.get(widget_id);
+                if !cmd.filter_component(comp, attributes) {
+                    continue;
+                }
 
-                    // TODO: this should break the loop as we can't focus on multiple
-                    //       components at once. Also this will fix the issue with the message
-                    //       being moved once it's sent
-                    match cmd.kind {
-                        CommandKind::Focus => comp.dyn_component.any_focus(children, ctx),
-                        CommandKind::SendMessage(_) => {
-                            //comp.dyn_component.any_message(children, ctx, msg),
-                        }
-                    }
+                self.with_component(widget_id, state_id, |comp, children, ctx| match cmd.kind {
+                    CommandKind::Focus => comp.dyn_component.any_focus(children, ctx),
+                    CommandKind::SendMessage(msg) => comp.dyn_component.any_message(children, ctx, msg),
                 });
+                break;
             }
         }
     }
@@ -468,7 +472,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
                 tree.with_value_mut(widget_id, |_path, widget, tree| {
                     update_widget(widget, value_id, change, tree, self.layout_ctx.attribute_storage)
-                })?;
+                })
+                .unwrap_or(Ok(()))?;
 
                 Ok(())
             })?;
@@ -485,23 +490,21 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         });
     }
 
-    fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, f: F)
+    fn with_component<F, U>(&mut self, widget_id: WidgetId, state_id: StateId, f: F) -> Option<U>
     where
         F: FnOnce(&mut Component<'_>, Children<'_, '_>, AnyComponentContext<'_, '_>) -> U,
     {
         let mut tree = self.tree.view_mut();
 
         tree.with_value_mut(widget_id, |_path, container, children| {
-            let WidgetKind::Component(ref mut component) = &mut container.kind else { return None };
+            let WidgetKind::Component(ref mut component) = &mut container.kind else { panic!() };
 
-            let state = self.layout_ctx.states.get_mut(state_id);
+            let Some(state) = self.layout_ctx.states.get_mut(state_id) else { panic!() };
 
             self.layout_ctx
                 .attribute_storage
                 .with_mut(widget_id, |attributes, storage| {
                     let elements = Children::new(children, storage, &mut self.needs_layout);
-
-                    let Some(state) = state else { return };
 
                     let ctx = AnyComponentContext::new(
                         component.parent.map(Into::into),
@@ -516,9 +519,9 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                         &self.document.strings,
                     );
 
-                    f(component, elements, ctx);
+                    f(component, elements, ctx)
                 })
-        });
+        })?
     }
 
     fn tick_components(&mut self, dt: Duration) {

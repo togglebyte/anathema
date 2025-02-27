@@ -268,7 +268,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
             };
 
             cf
-        })
+        }).unwrap_or(Ok(ControlFlow::Continue(())))
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -468,6 +468,6 @@ impl<'a, 'bp, Fltr: Filter<'bp>> ForEach<'a, 'bp, Fltr> {
                 FilterOutput::Exclude => ControlFlow::Break(()),
                 FilterOutput::Continue => ForEach::new(children, self.attribute_storage, self.filter).inner_each(f),
             }
-        })
+        }).unwrap() // TODO: unwrap...
     }
 }

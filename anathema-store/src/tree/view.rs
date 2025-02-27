@@ -199,13 +199,13 @@ impl<'tree, T> TreeView<'tree, T> {
     /// # Panics
     ///
     /// This will panic if the value is already checked out
-    pub fn with_value_mut<F, V>(&mut self, value_id: ValueId, f: F) -> V
+    pub fn with_value_mut<F, V>(&mut self, value_id: ValueId, f: F) -> Option<V>
     where
         F: FnOnce(&[u16], &mut T, TreeView<'_, T>) -> V,
     {
         let mut ticket = self.values.checkout(value_id);
         let (path, value) = &mut *ticket;
-        let node = self.layout.get_by_path_mut(&path[self.offset.len()..]).unwrap(); // TODO: unwrap decide what to do with this horrid unwrap
+        let node = self.layout.get_by_path_mut(&path[self.offset.len()..])?;
         let view = TreeView {
             offset: path,
             values: self.values,
@@ -214,7 +214,7 @@ impl<'tree, T> TreeView<'tree, T> {
         };
         let value = f(path, value, view);
         self.values.restore(ticket);
-        value
+        Some(value)
     }
 
     /// Apply a [`NodeVisitor`], depth first

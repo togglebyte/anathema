@@ -52,6 +52,10 @@ impl<T> Tree<T> {
         )
     }
 
+    pub fn get_ref(&mut self, value_id: ValueId) -> Option<&T> {
+        self.values.get(value_id).map(|(_, value)| value)
+    }
+
     pub fn get_mut(&mut self, value_id: ValueId) -> Option<&mut T> {
         self.values.get_mut(value_id).map(|(_, value)| value)
     }
