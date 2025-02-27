@@ -498,9 +498,12 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         let mut tree = self.tree.view_mut();
 
         tree.with_value_mut(widget_id, |_path, container, children| {
-            let WidgetKind::Component(ref mut component) = &mut container.kind else { panic!() };
-
-            let Some(state) = self.layout_ctx.states.get_mut(state_id) else { panic!() };
+            let WidgetKind::Component(component) = &mut container.kind else {
+                panic!("this is always a component")
+            };
+            let Some(state) = self.layout_ctx.states.get_mut(state_id) else {
+                panic!("a component always has a state")
+            };
 
             self.layout_ctx
                 .attribute_storage

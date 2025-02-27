@@ -229,7 +229,7 @@ impl Buffer {
 
         match (&mut current.state, cell.state) {
             // Merge the styles
-            (CellState::Occupied(ref mut current_char), CellState::Occupied(new_char)) => {
+            (CellState::Occupied(current_char), CellState::Occupied(new_char)) => {
                 *current_char = new_char;
                 current.style.attributes |= cell.style.attributes;
 
