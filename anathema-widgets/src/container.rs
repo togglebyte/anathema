@@ -83,13 +83,14 @@ impl Container {
         let size = self.inner.any_layout(children, constraints, self.id, ctx)?;
         let cache = Cache::new(size, constraints);
 
+        let changed = self.cache.changed(cache);
+
         // Floating widgets always report a zero size
         // as they should not affect their parents
         if self.inner.any_floats() {
             return Ok(Layout::Unchanged(Size::ZERO))
         }
 
-        let changed = self.cache.changed(cache);
         let layout = match changed {
             true => Layout::Changed(self.cache.size),
             false => Layout::Unchanged(self.cache.size),

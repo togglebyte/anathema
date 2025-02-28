@@ -214,7 +214,7 @@ impl ValueKind<'_> {
             ValueKind::Map => return true,
             ValueKind::List(vec) => vec.iter().take_while(|val| val.internal_strings(f)).count() == vec.len(),
             ValueKind::DynList(value) => dyn_string(*value, f),
-            ValueKind::Composite | ValueKind::Attributes => todo!(),
+            ValueKind::Composite | ValueKind::Attributes => f("<composite>"),
             ValueKind::Null => return true,
         }
     }

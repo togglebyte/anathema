@@ -304,6 +304,9 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         self.drain_deferred_commands();
         self.drain_assoc_events();
         self.apply_changes()?;
+        // TODO: this secondary call is here to deal with changes causing changes
+        //       which happens when values are removed or inserted and indices needs updating
+        self.apply_changes()?;
         self.cycle(backend)?;
 
         *self.dt = Instant::now();
@@ -327,6 +330,11 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             self.layout_ctx.attribute_storage.try_remove(key);
             self.layout_ctx.floating_widgets.try_remove(key);
             self.layout_ctx.components.try_remove(key);
+            if let Some(Index { widget_id, .. }) = self.tabindex {
+                if widget_id == key {
+                    self.tabindex.take();
+                }
+            }
         }
     }
 
@@ -380,10 +388,11 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         for mut cmd in commands {
             // Blur the current component if the message is a `Focus` message
             if let CommandKind::Focus = cmd.kind {
-                let Some(current) = &self.tabindex else { panic!() };
-                self.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
-                    comp.dyn_component.any_blur(children, ctx)
-                });
+                if let Some(current) = &self.tabindex {
+                    self.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
+                        comp.dyn_component.any_blur(children, ctx)
+                    });
+                }
             }
 
             for index in 0..self.layout_ctx.components.len() {
