@@ -139,6 +139,7 @@ impl Buffer {
             Some((_, style)) => *style,
             None => Style::new(),
         };
+
         let cell = Cell::new(glyph, style);
         self.put(cell, pos);
     }
@@ -291,29 +292,27 @@ pub(crate) fn diff(
 
     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
         for (x, (old_cell, new_cell)) in old_line.iter_mut().zip(new_line).enumerate() {
-            let x = x as u16;
-            let y = y as u16;
+            if old_cell == new_cell { continue; }
 
-            if old_cell == new_cell {
-                continue;
-            }
+            let change = match new_cell.state {
+                CellState::Empty => {
+                    new_cell.style.reset_attributes();
+                    Change::Remove
+                }
+                CellState::Continuation => continue,
+                CellState::Occupied(c) => Change::Insert(c),
+            };
 
-            let style = match previous_style {
+            let mut style = match previous_style {
                 Some(previous) => (previous != new_cell.style).then_some(new_cell.style),
                 None => Some(new_cell.style),
             };
 
             previous_style = Some(new_cell.style);
 
-            let change = match new_cell.state {
-                CellState::Empty => Change::Remove,
-                CellState::Continuation => continue,
-                CellState::Occupied(c) => Change::Insert(c),
-            };
-
             *old_cell = *new_cell;
 
-            changes.push((LocalPos::new(x, y), style, change));
+            changes.push((LocalPos::from((x, y)), style, change));
         }
     }
 
@@ -345,25 +344,23 @@ pub(crate) fn draw_changes(
         last_y = Some(screen_pos.y);
         next_cell_x = Some(screen_pos.x + change.width() as u16);
 
+        // Apply style
+        if let Some(style) = style {
+            write_style(style, &mut w)?;
+        }
+
         // Draw changes
         match change {
-            Change::Insert(c) => {
-                // Apply style
-                if let Some(style) = style {
-                    write_style(style, &mut w)?;
+            Change::Insert(c) => match c {
+                Glyph::Single(c, _) => {
+                    w.queue(Print(c))?;
                 }
-
-                match c {
-                    Glyph::Single(c, _) => {
-                        w.queue(Print(c))?;
-                    }
-                    Glyph::Cluster(index, _) => {
-                        if let Some(glyph) = glyph_map.get(*index) {
-                            w.queue(Print(glyph))?;
-                        }
+                Glyph::Cluster(index, _) => {
+                    if let Some(glyph) = glyph_map.get(*index) {
+                        w.queue(Print(glyph))?;
                     }
                 }
-            }
+            },
             Change::Remove => {
                 w.queue(Print(' '))?;
             }

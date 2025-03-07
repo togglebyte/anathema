@@ -47,6 +47,12 @@ impl Style {
         }
     }
 
+    pub fn reset_attributes(&mut self) {
+        self.attributes = Attributes::NOT_UNDERLINED
+            | Attributes::NOT_CROSSED_OUT
+            | Attributes::NOT_OVERLINED;
+    }
+
     /// Create an instance of `Style` from `CellAttributes`.
     pub fn from_cell_attribs(attributes: &anathema_value_resolver::Attributes<'_>) -> Self {
         let mut style = Self::new();

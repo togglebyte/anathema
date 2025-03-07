@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
-use anathema_widgets::error::Result;
 
 use super::Axis;
 
@@ -14,17 +14,17 @@ use super::Axis;
 /// inside already evaluated children.
 pub fn layout_all_spacers<'bp>(
     nodes: &mut LayoutForEach<'_, 'bp>,
-    mut constraints: Constraints,
+    constraints: Constraints,
     axis: Axis,
     ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let mut count = 0;
+
     nodes.each(ctx, |_, node, _| {
         if node.ident == "spacer" {
             count += 1;
         }
-
         Ok(ControlFlow::Continue(()))
     })?;
 
@@ -32,21 +32,30 @@ pub fn layout_all_spacers<'bp>(
         return Ok(final_size);
     }
 
-    match axis {
-        Axis::Horizontal => {
-            constraints.div_assign_max_width(count);
-            constraints.min_width = constraints.max_width();
-        }
-        Axis::Vertical => {
-            constraints.div_assign_max_height(count);
-            constraints.min_height = constraints.max_height();
-        }
+    let max = match axis {
+        Axis::Horizontal => constraints.max_width(),
+        Axis::Vertical => constraints.max_height(),
     };
+
+    let mut overflow = max % count;
 
     nodes.each(ctx, |ctx, node, children| {
         if node.ident != "spacer" {
             return Ok(ControlFlow::Continue(()));
         }
+
+        // This is a bit gross
+        let overflow = if overflow > 0 {
+            overflow -= 1;
+            1
+        } else {
+            0
+        };
+
+        let constraints = match axis {
+            Axis::Horizontal => constraints.div_assign_max_width(count, overflow),
+            Axis::Vertical => constraints.div_assign_max_height(count, overflow),
+        };
 
         let size = Size::from(node.layout(children, constraints, ctx)?);
 

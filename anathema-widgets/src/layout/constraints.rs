@@ -23,6 +23,7 @@ impl Constraints {
         max_width: u16::MAX,
         max_height: u16::MAX,
     };
+
     pub const ZERO: Self = Self {
         min_width: 0,
         min_height: 0,
@@ -172,12 +173,16 @@ impl Constraints {
         self.max_height = height;
     }
 
-    pub fn div_assign_max_width(&mut self, width: u16) {
-        self.max_width /= width
+    pub fn div_assign_max_width(mut self, count: u16, overflow: u16) -> Self {
+        let width = self.max_width / count + overflow;
+        self.make_width_tight(width);
+        self
     }
 
-    pub fn div_assign_max_height(&mut self, height: u16) {
-        self.max_height /= height
+    pub fn div_assign_max_height(mut self, count: u16, overflow: u16) -> Self {
+        let height = self.max_height / count + overflow;
+        self.make_height_tight(height);
+        self
     }
 
     /// If either the max width or max height are

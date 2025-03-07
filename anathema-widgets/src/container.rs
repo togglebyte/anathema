@@ -128,9 +128,9 @@ impl Container {
 
         let attributes = attribute_storage.get(self.id);
 
-        // Apply all attributes to the widget
-        // as long as it's **not** a floating widget.
         if !self.inner.any_floats() {
+            // Apply all attributes to the widget
+            // as long as it's **not** a floating widget.
             for y in 0..self.cache.size.height as u16 {
                 for x in 0..self.cache.size.width as u16 {
                     let pos = LocalPos::new(x, y);
