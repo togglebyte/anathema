@@ -72,9 +72,7 @@ impl Screen {
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                let Some((glyph, style)) = self.new_buffer.get_mut(LocalPos::new(x, y)) else { continue };
-                *glyph = Glyph::space();
-                *style = Style::reset();
+                self.new_buffer.reset_cell(LocalPos::new(x, y));
             }
         }
     }
@@ -92,7 +90,7 @@ impl Screen {
 
     /// Draw the changes to the screen
     pub(crate) fn render(&mut self, mut output: impl Write, glyph_map: &GlyphMap) -> Result<()> {
-        diff(&self.old_buffer, &self.new_buffer, &mut self.changes)?;
+        diff(&mut self.old_buffer, &mut self.new_buffer, &mut self.changes)?;
 
         if self.changes.is_empty() {
             return Ok(());
@@ -103,8 +101,6 @@ impl Screen {
         self.changes.clear();
 
         output.flush()?;
-
-        self.old_buffer = self.new_buffer.clone();
 
         Ok(())
     }

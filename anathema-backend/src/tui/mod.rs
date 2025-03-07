@@ -152,13 +152,6 @@ impl Backend for TuiBackend {
     }
 
     fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap) {
-        // paint empty reset cells first
-        self.clear();
-
-        // render
-        self.render(glyph_map);
-
-        // resize
         self.screen.resize(new_size);
     }
 

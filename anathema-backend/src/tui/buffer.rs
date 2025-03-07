@@ -162,10 +162,6 @@ impl Buffer {
         }
 
         cell.style.attributes |= style.attributes;
-
-        if let CellState::Empty = cell.state {
-            cell.state = CellState::Occupied(Glyph::space());
-        }
     }
 
     /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
@@ -197,13 +193,18 @@ impl Buffer {
     }
 
     /// An iterator over all the rows in the buffer
-    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = Option<(Glyph, Style)>> + '_> {
+    pub fn rows(&mut self) -> impl Iterator<Item = impl Iterator<Item = Option<(Glyph, Style)>> + '_> {
         self.cell_lines().map(|chunk| {
             chunk.iter().map(|cell| match cell.state {
                 CellState::Occupied(c) => Some((c, cell.style)),
                 _ => None,
             })
         })
+    }
+
+    pub(super) fn reset_cell(&mut self, pos: LocalPos) {
+        let index = pos.to_index(self.size.width);
+        self.inner[index] = Cell::empty();
     }
 
     fn index(&self, pos: LocalPos) -> usize {
@@ -245,8 +246,8 @@ impl Buffer {
         }
     }
 
-    fn cell_lines(&self) -> impl Iterator<Item = &[Cell]> {
-        self.inner.chunks(self.size.width as usize)
+    fn cell_lines(&mut self) -> impl Iterator<Item = &mut [Cell]> {
+        self.inner.chunks_mut(self.size.width as usize)
     }
 }
 
@@ -275,17 +276,21 @@ pub(crate) enum Change {
 impl Change {
     fn width(self) -> usize {
         match self {
-            Change::Remove => 1,
-            Change::Insert(c) => c.width(),
+            Self::Remove => 1,
+            Self::Insert(c) => c.width(),
         }
     }
 }
 
-pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
+pub(crate) fn diff(
+    old: &mut Buffer,
+    new: &mut Buffer,
+    changes: &mut Vec<(LocalPos, Option<Style>, Change)>,
+) -> Result<()> {
     let mut previous_style = None;
 
     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
-        for (x, (old_cell, new_cell)) in old_line.iter().zip(new_line).enumerate() {
+        for (x, (old_cell, new_cell)) in old_line.iter_mut().zip(new_line).enumerate() {
             let x = x as u16;
             let y = y as u16;
 
@@ -305,6 +310,8 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Opti
                 CellState::Continuation => continue,
                 CellState::Occupied(c) => Change::Insert(c),
             };
+
+            *old_cell = *new_cell;
 
             changes.push((LocalPos::new(x, y), style, change));
         }
@@ -338,31 +345,33 @@ pub(crate) fn draw_changes(
         last_y = Some(screen_pos.y);
         next_cell_x = Some(screen_pos.x + change.width() as u16);
 
-        // Apply style
-        if let Some(style) = style {
-            write_style(style, &mut w)?;
-        }
-
         // Draw changes
         match change {
-            Change::Insert(c) => match c {
-                Glyph::Single(c, _) => {
-                    w.queue(Print(c))?;
+            Change::Insert(c) => {
+                // Apply style
+                if let Some(style) = style {
+                    write_style(style, &mut w)?;
                 }
-                Glyph::Cluster(index, _) => {
-                    if let Some(glyph) = glyph_map.get(*index) {
-                        w.queue(Print(glyph))?;
+
+                match c {
+                    Glyph::Single(c, _) => {
+                        w.queue(Print(c))?;
+                    }
+                    Glyph::Cluster(index, _) => {
+                        if let Some(glyph) = glyph_map.get(*index) {
+                            w.queue(Print(glyph))?;
+                        }
                     }
                 }
-            },
+            }
             Change::Remove => {
                 w.queue(Print(' '))?;
             }
         };
     }
 
-    w.queue(cursor::MoveTo(0, 0))?;
     write_style(&Style::reset(), &mut w)?;
+    w.queue(cursor::MoveTo(0, 0))?;
     Ok(())
 }
 

@@ -22,7 +22,7 @@ use anathema_widgets::{
     WidgetId, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
-use notify::{INotifyWatcher, RecommendedWatcher};
+use notify::RecommendedWatcher;
 
 use crate::builder::Builder;
 pub use crate::error::Result;
@@ -67,7 +67,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         factory: Factory,
         message_receiver: Receiver<ViewMessage>,
         emitter: Emitter,
-        watcher: Option<INotifyWatcher>,
+        watcher: Option<RecommendedWatcher>,
         size: Size,
         fps: u32,
         global_event_handler: G,
@@ -129,6 +129,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             if REBUILD.swap(false, Ordering::Relaxed) {
                 frame.return_state();
+                backend.clear();
                 break Ok(());
             }
         })?;
@@ -319,7 +320,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let now = Instant::now();
         backend.render(self.layout_ctx.glyph_map);
-        backend.clear();
+        // backend.clear();
         now.elapsed()
     }
 

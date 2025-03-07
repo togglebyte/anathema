@@ -74,7 +74,7 @@ impl Widget for Position {
     fn layout<'bp>(
         &mut self,
         mut children: LayoutForEach<'_, 'bp>,
-        _constraints: Constraints,
+        constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<Size> {
@@ -108,12 +108,10 @@ impl Widget for Position {
         // Position relative to the viewport,
         // Has no constraints
 
-        // let constraints = match self.placement {
-        //     Placement::Relative => constraints,
-        //     Placement::Absolute => ctx.viewport.constraints(),
-        // };
-
-        let constraints = ctx.viewport.constraints();
+        let constraints = match self.placement {
+            Placement::Relative => constraints,
+            Placement::Absolute => ctx.viewport.constraints(),
+        };
 
         let mut size = Size::ZERO;
 
@@ -121,16 +119,6 @@ impl Widget for Position {
             size = child.layout(children, constraints, ctx)?.into();
             Ok(ControlFlow::Break(()))
         })?;
-
-        // size.width = match self.horz_edge {
-        //     HorzEdge::Left(left) => size.width + left as usize,
-        //     HorzEdge::Right(right) => constraints.max_width() - right as usize,
-        // };
-
-        // size.height = match self.vert_edge {
-        //     VertEdge::Top(top) => size.height + top as usize,
-        //     VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
-        // };
 
         Ok(size)
     }
@@ -150,6 +138,7 @@ impl Widget for Position {
             match self.horz_edge {
                 HorzEdge::Left(left) => ctx.pos.x += left,
                 HorzEdge::Right(right) => {
+                    let child_width = child.size().width;
                     let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right;
                     ctx.pos.x = offset;
                 }
