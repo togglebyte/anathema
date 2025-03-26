@@ -1,12 +1,12 @@
 use anathema_geometry::{LocalPos, Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
 
+use crate::error::Result;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
 use crate::nodes::element::Layout;
 use crate::paint::{Glyphs, PaintCtx, Unsized};
 use crate::widget::{AnyWidget, ForEach};
-use crate::{LayoutForEach, PaintChildren, WidgetId};
-use crate::error::Result;
+use crate::{LayoutForEach, PaintChildren, Style, WidgetId};
 
 #[derive(Debug, PartialEq)]
 pub struct Cache {
@@ -88,7 +88,7 @@ impl Container {
         // Floating widgets always report a zero size
         // as they should not affect their parents
         if self.inner.any_floats() {
-            return Ok(Layout::Unchanged(Size::ZERO))
+            return Ok(Layout::Unchanged(Size::ZERO));
         }
 
         let layout = match changed {
@@ -96,7 +96,6 @@ impl Container {
             false => Layout::Unchanged(self.cache.size),
         };
         Ok(layout)
-
     }
 
     pub(crate) fn position<'bp>(
@@ -129,12 +128,13 @@ impl Container {
         let attributes = attribute_storage.get(self.id);
 
         if !self.inner.any_floats() {
+            let style = Style::from_cell_attribs(attributes);
             // Apply all attributes to the widget
             // as long as it's **not** a floating widget.
             for y in 0..self.cache.size.height as u16 {
                 for x in 0..self.cache.size.width as u16 {
                     let pos = LocalPos::new(x, y);
-                    ctx.set_attributes(attributes, pos);
+                    ctx.set_style(style, pos);
                 }
             }
 
