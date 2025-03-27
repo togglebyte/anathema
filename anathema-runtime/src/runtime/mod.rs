@@ -320,7 +320,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let now = Instant::now();
         backend.render(self.layout_ctx.glyph_map);
-        // backend.clear();
+        backend.clear();
         now.elapsed()
     }
 

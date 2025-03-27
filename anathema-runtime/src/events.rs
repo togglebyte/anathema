@@ -14,7 +14,7 @@ pub trait GlobalEventHandler {
 
 impl GlobalEventHandler for () {
     fn handle(&self, event: Event, tabindex: &mut TabIndex<'_, '_>, _: &mut DeferredComponents) -> Option<Event> {
-        if let Event::Key(KeyEvent { code: KeyCode::Tab, .. }) = event {
+        if let Event::Key(KeyEvent { code: KeyCode::Tab, ctrl: false, .. }) = event {
             tabindex.next();
             return None;
         }
