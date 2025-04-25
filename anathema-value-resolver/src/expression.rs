@@ -372,7 +372,7 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
             resolve_index(&src, index, ctx)
         }
         ValueExpr::Null => ValueExpr::Null,
-        _ => unreachable!("this should return null eventually"),
+        val => unreachable!("this should return null eventually: {val:?}"),
     }
 }
 
@@ -402,7 +402,8 @@ fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
 }
 
 fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> i64 {
-    match resolve_value(index, ctx) {
+    let x = resolve_value(index, ctx);
+    match x {
         ValueKind::Int(index) => index,
         ValueKind::Float(_)
         | ValueKind::Bool(_)
@@ -415,7 +416,7 @@ fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
         | ValueKind::Map
         | ValueKind::Attributes
         | ValueKind::List(_)
-        | ValueKind::DynList(_) => todo!(),
+        | ValueKind::DynList(_) => todo!("the value is {x:?}"),
     }
 }
 

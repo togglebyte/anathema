@@ -66,7 +66,9 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
             }
             Expression::Ident(ident) => self.lookup(ident),
             Expression::Index(source, index) => {
-                ValueExpr::Index(self.resolve(source).into(), self.resolve(index).into())
+                let source = self.resolve(source);
+                let index = self.resolve(index);
+                ValueExpr::Index(source.into(), index.into())
             }
             Expression::Call { .. } => unimplemented!(),
         }

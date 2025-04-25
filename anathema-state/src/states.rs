@@ -9,14 +9,6 @@ pub trait TypeId {
     const TYPE: Type = Type::Composite;
 }
 
-impl TypeId for i64 {
-    const TYPE: Type = Type::Int;
-}
-
-impl TypeId for f64 {
-    const TYPE: Type = Type::Float;
-}
-
 impl TypeId for char {
     const TYPE: Type = Type::Char;
 }
@@ -326,6 +318,10 @@ impl<T: State + TypeId> State for Option<T> {
 
 macro_rules! impl_num_state {
     ($t:ty) => {
+        impl TypeId for $t {
+            const TYPE: Type = Type::Int;
+        }
+
         impl State for $t {
             fn type_info(&self) -> Type {
                 Type::Int
@@ -340,6 +336,10 @@ macro_rules! impl_num_state {
 
 macro_rules! impl_float_state {
     ($t:ty) => {
+        impl TypeId for $t {
+            const TYPE: Type = Type::Float;
+        }
+
         impl State for $t {
             fn type_info(&self) -> Type {
                 Type::Float

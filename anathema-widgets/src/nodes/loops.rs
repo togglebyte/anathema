@@ -1,6 +1,6 @@
 use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::Collection;
+use anathema_value_resolver::{AttributeStorage, Collection};
 
 use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
@@ -10,12 +10,19 @@ use crate::widget::WidgetTreeView;
 pub struct For<'bp> {
     pub(crate) binding: &'bp str,
     pub(crate) collection: Collection<'bp>,
-    // TODO: remove the body here as it's attached to the container
     pub(crate) body: &'bp [Blueprint],
 }
 
 impl<'bp> For<'bp> {
-    pub(super) fn update(&mut self, change: &Change, mut tree: WidgetTreeView<'_, 'bp>) -> Result<()> {
+    pub fn binding(&self) -> &'bp str {
+        self.binding
+    }
+
+    pub(super) fn update(
+        &mut self,
+        change: &Change,
+        mut tree: WidgetTreeView<'_, 'bp>,
+    ) -> Result<()> {
         match change {
             Change::Inserted(index) => {
                 // 1. Declare insert path
@@ -68,39 +75,15 @@ impl<'bp> For<'bp> {
 
                 tree.relative_remove(&[*index as u16])
             }
-            Change::Dropped => {
-                tree.truncate_children();
-
-                // for index in 0..self.collection.count() {
-                //     self.scope_value(ctx.scope, index);
-                //     ctx.scope.push();
-
-                //     let widget = WidgetKind::Iteration(Iteration {
-                //             loop_index: anathema_state::Value::new(index as i64),
-                //             binding: self.binding,
-                //         });
-
-                //     let iter_id = tree
-                //         .insert(path)
-                //         .commit_child()
-                //         .ok_or(Error::TreeTransactionFailed)?;
-
-                //     // Scope the iteration value
-                //     tree.with_value_mut(iter_id, |parent, widget, tree| -> Result<()> {
-                //         let WidgetKind::Iteration(iter) = widget else { unreachable!() };
-                //         ctx.scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
-
-                //         for bp in self.body {
-                //             eval_blueprint(bp, ctx, parent, tree)?;
-                //         }
-
-                //         Ok(())
-                //     })?;
-
-                //     ctx.scope.pop();
-                // }
-            }
+            Change::Dropped => tree.truncate_children(),
             Change::Changed => {
+
+                // If the collection has changed to a different collection 
+                // then truncate the tree
+
+                // crate::awful_debug!("dropping all children for loop with binding: {}", self.binding);
+                // tree.truncate_children();
+
                 // TODO implement this as an optimisation once the runtime is done.
                 //      Use this to flag the element as needs-layout.
                 //      Every element that needs layout should apply

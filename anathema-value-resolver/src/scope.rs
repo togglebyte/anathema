@@ -39,10 +39,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         }
     }
 
-    pub fn with_collection(
-        collection: &'parent Collection<'bp>,
-        parent: &'parent Scope<'parent, 'bp>,
-    ) -> Self {
+    pub fn with_collection(collection: &'parent Collection<'bp>, parent: &'parent Scope<'parent, 'bp>) -> Self {
         let value = Entry::Collection(collection);
         Self {
             outer: None,
@@ -95,17 +92,13 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
             Entry::Index(binding, index, _) if key == binding => {
                 match self.parent.expect("the parent can only be a collection").value {
                     Entry::Collection(collection) => {
-                        match collection.0.kind {
-                            ValueKind::List(_) => {
-                                // Since this is a static list we can just clone the value
-                                // expression here and return that, since it's already evaluated
-                                match &collection.0.expr {
-                                    ValueExpr::List(list) => {
-                                        let value = list[index].clone();
-                                        Some(value)
-                                    }
-                                    _ => unreachable!("the expression can only be a list"),
-                                }
+                        match &collection.0.kind {
+                            ValueKind::List(list) => {
+                                let value_expr = ValueExpr::Index(
+                                    collection.0.expr.clone().into(),
+                                    ValueExpr::Int(Kind::Static(index as i64)).into(),
+                                );
+                                Some(value_expr)
                             }
                             ValueKind::DynList(value) => {
                                 let state = value.as_state()?;
@@ -134,8 +127,8 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
             Some(scope) => scope,
             None => match self.parent {
                 Some(parent) => parent.outer(),
-                None => panic!("no outer scope, no parent")
-            }
+                None => panic!("no outer scope, no parent"),
+            },
         }
     }
 }

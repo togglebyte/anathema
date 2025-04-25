@@ -464,10 +464,29 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         let mut tree = self.tree.view_mut();
 
         self.changes.iter().try_for_each(|(sub, change)| {
+            anathema_widgets::awful_debug!("--- changes ---");
             sub.iter().try_for_each(|value_id| {
                 let widget_id = value_id.key();
+                anathema_widgets::awful_debug!("<change {change:?}> | <value id: {value_id:?}>");
 
                 if let Some(widget) = tree.get_mut(widget_id) {
+                    let kind = &widget.kind;
+                    match kind {
+                        WidgetKind::Element(element) => {
+                            // anathema_widgets::awful_debug!("{}", element.ident);
+                        }
+                        WidgetKind::For(forloop) => {
+                            anathema_widgets::awful_debug!("<for {}>", forloop.binding());
+                        }
+                        WidgetKind::Iteration(iteration) => {
+                            anathema_widgets::awful_debug!("<iter>");
+                        }
+                        _ => ()
+                        // WidgetKind::ControlFlow(control_flow) => todo!(),
+                        // WidgetKind::ControlFlowContainer(_) => todo!(),
+                        // WidgetKind::Component(component) => todo!(),
+                        // WidgetKind::Slot => todo!(),
+                    }
                     if let WidgetKind::Element(element) = &mut widget.kind {
                         element.invalidate_cache();
                     }
@@ -488,6 +507,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
             Result::Ok(())
         })?;
+
+        anathema_widgets::debug_tree!(tree);
 
         self.changes.clear();
 
