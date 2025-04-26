@@ -494,6 +494,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
                 // check that the node hasn't already been removed
                 if !tree.contains(widget_id) {
+                    anathema_widgets::awful_debug!("widget removed ...");
                     return Result::Ok(());
                 }
 

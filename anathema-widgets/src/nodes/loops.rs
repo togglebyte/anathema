@@ -22,6 +22,7 @@ impl<'bp> For<'bp> {
         &mut self,
         change: &Change,
         mut tree: WidgetTreeView<'_, 'bp>,
+        attribute_storage: &mut AttributeStorage<'bp>,
     ) -> Result<()> {
         match change {
             Change::Inserted(index) => {
@@ -77,21 +78,11 @@ impl<'bp> For<'bp> {
             }
             Change::Dropped => tree.truncate_children(),
             Change::Changed => {
-
-                // If the collection has changed to a different collection 
+                // If the collection has changed to a different collection
                 // then truncate the tree
 
-                // crate::awful_debug!("dropping all children for loop with binding: {}", self.binding);
-                // tree.truncate_children();
-
-                // TODO implement this as an optimisation once the runtime is done.
-                //      Use this to flag the element as needs-layout.
-                //      Every element that needs layout should apply
-                //      layout using cached constraints and size.
-                //      If the size changes, then this has to be propagate
-                //      throughout the widget tree
-                //
-                // NOTE: This comment was written 12,000 years ago, is this still relevant?
+                self.collection.reload(attribute_storage);
+                tree.truncate_children();
             }
         }
 

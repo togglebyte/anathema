@@ -13,7 +13,9 @@ use crate::{Element, WidgetContainer, WidgetId, WidgetKind};
 
 pub mod debug;
 
-// TODO: Add the option to "skip" values with an offset for `inner_each` (this is for overflow widgets)
+// TODO: 
+// Add the option to "skip" values with an offset for `inner_each` (this is for overflow widgets)
+// Note that this might not be possible, depending on how widget generation goes
 
 /// Determine what kind of widgets that should be laid out:
 /// Fixed or floating.
@@ -205,6 +207,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
                     WidgetKind::For(for_loop) => {
                         let len = for_loop.collection.len();
+                        crate::awful_debug!("len: {len}");
                         if len == 0 {
                             return Ok(ControlFlow::Break(()));
                         }
@@ -213,7 +216,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         let mut children = LayoutForEach::with_generator(
                             children,
                             &scope,
-                            Generator::from_loop(widget.children, for_loop.binding, for_loop.collection.len()),
+                            Generator::from_loop(widget.children, for_loop.binding, len),
                             self.filter,
                             self.parent_component,
                         );
