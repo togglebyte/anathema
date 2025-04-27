@@ -207,7 +207,6 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
                     WidgetKind::For(for_loop) => {
                         let len = for_loop.collection.len();
-                        crate::awful_debug!("len: {len}");
                         if len == 0 {
                             return Ok(ControlFlow::Break(()));
                         }

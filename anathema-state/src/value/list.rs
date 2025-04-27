@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
 
-use super::{Type, Value};
+use super::{Shared, Type, Unique, Value};
 use crate::states::{AnyList, AnyState};
 use crate::store::changed;
+use crate::store::values::get_unique;
 use crate::{Change, PendingValue};
 
 // TODO: Optimisation: changing the list should probably just create one
@@ -63,6 +64,24 @@ impl<T: AnyState + 'static> Value<List<T>> {
     pub fn empty() -> Self {
         let list = List { inner: VecDeque::new() };
         Value::new(list)
+    }
+
+    pub fn get(&self, index: usize) -> Option<Shared<T>> {
+        let list = &*self.to_ref();
+        list.get(index).map(Value::to_ref)
+    }
+
+    pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<Unique<'a, T>> {
+        let list = &*self.to_ref();
+        let value = list.get(index)?;
+
+        let key = value.key;
+        let value = Unique {
+            value: Some(get_unique(key.owned())),
+            key,
+            _p: std::marker::PhantomData,
+        };
+        Some(value)
     }
 
     /// Push a value to the list

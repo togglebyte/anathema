@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use super::{Type, Value};
+use super::{Shared, Type, Unique, Value};
 use crate::states::{AnyMap, AnyState};
+use crate::store::values::get_unique;
 use crate::PendingValue;
 
 #[derive(Debug)]
@@ -24,6 +25,23 @@ impl<T: AnyState> Map<T> {
 }
 
 impl<T: 'static + AnyState> Value<Map<T>> {
+    pub fn get(&self, key: impl AsRef<str>) -> Option<Shared<T>> {
+        let list = &*self.to_ref();
+        list.get(key.as_ref()).map(Value::to_ref)
+    }
+
+    pub fn get_mut<'a>(&'a mut self, key: impl AsRef<str>) -> Option<Unique<'a, T>> {
+        let list = &*self.to_ref();
+        let value = list.get(key.as_ref())?;
+
+        let key = value.key;
+        let value = Unique {
+            value: Some(get_unique(key.owned())),
+            key,
+            _p: std::marker::PhantomData,
+        };
+        Some(value)
+    }
     /// Insert a value into the `Map`.
     /// The value will be wrapped in a `Value<T>` so it's not advisable to insert pre-wrapped
     /// value.
