@@ -19,6 +19,7 @@ pub struct Cache {
 impl Cache {
     pub(crate) const ZERO: Self = Self {
         size: Size::ZERO,
+        // Constraints are `None` for the root node
         constraints: None,
         child_count: 0,
         valid: false,

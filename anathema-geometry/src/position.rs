@@ -204,3 +204,26 @@ impl AddAssign for LocalPos {
         self.y += rhs.y;
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn index_from_coords() {
+        let width = 20;
+
+        let actual = LocalPos::new(0, 0).to_index(width);
+        let expected = 0;
+        assert_eq!(expected, actual);
+
+        let actual = LocalPos::new(10, 0).to_index(width);
+        let expected = 10;
+        assert_eq!(expected, actual);
+
+        let actual = LocalPos::new(4, 20).to_index(width);
+        let expected = (width * width) as usize + 4;
+        assert_eq!(expected, actual);
+    }
+}

@@ -1,7 +1,7 @@
 use crate::{Pos, Size};
 
 /// A region in global space
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Region {
     /// The starting position of the region
     pub from: Pos,
@@ -68,5 +68,35 @@ impl From<(Pos, Size)> for Region {
     fn from((from, size): (Pos, Size)) -> Self {
         let to = Pos::new(from.x + size.width as i32, from.y + size.height as i32);
         Self::new(from, to)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn region_inersect() {
+        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
+        let b = Region::new(Pos::new(5, 5), Pos::new(8, 8));
+        assert!(a.intersects(&b));
+        assert!(b.intersects(&a));
+    }
+
+    #[test]
+    fn region_contains() {
+        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
+        assert!(a.contains(Pos::ZERO));
+        assert!(a.contains(Pos::new(9, 9)));
+        assert!(!a.contains(Pos::new(10, 10)));
+    }
+
+    #[test]
+    fn constrain_region() {
+        let inner = Region::from((Pos::ZERO, Size::new(10, 10)));
+        let mut outer = Region::from((Pos::ZERO, Size::new(100, 100)));
+        outer.constrain(&inner);
+        let expected = inner;
+        assert_eq!(expected, outer);
     }
 }
