@@ -7,10 +7,9 @@ edition.workspace = true
 proc-macro = true
 
 [dependencies]
-manyhow = "0.10.4"
+proc-macro2 = "1.0.95"
 quote = "1.0.35"
-quote-use = "0.8.0"
-syn = "2.0.48"
+syn = "2.0.48" # TODO determine which features we should actually use
 
 [lints]
 workspace = true
