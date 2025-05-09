@@ -15,7 +15,6 @@ pub struct Component<'bp> {
     pub state_id: StateId,
     /// Used to identify the component in the component registry.
     /// This id will not be unique for prototypes
-    // TODO: do we need the component id?
     pub component_id: ComponentBlueprintId,
     pub widget_id: WidgetId,
     pub parent: Option<WidgetId>,
