@@ -308,7 +308,7 @@ pub trait Component: 'static {
     fn on_blur(
         &mut self,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -317,7 +317,7 @@ pub trait Component: 'static {
     fn on_focus(
         &mut self,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -327,7 +327,7 @@ pub trait Component: 'static {
         &mut self,
         key: KeyEvent,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -337,7 +337,7 @@ pub trait Component: 'static {
         &mut self,
         mouse: MouseEvent,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -346,7 +346,7 @@ pub trait Component: 'static {
     fn tick(
         &mut self,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         context: Context<'_, '_, Self::State>,
         dt: Duration,
     ) {
@@ -357,7 +357,7 @@ pub trait Component: 'static {
         &mut self,
         message: Self::Message,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -366,7 +366,7 @@ pub trait Component: 'static {
     fn resize(
         &mut self,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -377,7 +377,7 @@ pub trait Component: 'static {
         ident: &str,
         value: &dyn AnyState,
         state: &mut Self::State,
-        mut elements: Children<'_, '_>,
+        mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
@@ -405,21 +405,21 @@ pub enum ComponentKind {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, ev: Event) -> Event;
+    fn any_event(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, ev: Event) -> Event;
 
-    fn any_message(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>);
+    fn any_message(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>);
 
-    fn any_tick(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, dt: Duration);
+    fn any_tick(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, dt: Duration);
 
-    fn any_focus(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
+    fn any_focus(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_blur(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
+    fn any_blur(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_resize(&mut self, elements: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
+    fn any_resize(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
     fn any_receive(
         &mut self,
-        elements: Children<'_, '_>,
+        children: Children<'_, '_>,
         ctx: AnyComponentContext<'_, '_>,
         name: &str,
         value: &dyn AnyState,
@@ -435,7 +435,7 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, event: Event) -> Event {
+    fn any_event(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, event: Event) -> Event {
         let mut state = ctx
             .state
             .take()
@@ -444,10 +444,10 @@ where
         let context = Context::<T::State>::new(ctx);
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
-            Event::Key(ev) => self.on_key(ev, &mut *state, elements, context),
-            Event::Mouse(ev) => self.on_mouse(ev, &mut *state, elements, context),
-            Event::Tick(dt) => self.tick(&mut *state, elements, context, dt),
-            Event::Resize(_) => self.resize(&mut *state, elements, context),
+            Event::Key(ev) => self.on_key(ev, &mut *state, children, context),
+            Event::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
+            Event::Tick(dt) => self.tick(&mut *state, children, context, dt),
+            Event::Resize(_) => self.resize(&mut *state, children, context),
             Event::Noop | Event::Stop => (),
         }
         event
@@ -461,7 +461,7 @@ where
         T::TICKS
     }
 
-    fn any_message(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>) {
+    fn any_message(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>) {
         let mut state = ctx
             .state
             .take()
@@ -469,52 +469,52 @@ where
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
         let context = Context::<T::State>::new(ctx);
-        self.message(*message, &mut *state, elements, context);
+        self.message(*message, &mut *state, children, context);
     }
 
-    fn any_focus(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
+    fn any_focus(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
         let mut state = ctx
             .state
             .take()
             .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.on_focus(&mut *state, elements, context);
+        self.on_focus(&mut *state, children, context);
     }
 
-    fn any_blur(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
+    fn any_blur(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
         let mut state = ctx
             .state
             .take()
             .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.on_blur(&mut *state, elements, context);
+        self.on_blur(&mut *state, children, context);
     }
 
-    fn any_tick(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, dt: Duration) {
+    fn any_tick(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, dt: Duration) {
         let mut state = ctx
             .state
             .take()
             .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.tick(&mut *state, elements, context, dt);
+        self.tick(&mut *state, children, context, dt);
     }
 
-    fn any_resize(&mut self, elements: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
+    fn any_resize(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
         let mut state = ctx
             .state
             .take()
             .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.resize(&mut *state, elements, context);
+        self.resize(&mut *state, children, context);
     }
 
     fn any_receive(
         &mut self,
-        elements: Children<'_, '_>,
+        children: Children<'_, '_>,
         mut ctx: AnyComponentContext<'_, '_>,
         name: &str,
         value: &dyn AnyState,
@@ -527,7 +527,7 @@ where
 
         let context = Context::<T::State>::new(ctx);
 
-        self.receive(name, value, &mut *state, elements, context);
+        self.receive(name, value, &mut *state, children, context);
     }
 }
 

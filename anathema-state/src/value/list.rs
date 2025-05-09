@@ -61,6 +61,22 @@ impl<T: AnyState> Default for List<T> {
 /// list.push(123);
 /// ```
 impl<T: AnyState + 'static> Value<List<T>> {
+    fn with_mut<F, U>(&mut self, f: F) -> U where F: FnOnce(&mut List<T>) -> U {
+        let mut inner = get_unique(self.key.owned());
+
+        let list = inner
+            .val
+            .to_any_mut()
+            .downcast_mut()
+            .expect("the type should never change");
+
+        let ret_val = f(list);
+
+        crate::store::values::return_owned(self.key.owned(), inner);
+
+        ret_val
+    }
+
     pub fn empty() -> Self {
         let list = List { inner: VecDeque::new() };
         Value::new(list)
@@ -91,21 +107,21 @@ impl<T: AnyState + 'static> Value<List<T>> {
 
     /// Push a value to the back of the list
     pub fn push_back(&mut self, value: impl Into<Value<T>>) {
-        let index = {
-            let list = &mut *self.to_mut();
-            let index = list.inner.len();
-            let value = value.into();
-            list.inner.push_back(value);
+        let value = value.into();
 
+        let index = self.with_mut(|list| {
+            let index = list.len();
+            list.inner.push_back(value);
             index as u32
-        };
+        });
+
         changed(self.key, Change::Inserted(index));
     }
 
     /// Push a value to the front of the list
     pub fn push_front(&mut self, value: impl Into<Value<T>>) {
         let value = value.into();
-        self.to_mut().inner.push_front(value);
+        self.with_mut(|list| list.inner.push_front(value));
         changed(self.key, Change::Inserted(0));
     }
 
@@ -116,7 +132,7 @@ impl<T: AnyState + 'static> Value<List<T>> {
     /// Will panic if the index is out of bounds
     pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
         let value = value.into();
-        self.to_mut().inner.insert(index, value);
+        self.with_mut(|list| list.inner.insert(index, value));
         changed(self.key, Change::Inserted(index as u32));
     }
 

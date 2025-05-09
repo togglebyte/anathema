@@ -38,8 +38,7 @@ struct Button;
 
 #[derive(State)]
 struct ButtonState {
-    caption: Value<String>,
-    in_focus: Value<bool>,
+    active: Value<u8>,
 }
 
 impl Component for Button {
@@ -54,7 +53,7 @@ impl Component for Button {
         mut elements: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
-        state.in_focus.set(false);
+        state.active.set(0);
     }
 
     fn on_focus(
@@ -63,7 +62,7 @@ impl Component for Button {
         mut elements: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
-        state.in_focus.set(true);
+        state.active.set(1);
     }
 
     fn on_key(
@@ -73,13 +72,25 @@ impl Component for Button {
         mut elements: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
-        if matches!(key.state, KeyState::Press) {
-            if let KeyCode::Enter = key.code {
-                // context.publish("click", |state| &state.caption)
-                context.publish("click")
-            }
+        if !matches!(key.state, KeyState::Press) {
+            return
+        }
+
+        if let KeyCode::Enter = key.code {
+            context.publish("click")
         }
     }
+
+    fn on_mouse(
+        &mut self,
+        mouse: MouseEvent,
+        hit: bool,
+        state: &mut Self::State,
+        mut elements: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
+    ) {
+    }
+
 }
 
 fn main() {
@@ -110,8 +121,7 @@ fn main() {
             "examples/templates/buttons/button.aml",
             move || Button,
             || ButtonState {
-                caption: String::from("lark").into(),
-                in_focus: false.into(),
+                active: 0.into(),
             },
         )
         .unwrap();

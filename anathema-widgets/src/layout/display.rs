@@ -24,15 +24,3 @@ impl TryFrom<&ValueKind<'_>> for Display {
         Ok(disp)
     }
 }
-
-// impl From<Display> for CommonVal {
-//     fn from(value: Display) -> Self {
-//         let s = match value {
-//             Display::Show => "show",
-//             Display::Hide => "hide",
-//             Display::Exclude => "exclude",
-//         };
-
-//         CommonVal::Str(s)
-//     }
-// }

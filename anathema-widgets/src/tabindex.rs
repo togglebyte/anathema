@@ -197,22 +197,22 @@ mod test {
     use super::*;
 
     #[test]
-    fn aaa() {
+    fn comparison() {
         let a = IndexRef {
-            path: Some(&[0]),
+            path: &[0],
             index: 1,
         };
 
         let b = IndexRef {
-            path: Some(&[0, 0]),
+            path: &[0, 0],
             index: 1,
         };
 
         match a.partial_cmp(&b) {
-            Some(Ordering::Less) => panic!("less"),
-            Some(Ordering::Greater) => panic!("greater"),
-            Some(Ordering::Equal) => panic!("equal"),
-            None => todo!(),
+            Some(Ordering::Less) => (),
+            Some(Ordering::Greater) => unreachable!(),
+            Some(Ordering::Equal) => unreachable!(),
+            None => panic!(),
         }
     }
 }

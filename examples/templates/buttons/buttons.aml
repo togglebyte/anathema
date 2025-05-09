@@ -3,5 +3,5 @@ align [alignment: "centre"]
         column
             text "Simple counter app"
             @button (click->increment) [caption: "Increment"]
-            text number
+            text state.number
             @button (click->decrement) [caption: "Decrement"]

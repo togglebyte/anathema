@@ -218,26 +218,3 @@ impl<'bp> crate::widget::Filter<'bp> for PositionFilter {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use anathema_geometry::Region;
-
-    use super::*;
-
-    #[test]
-    fn region_inersect() {
-        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
-        let b = Region::new(Pos::new(5, 5), Pos::new(8, 8));
-        assert!(a.intersects(&b));
-        assert!(b.intersects(&a));
-    }
-
-    #[test]
-    fn region_contains() {
-        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
-        assert!(a.contains(Pos::ZERO));
-        assert!(a.contains(Pos::new(9, 9)));
-        assert!(!a.contains(Pos::new(10, 10)));
-    }
-}

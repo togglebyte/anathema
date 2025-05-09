@@ -13,11 +13,11 @@ use anathema_value_resolver::AttributeStorage;
 
 pub use self::factory::Factory;
 pub use self::style::{Attributes, Style};
+use crate::error::Result;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter};
 use crate::paint::{PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
 use crate::WidgetContainer;
-use crate::error::Result;
 
 mod factory;
 mod style;
@@ -70,9 +70,7 @@ pub struct Components {
 
 impl Components {
     pub fn new() -> Self {
-        Self {
-            inner: vec![],
-        }
+        Self { inner: vec![] }
     }
 
     pub fn push(
@@ -103,7 +101,6 @@ impl Components {
         self.inner.get(index).map(|e| (e.widget_id, e.state_id))
     }
 
-
     /// This is used to send messages to components.
     /// The `ComponentBlueprintId` is only available to components that were added
     /// as a singular component, not prototypes
@@ -113,12 +110,17 @@ impl Components {
 
     /// Get the component by its widget id
     pub fn get_by_widget_id(&mut self, id: WidgetId) -> Option<(WidgetId, StateId)> {
-        self.inner.iter().find(|entry| entry.widget_id == id).map(|e| (e.widget_id, e.state_id))
+        self.inner
+            .iter()
+            .find(|entry| entry.widget_id == id)
+            .map(|e| (e.widget_id, e.state_id))
     }
 
     /// Get widget id and state id for a component that accepts tick events
     pub fn get_ticking(&self, index: usize) -> Option<(WidgetId, StateId)> {
-        self.inner.get(index).and_then(|e| e.accept_ticks.then(|| (e.widget_id, e.state_id)))
+        self.inner
+            .get(index)
+            .and_then(|e| e.accept_ticks.then(|| (e.widget_id, e.state_id)))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {
@@ -128,7 +130,6 @@ impl Components {
     pub fn len(&self) -> usize {
         self.inner.len()
     }
-
 }
 
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
