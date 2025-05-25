@@ -20,6 +20,20 @@ impl<'children, 'tree, 'bp> Elements<'children, 'tree, 'bp> {
         self.make_query(Kind::AtPosition(pos.into()))
     }
 
+    pub fn first<F, U>(&mut self, mut f: F) -> Option<U>
+    where
+        F: FnMut(&mut Element<'_>, &mut Attributes<'_>) -> U,
+    {
+        self.make_query(Kind::All).first(f)
+    }
+
+    pub fn each<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
+    {
+        self.make_query(Kind::All).each(f)
+    }
+
     pub fn by_attribute<'a>(
         &mut self,
         key: &'a str,
@@ -147,6 +161,7 @@ where
 // -----------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
 pub enum Kind<'a> {
+    All,
     ByTag(&'a str),
     ByAttribute(&'a str, QueryValue<'a>),
     AtPosition(Pos),
@@ -158,6 +173,7 @@ impl<'bp, 'a> Filter<'bp> for Kind<'a> {
 
     fn filter(&self, el: &Element<'bp>, attributes: &mut AttributeStorage<'_>) -> bool {
         match self {
+            Kind::All => true,
             Kind::ByTag(tag) => el.ident == *tag,
             Kind::ByAttribute(key, value) => {
                 let attribs = attributes.get(el.container.id);

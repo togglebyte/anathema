@@ -86,7 +86,7 @@ impl<T: AnyState> Value<T> {
     /// There can be several shared references to a given value as long as there
     /// is no unique access to the value.
     #[must_use]
-    pub fn to_ref(&self) -> Shared<T> {
+    pub fn to_ref(&self) -> Shared<'_, T> {
         let (key, value) = make_shared(self.key.owned()).expect("the value exists as it's coming directly from `Self`");
 
         Shared {
@@ -257,12 +257,12 @@ impl ElementState {
     }
 }
 
-pub struct Shared<T: 'static> {
+pub struct Shared<'a, T: 'static> {
     state: SharedState,
-    _p: PhantomData<T>,
+    _p: PhantomData<&'a T>,
 }
 
-impl<T> Shared<T> {
+impl<'a, T> Shared<'a, T> {
     fn new(key: SharedKey, value: RcElement<OwnedValue>) -> Self {
         Self {
             state: SharedState::new(key, value),
@@ -275,7 +275,7 @@ impl<T> Shared<T> {
     }
 }
 
-impl<T> Deref for Shared<T> {
+impl<'a, T> Deref for Shared<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -283,13 +283,13 @@ impl<T> Deref for Shared<T> {
     }
 }
 
-impl<T> AsRef<T> for Shared<T> {
+impl<'a, T> AsRef<T> for Shared<'a, T> {
     fn as_ref(&self) -> &T {
         self.deref()
     }
 }
 
-impl<T: Debug> Debug for Shared<T> {
+impl<'a, T: Debug> Debug for Shared<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let state = self
             .state
@@ -370,7 +370,7 @@ pub struct ValueRef {
 
 impl ValueRef {
     /// Load the value. This will return `None` if the owner has dropped the value
-    pub fn value<T: 'static>(&self) -> Option<Shared<T>> {
+    pub fn value<T: 'static>(&self) -> Option<Shared<'_, T>> {
         let (key, value) = try_make_shared(self.value_key.owned())?;
         let shared = Shared::new(key, value);
         Some(shared)
@@ -428,7 +428,7 @@ impl PendingValue {
     }
 
     /// Load the value. This will return `None` if the owner has dropped the value
-    pub fn value<T: 'static>(&self) -> Option<Shared<T>> {
+    pub fn value<T: 'static>(&self) -> Option<Shared<'_, T>> {
         let (key, value) = try_make_shared(self.0.owned())?;
         let shared = Shared::new(key, value);
         Some(shared)

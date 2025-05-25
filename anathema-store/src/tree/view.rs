@@ -390,7 +390,9 @@ mod test {
                 assert_eq!(*value, Value::I(999));
                 assert_eq!(*outer_value, Value::I(123));
                 assert_eq!(*inner_value, Value::I(1));
+                ControlFlow::Continue::<(), _>(())
             });
+            ControlFlow::Break(())
         });
     }
 }

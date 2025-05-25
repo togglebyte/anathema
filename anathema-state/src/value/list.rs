@@ -1,17 +1,13 @@
+//! The reason the `List<T>` has the insert and remove implementation on `Value<List<T>>` instead of
+//! having it directly on `List<T>`, unlike `Map<T>` is because the list generates different
+//! changes and are used with for-loops, unlike the map.
 use std::collections::VecDeque;
 
 use super::{Shared, Type, Unique, Value};
 use crate::states::{AnyList, AnyState};
 use crate::store::changed;
-use crate::store::values::get_unique;
+use crate::store::values::{get_unique, try_make_shared};
 use crate::{Change, PendingValue};
-
-// TODO: Optimisation: changing the list should probably just create one
-//       change instead of two for the list.
-//
-//       Since the list is used with `deref_mut` it creates a `Unique<T>`
-//       which will insert a `Change::Updated` entry, even though
-//       that's probably superfluous.
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -19,7 +15,7 @@ pub struct List<T> {
 }
 
 impl<T: AnyState> List<T> {
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self { inner: VecDeque::new() }
     }
 
@@ -61,7 +57,10 @@ impl<T: AnyState> Default for List<T> {
 /// list.push(123);
 /// ```
 impl<T: AnyState + 'static> Value<List<T>> {
-    fn with_mut<F, U>(&mut self, f: F) -> U where F: FnOnce(&mut List<T>) -> U {
+    fn with_mut<F, U>(&mut self, f: F) -> U
+    where
+        F: FnOnce(&mut List<T>) -> U,
+    {
         let mut inner = get_unique(self.key.owned());
 
         let list = inner
@@ -82,9 +81,14 @@ impl<T: AnyState + 'static> Value<List<T>> {
         Value::new(list)
     }
 
-    pub fn get(&self, index: usize) -> Option<Shared<T>> {
+    pub fn get<'a>(&'a self, index: usize) -> Option<Shared<'a, T>> {
         let list = &*self.to_ref();
-        list.get(index).map(Value::to_ref)
+        let value = list.get(index)?;
+        let key = value.key;
+        
+        let (key, value) = try_make_shared(key.owned())?;
+        let shared = Shared::new(key, value);
+        Some(shared)
     }
 
     pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<Unique<'a, T>> {
@@ -239,9 +243,11 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::ops::DerefMut;
+
     use super::*;
     use crate::store::testing::drain_changes;
-    use crate::Map;
+    use crate::{Map, State, Subscriber};
 
     #[test]
     fn insert() {
@@ -257,36 +263,21 @@ mod test {
         assert_eq!(*val, 1);
     }
 
-    fn setup_map<T: 'static + State>(key: &str, a: T, b: T) -> Map<List<T>> {
-        let mut map = Map::empty();
-        let mut list = List::empty();
-        list.push_back(a);
-        list.push_back(b);
-        map.insert(key, list);
-        map
-    }
-
     #[test]
     fn notify_insert() {
-        let mut map = setup_map("a", 1, 2);
-
-        let list = map.get_mut("a").unwrap();
-        let list_ref = list.reference();
-        list_ref.subscribe(Subscriber::ZERO);
-
+        let mut list = Value::new(List::<u32>::empty());
+        list.reference().subscribe(Subscriber::ZERO);
         list.push_back(1);
 
         let (_, change) = drain_changes().remove(0);
-        assert!(matches!(change, Change::Inserted(_, _)));
+        assert!(matches!(change, Change::Inserted(_)));
     }
 
     #[test]
     fn notify_remove() {
-        let mut map = setup_map("a", 1, 2);
-
-        let list = map.get_mut("a").unwrap();
-        let list_ref = list.reference();
-        list_ref.subscribe(Subscriber::ZERO);
+        let mut list = Value::new(List::<u32>::empty());
+        list.push_back(1);
+        list.reference().subscribe(Subscriber::ZERO);
         list.remove(0);
 
         let change = drain_changes().remove(0);
@@ -295,12 +286,9 @@ mod test {
 
     #[test]
     fn notify_pop_front() {
-        let mut map = setup_map("a", 1, 2);
-
-        let list = map.get_mut("a").unwrap();
-
-        let list_ref = list.reference();
-        list_ref.subscribe(Subscriber::ZERO);
+        let mut list = Value::new(List::<u32>::empty());
+        list.push_back(1);
+        list.reference().subscribe(Subscriber::ZERO);
         list.pop_front();
 
         let change = drain_changes().remove(0);
@@ -309,12 +297,10 @@ mod test {
 
     #[test]
     fn notify_pop_back() {
-        let mut map = setup_map("a", 1, 2);
-
-        let list = map.get_mut("a").unwrap();
-
-        let list_ref = list.reference();
-        list_ref.subscribe(Subscriber::ZERO);
+        let mut list = Value::new(List::<u32>::empty());
+        list.push_back(0);
+        list.push_back(1);
+        list.reference().subscribe(Subscriber::ZERO);
         list.pop_back();
 
         let change = drain_changes().remove(0);

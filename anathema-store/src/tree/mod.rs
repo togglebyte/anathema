@@ -1,7 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-pub use self::foreach::Generator;
-pub use self::iter::{TreeFilter, TreeForEach};
+pub use self::iter::TreeFilter;
 pub use self::nodepath::{new_node_path, root_node, AsNodePath};
 pub use self::pathfinder::PathFinder;
 pub use self::transactions::InsertTransaction;
@@ -10,7 +9,6 @@ use self::visitor::NodeVisitor;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
 
-mod foreach;
 mod iter;
 mod nodepath;
 mod pathfinder;
@@ -194,14 +192,6 @@ impl<T> Tree<T> {
         node.children.clear(&mut self.values, &mut self.removed_values);
     }
 
-    pub fn for_each<'filter, F: TreeFilter>(&mut self, filter: &'filter mut F) -> TreeForEach<'_, 'filter, T, F> {
-        TreeForEach {
-            nodes: &self.layout,
-            values: &mut self.values,
-            filter,
-        }
-    }
-
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the rest of the tree.
     ///
@@ -273,17 +263,6 @@ impl<T> Tree<T> {
         P: PathFinder<Input = T>,
     {
         apply_path_finder(self, node_path, path_finder);
-    }
-
-    // /// Apply the [`NodeWalker`].
-    // pub fn apply_node_walker(&mut self, path: &[u16], mut walker: impl NodeWalker) {
-    //     unimplemented!()
-    //     // walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
-    // }
-
-    /// Apply a [`NodeVisitor`], depth first
-    pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
-        visitor::apply_visitor(&self.layout, &mut self.values, visitor);
     }
 
     /// Split the tree giving access to the layout and the values.

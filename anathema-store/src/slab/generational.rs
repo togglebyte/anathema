@@ -565,7 +565,7 @@ mod test {
         let _ = slab.remove(key_1);
         let key_2 = slab.insert(2);
         assert_eq!(key_1.index(), key_2.index());
-        assert!(key_1.gen() != key_2.gen());
+        assert!(key_1.generation() != key_2.generation());
     }
 
     #[test]
@@ -634,7 +634,7 @@ mod test {
         index.set_gen(u16::MAX);
         let index = index.bump();
 
-        assert_eq!(index.gen().0, 0);
+        assert_eq!(index.generation().0, 0);
     }
 
     #[test]

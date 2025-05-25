@@ -442,7 +442,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{drain_changes, Changes, List, States};
+    use anathema_state::{drain_changes, Changes, List, States, Value};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use super::*;
@@ -468,9 +468,10 @@ mod test {
             assert_eq!(value.as_int(), None);
 
             test.with_state(|state| {
-                let list = state.get_mut("list".into()).unwrap();
-                let mut list = list.to_mut_cast::<List<u32>>();
-                list.push(1);
+                // let list = state.get_mut("list".into()).unwrap();
+                // let mut list = list.to_mut_cast::<List<u32>>();
+                // list.push(1);
+                panic!()
             });
 
             drain_changes(&mut changes);
@@ -494,20 +495,22 @@ mod test {
         setup(&mut states, Default::default(), |test| {
             let expr = index(index(ident("state"), strlit("list")), num(1));
 
-            let mut list = List::<u32>::empty();
+            let mut list = Value::new(List::<u32>::empty());
             list.push(0);
             list.push(1);
             list.push(2);
-            test.set_state("list", list);
+            // test.set_state("list", list);
+            panic!();
 
             let mut value = test.eval(&expr);
 
             assert_eq!(value.as_int().unwrap(), 1);
 
             test.with_state(|state| {
-                let list = state.get_mut("list".into()).unwrap();
-                let mut list = list.to_mut_cast::<List<u32>>();
-                list.remove(0);
+                // let list = state.get_mut("list".into()).unwrap();
+                // let mut list = list.to_mut_cast::<List<u32>>();
+                // list.remove(0);
+                panic!()
             });
 
             drain_changes(&mut changes);

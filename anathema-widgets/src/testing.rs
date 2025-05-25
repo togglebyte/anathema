@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use anathema_geometry::Size;
-use anathema_store::tree::TreeForEach;
 use anathema_strings::HStrings;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Expression, Globals};

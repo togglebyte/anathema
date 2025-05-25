@@ -151,7 +151,7 @@ impl<T> Owned<T> {
         match self.inner.borrow_mut().remove(key) {
             Some(OwnedEntry::Occupied(value)) => value,
             Some(OwnedEntry::Unique) => panic!("invalid state (U)"),
-            Some(OwnedEntry::Shared(_)) => panic!("invalid state"),
+            Some(OwnedEntry::Shared(_)) => panic!("invalid state (S)"),
             None => panic!("invalid state: the value does not exist"),
         }
     }

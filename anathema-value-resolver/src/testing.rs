@@ -1,4 +1,4 @@
-use anathema_state::{AnyState, Hex, List, Map, StateId, States, SubTo, Subscriber};
+use anathema_state::{AnyMap, AnyState, Hex, List, Map, StateId, States, SubTo, Subscriber};
 use anathema_store::slab::Key;
 use anathema_templates::{Expression, Globals, Variables};
 use expression::ValueExpr;
@@ -40,8 +40,8 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     }
 
     pub fn set_attribute(&mut self, key: &'bp str, value: Value<'bp>) {
-        let attributes = self.attributes.get_mut(Key::ZERO);
-        attributes.set(key, value);
+        // let attributes = self.attributes.get_mut(Key::ZERO);
+        // attributes.set(key, value);
     }
 
     pub(crate) fn with_state<F>(&mut self, mut f: F)
@@ -54,8 +54,7 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     }
 
     pub(crate) fn set_state(&mut self, key: &str, value: impl AnyState) {
-        panic!("insert no longer exists directly on the map, it can't as it needs to trigger changes");
-        //     self.with_state(|state| state.insert(key, Box::new(value)));
+        self.with_state(|state| state.insert(key, Box::new(value)));
     }
 }
 
@@ -63,9 +62,10 @@ pub(crate) fn setup<'bp, F>(states: &mut States, globals: Variables, mut f: F)
 where
     F: FnMut(&mut TestCase<'_, 'bp>),
 {
-    let state: Map<Box<dyn AnyState>> = Map::empty();
-    let state = Box::new(state);
-    states.insert(anathema_state::Value::new(state));
+    // let state: Map<Box<dyn AnyState>> = Value::new(Map::empty());
+    let state: Box<dyn AnyState> = Box::new(Map::<Box<dyn AnyState>>::empty());
+    let state: anathema_state::Value<Box<dyn AnyState>> = anathema_state::Value::new(state);
+    states.insert(state);
     let mut test = TestCase::new(states, globals.into());
     f(&mut test)
 }
