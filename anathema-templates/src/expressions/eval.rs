@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use anathema_store::storage::strings::Strings;
-
 use super::parser::Expr;
 use super::{Expression, LogicalOp, Op};
 use crate::error::{ParseErrorKind, Result};
 use crate::expressions::Equality;
+use crate::strings::Strings;
 use crate::token::Operator;
 
 pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind> {
@@ -133,15 +132,15 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
 
 #[cfg(test)]
 mod test {
-    use anathema_store::storage::strings::Strings;
 
     use super::*;
     use crate::expressions::parser::parse_expr;
     use crate::lexer::Lexer;
+    use crate::strings::Strings;
     use crate::token::Tokens;
 
     fn eval_src(input: &str) -> Expression {
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
         let lexer = Lexer::new(input, &mut strings);
         let tokens = lexer.collect::<Result<_, _>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());

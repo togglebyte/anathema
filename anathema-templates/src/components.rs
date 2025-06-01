@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use anathema_store::slab::{Index, SlabIndex};
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
-use anathema_store::storage::strings::{StringId, Strings};
+use crate::strings::{StringId, Strings};
 use anathema_store::storage::Storage;
 
 use crate::blueprints::Blueprint;

@@ -137,11 +137,20 @@ impl Scope {
         let mut slots = SmallMap::empty();
         let mut scope = self.statements.take_scope();
 
-        // for each slot take the scope and associate it with the slot id
-        while let Some(slot_id) = scope.next_slot() {
-            let scope = Scope::new(scope.take_scope());
+        // If the next statement is NOT a slot id then assume $children
+        // and still try to take the scope
+        if !scope.is_next_slot() {
+            let slot_id = ctx.strings.children();
+            let scope = Scope::new(scope);
             let body = scope.eval(ctx)?;
             slots.set(slot_id, body);
+        } else {
+            // for each slot take the scope and associate it with the slot id
+            while let Some(slot_id) = scope.next_slot() {
+                let scope = Scope::new(scope.take_scope());
+                let body = scope.eval(ctx)?;
+                slots.set(slot_id, body);
+            }
         }
 
         let name = ctx.components.name(component_id);

@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use anathema_state::{AnyState, StateId, Value as StateValue};
 use anathema_store::slab::Slab;
-use anathema_store::storage::strings::{StringId, Strings};
 use anathema_templates::ComponentBlueprintId;
+use anathema_templates::strings::{StringId, Strings};
 use anathema_value_resolver::{Attributes, ValueKind};
 use deferred::DeferredComponents;
 use flume::SendError;

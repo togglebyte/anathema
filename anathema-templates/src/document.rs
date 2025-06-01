@@ -2,7 +2,7 @@ use std::fs::read_to_string;
 use std::path::PathBuf;
 
 use anathema_store::smallmap::SmallMap;
-use anathema_store::storage::strings::Strings;
+use crate::strings::Strings;
 
 use crate::blueprints::Blueprint;
 use crate::components::{ComponentSource, ComponentTemplates, SourceKind};
@@ -32,7 +32,7 @@ impl Document {
         let template = template.into();
         Self {
             template,
-            strings: Strings::empty(),
+            strings: Strings::new(),
             globals: Variables::default(),
             components: ComponentTemplates::new(),
             hot_reload: true,
@@ -56,7 +56,7 @@ impl Document {
     }
 
     pub fn compile(&mut self) -> Result<(Blueprint, Globals)> {
-        self.strings = Strings::empty();
+        self.strings = Strings::new();
         self.globals = Variables::default();
 
         let tokens = Lexer::new(&self.template, &mut self.strings).collect::<Result<Vec<_>>>()?;

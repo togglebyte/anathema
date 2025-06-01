@@ -13,5 +13,6 @@ pub mod expressions;
 mod lexer;
 mod primitives;
 mod statements;
+pub mod strings;
 mod token;
 mod variables;

@@ -1,5 +1,5 @@
 use anathema_store::smallmap::SmallMap;
-use anathema_store::storage::strings::{StringId, Strings};
+use crate::strings::{StringId, Strings};
 
 use crate::blueprints::Blueprint;
 use crate::components::ComponentTemplates;
@@ -178,6 +178,10 @@ impl Statements {
         }
     }
 
+    fn is_next_slot(&mut self) -> bool {
+        matches!(self.0.first(), Some(Statement::ComponentSlot(_)))
+    }
+
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -190,7 +194,7 @@ where
     F: FnMut(Context<'_>),
 {
     let mut globals = Variables::new();
-    let mut strings = Strings::empty();
+    let mut strings = Strings::new();
     let mut components = ComponentTemplates::new();
 
     let context = Context {

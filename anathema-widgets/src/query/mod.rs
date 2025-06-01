@@ -31,12 +31,19 @@ impl<'tree, 'bp> Children<'tree, 'bp> {
 pub enum QueryValue<'a> {
     Str(&'a str),
     Int(usize),
+    Bool(bool),
     // TODO: add the rest of the types here
 }
 
 impl<'a> From<&'a str> for QueryValue<'a> {
     fn from(value: &'a str) -> Self {
         Self::Str(value)
+    }
+}
+
+impl<'a> From<bool> for QueryValue<'a> {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
     }
 }
 
@@ -47,6 +54,10 @@ impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
                 ValueKind::Str(rhs) => lhs == rhs,
                 _ => false,
             },
+            QueryValue::Bool(lhs) => match other {
+                ValueKind::Bool(rhs) => lhs == rhs,
+                _ => false,
+            }
             &QueryValue::Int(lhs) => match other {
                 &ValueKind::Int(rhs) => lhs as i64 == rhs,
                 _ => false,
