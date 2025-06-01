@@ -1,3 +1,4 @@
+use anathema_state::{Color, Hex};
 use anathema_value_resolver::{AttributeStorage, ValueKind};
 
 pub use self::components::Components;
@@ -30,9 +31,12 @@ impl<'tree, 'bp> Children<'tree, 'bp> {
 #[derive(Debug, Copy, Clone)]
 pub enum QueryValue<'a> {
     Str(&'a str),
-    Int(usize),
+    Int(i64),
+    Float(f64),
     Bool(bool),
-    // TODO: add the rest of the types here
+    Char(char),
+    Hex(Hex),
+    Color(Color),
 }
 
 impl<'a> From<&'a str> for QueryValue<'a> {
@@ -59,7 +63,23 @@ impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
                 _ => false,
             }
             &QueryValue::Int(lhs) => match other {
-                &ValueKind::Int(rhs) => lhs as i64 == rhs,
+                &ValueKind::Int(rhs) => lhs == rhs,
+                _ => false,
+            },
+            &QueryValue::Float(lhs) => match other {
+                &ValueKind::Float(rhs) => lhs == rhs,
+                _ => false,
+            },
+            &QueryValue::Char(lhs) => match other {
+                &ValueKind::Char(rhs) => lhs == rhs,
+                _ => false,
+            },
+            &QueryValue::Hex(lhs) => match other {
+                &ValueKind::Hex(rhs) => lhs == rhs,
+                _ => false,
+            },
+            &QueryValue::Color(lhs) => match other {
+                &ValueKind::Color(rhs) => lhs == rhs,
                 _ => false,
             },
         }
