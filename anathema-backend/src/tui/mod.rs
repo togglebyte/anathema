@@ -15,7 +15,7 @@ pub use anathema_widgets::{Attributes, Style};
 use anathema_widgets::{GlyphMap, PaintChildren, WidgetRenderer};
 use crossterm::cursor::{RestorePosition, SavePosition};
 use crossterm::execute;
-use crossterm::terminal::{size, BeginSynchronizedUpdate, EndSynchronizedUpdate};
+use crossterm::terminal::{size, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate};
 pub use screen::Screen;
 
 pub use self::buffer::Buffer;
@@ -82,6 +82,12 @@ impl TuiBackendBuilder {
     /// Hide the text cursor.
     pub fn hide_cursor(mut self) -> Self {
         self.hide_cursor = true;
+        self
+    }
+
+    /// Clear the screen using ansi escape codes.
+    pub fn clear(mut self) -> Self {
+        let _ = execute!(&mut self.output, Clear(ClearType::All));
         self
     }
 

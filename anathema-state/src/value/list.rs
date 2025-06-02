@@ -150,21 +150,17 @@ impl<T: AnyState + 'static> Value<List<T>> {
 
     /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
-        let value = self.to_mut().inner.pop_front()?;
+        let value = self.with_mut(|list| list.inner.pop_back());
         changed(self.key, Change::Removed(0));
-        Some(value)
+        value
     }
 
     /// Pop a value from the back of the list
     pub fn pop_back(&mut self) -> Option<Value<T>> {
-        let key = self.key;
-
-        let list = &mut *self.to_mut();
-        let value = list.inner.pop_back()?;
-        let index = list.inner.len();
-
-        changed(key, Change::Removed(index as u32));
-        Some(value)
+        let value = self.with_mut(|list| list.inner.pop_back());
+        let index = self.len();
+        changed(self.key, Change::Removed(index as u32));
+        value
     }
 
     /// Alias for `pop_back`

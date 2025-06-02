@@ -136,7 +136,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Bool(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_bool() {
                 Some(b) => ValueKind::Bool(b),
                 None => ValueKind::Null,
@@ -146,7 +146,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Char(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_char() {
                 Some(c) => ValueKind::Char(c),
                 None => ValueKind::Null,
@@ -156,7 +156,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Int(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_int() {
                 Some(i) => ValueKind::Int(i),
                 None => ValueKind::Null,
@@ -166,7 +166,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Float(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_float() {
                 Some(f) => ValueKind::Float(f),
                 None => ValueKind::Null,
@@ -176,7 +176,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Hex(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_hex() {
                 Some(h) => ValueKind::Hex(h),
                 None => ValueKind::Null,
@@ -186,7 +186,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Color(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_color() {
                 Some(h) => ValueKind::Color(h),
                 None => ValueKind::Null,
@@ -196,7 +196,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         ValueExpr::Str(Kind::Dyn(pending)) => {
             pending.subscribe(ctx.sub);
             ctx.sub_to.push(pending.sub_key());
-            let state = pending.as_state().expect("type info is encoded");
+            let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_str() {
                 Some(s) => ValueKind::Str(Cow::Owned(s.to_owned())),
                 None => ValueKind::Null,
@@ -296,7 +296,6 @@ fn resolve_pending(val: PendingValue) -> ValueExpr<'static> {
         Type::Map | Type::Composite => ValueExpr::DynMap(val),
         Type::List => ValueExpr::DynList(val),
         Type::Unit => ValueExpr::Null,
-        // val_type => panic!("{val_type:?}"),
     }
 }
 
