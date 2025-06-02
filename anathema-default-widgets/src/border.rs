@@ -8,8 +8,8 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{AnyWidget, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
-use crate::layout::border::BorderLayout;
 use crate::layout::Axis;
+use crate::layout::border::BorderLayout;
 use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 
 pub const BORDER_STYLE: &str = "border_style";

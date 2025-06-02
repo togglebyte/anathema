@@ -192,7 +192,6 @@ impl<T: std::fmt::Debug> Owned<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::slab::Key;
 
     #[test]
     fn push() {

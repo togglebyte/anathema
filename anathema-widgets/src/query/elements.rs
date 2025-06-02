@@ -20,14 +20,14 @@ impl<'children, 'tree, 'bp> Elements<'children, 'tree, 'bp> {
         self.make_query(Kind::AtPosition(pos.into()))
     }
 
-    pub fn first<F, U>(&mut self, mut f: F) -> Option<U>
+    pub fn first<F, U>(&mut self, f: F) -> Option<U>
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>) -> U,
     {
         self.make_query(Kind::All).first(f)
     }
 
-    pub fn each<F>(&mut self, mut f: F)
+    pub fn each<F>(&mut self, f: F)
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
     {

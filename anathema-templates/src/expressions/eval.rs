@@ -31,7 +31,7 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
                     _ => {
                         return Err(ParseErrorKind::InvalidToken {
                             expected: "this can only be an ident",
-                        })
+                        });
                     }
                 };
                 let rhs = strings.get_unchecked(string_id);
@@ -92,7 +92,7 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
                 _ => {
                     return Err(ParseErrorKind::InvalidToken {
                         expected: "either ! or -",
-                    })
+                    });
                 }
             }
         }

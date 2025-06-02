@@ -23,7 +23,6 @@ impl Constraints {
         max_width: u16::MAX,
         max_height: u16::MAX,
     };
-
     pub const ZERO: Self = Self {
         min_width: 0,
         min_height: 0,

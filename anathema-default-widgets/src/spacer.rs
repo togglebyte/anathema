@@ -1,9 +1,9 @@
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
-use anathema_widgets::error::Result;
 
 #[derive(Debug, Default)]
 pub struct Spacer;
@@ -29,13 +29,7 @@ impl Widget for Spacer {
         // The spacer widget has no children
     }
 
-    fn position<'bp>(
-        &mut self,
-        _: PositionChildren<'_, 'bp>,
-        _: WidgetId,
-        _: &AttributeStorage<'bp>,
-        _: PositionCtx,
-    ) {
+    fn position<'bp>(&mut self, _: PositionChildren<'_, 'bp>, _: WidgetId, _: &AttributeStorage<'bp>, _: PositionCtx) {
         // The spacer widget has no children
     }
 }

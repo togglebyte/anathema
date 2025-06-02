@@ -1,11 +1,9 @@
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use std::ops::ControlFlow;
 
 use anathema_state::StateId;
-use anathema_store::tree::visitor::NodeVisitor;
 
-use crate::{WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
+use crate::{WidgetId, WidgetKind, WidgetTreeView};
 
 // TODO
 // Test this with
@@ -173,7 +171,7 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
             }
         }
 
-        let Some(mut next) = next_index.next.take() else { return };
+        let Some(next) = next_index.next.take() else { return };
 
         let Some((widget_id, value)) = self.tree.get_node_and_value(next.path) else { return };
         let WidgetKind::Component(comp) = &value.kind else { return };

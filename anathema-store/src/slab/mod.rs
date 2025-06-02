@@ -13,9 +13,9 @@ use std::ops::{Deref, DerefMut};
 pub use self::basic::{Slab, SlabIndex};
 pub use self::generational::{Gen, GenSlab, Key};
 pub use self::secondary_map::SecondaryMap;
+pub use self::shared::SharedSlab;
 pub use self::shared::arc::{ArcElement, ArcSlab};
 pub use self::shared::rc::{RcElement, RcSlab};
-pub use self::shared::SharedSlab;
 
 mod basic;
 mod generational;

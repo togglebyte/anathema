@@ -1,11 +1,11 @@
-use crate::{
-    attributes::{Constraint, Spanned, parse_attrs},
-    errors::{reduce_errors, report_missing_data},
-};
+use std::collections::HashMap;
 
 use proc_macro2::Span;
-use std::collections::HashMap;
-use syn::{DataStruct, DeriveInput, Field, Fields, Ident, spanned::Spanned as _};
+use syn::spanned::Spanned as _;
+use syn::{DataStruct, DeriveInput, Field, Fields, Ident};
+
+use crate::attributes::{Constraint, Spanned, parse_attrs};
+use crate::errors::{reduce_errors, report_missing_data};
 
 static FIELD_RENAME: &str = "rename";
 static FIELD_IGNORE: &str = "ignore";
@@ -185,10 +185,7 @@ fn check_duplicate_renames(values: &[SpannedField]) -> Option<Vec<syn::Error>> {
         seen.entry(name).or_default().push(span);
     }
 
-    let duplicate_spans = seen
-        .into_iter()
-        .filter(|(_, list)| list.len() > 1)
-        .collect::<Vec<_>>();
+    let duplicate_spans = seen.into_iter().filter(|(_, list)| list.len() > 1).collect::<Vec<_>>();
 
     if duplicate_spans.is_empty() {
         return None;

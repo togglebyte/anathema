@@ -174,7 +174,7 @@ mod test {
 
     use super::*;
     use crate::document::Document;
-    use crate::{single, ToSourceKind};
+    use crate::{ToSourceKind, single};
 
     #[test]
     fn eval_node() {

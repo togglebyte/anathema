@@ -4,10 +4,10 @@ use std::time::Duration;
 use anathema_geometry::{Pos, Size};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::events::Event;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFilter, Viewport};
 use anathema_widgets::paint::PaintFilter;
-use anathema_widgets::{awful_debug, GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
-use anathema_widgets::error::Result;
+use anathema_widgets::{GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView, awful_debug};
 
 pub mod tui;
 

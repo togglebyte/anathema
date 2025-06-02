@@ -248,11 +248,10 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::ops::DerefMut;
 
     use super::*;
+    use crate::Subscriber;
     use crate::store::testing::drain_changes;
-    use crate::{Map, State, Subscriber};
 
     #[test]
     fn insert() {

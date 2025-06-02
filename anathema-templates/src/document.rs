@@ -2,7 +2,6 @@ use std::fs::read_to_string;
 use std::path::PathBuf;
 
 use anathema_store::smallmap::SmallMap;
-use crate::strings::Strings;
 
 use crate::blueprints::Blueprint;
 use crate::components::{ComponentSource, ComponentTemplates, SourceKind};
@@ -10,6 +9,7 @@ use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
+use crate::strings::Strings;
 use crate::token::Tokens;
 use crate::variables::Variables;
 use crate::{Globals, Lexer};

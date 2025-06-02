@@ -48,9 +48,7 @@ impl Style {
     }
 
     pub fn reset_attributes(&mut self) {
-        self.attributes = Attributes::NOT_UNDERLINED
-            | Attributes::NOT_CROSSED_OUT
-            | Attributes::NOT_OVERLINED;
+        self.attributes = Attributes::NOT_UNDERLINED | Attributes::NOT_CROSSED_OUT | Attributes::NOT_OVERLINED;
     }
 
     /// Create an instance of `Style` from `CellAttributes`.

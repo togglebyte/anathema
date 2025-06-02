@@ -7,8 +7,8 @@ use anathema_value_resolver::{AttributeStorage, Attributes};
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::layout::display::DISPLAY;
 use crate::layout::Display;
+use crate::layout::display::DISPLAY;
 use crate::nodes::element::Element;
 use crate::tree::{FilterOutput, WidgetPositionFilter};
 use crate::widget::Style;
@@ -73,7 +73,9 @@ pub trait WidgetRenderer {
     fn draw_glyph(&mut self, glyph: Glyph, local_pos: Pos);
 
     fn draw(&mut self) {
-        todo!("this function is only here to remind us that we should have a raw draw function for Kitty image protocol and such");
+        todo!(
+            "this function is only here to remind us that we should have a raw draw function for Kitty image protocol and such"
+        );
     }
 
     fn set_attributes(&mut self, attribs: &Attributes<'_>, local_pos: Pos);
@@ -278,11 +280,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
 
     fn newline(&mut self, pos: LocalPos) -> Option<LocalPos> {
         let y = pos.y + 1; // next line
-        if y >= self.local_size.height {
-            None
-        } else {
-            Some(LocalPos { x: 0, y })
-        }
+        if y >= self.local_size.height { None } else { Some(LocalPos { x: 0, y }) }
     }
 
     pub fn to_glyphs<'a>(&mut self, s: &'a str) -> Glyphs<'a> {

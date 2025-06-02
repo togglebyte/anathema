@@ -2,9 +2,9 @@ use std::io::{Result, Write};
 
 use anathema_state::Color;
 use anathema_widgets::{Attributes, Style};
+use crossterm::QueueableCommand;
 pub use crossterm::style::{Attribute as CrossAttrib, Color as CTColor};
 use crossterm::style::{SetAttribute, SetBackgroundColor, SetForegroundColor};
-use crossterm::QueueableCommand;
 
 struct ColorWrapper(Color);
 

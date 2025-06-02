@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 pub use self::iter::TreeFilter;
-pub use self::nodepath::{new_node_path, root_node, AsNodePath};
+pub use self::nodepath::{AsNodePath, new_node_path, root_node};
 pub use self::pathfinder::PathFinder;
 pub use self::transactions::InsertTransaction;
 pub use self::view::TreeView;
@@ -518,6 +518,4 @@ impl Node {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-}
+mod test {}

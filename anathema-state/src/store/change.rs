@@ -1,7 +1,7 @@
 use anathema_store::stack::Stack;
 
 use super::subscriber::Subscribers;
-use super::{ValueKey, CHANGES, SUBSCRIBERS};
+use super::{CHANGES, SUBSCRIBERS, ValueKey};
 
 pub type Changes = Stack<(Subscribers, Change)>;
 

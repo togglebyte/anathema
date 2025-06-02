@@ -31,7 +31,6 @@ impl Component for C {
         context: Context<'_, '_, Self::State>,
         dt: Duration,
     ) {
-
         let x = dt.as_millis() as f64;
 
         self.val += x / 1000.0 * *state.speed.to_ref();
@@ -80,7 +79,5 @@ fn main() {
         )
         .unwrap();
 
-    builder
-        .finish(|mut runtime| runtime.run(&mut backend))
-        .unwrap();
+    builder.finish(|mut runtime| runtime.run(&mut backend)).unwrap();
 }

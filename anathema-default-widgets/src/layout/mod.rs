@@ -2,9 +2,9 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_value_resolver::ValueKind;
+use anathema_widgets::LayoutForEach;
 use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutForEach;
 
 pub static DIRECTION: &str = "direction";
 pub static AXIS: &str = "axis";

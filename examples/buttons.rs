@@ -1,5 +1,5 @@
-use anathema::prelude::*;
 use anathema::component::*;
+use anathema::prelude::*;
 
 struct App;
 
@@ -73,7 +73,7 @@ impl Component for Button {
         mut context: Context<'_, '_, Self::State>,
     ) {
         if !matches!(key.state, KeyState::Press) {
-            return
+            return;
         }
 
         if let KeyCode::Enter = key.code {
@@ -89,7 +89,6 @@ impl Component for Button {
         mut context: Context<'_, '_, Self::State>,
     ) {
     }
-
 }
 
 fn main() {
@@ -120,13 +119,9 @@ fn main() {
             "button",
             "examples/templates/buttons/button.aml",
             move || Button,
-            || ButtonState {
-                active: 0.into(),
-            },
+            || ButtonState { active: 0.into() },
         )
         .unwrap();
 
-    builder
-        .finish(|mut runtime| runtime.run(&mut backend))
-        .unwrap();
+    builder.finish(|mut runtime| runtime.run(&mut backend)).unwrap();
 }

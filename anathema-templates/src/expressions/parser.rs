@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-use super::eval::eval;
 use super::Expression;
+use super::eval::eval;
 use crate::error::{ParseErrorKind, Result};
 use crate::primitives::Primitive;
 use crate::strings::{StringId, Strings};
@@ -119,7 +119,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Result<Expr, ParseErrorKind> 
         _kind => {
             return Err(ParseErrorKind::InvalidToken {
                 expected: "valid token, found statement",
-            })
+            });
         }
     };
 

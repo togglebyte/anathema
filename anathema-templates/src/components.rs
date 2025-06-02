@@ -4,17 +4,17 @@ use std::path::PathBuf;
 use anathema_store::slab::{Index, SlabIndex};
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
-use crate::strings::{StringId, Strings};
 use anathema_store::storage::Storage;
 
+use crate::Lexer;
 use crate::blueprints::Blueprint;
 use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
+use crate::strings::{StringId, Strings};
 use crate::token::Tokens;
 use crate::variables::Variables;
-use crate::Lexer;
 
 pub trait ToSourceKind {
     fn to_path(self) -> SourceKind;
@@ -177,7 +177,9 @@ impl ComponentTemplates {
                 assert_eq!(parent_id, new_id);
                 ret
             }
-            _ => unreachable!("a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"),
+            _ => unreachable!(
+                "a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"
+            ),
         };
 
         self.dependencies.pop();

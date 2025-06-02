@@ -2,9 +2,9 @@ use anathema_state::{Change, Subscriber};
 use anathema_value_resolver::AttributeStorage;
 
 use super::WidgetContainer;
+use crate::WidgetKind;
 use crate::error::Result;
 use crate::widget::WidgetTreeView;
-use crate::WidgetKind;
 
 pub fn update_widget<'bp>(
     widget: &mut WidgetContainer<'bp>,

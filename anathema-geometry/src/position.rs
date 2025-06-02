@@ -146,7 +146,7 @@ impl LocalPos {
     }
 
     pub const fn to_index(self, width: u16) -> usize {
-        (self.y  * width + self.x) as usize
+        (self.y * width + self.x) as usize
     }
 
     pub const fn saturating_sub(mut self, other: Self) -> Self {
@@ -164,7 +164,10 @@ impl From<(u16, u16)> for LocalPos {
 
 impl From<(usize, usize)> for LocalPos {
     fn from((x, y): (usize, usize)) -> Self {
-        Self { x: x as u16, y: y as u16 }
+        Self {
+            x: x as u16,
+            y: y as u16,
+        }
     }
 }
 
@@ -204,7 +207,6 @@ impl AddAssign for LocalPos {
         self.y += rhs.y;
     }
 }
-
 
 #[cfg(test)]
 mod test {

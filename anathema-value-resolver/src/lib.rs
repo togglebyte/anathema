@@ -1,7 +1,7 @@
 pub use crate::attributes::{AttributeStorage, Attributes, ValueKey};
 pub use crate::context::ResolverCtx;
 pub use crate::scope::Scope;
-pub use crate::value::{resolve, resolve_collection, Collection, Value, ValueKind};
+pub use crate::value::{Collection, Value, ValueKind, resolve, resolve_collection};
 
 mod attributes;
 mod context;

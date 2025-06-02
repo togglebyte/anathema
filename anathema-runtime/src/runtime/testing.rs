@@ -1,16 +1,13 @@
 use std::time::{Duration, Instant};
 
 use anathema_backend::Backend;
-use anathema_state::{drain_watchers, Watched, Watcher};
+use anathema_state::{Watched, Watcher, drain_watchers};
 use anathema_store::stack::Stack;
-use anathema_widgets::components::deferred::DeferredComponents;
-use anathema_widgets::components::events::Event;
 use anathema_widgets::query::Children;
-use anathema_widgets::Components;
 
+use crate::Frame;
 use crate::error::Result;
 use crate::events::GlobalEventHandler;
-use crate::Frame;
 
 // -----------------------------------------------------------------------------
 //   - Used with test driver -

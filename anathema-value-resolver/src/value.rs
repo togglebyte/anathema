@@ -6,7 +6,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
 use crate::attributes::ValueKey;
-use crate::expression::{resolve_value, ValueExpr, ValueThingy};
+use crate::expression::{ValueExpr, ValueThingy, resolve_value};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
@@ -387,14 +387,14 @@ impl<'a> TryFrom<&'a ValueKind<'_>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{AnyState, Hex, List, Map, StateId, States, Value};
+    use anathema_templates::Variables;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
-    use anathema_templates::Variables;
 
-    use crate::testing::{setup, TestCase};
     use crate::ValueKind;
+    use crate::testing::{TestCase, setup};
 
     #[test]
     fn attribute_lookup() {

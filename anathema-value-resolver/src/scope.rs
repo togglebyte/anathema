@@ -91,24 +91,22 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
             Entry::Index(_, _, loop_index) if key == "loop" => Some(ValueExpr::Int(Kind::Dyn(loop_index))),
             Entry::Index(binding, index, _) if key == binding => {
                 match self.parent.expect("the parent can only be a collection").value {
-                    Entry::Collection(collection) => {
-                        match &collection.0.kind {
-                            ValueKind::List(list) => {
-                                let value_expr = ValueExpr::Index(
-                                    collection.0.expr.clone().into(),
-                                    ValueExpr::Int(Kind::Static(index as i64)).into(),
-                                );
-                                Some(value_expr)
-                            }
-                            ValueKind::DynList(value) => {
-                                let state = value.as_state()?;
-                                let list = state.as_any_list()?;
-                                let value = list.lookup(index)?;
-                                Some(value.into())
-                            }
-                            _ => unreachable!("none of the other values can be a collection"),
+                    Entry::Collection(collection) => match &collection.0.kind {
+                        ValueKind::List(list) => {
+                            let value_expr = ValueExpr::Index(
+                                collection.0.expr.clone().into(),
+                                ValueExpr::Int(Kind::Static(index as i64)).into(),
+                            );
+                            Some(value_expr)
                         }
-                    }
+                        ValueKind::DynList(value) => {
+                            let state = value.as_state()?;
+                            let list = state.as_any_list()?;
+                            let value = list.lookup(index)?;
+                            Some(value.into())
+                        }
+                        _ => unreachable!("none of the other values can be a collection"),
+                    },
                     _ => unreachable!("the parent scope is always a collection"),
                 }
             }

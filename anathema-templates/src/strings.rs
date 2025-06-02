@@ -1,11 +1,9 @@
-use std::fmt::{self, Display};
-
 pub use anathema_store::storage::strings::StringId;
 use anathema_store::storage::strings::Strings as StringStore;
 
 static CHILDREN: &str = "children";
 
-/// This differs from the storage `Strings` only on account 
+/// This differs from the storage `Strings` only on account
 /// of having something akin to a constant for children
 pub struct Strings {
     inner: StringStore,

@@ -2,13 +2,13 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::Size;
-use anathema_widgets::paint::{Glyph, GlyphMap};
 use anathema_widgets::Style;
+use anathema_widgets::paint::{Glyph, GlyphMap};
 use crossterm::style::Print;
-use crossterm::{cursor, QueueableCommand};
+use crossterm::{QueueableCommand, cursor};
 
-use super::style::write_style;
 use super::LocalPos;
+use super::style::write_style;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {
@@ -292,7 +292,9 @@ pub(crate) fn diff(
 
     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
         for (x, (old_cell, new_cell)) in old_line.iter_mut().zip(new_line).enumerate() {
-            if old_cell == new_cell { continue; }
+            if old_cell == new_cell {
+                continue;
+            }
 
             let change = match new_cell.state {
                 CellState::Empty => {

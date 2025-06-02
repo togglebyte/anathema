@@ -177,7 +177,10 @@ impl<T: Debug> Debug for Entry<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Vacant(next_id) => f.debug_tuple("Vacant").field(next_id).finish(),
-            Self::Occupied(value, generation) => f.debug_tuple(&format!("Occupied<{generation:?}>")).field(value).finish(),
+            Self::Occupied(value, generation) => f
+                .debug_tuple(&format!("Occupied<{generation:?}>"))
+                .field(value)
+                .finish(),
             Self::CheckedOut(key) => f.debug_tuple("CheckedOut").field(key).finish(),
         }
     }
@@ -275,7 +278,10 @@ impl<T> GenSlab<T> {
 
         match entry {
             Entry::Occupied(value, generation) if key.generation() == generation => Ticket { value, key },
-            Entry::Occupied(_, generation) => panic!("invalid generation, current: {generation:?} | key: {:?}", key.generation()),
+            Entry::Occupied(_, generation) => panic!(
+                "invalid generation, current: {generation:?} | key: {:?}",
+                key.generation()
+            ),
             Entry::CheckedOut(_) => panic!("value already checked out"),
             Entry::Vacant(_) => panic!("entry has been removed"),
         }

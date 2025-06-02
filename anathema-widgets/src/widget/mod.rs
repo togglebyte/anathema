@@ -5,19 +5,18 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::StateId;
-use anathema_store::slab::{SecondaryMap, Slab};
-use anathema_store::smallmap::SmallMap;
+use anathema_store::slab::SecondaryMap;
 use anathema_store::tree::{Tree, TreeView};
 use anathema_templates::ComponentBlueprintId;
 use anathema_value_resolver::AttributeStorage;
 
 pub use self::factory::Factory;
 pub use self::style::{Attributes, Style};
+use crate::WidgetContainer;
 use crate::error::Result;
 use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter};
 use crate::paint::{PaintCtx, PaintFilter, SizePos};
 pub use crate::tree::{Filter, ForEach, LayoutForEach};
-use crate::WidgetContainer;
 
 mod factory;
 mod style;

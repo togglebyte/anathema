@@ -1,8 +1,8 @@
 use anathema_state::States;
 use anathema_templates::Globals;
 
-use crate::scope::Scope;
 use crate::AttributeStorage;
+use crate::scope::Scope;
 
 pub struct ResolverCtx<'frame, 'bp> {
     pub(crate) scope: &'frame Scope<'frame, 'bp>,

@@ -10,12 +10,12 @@ use anathema_store::store::{OwnedKey, SharedKey};
 pub use self::list::List;
 pub use self::map::Map;
 use crate::states::AnyState;
-use crate::store::subscriber::{subscribe, unsubscribe, SubKey};
+use crate::store::subscriber::{SubKey, subscribe, unsubscribe};
 use crate::store::values::{
-    copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, OwnedValue,
+    OwnedValue, copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared,
 };
-use crate::store::watchers::{monitor, queue_monitor, Watcher};
-use crate::store::{changed, ValueKey};
+use crate::store::watchers::{Watcher, monitor, queue_monitor};
+use crate::store::{ValueKey, changed};
 use crate::{Change, Subscriber};
 
 mod list;
@@ -557,7 +557,7 @@ mod test {
 
     #[test]
     fn monitor_drop() {
-        let mut value = Value::new(1);
+        let value = Value::new(1);
         value.reference().monitor(Watcher::new(0));
         drop(value);
 

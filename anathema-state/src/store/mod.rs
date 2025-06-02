@@ -7,7 +7,7 @@ pub use watchers::Watched;
 use watchers::{Watcher, Watchers};
 
 pub(crate) use self::change::changed;
-pub use self::change::{clear_all_changes, drain_changes, Change, Changes};
+pub use self::change::{Change, Changes, clear_all_changes, drain_changes};
 use self::subscriber::{SubKey, SubscriberMap};
 pub use self::subscriber::{SubTo, Subscriber};
 use crate::Type;

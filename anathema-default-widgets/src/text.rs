@@ -2,11 +2,11 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
 use anathema_value_resolver::{AttributeStorage, ValueKind};
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
-use anathema_widgets::error::Result;
 
 use crate::{LEFT, RIGHT};
 
@@ -158,13 +158,7 @@ impl Widget for Text {
         }
     }
 
-    fn position<'bp>(
-        &mut self,
-        _: PositionChildren<'_, 'bp>,
-        _: WidgetId,
-        _: &AttributeStorage<'bp>,
-        _: PositionCtx,
-    ) {
+    fn position<'bp>(&mut self, _: PositionChildren<'_, 'bp>, _: WidgetId, _: &AttributeStorage<'bp>, _: PositionCtx) {
         // NOTE
         // No positioning is done in here, it's all done when painting
     }
@@ -185,13 +179,7 @@ impl Widget for Span {
         Ok(Size::ZERO)
     }
 
-    fn position<'bp>(
-        &mut self,
-        _: PositionChildren<'_, 'bp>,
-        _: WidgetId,
-        _: &AttributeStorage<'bp>,
-        _: PositionCtx,
-    ) {
+    fn position<'bp>(&mut self, _: PositionChildren<'_, 'bp>, _: WidgetId, _: &AttributeStorage<'bp>, _: PositionCtx) {
         // Everything is handled by the parent text
         // panic!("this should never be called");
     }

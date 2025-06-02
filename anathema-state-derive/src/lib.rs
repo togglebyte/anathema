@@ -1,4 +1,5 @@
-use syn::{DeriveInput, parse_macro_input, spanned::Spanned as _};
+use syn::spanned::Spanned as _;
+use syn::{DeriveInput, parse_macro_input};
 
 static DERIVE_NAMESPACE: &str = "anathema";
 

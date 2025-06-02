@@ -2,9 +2,9 @@ use anathema_store::slab::RcElement;
 use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 
 use super::watchers::queue_monitor;
-use super::{ValueKey, OWNED, SHARED, SUBSCRIBERS};
-use crate::states::AnyState;
+use super::{OWNED, SHARED, SUBSCRIBERS, ValueKey};
 use crate::Type;
+use crate::states::AnyState;
 
 pub(crate) struct OwnedValue {
     pub(crate) val: Box<dyn AnyState>,

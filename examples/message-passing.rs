@@ -3,8 +3,8 @@ use anathema::component::{Component, ComponentId, MouseEvent};
 use anathema::runtime::Runtime;
 use anathema::state::{List, OldState, Value};
 use anathema::templates::Document;
-use anathema::widgets::components::DeprecatedContext;
 use anathema::widgets::Elements;
+use anathema::widgets::components::DeprecatedContext;
 
 pub struct Index {
     recipient: ComponentId<String>,

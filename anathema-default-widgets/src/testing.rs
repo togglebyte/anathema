@@ -1,4 +1,4 @@
-use anathema::{drain_changes, Changes};
+use anathema::{Changes, drain_changes};
 use anathema_backend::test::TestBackend;
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
@@ -8,8 +8,8 @@ use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::layout::{Constraints, Viewport};
 use anathema_widgets::{
-    update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory, FloatingWidgets, GlyphMap,
-    Scope, WidgetRenderer as _, WidgetTree,
+    AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory, FloatingWidgets, GlyphMap, Scope,
+    WidgetRenderer as _, WidgetTree, update_tree,
 };
 
 use crate::register_default_widgets;

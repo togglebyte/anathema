@@ -1,9 +1,7 @@
 use anathema_state::Subscriber;
 
 pub use crate::nodes::component::Component;
-pub use crate::nodes::{
-    eval_blueprint, update_widget, Element, WidgetContainer, WidgetGenerator, WidgetKind,
-};
+pub use crate::nodes::{Element, WidgetContainer, WidgetGenerator, WidgetKind, eval_blueprint, update_widget};
 pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::widget::{
     AnyWidget, Attributes, ComponentParents, Components, Factory, FloatingWidgets, ForEach, LayoutChildren,

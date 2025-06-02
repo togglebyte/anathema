@@ -244,7 +244,7 @@ impl<'tree, T> TreeView<'tree, T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::tree::{root_node, Tree};
+    use crate::tree::{Tree, root_node};
 
     #[derive(Debug, PartialEq)]
     enum Value {

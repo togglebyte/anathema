@@ -3,15 +3,15 @@ use anathema_state::{Subscriber, Value};
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, Single};
-use anathema_value_resolver::{resolve, resolve_collection, Attributes, ResolverCtx, Scope, ValueKey};
+use anathema_value_resolver::{Attributes, ResolverCtx, Scope, ValueKey, resolve, resolve_collection};
 
 use super::element::Element;
-use super::{component, controlflow, WidgetContainer};
+use super::{WidgetContainer, component, controlflow};
+use crate::WidgetKind;
 use crate::container::{Cache, Container};
 use crate::error::{Error, Result};
 use crate::layout::EvalCtx;
 use crate::widget::WidgetTreeView;
-use crate::WidgetKind;
 
 /// Evaluate a node kind
 pub(super) trait Evaluator {

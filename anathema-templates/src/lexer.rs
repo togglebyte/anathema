@@ -166,7 +166,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                         self.src,
                         ParseErrorKind::UnterminatedString,
                     )
-                    .into())
+                    .into());
                 }
                 _ => {} // consume chars
             }

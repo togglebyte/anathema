@@ -12,7 +12,7 @@ pub use self::row::Row;
 pub use self::vstack::VStack;
 pub use self::zstack::ZStack;
 use crate::layout::many::Many;
-use crate::layout::{Axis, Direction, DIRECTION};
+use crate::layout::{Axis, DIRECTION, Direction};
 use crate::{HEIGHT, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 
 mod column;

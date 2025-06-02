@@ -1,8 +1,8 @@
 use super::Statement;
 use crate::components::ComponentTemplates;
-use crate::error::{src_line_no, ParseError, ParseErrorKind, Result};
-use crate::expressions::parser::parse_expr;
+use crate::error::{ParseError, ParseErrorKind, Result, src_line_no};
 use crate::expressions::Expression;
+use crate::expressions::parser::parse_expr;
 use crate::strings::{StringId, Strings};
 use crate::token::{Kind, Operator, Tokens, Value};
 

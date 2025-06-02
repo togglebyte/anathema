@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use proc_macro2::Span;
-use syn::{Attribute, LitStr, spanned::Spanned as _};
+use syn::spanned::Spanned as _;
+use syn::{Attribute, LitStr};
 
 use crate::errors::{
-    reduce_errors, report_empty_value, report_exclusive_failure, report_unique_failure,
-    report_unknown_attribute,
+    reduce_errors, report_empty_value, report_exclusive_failure, report_unique_failure, report_unknown_attribute,
 };
 
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -39,11 +39,7 @@ fn parse_attr(errors: &mut Vec<syn::Error>, attr: &Attribute) -> Vec<Attr> {
     let attr_list = match attr.meta.require_list() {
         Ok(attr_list) => attr_list,
         Err(err) => {
-            if let Ok(path) = attr
-                .meta
-                .require_path_only()
-                .and_then(|p| p.require_ident())
-            {
+            if let Ok(path) = attr.meta.require_path_only().and_then(|p| p.require_ident()) {
                 return vec![Attr {
                     key: Spanned {
                         span: path.span(),
@@ -127,11 +123,7 @@ pub fn parse_attrs(
     let mut seen = <HashSet<String>>::new();
 
     for attr in attrs {
-        if !deprecated
-            .iter()
-            .any(|(name, _)| attr.path().is_ident(name))
-            && !attr.path().is_ident(namespace)
-        {
+        if !deprecated.iter().any(|(name, _)| attr.path().is_ident(name)) && !attr.path().is_ident(namespace) {
             continue;
         }
 
@@ -174,19 +166,12 @@ pub fn parse_attrs(
                 },
 
                 None => {
-                    errors.push(report_unknown_attribute(
-                        mapping.keys(),
-                        &key.value,
-                        key.span,
-                    ));
+                    errors.push(report_unknown_attribute(mapping.keys(), &key.value, key.span));
                     continue;
                 }
             }
 
-            let value = ParsedAttr {
-                key: key.span,
-                value,
-            };
+            let value = ParsedAttr { key: key.span, value };
             parsed.insert(key.value, value);
         }
     }

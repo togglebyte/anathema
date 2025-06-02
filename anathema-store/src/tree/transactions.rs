@@ -1,7 +1,7 @@
 use super::TreeView;
 use crate::slab::Key;
-use crate::tree::nodepath::new_node_path;
 use crate::tree::AsNodePath;
+use crate::tree::nodepath::new_node_path;
 
 pub struct InsertTransaction<'a, 'tree, T> {
     tree: &'a mut TreeView<'tree, T>,

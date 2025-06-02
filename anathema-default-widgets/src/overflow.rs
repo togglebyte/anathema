@@ -2,13 +2,13 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
-use anathema_widgets::error::Result;
 
 use crate::layout::many::Many;
-use crate::layout::{Axis, Direction, AXIS, DIRECTION};
+use crate::layout::{AXIS, Axis, DIRECTION, Direction};
 use crate::{HEIGHT, WIDTH};
 
 const UNCONSTRAINED: &str = "unconstrained";
@@ -254,8 +254,8 @@ impl Widget for Overflow {
 #[cfg(test)]
 mod test {
 
-    use crate::testing::TestRunner;
     use crate::Overflow;
+    use crate::testing::TestRunner;
 
     #[test]
     fn overflow() {

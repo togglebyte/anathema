@@ -1,13 +1,9 @@
 use std::any::Any;
 use std::borrow::Cow;
-use std::ops::ControlFlow;
 
-use anathema_state::StateId;
-use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
+use anathema_value_resolver::{Attributes, ValueKind};
 
 use crate::nodes::component::Component;
-use crate::query::Children;
-use crate::{Components, WidgetId, WidgetKind, WidgetTreeView};
 
 pub struct DeferredComponents {
     queue: Vec<Command>,
@@ -148,11 +144,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn filter_component(
-        &mut self,
-        component: &Component<'_>,
-        attributes: &Attributes<'_>,
-    ) -> bool {
+    pub fn filter_component(&mut self, component: &Component<'_>, attributes: &Attributes<'_>) -> bool {
         self.filter.filter(component, attributes)
     }
 }

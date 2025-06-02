@@ -4,9 +4,9 @@ use anathema_state::PendingValue;
 use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
+use crate::ValueKind;
 use crate::expression::ValueExpr;
 use crate::value::{Value, Values};
-use crate::ValueKind;
 
 type WidgetId = anathema_store::slab::Key;
 
@@ -117,12 +117,12 @@ impl<'bp> Attributes<'bp> {
         let key = ValueKey::Attribute(key);
         let value = value.into();
         let value = Value {
-            expr: ValueExpr::Null, 
-            kind: value, 
+            expr: ValueExpr::Null,
+            kind: value,
             sub: anathema_state::Subscriber::MAX,
             sub_to: anathema_state::SubTo::Zero,
         };
-    
+
         self.attribs.set(key, value);
     }
 

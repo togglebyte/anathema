@@ -1,11 +1,10 @@
-use anathema_geometry::Region;
 use anathema_state::StateId;
 use anathema_store::storage::strings::StringId;
-use anathema_templates::blueprints::Blueprint;
 use anathema_templates::ComponentBlueprintId;
+use anathema_templates::blueprints::Blueprint;
 
-use crate::components::{AnyComponent, ComponentKind};
 use crate::WidgetId;
+use crate::components::{AnyComponent, ComponentKind};
 
 #[derive(Debug)]
 pub struct Component<'bp> {

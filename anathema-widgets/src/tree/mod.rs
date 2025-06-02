@@ -13,7 +13,7 @@ use crate::{Element, WidgetContainer, WidgetId, WidgetKind};
 
 pub mod debug;
 
-// TODO: 
+// TODO:
 // Add the option to "skip" values with an offset for `inner_each` (this is for overflow widgets)
 // Note that this might not be possible, depending on how widget generation goes
 

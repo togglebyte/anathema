@@ -15,7 +15,7 @@ pub use anathema_widgets::{Attributes, Style};
 use anathema_widgets::{GlyphMap, PaintChildren, WidgetRenderer};
 use crossterm::cursor::{RestorePosition, SavePosition};
 use crossterm::execute;
-use crossterm::terminal::{size, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate};
+use crossterm::terminal::{BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate, size};
 pub use screen::Screen;
 
 pub use self::buffer::Buffer;

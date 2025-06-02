@@ -38,10 +38,7 @@ pub fn report_unknown_attribute<T: AsRef<str>>(
     syn::Error::new(span, message)
 }
 
-pub fn reduce_errors<T>(
-    okay: T,
-    errors: impl IntoIterator<Item = syn::Error>,
-) -> Result<T, syn::Error> {
+pub fn reduce_errors<T>(okay: T, errors: impl IntoIterator<Item = syn::Error>) -> Result<T, syn::Error> {
     let Some(errors) = errors.into_iter().reduce(|mut left, right| {
         left.combine(right);
         left

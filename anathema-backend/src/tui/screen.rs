@@ -5,11 +5,11 @@ use anathema_value_resolver::Attributes;
 use anathema_widgets::paint::Glyph;
 use anathema_widgets::{GlyphMap, Style, WidgetRenderer};
 use crossterm::event::EnableMouseCapture;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{cursor, ExecutableCommand, QueueableCommand};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
+use crossterm::{ExecutableCommand, QueueableCommand, cursor};
 
-use super::buffer::{diff, draw_changes, Buffer, Change};
 use super::LocalPos;
+use super::buffer::{Buffer, Change, diff, draw_changes};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
 pub struct Screen {

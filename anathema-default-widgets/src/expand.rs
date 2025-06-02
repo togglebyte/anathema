@@ -2,12 +2,12 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
-use anathema_widgets::error::Result;
 
-use crate::layout::{single_layout, Axis};
+use crate::layout::{Axis, single_layout};
 
 #[derive(Debug, Default)]
 pub struct Expand;

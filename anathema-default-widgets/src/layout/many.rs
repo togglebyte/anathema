@@ -1,11 +1,11 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
-use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
 use anathema_widgets::error::Result;
+use anathema_widgets::layout::{Constraints, LayoutCtx};
 
-use super::{expand, spacers, Axis, Direction};
+use super::{Axis, Direction, expand, spacers};
 
 pub(crate) struct SizeMod {
     inner: Size,

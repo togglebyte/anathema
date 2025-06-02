@@ -2,10 +2,10 @@ use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Region, Size};
 use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
 use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
-use anathema_widgets::error::Result;
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 

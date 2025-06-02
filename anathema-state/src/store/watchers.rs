@@ -1,7 +1,7 @@
 use anathema_store::slab::Slab;
 use anathema_store::store::{Monitor, OwnedKey};
 
-use super::{WATCHERS, WATCH_QUEUE};
+use super::{WATCH_QUEUE, WATCHERS};
 use crate::store::values::with_owned;
 
 #[derive(Debug)]

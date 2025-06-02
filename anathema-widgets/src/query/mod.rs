@@ -61,7 +61,7 @@ impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
             QueryValue::Bool(lhs) => match other {
                 ValueKind::Bool(rhs) => lhs == rhs,
                 _ => false,
-            }
+            },
             &QueryValue::Int(lhs) => match other {
                 &ValueKind::Int(rhs) => lhs == rhs,
                 _ => false,

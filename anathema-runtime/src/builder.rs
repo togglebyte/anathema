@@ -1,22 +1,19 @@
 use std::sync::atomic::Ordering;
-use std::time::Instant;
 
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
-use anathema_state::{Changes, States};
 use anathema_templates::{Document, ToSourceKind};
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
-use anathema_widgets::components::{AssociatedEvents, Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
-use anathema_widgets::layout::Viewport;
+use anathema_widgets::components::{Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::tabindex::TabIndex;
-use anathema_widgets::{Components, Factory, FloatingWidgets, GlyphMap, Widget};
-use notify::{recommended_watcher, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use anathema_widgets::{Factory, Widget};
+use notify::{Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher, recommended_watcher};
 
+use crate::REBUILD;
 pub use crate::error::{Error, Result};
 use crate::events::GlobalEventHandler;
 use crate::runtime::Runtime;
-use crate::REBUILD;
 
 fn error_doc() -> Document {
     let template = "text 'you goofed up'";
@@ -137,7 +134,7 @@ impl<G: GlobalEventHandler> Builder<G> {
 
     pub fn with_global_event_handler<Eh>(self, global_event_handler: Eh) -> Builder<Eh>
     where
-        Eh: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>
+        Eh: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>,
     {
         Builder {
             factory: self.factory,

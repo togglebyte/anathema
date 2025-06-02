@@ -2,8 +2,8 @@ use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::{AttributeStorage, Value};
 
-use crate::widget::WidgetTreeView;
 use crate::WidgetKind;
+use crate::widget::WidgetTreeView;
 
 #[derive(Debug)]
 pub struct ControlFlow<'bp> {

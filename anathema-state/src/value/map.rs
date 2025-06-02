@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use super::{Shared, Type, Unique, Value};
+use crate::PendingValue;
 use crate::states::{AnyMap, AnyState};
 use crate::store::values::{get_unique, try_make_shared};
-use crate::{Change, PendingValue};
 
 #[derive(Debug)]
 pub struct Map<T> {
@@ -51,7 +51,10 @@ impl<T: AnyState> Default for Map<T> {
 /// map.insert("key", 123);
 /// ```
 impl<T: AnyState> Value<Map<T>> {
-    fn with_mut<F, U>(&mut self, f: F) -> U where F: FnOnce(&mut Map<T>) -> U {
+    fn with_mut<F, U>(&mut self, f: F) -> U
+    where
+        F: FnOnce(&mut Map<T>) -> U,
+    {
         let mut inner = get_unique(self.key.owned());
 
         let map = inner

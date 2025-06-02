@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
-use anathema_widgets::layout::{Constraints, LayoutCtx};
 use anathema_widgets::LayoutForEach;
 use anathema_widgets::error::Result;
+use anathema_widgets::layout::{Constraints, LayoutCtx};
 
 use super::Axis;
 
@@ -16,7 +16,11 @@ const DEFAULT_FACTOR: u16 = 1;
 /// Panics when called with more weights than the total number of available size.
 /// Allocates a minimum of one to each weight.
 fn distribute_size(weights: &[u16], mut total: u16) -> Vec<u16> {
-    assert!(total >= weights.len() as u16, "{total} is not larger than {}", weights.len());
+    assert!(
+        total >= weights.len() as u16,
+        "{total} is not larger than {}",
+        weights.len()
+    );
 
     let mut indexed = weights
         .iter()

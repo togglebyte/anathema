@@ -1,14 +1,9 @@
-use std::marker::PhantomData;
-
 use anathema_geometry::Size;
-use anathema_strings::HStrings;
-use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Expression, Globals};
 use anathema_value_resolver::AttributeStorage;
 
-use crate::layout::{Constraints, EvalCtx, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::{Factory, LayoutChildren, PositionChildren, Widget, WidgetId, WidgetKind};
 use crate::error::Result;
+use crate::layout::{Constraints, LayoutCtx, PositionCtx};
+use crate::{Factory, LayoutChildren, PositionChildren, Widget, WidgetId};
 
 #[derive(Debug, Default)]
 struct TestWidget;
