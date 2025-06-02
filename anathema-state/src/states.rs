@@ -210,6 +210,12 @@ impl dyn AnyState {
     }
 }
 
+impl Debug for dyn AnyState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<AnyState ({:?})>", self.type_info())
+    }
+}
+
 impl AnyState for Box<dyn AnyState> {
     fn type_info(&self) -> Type {
         self.as_ref().type_info()
@@ -431,6 +437,7 @@ impl_num_state!(isize);
 impl_float_state!(f32);
 impl_float_state!(f64);
 
+#[derive(Debug)]
 pub struct States {
     inner: Slab<StateId, Value<Box<dyn AnyState>>>,
 }

@@ -468,10 +468,9 @@ mod test {
             assert_eq!(value.as_int(), None);
 
             test.with_state(|state| {
-                // let list = state.get_mut("list".into()).unwrap();
-                // let mut list = list.to_mut_cast::<List<u32>>();
+                let list = state.get_mut("list").unwrap();
+                let mut list = list.to_mut_cast::<List<u32>>();
                 // list.push(1);
-                panic!()
             });
 
             drain_changes(&mut changes);
@@ -495,12 +494,8 @@ mod test {
         setup(&mut states, Default::default(), |test| {
             let expr = index(index(ident("state"), strlit("list")), num(1));
 
-            let mut list = Value::new(List::<u32>::empty());
-            list.push(0);
-            list.push(1);
-            list.push(2);
-            // test.set_state("list", list);
-            panic!();
+            let mut list = List::from_iter([0u32, 1, 2]);
+            test.set_state("list", list);
 
             let mut value = test.eval(&expr);
 

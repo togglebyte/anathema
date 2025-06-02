@@ -33,15 +33,15 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
         let mut scope = Scope::with_component(state_id, Key::ZERO, None);
 
         let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, &self.attributes);
-        let mut resolver = Resolver::new(&ctx);
-        let value_expr = resolver.resolve(expr);
-        let value = Value::new(value_expr, Subscriber::ZERO, ctx.attribute_storage);
-        value
+        resolve(expr, &ctx, Subscriber::ZERO)
     }
 
-    pub fn set_attribute(&mut self, key: &'bp str, value: Value<'bp>) {
-        // let attributes = self.attributes.get_mut(Key::ZERO);
-        // attributes.set(key, value);
+    pub fn set_attribute(&mut self, key: &'bp str, expr: &'bp Expression) {
+        let scope = Scope::with_component(StateId::ZERO, Key::ZERO, None);
+        self.attributes.with_mut(Key::ZERO, |attributes, storage| {
+            let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, storage);
+            attributes.insert_with(ValueKey::Attribute(key), |index| resolve(expr, &ctx, Subscriber::ZERO));
+        });
     }
 
     pub(crate) fn with_state<F>(&mut self, mut f: F)

@@ -131,6 +131,7 @@ impl Components {
     }
 }
 
+#[derive(Debug)]
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
 
 impl FloatingWidgets {

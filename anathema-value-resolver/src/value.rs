@@ -6,7 +6,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
 use crate::attributes::ValueKey;
-use crate::expression::{ValueExpr, ValueThingy, resolve_value};
+use crate::expression::{resolve_value, ValueExpr, ValueThingy};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
@@ -387,14 +387,14 @@ impl<'a> TryFrom<&'a ValueKind<'_>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{AnyState, Hex, List, Map, StateId, States, Value};
-    use anathema_templates::Variables;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
+    use anathema_templates::{Expression, Variables};
 
+    use crate::testing::{setup, TestCase};
     use crate::ValueKind;
-    use crate::testing::{TestCase, setup};
 
     #[test]
     fn attribute_lookup() {
@@ -403,8 +403,7 @@ pub(crate) mod test {
 
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
-            let attrib_value = test.eval(&*int);
-            test.set_attribute("a", attrib_value);
+            test.set_attribute("a", &int);
             let value = test.eval(&*expr);
             assert_eq!(123, value.as_int().unwrap());
         });
@@ -448,8 +447,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             // Set list for attributes
-            let list = test.eval(&*list);
-            test.set_attribute("a", list);
+            test.set_attribute("a", &list);
 
             // Evaluate the value.
             // The state is not yet set so it will fall back to attributes
@@ -481,17 +479,14 @@ pub(crate) mod test {
                 num(0),
             );
 
-            let mut state_list = Value::new(List::empty());
-            state_list.push("a string");
-            // test.set_state("a", state_list);
-            // let value = test.eval(&*expr);
-            // assert_eq!("a string", value.as_str().unwrap());
+            let mut state_list = List::from_iter(["a string"]);
+            test.set_state("a", state_list);
+            let value = test.eval(&*expr);
+            assert_eq!("a string", value.as_str().unwrap());
 
-            // let list = test.eval(&*list);
-            // test.set_attribute("a", list);
-            // let value = test.eval(&*expr);
-            // assert_eq!(123, value.as_int().unwrap());
-            panic!()
+            test.set_attribute("a", &list);
+            let value = test.eval(&*expr);
+            assert_eq!(123, value.as_int().unwrap());
         });
     }
 
@@ -801,15 +796,11 @@ pub(crate) mod test {
     fn test_dyn_list() {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
-            let mut list = Value::new(List::empty());
-            list.push(123);
-            list.push(456);
-
-            // test.set_state("list", list);
-            // let expr = index(index(ident("state"), strlit("list")), num(1));
-            // let value = test.eval(&*expr);
-            // assert_eq!(456, value.as_int().unwrap());
-            panic!()
+            let list = List::from_iter([123, 456]);
+            test.set_state("list", list);
+            let expr = index(index(ident("state"), strlit("list")), num(1));
+            let value = test.eval(&*expr);
+            assert_eq!(456, value.as_int().unwrap());
         });
     }
 
@@ -861,7 +852,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = index(index(ident("state"), strlit("blip")), strlit("value"));
-            let mut inner_map = Value::new(Map::empty());
+            let mut inner_map = Map::empty();
             inner_map.insert("value", 123);
 
             test.set_state("blip", inner_map);
