@@ -18,7 +18,7 @@ pub(crate) struct TestCase<'a, 'bp> {
 impl<'a, 'bp> TestCase<'a, 'bp> {
     pub fn new(states: &'a mut States, globals: Globals) -> Self {
         let mut attributes = AttributeStorage::empty();
-        attributes.insert(Key::ZERO, Attributes::empty(Key::ZERO));
+        attributes.insert(Key::ZERO, Attributes::empty());
 
         Self {
             globals: Box::leak(globals.into()),

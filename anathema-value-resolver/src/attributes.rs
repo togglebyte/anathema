@@ -3,9 +3,9 @@ use std::borrow::Borrow;
 use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
+use crate::ValueKind;
 use crate::expression::ValueExpr;
 use crate::value::{Value, Values};
-use crate::ValueKind;
 
 type WidgetId = anathema_store::slab::Key;
 
