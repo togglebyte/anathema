@@ -90,14 +90,14 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
     }
 
     pub fn next(&mut self) {
-        self.find_component(Direction::Forward);
+        self.find_component_accepting_focus(Direction::Forward);
     }
 
     pub fn prev(&mut self) {
-        self.find_component(Direction::Backward);
+        self.find_component_accepting_focus(Direction::Backward);
     }
 
-    fn find_component(&mut self, dir: Direction) {
+    fn find_component_accepting_focus(&mut self, dir: Direction) {
         let values = self.tree.values.iter();
 
         let mut next_index = NextIndex {
@@ -113,45 +113,43 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
 
         for (path, container) in values {
             match &container.kind {
-                crate::WidgetKind::Component(component) => {
-                    if component.dyn_component.any_accept_focus() {
-                        let index = IndexRef {
-                            path,
-                            index: component.tabindex,
-                        };
+                crate::WidgetKind::Component(component) if component.dyn_component.any_accept_focus() => {
+                    let index = IndexRef {
+                        path,
+                        index: component.tabindex,
+                    };
 
-                        // Keep track of the smallest index
-                        match &mut smallest_index {
-                            Some(smallest) if *smallest > index => *smallest = index,
-                            None => smallest_index = Some(index),
-                            Some(_) => {}
-                        }
+                    // Keep track of the smallest index
+                    match &mut smallest_index {
+                        Some(smallest) if *smallest > index => *smallest = index,
+                        None => smallest_index = Some(index),
+                        Some(_) => {}
+                    }
 
-                        // Keep track of the largest index
-                        match &mut largest_index {
-                            Some(largest) if *largest < index => *largest = index,
-                            None => largest_index = Some(index),
-                            Some(_) => {}
-                        }
+                    // Keep track of the largest index
+                    match &mut largest_index {
+                        Some(largest) if *largest < index => *largest = index,
+                        None => largest_index = Some(index),
+                        Some(_) => {}
+                    }
 
-                        // Skip the current index
-                        match &mut next_index.origin {
-                            Some(origin) => match dir {
-                                Direction::Forward if *origin >= index => continue,
-                                Direction::Backward if *origin <= index => continue,
-                                _ => {}
-                            },
-                            Some(_) | None => (),
-                        }
+                    // Skip the current index
+                    match &mut next_index.origin {
+                        Some(origin) => match dir {
+                            Direction::Forward if *origin >= index => continue,
+                            Direction::Backward if *origin <= index => continue,
+                            _ => {}
+                        },
+                        Some(_) | None => (),
+                    }
 
-                        match &mut next_index.next {
-                            Some(next) => match dir {
-                                Direction::Forward if *next > index => *next = index,
-                                Direction::Backward if *next < index => *next = index,
-                                _ => {}
-                            },
-                            None => next_index.next = Some(index),
-                        }
+                    match &mut next_index.next {
+                        Some(next) => match dir {
+                            Direction::Forward if *next > index => *next = index,
+                            Direction::Backward if *next < index => *next = index,
+                            _ => {}
+                        },
+                        None => next_index.next = Some(index),
                     }
                 }
                 _ => {}
@@ -165,9 +163,13 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
             let largest_index = largest_index.expect("if there is a next, there is a largest");
             let smallest_index = smallest_index.expect("if there is a largest, there is a smallest");
             match dir {
-                Direction::Forward if origin == largest_index => { next_index.next.replace(smallest_index); },
-                Direction::Backward if origin == smallest_index => { next_index.next.replace(largest_index); },
-                _ => {},
+                Direction::Forward if origin == largest_index => {
+                    next_index.next.replace(smallest_index);
+                }
+                Direction::Backward if origin == smallest_index => {
+                    next_index.next.replace(largest_index);
+                }
+                _ => {}
             }
         }
 
@@ -198,10 +200,7 @@ mod test {
 
     #[test]
     fn comparison() {
-        let a = IndexRef {
-            path: &[0],
-            index: 1,
-        };
+        let a = IndexRef { path: &[0], index: 1 };
 
         let b = IndexRef {
             path: &[0, 0],

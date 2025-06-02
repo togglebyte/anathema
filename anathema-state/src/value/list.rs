@@ -85,7 +85,7 @@ impl<T: AnyState + 'static> Value<List<T>> {
         let list = &*self.to_ref();
         let value = list.get(index)?;
         let key = value.key;
-        
+
         let (key, value) = try_make_shared(key.owned())?;
         let shared = Shared::new(key, value);
         Some(shared)
@@ -143,9 +143,9 @@ impl<T: AnyState + 'static> Value<List<T>> {
     /// Remove a value from the list.
     /// If the value isn't in the list `None` is returned.
     pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
-        let value = self.to_mut().inner.remove(index)?;
+        let value = self.with_mut(|list| list.inner.remove(index));
         changed(self.key, Change::Removed(index as u32));
-        Some(value)
+        value
     }
 
     /// Pop a value from the front of the list
@@ -168,12 +168,17 @@ impl<T: AnyState + 'static> Value<List<T>> {
         self.pop_back()
     }
 
+    /// Calls a closure on each element of the list.
+    /// Each element will be marked as changed.
     pub fn for_each<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T),
     {
-        let list = &mut *self.to_mut();
-        list.iter_mut().for_each(|el| f(&mut *el.to_mut()));
+        self.with_mut(|list| {
+            list.inner.iter_mut().for_each(|val| {
+                f(&mut *val.to_mut());
+            })
+        });
     }
 
     pub fn len(&self) -> usize {
@@ -184,6 +189,10 @@ impl<T: AnyState + 'static> Value<List<T>> {
         while let Some(val) = other.pop_front() {
             self.push_back(val);
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.to_ref().is_empty()
     }
 }
 

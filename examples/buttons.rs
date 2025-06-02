@@ -84,7 +84,6 @@ impl Component for Button {
     fn on_mouse(
         &mut self,
         mouse: MouseEvent,
-        hit: bool,
         state: &mut Self::State,
         mut elements: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
@@ -97,8 +96,9 @@ fn main() {
     let doc = Document::new("@main");
 
     let mut backend = TuiBackend::builder()
-        .enable_alt_screen()
+        // .enable_alt_screen()
         .enable_raw_mode()
+        .clear()
         .hide_cursor()
         .finish()
         .unwrap();

@@ -404,9 +404,10 @@ fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
     let value = resolve_value(index, ctx);
     match value {
         ValueKind::Int(index) => index,
-        ValueKind::Float(_)
-        | ValueKind::Bool(_)
-        | ValueKind::Char(_)
+        ValueKind::Bool(false) => 0,
+        ValueKind::Bool(true) => 1,
+        ValueKind::Float(index) => index as i64,
+        ValueKind::Char(_)
         | ValueKind::Hex(_)
         | ValueKind::Color(_)
         | ValueKind::Str(_)

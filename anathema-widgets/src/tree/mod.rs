@@ -148,7 +148,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
             if !generate(parent, &mut self.tree, ctx, self.scope, self.parent_component)? {
                 break;
             }
-            self.process(index, ctx, f)?;
+            _ = self.process(index, ctx, f)?;
         }
 
         Ok(ControlFlow::Continue(()))
@@ -459,7 +459,7 @@ impl<'a, 'bp, Fltr: Filter<'bp>> ForEach<'a, 'bp, Fltr> {
         F: FnMut(&mut Fltr::Output, ForEach<'_, 'bp, Fltr>) -> ControlFlow<()>,
     {
         for index in 0..self.tree.layout_len() {
-            self.process(index, f);
+            _ = self.process(index, f);
         }
 
         ControlFlow::Continue(())

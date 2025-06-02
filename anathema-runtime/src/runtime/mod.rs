@@ -117,20 +117,35 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let sleep_micros = self.sleep_micros;
-        self.with_frame(backend, |backend, mut frame| loop {
+        self.with_frame(backend, |backend, mut frame| {
+            // Perform the initial tick so tab index has a tree to work with
             frame.tick(backend)?;
-            if frame.stop {
-                return Err(Error::Stop);
+
+            let mut changed = false;
+            let mut tabindex = TabIndex::new(&mut frame.tabindex, frame.tree.view_mut(), &mut changed);
+            tabindex.next();
+
+            if let Some(current) = frame.tabindex.as_ref() {
+                frame.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
+                    comp.dyn_component.any_focus(children, ctx)
+                });
             }
 
-            frame.present(backend);
-            frame.cleanup();
-            std::thread::sleep(Duration::from_micros(sleep_micros));
+            loop {
+                frame.tick(backend)?;
+                if frame.stop {
+                    return Err(Error::Stop);
+                }
 
-            if REBUILD.swap(false, Ordering::Relaxed) {
-                frame.return_state();
-                backend.clear();
-                break Ok(());
+                frame.present(backend);
+                frame.cleanup();
+                std::thread::sleep(Duration::from_micros(sleep_micros));
+
+                if REBUILD.swap(false, Ordering::Relaxed) {
+                    frame.return_state();
+                    backend.clear();
+                    break Ok(());
+                }
             }
         })?;
 
@@ -286,10 +301,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             root_node(),
             &mut self.tree.view_mut(),
         )?;
-
-        let mut changed = false;
-        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut(), &mut changed);
-        tabindex.next();
 
         Ok(())
     }
@@ -481,11 +492,10 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                         WidgetKind::Iteration(iteration) => {
                             anathema_widgets::awful_debug!("<iter>");
                         }
-                        _ => ()
-                        // WidgetKind::ControlFlow(control_flow) => todo!(),
-                        // WidgetKind::ControlFlowContainer(_) => todo!(),
-                        // WidgetKind::Component(component) => todo!(),
-                        // WidgetKind::Slot => todo!(),
+                        _ => (), // WidgetKind::ControlFlow(control_flow) => todo!(),
+                                 // WidgetKind::ControlFlowContainer(_) => todo!(),
+                                 // WidgetKind::Component(component) => todo!(),
+                                 // WidgetKind::Slot => todo!(),
                     }
                     if let WidgetKind::Element(element) = &mut widget.kind {
                         element.invalidate_cache();
