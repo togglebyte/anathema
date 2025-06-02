@@ -92,7 +92,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
             Entry::Index(binding, index, _) if key == binding => {
                 match self.parent.expect("the parent can only be a collection").value {
                     Entry::Collection(collection) => match &collection.0.kind {
-                        ValueKind::List(list) => {
+                        ValueKind::List(_) => {
                             let value_expr = ValueExpr::Index(
                                 collection.0.expr.clone().into(),
                                 ValueExpr::Int(Kind::Static(index as i64)).into(),

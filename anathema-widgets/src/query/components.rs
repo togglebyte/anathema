@@ -80,7 +80,7 @@ where
     where
         F: FnMut(WidgetId, &mut Component<'_>, &mut Attributes<'_>),
     {
-        self.query(&mut f, true);
+        _ = self.query(&mut f, true);
     }
 
     fn query<F, U>(self, f: &mut F, continuous: bool) -> ControlFlow<U>

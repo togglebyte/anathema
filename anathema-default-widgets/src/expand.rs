@@ -42,7 +42,7 @@ impl Widget for Expand {
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
-        children.each(|node, children| {
+        _ = children.each(|node, children| {
             node.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
@@ -55,7 +55,7 @@ impl Widget for Expand {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())

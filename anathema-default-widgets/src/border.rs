@@ -465,7 +465,7 @@ impl Widget for Border {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             if self.sides.contains(Sides::TOP) {
                 ctx.pos.y += 1;
             }
@@ -488,7 +488,7 @@ impl Widget for Border {
     ) {
         let border_size = self.border_size(self.sides);
 
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())

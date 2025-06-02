@@ -152,7 +152,7 @@ pub fn paint<'bp>(
     mut widgets: PaintChildren<'_, 'bp>,
     attribute_storage: &AttributeStorage<'bp>,
 ) {
-    widgets.each(|widget, children| {
+    _ = widgets.each(|widget, children| {
         let ctx = PaintCtx::new(surface, None, glyph_index);
         widget.paint(children, ctx, attribute_storage);
         ControlFlow::Continue(())

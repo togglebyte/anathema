@@ -37,7 +37,7 @@ impl Widget for Row {
     ) {
         let y_offset = (ctx.inner_size.height / 2) as i32;
 
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let size = child.size();
             let child_height = size.height as i32;
             let y = y_offset - child_height / 2;

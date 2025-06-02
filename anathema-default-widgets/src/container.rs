@@ -47,7 +47,7 @@ impl Widget for Container {
             constraints.set_max_height(height);
         }
 
-        children.each(ctx, |ctx, child, children| {
+        _ = children.each(ctx, |ctx, child, children| {
             size = child.layout(children, constraints, ctx)?.into();
             Ok(ControlFlow::Break(()))
         })?;
@@ -65,7 +65,7 @@ impl Widget for Container {
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });

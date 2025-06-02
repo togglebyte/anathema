@@ -37,7 +37,7 @@ impl Widget for Column {
     ) {
         let x_offset = (ctx.inner_size.width / 2) as i32;
 
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let size = child.size();
             let child_width = size.width as i32;
             let x = x_offset - child_width / 2;

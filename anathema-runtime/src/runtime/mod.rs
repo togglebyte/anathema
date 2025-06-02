@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
+use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
@@ -11,14 +11,14 @@ use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyComponent, AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
+    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind, WidgetTree,
-    eval_blueprint, update_widget,
+    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer,
+    WidgetId, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use notify::RecommendedWatcher;
@@ -72,7 +72,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         global_event_handler: G,
     ) -> Result<Self> {
         let (blueprint, globals) = document.compile()?;
-        let Ok((err_blueprint, err_globals)) = err_document.compile() else {
+        let Ok((_err_blueprint, _err_globals)) = err_document.compile() else {
             panic!("the error display failed to compile")
         };
 
@@ -474,23 +474,15 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         let mut tree = self.tree.view_mut();
 
         self.changes.iter().try_for_each(|(sub, change)| {
-            anathema_widgets::awful_debug!("--- changes ---");
             sub.iter().try_for_each(|value_id| {
                 let widget_id = value_id.key();
-                anathema_widgets::awful_debug!("<change {change:?}> | <value id: {value_id:?}>");
 
                 if let Some(widget) = tree.get_mut(widget_id) {
                     let kind = &widget.kind;
                     match kind {
-                        WidgetKind::Element(element) => {
-                            // anathema_widgets::awful_debug!("{}", element.ident);
-                        }
-                        WidgetKind::For(forloop) => {
-                            anathema_widgets::awful_debug!("<for {}>", forloop.binding());
-                        }
-                        WidgetKind::Iteration(iteration) => {
-                            anathema_widgets::awful_debug!("<iter>");
-                        }
+                        WidgetKind::Element(_element) => {}
+                        WidgetKind::For(_forloop) => {}
+                        WidgetKind::Iteration(_) => {}
                         _ => (), // WidgetKind::ControlFlow(control_flow) => todo!(),
                                  // WidgetKind::ControlFlowContainer(_) => todo!(),
                                  // WidgetKind::Component(component) => todo!(),
@@ -503,7 +495,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
                 // check that the node hasn't already been removed
                 if !tree.contains(widget_id) {
-                    anathema_widgets::awful_debug!("widget removed ...");
                     return Result::Ok(());
                 }
 
@@ -517,8 +508,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
             Result::Ok(())
         })?;
-
-        anathema_widgets::debug_tree!(tree);
 
         self.changes.clear();
 
@@ -596,7 +585,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     }
 
     fn display_error(&mut self, backend: &mut impl Backend) {
-        let tpl = "text 'you goofed up'";
+        let _tpl = "text 'you goofed up'";
         backend.render(self.layout_ctx.glyph_map);
     }
 }

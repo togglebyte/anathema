@@ -57,7 +57,7 @@ pub fn layout_all_expansions<'bp>(
 ) -> Result<Size> {
     let mut factors = vec![];
 
-    nodes.each(ctx, |ctx, node, _children| {
+    _ = nodes.each(ctx, |ctx, node, _children| {
         if node.ident == "expand" {
             let attributes = ctx.attribute_storage.get(node.id());
             let factor = attributes.get_as::<u16>("factor").unwrap_or(DEFAULT_FACTOR);
@@ -80,7 +80,7 @@ pub fn layout_all_expansions<'bp>(
     };
 
     let mut index = 0;
-    nodes.each(ctx, |ctx, node, children| {
+    _ = nodes.each(ctx, |ctx, node, children| {
         if node.ident != "expand" {
             return Ok(ControlFlow::Continue(()));
         }

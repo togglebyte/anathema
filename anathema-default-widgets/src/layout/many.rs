@@ -89,7 +89,7 @@ impl Many {
 
         let mut size = Size::ZERO;
 
-        children.skip(offset).each(ctx, |ctx, node, children| {
+        _ = children.skip(offset).each(ctx, |ctx, node, children| {
             if ["spacer", "expand"].contains(&node.ident) {
                 return Ok(ControlFlow::Continue(()));
             }

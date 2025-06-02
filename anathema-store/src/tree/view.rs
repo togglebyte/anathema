@@ -219,7 +219,7 @@ impl<'tree, T> TreeView<'tree, T> {
 
     /// Apply a [`NodeVisitor`], depth first
     pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
-        super::visitor::apply_visitor(&self.layout, &mut self.values, visitor);
+        _ = super::visitor::apply_visitor(&self.layout, &mut self.values, visitor);
     }
 
     /// Perform a given operation (`F`) on a reference to a value in the tree

@@ -7,7 +7,7 @@ use anathema_widgets::components::events::Event;
 use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFilter, Viewport};
 use anathema_widgets::paint::PaintFilter;
-use anathema_widgets::{GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView, awful_debug};
+use anathema_widgets::{GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
 
 pub mod tui;
 
@@ -113,7 +113,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         let scope = Scope::root();
         let mut for_each = LayoutForEach::new(tree, &scope, filter, None);
         let constraints = self.constraints;
-        for_each.each(ctx, |ctx, widget, children| {
+        _ = for_each.each(ctx, |ctx, widget, children| {
             let _ = widget.layout(children, constraints, ctx)?;
             Ok(ControlFlow::Break(()))
         })?;
@@ -125,7 +125,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         puffin::profile_function!();
 
         let mut for_each = PositionChildren::new(self.tree.view_mut(), attributes, filter);
-        for_each.each(|widget, children| {
+        _ = for_each.each(|widget, children| {
             widget.position(children, Pos::ZERO, attributes, viewport);
             ControlFlow::Break(())
         });

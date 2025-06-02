@@ -112,7 +112,7 @@ where
     where
         F: FnMut(&mut Element<'_>, &mut Attributes<'_>),
     {
-        self.query(&mut f, true);
+        _ = self.query(&mut f, true);
     }
 
     fn query<F, U>(self, f: &mut F, continuous: bool) -> ControlFlow<U>

@@ -135,7 +135,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
         F: FnMut(&mut LayoutCtx<'_, 'bp>, &mut Element<'bp>, LayoutForEach<'_, 'bp>) -> Result<ControlFlow<()>>,
     {
         for index in self.offset..self.tree.layout_len() {
-            self.process(index, ctx, f)?;
+            _ = self.process(index, ctx, f)?;
         }
 
         // If there is no parent then there can be no children generated
@@ -175,7 +175,6 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     _ => (),
                 }
 
-                let filter = self.filter;
                 let cf = match &mut widget.kind {
                     WidgetKind::Element(el) => {
                         let children = LayoutForEach::with_generator(

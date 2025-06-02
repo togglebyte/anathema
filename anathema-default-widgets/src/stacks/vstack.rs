@@ -46,7 +46,7 @@ impl Widget for VStack {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())

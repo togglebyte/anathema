@@ -19,7 +19,7 @@ impl Widget for Align {
         _: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<Size> {
-        children.each(ctx, |ctx, widget, children| {
+        _ = children.each(ctx, |ctx, widget, children| {
             _ = widget.layout(children, constraints, ctx);
             Ok(ControlFlow::Break(()))
         })?;
@@ -37,7 +37,7 @@ impl Widget for Align {
         let attributes = attribute_storage.get(id);
         let alignment = attributes.get_as::<Alignment>(ALIGNMENT).unwrap_or_default();
 
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let width = ctx.inner_size.width as i32;
             let height = ctx.inner_size.height as i32;
             let child_width = child.size().width as i32;

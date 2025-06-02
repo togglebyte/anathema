@@ -21,7 +21,7 @@ pub fn layout_all_spacers<'bp>(
     let mut final_size = Size::ZERO;
     let mut count = 0;
 
-    nodes.each(ctx, |_, node, _| {
+    _ = nodes.each(ctx, |_, node, _| {
         if node.ident == "spacer" {
             count += 1;
         }
@@ -39,7 +39,7 @@ pub fn layout_all_spacers<'bp>(
 
     let mut overflow = max % count;
 
-    nodes.each(ctx, |ctx, node, children| {
+    _ = nodes.each(ctx, |ctx, node, children| {
         if node.ident != "spacer" {
             return Ok(ControlFlow::Continue(()));
         }

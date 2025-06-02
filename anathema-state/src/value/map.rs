@@ -51,25 +51,6 @@ impl<T: AnyState> Default for Map<T> {
 /// map.insert("key", 123);
 /// ```
 impl<T: AnyState> Value<Map<T>> {
-    fn with_mut<F, U>(&mut self, f: F) -> U
-    where
-        F: FnOnce(&mut Map<T>) -> U,
-    {
-        let mut inner = get_unique(self.key.owned());
-
-        let map = inner
-            .val
-            .to_any_mut()
-            .downcast_mut()
-            .expect("the type should never change");
-
-        let ret_val = f(map);
-
-        crate::store::values::return_owned(self.key.owned(), inner);
-
-        ret_val
-    }
-
     pub fn empty() -> Self {
         let map = Map { inner: HashMap::new() };
         Value::new(map)

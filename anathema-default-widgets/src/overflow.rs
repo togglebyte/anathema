@@ -182,7 +182,7 @@ impl Widget for Overflow {
         };
 
         let mut count = 0;
-        children.each(|node, children| {
+        _ = children.each(|node, children| {
             // TODO
             // ----
             // this should stop doing layout once the children are no longer
@@ -236,7 +236,7 @@ impl Widget for Overflow {
     ) {
         let region = ctx.create_region();
 
-        children.each(|widget, children| {
+        _ = children.each(|widget, children| {
             ctx.set_clip_region(region);
             let ctx = ctx.to_unsized();
             widget.paint(children, ctx, attribute_storage);

@@ -59,7 +59,7 @@ impl BorderLayout {
 
         let mut child_constraints = constraints;
 
-        children.each(ctx, |ctx, child, children| {
+        _ = children.each(ctx, |ctx, child, children| {
             // Shrink the constraint for the child to fit inside the border
 
             // border [min-width: 10]

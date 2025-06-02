@@ -99,15 +99,12 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
         let values = self.tree.values.iter();
 
         let mut next_index = NextIndex {
-            dir: Direction::Forward,
             origin: self.current.as_ref().map(|i| i.to_ref()),
             next: None,
         };
 
         let mut smallest_index = None;
         let mut largest_index = None;
-
-        let now = std::time::Instant::now();
 
         for (path, container) in values {
             match &container.kind {
@@ -138,7 +135,7 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
                             Direction::Backward if *origin <= index => continue,
                             _ => {}
                         },
-                        Some(_) | None => (),
+                        None => (),
                     }
 
                     match &mut next_index.next {
@@ -186,7 +183,6 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
 
 #[derive(Debug)]
 struct NextIndex<'a> {
-    dir: Direction,
     // The current index, before trying to find the next one
     origin: Option<IndexRef<'a>>,
     next: Option<IndexRef<'a>>,

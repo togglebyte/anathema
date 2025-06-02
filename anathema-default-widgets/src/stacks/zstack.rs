@@ -18,7 +18,7 @@ impl Widget for ZStack {
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<Size> {
         let mut size = Size::ZERO;
-        children.each(ctx, |ctx, child, children| {
+        _ = children.each(ctx, |ctx, child, children| {
             let child_size = Size::from(child.layout(children, constraints, ctx)?);
             size.width = size.width.max(child_size.width);
             size.height = size.height.max(child_size.height);
@@ -34,7 +34,7 @@ impl Widget for ZStack {
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Continue(())
         });

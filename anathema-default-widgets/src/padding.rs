@@ -59,7 +59,7 @@ impl Widget for Padding {
 
         let padding_size = self.0.size();
 
-        children.each(ctx, |ctx, child, children| {
+        _ = children.each(ctx, |ctx, child, children| {
             let mut child_constraints = constraints;
             child_constraints.sub_max_width(padding_size.width);
             child_constraints.sub_max_height(padding_size.height);
@@ -84,7 +84,7 @@ impl Widget for Padding {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             ctx.pos.y += self.0.top as i32;
             ctx.pos.x += self.0.left as i32;
 
@@ -100,7 +100,7 @@ impl Widget for Padding {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let mut ctx = ctx.to_unsized();
             if let Some(clip) = ctx.clip.as_mut() {
                 clip.from.x += self.0.left as i32;

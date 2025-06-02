@@ -1,12 +1,11 @@
 use std::borrow::Borrow;
 
-use anathema_state::PendingValue;
 use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
-use crate::ValueKind;
 use crate::expression::ValueExpr;
 use crate::value::{Value, Values};
+use crate::ValueKind;
 
 type WidgetId = anathema_store::slab::Key;
 
@@ -94,7 +93,6 @@ impl<'bp> AttributeStorage<'bp> {
 pub struct Attributes<'bp> {
     pub(crate) attribs: Values<'bp>,
     pub value: Option<SmallIndex>,
-    widget_id: WidgetId,
 }
 
 // TODO
@@ -105,11 +103,10 @@ pub struct Attributes<'bp> {
 
 impl<'bp> Attributes<'bp> {
     /// Create an empty set of attributes
-    pub fn empty(widget_id: WidgetId) -> Self {
+    pub fn empty() -> Self {
         Self {
             attribs: Values::empty(),
             value: None,
-            widget_id,
         }
     }
 

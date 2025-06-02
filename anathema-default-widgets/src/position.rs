@@ -115,7 +115,7 @@ impl Widget for Position {
 
         let mut size = Size::ZERO;
 
-        children.each(ctx, |ctx, child, children| {
+        _ = children.each(ctx, |ctx, child, children| {
             size = child.layout(children, constraints, ctx)?.into();
             Ok(ControlFlow::Break(()))
         })?;
@@ -134,11 +134,10 @@ impl Widget for Position {
             ctx.pos = Pos::ZERO;
         }
 
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             match self.horz_edge {
                 HorzEdge::Left(left) => ctx.pos.x += left,
                 HorzEdge::Right(right) => {
-                    let child_width = child.size().width;
                     let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right;
                     ctx.pos.x = offset;
                 }
@@ -164,7 +163,7 @@ impl Widget for Position {
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.each(|child, children| {
+        _ = children.each(|child, children| {
             let mut ctx = ctx.to_unsized();
             ctx.clip = None;
             child.paint(children, ctx, attribute_storage);

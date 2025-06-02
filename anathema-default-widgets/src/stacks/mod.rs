@@ -75,7 +75,7 @@ impl Stack {
             }
         }
 
-        children.each(|node, children| {
+        _ = children.each(|node, children| {
             match direction {
                 Direction::Forward => {
                     node.position(children, pos, attribute_storage, ctx.viewport);

@@ -93,7 +93,7 @@ impl Widget for Text {
         });
 
         // Layout text of all the sub-nodes
-        children.each(ctx, |ctx, child, _| {
+        _ = children.each(ctx, |ctx, child, _| {
             let Some(_span) = child.try_to_ref::<Span>() else {
                 return Ok(ControlFlow::Continue(()));
             };

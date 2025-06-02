@@ -305,7 +305,7 @@ pub(crate) fn diff(
                 CellState::Occupied(c) => Change::Insert(c),
             };
 
-            let mut style = match previous_style {
+            let style = match previous_style {
                 Some(previous) => (previous != new_cell.style).then_some(new_cell.style),
                 None => Some(new_cell.style),
             };

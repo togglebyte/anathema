@@ -46,7 +46,7 @@ impl Evaluator for SingleEval {
         // -----------------------------------------------------------------------------
         //   - New api -
         // -----------------------------------------------------------------------------
-        let mut attributes = Attributes::empty(widget_id);
+        let mut attributes = Attributes::empty();
 
         if let Some(expr) = single.value.as_ref() {
             let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
@@ -182,7 +182,7 @@ impl Evaluator for ComponentEval {
         let transaction = tree.insert(parent);
         let widget_id = transaction.node_id();
 
-        let mut attributes = Attributes::empty(widget_id);
+        let mut attributes = Attributes::empty();
 
         for (key, expr) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {

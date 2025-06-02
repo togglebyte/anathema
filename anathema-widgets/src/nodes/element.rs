@@ -54,7 +54,7 @@ impl<'bp> Element<'bp> {
         let mut rebuild = self.container.cache.count_check(count);
 
         if let Some(size) = self.cached_size() {
-            children.each(ctx, |ctx, node, children| {
+            _ = children.each(ctx, |ctx, node, children| {
                 // If we are here it's because the current node has a valid cache.
                 // We need to use the constraint for the given node in this case as
                 // the constraint is not managed by the current node.

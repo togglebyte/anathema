@@ -157,7 +157,7 @@ impl Backend for TuiBackend {
         self.events.poll(timeout)
     }
 
-    fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap) {
+    fn resize(&mut self, new_size: Size, _: &mut GlyphMap) {
         self.screen.resize(new_size);
     }
 
