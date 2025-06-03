@@ -1,24 +1,22 @@
 use std::collections::HashMap;
-use std::rc::Rc;
-
-use anathema_store::storage::strings::Strings;
 
 use super::parser::Expr;
-use super::{Expression, Op};
+use super::{Expression, LogicalOp, Op};
 use crate::error::{ParseErrorKind, Result};
 use crate::expressions::Equality;
+use crate::strings::Strings;
 use crate::token::Operator;
 
-pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind> {
+pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind> {
     let output = match expr {
         Expr::Primitive(val) => Expression::Primitive(val),
         Expr::Ident(string_id) => {
             let string = strings.get_unchecked(string_id);
-            Expression::Ident(Rc::from(string))
+            Expression::Ident(string)
         }
         Expr::Str(string_id) => {
             let string = strings.get_unchecked(string_id);
-            Expression::Str(Rc::from(string))
+            Expression::Str(string)
         }
         Expr::Array { lhs, index } => {
             let lhs = eval(*lhs, strings)?;
@@ -33,7 +31,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                     _ => {
                         return Err(ParseErrorKind::InvalidToken {
                             expected: "this can only be an ident",
-                        })
+                        });
                     }
                 };
                 let rhs = strings.get_unchecked(string_id);
@@ -56,9 +54,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
             | Operator::GreaterThan
             | Operator::GreaterThanOrEqual
             | Operator::LessThan
-            | Operator::LessThanOrEqual
-            | Operator::And
-            | Operator::Or => {
+            | Operator::LessThanOrEqual => {
                 let equality = match op {
                     Operator::EqualEqual => Equality::Eq,
                     Operator::NotEqual => Equality::NotEq,
@@ -66,11 +62,20 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                     Operator::GreaterThanOrEqual => Equality::Gte,
                     Operator::LessThan => Equality::Lt,
                     Operator::LessThanOrEqual => Equality::Lte,
-                    Operator::And => Equality::And,
-                    Operator::Or => Equality::Or,
                     _ => unreachable!(),
                 };
                 Expression::Equality(eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into(), equality)
+            }
+            Operator::And | Operator::Or => {
+                let logical_op = match op {
+                    Operator::And => LogicalOp::And,
+                    Operator::Or => LogicalOp::Or,
+                    _ => unreachable!(),
+                };
+                let lhs = eval(*lhs, strings)?.into();
+                let rhs = eval(*rhs, strings)?.into();
+
+                Expression::LogicalOp(lhs, rhs, logical_op)
             }
             Operator::Either => {
                 let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());
@@ -87,7 +92,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
                 _ => {
                     return Err(ParseErrorKind::InvalidToken {
                         expected: "either ! or -",
-                    })
+                    });
                 }
             }
         }
@@ -117,7 +122,7 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
 
             Expression::Call {
                 fun: eval(*fun, strings)?.into(),
-                args: args.into_boxed_slice(),
+                args,
             }
         }
     };
@@ -127,15 +132,15 @@ pub fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErrorKind>
 
 #[cfg(test)]
 mod test {
-    use anathema_store::storage::strings::Strings;
 
     use super::*;
     use crate::expressions::parser::parse_expr;
     use crate::lexer::Lexer;
+    use crate::strings::Strings;
     use crate::token::Tokens;
 
     fn eval_src(input: &str) -> Expression {
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
         let lexer = Lexer::new(input, &mut strings);
         let tokens = lexer.collect::<Result<_, _>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());
@@ -151,13 +156,13 @@ mod test {
     #[test]
     fn index() {
         let expr = eval_src("a[x]");
-        assert_eq!(expr.to_string(), "a[x]");
+        assert_eq!(expr.to_string(), "<a>[x]");
     }
 
     #[test]
     fn dot() {
         let expr = eval_src("a.x.y");
-        assert_eq!(expr.to_string(), "a[x][y]");
+        assert_eq!(expr.to_string(), "<<a>[x]>[y]");
     }
 
     #[test]
@@ -175,7 +180,7 @@ mod test {
     #[test]
     fn lookup() {
         let expr = eval_src("a.b.c");
-        assert_eq!(expr.to_string(), "a[b][c]");
+        assert_eq!(expr.to_string(), "<<a>[b]>[c]");
     }
 
     #[test]
@@ -341,5 +346,23 @@ mod test {
     fn map() {
         let expr = eval_src("[{a: 1}, {b: 89}]");
         assert_eq!(expr.to_string(), "[{a: 1}, {b: 89}]");
+    }
+
+    #[test]
+    fn either() {
+        let expr = eval_src("a?b");
+        assert_eq!(expr.to_string(), "a ? b");
+    }
+
+    #[test]
+    fn either_list_or_list() {
+        let expr = eval_src("(a?b)[0]");
+        assert_eq!(expr.to_string(), "<a ? b>[0]");
+    }
+
+    #[test]
+    fn either_or_list() {
+        let expr = eval_src("a?b[0]");
+        assert_eq!(expr.to_string(), "a ? <b>[0]");
     }
 }

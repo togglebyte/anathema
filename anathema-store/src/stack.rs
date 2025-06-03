@@ -142,9 +142,6 @@ impl<T> Stack<T> {
 
     /// Clear the values from the stack
     pub fn clear(&mut self) {
-        if self.is_empty() {
-            return;
-        }
         self.inner[..self.len].fill_with(|| Entry::Empty);
         self.len = 0;
     }

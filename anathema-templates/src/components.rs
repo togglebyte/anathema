@@ -1,20 +1,20 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-use anathema_store::slab::Index;
+use anathema_store::slab::{Index, SlabIndex};
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
-use anathema_store::storage::strings::{StringId, Strings};
 use anathema_store::storage::Storage;
 
+use crate::Lexer;
 use crate::blueprints::Blueprint;
 use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
+use crate::strings::{StringId, Strings};
 use crate::token::Tokens;
 use crate::variables::Variables;
-use crate::Lexer;
 
 pub trait ToSourceKind {
     fn to_path(self) -> SourceKind;
@@ -79,29 +79,44 @@ pub(crate) enum ComponentSource {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct WidgetComponentId(u32);
+pub struct ComponentBlueprintId(u32);
 
-impl From<WidgetComponentId> for Index {
-    fn from(value: WidgetComponentId) -> Self {
+impl SlabIndex for ComponentBlueprintId {
+    const MAX: usize = u32::MAX as usize;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
+    }
+}
+
+impl From<ComponentBlueprintId> for Index {
+    fn from(value: ComponentBlueprintId) -> Self {
         value.0.into()
     }
 }
 
-impl From<WidgetComponentId> for usize {
-    fn from(value: WidgetComponentId) -> Self {
+impl From<ComponentBlueprintId> for usize {
+    fn from(value: ComponentBlueprintId) -> Self {
         value.0 as usize
     }
 }
 
-impl From<usize> for WidgetComponentId {
+impl From<usize> for ComponentBlueprintId {
     fn from(value: usize) -> Self {
         Self(value as u32)
     }
 }
 
 pub(crate) struct ComponentTemplates {
-    dependencies: Stack<WidgetComponentId>,
-    components: Storage<WidgetComponentId, String, ComponentSource>,
+    dependencies: Stack<ComponentBlueprintId>,
+    components: Storage<ComponentBlueprintId, String, ComponentSource>,
 }
 
 impl ComponentTemplates {
@@ -112,18 +127,26 @@ impl ComponentTemplates {
         }
     }
 
-    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> WidgetComponentId {
+    pub(crate) fn name(&self, blueprint_id: ComponentBlueprintId) -> String {
+        let (k, _) = self
+            .components
+            .get(blueprint_id)
+            .expect("if a component is registered it has a name");
+        k.into()
+    }
+
+    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> ComponentBlueprintId {
         self.components.push(name.into(), ComponentSource::Empty)
     }
 
-    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> WidgetComponentId {
+    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> ComponentBlueprintId {
         let ident = ident.into();
         self.components.insert(ident, template)
     }
 
     pub(crate) fn load(
         &mut self,
-        parent_id: WidgetComponentId,
+        parent_id: ComponentBlueprintId,
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
@@ -154,7 +177,9 @@ impl ComponentTemplates {
                 assert_eq!(parent_id, new_id);
                 ret
             }
-            _ => unreachable!("a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"),
+            _ => unreachable!(
+                "a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"
+            ),
         };
 
         self.dependencies.pop();
@@ -168,7 +193,7 @@ impl ComponentTemplates {
         globals: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
-        parent: WidgetComponentId,
+        parent: ComponentBlueprintId,
     ) -> Result<Vec<Blueprint>> {
         let tokens = Lexer::new(template, strings).collect::<Result<Vec<_>>>()?;
         let tokens = Tokens::new(tokens, template.len());

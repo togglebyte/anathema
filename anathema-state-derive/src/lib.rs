@@ -1,64 +1,32 @@
-use manyhow::{ensure, manyhow, Result};
-use quote_use::quote_use as quote;
-use syn::{self, Data, DeriveInput, Fields};
+use syn::spanned::Spanned as _;
+use syn::{DeriveInput, parse_macro_input};
 
-static STATE_IGNORE: &str = "state_ignore";
+static DERIVE_NAMESPACE: &str = "anathema";
 
-#[manyhow]
-#[proc_macro_derive(State, attributes(state_ignore))]
-pub fn state_derive(input: DeriveInput) -> Result {
-    let name = &input.ident;
+#[proc_macro_derive(State, attributes(anathema, state_ignore))]
+pub fn anathema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match &input.data {
+        syn::Data::Struct(data) => structs::generate(&input, data),
 
-    ensure!(let Data::Struct(strct) = &input.data, input, "only structs are supported");
+        syn::Data::Enum(data) => syn::Error::new(
+            data.enum_token.span(), //
+            "anathema's State cannot be derived on enums currently",
+        )
+        .to_compile_error()
+        .into(),
 
-    ensure!(
-        let Fields::Named(struct_fields) = &strct.fields,
-        strct.fields,
-        "only named fields"
-    );
-
-    let (field_idents, field_names): (Vec<_>, Vec<_>) = struct_fields
-        .named
-        .iter()
-        .filter(|f| {
-            // Ignore all `STATE_IGNORE` attributes
-            !f.attrs.iter().any(|attr| attr.path().is_ident(STATE_IGNORE))
-        })
-        .filter_map(|f| f.ident.as_ref())
-        .map(|f| (f, f.to_string()))
-        .unzip();
-
-    Ok(quote! {
-        # use ::anathema::state::{self, Value, ValueRef, PendingValue, Path, state, Subscriber, CommonVal};
-        # use ::std::any::Any;
-        impl state::State for #name {
-            fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
-                let Path::Key(key) = path else { return None };
-                match key {
-                    #(
-                        #field_names => {
-                            Some(self.#field_idents.value_ref(sub))
-                        }
-                    )*
-                    _ => None,
-                }
-            }
-
-            fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
-                let Path::Key(key) = path else { return None };
-                match key {
-                    #(
-                        #field_names => {
-                            Some(self.#field_idents.to_pending())
-                        }
-                    )*
-                    _ => None,
-                }
-            }
-
-            fn to_common(&self) -> Option<CommonVal<'_>> {
-                None
-            }
+        syn::Data::Union(data) => {
+            syn::Error::new(
+                data.union_token.span(), //
+                "anathema's State cannot be derived on unions currently",
+            )
+            .to_compile_error()
+            .into()
         }
-    })
+    }
 }
+
+mod attributes;
+mod errors;
+mod structs;

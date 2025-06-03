@@ -1,17 +1,18 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 
-use super::Value;
-use crate::{CommonVal, Path, PendingValue, State, Subscriber, ValueRef};
+use super::{Shared, Type, Unique, Value};
+use crate::PendingValue;
+use crate::states::{AnyMap, AnyState};
+use crate::store::values::{get_unique, try_make_shared};
 
 #[derive(Debug)]
 pub struct Map<T> {
-    inner: HashMap<Rc<str>, Value<T>>,
+    inner: HashMap<String, Value<T>>,
 }
 
-impl<T: 'static + State> Map<T> {
-    pub fn empty() -> Value<Self> {
-        Value::<Self>::empty()
+impl<T: AnyState> Map<T> {
+    pub fn empty() -> Self {
+        Self { inner: HashMap::new() }
     }
 
     pub fn get(&self, key: &str) -> Option<&Value<T>> {
@@ -21,46 +22,90 @@ impl<T: 'static + State> Map<T> {
     pub fn get_mut(&mut self, key: &str) -> Option<&mut Value<T>> {
         self.inner.get_mut(key)
     }
+
+    /// Insert a value into the `Map`.
+    /// The value will be wrapped in a `Value<T>` so it's not advisable to insert pre-wrapped
+    /// value.
+    pub fn insert(&mut self, map_key: impl Into<String>, value: T) {
+        let value = value.into();
+        let map_key = map_key.into();
+        self.inner.insert(map_key, value);
+    }
+
+    /// Remove a value from the map.
+    pub fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
+        self.inner.remove(map_key)
+    }
+
+    /// Returns true if the map is empty
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
-impl<T: 'static + State> Value<Map<T>> {
+impl<T: AnyState> Default for Map<T> {
+    fn default() -> Self {
+        Self { inner: HashMap::new() }
+    }
+}
+
+/// A `Map` of values with strings as keys.
+/// ```
+/// # use anathema_state::Map;
+/// let mut map = Map::empty();
+/// map.insert("key", 123);
+/// ```
+impl<T: AnyState> Value<Map<T>> {
     pub fn empty() -> Self {
         let map = Map { inner: HashMap::new() };
         Value::new(map)
     }
 
-    /// Insert a value into the `Map`.
-    /// The value will be wrapped in a `Value<T>` so it's not advisable to insert pre-wrapped
-    /// value.
-    pub fn insert(&mut self, map_key: impl Into<Rc<str>>, value: impl Into<Value<T>>) {
-        let map_key = map_key.into();
-        let map = &mut *self.to_mut();
-        let value = value.into();
-        map.inner.insert(map_key, value);
+    pub fn get(&self, key: impl AsRef<str>) -> Option<Shared<'_, T>> {
+        let map = &*self.to_ref();
+        let value = map.get(key.as_ref())?;
+        let key = value.key;
+
+        let (key, value) = try_make_shared(key.owned())?;
+        let shared = Shared::new(key, value);
+        Some(shared)
     }
 
-    pub fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
-        let _key = self.key;
-        let map = &mut *self.to_mut();
-        map.inner.remove(map_key)
+    pub fn get_mut<'a>(&'a mut self, key: impl AsRef<str>) -> Option<Unique<'a, T>> {
+        let map = &*self.to_ref();
+        let value = map.get(key.as_ref())?;
+
+        let key = value.key;
+        let value = Unique {
+            value: Some(get_unique(key.owned())),
+            key,
+            _p: std::marker::PhantomData,
+        };
+        Some(value)
     }
 }
 
-impl<T: 'static + State> State for Map<T> {
-    fn state_get(&self, path: Path<'_>, sub: Subscriber) -> Option<ValueRef> {
-        let Path::Key(k) = path else { return None };
-        let value = self.inner.get(k)?;
-        Some(value.value_ref(sub))
+impl<T: AnyState + 'static> AnyMap for Map<T> {
+    fn lookup(&self, key: &str) -> Option<PendingValue> {
+        self.get(key).map(|val| val.reference())
+    }
+}
+
+impl<T: AnyState + 'static> AnyState for Map<T> {
+    fn type_info(&self) -> Type {
+        Type::Map
     }
 
-    fn state_lookup(&self, path: Path<'_>) -> Option<PendingValue> {
-        let Path::Key(k) = path else { return None };
-        let value = self.inner.get(k)?;
-        Some(value.to_pending())
+    fn to_any_ref(&self) -> &dyn std::any::Any {
+        self
     }
 
-    fn to_common(&self) -> Option<CommonVal<'_>> {
-        None
+    fn to_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn as_any_map(&self) -> Option<&dyn AnyMap> {
+        Some(self)
     }
 }
 
@@ -74,21 +119,40 @@ mod test {
         map.insert("a", 1);
         map.insert("b", 2);
 
-        let r = map.to_ref();
+        let val = map.get("a").unwrap().to_ref();
+        assert_eq!(*val, 1);
 
-        let val = *r.get("a").unwrap().to_ref();
-        assert_eq!(val, 1);
+        let val = map.get("b").unwrap().to_ref();
+        assert_eq!(*val, 2);
+    }
 
-        let val = *r.get("b").unwrap().to_ref();
-        assert_eq!(val, 2);
+    #[derive(Debug, PartialEq)]
+    struct DM(usize);
+
+    impl crate::State for DM {
+        fn type_info(&self) -> Type {
+            Type::Unit
+        }
+    }
+    impl Drop for DM {
+        fn drop(&mut self) {
+            eprintln!("- drop: {}", self.0);
+        }
+    }
+    struct DMRef<'a>(&'a DM);
+    impl Drop for DMRef<'_> {
+        fn drop(&mut self) {
+            eprintln!("- drop ref: {}", self.0.0);
+        }
     }
 
     #[test]
     fn remove() {
         let mut map = Map::empty();
-        map.insert("a", 1i32);
-        let value_ref = map.to_ref().state_get("a".into(), Subscriber::ZERO).unwrap();
-        map.remove("a");
-        assert!(value_ref.value::<i32>().is_none());
+        map.insert("a", DM(1));
+        let value_ref = map.get("a").as_ref().unwrap();
+
+        assert!(map.remove("a").is_some());
+        assert!(map.is_empty());
     }
 }

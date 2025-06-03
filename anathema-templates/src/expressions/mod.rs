@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::rc::Rc;
+
+use anathema_state::Hex;
 
 use crate::primitives::Primitive;
 
@@ -20,6 +21,22 @@ pub enum Op {
 pub enum Equality {
     Eq,
     NotEq,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum LogicalOp {
+    And,
+    Or,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum BoolOp {
+    Eq,
+    NotEq,
     And,
     Or,
     Gt,
@@ -32,9 +49,12 @@ pub enum Equality {
 pub enum Expression {
     // Value types
     Primitive(Primitive),
-    Str(Rc<str>),
-    List(Rc<[Self]>),
-    Map(Rc<HashMap<Rc<str>, Self>>),
+    Str(String),
+    List(Vec<Self>),
+    Map(HashMap<String, Self>),
+
+    // This is specifically for the "value" of a node.
+    TextSegments(Vec<Self>),
 
     // Unary
     Not(Box<Self>),
@@ -42,9 +62,10 @@ pub enum Expression {
 
     // Conditionals
     Equality(Box<Self>, Box<Self>, Equality),
+    LogicalOp(Box<Self>, Box<Self>, LogicalOp),
 
     // Lookup
-    Ident(Rc<str>),
+    Ident(String),
     Index(Box<Self>, Box<Self>),
 
     // Operations
@@ -54,7 +75,7 @@ pub enum Expression {
     Either(Box<Self>, Box<Self>),
 
     // Function call
-    Call { fun: Box<Self>, args: Box<[Self]> },
+    Call { fun: Box<Self>, args: Vec<Self> },
 }
 
 impl From<Box<Expression>> for Expression {
@@ -81,7 +102,7 @@ impl Display for Expression {
             Self::Primitive(val) => write!(f, "{val}"),
             Self::Str(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
-            Self::Index(lhs, idx) => write!(f, "{lhs}[{idx}]"),
+            Self::Index(lhs, idx) => write!(f, "<{lhs}>[{idx}]"),
             Self::Not(expr) => write!(f, "!{expr}"),
             Self::Negative(expr) => write!(f, "-{expr}"),
             Self::Op(lhs, rhs, op) => {
@@ -102,6 +123,13 @@ impl Display for Expression {
                     list.iter().map(|val| val.to_string()).collect::<Vec<_>>().join(", ")
                 )
             }
+            Self::TextSegments(segments) => {
+                write!(
+                    f,
+                    "{}",
+                    segments.iter().map(|val| val.to_string()).collect::<Vec<_>>().join("")
+                )
+            }
             Self::Map(map) => {
                 write!(
                     f,
@@ -116,14 +144,19 @@ impl Display for Expression {
                 let equality = match equality {
                     Equality::Eq => "==",
                     Equality::NotEq => "!=",
-                    Equality::And => "&&",
-                    Equality::Or => "||",
                     Equality::Gt => ">",
                     Equality::Gte => ">=",
                     Equality::Lt => "<",
                     Equality::Lte => "<=",
                 };
                 write!(f, "{lhs} {equality} {rhs}")
+            }
+            Self::LogicalOp(lhs, rhs, op) => {
+                let op = match op {
+                    LogicalOp::And => "&&",
+                    LogicalOp::Or => "||",
+                };
+                write!(f, "{lhs} {op} {rhs}")
             }
             Self::Call { fun, args } => {
                 write!(
@@ -145,6 +178,13 @@ pub fn ident(p: &str) -> Box<Expression> {
 
 pub fn index(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
     Expression::Index(lhs, rhs).into()
+}
+
+// -----------------------------------------------------------------------------
+//   - Either -
+// -----------------------------------------------------------------------------
+pub fn either(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Either(lhs, rhs).into()
 }
 
 // -----------------------------------------------------------------------------
@@ -197,6 +237,15 @@ pub fn float(float: f64) -> Box<Expression> {
     Expression::Primitive(float.into()).into()
 }
 
+pub fn chr(c: char) -> Box<Expression> {
+    Expression::Primitive(c.into()).into()
+}
+
+pub fn hex(h: impl Into<Hex>) -> Box<Expression> {
+    let h = h.into();
+    Expression::Primitive(h.into()).into()
+}
+
 pub fn boolean(b: bool) -> Box<Expression> {
     Expression::Primitive(b.into()).into()
 }
@@ -206,16 +255,21 @@ pub fn strlit(lit: &str) -> Box<Expression> {
 }
 
 // -----------------------------------------------------------------------------
-//   - List and map -
+//   - List, map and text segment -
 // -----------------------------------------------------------------------------
 pub fn list<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
     let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
     Expression::List(vec.into()).into()
 }
 
+pub fn text_segments<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
+    let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
+    Expression::TextSegments(vec.into()).into()
+}
+
 pub fn map<E: Into<Expression>>(input: impl IntoIterator<Item = (&'static str, E)>) -> Box<Expression> {
     let input = input.into_iter().map(|(k, v)| (k.into(), v.into()));
-    let hm: HashMap<Rc<str>, Expression> = HashMap::from_iter(input);
+    let hm: HashMap<String, Expression> = HashMap::from_iter(input);
     Expression::Map(hm.into()).into()
 }
 
@@ -238,9 +292,9 @@ pub fn eq(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
 }
 
 pub fn and(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
-    Expression::Equality(lhs, rhs, Equality::And).into()
+    Expression::LogicalOp(lhs, rhs, LogicalOp::And).into()
 }
 
 pub fn or(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
-    Expression::Equality(lhs, rhs, Equality::Or).into()
+    Expression::LogicalOp(lhs, rhs, LogicalOp::Or).into()
 }

@@ -1,15 +1,15 @@
-use std::ops::{ControlFlow, Deref};
+use std::ops::ControlFlow;
+use std::str::FromStr;
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_widgets::expressions::EvalValue;
+use anathema_value_resolver::{AttributeStorage, Attributes, ValueKind};
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyph, Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{
-    AnyWidget, AttributeStorage, Attributes, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId,
-};
+use anathema_widgets::{AnyWidget, LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
-use crate::layout::border::BorderLayout;
 use crate::layout::Axis;
+use crate::layout::border::BorderLayout;
 use crate::{HEIGHT, MAX_HEIGHT, MAX_WIDTH, MIN_HEIGHT, MIN_WIDTH, WIDTH};
 
 pub const BORDER_STYLE: &str = "border_style";
@@ -58,26 +58,51 @@ impl Default for Sides {
     }
 }
 
-impl TryFrom<&EvalValue<'_>> for Sides {
+impl TryFrom<&ValueKind<'_>> for Sides {
     type Error = ();
 
-    fn try_from(value: &EvalValue<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
         let mut sides = Sides::EMPTY;
-        value.str_for_each(|s| sides |= s.into());
-        Ok(sides)
+        match value {
+            ValueKind::Str(cow) => Sides::from_str(&*cow),
+            ValueKind::List(list) => {
+                for x in list {
+                    sides |= Sides::try_from(x)?;
+                }
+                Ok(sides)
+            }
+            ValueKind::DynList(value) => {
+                let Some(state) = value.as_state() else { return Err(()) };
+                let Some(list) = state.as_any_list() else { return Err(()) };
+                for i in 0..list.len() {
+                    if sides == Sides::ALL {
+                        break;
+                    }
+                    let value = list.lookup(i).ok_or(())?;
+                    let value = value.as_state().ok_or(())?;
+                    let s = value.as_str().ok_or(())?;
+                    sides |= Sides::from_str(s)?;
+                }
+                Ok(sides)
+            }
+            _ => return Err(()),
+        }
     }
 }
 
-impl From<&str> for Sides {
-    fn from(value: &str) -> Self {
-        match value {
+impl FromStr for Sides {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let sides = match s {
             "all" => Sides::ALL,
             "top" => Sides::TOP,
             "left" => Sides::LEFT,
             "right" => Sides::RIGHT,
             "bottom" => Sides::BOTTOM,
             _ => Sides::EMPTY,
-        }
+        };
+        Ok(sides)
     }
 }
 
@@ -268,7 +293,7 @@ impl BorderPainter {
             start_cap: None,
             middle: (border_size.right > 0).then(|| Brush::new(glyphs[3], border_size.right)),
             end_cap: None,
-            start: LocalPos::new((size.width - border_size.right as usize) as u16, offset),
+            start: LocalPos::new(size.width - border_size.right as u16, offset),
             axis: Axis::Vertical,
             end: height as u16,
         };
@@ -307,13 +332,10 @@ pub(crate) struct BorderSize {
 
 impl BorderSize {
     pub(crate) fn as_size(&self) -> Size {
-        let left_width = self.left.max(self.top_left).max(self.bottom_left);
-        let right_width = self.right.max(self.top_right).max(self.bottom_right);
+        let left_width = self.left.max(self.top_left).max(self.bottom_left) as u16;
+        let right_width = self.right.max(self.top_right).max(self.bottom_right) as u16;
 
-        Size {
-            width: (left_width + right_width) as usize,
-            height: (self.top + self.bottom) as usize,
-        }
+        Size::new(left_width + right_width, (self.top + self.bottom) as u16)
     }
 }
 
@@ -388,56 +410,48 @@ impl Border {
 impl Widget for Border {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let attributes = ctx.attribs.get(id);
-        self.sides = attributes
-            .get_val("sides")
-            .and_then(|s| Sides::try_from(s.deref()).ok())
-            .unwrap_or_default();
+    ) -> Result<Size> {
+        let attributes = ctx.attribute_storage.get_mut(id);
 
-        self.border_style = match attributes.get_val(BORDER_STYLE) {
+        self.sides = attributes.get_as::<Sides>("sides").unwrap_or_default();
+
+        self.border_style = match attributes.get(BORDER_STYLE) {
             None => BorderStyle::Thin,
             Some(val) => {
+                let s = val.as_str();
                 let mut edges = DEFAULT_SLIM_EDGES;
                 let mut index = 0;
 
-                val.str_iter(|s| {
-                    match s {
-                        "thin" => return ControlFlow::Break(()),
-                        "thick" => {
-                            edges = BorderStyle::Thick.edges();
-                            return ControlFlow::Break(());
+                match s {
+                    Some("thin") | None => BorderStyle::default(),
+                    Some("thick") => BorderStyle::Thick,
+                    Some(s) => {
+                        let mut glyphs = Glyphs::new(s);
+                        while let Some(g) = glyphs.next(ctx.glyph_map) {
+                            edges[index] = g;
+                            index += 1;
+                            if index >= DEFAULT_SLIM_EDGES.len() {
+                                break;
+                            };
                         }
-                        _ => (),
+                        BorderStyle::Custom(edges)
                     }
-
-                    let mut glyphs = Glyphs::new(s);
-                    while let Some(g) = glyphs.next(ctx.glyph_map) {
-                        edges[index] = g;
-                        index += 1;
-                        if index >= DEFAULT_SLIM_EDGES.len() {
-                            break;
-                        };
-                    }
-
-                    ControlFlow::Break(())
-                });
-                BorderStyle::Custom(edges)
+                }
             }
         };
         self.edges = self.border_style.edges();
 
         let mut layout = BorderLayout {
-            min_width: attributes.get_usize(MIN_WIDTH),
-            min_height: attributes.get_usize(MIN_HEIGHT),
-            max_width: attributes.get_usize(MAX_WIDTH),
-            max_height: attributes.get_usize(MAX_HEIGHT),
-            height: attributes.get_usize(HEIGHT),
-            width: attributes.get_usize(WIDTH),
+            min_width: attributes.get_as::<u16>(MIN_WIDTH),
+            min_height: attributes.get_as::<u16>(MIN_HEIGHT),
+            max_width: attributes.get_as::<u16>(MAX_WIDTH),
+            max_height: attributes.get_as::<u16>(MAX_HEIGHT),
+            height: attributes.get_as::<u16>(HEIGHT),
+            width: attributes.get_as::<u16>(WIDTH),
             border_size: self.border_size(self.sides),
         };
 
@@ -446,12 +460,12 @@ impl Widget for Border {
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
     ) {
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             if self.sides.contains(Sides::TOP) {
                 ctx.pos.y += 1;
             }
@@ -467,14 +481,14 @@ impl Widget for Border {
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let border_size = self.border_size(self.sides);
 
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())
@@ -505,17 +519,14 @@ impl Widget for Border {
         pos.y += bs.top as i32;
         size.width = size
             .width
-            .saturating_sub(bs.top_right.max(bs.bottom_right).max(bs.right) as usize);
-        size.height = size.height.saturating_sub(bs.bottom as usize);
+            .saturating_sub(bs.top_right.max(bs.bottom_right).max(bs.right) as u16);
+        size.height = size.height.saturating_sub(bs.bottom as u16);
         Region::from((pos, size))
     }
 }
 
 pub(crate) fn make(attributes: &Attributes<'_>) -> Box<dyn AnyWidget> {
-    let sides = attributes
-        .get_val("sides")
-        .and_then(|s| Sides::try_from(s.deref()).ok())
-        .unwrap_or_default();
+    let sides = attributes.get_as::<Sides>("sides").unwrap_or_default();
 
     let text = Border {
         sides,

@@ -1,12 +1,13 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
 
 use super::Axis;
 
-const DEFAULT_FACTOR: usize = 1;
+const DEFAULT_FACTOR: u16 = 1;
 
 /// Distributes the total size over a list of weights
 ///
@@ -14,19 +15,23 @@ const DEFAULT_FACTOR: usize = 1;
 ///
 /// Panics when called with more weights than the total number of available size.
 /// Allocates a minimum of one to each weight.
-fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
-    assert!(total > weights.len());
+fn distribute_size(weights: &[u16], mut total: u16) -> Vec<u16> {
+    assert!(
+        total >= weights.len() as u16,
+        "{total} is not larger than {}",
+        weights.len()
+    );
 
     let mut indexed = weights
         .iter()
         .copied()
         .enumerate()
-        .map(|(i, w)| (i, w, 1usize))
+        .map(|(i, w)| (i, w, 1u16))
         .collect::<Vec<_>>();
 
-    total -= weights.len();
+    total -= weights.len() as u16;
 
-    fn pop(n: &mut usize) -> bool {
+    fn pop(n: &mut u16) -> bool {
         if let Some(nn) = n.checked_sub(1) {
             *n = nn;
             true
@@ -45,27 +50,27 @@ fn distribute_size(weights: &[usize], mut total: usize) -> Vec<usize> {
 }
 
 pub fn layout_all_expansions<'bp>(
-    nodes: &mut LayoutChildren<'_, '_, 'bp>,
+    nodes: &mut LayoutForEach<'_, 'bp>,
     constraints: Constraints,
     axis: Axis,
     ctx: &mut LayoutCtx<'_, 'bp>,
-) -> Size {
+) -> Result<Size> {
     let mut factors = vec![];
 
-    nodes.for_each(|node, _children| {
+    _ = nodes.each(ctx, |ctx, node, _children| {
         if node.ident == "expand" {
-            let attributes = ctx.attribs.get(node.id());
-            let factor = attributes.get("factor").unwrap_or(DEFAULT_FACTOR);
+            let attributes = ctx.attribute_storage.get(node.id());
+            let factor = attributes.get_as::<u16>("factor").unwrap_or(DEFAULT_FACTOR);
             factors.push(factor);
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
     let mut size = Size::ZERO;
 
     if factors.is_empty() {
-        return size;
+        return Ok(size);
     }
 
     // Distribute the available space
@@ -75,9 +80,9 @@ pub fn layout_all_expansions<'bp>(
     };
 
     let mut index = 0;
-    nodes.for_each(|node, children| {
+    _ = nodes.each(ctx, |ctx, node, children| {
         if node.ident != "expand" {
-            return ControlFlow::Continue(());
+            return Ok(ControlFlow::Continue(()));
         }
 
         let sub_size = sizes[index];
@@ -100,7 +105,7 @@ pub fn layout_all_expansions<'bp>(
             }
         };
 
-        let widget_size = node.layout(children, constraints, ctx);
+        let widget_size = Size::from(node.layout(children, constraints, ctx)?);
 
         match axis {
             Axis::Horizontal => {
@@ -113,8 +118,8 @@ pub fn layout_all_expansions<'bp>(
             }
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
-    size
+    Ok(size)
 }

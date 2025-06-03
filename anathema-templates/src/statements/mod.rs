@@ -1,12 +1,12 @@
 use anathema_store::smallmap::SmallMap;
-use anathema_store::storage::strings::{StringId, Strings};
 
+use crate::ComponentBlueprintId;
 use crate::blueprints::Blueprint;
 use crate::components::ComponentTemplates;
 use crate::error::Result;
 use crate::expressions::Expression;
+use crate::strings::{StringId, Strings};
 use crate::variables::Variables;
-use crate::WidgetComponentId;
 
 mod const_eval;
 pub(crate) mod eval;
@@ -17,7 +17,7 @@ pub(crate) struct Context<'vars> {
     pub(crate) components: &'vars mut ComponentTemplates,
     pub(crate) strings: &'vars mut Strings,
     pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
-    pub(crate) current_component_parent: Option<WidgetComponentId>,
+    pub(crate) current_component_parent: Option<ComponentBlueprintId>,
 }
 
 impl<'vars> Context<'vars> {
@@ -26,7 +26,7 @@ impl<'vars> Context<'vars> {
         components: &'vars mut ComponentTemplates,
         strings: &'vars mut Strings,
         slots: SmallMap<StringId, Vec<Blueprint>>,
-        current_component_parent: Option<WidgetComponentId>,
+        current_component_parent: Option<ComponentBlueprintId>,
     ) -> Self {
         Self {
             globals,
@@ -39,7 +39,7 @@ impl<'vars> Context<'vars> {
 }
 
 impl Context<'_> {
-    pub fn component_parent(&self) -> Option<WidgetComponentId> {
+    pub fn component_parent(&self) -> Option<ComponentBlueprintId> {
         self.current_component_parent
     }
 
@@ -49,7 +49,7 @@ impl Context<'_> {
 
     fn load_component(
         &mut self,
-        parent_component_id: WidgetComponentId,
+        parent_component_id: ComponentBlueprintId,
         slots: SmallMap<StringId, Vec<Blueprint>>,
     ) -> Result<Vec<Blueprint>> {
         self.components
@@ -62,7 +62,7 @@ pub(crate) enum Statement {
     LoadValue(Expression),
     LoadAttribute { key: StringId, value: Expression },
     AssociatedFunction { internal: StringId, external: StringId },
-    Component(WidgetComponentId),
+    Component(ComponentBlueprintId),
     ComponentSlot(StringId),
     Node(StringId),
     For { binding: StringId, data: Expression },
@@ -178,6 +178,10 @@ impl Statements {
         }
     }
 
+    fn is_next_slot(&mut self) -> bool {
+        matches!(self.0.first(), Some(Statement::ComponentSlot(_)))
+    }
+
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -190,7 +194,7 @@ where
     F: FnMut(Context<'_>),
 {
     let mut globals = Variables::new();
-    let mut strings = Strings::empty();
+    let mut strings = Strings::new();
     let mut components = ComponentTemplates::new();
 
     let context = Context {
@@ -209,48 +213,55 @@ where
 // -----------------------------------------------------------------------------
 #[cfg(test)]
 mod test {
+    use anathema_store::slab::SlabIndex;
+
     use super::*;
 
     pub(crate) fn load_value(expr: impl Into<Expression>) -> Statement {
         Statement::LoadValue(expr.into())
     }
 
-    pub(crate) fn load_attrib(key: impl Into<StringId>, expr: impl Into<Expression>) -> Statement {
+    pub(crate) fn load_attrib(key: usize, expr: impl Into<Expression>) -> Statement {
+        let key = StringId::from_usize(key);
         Statement::LoadAttribute {
             key: key.into(),
             value: expr.into(),
         }
     }
 
-    pub(crate) fn component(id: impl Into<WidgetComponentId>) -> Statement {
+    pub(crate) fn component(id: impl Into<ComponentBlueprintId>) -> Statement {
         Statement::Component(id.into())
     }
 
-    pub(crate) fn slot(id: impl Into<StringId>) -> Statement {
+    pub(crate) fn slot(id: usize) -> Statement {
+        let id = StringId::from_usize(id);
         Statement::ComponentSlot(id.into())
     }
 
-    pub(crate) fn associated_fun(internal: impl Into<StringId>, external: impl Into<StringId>) -> Statement {
+    pub(crate) fn associated_fun(internal: usize, external: usize) -> Statement {
         Statement::AssociatedFunction {
-            internal: internal.into(),
-            external: external.into(),
+            internal: StringId::from_usize(internal),
+            external: StringId::from_usize(external),
         }
     }
 
-    pub(crate) fn node(id: impl Into<StringId>) -> Statement {
-        Statement::Node(id.into())
+    pub(crate) fn node(id: usize) -> Statement {
+        let id = SlabIndex::from_usize(id);
+        Statement::Node(id)
     }
 
-    pub(crate) fn for_loop(binding: impl Into<StringId>, data: impl Into<Expression>) -> Statement {
+    pub(crate) fn for_loop(binding: usize, data: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
         Statement::For {
-            binding: binding.into(),
+            binding,
             data: data.into(),
         }
     }
 
-    pub(crate) fn decl(binding: impl Into<StringId>, value: impl Into<Expression>) -> Statement {
+    pub(crate) fn decl(binding: usize, value: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
         Statement::Declaration {
-            binding: binding.into(),
+            binding,
             value: value.into(),
         }
     }

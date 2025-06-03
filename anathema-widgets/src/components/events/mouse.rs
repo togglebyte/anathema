@@ -1,6 +1,6 @@
 use anathema_geometry::Pos;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct MouseEvent {
     pub x: u16,
     pub y: u16,
@@ -35,7 +35,7 @@ impl MouseEvent {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum MouseState {
     Down(MouseButton),
     Up(MouseButton),
@@ -47,7 +47,7 @@ pub enum MouseState {
     ScrollRight,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum MouseButton {
     Left,
     Middle,

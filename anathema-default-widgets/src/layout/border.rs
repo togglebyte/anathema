@@ -1,28 +1,29 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
 
 use crate::border::BorderSize;
 
 pub struct BorderLayout {
-    pub min_width: Option<usize>,
-    pub min_height: Option<usize>,
-    pub max_width: Option<usize>,
-    pub max_height: Option<usize>,
-    pub width: Option<usize>,
-    pub height: Option<usize>,
+    pub min_width: Option<u16>,
+    pub min_height: Option<u16>,
+    pub max_width: Option<u16>,
+    pub max_height: Option<u16>,
+    pub width: Option<u16>,
+    pub height: Option<u16>,
     pub border_size: BorderSize,
 }
 
 impl BorderLayout {
     pub(crate) fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         let mut size = Size::ZERO;
 
         if let Some(min_width) = self.min_width {
@@ -58,9 +59,7 @@ impl BorderLayout {
 
         let mut child_constraints = constraints;
 
-        children.for_each(|child, children| {
-            //     nodes.next(|mut node, context| {
-
+        _ = children.each(ctx, |ctx, child, children| {
             // Shrink the constraint for the child to fit inside the border
 
             // border [min-width: 10]
@@ -71,19 +70,19 @@ impl BorderLayout {
             //     border [min-width: 10]
             //         ...
 
-            child_constraints.sub_max_width((border_size.left + border_size.right) as usize);
-            child_constraints.sub_max_height((border_size.top + border_size.bottom) as usize);
-            let mut child_size = child.layout(children, child_constraints, ctx);
+            child_constraints.sub_max_width((border_size.left + border_size.right) as u16);
+            child_constraints.sub_max_height((border_size.top + border_size.bottom) as u16);
+            let mut child_size = Size::from(child.layout(children, child_constraints, ctx)?);
             child_size += border_size.as_size();
             size.width = child_size.width.max(size.width);
             size.height = child_size.height.max(size.height);
 
-            ControlFlow::Break(())
-        });
+            Ok(ControlFlow::Break(()))
+        })?;
 
         size.width = constraints.min_width.max(size.width).min(constraints.max_width());
         size.height = constraints.min_height.max(size.height).min(constraints.max_height());
 
-        size
+        Ok(size)
     }
 }

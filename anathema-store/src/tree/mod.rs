@@ -1,26 +1,26 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
-pub use self::iter::{TreeFilter, TreeForEach};
-pub use self::nodepath::{new_node_path, root_node, AsNodePath};
+pub use self::nodepath::{AsNodePath, new_node_path, root_node};
 pub use self::pathfinder::PathFinder;
 pub use self::transactions::InsertTransaction;
-use self::visitor::NodeVisitor;
-pub use self::walker::NodeWalker;
+pub use self::view::TreeView;
 use crate::slab::GenSlab;
 pub use crate::slab::Key as ValueId;
 
-mod iter;
 mod nodepath;
 mod pathfinder;
 mod transactions;
+mod view;
 pub mod visitor;
-mod walker;
 
 pub type TreeValues<T> = GenSlab<(Box<[u16]>, T)>;
 
 /// A tree where all values (`T`) are stored in a single contiguous list,
 /// and the inner tree (`Nodes`) is made up of branches with indices into
 /// the flat list.
+///
+/// This means fewer allocations when removing entire branches as we can reuse
+/// the memory for the values.
 #[derive(Debug)]
 pub struct Tree<T> {
     layout: Nodes,
@@ -38,8 +38,30 @@ impl<T> Tree<T> {
         }
     }
 
+    pub fn view_mut(&mut self) -> TreeView<'_, T> {
+        TreeView::new(
+            root_node(),
+            &mut self.layout,
+            &mut self.values,
+            &mut self.removed_values,
+        )
+    }
+
+    pub fn get_ref(&mut self, value_id: ValueId) -> Option<&T> {
+        self.values.get(value_id).map(|(_, value)| value)
+    }
+
+    pub fn get_mut(&mut self, value_id: ValueId) -> Option<&mut T> {
+        self.values.get_mut(value_id).map(|(_, value)| value)
+    }
+
     pub fn values(self) -> TreeValues<T> {
         self.values
+    }
+
+    // TODO: remove this gross function
+    pub fn value_len(&self) -> usize {
+        self.values.iter().count()
     }
 
     /// Split the tree into values and structure
@@ -119,50 +141,9 @@ impl<T> Tree<T> {
         Some(path)
     }
 
-    /// Being an insert transaction.
-    /// The transaction has to be committed before the value is written to
-    /// the tree.
-    /// ```
-    /// # use anathema_store::tree::*;
-    /// let mut tree = Tree::empty();
-    /// let transaction = tree.insert(&[]);
-    /// let value_id = transaction.commit_child(1usize).unwrap();
-    /// let one = tree.get_ref_by_id(value_id).unwrap();
-    /// assert_eq!(*one, 1);
-    /// ```
-    pub fn insert<'tree>(&'tree mut self, parent: &'tree [u16]) -> InsertTransaction<'tree, T> {
-        InsertTransaction::new(self, parent)
-    }
-
-    /// Get a reference by value id
-    pub fn get_ref_by_id(&self, node_id: ValueId) -> Option<&T> {
-        self.values.get(node_id).map(|(_, val)| val)
-    }
-
-    /// Get a mutable reference by value id
-    pub fn get_mut_by_id(&mut self, node_id: ValueId) -> Option<&mut T> {
-        self.values.get_mut(node_id).map(|(_, val)| val)
-    }
-
-    /// Get a reference by path.
-    /// This has an additional cost since the value id has to
-    /// be found first.
-    pub fn get_ref_by_path(&self, path: &[u16]) -> Option<&T> {
-        let id = self.id(path)?;
-        self.values.get(id).map(|(_, val)| val)
-    }
-
     /// Get a reference to a `Node` via a path.
     pub fn get_node_by_path(&mut self, path: &[u16]) -> Option<(&Node, &mut TreeValues<T>)> {
         self.layout.with(path, |node| node).map(|node| (node, &mut self.values))
-    }
-
-    /// Get a mutable reference by path.
-    /// This has an additional cost since the value id has to
-    /// be found first.
-    pub fn get_mut_by_path(&mut self, path: &[u16]) -> Option<&mut T> {
-        let id = self.id(path)?;
-        self.values.get_mut(id).map(|(_, val)| val)
     }
 
     /// Remove a `Node` and value from the tree.
@@ -208,25 +189,6 @@ impl<T> Tree<T> {
         node.children.clear(&mut self.values, &mut self.removed_values);
     }
 
-    pub fn for_each<'filter, F: TreeFilter>(&mut self, filter: &'filter mut F) -> TreeForEach<'_, 'filter, T, F> {
-        TreeForEach {
-            nodes: &self.layout,
-            values: &mut self.values,
-            filter,
-        }
-    }
-
-    /// Perform a given operation (`F`) on a reference to a value in the tree
-    /// while still haveing mutable access to the rest of the tree.
-    pub fn with_value<F, R>(&self, value_id: ValueId, mut f: F) -> Option<R>
-    where
-        F: FnMut(&[u16], &T, &Self) -> R,
-    {
-        let value = self.values.get(value_id)?;
-        let ret = f(&value.0, &value.1, self);
-        Some(ret)
-    }
-
     /// Perform a given operation (`F`) on a mutable reference to a value in the tree
     /// while still having mutable access to the rest of the tree.
     ///
@@ -259,6 +221,7 @@ impl<T> Tree<T> {
     }
 
     /// Apply function to each child of a parent path.
+    #[deprecated]
     pub fn children_of<F>(&mut self, parent: &[u16], mut f: F) -> Option<()>
     where
         F: FnMut(&Node, &mut TreeValues<T>),
@@ -291,19 +254,12 @@ impl<T> Tree<T> {
         Some(())
     }
 
-    /// Apply the [`PathFinder`].
-    pub fn apply_path_finder(&mut self, node_path: &[u16], path_finder: impl PathFinder<T>) {
+    /// Apply the [`PathFinder`] to a given path.
+    pub fn apply_path_finder<P>(&mut self, node_path: &[u16], path_finder: P)
+    where
+        P: PathFinder<Input = T>,
+    {
         apply_path_finder(self, node_path, path_finder);
-    }
-
-    /// Apply the [`NodeWalker`].
-    pub fn apply_node_walker(&mut self, path: &[u16], mut walker: impl NodeWalker<T>) {
-        walker::walk_the_walker(&self.layout, &mut self.values, path, &mut walker)
-    }
-
-    /// Apply a [`NodeVisitor`], depth first
-    pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
-        visitor::apply_visitor(&self.layout, &mut self.values, visitor);
     }
 
     /// Split the tree giving access to the layout and the values.
@@ -316,7 +272,10 @@ impl<T> Tree<T> {
     }
 }
 
-fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &[u16], mut path_finder: impl PathFinder<T>) {
+fn apply_path_finder<P>(tree: &mut Tree<P::Input>, node_path: &[u16], mut path_finder: P)
+where
+    P: PathFinder,
+{
     let mut path: &[u16] = node_path;
     let mut nodes: &[_] = &tree.layout.inner;
     let values = &mut tree.values;
@@ -356,7 +315,7 @@ fn apply_path_finder<T>(tree: &mut Tree<T>, node_path: &[u16], mut path_finder: 
 
 #[derive(Debug)]
 pub struct Nodes {
-    inner: Vec<Node>,
+    pub(crate) inner: Vec<Node>,
 }
 
 impl Nodes {
@@ -377,7 +336,7 @@ impl Nodes {
     pub fn iter_with_values<'a, T>(
         &'a self,
         values: &'a TreeValues<T>,
-    ) -> impl Iterator<Item = (&Node, &Box<[u16]>, &T)> {
+    ) -> impl Iterator<Item = (&'a Node, &'a Box<[u16]>, &'a T)> {
         self.inner.iter().filter_map(|node| {
             let (path, value) = values.get(node.value)?;
             Some((node, path, value))
@@ -404,6 +363,27 @@ impl Nodes {
                     }
                     path = sub_path;
                     nodes = &nodes.inner[index].children;
+                }
+            }
+        }
+    }
+
+    /// Find a mutable node by its path
+    fn get_by_path_mut(&mut self, mut path: &[u16]) -> Option<&mut Node> {
+        let mut nodes = self;
+        loop {
+            match path {
+                [] => break None,
+                [i] if (*i as usize) < nodes.len() => break Some(&mut nodes.inner[*i as usize]),
+                // The index is outside of the node length
+                [_] => break None,
+                [i, sub_path @ ..] => {
+                    let index = *i as usize;
+                    if index >= nodes.len() {
+                        break None;
+                    }
+                    path = sub_path;
+                    nodes = &mut nodes.inner[index].children;
                 }
             }
         }
@@ -493,10 +473,16 @@ impl Deref for Nodes {
     }
 }
 
+impl DerefMut for Nodes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 #[derive(Debug)]
 pub struct Node {
-    value: ValueId,
-    children: Nodes,
+    pub(crate) value: ValueId,
+    pub(crate) children: Nodes,
 }
 
 impl Node {
@@ -511,8 +497,12 @@ impl Node {
         self.value
     }
 
-    pub fn children(&self) -> &[Node] {
-        &self.children.inner
+    pub fn children(&self) -> &Nodes {
+        &self.children
+    }
+
+    pub fn children_mut(&mut self) -> &mut Nodes {
+        &mut self.children
     }
 
     fn reparent<T>(&mut self, dest: &[u16], values: &mut TreeValues<T>) {
@@ -525,120 +515,4 @@ impl Node {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn insert_and_commit() {
-        let mut tree = Tree::<u32>::empty();
-        let transaction = tree.insert(root_node());
-        let node_id = transaction.node_id();
-        let value = 123;
-
-        transaction.commit_child(value);
-
-        assert_eq!(*tree.get_ref_by_id(node_id).unwrap(), 123);
-    }
-
-    #[test]
-    fn insert_without_commit() {
-        let mut tree = Tree::<()>::empty();
-        let transaction = tree.insert(root_node());
-        let node_id = transaction.node_id();
-        assert!(tree.get_ref_by_id(node_id).is_none());
-    }
-
-    #[test]
-    fn get_by_path() {
-        let mut tree = Tree::empty();
-        let node_id = tree.insert(root_node()).commit_child(1).unwrap();
-        let path = tree.path(node_id);
-        tree.insert(&path).commit_child(2);
-
-        let one = tree.get_ref_by_path(&[0]).unwrap();
-        let two = tree.get_ref_by_path(&[0, 0]).unwrap();
-
-        assert_eq!(*one, 1);
-        assert_eq!(*two, 2);
-    }
-
-    #[test]
-    fn with_node_id() {
-        let mut tree = Tree::empty();
-        let key = tree.insert(root_node()).commit_child(0).unwrap();
-        tree.insert(root_node()).commit_child(1);
-        tree.with_value(key, |_path, _value, _tree| {});
-    }
-
-    #[test]
-    fn with_node_id_reading_checkedout_value() {
-        let mut tree = Tree::empty();
-        let key = tree.insert(root_node()).commit_child(0).unwrap();
-        tree.insert(root_node()).commit_child(1);
-        tree.with_value_mut(key, |_path, _value, tree| {
-            // The value is already checked out
-            assert!(tree.get_ref_by_id(key).is_none());
-        });
-    }
-
-    // This is where we start:
-    // Insert At has to be a posibility.
-    // Scenario:
-    // * Insert at 0
-    // * Insert at len
-    // * Insert in the middle
-    #[test]
-    fn insert_at_path() {
-        let mut tree = Tree::empty();
-        // Setup: add two entries
-
-        // First entry
-        let key = tree.insert(root_node()).commit_child(0).unwrap();
-        let _sibling_path = tree.path_ref(key);
-
-        // Second entry (with two children)
-        let key_1 = tree.insert(root_node()).commit_child(1).unwrap();
-        let parent: Box<_> = tree.path_ref(key_1).into();
-
-        // Insert two values under the second entry
-        let key_1_0 = tree.insert(&parent).commit_child(5).unwrap();
-        let key_1_1 = tree.insert(&parent).commit_child(6).unwrap();
-
-        // Assert 1.
-        // First assertion that the paths are all rooted in [1]
-        assert_eq!(tree.path_ref(key_1), &[1]);
-        assert_eq!(tree.path_ref(key_1_0), &[1, 0]);
-        assert_eq!(tree.path_ref(key_1_1), &[1, 1]);
-
-        // Insert a node as the new first node ([0]), which should update
-        // the path for all the other entries in the tree
-        let insert_at = &[0];
-        tree.insert(insert_at).commit_at(123).unwrap();
-
-        // Assert 2
-        // Second assertion that the paths are all rooted in [2]
-        assert_eq!(tree.path_ref(key_1), &[2]);
-        assert_eq!(tree.path_ref(key_1_0), &[2, 0]);
-        assert_eq!(tree.path_ref(key_1_1), &[2, 1]);
-
-        // Insert a node as the new last node ([0]), which should update
-        // the path for all the other entries in the tree
-        let insert_at = [3];
-        let key_3 = tree.insert(&insert_at).commit_at(999).unwrap();
-
-        // Assert 3
-        assert_eq!(tree.path_ref(key_3), &[3]);
-    }
-
-    #[test]
-    fn remove_children() {
-        let mut tree = Tree::<u32>::empty();
-        tree.insert(root_node()).commit_child(1);
-        let path = &[0, 0];
-        tree.insert(path).commit_at(2);
-
-        assert!(tree.get_ref_by_path(path).is_some());
-        tree.remove(path);
-        assert!(tree.get_ref_by_path(path).is_none());
-    }
-}
+mod test {}

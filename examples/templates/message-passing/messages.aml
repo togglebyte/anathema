@@ -1,5 +1,5 @@
-for value in messages
+for value in state.messages
     text value
 
 padding [top: 1]
-    text "Received messages: " message_count
+    text "Received messages: " state.message_count

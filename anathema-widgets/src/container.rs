@@ -1,110 +1,158 @@
-use std::ops::ControlFlow;
-
 use anathema_geometry::{LocalPos, Pos, Region, Size};
+use anathema_value_resolver::AttributeStorage;
 
-use crate::layout::{Constraints, LayoutCtx, PositionCtx, Viewport};
+use crate::error::Result;
+use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter, Viewport};
+use crate::nodes::element::Layout;
 use crate::paint::{Glyphs, PaintCtx, Unsized};
-use crate::widget::{AnyWidget, PositionChildren, WidgetNeeds};
-use crate::{AttributeStorage, LayoutChildren, PaintChildren, WidgetId};
+use crate::widget::{AnyWidget, ForEach};
+use crate::{LayoutForEach, PaintChildren, Style, WidgetId};
 
-/// Wraps a widget and retain some geometry for the widget
-#[derive(Debug)]
-pub struct Container {
-    pub inner: Box<dyn AnyWidget>,
-    pub id: WidgetId,
-    pub size: Size,
-    pub pos: Pos,
-    pub inner_bounds: Region,
-    pub needs: WidgetNeeds,
+#[derive(Debug, PartialEq)]
+pub struct Cache {
+    pub(super) size: Size,
+    constraints: Option<Constraints>,
+    pub(super) child_count: usize,
+    valid: bool,
 }
 
-impl Container {
-    pub fn layout<'bp>(
-        &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
-        constraints: Constraints,
-        ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        if !matches!(self.needs, WidgetNeeds::Layout) {
-            return self.size;
-        }
-        self.needs = WidgetNeeds::Position;
+impl Cache {
+    pub(crate) const ZERO: Self = Self {
+        size: Size::ZERO,
+        // Constraints are `None` for the root node
+        constraints: None,
+        child_count: 0,
+        valid: false,
+    };
 
-        self.size = self.inner.any_layout(children, constraints, self.id, ctx);
-        // Floating widgets always report a zero size
-        // as they should not affect their parents
-        match self.inner.any_floats() {
-            true => Size::ZERO,
-            false => self.size,
+    const fn new(size: Size, constraints: Constraints) -> Self {
+        Self {
+            size,
+            constraints: Some(constraints),
+            child_count: 0,
+            valid: true,
         }
     }
 
-    pub fn position<'bp>(
+    // Get the size if the constraints are matching, but only
+    // if the size is not max, as that would be an invalid cache
+    pub(super) fn size(&self) -> Option<Size> {
+        self.valid.then(|| self.size)
+    }
+
+    pub(super) fn invalidate(&mut self) {
+        self.valid = false;
+    }
+
+    fn changed(&mut self, mut cache: Cache) -> bool {
+        let changed = self.size != cache.size;
+        cache.child_count = self.child_count;
+        *self = cache;
+        changed
+    }
+
+    pub(crate) fn constraints(&self) -> Option<Constraints> {
+        self.constraints
+    }
+
+    pub(crate) fn count_check(&mut self, count: usize) -> bool {
+        let c = self.child_count;
+        self.child_count = count;
+        c != count
+    }
+}
+
+/// Wraps a widget and retain some geometry for the widget
+#[derive(Debug)]
+pub(crate) struct Container {
+    pub inner: Box<dyn AnyWidget>,
+    pub id: WidgetId,
+    pub pos: Pos,
+    pub inner_bounds: Region,
+    pub(super) cache: Cache,
+}
+
+impl Container {
+    pub(crate) fn layout<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
+        constraints: Constraints,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> Result<Layout> {
+        // NOTE: The layout is possibly skipped in the Element::layout call
+
+        let size = self.inner.any_layout(children, constraints, self.id, ctx)?;
+        let cache = Cache::new(size, constraints);
+
+        let changed = self.cache.changed(cache);
+
+        // Floating widgets always report a zero size
+        // as they should not affect their parents
+        if self.inner.any_floats() {
+            return Ok(Layout::Unchanged(Size::ZERO));
+        }
+
+        let layout = match changed {
+            true => Layout::Changed(self.cache.size),
+            false => Layout::Unchanged(self.cache.size),
+        };
+        Ok(layout)
+    }
+
+    pub(crate) fn position<'bp>(
+        &mut self,
+        children: ForEach<'_, 'bp, PositionFilter>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        if !matches!(self.needs, WidgetNeeds::Position) {
-            return;
-        }
-        self.needs = WidgetNeeds::Paint;
-
         self.pos = pos;
         let ctx = PositionCtx {
-            inner_size: self.size,
+            inner_size: self.cache.size,
             pos,
             viewport,
         };
         self.inner.any_position(children, self.id, attribute_storage, ctx);
-        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.size);
+        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.cache.size);
     }
 
-    pub fn paint<'bp>(
+    pub(crate) fn paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: PaintChildren<'_, 'bp>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        if !matches!(self.needs, WidgetNeeds::Paint) {
-            return;
-        }
-
-        let mut ctx = ctx.into_sized(self.size, self.pos);
+        let mut ctx = ctx.into_sized(self.cache.size, self.pos);
         let region = ctx.create_region();
         ctx.set_clip_region(region);
 
-        let attrs = attribute_storage.get(self.id);
-
-        // Apply all attributes
-        for y in 0..self.size.height as u16 {
-            for x in 0..self.size.width as u16 {
-                let pos = LocalPos::new(x, y);
-                ctx.set_attributes(attrs, pos);
-            }
-        }
-
         let attributes = attribute_storage.get(self.id);
-        if let Some(fill) = attributes.get_val("fill") {
-            for y in 0..ctx.local_size.height as u16 {
-                let mut used_width = 0;
-                loop {
-                    let pos = LocalPos::new(used_width, y);
-                    let controlflow = fill.str_iter(|s| {
-                        let glyphs = Glyphs::new(s);
-                        let Some(p) = ctx.place_glyphs(glyphs, pos) else {
-                            return ControlFlow::Break(());
-                        };
-                        used_width += p.x - used_width;
-                        match used_width >= ctx.local_size.width as u16 {
-                            true => ControlFlow::Break(()),
-                            false => ControlFlow::Continue(()),
-                        }
-                    });
 
-                    if let ControlFlow::Break(()) = controlflow {
-                        break;
+        if !self.inner.any_floats() {
+            let style = Style::from_cell_attribs(attributes);
+            // Apply all attributes to the widget
+            // as long as it's **not** a floating widget.
+            for y in 0..self.cache.size.height as u16 {
+                for x in 0..self.cache.size.width as u16 {
+                    let pos = LocalPos::new(x, y);
+                    ctx.set_style(style, pos);
+                }
+            }
+
+            if let Some(fill) = attributes.get("fill") {
+                for y in 0..ctx.local_size.height as u16 {
+                    let mut used_width = 0;
+                    while used_width < ctx.local_size.width as u16 {
+                        let pos = LocalPos::new(used_width, y);
+
+                        fill.strings(|s| {
+                            let glyphs = Glyphs::new(s);
+                            let Some(p) = ctx.place_glyphs(glyphs, pos) else {
+                                return false;
+                            };
+                            used_width = p.x;
+                            true
+                        });
                     }
                 }
             }

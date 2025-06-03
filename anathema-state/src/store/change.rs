@@ -1,16 +1,19 @@
 use anathema_store::stack::Stack;
 
-use super::subscriber::{SubKey, Subscribers};
-use super::{CHANGES, SUBSCRIBERS};
-use crate::PendingValue;
+use super::subscriber::Subscribers;
+use super::{CHANGES, SUBSCRIBERS, ValueKey};
 
 pub type Changes = Stack<(Subscribers, Change)>;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
-    Inserted(u32, PendingValue),
+    /// A value was inserted into a list
+    Inserted(u32),
+    /// A value was removed from a list
     Removed(u32),
+    /// A value has changed
     Changed,
+    /// Value was removed (e.g removed from a map)
     Dropped,
 }
 
@@ -24,11 +27,13 @@ pub fn clear_all_changes() {
     CHANGES.with_borrow_mut(|changes| changes.clear());
 }
 
-pub(crate) fn changed(subkey: SubKey, change: Change) {
-    let subscribers = SUBSCRIBERS.with_borrow(|subs| subs.get(subkey));
+pub(crate) fn changed(key: ValueKey, change: Change) {
+    // Notify subscribers
+    let subscribers = SUBSCRIBERS.with_borrow(|subs| subs.get(key.sub()));
     if subscribers.is_empty() {
         return;
     }
+
     CHANGES.with_borrow_mut(|changes| {
         changes.push((subscribers, change));
     });

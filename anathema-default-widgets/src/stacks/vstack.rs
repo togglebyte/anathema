@@ -1,9 +1,11 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use super::Stack;
 use crate::layout::Axis;
@@ -19,17 +21,17 @@ impl Default for VStack {
 impl Widget for VStack {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
-        attributes: WidgetId,
+        id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        self.0.layout(children, constraints, attributes, ctx)
+    ) -> Result<Size> {
+        self.0.layout(children, constraints, id, ctx)
     }
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: PositionChildren<'_, 'bp>,
         attributes: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -39,12 +41,12 @@ impl Widget for VStack {
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
@@ -62,8 +64,8 @@ mod test {
         let tpl = "
             vstack
                 border
-                    text value
-                for i in [0]
+                    text state.value
+                for i in [2]
                     border
                         text i
         ";
@@ -74,7 +76,7 @@ mod test {
             ║│0│║
             ║└─┘║
             ║┌─┐║
-            ║│0│║
+            ║│2│║
             ║└─┘║
             ╚═══╝
         ";
@@ -85,7 +87,7 @@ mod test {
             ║│7│║
             ║└─┘║
             ║┌─┐║
-            ║│0│║
+            ║│2│║
             ║└─┘║
             ╚═══╝
         ";

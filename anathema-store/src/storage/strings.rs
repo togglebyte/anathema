@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 
 use super::Storage;
+use crate::slab::SlabIndex;
 
 pub struct Strings {
     inner: Storage<StringId, String, ()>,
@@ -40,15 +41,18 @@ impl Strings {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StringId(usize);
 
-impl From<usize> for StringId {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
+impl SlabIndex for StringId {
+    const MAX: usize = usize::MAX;
 
-impl Into<usize> for StringId {
-    fn into(self) -> usize {
+    fn as_usize(&self) -> usize {
         self.0
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index)
     }
 }
 

@@ -1,35 +1,27 @@
-use std::rc::Rc;
-
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
-use crate::{Expression, WidgetComponentId};
+use crate::{ComponentBlueprintId, Expression};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {
-    pub ident: Rc<str>,
+    pub ident: String,
     pub children: Vec<Blueprint>,
-    pub attributes: SmallMap<Rc<str>, Expression>,
+    pub attributes: SmallMap<String, Expression>,
     pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct For {
-    pub binding: Rc<str>,
+    pub binding: String,
     pub data: Expression,
     pub body: Vec<Blueprint>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlFlow {
-    pub if_node: If,
+    // pub if_node: If,
     pub elses: Vec<Else>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct If {
-    pub cond: Expression,
-    pub body: Vec<Blueprint>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,11 +32,13 @@ pub struct Else {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
-    pub id: WidgetComponentId,
+    pub name: String,
+    pub id: ComponentBlueprintId,
     pub body: Vec<Blueprint>,
-    pub attributes: SmallMap<Rc<str>, Expression>,
+    pub attributes: SmallMap<String, Expression>,
     pub assoc_functions: Vec<(StringId, StringId)>,
-    pub parent: Option<WidgetComponentId>,
+    /// The parent component in the blueprint
+    pub parent: Option<ComponentBlueprintId>,
 }
 
 /// A blueprint represents what widget should be built from the information
@@ -54,6 +48,9 @@ pub enum Blueprint {
     For(For),
     ControlFlow(ControlFlow),
     Component(Component),
+    Slot(Vec<Self>),
+    // PushParentScope,
+    // PopParentScope,
 }
 
 #[macro_export]
@@ -66,12 +63,31 @@ macro_rules! single {
             value: None,
         })
     };
-    ($ident:expr, $children:expr) => {
+    (value @ $ident:expr, $value:expr) => {
+        $crate::blueprints::Blueprint::Single(Single {
+            ident: $ident.into(),
+            children: vec![],
+            attributes: SmallMap::empty(),
+            value: Some($value.into()),
+        })
+    };
+    (children @ $ident:expr, $children:expr) => {
         $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: $children,
             attributes: SmallMap::empty(),
             value: None,
+        })
+    };
+}
+
+#[macro_export]
+macro_rules! forloop {
+    ($binding:expr, $data:expr, $body:expr) => {
+        $crate::blueprints::Blueprint::For(For {
+            binding: $binding.into(),
+            data: $data,
+            body: $body,
         })
     };
 }

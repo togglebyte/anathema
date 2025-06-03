@@ -1,24 +1,40 @@
-use std::fmt::{self, Display};
+pub use anathema_store::storage::strings::StringId;
+use anathema_store::storage::strings::Strings as StringStore;
 
-pub type Strings = anathema_store::Storage<StringId, String>;
+static CHILDREN: &str = "children";
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct StringId(usize);
-
-impl From<usize> for StringId {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
+/// This differs from the storage `Strings` only on account
+/// of having something akin to a constant for children
+pub struct Strings {
+    inner: StringStore,
+    children: StringId,
 }
 
-impl Into<usize> for StringId {
-    fn into(self) -> usize {
-        self.0
-    }
-}
+impl Strings {
+    pub fn new() -> Self {
+        let mut inner = StringStore::empty();
+        let children = inner.push(CHILDREN);
 
-impl Display for StringId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<sid {}>", self.0)
+        Self { inner, children }
+    }
+
+    pub fn children(&self) -> StringId {
+        self.children
+    }
+
+    pub(crate) fn push(&mut self, string: impl Into<String>) -> StringId {
+        self.inner.push(string)
+    }
+
+    pub(crate) fn get_unchecked(&self, string_id: StringId) -> String {
+        self.inner.get_unchecked(string_id)
+    }
+
+    pub fn get_ref_unchecked(&self, string_id: StringId) -> &str {
+        self.inner.get_ref_unchecked(string_id)
+    }
+
+    pub fn lookup(&self, string: &str) -> Option<StringId> {
+        self.inner.lookup(string)
     }
 }

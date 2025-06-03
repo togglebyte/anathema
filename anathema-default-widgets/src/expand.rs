@@ -1,11 +1,13 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
-use crate::layout::{single_layout, Axis};
+use crate::layout::{Axis, single_layout};
 
 #[derive(Debug, Default)]
 pub struct Expand;
@@ -13,15 +15,15 @@ pub struct Expand;
 impl Widget for Expand {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let mut size = single_layout(children, constraints, ctx);
+    ) -> Result<Size> {
+        let mut size = single_layout(children, constraints, ctx)?;
 
-        let attributes = ctx.attribs.get(id);
-        match attributes.get("axis") {
+        let attributes = ctx.attribute_storage.get(id);
+        match attributes.get_as::<Axis>("axis") {
             Some(Axis::Horizontal) => size.width = constraints.max_width(),
             Some(Axis::Vertical) => size.height = constraints.max_height(),
             None => {
@@ -30,17 +32,17 @@ impl Widget for Expand {
             }
         }
 
-        size
+        Ok(size)
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _attributes: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
-        children.for_each(|node, children| {
+        _ = children.each(|node, children| {
             node.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
@@ -48,12 +50,12 @@ impl Widget for Expand {
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Break(())

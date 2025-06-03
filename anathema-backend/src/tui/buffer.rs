@@ -2,11 +2,13 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::Size;
+use anathema_widgets::Style;
 use anathema_widgets::paint::{Glyph, GlyphMap};
 use crossterm::style::Print;
-use crossterm::{cursor, QueueableCommand};
+use crossterm::{QueueableCommand, cursor};
 
-use super::{LocalPos, Style};
+use super::LocalPos;
+use super::style::write_style;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Cell {
@@ -21,14 +23,6 @@ impl Cell {
         Self {
             style: Style::reset(),
             state: CellState::Empty,
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn space() -> Self {
-        Self {
-            style: Style::reset(),
-            state: CellState::Occupied(Glyph::space()),
         }
     }
 
@@ -85,7 +79,7 @@ impl Buffer {
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::empty(); size.width * size.height].into_boxed_slice(),
+            inner: vec![Cell::empty(); (size.width * size.height) as usize].into_boxed_slice(),
             size,
         }
     }
@@ -94,7 +88,7 @@ impl Buffer {
     pub(crate) fn reset(size: impl Into<Size>) -> Self {
         let size = size.into();
         Self {
-            inner: vec![Cell::reset(); size.width * size.height].into_boxed_slice(),
+            inner: vec![Cell::reset(); (size.width * size.height) as usize].into_boxed_slice(),
             size,
         }
     }
@@ -108,12 +102,12 @@ impl Buffer {
     pub fn resize(&mut self, size: Size) {
         let mut new_buf = Buffer::new(size);
         for (y, line) in self.cell_lines().enumerate() {
-            if y >= size.height {
+            if y >= size.height as usize {
                 break;
             }
 
             for (x, cell) in line.iter().enumerate() {
-                if x >= size.width {
+                if x >= size.width as usize {
                     break;
                 }
 
@@ -129,7 +123,7 @@ impl Buffer {
     /// Put a character with a style at a given position.
     pub fn put_glyph(&mut self, glyph: Glyph, pos: LocalPos) {
         assert!(
-            (pos.x as usize) < self.size.width && (pos.y as usize) < self.size.height,
+            pos.x < self.size.width && pos.y < self.size.height,
             "position out of bounds"
         );
 
@@ -137,6 +131,7 @@ impl Buffer {
             Some((_, style)) => *style,
             None => Style::new(),
         };
+
         let cell = Cell::new(glyph, style);
         self.put(cell, pos);
     }
@@ -144,7 +139,7 @@ impl Buffer {
     /// Update the attributes at a given cell.
     /// If there is no character at that cell, then write an empty space into it
     pub fn update_cell(&mut self, style: Style, pos: LocalPos) {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return;
         }
 
@@ -160,15 +155,11 @@ impl Buffer {
         }
 
         cell.style.attributes |= style.attributes;
-
-        if let CellState::Empty = cell.state {
-            cell.state = CellState::Occupied(Glyph::space());
-        }
     }
 
     /// Get a reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get(&self, pos: LocalPos) -> Option<(&Glyph, &Style)> {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return None;
         }
 
@@ -182,7 +173,7 @@ impl Buffer {
 
     /// Get a mutable reference to a `char` and [`Style`] at a given position inside the buffer.
     pub fn get_mut(&mut self, pos: LocalPos) -> Option<(&mut Glyph, &mut Style)> {
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
+        if pos.x >= self.size.width || pos.y >= self.size.height {
             return None;
         }
 
@@ -195,7 +186,7 @@ impl Buffer {
     }
 
     /// An iterator over all the rows in the buffer
-    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = Option<(Glyph, Style)>> + '_> {
+    pub fn rows(&mut self) -> impl Iterator<Item = impl Iterator<Item = Option<(Glyph, Style)>> + '_> {
         self.cell_lines().map(|chunk| {
             chunk.iter().map(|cell| match cell.state {
                 CellState::Occupied(c) => Some((c, cell.style)),
@@ -204,8 +195,13 @@ impl Buffer {
         })
     }
 
+    pub(super) fn reset_cell(&mut self, pos: LocalPos) {
+        let index = pos.to_index(self.size.width);
+        self.inner[index] = Cell::empty();
+    }
+
     fn index(&self, pos: LocalPos) -> usize {
-        pos.y as usize * self.size.width + pos.x as usize
+        (pos.y * self.size.width + pos.x) as usize
     }
 
     fn put(&mut self, mut cell: Cell, pos: LocalPos) {
@@ -227,7 +223,7 @@ impl Buffer {
 
         match (&mut current.state, cell.state) {
             // Merge the styles
-            (CellState::Occupied(ref mut current_char), CellState::Occupied(new_char)) => {
+            (CellState::Occupied(current_char), CellState::Occupied(new_char)) => {
                 *current_char = new_char;
                 current.style.attributes |= cell.style.attributes;
 
@@ -243,24 +239,8 @@ impl Buffer {
         }
     }
 
-    fn cell_lines(&self) -> impl Iterator<Item = &[Cell]> {
-        self.inner.chunks(self.size.width)
-    }
-}
-
-#[cfg(test)]
-impl Buffer {
-    fn cell_at(&self, x: usize, y: usize) -> Cell {
-        let index = y * self.size.width + x;
-        self.inner[index]
-    }
-
-    pub fn char_at(&self, x: usize, y: usize) -> char {
-        let cell = self.cell_at(x, y);
-        match cell.state {
-            CellState::Occupied(Glyph::Single(c, _)) => c,
-            _ => panic!("no character at index {x}, {y}"),
-        }
+    fn cell_lines(&mut self) -> impl Iterator<Item = &mut [Cell]> {
+        self.inner.chunks_mut(self.size.width as usize)
     }
 }
 
@@ -273,23 +253,33 @@ pub(crate) enum Change {
 impl Change {
     fn width(self) -> usize {
         match self {
-            Change::Remove => 1,
-            Change::Insert(c) => c.width(),
+            Self::Remove => 1,
+            Self::Insert(c) => c.width(),
         }
     }
 }
 
-pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Option<Style>, Change)>) -> Result<()> {
+pub(crate) fn diff(
+    old: &mut Buffer,
+    new: &mut Buffer,
+    changes: &mut Vec<(LocalPos, Option<Style>, Change)>,
+) -> Result<()> {
     let mut previous_style = None;
 
     for (y, (old_line, new_line)) in old.cell_lines().zip(new.cell_lines()).enumerate() {
-        for (x, (old_cell, new_cell)) in old_line.iter().zip(new_line).enumerate() {
-            let x = x as u16;
-            let y = y as u16;
-
+        for (x, (old_cell, new_cell)) in old_line.iter_mut().zip(new_line).enumerate() {
             if old_cell == new_cell {
                 continue;
             }
+
+            let change = match new_cell.state {
+                CellState::Empty => {
+                    new_cell.style.reset_attributes();
+                    Change::Remove
+                }
+                CellState::Continuation => continue,
+                CellState::Occupied(c) => Change::Insert(c),
+            };
 
             let style = match previous_style {
                 Some(previous) => (previous != new_cell.style).then_some(new_cell.style),
@@ -298,13 +288,9 @@ pub(crate) fn diff(old: &Buffer, new: &Buffer, changes: &mut Vec<(LocalPos, Opti
 
             previous_style = Some(new_cell.style);
 
-            let change = match new_cell.state {
-                CellState::Empty => Change::Remove,
-                CellState::Continuation => continue,
-                CellState::Occupied(c) => Change::Insert(c),
-            };
+            *old_cell = *new_cell;
 
-            changes.push((LocalPos::new(x, y), style, change));
+            changes.push((LocalPos::from((x, y)), style, change));
         }
     }
 
@@ -338,7 +324,7 @@ pub(crate) fn draw_changes(
 
         // Apply style
         if let Some(style) = style {
-            style.write(&mut w)?;
+            write_style(style, &mut w)?;
         }
 
         // Draw changes
@@ -359,8 +345,8 @@ pub(crate) fn draw_changes(
         };
     }
 
+    write_style(&Style::reset(), &mut w)?;
     w.queue(cursor::MoveTo(0, 0))?;
-    Style::reset().write(&mut w)?;
     Ok(())
 }
 
@@ -387,7 +373,7 @@ mod test {
         new_buffer.inner[0] = Cell::new(Glyph::from_char('C', 1), Style::reset());
         new_buffer.inner[2] = Cell::new(Glyph::from_char('N', 1), Style::reset());
 
-        diff(&old_buffer, &new_buffer, &mut changes).unwrap();
+        diff(&mut old_buffer, &mut new_buffer, &mut changes).unwrap();
 
         let (_, _, change_1) = changes[0]; // Insert 'C'
         let (_, _, change_2) = changes[1]; // Remove 'V'

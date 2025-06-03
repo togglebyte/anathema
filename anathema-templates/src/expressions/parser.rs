@@ -1,11 +1,10 @@
 use std::fmt::Display;
 
-use anathema_store::storage::strings::{StringId, Strings};
-
-use super::eval::eval;
 use super::Expression;
+use super::eval::eval;
 use crate::error::{ParseErrorKind, Result};
 use crate::primitives::Primitive;
+use crate::strings::{StringId, Strings};
 use crate::token::{Kind, Operator, Tokens, Value};
 
 pub(crate) mod prec {
@@ -120,7 +119,7 @@ fn expr_bp(tokens: &mut Tokens, precedence: u8) -> Result<Expr, ParseErrorKind> 
         _kind => {
             return Err(ParseErrorKind::InvalidToken {
                 expected: "valid token, found statement",
-            })
+            });
         }
     };
 
@@ -264,14 +263,13 @@ fn parse_map(tokens: &mut Tokens) -> Result<Expr, ParseErrorKind> {
 
 #[cfg(test)]
 mod test {
-    use anathema_store::storage::strings::Strings;
-
     use super::*;
     use crate::error::Result;
     use crate::lexer::Lexer;
+    use crate::strings::Strings;
 
     fn parse_src(input: &str) -> Expr {
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
         let lexer = Lexer::new(input, &mut strings);
         let tokens = lexer.collect::<Result<_>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());
@@ -310,31 +308,31 @@ mod test {
     #[test]
     fn function() {
         let input = "fun(1, a + 2 * 3, 3)";
-        assert_eq!(parse(input), "<sid 0>(1, (+ <sid 1> (* 2 3)), 3)");
+        assert_eq!(parse(input), "<sid 1>(1, (+ <sid 2> (* 2 3)), 3)");
     }
 
     #[test]
     fn function_no_args() {
         let input = "f()";
-        assert_eq!(parse(input), "<sid 0>()");
+        assert_eq!(parse(input), "<sid 1>()");
     }
 
     #[test]
     fn array_index() {
         let input = "array[0][1]";
-        assert_eq!(parse(input), "<sid 0>[0][1]");
+        assert_eq!(parse(input), "<sid 1>[0][1]");
     }
 
     #[test]
     fn map_lookup() {
         let input = "map['key']";
-        assert_eq!(parse(input), "<sid 0>[\"<sid 1>\"]");
+        assert_eq!(parse(input), "<sid 1>[\"<sid 2>\"]");
     }
 
     #[test]
     fn dot_lookup() {
         let input = "a.b.c";
-        assert_eq!(parse(input), "(. (. <sid 0> <sid 1>) <sid 2>)");
+        assert_eq!(parse(input), "(. (. <sid 1> <sid 2>) <sid 3>)");
     }
 
     #[test]
@@ -346,7 +344,7 @@ mod test {
     #[test]
     fn list() {
         let input = "[1, 2, a, 4]";
-        assert_eq!(parse(input), "[1, 2, <sid 0>, 4]");
+        assert_eq!(parse(input), "[1, 2, <sid 1>, 4]");
     }
 
     #[test]
@@ -364,7 +362,7 @@ mod test {
     #[test]
     fn map() {
         let input = "{a: 1, b: c}";
-        assert_eq!(parse(input), "{<sid 0>: 1, <sid 1>: <sid 2>}");
+        assert_eq!(parse(input), "{<sid 1>: 1, <sid 2>: <sid 3>}");
     }
 
     #[test]
@@ -383,6 +381,6 @@ mod test {
     fn either() {
         let input = "a ? b ? c";
         let actual = parse(input);
-        assert_eq!(actual, "(? (? <sid 0> <sid 1>) <sid 2>)");
+        assert_eq!(actual, "(? (? <sid 1> <sid 2>) <sid 3>)");
     }
 }

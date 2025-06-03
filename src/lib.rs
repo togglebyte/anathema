@@ -8,18 +8,23 @@ pub use {
     anathema_state_derive as derive,             // derive
     anathema_store as store,                     // store
     anathema_templates as templates,             // templates
+    anathema_value_resolver as resolver,         // resolver
     anathema_widgets as widgets,                 // wigets
 };
 
 pub mod prelude {
+    pub use crate::backend::Backend;
     pub use crate::backend::tui::TuiBackend;
-    pub use crate::runtime::{GlobalContext, GlobalEvents, Runtime};
-    pub use crate::templates::{Document, SourceKind, ToSourceKind, WidgetComponentId};
+    pub use crate::runtime::Runtime;
+    pub use crate::templates::{ComponentBlueprintId, Document, SourceKind, ToSourceKind};
     pub use crate::widgets::components::Context;
 }
+
 pub mod component {
-    pub use crate::state::{Color, CommonVal, List, Map, State, Value};
-    pub use crate::widgets::components::events::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseState};
+    pub use crate::state::{AnyState, Color, List, Map, State, Value};
+    pub use crate::widgets::components::events::{
+        Event, KeyCode, KeyEvent, KeyState, MouseButton, MouseEvent, MouseState,
+    };
     pub use crate::widgets::components::{Component, ComponentId, Context, Emitter};
-    pub use crate::widgets::Elements;
+    pub use crate::widgets::query::Children;
 }

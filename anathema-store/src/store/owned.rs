@@ -1,26 +1,40 @@
 use std::cell::RefCell;
 
 use super::shared::SharedKey;
-use super::Slab;
+use crate::slab::SlabIndex;
 
 // -----------------------------------------------------------------------------
 //   - Key -
 // -----------------------------------------------------------------------------
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct OwnedKey(u32);
+pub type OwnedKey = crate::slab::Key;
 
-impl From<usize> for OwnedKey {
-    fn from(i: usize) -> Self {
-        // SAFETY
-        // this isn't technically unsafe, and it's unlikely that more than
-        // four gigabyte of values would be stored
-        Self(i as u32)
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct Monitor(u16);
+
+impl Monitor {
+    pub const INITIAL: u16 = u16::MAX;
+
+    pub const fn initial() -> Self {
+        Self(Self::INITIAL)
+    }
+
+    pub fn is_set(self) -> bool {
+        self != Self::initial()
     }
 }
 
-impl From<OwnedKey> for usize {
-    fn from(key: OwnedKey) -> usize {
-        key.0 as usize
+impl SlabIndex for Monitor {
+    const MAX: usize = u16::MAX as usize - 1;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u16)
     }
 }
 
@@ -49,13 +63,13 @@ impl<T> OwnedEntry<T> {
 //   - Storage -
 // -----------------------------------------------------------------------------
 pub struct Owned<T> {
-    inner: RefCell<Slab<OwnedKey, OwnedEntry<T>>>,
+    inner: RefCell<crate::slab::GenSlab<OwnedEntry<T>>>,
 }
 
 impl<T> Owned<T> {
     pub const fn empty() -> Self {
         Self {
-            inner: RefCell::new(Slab::empty()),
+            inner: RefCell::new(crate::slab::GenSlab::empty_aux()),
         }
     }
 
@@ -76,7 +90,7 @@ impl<T> Owned<T> {
             .borrow_mut()
             .try_replace(owned_key, OwnedEntry::Shared(shared_key));
 
-        matches!(entry, Some(OwnedEntry::Unique))
+        matches!(entry, Some((_, OwnedEntry::Unique)))
     }
 
     /// Call closure on a value.
@@ -120,7 +134,7 @@ impl<T> Owned<T> {
     /// this function will panic.
     pub fn try_unique(&self, key: OwnedKey) -> Option<T> {
         let mut inner = self.inner.borrow_mut();
-        let output = inner.try_replace(key, OwnedEntry::Unique)?;
+        let (_, output) = inner.try_replace(key, OwnedEntry::Unique)?;
         match output {
             OwnedEntry::Occupied(value) => Some(value),
             OwnedEntry::Unique => panic!("value is already checked out"),
@@ -128,12 +142,17 @@ impl<T> Owned<T> {
         }
     }
 
-    /// Remove the value from the storage
+    /// Remove the value from the storage.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the value does not exist.
     pub fn remove(&self, key: OwnedKey) -> T {
         match self.inner.borrow_mut().remove(key) {
-            OwnedEntry::Occupied(value) => value,
-            OwnedEntry::Unique => panic!("invalid state (U)"),
-            OwnedEntry::Shared(_) => panic!("invalid state"),
+            Some(OwnedEntry::Occupied(value)) => value,
+            Some(OwnedEntry::Unique) => panic!("invalid state (U)"),
+            Some(OwnedEntry::Shared(_)) => panic!("invalid state (S)"),
+            None => panic!("invalid state: the value does not exist"),
         }
     }
 
@@ -142,7 +161,7 @@ impl<T> Owned<T> {
     // * Unique borrow
     // * The end of a shared borrow
     pub fn return_unique_borrow(&self, key: OwnedKey, value: T) {
-        let val = self.inner.borrow_mut().replace(key, OwnedEntry::Occupied(value));
+        let (_, val) = self.inner.borrow_mut().replace(key, OwnedEntry::Occupied(value));
         match val {
             OwnedEntry::Unique => (),
             OwnedEntry::Shared(_) => (),
@@ -153,14 +172,14 @@ impl<T> Owned<T> {
     /// This function should only be used for tests
     #[doc(hidden)]
     pub fn count_occupied(&self) -> usize {
-        self.inner.borrow().iter_values().filter(|e| e.is_occupied()).count()
+        self.inner.borrow().iter().filter(|e| e.is_occupied()).count()
     }
 
     pub fn for_each<F>(&self, mut f: F)
     where
         F: FnMut(OwnedKey, &OwnedEntry<T>),
     {
-        self.inner.borrow().iter().for_each(|(k, v)| f(k, v));
+        self.inner.borrow().iter_keys().for_each(|(k, v)| f(k, v));
     }
 }
 

@@ -1,12 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
-use anathema_state::ValueRef;
+use anathema_state::{PendingValue, ValueRef};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
+use anathema_strings::HStrings;
 use anathema_templates::Expression;
 
-use crate::expressions::{Either, EvalValue};
 use crate::widget::ValueKey;
-use crate::Scope;
+use crate::AttributeStorage;
 
 pub(crate) type ValueId = anathema_state::Subscriber;
 pub type ValueIndex = SmallIndex;
@@ -48,28 +48,42 @@ impl<'bp, T> Value<'bp, T> {
     pub(crate) fn inner(&self) -> &T {
         &self.inner
     }
+
+    pub(crate) fn replace(&mut self, value: Value<'bp, T>) -> bool
+    where
+        T: PartialEq,
+    {
+        if self.inner != value.inner {
+            self.inner = value.inner;
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<'bp> Value<'bp, EvalValue<'bp>> {
-    pub(crate) fn load_common_val(&self) -> Option<Either<'_>> {
+    pub fn load_common_val(&self) -> Option<Either> {
         self.inner.load_common_val()
     }
 
     /// Re-evaluate the value if it has been removed.
     /// This will replace the inner value with an empty EvalValue
     /// and register the value for future changes
-    pub(crate) fn reload_val(
-        &mut self,
-        id: ValueId,
-        globals: &'bp anathema_templates::Globals,
-        scope: &Scope<'bp>,
-        states: &anathema_state::States,
-    ) {
-        if !self.inner.contains_index() {
-            return;
-        }
+    pub(crate) fn reload_val(&mut self, id: ValueId, ctx: &ExprEvalCtx<'_, 'bp>, strings: &mut HStrings<'bp>) {
         let Some(expr) = self.expr else { return };
-        let Value { inner, .. } = crate::expressions::eval(expr, globals, scope, states, id);
+        let Value { inner, .. } = crate::expressions::eval(expr, ctx, strings, id);
+        self.inner = inner;
+    }
+}
+
+impl<'bp> Value<'bp, Collection<'bp>> {
+    /// Re-evaluate the value if it has been removed.
+    /// This will replace the inner value with an empty EvalValue
+    /// and register the value for future changes
+    pub(crate) fn reload_val(&mut self, id: ValueId, ctx: &ExprEvalCtx<'_, 'bp>, strings: &mut HStrings<'bp>) {
+        let Some(expr) = self.expr else { return };
+        let Value { inner, .. } = crate::expressions::eval_collection(expr, ctx, strings, id);
         self.inner = inner;
     }
 }
@@ -111,6 +125,7 @@ pub(crate) enum Collection<'bp> {
     ///     text x
     /// ```
     Static(Box<[EvalValue<'bp>]>),
+    Static2(&'bp [Expression]),
     /// This will (probably) resolve to a collection from a state.
     Dyn(ValueRef),
     /// Index value.
@@ -123,28 +138,31 @@ pub(crate) enum Collection<'bp> {
 
 impl<'bp> Collection<'bp> {
     pub(crate) fn count(&self) -> usize {
-        match self {
-            Self::Static(e) => e.len(),
-            Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
-            Self::Index(collection, _) => collection.count(),
-            Self::Future => 0,
-        }
+        panic!("this should be available as a dyn any list")
+        // match self {
+        //     Self::Static(e) => e.len(),
+        //     Self::Static2(e) => e.len(),
+        //     Self::Dyn(value_ref) => value_ref.as_state().map(|state| state.count()).unwrap_or(0),
+        //     Self::Index(collection, _) => collection.count(),
+        //     Self::Future => 0,
+        // }
     }
 
-    pub(crate) fn scope(&self, scope: &mut Scope<'bp>, binding: &'bp str, index: usize) {
-        match self {
-            Collection::Static(values) => {
-                let downgrade = values[index].downgrade();
-                scope.scope_downgrade(binding, downgrade);
-            }
-            Collection::Dyn(value_ref) => {
-                let Some(value) = value_ref.as_state().and_then(|state| state.state_lookup(index.into())) else {
-                    return;
-                };
-                scope.scope_pending(binding, value)
-            }
-            Collection::Index(collection, _) => collection.scope(scope, binding, index),
-            Collection::Future => {}
-        }
-    }
+    // pub(crate) fn scope_collection(&self, scope: &mut Scope<'bp>, binding: &'bp str) {
+    //     match self {
+    //         Collection::Static(_) => panic!("this variant should be removed"),
+    //         Collection::Static2(expressions) => scope.scope_expressions(binding, expressions),
+    //         Collection::Dyn(value_ref) => {
+    //             let pending = value_ref.to_pending();
+    //             scope.scope_pending(binding, pending);
+    //         }
+    //         Collection::Index(collection, eval_value) => collection.scope_collection(scope, binding),
+    //         Collection::Future => (),
+    //         // for x in state.list[y[i]]
+    //         // Values that can change:
+    //         // * state.list
+    //         // * y
+    //         // * i
+    //     }
+    // }
 }

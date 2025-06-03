@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState, MouseButton, MouseEvent, MouseState};
-use crossterm::event::{read, Event as CTEvent, KeyEventKind};
+use crossterm::event::{Event as CTEvent, KeyEventKind, read};
 pub use crossterm::event::{
     KeyCode as CTKeyCode, KeyEvent as CTKeyEvent, KeyEventState, KeyModifiers, MouseButton as CTMouseButton,
     MouseEvent as CTMouseEvent, MouseEventKind,
@@ -25,7 +25,7 @@ impl Events {
                     CTEvent::FocusLost => Event::Blur,
                     CTEvent::Key(key_ev) => Event::Key(key_code_to_key_code(key_ev)),
                     CTEvent::Mouse(mouse_ev) => Event::Mouse(mouse_to_mouse(mouse_ev)),
-                    CTEvent::Resize(width, height) => Event::Resize(width, height),
+                    CTEvent::Resize(width, height) => Event::Resize((width, height).into()),
                 };
 
                 Some(event)

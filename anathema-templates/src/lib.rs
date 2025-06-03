@@ -1,9 +1,9 @@
-pub use crate::components::{SourceKind, ToSourceKind, WidgetComponentId};
+pub use crate::components::{ComponentBlueprintId, SourceKind, ToSourceKind};
 pub use crate::document::Document;
 pub use crate::expressions::Expression;
 pub use crate::lexer::Lexer;
 pub use crate::primitives::Primitive;
-pub use crate::variables::Globals;
+pub use crate::variables::{Globals, Variables};
 
 pub mod blueprints;
 pub(crate) mod components;
@@ -13,5 +13,6 @@ pub mod expressions;
 mod lexer;
 mod primitives;
 mod statements;
+pub mod strings;
 mod token;
 mod variables;

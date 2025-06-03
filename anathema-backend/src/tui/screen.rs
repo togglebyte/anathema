@@ -1,14 +1,15 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::paint::{CellAttributes, Glyph};
-use anathema_widgets::{GlyphMap, WidgetRenderer};
+use anathema_value_resolver::Attributes;
+use anathema_widgets::paint::Glyph;
+use anathema_widgets::{GlyphMap, Style, WidgetRenderer};
 use crossterm::event::EnableMouseCapture;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{cursor, ExecutableCommand, QueueableCommand};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
+use crossterm::{ExecutableCommand, QueueableCommand, cursor};
 
-use super::buffer::{diff, draw_changes, Buffer, Change};
-use super::{LocalPos, Style};
+use super::LocalPos;
+use super::buffer::{Buffer, Change, diff, draw_changes};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
 pub struct Screen {
@@ -71,9 +72,7 @@ impl Screen {
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                let Some((glyph, style)) = self.new_buffer.get_mut(LocalPos::new(x, y)) else { continue };
-                *glyph = Glyph::space();
-                *style = Style::reset();
+                self.new_buffer.reset_cell(LocalPos::new(x, y));
             }
         }
     }
@@ -91,7 +90,7 @@ impl Screen {
 
     /// Draw the changes to the screen
     pub(crate) fn render(&mut self, mut output: impl Write, glyph_map: &GlyphMap) -> Result<()> {
-        diff(&self.old_buffer, &self.new_buffer, &mut self.changes)?;
+        diff(&mut self.old_buffer, &mut self.new_buffer, &mut self.changes)?;
 
         if self.changes.is_empty() {
             return Ok(());
@@ -102,8 +101,6 @@ impl Screen {
         self.changes.clear();
 
         output.flush()?;
-
-        self.old_buffer = self.new_buffer.clone();
 
         Ok(())
     }
@@ -129,9 +126,11 @@ impl Screen {
 
     /// Restore the terminal by setting the cursor to show, disable raw mode, disable mouse capture
     /// and leave any alternative screens
-    pub fn restore(&mut self, mut output: impl Write) -> Result<()> {
+    pub fn restore(&mut self, mut output: impl Write, leave_alt_screen: bool) -> Result<()> {
         disable_raw_mode()?;
-        output.execute(LeaveAlternateScreen)?;
+        if leave_alt_screen {
+            output.execute(LeaveAlternateScreen)?;
+        }
         #[cfg(not(target_os = "windows"))]
         output.execute(crossterm::event::DisableMouseCapture)?;
         output.execute(cursor::Show)?;
@@ -145,9 +144,13 @@ impl WidgetRenderer for Screen {
         self.paint_glyph(c, screen_pos);
     }
 
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, pos: Pos) {
-        let Ok(screen_pos) = pos.try_into() else { return };
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, pos: Pos) {
         let style = Style::from_cell_attribs(attribs);
+        self.set_style(style, pos)
+    }
+
+    fn set_style(&mut self, style: Style, local_pos: Pos) {
+        let Ok(screen_pos) = local_pos.try_into() else { return };
         self.update_cell(style, screen_pos);
     }
 
@@ -189,19 +192,18 @@ mod test {
 
     #[test]
     fn erase_region() {
-        // Erase a whole region, leaving all cells `empty`
         let mut render_output = vec![];
         let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(2, 2));
         screen.render(&mut render_output, &glyph_map).unwrap();
 
+        // Erase the bottom right corner of the 2x2 region
         screen.erase_region(LocalPos::new(1, 1), Size::new(1, 1));
-        screen.render(&mut render_output, &glyph_map).unwrap();
 
         let top_left = screen.new_buffer.inner[0];
         assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), top_left);
         let bottom_right = screen.new_buffer.inner[3];
-        assert_eq!(Cell::space(), bottom_right);
+        assert_eq!(Cell::empty(), bottom_right);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::{CommonVal, Hex, State};
+use crate::Hex;
 
 pub trait FromColor {
     fn from_color<T>(color: Color) -> T;
@@ -10,7 +10,7 @@ pub trait FromColor {
 /// Representation of terminal colors, following the ANSI spec
 ///
 /// [ANSI color table](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Default)]
 pub enum Color {
     #[default]
     Reset,
@@ -38,12 +38,6 @@ pub enum Color {
     ///
     /// See [256 colors](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit)
     AnsiVal(u8),
-}
-
-impl State for Color {
-    fn to_common(&self) -> Option<CommonVal<'_>> {
-        Some(CommonVal::Color(*self))
-    }
 }
 
 impl From<Hex> for Color {

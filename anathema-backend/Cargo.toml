@@ -7,11 +7,18 @@ edition.workspace = true
 anathema-geometry = { path = "../anathema-geometry" }
 anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
-anathema-widgets = { path = "../anathema-widgets" }
+anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
+anathema-value-resolver = { path = "../anathema-value-resolver" }
+anathema-widgets = { path = "../anathema-widgets" }
 crossterm = { workspace = true }
 unicode-width = { workspace = true }
 bitflags = { workspace = true }
+puffin = { version = "0.19.1", optional = true }
+
+[features]
+default = []
+profile = ["puffin"]
 
 [lints]
 workspace = true

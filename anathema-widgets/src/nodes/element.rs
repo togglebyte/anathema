@@ -1,10 +1,27 @@
+use std::ops::ControlFlow;
+
 use anathema_geometry::{Pos, Region, Size};
+use anathema_value_resolver::AttributeStorage;
 
 use crate::container::Container;
-use crate::layout::{Constraints, LayoutCtx, Viewport};
-use crate::paint::{PaintCtx, Unsized};
-use crate::widget::{PaintChildren, PositionChildren};
-use crate::{AttributeStorage, LayoutChildren, WidgetId};
+use crate::error::Result;
+use crate::layout::{Constraints, LayoutCtx, PositionFilter, Viewport};
+use crate::paint::{PaintCtx, PaintFilter, Unsized};
+use crate::widget::ForEach;
+use crate::{LayoutForEach, WidgetId};
+
+pub enum Layout {
+    Changed(Size),
+    Unchanged(Size),
+}
+
+impl From<Layout> for Size {
+    fn from(value: Layout) -> Self {
+        match value {
+            Layout::Changed(size) | Layout::Unchanged(size) => size,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Element<'bp> {
@@ -23,36 +40,93 @@ impl<'bp> Element<'bp> {
 
     pub fn layout(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Layout> {
+        // 1. Check cache
+        // 2. Check cache of children
+        //
+        // If one of the children returns a `Changed` layout result
+        // the transition the widget into full layout mode
+
+        let count = children.len();
+        let mut rebuild = self.container.cache.count_check(count);
+
+        if let Some(size) = self.cached_size() {
+            _ = children.each(ctx, |ctx, node, children| {
+                // If we are here it's because the current node has a valid cache.
+                // We need to use the constraint for the given node in this case as
+                // the constraint is not managed by the current node.
+                //
+                // Example:
+                // If the current node is a border with a fixed width and height,
+                // it would create a new constraint for the child node that is the
+                // width and height - the border size.
+                //
+                // However the border does not store this constraint, it's stored
+                // on the node itself.
+                // Therefore we pass the nodes its own constraint.
+
+                let constraints = match node.container.cache.constraints() {
+                    None => constraints,
+                    Some(constraints) => constraints,
+                };
+
+                match node.layout(children, constraints, ctx)? {
+                    Layout::Changed(_) => {
+                        rebuild = true;
+                        return Ok(ControlFlow::Break(()));
+                    }
+                    Layout::Unchanged(_) => return Ok(ControlFlow::Continue(())),
+                }
+            })?;
+
+            if !self.container.cache.count_check(count) {
+                rebuild = true;
+            }
+
+            if !rebuild {
+                return Ok(Layout::Unchanged(size));
+            }
+        }
+
         self.container.layout(children, constraints, ctx)
+    }
+
+    pub fn invalidate_cache(&mut self) {
+        self.container.cache.invalidate();
     }
 
     /// Position the element
     pub fn position(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         pos: Pos,
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        self.container.position(children, pos, attribute_storage, viewport);
+        self.container.position(children, pos, attribute_storage, viewport)
     }
 
     /// Draw an element to the surface
     pub fn paint(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PaintFilter>,
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        self.container.paint(children, ctx, attribute_storage)
+        self.container.paint(children, ctx, attribute_storage);
+    }
+
+    /// Return the cached size if the constraints are matching
+    /// the cached constraints.
+    pub fn cached_size(&self) -> Option<Size> {
+        self.container.cache.size()
     }
 
     pub fn size(&self) -> Size {
-        self.container.size
+        self.container.cache.size
     }
 
     /// Inner bounds in global space
@@ -91,5 +165,10 @@ impl<'bp> Element<'bp> {
     /// Get the position of the container
     pub fn get_pos(&self) -> Pos {
         self.container.pos
+    }
+
+    /// Returns true if the widget is a floating widget
+    pub(crate) fn is_floating(&self) -> bool {
+        self.container.inner.any_floats()
     }
 }

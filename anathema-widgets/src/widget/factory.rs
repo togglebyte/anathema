@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
+use anathema_value_resolver::Attributes;
+
 use super::{AnyWidget, Widget};
 use crate::error::{Error, Result};
-use crate::Attributes;
 
 pub struct Factory(HashMap<Box<str>, Box<dyn Fn(&Attributes<'_>) -> Box<dyn AnyWidget>>>);
 

@@ -1,6 +1,6 @@
 [package]
 name = "anathema"
-edition = "2021"
+edition = "2024"
 version = "0.2.0"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
@@ -22,13 +22,20 @@ anathema-store = { path = "./anathema-store" }
 anathema-templates = { path = "./anathema-templates" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-geometry = { path = "./anathema-geometry" }
+anathema-strings = { path = "./anathema-strings" }
+anathema-value-resolver = { path = "./anathema-value-resolver" }
+
+[features]
+default = []
+profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
+debuggy = ["anathema-widgets/debuggy"]
 
 [lints]
 workspace = true
 
 [workspace.package]
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
 bitflags = "2.4.1"
@@ -47,8 +54,10 @@ members = [
     "anathema-state",
     "anathema-state-derive",
     "anathema-store",
+    "anathema-strings",
     "anathema-templates", 
     "anathema-widgets", 
+    "anathema-value-resolver", 
 ]
 
 [workspace.lints.rust]

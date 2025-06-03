@@ -8,7 +8,7 @@ use crate::Size;
 
 /// A position in global space.
 /// Can contain negative coordinates
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd)]
 pub struct Pos {
     /// X coordinate
     pub x: i32,
@@ -145,8 +145,8 @@ impl LocalPos {
         Self { x, y }
     }
 
-    pub const fn to_index(self, width: usize) -> usize {
-        self.y as usize * width + self.x as usize
+    pub const fn to_index(self, width: u16) -> usize {
+        (self.y * width + self.x) as usize
     }
 
     pub const fn saturating_sub(mut self, other: Self) -> Self {
@@ -159,6 +159,24 @@ impl LocalPos {
 impl From<(u16, u16)> for LocalPos {
     fn from((x, y): (u16, u16)) -> Self {
         Self { x, y }
+    }
+}
+
+impl From<(i32, i32)> for LocalPos {
+    fn from((x, y): (i32, i32)) -> Self {
+        Self {
+            x: x as u16,
+            y: y as u16,
+        }
+    }
+}
+
+impl From<(usize, usize)> for LocalPos {
+    fn from((x, y): (usize, usize)) -> Self {
+        Self {
+            x: x as u16,
+            y: y as u16,
+        }
     }
 }
 
@@ -196,5 +214,27 @@ impl AddAssign for LocalPos {
     fn add_assign(&mut self, rhs: Self) {
         self.x += rhs.x;
         self.y += rhs.y;
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn index_from_coords() {
+        let width = 20;
+
+        let actual = LocalPos::new(0, 0).to_index(width);
+        let expected = 0;
+        assert_eq!(expected, actual);
+
+        let actual = LocalPos::new(10, 0).to_index(width);
+        let expected = 10;
+        assert_eq!(expected, actual);
+
+        let actual = LocalPos::new(4, 20).to_index(width);
+        let expected = (width * width) as usize + 4;
+        assert_eq!(expected, actual);
     }
 }

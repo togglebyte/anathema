@@ -1,8 +1,9 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
 
 use super::Axis;
 
@@ -12,42 +13,51 @@ use super::Axis;
 /// whereas this does the layout of multiple [`Spacer`]s
 /// inside already evaluated children.
 pub fn layout_all_spacers<'bp>(
-    nodes: &mut LayoutChildren<'_, '_, 'bp>,
-    mut constraints: Constraints,
+    nodes: &mut LayoutForEach<'_, 'bp>,
+    constraints: Constraints,
     axis: Axis,
     ctx: &mut LayoutCtx<'_, 'bp>,
-) -> Size {
+) -> Result<Size> {
     let mut final_size = Size::ZERO;
     let mut count = 0;
-    nodes.for_each(|node, _| {
+
+    _ = nodes.each(ctx, |_, node, _| {
         if node.ident == "spacer" {
             count += 1;
         }
-
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
     if count == 0 {
-        return final_size;
+        return Ok(final_size);
     }
 
-    match axis {
-        Axis::Horizontal => {
-            constraints.div_assign_max_width(count);
-            constraints.min_width = constraints.max_width();
-        }
-        Axis::Vertical => {
-            constraints.div_assign_max_height(count);
-            constraints.min_height = constraints.max_height();
-        }
+    let max = match axis {
+        Axis::Horizontal => constraints.max_width(),
+        Axis::Vertical => constraints.max_height(),
     };
 
-    nodes.for_each(|node, children| {
+    let mut overflow = max % count;
+
+    _ = nodes.each(ctx, |ctx, node, children| {
         if node.ident != "spacer" {
-            return ControlFlow::Continue(());
+            return Ok(ControlFlow::Continue(()));
         }
 
-        let size = node.layout(children, constraints, ctx);
+        // This is a bit gross
+        let overflow = if overflow > 0 {
+            overflow -= 1;
+            1
+        } else {
+            0
+        };
+
+        let constraints = match axis {
+            Axis::Horizontal => constraints.div_assign_max_width(count, overflow),
+            Axis::Vertical => constraints.div_assign_max_height(count, overflow),
+        };
+
+        let size = Size::from(node.layout(children, constraints, ctx)?);
 
         match axis {
             Axis::Horizontal => {
@@ -60,8 +70,8 @@ pub fn layout_all_spacers<'bp>(
             }
         }
 
-        ControlFlow::Continue(())
-    });
+        Ok(ControlFlow::Continue(()))
+    })?;
 
-    final_size
+    Ok(final_size)
 }

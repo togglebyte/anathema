@@ -1,11 +1,11 @@
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum KeyState {
     Press,
     Repeat,
     Release,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct KeyEvent {
     pub code: KeyCode,
     pub ctrl: bool,
@@ -19,9 +19,16 @@ impl KeyEvent {
             _ => None,
         }
     }
+
+    pub fn is_ctrl_c(&self) -> bool {
+        match self.code {
+            KeyCode::Char('c') => self.ctrl,
+            _ => false,
+        }
+    }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum KeyCode {
     Char(char),
     Tab,

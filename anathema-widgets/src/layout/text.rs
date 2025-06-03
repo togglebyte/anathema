@@ -1,8 +1,8 @@
 use std::ops::{AddAssign, Deref};
 
 use anathema_geometry::Size;
-use anathema_state::CommonVal;
 use anathema_store::tree::ValueId;
+use anathema_value_resolver::ValueKind;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::WidgetId;
@@ -25,16 +25,14 @@ impl Wrap {
     }
 }
 
-impl TryFrom<CommonVal<'_>> for Wrap {
+impl TryFrom<&ValueKind<'_>> for Wrap {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value {
-            CommonVal::Str(wrap) => match wrap {
-                "normal" => Ok(Wrap::Normal),
-                "break" => Ok(Wrap::WordBreak),
-                _ => Err(()),
-            },
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let s = value.as_str().ok_or(())?;
+        match s {
+            "normal" => Ok(Wrap::Normal),
+            "break" => Ok(Wrap::WordBreak),
             _ => Err(()),
         }
     }
@@ -295,11 +293,11 @@ impl Strings {
     }
 
     fn update_width(&mut self) {
-        self.size.width = self.size.width.max(*self.current_width);
+        self.size.width = self.size.width.max(*self.current_width as u16);
     }
 
     fn chomp(&mut self, c: char) -> ProcessResult {
-        let width = c.width().unwrap_or(0);
+        let width = c.width().unwrap_or(0) as u16;
 
         // NOTE
         // Special case: the character is too wide to ever fit so it's removed,
@@ -327,7 +325,7 @@ impl Strings {
 
         // NOTE
         // If the trailing whitespace should be removed, do so here
-        while width + *self.current_width > self.max.width {
+        while width + *self.current_width as u16 > self.max.width {
             if c.is_whitespace() {
                 // 1. Make this the next word boundary
                 // 2. Insert a newline here
@@ -351,7 +349,7 @@ impl Strings {
         }
 
         self.chomper.chomp(c, self.wrap);
-        self.current_width += width;
+        self.current_width += width as usize;
 
         ProcessResult::Continue
     }

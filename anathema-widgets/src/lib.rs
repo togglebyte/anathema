@@ -1,25 +1,62 @@
-pub use scope::{DebugScope, Scope};
-pub use values::ValueIndex;
+use anathema_state::Subscriber;
 
-pub use crate::nodes::eval::EvalContext;
-pub use crate::nodes::{eval_blueprint, try_resolve_future_values, update_tree, Element, Stringify, WidgetKind};
+pub use crate::nodes::component::Component;
+pub use crate::nodes::{Element, WidgetContainer, WidgetGenerator, WidgetKind, eval_blueprint, update_widget};
 pub use crate::paint::{GlyphMap, WidgetRenderer};
-pub use crate::values::{Value, Values};
 pub use crate::widget::{
-    AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Elements, Factory,
-    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetNeeds, WidgetTree,
+    AnyWidget, Attributes, ComponentParents, Components, Factory, FloatingWidgets, ForEach, LayoutChildren,
+    LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId, WidgetTree, WidgetTreeView,
 };
+
+pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, Subscriber>;
+
+#[cfg(test)]
+mod testing;
 
 pub mod components;
 mod container;
-pub mod debug;
 pub mod error;
-pub mod expressions;
 pub mod layout;
 mod nodes;
 pub mod paint;
-mod scope;
-#[cfg(test)]
-mod testing;
-mod values;
+pub mod query;
+pub mod tabindex;
+pub mod tree;
 mod widget;
+
+#[cfg(feature = "debuggy")]
+pub mod macros {
+    #[macro_export]
+    macro_rules! awful_debug {
+        ($($arg:tt)*) => {
+            use ::std::io::Write as _;
+            let mut file = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/log.lol").unwrap();
+            let payload = format!($($arg)*);
+            file.write_all(payload.as_bytes()).unwrap();
+            file.write(b"\n").unwrap();
+            file.flush();
+        }
+    }
+
+    #[macro_export]
+    macro_rules! debug_tree {
+        ($tree:expr) => {
+            let mut d = $crate::tree::debug::DebugTree::new();
+            $tree.apply_visitor(&mut d);
+            $crate::awful_debug!("{}", d.output);
+        };
+    }
+}
+
+#[cfg(not(feature = "debuggy"))]
+pub mod macros {
+    #[macro_export]
+    macro_rules! awful_debug {
+        ($($arg:tt)*) => {};
+    }
+
+    #[macro_export]
+    macro_rules! debug_tree {
+        ($tree:expr) => {};
+    }
+}

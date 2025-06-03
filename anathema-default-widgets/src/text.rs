@@ -1,11 +1,12 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{LocalPos, Size};
-use anathema_state::CommonVal;
+use anathema_value_resolver::{AttributeStorage, ValueKind};
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::text::{ProcessResult, Segment, Strings};
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{Glyphs, PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{LEFT, RIGHT};
 
@@ -38,17 +39,15 @@ pub enum TextAlignment {
     Right,
 }
 
-impl TryFrom<CommonVal<'_>> for TextAlignment {
+impl TryFrom<&ValueKind<'_>> for TextAlignment {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value {
-            CommonVal::Str(wrap) => match wrap {
-                LEFT => Ok(TextAlignment::Left),
-                RIGHT => Ok(TextAlignment::Right),
-                "centre" | "center" => Ok(TextAlignment::Centre),
-                _ => Err(()),
-            },
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let s = value.as_str().ok_or(())?;
+        match s {
+            LEFT => Ok(TextAlignment::Left),
+            RIGHT => Ok(TextAlignment::Right),
+            "centre" | "center" => Ok(TextAlignment::Centre),
             _ => Err(()),
         }
     }
@@ -74,57 +73,56 @@ pub struct Text {
 impl Widget for Text {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let attributes = ctx.attribs.get(id);
-        let wrap = attributes.get(WRAP).unwrap_or_default();
+    ) -> Result<Size> {
+        let attributes = ctx.attributes(id);
+        let wrap = attributes.get_as(WRAP).unwrap_or_default();
         let size = constraints.max_size();
         self.strings = Strings::new(size, wrap);
         self.strings.set_style(id);
 
         // Layout text
-        attributes.value().map(|value| {
-            value.str_iter(|s| match self.strings.add_str(s) {
-                ProcessResult::Break => ControlFlow::Break(()),
-                ProcessResult::Continue => ControlFlow::Continue(()),
-            })
+        attributes.value().map(|text| {
+            text.strings(|s| match self.strings.add_str(s) {
+                ProcessResult::Break => false,
+                ProcessResult::Continue => true,
+            });
         });
 
         // Layout text of all the sub-nodes
-        children.for_each(|child, _| {
+        _ = children.each(ctx, |ctx, child, _| {
             let Some(_span) = child.try_to_ref::<Span>() else {
-                return ControlFlow::Continue(());
+                return Ok(ControlFlow::Continue(()));
             };
             self.strings.set_style(child.id());
 
-            let attributes = ctx.attribs.get(child.id());
+            let attributes = ctx.attributes(child.id());
             if let Some(text) = attributes.value() {
-                text.str_iter(|s| match self.strings.add_str(s) {
-                    ProcessResult::Break => ControlFlow::Break(()),
-                    ProcessResult::Continue => ControlFlow::Continue(()),
-                })?;
-
-                ControlFlow::Continue(())
+                text.strings(|s| match self.strings.add_str(s) {
+                    ProcessResult::Break => false,
+                    ProcessResult::Continue => true,
+                });
+                Ok(ControlFlow::Continue(()))
             } else {
-                ControlFlow::Break(())
+                Ok(ControlFlow::Break(()))
             }
-        });
+        })?;
 
-        self.strings.finish()
+        Ok(self.strings.finish())
     }
 
     fn paint<'bp>(
         &mut self,
-        _: PaintChildren<'_, '_, 'bp>,
+        _: PaintChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let lines = self.strings.lines();
-        let alignment = attribute_storage.get(id).get(TEXT_ALIGN).unwrap_or_default();
+        let alignment = attribute_storage.get(id).get_as(TEXT_ALIGN).unwrap_or_default();
 
         let mut pos = LocalPos::ZERO;
         let mut style = attribute_storage.get(id);
@@ -143,8 +141,7 @@ impl Widget for Text {
                     Segment::Str(s) => {
                         let glyphs = Glyphs::new(s);
                         if let Some(new_pos) = ctx.place_glyphs(glyphs, pos) {
-                            // TODO: make this better... Somehow
-                            // This isn't very nice, but it works for now.
+                            // TODO:
                             // In the future there should probably be a way to
                             // provide both style and glyph at the same time.
                             for x in pos.x..new_pos.x {
@@ -161,13 +158,7 @@ impl Widget for Text {
         }
     }
 
-    fn position<'bp>(
-        &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
-        _attributes: WidgetId,
-        _attribute_storage: &AttributeStorage<'bp>,
-        _ctx: PositionCtx,
-    ) {
+    fn position<'bp>(&mut self, _: PositionChildren<'_, 'bp>, _: WidgetId, _: &AttributeStorage<'bp>, _: PositionCtx) {
         // NOTE
         // No positioning is done in here, it's all done when painting
     }
@@ -179,24 +170,18 @@ pub struct Span;
 impl Widget for Span {
     fn layout<'bp>(
         &mut self,
-        _: LayoutChildren<'_, '_, 'bp>,
+        _: LayoutForEach<'_, 'bp>,
         _: Constraints,
         _: WidgetId,
         _: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         // Everything is handled by the parent text
-        panic!("this should never be called");
+        Ok(Size::ZERO)
     }
 
-    fn position<'bp>(
-        &mut self,
-        _: PositionChildren<'_, '_, 'bp>,
-        _: WidgetId,
-        _: &AttributeStorage<'bp>,
-        _: PositionCtx,
-    ) {
+    fn position<'bp>(&mut self, _: PositionChildren<'_, 'bp>, _: WidgetId, _: &AttributeStorage<'bp>, _: PositionCtx) {
         // Everything is handled by the parent text
-        panic!("this should never be called");
+        // panic!("this should never be called");
     }
 }
 

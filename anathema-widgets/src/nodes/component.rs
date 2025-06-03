@@ -1,47 +1,50 @@
 use anathema_state::StateId;
-use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
+use anathema_templates::ComponentBlueprintId;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::WidgetComponentId;
 
+use crate::WidgetId;
 use crate::components::{AnyComponent, ComponentKind};
-use crate::expressions::EvalValue;
-use crate::{Value, ValueIndex};
-
-pub type ComponentAttributes<'bp> = SmallMap<&'bp str, (ValueIndex, Value<'bp, EvalValue<'bp>>)>;
 
 #[derive(Debug)]
 pub struct Component<'bp> {
+    pub name: &'bp str,
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
-    pub attributes: ComponentAttributes<'bp>,
-    pub component_id: WidgetComponentId,
-    pub parent: Option<WidgetComponentId>,
+    /// Used to identify the component in the component registry.
+    /// This id will not be unique for prototypes
+    pub component_id: ComponentBlueprintId,
+    pub widget_id: WidgetId,
+    pub parent: Option<WidgetId>,
     pub kind: ComponentKind,
     pub assoc_functions: &'bp [(StringId, StringId)],
+    pub tabindex: u16,
 }
 
 impl<'bp> Component<'bp> {
     pub fn new(
+        name: &'bp str,
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
-        attributes: ComponentAttributes<'bp>,
-        component_id: WidgetComponentId,
+        component_id: ComponentBlueprintId,
+        widget_id: WidgetId,
         kind: ComponentKind,
         assoc_functions: &'bp [(StringId, StringId)],
-        parent: Option<WidgetComponentId>,
+        parent: Option<WidgetId>,
     ) -> Self {
         Self {
+            name,
             body,
             dyn_component,
             state_id,
-            attributes,
             component_id,
+            widget_id,
             kind,
             assoc_functions,
             parent,
+            tabindex: 0,
         }
     }
 

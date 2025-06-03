@@ -1,10 +1,11 @@
 use std::ops::ControlFlow;
 
-use anathema::CommonVal;
 use anathema_geometry::{Pos, Size};
+use anathema_value_resolver::{AttributeStorage, ValueKind};
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::{BOTTOM, LEFT, RIGHT, TOP};
 
@@ -14,14 +15,14 @@ const PLACEMENT: &str = "placement";
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum HorzEdge {
-    Left(u32),
-    Right(u32),
+    Left(i32),
+    Right(i32),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VertEdge {
-    Top(u32),
-    Bottom(u32),
+    Top(i32),
+    Bottom(i32),
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
@@ -33,12 +34,12 @@ pub enum Placement {
     Absolute,
 }
 
-impl TryFrom<CommonVal<'_>> for Placement {
+impl TryFrom<&ValueKind<'_>> for Placement {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
         match value {
-            CommonVal::Str(wrap) => match wrap {
+            ValueKind::Str(wrap) => match wrap.as_ref() {
                 RELATIVE => Ok(Placement::Relative),
                 ABSOLUTE => Ok(Placement::Absolute),
                 _ => Err(()),
@@ -72,26 +73,26 @@ impl Widget for Position {
 
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let attribs = ctx.attribs.get(id);
-        self.placement = attribs.get(PLACEMENT).unwrap_or_default();
+    ) -> Result<Size> {
+        let attribs = ctx.attribute_storage.get(id);
+        self.placement = attribs.get_as::<Placement>(PLACEMENT).unwrap_or_default();
 
-        self.horz_edge = match attribs.get_int(LEFT) {
-            Some(left) => HorzEdge::Left(left as u32),
-            None => match attribs.get_int(RIGHT) {
-                Some(right) => HorzEdge::Right(right as u32),
+        self.horz_edge = match attribs.get_as::<i32>(LEFT) {
+            Some(left) => HorzEdge::Left(left),
+            None => match attribs.get_as::<i32>(RIGHT) {
+                Some(right) => HorzEdge::Right(right),
                 None => HorzEdge::Left(0),
             },
         };
 
-        self.vert_edge = match attribs.get_int(TOP) {
-            Some(top) => VertEdge::Top(top as u32),
-            None => match attribs.get_int(BOTTOM) {
-                Some(bottom) => VertEdge::Bottom(bottom as u32),
+        self.vert_edge = match attribs.get_as::<i32>(TOP) {
+            Some(top) => VertEdge::Top(top),
+            None => match attribs.get_as::<i32>(BOTTOM) {
+                Some(bottom) => VertEdge::Bottom(bottom),
                 None => VertEdge::Top(0),
             },
         };
@@ -105,36 +106,27 @@ impl Widget for Position {
         //
         // Absolute:
         // Position relative to the viewport,
-        // Has no constraints
+        // Has no constraints other than the viewport
 
         let constraints = match self.placement {
             Placement::Relative => constraints,
             Placement::Absolute => ctx.viewport.constraints(),
         };
 
-        let mut size = Size::ZERO;
+        let size = constraints.max_size();
 
-        children.for_each(|child, children| {
-            size = child.layout(children, constraints, ctx);
-            ControlFlow::Break(())
-        });
+        _ = children.each(ctx, |ctx, child, children| {
+            // size is determined by the constraint
+            _ = child.layout(children, constraints, ctx)?;
+            Ok(ControlFlow::Break(()))
+        })?;
 
-        size.width = match self.horz_edge {
-            HorzEdge::Left(left) => size.width + left as usize,
-            HorzEdge::Right(right) => constraints.max_width() - right as usize,
-        };
-
-        size.height = match self.vert_edge {
-            VertEdge::Top(top) => size.height + top as usize,
-            VertEdge::Bottom(bottom) => constraints.max_height() - bottom as usize,
-        };
-
-        size
+        Ok(size)
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
@@ -143,27 +135,23 @@ impl Widget for Position {
             ctx.pos = Pos::ZERO;
         }
 
-        children.for_each(|child, children| {
-            // let (pos, size) = match self.placement {
-            //     Placement::Relative => (ctx.pos, child.size()),
-            //     Placement::Absolute => (Pos::ZERO, ctx.viewport.size()),
-            // };
-
+        _ = children.each(|child, children| {
             match self.horz_edge {
-                HorzEdge::Left(left) => ctx.pos.x += left as i32,
+                HorzEdge::Left(left) => ctx.pos.x += left,
                 HorzEdge::Right(right) => {
-                    let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right as i32;
+                    let offset = ctx.pos.x + ctx.inner_size.width as i32 - child.size().width as i32 - right;
                     ctx.pos.x = offset;
                 }
             }
 
             match self.vert_edge {
-                VertEdge::Top(top) => ctx.pos.y += top as i32,
+                VertEdge::Top(top) => ctx.pos.y += top,
                 VertEdge::Bottom(bottom) => {
-                    let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom as i32;
+                    let offset = ctx.pos.y + ctx.inner_size.height as i32 - child.size().height as i32 - bottom;
                     ctx.pos.y = offset;
                 }
             }
+
             child.position(children, ctx.pos, attribute_storage, ctx.viewport);
             ControlFlow::Break(())
         });
@@ -171,12 +159,12 @@ impl Widget for Position {
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let mut ctx = ctx.to_unsized();
             ctx.clip = None;
             child.paint(children, ctx, attribute_storage);
@@ -260,7 +248,7 @@ mod test {
     #[test]
     fn position_bottom_right() {
         let tpl = "
-            position [bottom: 0, right: 0]
+            position [placement: 'relative', bottom: 0, right: 0]
                 text 'hi'
             ";
 

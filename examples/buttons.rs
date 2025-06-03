@@ -1,10 +1,5 @@
-use anathema_backend::tui::TuiBackend;
-use anathema_runtime::Runtime;
-use anathema_state::{CommonVal, State, Value};
-use anathema_templates::Document;
-use anathema_widgets::components::events::{KeyCode, KeyEvent, KeyState};
-use anathema_widgets::components::{Component, Context};
-use anathema_widgets::Elements;
+use anathema::component::*;
+use anathema::prelude::*;
 
 struct App;
 
@@ -17,13 +12,15 @@ impl Component for App {
     type Message = ();
     type State = AppState;
 
+    const TICKS: bool = false;
+
     fn receive(
         &mut self,
         ident: &str,
-        _value: CommonVal<'_>,
+        value: &dyn AnyState,
         state: &mut Self::State,
-        _elements: Elements<'_, '_>,
-        _context: Context<'_, Self::State>,
+        elements: Children<'_, '_>,
+        context: Context<'_, '_, Self::State>,
     ) {
         if ident == "increment" {
             *state.number.to_mut() += 1;
@@ -41,51 +38,65 @@ struct Button;
 
 #[derive(State)]
 struct ButtonState {
-    caption: Value<String>,
-    in_focus: Value<bool>,
+    active: Value<u8>,
 }
 
 impl Component for Button {
     type Message = ();
     type State = ButtonState;
 
-    fn on_blur(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
-        state.in_focus.set(false);
+    const TICKS: bool = false;
+
+    fn on_blur(&mut self, state: &mut Self::State, elements: Children<'_, '_>, context: Context<'_, '_, Self::State>) {
+        state.active.set(0);
     }
 
-    fn on_focus(&mut self, state: &mut Self::State, _elements: Elements<'_, '_>, _context: Context<'_, Self::State>) {
-        state.in_focus.set(true);
+    fn on_focus(&mut self, state: &mut Self::State, elements: Children<'_, '_>, context: Context<'_, '_, Self::State>) {
+        state.active.set(1);
     }
 
     fn on_key(
         &mut self,
         key: KeyEvent,
-        _state: &mut Self::State,
-        _elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        state: &mut Self::State,
+        elements: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
-        if matches!(key.state, KeyState::Press) {
-            if let KeyCode::Enter = key.code {
-                context.publish("click", |state| &state.caption)
-            }
+        if !matches!(key.state, KeyState::Press) {
+            return;
         }
+
+        if let KeyCode::Enter = key.code {
+            context.publish("click")
+        }
+    }
+
+    fn on_mouse(
+        &mut self,
+        mouse: MouseEvent,
+        state: &mut Self::State,
+        elements: Children<'_, '_>,
+        context: Context<'_, '_, Self::State>,
+    ) {
     }
 }
 
 fn main() {
     let doc = Document::new("@main");
 
-    let backend = TuiBackend::builder()
-        .enable_alt_screen()
+    let mut backend = TuiBackend::builder()
+        // .enable_alt_screen()
         .enable_raw_mode()
+        .clear()
         .hide_cursor()
         .finish()
         .unwrap();
+    backend.finalize();
 
-    let mut runtime = Runtime::builder(doc, backend);
+    let mut builder = Runtime::builder(doc, &backend);
 
-    runtime
-        .register_component(
+    builder
+        .component(
             "main",
             "examples/templates/buttons/buttons.aml",
             App,
@@ -93,18 +104,14 @@ fn main() {
         )
         .unwrap();
 
-    runtime
-        .register_prototype(
+    builder
+        .prototype(
             "button",
             "examples/templates/buttons/button.aml",
             move || Button,
-            || ButtonState {
-                caption: String::from("lark").into(),
-                in_focus: false.into(),
-            },
+            || ButtonState { active: 0.into() },
         )
         .unwrap();
 
-    let mut runtime = runtime.finish().unwrap();
-    runtime.run();
+    builder.finish(|runtime| runtime.run(&mut backend)).unwrap();
 }

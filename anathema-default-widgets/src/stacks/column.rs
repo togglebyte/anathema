@@ -1,8 +1,10 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::Axis;
 use crate::stacks::Stack;
@@ -18,24 +20,24 @@ impl Default for Column {
 impl Widget for Column {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutChildren<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         self.0.layout(children, constraints, id, ctx)
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PositionCtx,
     ) {
         let x_offset = (ctx.inner_size.width / 2) as i32;
 
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let size = child.size();
             let child_width = size.width as i32;
             let x = x_offset - child_width / 2;
