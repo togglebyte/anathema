@@ -3,11 +3,11 @@ use std::collections::HashMap;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::Key;
-use anathema_templates::expressions::{Equality, LogicalOp, Op};
 use anathema_templates::Primitive;
+use anathema_templates::expressions::{Equality, LogicalOp, Op};
 
-use crate::value::ValueKind;
 use crate::AttributeStorage;
+use crate::value::ValueKind;
 
 macro_rules! or_null {
     ($val:expr) => {
@@ -442,7 +442,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{drain_changes, Changes, States};
+    use anathema_state::{Changes, States, drain_changes};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use crate::testing::setup;

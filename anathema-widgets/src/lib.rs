@@ -10,9 +10,6 @@ pub use crate::widget::{
 
 pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, Subscriber>;
 
-#[cfg(test)]
-mod testing;
-
 pub mod components;
 mod container;
 pub mod error;
@@ -27,7 +24,7 @@ mod widget;
 #[cfg(feature = "debuggy")]
 pub mod macros {
     #[macro_export]
-    macro_rules! awful_debug {
+    macro_rules! debug_to_file {
         ($($arg:tt)*) => {
             use ::std::io::Write as _;
             let mut file = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/log.lol").unwrap();
@@ -51,7 +48,7 @@ pub mod macros {
 #[cfg(not(feature = "debuggy"))]
 pub mod macros {
     #[macro_export]
-    macro_rules! awful_debug {
+    macro_rules! debug_to_file {
         ($($arg:tt)*) => {};
     }
 

@@ -1,5 +1,5 @@
 use syn::spanned::Spanned as _;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{DeriveInput, parse_macro_input};
 
 static DERIVE_NAMESPACE: &str = "anathema";
 

@@ -6,7 +6,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
 use crate::attributes::ValueKey;
-use crate::expression::{resolve_value, ValueExpr, ValueThingy};
+use crate::expression::{ValueExpr, ValueThingy, resolve_value};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
@@ -388,14 +388,14 @@ impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{Hex, States};
+    use anathema_templates::Variables;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
-    use anathema_templates::Variables;
 
-    use crate::testing::setup;
     use crate::ValueKind;
+    use crate::testing::setup;
 
     #[test]
     fn attribute_lookup() {
@@ -497,12 +497,18 @@ pub(crate) mod test {
             test.with_state(|state| state.num_2.set(2));
 
             // There is no c, so use b
-            let expr = either(index(ident("state"), strlit("num_3")), index(ident("state"), strlit("num_2")));
+            let expr = either(
+                index(ident("state"), strlit("num_3")),
+                index(ident("state"), strlit("num_2")),
+            );
             let value = test.eval(&*expr);
             assert_eq!(2, value.as_int().unwrap());
 
             // There is a, so don't use b
-            let expr = either(index(ident("state"), strlit("num")), index(ident("state"), strlit("num_2")));
+            let expr = either(
+                index(ident("state"), strlit("num")),
+                index(ident("state"), strlit("num_2")),
+            );
             let value = test.eval(&*expr);
             assert_eq!(1, value.as_int().unwrap());
         });

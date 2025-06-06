@@ -80,8 +80,6 @@ impl<'bp> For<'bp> {
             Change::Changed => {
                 // If the collection has changed to a different collection
                 // then truncate the tree
-
-                crate::awful_debug!("- wipe tree -");
                 self.collection.reload(attribute_storage);
                 tree.truncate_children();
             }
