@@ -1,5 +1,5 @@
 use syn::spanned::Spanned as _;
-use syn::{DeriveInput, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput};
 
 static DERIVE_NAMESPACE: &str = "anathema";
 
@@ -10,20 +10,18 @@ pub fn anathema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         syn::Data::Struct(data) => structs::generate(&input, data),
 
         syn::Data::Enum(data) => syn::Error::new(
-            data.enum_token.span(), //
+            data.enum_token.span(),
             "anathema's State cannot be derived on enums currently",
         )
         .to_compile_error()
         .into(),
 
-        syn::Data::Union(data) => {
-            syn::Error::new(
-                data.union_token.span(), //
-                "anathema's State cannot be derived on unions currently",
-            )
-            .to_compile_error()
-            .into()
-        }
+        syn::Data::Union(data) => syn::Error::new(
+            data.union_token.span(),
+            "anathema's State cannot be derived on unions currently",
+        )
+        .to_compile_error()
+        .into(),
     }
 }
 

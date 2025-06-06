@@ -3,11 +3,11 @@ use std::collections::HashMap;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::Key;
-use anathema_templates::Primitive;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
+use anathema_templates::Primitive;
 
-use crate::AttributeStorage;
 use crate::value::ValueKind;
+use crate::AttributeStorage;
 
 macro_rules! or_null {
     ($val:expr) => {
@@ -442,89 +442,72 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{Changes, States};
+    use anathema_state::{drain_changes, Changes, States};
+    use anathema_templates::expressions::{ident, index, num, strlit};
 
     use crate::testing::setup;
 
     #[test]
     fn subscribe_if_not_exist() {
-        // // TODO: finish this test.
-        // // The test runner should take a custom state.
-        // // Right now it uses a Map<Box<dyn AnyState>> and that
-        // // is just annoying
+        // In this case the list is empty but it exists
 
-        // // In this case the list is empty but it exists
+        let mut changes = Changes::empty();
+        drain_changes(&mut changes);
+        assert!(changes.is_empty());
 
-        // let mut changes = Changes::empty();
-        // drain_changes(&mut changes);
-        // assert!(changes.is_empty());
+        let mut states = States::new();
+        setup(&mut states, Default::default(), |test| {
+            let expr = index(index(ident("state"), strlit("list")), num(0));
 
-        // let mut states = States::new();
-        // setup(&mut states, Default::default(), |test| {
-        //     let expr = index(index(ident("state"), strlit("list")), num(0));
+            let mut value = test.eval(&expr);
 
-        //     let mut list = List::<u32>::empty();
-        //     test.set_state("list", list);
+            assert_eq!(value.as_int(), None);
 
-        //     let mut value = test.eval(&expr);
+            test.with_state(|state| state.list.push("a"));
 
-        //     assert_eq!(value.as_int(), None);
+            drain_changes(&mut changes);
+            for (subs, _) in changes.drain() {
+                for sub in subs.iter() {
+                    if sub == value.sub {
+                        value.reload(&test.attributes);
+                    }
+                }
+            }
 
-        //     test.with_state(|state| {
-        //         let list = state.get_mut("list").unwrap();
-        //         let mut list = list.to_mut_cast::<List<u32>>();
-        //         // list.push(1);
-        //     });
-
-        //     drain_changes(&mut changes);
-        //     for (subs, change) in changes.drain() {
-        //         for sub in subs.iter() {
-        //             if sub == value.sub {
-        //                 value.reload(&test.attributes);
-        //             }
-        //         }
-        //     }
-
-        //     assert_eq!(value.as_int().unwrap(), 1);
-        // });
+            assert_eq!(value.as_str().unwrap(), "a");
+        });
     }
 
     #[test]
     fn list_preceding_value_removed() {
-        // TODO: finish this test.
-        // The test runner should take a custom state.
-        // Right now it uses a Map<Box<dyn AnyState>> and that
-        // is just annoying
-        let changes = Changes::empty();
+        let mut changes = Changes::empty();
 
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
-            // let expr = index(index(ident("state"), strlit("list")), num(1));
+            let expr = index(index(ident("state"), strlit("list")), num(1));
 
-            // let mut list = List::from_iter([0u32, 1, 2]);
-            // test.set_state("list", list);
+            test.with_state(|state| {
+                state.list.push("a");
+                state.list.push("b");
+                state.list.push("c");
+            });
 
-            // let mut value = test.eval(&expr);
+            let mut value = test.eval(&expr);
 
-            // assert_eq!(value.as_int().unwrap(), 1);
+            assert_eq!(value.as_str().unwrap(), "b");
 
-            // test.with_state(|state| {
-            //     // let list = state.get_mut("list".into()).unwrap();
-            //     // let mut list = list.to_mut_cast::<List<u32>>();
-            //     // list.remove(0);
-            //     // panic!()
-            // });
+            test.with_state(|state| state.list.remove(0));
 
-            // drain_changes(&mut changes);
-            // for (subs, change) in changes.drain() {
-            //     for sub in subs.iter() {
-            //         if sub == value.sub {
-            //             value.reload(&test.attributes);
-            //         }
-            //     }
-            // }
+            drain_changes(&mut changes);
+            for (subs, _) in changes.drain() {
+                for sub in subs.iter() {
+                    if sub == value.sub {
+                        value.reload(&test.attributes);
+                    }
+                }
+            }
 
-            // assert_eq!(value.as_int().unwrap(), 2);
+            assert_eq!(value.as_str().unwrap(), "c");
         });
     }
 }
