@@ -3,11 +3,11 @@ use std::collections::HashMap;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::Key;
-use anathema_templates::Primitive;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
+use anathema_templates::Primitive;
 
-use crate::AttributeStorage;
 use crate::value::ValueKind;
+use crate::AttributeStorage;
 
 macro_rules! or_null {
     ($val:expr) => {
@@ -18,13 +18,13 @@ macro_rules! or_null {
     };
 }
 
-pub struct ValueThingy<'a, 'bp> {
-    sub: Subscriber,
-    sub_to: &'a mut SubTo,
+pub struct ValueResolutionContext<'a, 'bp> {
+    pub(crate) sub: Subscriber,
+    pub(crate) sub_to: &'a mut SubTo,
     attribute_storage: &'a AttributeStorage<'bp>,
 }
 
-impl<'a, 'bp> ValueThingy<'a, 'bp> {
+impl<'a, 'bp> ValueResolutionContext<'a, 'bp> {
     pub fn new(attribute_storage: &'a AttributeStorage<'bp>, sub: Subscriber, sub_to: &'a mut SubTo) -> Self {
         Self {
             attribute_storage,
@@ -127,7 +127,7 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
 }
 
 // Resolve an expression to a value kind, this is the final value in the chain
-pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut ValueThingy<'a, 'bp>) -> ValueKind<'bp> {
+pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'a, 'bp>) -> ValueKind<'bp> {
     match value_expr {
         // -----------------------------------------------------------------------------
         //   - Primitives -
@@ -255,7 +255,8 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         // -----------------------------------------------------------------------------
         //   - Maps and lists -
         // -----------------------------------------------------------------------------
-        ValueExpr::DynMap(_) | ValueExpr::Map(_) => ValueKind::Map,
+        ValueExpr::Map(_) => ValueKind::Map,
+        ValueExpr::DynMap(map) => ValueKind::DynMap(*map),
         ValueExpr::Attributes(_) => ValueKind::Attributes,
         ValueExpr::DynList(value) => {
             value.subscribe(ctx.sub);
@@ -270,7 +271,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
             let expr = resolve_index(src, index, ctx);
             resolve_value(&expr, ctx)
         }
-        ValueExpr::Composite(_) => ValueKind::Composite,
+        ValueExpr::Composite(comp) => ValueKind::Composite(*comp),
 
         // -----------------------------------------------------------------------------
         //   - Call -
@@ -299,7 +300,7 @@ fn resolve_pending(val: PendingValue) -> ValueExpr<'static> {
     }
 }
 
-fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> ValueExpr<'bp> {
+fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> ValueExpr<'bp> {
     match src {
         ValueExpr::DynMap(value) | ValueExpr::Composite(value) => {
             let s = or_null!(value.as_state());
@@ -371,11 +372,11 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
             resolve_index(&src, index, ctx)
         }
         ValueExpr::Null => ValueExpr::Null,
-        val => unreachable!("resolving index: this should return null eventually: {val:?}"),
+        val => unreachable!("resolving index: this should return null eventually: {val:?} (you probably did something like x.y on a string)"),
     }
 }
 
-fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> Option<ValueExpr<'bp>> {
+fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<ValueExpr<'bp>> {
     match expr {
         ValueExpr::Either(first, second) => match resolve_expr(first, ctx) {
             None | Some(ValueExpr::Null) => resolve_expr(second, ctx),
@@ -386,7 +387,7 @@ fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
     }
 }
 
-fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> Option<Kind<&'bp str>> {
+fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Kind<&'bp str>> {
     match index {
         ValueExpr::Str(kind) => Some(*kind),
         ValueExpr::Index(src, index) => match resolve_index(src, index, ctx) {
@@ -400,7 +401,7 @@ fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
     }
 }
 
-fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp>) -> i64 {
+fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> i64 {
     let value = resolve_value(index, ctx);
     match value {
         ValueKind::Int(index) => index,
@@ -411,9 +412,10 @@ fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueThingy<'_, 'bp
         | ValueKind::Hex(_)
         | ValueKind::Color(_)
         | ValueKind::Str(_)
-        | ValueKind::Composite
+        | ValueKind::Composite(_)
         | ValueKind::Null
         | ValueKind::Map
+        | ValueKind::DynMap(_)
         | ValueKind::Attributes
         | ValueKind::List(_)
         | ValueKind::DynList(_) => todo!("resolving int: the value is {value:?}"),
@@ -442,7 +444,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{Changes, States, drain_changes};
+    use anathema_state::{drain_changes, Changes, Map, States};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use crate::testing::setup;
@@ -500,14 +502,34 @@ mod test {
 
             drain_changes(&mut changes);
             for (subs, _) in changes.drain() {
-                for sub in subs.iter() {
-                    if sub == value.sub {
-                        value.reload(&test.attributes);
-                    }
+                if subs.iter().any(|sub| sub == value.sub) {
+                    value.reload(&test.attributes);
                 }
             }
-
             assert_eq!(value.as_str().unwrap(), "c");
+        });
+    }
+
+    #[test]
+    fn optional_map_from_empty_to_value() {
+        let mut changes = Changes::empty();
+
+        let mut states = States::new();
+        setup(&mut states, Default::default(), |test| {
+            // let expr = index(index(ident("state"), strlit("opt_map")), strlit("key"));
+            let expr = index(ident("state"), strlit("opt_map"));
+
+            let mut value = test.eval(&expr);
+            assert!(value.as_str().is_none());
+
+            test.with_state(|state| {
+                let mut map = Map::empty();
+                map.insert("key", 123);
+                state.opt_map.set(Some(map));
+            });
+
+            drain_changes(&mut changes);
+            assert!(!changes.is_empty());
         });
     }
 }

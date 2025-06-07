@@ -268,12 +268,18 @@ impl AnyState for Box<dyn AnyState> {
 
 pub trait AnyMap {
     fn lookup(&self, key: &str) -> Option<PendingValue>;
+
+    fn is_empty(&self) -> bool;
 }
 
 pub trait AnyList {
     fn lookup(&self, index: usize) -> Option<PendingValue>;
 
     fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 // -----------------------------------------------------------------------------

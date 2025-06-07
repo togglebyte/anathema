@@ -40,7 +40,7 @@ pub mod macros {
         ($tree:expr) => {
             let mut d = $crate::tree::debug::DebugTree::new();
             $tree.apply_visitor(&mut d);
-            $crate::awful_debug!("{}", d.output);
+            $crate::debug_to_file!("{}", d.output);
         };
     }
 }

@@ -6,7 +6,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
 use crate::attributes::ValueKey;
-use crate::expression::{ValueExpr, ValueThingy, resolve_value};
+use crate::expression::{resolve_value, ValueExpr, ValueResolutionContext};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
@@ -50,9 +50,10 @@ impl<'bp> Collection<'bp> {
             | ValueKind::Hex(_)
             | ValueKind::Color(_)
             | ValueKind::Str(_)
-            | ValueKind::Composite
-            | ValueKind::Attributes
+            | ValueKind::DynMap(_)
             | ValueKind::Map
+            | ValueKind::Composite(_)
+            | ValueKind::Attributes
             | ValueKind::Null => 0,
         }
     }
@@ -71,8 +72,25 @@ pub struct Value<'bp> {
 impl<'bp> Value<'bp> {
     pub fn new(expr: ValueExpr<'bp>, sub: Subscriber, attribute_storage: &AttributeStorage<'bp>) -> Self {
         let mut sub_to = SubTo::Zero;
-        let mut ctx = ValueThingy::new(attribute_storage, sub, &mut sub_to);
+        let mut ctx = ValueResolutionContext::new(attribute_storage, sub, &mut sub_to);
         let kind = resolve_value(&expr, &mut ctx);
+
+        // NOTE
+        // This is a special edge case where the map or state is used
+        // as a final value `Option<ValueKind>`.
+        //
+        // This would only hold value in an if-statement:
+        // ```
+        // if state.opt_map
+        //     text "show this if there is a map"
+        // ```
+        match kind {
+            ValueKind::DynMap(pending) | ValueKind::Composite(pending) => {
+                pending.subscribe(ctx.sub);
+                ctx.sub_to.push(pending.sub_key());
+            }
+            _ => {}
+        }
         Self {
             expr,
             sub,
@@ -81,9 +99,44 @@ impl<'bp> Value<'bp> {
         }
     }
 
+    pub fn truthiness(&self) -> bool {
+        // None         = false
+        // 0            = false
+        // Some("")     = false
+        // Some(0)      = false
+        // []           = false
+        // {}           = false
+        // Some(bool)   = bool
+        // _            = true
+
+        match &self.kind {
+            ValueKind::Int(0) | ValueKind::Float(0.0) | ValueKind::Bool(false) => false,
+            ValueKind::Str(cow) if cow.is_empty() => false,
+            ValueKind::Null => false,
+            ValueKind::List(list) if list.is_empty() => false,
+            ValueKind::DynList(list) => {
+                let Some(state) = list.as_state() else { return false };
+                let Some(state) = state.as_any_list() else { return false };
+                !state.is_empty()
+            }
+            ValueKind::DynMap(map) => {
+                let Some(state) = map.as_state() else { return false };
+                let Some(state) = state.as_any_map() else { return false };
+                !state.is_empty()
+            }
+            // ValueKind::Map => ??,
+            _ => true,
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn kind(&self) -> &ValueKind<'_> {
+        &self.kind
+    }
+
     pub fn reload(&mut self, attribute_storage: &AttributeStorage<'bp>) {
         self.sub_to.unsubscribe(self.sub);
-        let mut ctx = ValueThingy::new(attribute_storage, self.sub, &mut self.sub_to);
+        let mut ctx = ValueResolutionContext::new(attribute_storage, self.sub, &mut self.sub_to);
         self.kind = resolve_value(&self.expr, &mut ctx);
     }
 
@@ -134,7 +187,6 @@ pub enum ValueKind<'bp> {
     Hex(Hex),
     Color(Color),
     Str(Cow<'bp, str>),
-    Composite,
     Null,
 
     // NOTE
@@ -147,6 +199,8 @@ pub enum ValueKind<'bp> {
     Attributes,
     List(Box<[ValueKind<'bp>]>),
     DynList(PendingValue),
+    DynMap(PendingValue),
+    Composite(PendingValue),
 }
 
 impl ValueKind<'_> {
@@ -212,9 +266,10 @@ impl ValueKind<'_> {
             ValueKind::Color(col) => f(&col.to_string()),
             ValueKind::Str(cow) => f(cow.as_ref()),
             ValueKind::Map => return true,
+            ValueKind::DynMap(_) => return true,
             ValueKind::List(vec) => vec.iter().take_while(|val| val.internal_strings(f)).count() == vec.len(),
             ValueKind::DynList(value) => dyn_string(*value, f),
-            ValueKind::Composite | ValueKind::Attributes => f("<composite>"),
+            ValueKind::Composite(_) | ValueKind::Attributes => f("<composite>"),
             ValueKind::Null => return true,
         }
     }
@@ -388,14 +443,14 @@ impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{Hex, States};
-    use anathema_templates::Variables;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
+    use anathema_templates::Variables;
 
-    use crate::ValueKind;
     use crate::testing::setup;
+    use crate::ValueKind;
 
     #[test]
     fn attribute_lookup() {
@@ -696,6 +751,16 @@ pub(crate) mod test {
             let expr = map([("a", 123), ("b", 456)]);
             let value = test.eval(&*expr);
             assert_eq!(ValueKind::Map, value.kind);
+        });
+    }
+
+    #[test]
+    fn optional_map_resolve() {
+        let mut states = States::new();
+        setup(&mut states, Default::default(), |test| {
+            let expr = index(ident("state"), strlit("opt_map"));
+            let value = test.eval(&*expr);
+            assert!(matches!(value.kind, ValueKind::DynMap(_)));
         });
     }
 

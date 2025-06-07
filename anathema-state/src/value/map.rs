@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::{Shared, Type, Unique, Value};
-use crate::PendingValue;
+use crate::{PendingValue, State};
 use crate::states::{AnyMap, AnyState};
 use crate::store::values::{get_unique, try_make_shared};
 
@@ -89,25 +89,22 @@ impl<T: AnyState + 'static> AnyMap for Map<T> {
     fn lookup(&self, key: &str) -> Option<PendingValue> {
         self.get(key).map(|val| val.reference())
     }
+
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
 }
 
-impl<T: AnyState + 'static> AnyState for Map<T> {
+impl<T: AnyState + 'static> State for Map<T> {
     fn type_info(&self) -> Type {
         Type::Map
-    }
-
-    fn to_any_ref(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
     }
 
     fn as_any_map(&self) -> Option<&dyn AnyMap> {
         Some(self)
     }
 }
+
 
 #[cfg(test)]
 mod test {
@@ -150,7 +147,7 @@ mod test {
     fn remove() {
         let mut map = Map::empty();
         map.insert("a", DM(1));
-        let value_ref = map.get("a").as_ref().unwrap();
+        let _ = map.get("a").as_ref().unwrap();
 
         assert!(map.remove("a").is_some());
         assert!(map.is_empty());

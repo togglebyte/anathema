@@ -361,7 +361,7 @@ fn generate<'bp>(
 
                     let is_true = match &widget.kind {
                         WidgetKind::ControlFlowContainer(id) => controlflow.elses[*id as usize].is_true(),
-                        _ => unreachable!("the child of `ControlFlow` can only be `If` or `Else`"),
+                        _ => unreachable!("the child of `ControlFlow` can only be `Else`"),
                     };
 
                     // The condition no longer holds so the branch has to be trimmed
@@ -386,7 +386,7 @@ fn generate<'bp>(
                     // If there is no condition then it's true (a conditionless else)
                     // Everything else is down to the value
                     let cond = match node.cond.as_ref() {
-                        Some(val) => val.try_as::<bool>().unwrap_or(false),
+                        Some(val) => val.truthiness(),
                         None => true,
                     };
                     match cond {

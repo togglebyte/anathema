@@ -1,9 +1,9 @@
 use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{AttributeStorage, Value};
+use anathema_value_resolver::{AttributeStorage, Value, ValueKind};
 
-use crate::WidgetKind;
 use crate::widget::WidgetTreeView;
+use crate::WidgetKind;
 
 #[derive(Debug)]
 pub struct ControlFlow<'bp> {
@@ -67,7 +67,7 @@ pub struct Else<'bp> {
 impl Else<'_> {
     pub(crate) fn is_true(&self) -> bool {
         match self.cond.as_ref() {
-            Some(cond) => cond.as_bool().unwrap_or(false),
+            Some(cond) => cond.truthiness(),
             None => true,
         }
     }

@@ -14,6 +14,7 @@ pub(crate) struct TestState {
     pub(crate) float: Value<f64>,
     pub(crate) list: Value<List<&'static str>>,
     pub(crate) map: Value<Map<i32>>,
+    pub(crate) opt_map: Value<Option<Map<i32>>>,
 }
 
 impl TestState {
@@ -25,6 +26,7 @@ impl TestState {
             float: 0.0.into(),
             list: List::empty().into(),
             map: Map::empty().into(),
+            opt_map: Value::new(None),
         }
     }
 }
@@ -48,8 +50,13 @@ impl AnyMap for TestState {
             "float" => self.float.reference().into(),
             "string" => self.string.reference().into(),
             "map" => self.map.reference().into(),
+            "opt_map" => self.opt_map.reference().into(),
             _ => None,
         }
+    }
+
+    fn is_empty(&self) -> bool {
+        false
     }
 }
 
@@ -74,7 +81,6 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     pub(crate) fn eval(&self, expr: &'bp Expression) -> crate::value::Value<'bp> {
         let state_id = StateId::ZERO;
         let scope = Scope::with_component(state_id, Key::ZERO, None);
-
         let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, &self.attributes);
         resolve(expr, &ctx, Subscriber::ZERO)
     }

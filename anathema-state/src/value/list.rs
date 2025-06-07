@@ -7,7 +7,7 @@ use super::{Shared, Type, Unique, Value};
 use crate::states::{AnyList, AnyState};
 use crate::store::changed;
 use crate::store::values::{get_unique, try_make_shared};
-use crate::{Change, PendingValue};
+use crate::{Change, PendingValue, State};
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -206,17 +206,9 @@ impl<T: AnyState + 'static> AnyList for List<T> {
     }
 }
 
-impl<T: AnyState + 'static> AnyState for List<T> {
+impl<T: AnyState + 'static> State for List<T> {
     fn type_info(&self) -> Type {
         Type::List
-    }
-
-    fn to_any_ref(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
     }
 
     fn as_any_list(&self) -> Option<&dyn AnyList> {
@@ -250,8 +242,8 @@ where
 mod test {
 
     use super::*;
-    use crate::Subscriber;
     use crate::store::testing::drain_changes;
+    use crate::Subscriber;
 
     #[test]
     fn insert() {

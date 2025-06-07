@@ -90,7 +90,10 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
 fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::TokenStream {
     let field_names = fields
         .iter()
-        .map(|data::Field { display_name, .. }| quote::quote! { #display_name });
+        .map(|data::Field { display_name, .. }| quote::quote! { #display_name })
+        .collect::<Vec<_>>();
+
+    let is_empty = field_names.is_empty();
 
     let field_idents = fields
         .iter()
@@ -130,6 +133,10 @@ fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::Tok
                     )*
                     _ => None,
                 }
+            }
+
+            fn is_empty(&self) -> bool {
+                #is_empty
             }
         }
     }
