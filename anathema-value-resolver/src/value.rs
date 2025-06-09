@@ -6,7 +6,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_templates::Expression;
 
 use crate::attributes::ValueKey;
-use crate::expression::{resolve_value, ValueExpr, ValueResolutionContext};
+use crate::expression::{ValueExpr, ValueResolutionContext, resolve_value};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
@@ -109,24 +109,7 @@ impl<'bp> Value<'bp> {
         // Some(bool)   = bool
         // _            = true
 
-        match &self.kind {
-            ValueKind::Int(0) | ValueKind::Float(0.0) | ValueKind::Bool(false) => false,
-            ValueKind::Str(cow) if cow.is_empty() => false,
-            ValueKind::Null => false,
-            ValueKind::List(list) if list.is_empty() => false,
-            ValueKind::DynList(list) => {
-                let Some(state) = list.as_state() else { return false };
-                let Some(state) = state.as_any_list() else { return false };
-                !state.is_empty()
-            }
-            ValueKind::DynMap(map) => {
-                let Some(state) = map.as_state() else { return false };
-                let Some(state) = state.as_any_map() else { return false };
-                !state.is_empty()
-            }
-            // ValueKind::Map => ??,
-            _ => true,
-        }
+        self.kind.truthiness()
     }
 
     #[doc(hidden)]
@@ -265,12 +248,34 @@ impl ValueKind<'_> {
             ValueKind::Hex(x) => f(&x.to_string()),
             ValueKind::Color(col) => f(&col.to_string()),
             ValueKind::Str(cow) => f(cow.as_ref()),
-            ValueKind::Map => return true,
-            ValueKind::DynMap(_) => return true,
             ValueKind::List(vec) => vec.iter().take_while(|val| val.internal_strings(f)).count() == vec.len(),
             ValueKind::DynList(value) => dyn_string(*value, f),
-            ValueKind::Composite(_) | ValueKind::Attributes => f("<composite>"),
+            ValueKind::DynMap(_) => f("<dyn map>"),
+            ValueKind::Map => f("<map>"),
+            ValueKind::Composite(_) => f("<composite>"),
+            ValueKind::Attributes => f("<attributes>"),
             ValueKind::Null => return true,
+        }
+    }
+
+    pub(crate) fn truthiness(&self) -> bool {
+        match self {
+            ValueKind::Int(0) | ValueKind::Float(0.0) | ValueKind::Bool(false) => false,
+            ValueKind::Str(cow) if cow.is_empty() => false,
+            ValueKind::Null => false,
+            ValueKind::List(list) if list.is_empty() => false,
+            ValueKind::DynList(list) => {
+                let Some(state) = list.as_state() else { return false };
+                let Some(state) = state.as_any_list() else { return false };
+                !state.is_empty()
+            }
+            ValueKind::DynMap(map) => {
+                let Some(state) = map.as_state() else { return false };
+                let Some(state) = state.as_any_map() else { return false };
+                !state.is_empty()
+            }
+            // ValueKind::Map => ??,
+            _ => true,
         }
     }
 }
@@ -296,6 +301,7 @@ where
             Type::Composite => f(&state.as_hex().expect("type info dictates this").to_string()),
             Type::Unit => f(""),
             Type::Color => f(&state.as_color().expect("type info dictates this").to_string()),
+            Type::Maybe => panic!(),
         };
 
         if !should_continue {
@@ -443,14 +449,14 @@ impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{Hex, States};
+    use anathema_templates::Variables;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
-    use anathema_templates::Variables;
 
-    use crate::testing::setup;
     use crate::ValueKind;
+    use crate::testing::setup;
 
     #[test]
     fn attribute_lookup() {

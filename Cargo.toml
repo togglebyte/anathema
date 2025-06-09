@@ -22,13 +22,12 @@ anathema-store = { path = "./anathema-store" }
 anathema-templates = { path = "./anathema-templates" }
 anathema-widgets = { path = "./anathema-widgets" }
 anathema-geometry = { path = "./anathema-geometry" }
-anathema-strings = { path = "./anathema-strings" }
 anathema-value-resolver = { path = "./anathema-value-resolver" }
 
 [features]
 default = []
 profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
-debuggy = ["anathema-widgets/debuggy"]
+filelog = ["anathema-debug/filelog"]
 
 [lints]
 workspace = true
@@ -54,7 +53,6 @@ members = [
     "anathema-state",
     "anathema-state-derive",
     "anathema-store",
-    "anathema-strings",
     "anathema-templates", 
     "anathema-widgets", 
     "anathema-value-resolver", 

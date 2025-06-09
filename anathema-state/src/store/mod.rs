@@ -53,6 +53,7 @@ impl ValueKey {
             9 => Type::Composite,
             10 => Type::Unit,
             11 => Type::Color,
+            12 => Type::Maybe,
             _ => unreachable!("corrupt type information"),
         }
     }

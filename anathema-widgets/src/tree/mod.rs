@@ -1,3 +1,12 @@
+// -----------------------------------------------------------------------------
+//   - Here be dragons -
+//   This code needs cleaning up.
+//
+//   At some point this should be better documented and broken
+//   into smaller pieces.
+//
+//   TODO: clean this blessed mess
+// -----------------------------------------------------------------------------
 use std::ops::ControlFlow;
 
 use anathema_state::Value as StateValue;
@@ -191,7 +200,6 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
                     WidgetKind::ControlFlow(controlflow) => {
                         if controlflow.has_changed(&children) {
-                            crate::debug_tree!(children);
                             children.truncate_children();
                         }
                         let generator = Generator::from(&*widget);
@@ -337,7 +345,7 @@ fn generate<'bp>(
                 binding,
             });
             let widget = WidgetContainer::new(widget, body);
-            // TODO: for this to fail one of the values along the path would have to
+            // NOTE: for this to fail one of the values along the path would have to
             // have been removed
             transaction.commit_child(widget).unwrap();
             Ok(true)

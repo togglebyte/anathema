@@ -1,5 +1,5 @@
 use anathema_geometry::{Pos, Region, Size};
-use anathema_state::{AnyState, States};
+use anathema_state::{State, States};
 use anathema_templates::{ComponentBlueprintId, Globals};
 use anathema_value_resolver::{AttributeStorage, Attributes};
 use display::DISPLAY;
@@ -87,7 +87,7 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
     pub(super) fn get_component(
         &mut self,
         component_id: ComponentBlueprintId,
-    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
+    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
         self.component_registry.get(component_id)
     }
 }

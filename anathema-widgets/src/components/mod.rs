@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
-use anathema_state::{AnyState, StateId, Value as StateValue};
+use anathema_state::{State, StateId, Value as StateValue};
 use anathema_store::slab::Slab;
 use anathema_templates::ComponentBlueprintId;
 use anathema_templates::strings::{StringId, Strings};
@@ -20,10 +20,10 @@ pub mod deferred;
 pub mod events;
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
-pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
+pub type StateFn = dyn FnMut() -> Box<dyn State>;
 
 enum ComponentType {
-    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>),
+    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>),
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
@@ -39,12 +39,7 @@ impl ComponentRegistry {
     /// Both `add_component` and `add_prototype` are using `Slab::insert_at`.
     ///
     /// This is fine as the component ids are generated at the same time.
-    pub fn add_component<S: 'static + AnyState>(
-        &mut self,
-        id: ComponentBlueprintId,
-        component: impl Component + 'static,
-        state: S,
-    ) {
+    pub fn add_component<S: State>(&mut self, id: ComponentBlueprintId, component: impl Component + 'static, state: S) {
         let comp_type = ComponentType::Component(Some(Box::new(component)), Some(Box::new(state)));
         self.0.insert_at(id, comp_type);
     }
@@ -54,7 +49,7 @@ impl ComponentRegistry {
         FC: 'static + Fn() -> C,
         FS: 'static + FnMut() -> S,
         C: Component + 'static,
-        S: AnyState + 'static,
+        S: State + 'static,
     {
         let comp_type =
             ComponentType::Prototype(Box::new(move || Box::new(proto())), Box::new(move || Box::new(state())));
@@ -66,10 +61,7 @@ impl ComponentRegistry {
     ///
     /// Panics if the component isn't registered.
     /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(
-        &mut self,
-        id: ComponentBlueprintId,
-    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
+    pub fn get(&mut self, id: ComponentBlueprintId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => Some((ComponentKind::Instance, comp.take()?, state.take()?)),
@@ -88,7 +80,7 @@ impl ComponentRegistry {
         &mut self,
         id: ComponentBlueprintId,
         current_component: Box<dyn AnyComponent>,
-        current_state: Box<dyn AnyState>,
+        current_state: Box<dyn State>,
     ) {
         match self.0.get_mut(id) {
             Some(component) => match component {
@@ -232,7 +224,7 @@ pub struct AnyComponentContext<'frame, 'bp> {
     assoc_functions: &'frame [(StringId, StringId)],
     assoc_events: &'frame mut AssociatedEvents,
     pub attributes: &'frame mut Attributes<'bp>,
-    state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
+    state: Option<&'frame mut StateValue<Box<dyn State>>>,
     pub emitter: &'frame Emitter,
     pub viewport: &'frame Viewport,
     pub strings: &'frame Strings,
@@ -247,7 +239,7 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
         assoc_events: &'frame mut AssociatedEvents,
         components: &'frame mut DeferredComponents,
         attributes: &'frame mut Attributes<'bp>,
-        state: Option<&'frame mut StateValue<Box<dyn AnyState>>>,
+        state: Option<&'frame mut StateValue<Box<dyn State>>>,
         emitter: &'frame Emitter,
         viewport: &'frame Viewport,
         strings: &'frame Strings,
@@ -299,7 +291,7 @@ impl AssociatedEvents {
 }
 
 pub trait Component: 'static {
-    type State: AnyState;
+    type State: State;
     type Message;
 
     const TICKS: bool = true;
@@ -375,7 +367,7 @@ pub trait Component: 'static {
     fn receive(
         &mut self,
         ident: &str,
-        value: &dyn AnyState,
+        value: &dyn State,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
@@ -422,7 +414,7 @@ pub trait AnyComponent {
         children: Children<'_, '_>,
         ctx: AnyComponentContext<'_, '_>,
         name: &str,
-        value: &dyn AnyState,
+        value: &dyn State,
     );
 
     fn any_accept_focus(&self) -> bool;
@@ -517,7 +509,7 @@ where
         children: Children<'_, '_>,
         mut ctx: AnyComponentContext<'_, '_>,
         name: &str,
-        value: &dyn AnyState,
+        value: &dyn State,
     ) {
         let mut state = ctx
             .state

@@ -62,6 +62,55 @@ impl SubTo {
             SubTo::Many(vec) => vec.into_iter().for_each(|key| unsubscribe(key, sub)),
         }
     }
+
+    // TODO: clean this up, it's gross
+    pub fn remove(&mut self, sub_key: SubKey) {
+        match self {
+            SubTo::Zero => return,
+            SubTo::One(key) if *key == sub_key => *self = SubTo::Zero,
+            SubTo::Two(key1, key2) if *key1 == sub_key => *self = SubTo::One(*key2),
+            SubTo::Two(key1, key2) if *key2 == sub_key => *self = SubTo::One(*key1),
+            SubTo::Three(key1, key2, key3) => {
+                if sub_key == *key1 {
+                    *self = SubTo::Two(*key2, *key3);
+                    return;
+                }
+
+                if sub_key == *key2 {
+                    *self = SubTo::Two(*key1, *key3);
+                    return;
+                }
+
+                if sub_key == *key3 {
+                    *self = SubTo::Two(*key1, *key2);
+                    return;
+                }
+            }
+            SubTo::Four(key1, key2, key3, key4) => {
+                if sub_key == *key1 {
+                    *self = SubTo::Three(*key2, *key3, *key4);
+                    return;
+                }
+
+                if sub_key == *key2 {
+                    *self = SubTo::Three(*key1, *key3, *key4);
+                    return;
+                }
+
+                if sub_key == *key3 {
+                    *self = SubTo::Three(*key1, *key2, *key4);
+                    return;
+                }
+
+                if sub_key == *key4 {
+                    *self = SubTo::Three(*key1, *key2, *key3);
+                    return;
+                }
+            }
+            SubTo::Many(vec) => drop(vec.retain(|key| *key != sub_key)),
+            _ => {}
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
@@ -295,11 +344,13 @@ impl SubscriberMap {
 
 // Subscribe to a key
 pub(crate) fn subscribe(sub_key: SubKey, subscriber: Subscriber) {
+    anathema_debug::debug_to_file!("subscribed to sub key {:?} | subscriber: {subscriber:?}", sub_key);
     SUBSCRIBERS.with_borrow_mut(|subs| subs.subscribe(sub_key, subscriber));
 }
 
 // Unsubscribe from a key
 pub(crate) fn unsubscribe(sub_key: SubKey, subscriber: Subscriber) {
+    anathema_debug::debug_to_file!("unsubscribed with sub key {:?} | subscriber {subscriber:?}", sub_key);
     SUBSCRIBERS.with_borrow_mut(|subs| subs.unsubscribe(sub_key, subscriber));
 }
 

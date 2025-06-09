@@ -21,7 +21,7 @@ pub mod prelude {
 }
 
 pub mod component {
-    pub use crate::state::{AnyState, Color, List, Map, State, Value};
+    pub use crate::state::{Color, List, Map, Maybe, Nullable, State, Value};
     pub use crate::widgets::components::events::{
         Event, KeyCode, KeyEvent, KeyState, MouseButton, MouseEvent, MouseState,
     };

@@ -5,5 +5,9 @@ edition.workspace = true
 
 [dependencies]
 
+[features]
+default = []
+filelog = []
+
 [lints]
 workspace = true

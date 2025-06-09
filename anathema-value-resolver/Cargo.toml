@@ -8,6 +8,7 @@ anathema-state = { path = "../anathema-state" }
 anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
 anathema-store = { path = "../anathema-store" }
+anathema-debug = { path = "../anathema-debug" }
 
 [lints]
 workspace = true

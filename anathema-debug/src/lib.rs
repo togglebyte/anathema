@@ -36,3 +36,40 @@ impl<O: Write> Debug<O> {
         self.0
     }
 }
+
+#[cfg(feature = "filelog")]
+pub mod macros {
+    #[macro_export]
+    macro_rules! debug_to_file {
+        ($($arg:tt)*) => {
+            use ::std::io::Write as _;
+            let mut file = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/log.lol").unwrap();
+            let payload = format!($($arg)*);
+            file.write_all(payload.as_bytes()).unwrap();
+            file.write(b"\n").unwrap();
+            file.flush();
+        }
+    }
+
+    #[macro_export]
+    macro_rules! debug_tree {
+        ($tree:expr) => {
+            let mut d = $crate::tree::debug::DebugTree::new();
+            $tree.apply_visitor(&mut d);
+            $crate::debug_to_file!("{}", d.output);
+        };
+    }
+}
+
+#[cfg(not(feature = "filelog"))]
+pub mod macros {
+    #[macro_export]
+    macro_rules! debug_to_file {
+        ($($arg:tt)*) => {};
+    }
+
+    #[macro_export]
+    macro_rules! debug_tree {
+        ($tree:expr) => {};
+    }
+}

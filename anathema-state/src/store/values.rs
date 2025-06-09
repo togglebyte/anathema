@@ -4,15 +4,15 @@ use anathema_store::store::{Monitor, OwnedKey, SharedKey};
 use super::watchers::queue_monitor;
 use super::{OWNED, SHARED, SUBSCRIBERS, ValueKey};
 use crate::Type;
-use crate::states::AnyState;
+use crate::states::State;
 
 pub(crate) struct OwnedValue {
-    pub(crate) val: Box<dyn AnyState>,
+    pub(crate) val: Box<dyn State>,
     pub(crate) monitor: Monitor,
 }
 
 impl OwnedValue {
-    pub fn new(val: Box<dyn AnyState>) -> Self {
+    pub fn new(val: Box<dyn State>) -> Self {
         Self {
             val,
             monitor: Monitor::initial(),
@@ -22,7 +22,7 @@ impl OwnedValue {
 
 // Write a new value into the `OWNED` store and associate
 // a subscriber key with the value.
-pub(crate) fn new_value(value: Box<dyn AnyState>, value_type: Type) -> ValueKey {
+pub(crate) fn new_value(value: Box<dyn State>, value_type: Type) -> ValueKey {
     let value = OwnedValue::new(value);
     let mut owned_key = OWNED.with(|owned| owned.push(value));
     owned_key.set_aux(value_type as u16);
@@ -135,10 +135,9 @@ pub(crate) fn copy_val<T: 'static + Copy>(key: OwnedKey) -> T {
     OWNED
         .with(|owned| {
             owned.with(key, |val| {
-                *val.val
-                    .to_any_ref()
-                    .downcast_ref::<T>()
-                    .expect("the value type is determined by the wrapping Value<T> and should not change")
+                let val: &dyn std::any::Any = &val.val;
+                let val = val.downcast_ref::<T>();
+                *val.expect("the value type is determined by the wrapping Value<T> and should not change")
             })
         })
         .expect("the value is assumed to not be checked out or borrowed")

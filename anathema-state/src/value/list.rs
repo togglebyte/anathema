@@ -2,19 +2,20 @@
 //! having it directly on `List<T>`, unlike `Map<T>` is because the list generates different
 //! changes and are used with for-loops, unlike the map.
 use std::collections::VecDeque;
+use std::ops::DerefMut;
 
 use super::{Shared, Type, Unique, Value};
-use crate::states::{AnyList, AnyState};
+use crate::states::{AnyList, State};
 use crate::store::changed;
 use crate::store::values::{get_unique, try_make_shared};
-use crate::{Change, PendingValue, State};
+use crate::{Change, PendingValue};
 
 #[derive(Debug)]
 pub struct List<T> {
     inner: VecDeque<Value<T>>,
 }
 
-impl<T: AnyState> List<T> {
+impl<T: State> List<T> {
     pub const fn empty() -> Self {
         Self { inner: VecDeque::new() }
     }
@@ -44,7 +45,7 @@ impl<T: AnyState> List<T> {
     }
 }
 
-impl<T: AnyState> Default for List<T> {
+impl<T: State> Default for List<T> {
     fn default() -> Self {
         Self { inner: VecDeque::new() }
     }
@@ -56,18 +57,16 @@ impl<T: AnyState> Default for List<T> {
 /// let mut list: Value<List<u32>> = List::empty().into();
 /// list.push(123);
 /// ```
-impl<T: AnyState + 'static> Value<List<T>> {
+impl<T: State> Value<List<T>> {
     fn with_mut<F, U>(&mut self, f: F) -> U
     where
         F: FnOnce(&mut List<T>) -> U,
     {
         let mut inner = get_unique(self.key.owned());
 
-        let list = inner
-            .val
-            .to_any_mut()
-            .downcast_mut()
-            .expect("the type should never change");
+        let list: &mut dyn State = inner.val.deref_mut();
+        let list: &mut dyn std::any::Any = list;
+        let list: &mut List<T> = list.downcast_mut().expect("the type should never change");
 
         let ret_val = f(list);
 
@@ -105,13 +104,13 @@ impl<T: AnyState + 'static> Value<List<T>> {
     }
 
     /// Push a value to the list
-    pub fn push(&mut self, value: impl Into<Value<T>>) {
+    pub fn push(&mut self, value: T) {
         self.push_back(value)
     }
 
     /// Push a value to the back of the list
-    pub fn push_back(&mut self, value: impl Into<Value<T>>) {
-        let value = value.into();
+    pub fn push_back(&mut self, value: T) {
+        let value = Value::new(value);
 
         let index = self.with_mut(|list| {
             let index = list.len();
@@ -186,8 +185,14 @@ impl<T: AnyState + 'static> Value<List<T>> {
     }
 
     pub fn merge(&mut self, other: &mut Self) {
-        while let Some(val) = other.pop_front() {
-            self.push_back(val);
+        while let Some(value) = other.pop_front() {
+            let index = self.with_mut(|list| {
+                let index = list.len();
+                list.inner.push_back(value);
+                index as u32
+            });
+
+            changed(self.key, Change::Inserted(index));
         }
     }
 
@@ -196,7 +201,7 @@ impl<T: AnyState + 'static> Value<List<T>> {
     }
 }
 
-impl<T: AnyState + 'static> AnyList for List<T> {
+impl<T: State> AnyList for List<T> {
     fn lookup(&self, index: usize) -> Option<PendingValue> {
         self.get(index).map(|val| val.reference())
     }
@@ -206,7 +211,7 @@ impl<T: AnyState + 'static> AnyList for List<T> {
     }
 }
 
-impl<T: AnyState + 'static> State for List<T> {
+impl<T: State> State for List<T> {
     fn type_info(&self) -> Type {
         Type::List
     }
@@ -218,7 +223,7 @@ impl<T: AnyState + 'static> State for List<T> {
 
 impl<T> FromIterator<T> for Value<List<T>>
 where
-    T: AnyState + 'static,
+    T: State,
     Value<T>: From<T>,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -230,7 +235,7 @@ where
 
 impl<T> FromIterator<T> for List<T>
 where
-    T: AnyState + 'static,
+    T: State,
 {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
@@ -242,15 +247,16 @@ where
 mod test {
 
     use super::*;
-    use crate::store::testing::drain_changes;
     use crate::Subscriber;
+    use crate::store::testing::drain_changes;
 
     #[test]
     fn insert() {
         let mut list = Value::new(List::empty());
         list.push_back(1usize);
+
         list.push_front(0usize);
-        let list = list.to_ref();
+        let mut list = list.to_ref();
 
         let val = list.get(0).unwrap().to_ref();
         assert_eq!(*val, 0);

@@ -3,11 +3,11 @@ use std::collections::HashMap;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::Key;
-use anathema_templates::expressions::{Equality, LogicalOp, Op};
 use anathema_templates::Primitive;
+use anathema_templates::expressions::{Equality, LogicalOp, Op};
 
-use crate::value::ValueKind;
 use crate::AttributeStorage;
+use crate::value::ValueKind;
 
 macro_rules! or_null {
     ($val:expr) => {
@@ -122,12 +122,18 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
             Type::List => Self::DynList(value),
             Type::Composite => Self::Composite(value),
             Type::Unit => Self::Null,
+            Type::Maybe => todo!(
+                "we probably need to add ValueExpr::Maybe(PendingValue) for this, this would be the only place where that variant would make sense"
+            ),
         }
     }
 }
 
 // Resolve an expression to a value kind, this is the final value in the chain
-pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'a, 'bp>) -> ValueKind<'bp> {
+pub(crate) fn resolve_value<'a, 'bp>(
+    value_expr: &ValueExpr<'bp>,
+    ctx: &mut ValueResolutionContext<'a, 'bp>,
+) -> ValueKind<'bp> {
     match value_expr {
         // -----------------------------------------------------------------------------
         //   - Primitives -
@@ -207,8 +213,9 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         //   - Operations and conditionals -
         // -----------------------------------------------------------------------------
         ValueExpr::Not(value_expr) => {
-            let ValueKind::Bool(val) = resolve_value(value_expr, ctx) else { return ValueKind::Null };
-            ValueKind::Bool(!val)
+            let value = resolve_value(value_expr, ctx) else { return ValueKind::Null };
+            // let ValueKind::Bool(val) = resolve_value(value_expr, ctx) else { return ValueKind::Null };
+            ValueKind::Bool(!value.truthiness())
         }
         ValueExpr::Negative(value_expr) => match resolve_value(value_expr, ctx) {
             ValueKind::Int(n) => ValueKind::Int(-n),
@@ -245,6 +252,9 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
             _ => ValueKind::Null,
         },
         ValueExpr::Either(first, second) => {
+            let s1 = format!("{first:?}");
+            let s2 = format!("{second:?}");
+
             let value = resolve_value(first, ctx);
             match value {
                 ValueKind::Null => resolve_value(second, ctx),
@@ -253,7 +263,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
         }
 
         // -----------------------------------------------------------------------------
-        //   - Maps and lists -
+        //   - Maps, lists and maybe -
         // -----------------------------------------------------------------------------
         ValueExpr::Map(_) => ValueKind::Map,
         ValueExpr::DynMap(map) => ValueKind::DynMap(*map),
@@ -285,7 +295,7 @@ pub(crate) fn resolve_value<'a, 'bp>(value_expr: &ValueExpr<'bp>, ctx: &mut Valu
     }
 }
 
-fn resolve_pending(val: PendingValue) -> ValueExpr<'static> {
+fn resolve_pending<'bp>(val: PendingValue, ctx: &mut ValueResolutionContext<'_, 'bp>) -> ValueExpr<'static> {
     match val.type_info() {
         Type::Int => ValueExpr::Int(Kind::Dyn(val)),
         Type::Float => ValueExpr::Float(Kind::Dyn(val)),
@@ -297,29 +307,52 @@ fn resolve_pending(val: PendingValue) -> ValueExpr<'static> {
         Type::Map | Type::Composite => ValueExpr::DynMap(val),
         Type::List => ValueExpr::DynList(val),
         Type::Unit => ValueExpr::Null,
+        Type::Maybe => {
+            let state = or_null!(val.as_state());
+            let maybe = or_null!(state.as_maybe());
+            // If there is no value, subscribe to the `Maybe`
+            let inner = match maybe.get() {
+                Some(inner) => inner,
+                None => {
+                    val.subscribe(ctx.sub);
+                    ctx.sub_to.push(val.sub_key());
+                    return ValueExpr::Null;
+                }
+            };
+            resolve_pending(inner, ctx)
+        }
     }
 }
 
-fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> ValueExpr<'bp> {
+fn resolve_index<'bp>(
+    src: &ValueExpr<'bp>,
+    index: &ValueExpr<'bp>,
+    ctx: &mut ValueResolutionContext<'_, 'bp>,
+) -> ValueExpr<'bp> {
     match src {
         ValueExpr::DynMap(value) | ValueExpr::Composite(value) => {
-            let s = or_null!(value.as_state());
-            let map = match s.as_any_map() {
-                Some(map) => map,
+            let type_info = value.type_info();
+            let state = or_null!(value.as_state());
+            let map = match state.as_any_map() {
+                Some(map) => {
+                    anathema_debug::debug_to_file!("there is a {type_info:?} | {:?}", value.key());
+                    map
+                }
                 None => {
+                    // This will happen in the event of an `Option<DynMap>`
+                    // where the `Option` is `None`
+                    anathema_debug::debug_to_file!("there is no {type_info:?} | {:?}", value.key());
                     value.subscribe(ctx.sub);
                     ctx.sub_to.push(value.sub_key());
                     return ValueExpr::Null;
                 }
             };
+
             let key = or_null!(resolve_str(index, ctx));
-
-            // if the values doesn't exist subscribe to the underlying map to get notified when
-            // the value does exist
-
             let val = key.with_str(|key| map.lookup(key)).flatten();
+
             let val = match val {
-                Some(val) => val,
+                Some(key) => key,
                 None => {
                     value.subscribe(ctx.sub);
                     ctx.sub_to.push(value.sub_key());
@@ -327,19 +360,46 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
                 }
             };
 
-            resolve_pending(val)
+            resolve_pending(val, ctx)
         }
         ValueExpr::DynList(value) => {
             value.subscribe(ctx.sub);
             ctx.sub_to.push(value.sub_key());
-            let s = or_null!(value.as_state());
-            let list = s.as_any_list().expect("a dyn list is always an any_list");
-            let key = resolve_int(index, ctx);
-            // Always subscribe to a list as any change to the list
-            // will possibly have an effect on other subsequent values,
-            // like adding or removing values
-            let val = or_null!(list.lookup(key as usize));
-            resolve_pending(val)
+            let state = or_null!(value.as_state());
+            let list = match state.as_any_list() {
+                Some(list) => {
+                    let key = value.owned_key();
+                    value.unsubscribe(ctx.sub);
+                    ctx.sub_to.remove(value.sub_key());
+                    list
+                }
+                None => {
+                    let key = value.owned_key();
+                    value.subscribe(ctx.sub);
+                    ctx.sub_to.push(value.sub_key());
+                    return ValueExpr::Null;
+                }
+            };
+            let index = resolve_int(index, ctx) as usize;
+            let val = list.lookup(index);
+
+            // If the values doesn't exist subscribe to the underlying map / state
+            // to get notified when the value does exist.
+            //
+            // If the value does exist unsubscribe from the underlying map / state
+            let val = match val {
+                Some(val) => {
+                    value.unsubscribe(ctx.sub);
+                    ctx.sub_to.remove(value.sub_key());
+                    val
+                }
+                None => {
+                    value.subscribe(ctx.sub);
+                    ctx.sub_to.push(value.sub_key());
+                    return ValueExpr::Null;
+                }
+            };
+            resolve_pending(val, ctx)
         }
         ValueExpr::Attributes(widget_id) => {
             let key = or_null!(resolve_str(index, ctx));
@@ -372,11 +432,17 @@ fn resolve_index<'bp>(src: &ValueExpr<'bp>, index: &ValueExpr<'bp>, ctx: &mut Va
             resolve_index(&src, index, ctx)
         }
         ValueExpr::Null => ValueExpr::Null,
-        val => unreachable!("resolving index: this should return null eventually: {val:?} (you probably did something like x.y on a string)"),
+        // TODO: see unreachable message
+        val => unreachable!(
+            "resolving index: this should return null eventually: {val:?} (you probably did something like x.y on a string)"
+        ),
     }
 }
 
-fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<ValueExpr<'bp>> {
+fn resolve_expr<'a, 'bp>(
+    expr: &'a ValueExpr<'bp>,
+    ctx: &mut ValueResolutionContext<'_, 'bp>,
+) -> Option<ValueExpr<'bp>> {
     match expr {
         ValueExpr::Either(first, second) => match resolve_expr(first, ctx) {
             None | Some(ValueExpr::Null) => resolve_expr(second, ctx),
@@ -387,7 +453,10 @@ fn resolve_expr<'a, 'bp>(expr: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionCont
     }
 }
 
-fn resolve_str<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Kind<&'bp str>> {
+fn resolve_str<'a, 'bp>(
+    index: &'a ValueExpr<'bp>,
+    ctx: &mut ValueResolutionContext<'_, 'bp>,
+) -> Option<Kind<&'bp str>> {
     match index {
         ValueExpr::Str(kind) => Some(*kind),
         ValueExpr::Index(src, index) => match resolve_index(src, index, ctx) {
@@ -444,7 +513,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{drain_changes, Changes, Map, States};
+    use anathema_state::{Changes, Map, States, drain_changes};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use crate::testing::setup;

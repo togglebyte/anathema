@@ -1,5 +1,6 @@
 #![debugger_visualizer(gdb_script_file = "pretty-values.py")]
 
+use std::any::Any;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -9,7 +10,8 @@ use anathema_store::store::{OwnedKey, SharedKey};
 
 pub use self::list::List;
 pub use self::map::Map;
-use crate::states::AnyState;
+pub use self::maybe::{Maybe, Nullable};
+use crate::states::State;
 use crate::store::subscriber::{SubKey, subscribe, unsubscribe};
 use crate::store::values::{
     OwnedValue, copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared,
@@ -20,6 +22,7 @@ use crate::{Change, Subscriber};
 
 mod list;
 mod map;
+mod maybe;
 
 /// A value that reacts to change.
 ///
@@ -38,23 +41,41 @@ pub struct Value<T> {
     _p: PhantomData<*const T>,
 }
 
-impl<T: Default + AnyState> Default for Value<T> {
+impl<T: Default + State> Default for Value<T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-impl<T: AnyState> From<T> for Value<T> {
+impl<T: State> From<T> for Value<T> {
     fn from(value: T) -> Self {
         Value::new(value)
     }
 }
 
-impl<T: AnyState> Value<T> {
+impl Value<Box<dyn State>> {
+    #[doc(hidden)]
+    pub fn to_mut_cast<U: State>(&mut self) -> Unique<'_, U> {
+        let value = get_unique(self.key.owned());
+        Unique {
+            value: Some(value),
+            key: self.key,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<T: State> Value<T> {
     /// Create a new instance of a `Value`.
     pub fn new(value: T) -> Self {
         let type_id = value.type_info();
         let key = new_value(Box::new(value), type_id);
+        Self { key, _p: PhantomData }
+    }
+
+    pub(crate) fn from_box(value: Box<dyn State>) -> Self {
+        let type_id = value.type_info();
+        let key = new_value(value, type_id);
         Self { key, _p: PhantomData }
     }
 
@@ -64,16 +85,6 @@ impl<T: AnyState> Value<T> {
     /// Attempting to take a reference to the value using a `ValueRef` will
     /// result in a runtime error.
     pub fn to_mut(&mut self) -> Unique<'_, T> {
-        let value = get_unique(self.key.owned());
-        Unique {
-            value: Some(value),
-            key: self.key,
-            _p: PhantomData,
-        }
-    }
-
-    #[doc(hidden)]
-    pub fn to_mut_cast<U>(&mut self) -> Unique<'_, U> {
         let value = get_unique(self.key.owned());
         Unique {
             value: Some(value),
@@ -114,7 +125,7 @@ impl<T: AnyState> Value<T> {
         PendingValue(self.key)
     }
 
-    pub fn shared_state(&self) -> Option<SharedState> {
+    pub fn shared_state(&self) -> Option<SharedState<'_>> {
         let (key, value) = try_make_shared(self.key.owned())?;
         let shared = SharedState::new(key, value);
         Some(shared)
@@ -135,7 +146,7 @@ impl<T: AnyState> Value<T> {
     /// This will prevent the value from being dropped
     /// and subsequently no `Change::Dropped` will be issued as a result of this.
     /// However a `Change::Remove(_)` will be issued if the value was removed from a list.
-    pub fn take(self) -> Box<dyn AnyState> {
+    pub fn take(self) -> Box<dyn State> {
         let value = drop_value(self.key).val;
         // Prevent the drop function from being called
         // as that would try to free the value from storage again
@@ -147,7 +158,7 @@ impl<T: AnyState> Value<T> {
 /// Copy the inner value from the owned value.
 ///
 /// This does not copy any auxillary data attached to the key
-impl<T: AnyState + Copy> Value<T> {
+impl<T: State + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
         copy_val(self.key.owned())
     }
@@ -179,13 +190,8 @@ impl<'a, T> Deref for Unique<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.value
-            .as_ref()
-            .expect("value is only ever set to None on drop")
-            .val
-            .to_any_ref()
-            .downcast_ref()
-            .expect("the type should never change")
+        let value: &dyn Any = &*self.value.as_ref().expect("value is only ever set to None on drop").val;
+        value.downcast_ref().expect("the type should never change")
     }
 }
 
@@ -199,11 +205,9 @@ impl<'a, T> DerefMut for Unique<'a, T> {
 
         changed(self.key, Change::Changed);
 
-        value
-            .val
-            .to_any_mut()
-            .downcast_mut()
-            .expect("the type should never change")
+        let value: &mut dyn State = value.val.deref_mut();
+        let value: &mut dyn Any = value;
+        value.downcast_mut().expect("the type should never change")
     }
 }
 
@@ -231,7 +235,7 @@ enum ElementState {
 
 impl ElementState {
     #[allow(clippy::borrowed_box)]
-    fn as_state(&self) -> &Box<dyn AnyState> {
+    fn as_state(&self) -> &Box<dyn State> {
         match self {
             Self::Dropped => unreachable!(),
             Self::Alive(value) => &value.val,
@@ -241,14 +245,17 @@ impl ElementState {
     fn as_ref<T: 'static>(&self) -> &T {
         match self {
             Self::Dropped => unreachable!(),
-            Self::Alive(value) => value.val.to_any_ref().downcast_ref().expect("invalid type"),
+            Self::Alive(value) => self.try_as_ref().expect("invalid type"),
         }
     }
 
     fn try_as_ref<T: 'static>(&self) -> Option<&T> {
         match self {
             Self::Dropped => unreachable!(),
-            Self::Alive(value) => value.val.to_any_ref().downcast_ref(),
+            Self::Alive(value) => {
+                let value: &dyn Any = &*value.val;
+                value.downcast_ref()
+            }
         }
     }
 
@@ -258,8 +265,8 @@ impl ElementState {
 }
 
 pub struct Shared<'a, T: 'static> {
-    state: SharedState,
-    _p: PhantomData<&'a T>,
+    state: SharedState<'a>,
+    _p: PhantomData<T>,
 }
 
 impl<'a, T> Shared<'a, T> {
@@ -291,11 +298,9 @@ impl<'a, T> AsRef<T> for Shared<'a, T> {
 
 impl<'a, T: Debug> Debug for Shared<'a, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let state = self
-            .state
-            .inner
-            .as_state()
-            .to_any_ref()
+        let value: &dyn Any = self.state.inner.as_state();
+
+        let state = value
             .downcast_ref::<T>()
             // It's fine to expect here since the type information
             // is retained from the source that produces the `Shared` instance.
@@ -305,35 +310,37 @@ impl<'a, T: Debug> Debug for Shared<'a, T> {
 }
 
 /// Shared state
-pub struct SharedState {
+pub struct SharedState<'a> {
     inner: ElementState,
     key: SharedKey,
+    _p: PhantomData<&'a ()>,
 }
 
-impl SharedState {
+impl<'a> SharedState<'a> {
     fn new(key: SharedKey, state: RcElement<OwnedValue>) -> Self {
         Self {
             key,
             inner: ElementState::Alive(state),
+            _p: PhantomData,
         }
     }
 }
 
-impl PartialEq for SharedState {
+impl<'a> PartialEq for SharedState<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
     }
 }
 
-impl Deref for SharedState {
-    type Target = Box<dyn AnyState>;
+impl<'a> Deref for SharedState<'a> {
+    type Target = Box<dyn State>;
 
     fn deref(&self) -> &Self::Target {
         self.inner.as_state()
     }
 }
 
-impl Drop for SharedState {
+impl<'a> Drop for SharedState<'a> {
     fn drop(&mut self) {
         self.inner.drop_value();
         return_shared(self.key);
@@ -379,7 +386,7 @@ impl ValueRef {
     /// Try to get access to the underlying value as a `dyn AnyState`.
     /// This will return `None` if the `Value<T>` behind this `ValueRef` has
     /// been dropped.
-    pub fn as_state(&self) -> Option<SharedState> {
+    pub fn as_state(&self) -> Option<SharedState<'_>> {
         let (key, value) = try_make_shared(self.value_key.owned())?;
         let shared = SharedState::new(key, value);
         Some(shared)
@@ -437,7 +444,7 @@ impl PendingValue {
     /// Try to get access to the underlying value as a `dyn AnyState`.
     /// This will return `None` if the `Value<T>` behind this `ValueRef` has
     /// been dropped.
-    pub fn as_state(&self) -> Option<SharedState> {
+    pub fn as_state(&self) -> Option<SharedState<'_>> {
         let (key, value) = try_make_shared(self.0.owned())?;
         let shared = SharedState::new(key, value);
         Some(shared)
@@ -459,6 +466,10 @@ impl PendingValue {
     pub fn sub_key(&self) -> SubKey {
         self.0.sub()
     }
+
+    pub fn key(&self) -> ValueKey {
+        self.0
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -475,6 +486,7 @@ pub enum Type {
     Composite = 9,
     Unit = 10,
     Color = 11,
+    Maybe = 12,
 }
 
 #[cfg(test)]

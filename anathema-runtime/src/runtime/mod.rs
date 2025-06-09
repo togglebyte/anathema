@@ -439,17 +439,20 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 return;
             };
 
-            let Some(remote_state) = self.layout_ctx.states.get(event.state) else { return };
-            let Some(remote_state) = remote_state.shared_state() else { return };
-            self.with_component(widget_id, state_id, |comp, children, ctx| {
-                // TODO:
-                // Create a new event type
-                // if the event is stopped then return from drain_assoc_events
+            panic!(
+                "this is going to be reworked. this was working while SharedState didn't have a lifetime, it does now so... figure it out"
+            );
+            // let Some(remote_state) = self.layout_ctx.states.get(event.state) else { return };
+            // let Some(remote_state) = remote_state.shared_state() else { return };
+            // self.with_component(widget_id, state_id, |comp, children, ctx| {
+            //     // TODO:
+            //     // Create a new event type
+            //     // if the event is stopped then return from drain_assoc_events
 
-                let event_ident = self.document.strings.get_ref_unchecked(event.external);
-                comp.dyn_component
-                    .any_receive(children, ctx, event_ident, &*remote_state);
-            });
+            //     let event_ident = self.document.strings.get_ref_unchecked(event.external);
+            //     comp.dyn_component
+            //         .any_receive(children, ctx, event_ident, &*remote_state);
+            // });
         }
     }
 

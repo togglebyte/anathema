@@ -2,8 +2,8 @@ use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
 use anathema_value_resolver::{AttributeStorage, Value, ValueKind};
 
-use crate::widget::WidgetTreeView;
 use crate::WidgetKind;
+use crate::widget::WidgetTreeView;
 
 #[derive(Debug)]
 pub struct ControlFlow<'bp> {
@@ -13,13 +13,18 @@ pub struct ControlFlow<'bp> {
 impl<'bp> ControlFlow<'bp> {
     pub(crate) fn update(&mut self, change: &Change, branch_id: u16, attribute_storage: &AttributeStorage<'bp>) {
         match change {
-            Change::Changed => {
+            Change::Changed | Change::Dropped => {
                 let Some(el) = self.elses.get_mut(branch_id as usize) else { return };
                 let Some(cond) = el.cond.as_mut() else { return };
                 cond.reload(attribute_storage)
             }
-            Change::Dropped => todo!(),
-            Change::Inserted(_) | Change::Removed(_) => unreachable!(),
+            // TODO:
+            // this could probably happen given something like this
+            // ```
+            // if state.list
+            //     text "list is not empty"
+            // ```
+            Change::Inserted(_) | Change::Removed(_) => todo!(),
         }
     }
 }

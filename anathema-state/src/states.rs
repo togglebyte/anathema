@@ -63,7 +63,7 @@ impl SlabIndex for StateId {
     }
 }
 
-pub trait State: 'static {
+pub trait State: Any + 'static {
     fn type_info(&self) -> Type;
 
     fn as_int(&self) -> Option<i64> {
@@ -101,132 +101,21 @@ pub trait State: 'static {
     fn as_any_list(&self) -> Option<&dyn AnyList> {
         None
     }
-}
 
-impl<T: State> AnyState for T {
-    fn to_any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn type_info(&self) -> Type {
-        <Self as State>::type_info(self)
-    }
-
-    fn as_int(&self) -> Option<i64> {
-        <Self as State>::as_int(self)
-    }
-
-    fn as_float(&self) -> Option<f64> {
-        <Self as State>::as_float(self)
-    }
-
-    fn as_hex(&self) -> Option<Hex> {
-        <Self as State>::as_hex(self)
-    }
-
-    fn as_color(&self) -> Option<Color> {
-        <Self as State>::as_color(self)
-    }
-
-    fn as_char(&self) -> Option<char> {
-        <Self as State>::as_char(self)
-    }
-
-    fn as_str(&self) -> Option<&str> {
-        <Self as State>::as_str(self)
-    }
-
-    fn as_bool(&self) -> Option<bool> {
-        <Self as State>::as_bool(self)
-    }
-
-    fn as_any_map(&self) -> Option<&dyn AnyMap> {
-        <Self as State>::as_any_map(self)
-    }
-
-    fn as_any_list(&self) -> Option<&dyn AnyList> {
-        <Self as State>::as_any_list(self)
-    }
-}
-
-pub trait AnyState: 'static {
-    fn type_info(&self) -> Type;
-
-    fn to_any_ref(&self) -> &dyn Any;
-
-    fn to_any_mut(&mut self) -> &mut dyn Any;
-
-    fn as_int(&self) -> Option<i64> {
-        None
-    }
-
-    fn as_float(&self) -> Option<f64> {
-        None
-    }
-
-    fn as_hex(&self) -> Option<Hex> {
-        None
-    }
-
-    fn as_color(&self) -> Option<Color> {
-        None
-    }
-
-    fn as_char(&self) -> Option<char> {
-        None
-    }
-
-    fn as_str(&self) -> Option<&str> {
-        None
-    }
-
-    fn as_bool(&self) -> Option<bool> {
-        None
-    }
-
-    fn as_any_map(&self) -> Option<&dyn AnyMap> {
-        None
-    }
-
-    fn as_any_list(&self) -> Option<&dyn AnyList> {
+    fn as_maybe(&self) -> Option<&dyn AnyMaybe> {
         None
     }
 }
 
-impl dyn AnyState {
-    pub fn try_to<T: 'static>(&self) -> Option<&T> {
-        self.to_any_ref().downcast_ref()
-    }
-
-    pub fn to<T: 'static>(&self) -> &T {
-        match self.try_to() {
-            Some(val) => val,
-            None => panic!("invalid type"),
-        }
-    }
-}
-
-impl Debug for dyn AnyState {
+impl Debug for dyn State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<AnyState ({:?})>", self.type_info())
+        write!(f, "<State ({:?})>", self.type_info())
     }
 }
 
-impl AnyState for Box<dyn AnyState> {
+impl State for Box<dyn State> {
     fn type_info(&self) -> Type {
         self.as_ref().type_info()
-    }
-
-    fn to_any_ref(&self) -> &dyn Any {
-        self.as_ref().to_any_ref()
-    }
-
-    fn to_any_mut(&mut self) -> &mut dyn Any {
-        self.as_mut().to_any_mut()
     }
 
     fn as_int(&self) -> Option<i64> {
@@ -264,6 +153,10 @@ impl AnyState for Box<dyn AnyState> {
     fn as_any_list(&self) -> Option<&dyn AnyList> {
         self.as_ref().as_any_list()
     }
+
+    fn as_maybe(&self) -> Option<&dyn AnyMaybe> {
+        self.as_ref().as_maybe()
+    }
 }
 
 pub trait AnyMap {
@@ -282,50 +175,8 @@ pub trait AnyList {
     }
 }
 
-// -----------------------------------------------------------------------------
-//   - State implementation... -
-//   State implementation for primitives and non-state types
-// -----------------------------------------------------------------------------
-impl<T: State + TypeId> State for Option<T> {
-    fn type_info(&self) -> Type {
-        T::TYPE
-    }
-
-    fn as_int(&self) -> Option<i64> {
-        self.as_ref()?.as_int()
-    }
-
-    fn as_float(&self) -> Option<f64> {
-        self.as_ref()?.as_float()
-    }
-
-    fn as_hex(&self) -> Option<Hex> {
-        self.as_ref()?.as_hex()
-    }
-
-    fn as_color(&self) -> Option<Color> {
-        self.as_ref()?.as_color()
-    }
-
-    fn as_char(&self) -> Option<char> {
-        self.as_ref()?.as_char()
-    }
-
-    fn as_str(&self) -> Option<&str> {
-        self.as_ref()?.as_str()
-    }
-
-    fn as_bool(&self) -> Option<bool> {
-        self.as_ref()?.as_bool()
-    }
-
-    fn as_any_map(&self) -> Option<&dyn AnyMap> {
-        self.as_ref()?.as_any_map()
-    }
-
-    fn as_any_list(&self) -> Option<&dyn AnyList> {
-        self.as_ref()?.as_any_list()
-    }
+pub trait AnyMaybe {
+    fn get(&self) -> Option<PendingValue>;
 }
 
 macro_rules! impl_num_state {
@@ -445,7 +296,7 @@ impl_float_state!(f64);
 
 #[derive(Debug)]
 pub struct States {
-    inner: Slab<StateId, Value<Box<dyn AnyState>>>,
+    inner: Slab<StateId, Value<Box<dyn State>>>,
 }
 
 impl States {
@@ -453,21 +304,22 @@ impl States {
         Self { inner: Slab::empty() }
     }
 
-    pub fn insert(&mut self, state: Value<Box<dyn AnyState>>) -> StateId {
+    pub fn insert(&mut self, state: Box<dyn State>) -> StateId {
+        let state = Value::from_box(state);
         self.inner.insert(state)
     }
 
-    pub fn get(&self, state_id: impl Into<StateId>) -> Option<&Value<Box<dyn AnyState>>> {
+    pub fn get(&self, state_id: impl Into<StateId>) -> Option<&Value<Box<dyn State>>> {
         self.inner.get(state_id.into()).map(|b| b)
     }
 
-    pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut Value<Box<dyn AnyState>>> {
+    pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut Value<Box<dyn State>>> {
         self.inner.get_mut(state_id.into())
     }
 
     pub fn with_mut<F, U>(&mut self, index: impl Into<StateId>, f: F) -> U
     where
-        F: FnOnce(&mut dyn AnyState, &mut Self) -> U,
+        F: FnOnce(&mut dyn State, &mut Self) -> U,
     {
         let mut ticket = self.inner.checkout(index.into());
         let ret = f(&mut *ticket.to_mut(), self);
@@ -480,7 +332,7 @@ impl States {
     /// # Panics
     ///
     /// Will panic if the state does not exist.
-    pub fn remove(&mut self, state_id: StateId) -> Value<Box<dyn AnyState>> {
+    pub fn remove(&mut self, state_id: StateId) -> Value<Box<dyn State>> {
         self.inner.remove(state_id)
     }
 }

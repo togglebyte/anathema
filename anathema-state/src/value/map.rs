@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use super::{Shared, Type, Unique, Value};
-use crate::{PendingValue, State};
-use crate::states::{AnyMap, AnyState};
+use crate::states::AnyMap;
 use crate::store::values::{get_unique, try_make_shared};
+use crate::{PendingValue, State};
 
 #[derive(Debug)]
 pub struct Map<T> {
     inner: HashMap<String, Value<T>>,
 }
 
-impl<T: AnyState> Map<T> {
+impl<T: State> Map<T> {
     pub fn empty() -> Self {
         Self { inner: HashMap::new() }
     }
@@ -43,7 +43,7 @@ impl<T: AnyState> Map<T> {
     }
 }
 
-impl<T: AnyState> Default for Map<T> {
+impl<T: State> Default for Map<T> {
     fn default() -> Self {
         Self { inner: HashMap::new() }
     }
@@ -55,7 +55,7 @@ impl<T: AnyState> Default for Map<T> {
 /// let mut map = Map::empty();
 /// map.insert("key", 123);
 /// ```
-impl<T: AnyState> Value<Map<T>> {
+impl<T: State> Value<Map<T>> {
     pub fn empty() -> Self {
         let map = Map { inner: HashMap::new() };
         Value::new(map)
@@ -85,7 +85,7 @@ impl<T: AnyState> Value<Map<T>> {
     }
 }
 
-impl<T: AnyState + 'static> AnyMap for Map<T> {
+impl<T: State> AnyMap for Map<T> {
     fn lookup(&self, key: &str) -> Option<PendingValue> {
         self.get(key).map(|val| val.reference())
     }
@@ -95,7 +95,7 @@ impl<T: AnyState + 'static> AnyMap for Map<T> {
     }
 }
 
-impl<T: AnyState + 'static> State for Map<T> {
+impl<T: State> State for Map<T> {
     fn type_info(&self) -> Type {
         Type::Map
     }
@@ -104,7 +104,6 @@ impl<T: AnyState + 'static> State for Map<T> {
         Some(self)
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -147,7 +146,7 @@ mod test {
     fn remove() {
         let mut map = Map::empty();
         map.insert("a", DM(1));
-        let _ = map.get("a").as_ref().unwrap();
+        let a = map.get("a").unwrap();
 
         assert!(map.remove("a").is_some());
         assert!(map.is_empty());
