@@ -1,4 +1,4 @@
-use anathema_state::{AnyMap, AnyState, List, Map, State, StateId, States, Subscriber, Value};
+use anathema_state::{AnyMap, List, Map, Maybe, State, StateId, States, Subscriber, Value};
 use anathema_store::slab::Key;
 use anathema_templates::{Expression, Globals, Variables};
 
@@ -14,7 +14,7 @@ pub(crate) struct TestState {
     pub(crate) float: Value<f64>,
     pub(crate) list: Value<List<&'static str>>,
     pub(crate) map: Value<Map<i32>>,
-    pub(crate) opt_map: Value<Option<Map<i32>>>,
+    pub(crate) opt_map: Value<Maybe<Map<i32>>>,
 }
 
 impl TestState {
@@ -26,7 +26,7 @@ impl TestState {
             float: 0.0.into(),
             list: List::empty().into(),
             map: Map::empty().into(),
-            opt_map: Value::new(None),
+            opt_map: Value::new(Maybe::none()),
         }
     }
 }
@@ -107,10 +107,7 @@ pub(crate) fn setup<'bp, F>(states: &mut States, globals: Variables, mut f: F)
 where
     F: FnMut(&mut TestCase<'_, 'bp>),
 {
-    // let state: Map<Box<dyn AnyState>> = Value::new(Map::empty());
-    let state: Box<dyn AnyState> = Box::new(TestState::new());
-    let state: anathema_state::Value<Box<dyn AnyState>> = anathema_state::Value::new(state);
-    states.insert(state);
+    states.insert(Box::new(TestState::new()));
     let mut test = TestCase::new(states, globals.into());
     f(&mut test)
 }

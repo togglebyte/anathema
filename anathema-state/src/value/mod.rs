@@ -54,6 +54,7 @@ impl<T: State> From<T> for Value<T> {
 }
 
 impl Value<Box<dyn State>> {
+    // This is a mildly sketchy function and you should probably not use it
     #[doc(hidden)]
     pub fn to_mut_cast<U: State>(&mut self) -> Unique<'_, U> {
         let value = get_unique(self.key.owned());
@@ -245,7 +246,7 @@ impl ElementState {
     fn as_ref<T: 'static>(&self) -> &T {
         match self {
             Self::Dropped => unreachable!(),
-            Self::Alive(value) => self.try_as_ref().expect("invalid type"),
+            Self::Alive(_) => self.try_as_ref().expect("invalid type"),
         }
     }
 

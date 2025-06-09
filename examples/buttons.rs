@@ -17,10 +17,10 @@ impl Component for App {
     fn receive(
         &mut self,
         ident: &str,
-        value: &dyn AnyState,
+        _: &dyn State,
         state: &mut Self::State,
-        elements: Children<'_, '_>,
-        context: Context<'_, '_, Self::State>,
+        _: Children<'_, '_>,
+        _: Context<'_, '_, Self::State>,
     ) {
         if ident == "increment" {
             *state.number.to_mut() += 1;
@@ -47,19 +47,19 @@ impl Component for Button {
 
     const TICKS: bool = false;
 
-    fn on_blur(&mut self, state: &mut Self::State, elements: Children<'_, '_>, context: Context<'_, '_, Self::State>) {
+    fn on_blur(&mut self, state: &mut Self::State, _: Children<'_, '_>, _: Context<'_, '_, Self::State>) {
         state.active.set(0);
     }
 
-    fn on_focus(&mut self, state: &mut Self::State, elements: Children<'_, '_>, context: Context<'_, '_, Self::State>) {
+    fn on_focus(&mut self, state: &mut Self::State, _: Children<'_, '_>, _: Context<'_, '_, Self::State>) {
         state.active.set(1);
     }
 
     fn on_key(
         &mut self,
         key: KeyEvent,
-        state: &mut Self::State,
-        elements: Children<'_, '_>,
+        _: &mut Self::State,
+        _: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
         if !matches!(key.state, KeyState::Press) {
@@ -69,15 +69,6 @@ impl Component for Button {
         if let KeyCode::Enter = key.code {
             context.publish("click")
         }
-    }
-
-    fn on_mouse(
-        &mut self,
-        mouse: MouseEvent,
-        state: &mut Self::State,
-        elements: Children<'_, '_>,
-        context: Context<'_, '_, Self::State>,
-    ) {
     }
 }
 

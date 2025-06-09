@@ -256,7 +256,7 @@ mod test {
         list.push_back(1usize);
 
         list.push_front(0usize);
-        let mut list = list.to_ref();
+        let list = list.to_ref();
 
         let val = list.get(0).unwrap().to_ref();
         assert_eq!(*val, 0);

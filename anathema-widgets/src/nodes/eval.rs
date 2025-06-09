@@ -1,5 +1,5 @@
 use anathema_geometry::{Pos, Region};
-use anathema_state::{Subscriber, Value};
+use anathema_state::Subscriber;
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
 use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, Single};

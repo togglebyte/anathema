@@ -1,6 +1,6 @@
 use super::{PendingValue, Value};
-use crate::states::{AnyList, AnyMaybe};
-use crate::{AnyMap, Color, Hex, State, TypeId};
+use crate::states::AnyMaybe;
+use crate::{State, TypeId};
 
 pub type Nullable<T> = Maybe<T>;
 
@@ -31,12 +31,20 @@ impl<T: State> Maybe<T> {
         }
     }
 
-    pub fn map<F, U>(&mut self, mut f: F) -> Option<U>
+    pub fn map_mut<F, U>(&mut self, mut f: F) -> Option<U>
     where
         F: FnMut(&mut T) -> U,
     {
         let value = self.0.as_mut()?;
         Some(f(&mut *value.to_mut()))
+    }
+
+    pub fn map_ref<F, U>(&self, f: F) -> Option<U>
+    where
+        F: Fn(&T) -> U,
+    {
+        let value = self.0.as_ref()?;
+        Some(f(&*value.to_ref()))
     }
 
     pub fn and_then_ref<F, U>(&self, f: F) -> Option<U>
@@ -86,21 +94,31 @@ impl<T: State + TypeId> From<Option<T>> for Value<Maybe<T>> {
     }
 }
 
+impl<T: State + TypeId> Value<Maybe<T>> {
+    pub fn map<F, U>(&mut self, f: F) -> Option<U>
+    where
+        F: FnMut(&mut T) -> U,
+    {
+        let mut value = self.to_mut();
+        value.map_mut(f)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn blah() {
-        let maybe = Maybe::some(1);
-        let value = maybe.get_ref().unwrap();
-        let state = value.to_ref();
-        assert_eq!(1, value.as_int().unwrap());
+    fn nullable_int() {
+        let value = Maybe::some(1);
+        let inner = value.get().unwrap();
+        assert_eq!(1, inner.as_state().unwrap().as_int().unwrap());
     }
 
     #[test]
     fn nested_nullables() {
-        let value = Maybe::some(1);
-        assert_eq!(1, value.as_int().unwrap());
+        let value = Maybe::some(Maybe::some(1));
+        let one = value.and_then_ref(|inner_map| inner_map.map_ref(|m| *m)).unwrap();
+        assert_eq!(one, 1);
     }
 }

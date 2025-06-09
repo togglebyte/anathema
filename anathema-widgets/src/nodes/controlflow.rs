@@ -1,6 +1,6 @@
 use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{AttributeStorage, Value, ValueKind};
+use anathema_value_resolver::{AttributeStorage, Value};
 
 use crate::WidgetKind;
 use crate::widget::WidgetTreeView;

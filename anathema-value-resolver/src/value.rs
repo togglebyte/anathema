@@ -448,7 +448,7 @@ impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use anathema_state::{Hex, States};
+    use anathema_state::{Hex, Map, Maybe, States};
     use anathema_templates::Variables;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
@@ -764,8 +764,18 @@ pub(crate) mod test {
     fn optional_map_resolve() {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
+            // At first there is no map...
             let expr = index(ident("state"), strlit("opt_map"));
-            let value = test.eval(&*expr);
+            let mut value = test.eval(&*expr);
+            assert!(matches!(value.kind, ValueKind::Null));
+
+            // ... then we insert a map
+            test.with_state(|state| {
+                let map = Map::empty();
+                state.opt_map.set(Maybe::some(map));
+            });
+
+            value.reload(&test.attributes);
             assert!(matches!(value.kind, ValueKind::DynMap(_)));
         });
     }

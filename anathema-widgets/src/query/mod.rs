@@ -51,6 +51,27 @@ impl<'a> From<bool> for QueryValue<'a> {
     }
 }
 
+macro_rules! impl_from_int {
+    ($t:ty) => {
+        impl<'a> From<$t> for QueryValue<'a> {
+            fn from(value: $t) -> Self {
+                Self::Int(value as i64)
+            }
+        }
+    };
+}
+
+impl_from_int!(u8);
+impl_from_int!(u16);
+impl_from_int!(u32);
+impl_from_int!(u64);
+impl_from_int!(usize);
+impl_from_int!(i8);
+impl_from_int!(i16);
+impl_from_int!(i32);
+impl_from_int!(i64);
+impl_from_int!(isize);
+
 impl PartialEq<ValueKind<'_>> for QueryValue<'_> {
     fn eq(&self, other: &ValueKind<'_>) -> bool {
         match self {
@@ -169,10 +190,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use anathema_templates::{Document, ToSourceKind};
-
     use super::*;
-    use crate::{eval_blueprint, WidgetTree};
 
     #[test]
     fn filter_by_tag() {
@@ -186,7 +204,42 @@ mod test {
                     text '3'
         ";
 
-        crate::testing::with_template(tpl, |tree| {
+        crate::testing::with_template(tpl, |tree, attributes| {
+            let mut changed = false;
+            let mut children = Children::new(tree, attributes, &mut changed);
+            let mut cntr = 0;
+            children.elements().by_tag("text").each(|el, _| {
+                assert_eq!(el.ident, "text");
+                cntr += 1;
+            });
+
+            assert_eq!(cntr, 3);
+        });
+    }
+
+    #[test]
+    fn filter_by_tag_and_attribute() {
+        let tpl = "
+        many
+            many
+                text [a: 1] '1'
+            text '2'
+            many
+                many
+                    text [a: 1] '3'
+        ";
+
+        crate::testing::with_template(tpl, |tree, attributes| {
+            let mut changed = false;
+            let mut children = Children::new(tree, attributes, &mut changed);
+            let mut cntr = 0;
+
+            children.elements().by_tag("text").by_attribute("a", 1).each(|el, _| {
+                assert_eq!(el.ident, "text");
+                cntr += 1;
+            });
+
+            assert_eq!(cntr, 2);
         });
     }
 }

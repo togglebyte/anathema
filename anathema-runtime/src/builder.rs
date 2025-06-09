@@ -69,8 +69,8 @@ impl<G: GlobalEventHandler> Builder<G> {
     /// Registers a component as a template-only component.
     ///
     /// This component has no state or reacts to any events
-    pub fn template(&mut self, ident: impl Into<String>, template: impl ToSourceKind) {
-        _ = self.prototype(ident, template, || (), || ());
+    pub fn template(&mut self, ident: impl Into<String>, template: impl ToSourceKind) -> Result<()> {
+        self.prototype(ident, template, || (), || ())
     }
 
     /// Registers a [Component] with the runtime.

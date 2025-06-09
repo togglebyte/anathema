@@ -213,7 +213,7 @@ pub(crate) fn resolve_value<'a, 'bp>(
         //   - Operations and conditionals -
         // -----------------------------------------------------------------------------
         ValueExpr::Not(value_expr) => {
-            let value = resolve_value(value_expr, ctx) else { return ValueKind::Null };
+            let value = resolve_value(value_expr, ctx);
             // let ValueKind::Bool(val) = resolve_value(value_expr, ctx) else { return ValueKind::Null };
             ValueKind::Bool(!value.truthiness())
         }
@@ -252,9 +252,6 @@ pub(crate) fn resolve_value<'a, 'bp>(
             _ => ValueKind::Null,
         },
         ValueExpr::Either(first, second) => {
-            let s1 = format!("{first:?}");
-            let s2 = format!("{second:?}");
-
             let value = resolve_value(first, ctx);
             match value {
                 ValueKind::Null => resolve_value(second, ctx),
@@ -331,17 +328,12 @@ fn resolve_index<'bp>(
 ) -> ValueExpr<'bp> {
     match src {
         ValueExpr::DynMap(value) | ValueExpr::Composite(value) => {
-            let type_info = value.type_info();
             let state = or_null!(value.as_state());
             let map = match state.as_any_map() {
-                Some(map) => {
-                    anathema_debug::debug_to_file!("there is a {type_info:?} | {:?}", value.key());
-                    map
-                }
+                Some(map) => map,
                 None => {
                     // This will happen in the event of an `Option<DynMap>`
                     // where the `Option` is `None`
-                    anathema_debug::debug_to_file!("there is no {type_info:?} | {:?}", value.key());
                     value.subscribe(ctx.sub);
                     ctx.sub_to.push(value.sub_key());
                     return ValueExpr::Null;
@@ -367,14 +359,8 @@ fn resolve_index<'bp>(
             ctx.sub_to.push(value.sub_key());
             let state = or_null!(value.as_state());
             let list = match state.as_any_list() {
-                Some(list) => {
-                    let key = value.owned_key();
-                    value.unsubscribe(ctx.sub);
-                    ctx.sub_to.remove(value.sub_key());
-                    list
-                }
+                Some(list) => list,
                 None => {
-                    let key = value.owned_key();
                     value.subscribe(ctx.sub);
                     ctx.sub_to.push(value.sub_key());
                     return ValueExpr::Null;
@@ -388,11 +374,7 @@ fn resolve_index<'bp>(
             //
             // If the value does exist unsubscribe from the underlying map / state
             let val = match val {
-                Some(val) => {
-                    value.unsubscribe(ctx.sub);
-                    ctx.sub_to.remove(value.sub_key());
-                    val
-                }
+                Some(val) => val,
                 None => {
                     value.subscribe(ctx.sub);
                     ctx.sub_to.push(value.sub_key());
@@ -513,7 +495,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{Changes, Map, States, drain_changes};
+    use anathema_state::{Changes, Map, Maybe, States, drain_changes};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use crate::testing::setup;
@@ -570,6 +552,8 @@ mod test {
             test.with_state(|state| state.list.remove(0));
 
             drain_changes(&mut changes);
+            assert!(!changes.is_empty());
+
             for (subs, _) in changes.drain() {
                 if subs.iter().any(|sub| sub == value.sub) {
                     value.reload(&test.attributes);
@@ -588,13 +572,13 @@ mod test {
             // let expr = index(index(ident("state"), strlit("opt_map")), strlit("key"));
             let expr = index(ident("state"), strlit("opt_map"));
 
-            let mut value = test.eval(&expr);
+            let value = test.eval(&expr);
             assert!(value.as_str().is_none());
 
             test.with_state(|state| {
                 let mut map = Map::empty();
                 map.insert("key", 123);
-                state.opt_map.set(Some(map));
+                state.opt_map.set(Maybe::some(map));
             });
 
             drain_changes(&mut changes);

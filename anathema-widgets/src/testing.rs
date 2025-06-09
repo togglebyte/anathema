@@ -1,20 +1,21 @@
+use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
 use anathema_state::States;
 use anathema_store::tree::root_node;
 use anathema_templates::Document;
-use anathema_value_resolver::{AttributeStorage, Attributes, Scope};
+use anathema_value_resolver::{AttributeStorage, Scope};
 
 use crate::components::ComponentRegistry;
 use crate::layout::{LayoutCtx, Viewport};
-use crate::{eval_blueprint, Components, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Widget, WidgetTree, WidgetTreeView};
-
-pub struct TestCase {}
+use crate::{
+    Components, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Widget, WidgetTree, WidgetTreeView, eval_blueprint,
+};
 
 pub fn with_template<F>(tpl: &str, f: F)
 where
-    F: Fn(WidgetTreeView<'_, '_>),
+    F: for<'bp> Fn(WidgetTreeView<'_, 'bp>, &mut AttributeStorage<'bp>),
 {
     let mut tree = WidgetTree::empty();
     let mut doc = Document::new(tpl);
@@ -56,13 +57,14 @@ where
 
     let filter = crate::layout::LayoutFilter::fixed();
     let mut for_each = LayoutForEach::new(tree.view_mut(), &scope, filter, None);
-    for_each.each(&mut layout_ctx, |ctx, widget, children| {
-        _ = widget.layout(children, ctx.viewport.constraints(), ctx)?;
-        Ok(ControlFlow::Break(()))
-    }).unwrap();
+    _ = for_each
+        .each(&mut layout_ctx, |ctx, widget, children| {
+            _ = widget.layout(children, ctx.viewport.constraints(), ctx)?;
+            Ok(ControlFlow::Break(()))
+        })
+        .unwrap();
 
-
-    f(tree.view_mut());
+    f(tree.view_mut(), layout_ctx.attribute_storage);
 }
 
 // -----------------------------------------------------------------------------
@@ -77,11 +79,11 @@ impl Widget for Many {
         &mut self,
         mut children: crate::LayoutForEach<'_, 'bp>,
         constraints: crate::layout::Constraints,
-        id: crate::WidgetId,
+        _: crate::WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> crate::error::Result<anathema_geometry::Size> {
         let mut size = Size::ZERO;
-        children.each(ctx, |ctx, child, children| {
+        _ = children.each(ctx, |ctx, child, children| {
             let child_size: Size = child.layout(children, constraints, ctx)?.into();
             size.width = size.width.max(child_size.width);
             size.height += child_size.height;
@@ -93,36 +95,45 @@ impl Widget for Many {
 
     fn position<'bp>(
         &mut self,
-        children: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
-        id: crate::WidgetId,
+        mut children: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
+        _: crate::WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: crate::layout::PositionCtx,
     ) {
-        // 
+        _ = children.each(|child, children| {
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            ControlFlow::Continue(())
+        });
     }
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct Text;
+pub(crate) struct Text(String);
 
 impl Widget for Text {
     fn layout<'bp>(
         &mut self,
-        children: crate::LayoutForEach<'_, 'bp>,
-        constraints: crate::layout::Constraints,
+        _: crate::LayoutForEach<'_, 'bp>,
+        _: crate::layout::Constraints,
         id: crate::WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> crate::error::Result<anathema_geometry::Size> {
-        Ok(Size::ZERO)
+        let attributes = ctx.attributes(id);
+        let Some(value) = attributes.value() else { return Ok(Size::ZERO) };
+
+        let mut buffer = String::new();
+        value.strings(|s| write!(&mut buffer, "{s}").is_ok());
+        self.0 = buffer;
+
+        Ok(Size::new(self.0.chars().count() as u16, 1))
     }
 
     fn position<'bp>(
         &mut self,
-        children: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
-        id: crate::WidgetId,
-        attribute_storage: &AttributeStorage<'bp>,
-        ctx: crate::layout::PositionCtx,
+        _: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
+        _: crate::WidgetId,
+        _: &AttributeStorage<'bp>,
+        _: crate::layout::PositionCtx,
     ) {
     }
 }
-

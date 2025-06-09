@@ -135,19 +135,11 @@ mod test {
             eprintln!("- drop: {}", self.0);
         }
     }
-    struct DMRef<'a>(&'a DM);
-    impl Drop for DMRef<'_> {
-        fn drop(&mut self) {
-            eprintln!("- drop ref: {}", self.0.0);
-        }
-    }
 
     #[test]
     fn remove() {
         let mut map = Map::empty();
         map.insert("a", DM(1));
-        let a = map.get("a").unwrap();
-
         assert!(map.remove("a").is_some());
         assert!(map.is_empty());
     }
