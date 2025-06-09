@@ -166,3 +166,27 @@ where
         self.a.filter(arg, attributes) | self.b.filter(arg, attributes)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use anathema_templates::{Document, ToSourceKind};
+
+    use super::*;
+    use crate::{eval_blueprint, WidgetTree};
+
+    #[test]
+    fn filter_by_tag() {
+        let tpl = "
+        many
+            many
+                text '1'
+            text '2'
+            many
+                many
+                    text '3'
+        ";
+
+        crate::testing::with_template(tpl, |tree| {
+        });
+    }
+}

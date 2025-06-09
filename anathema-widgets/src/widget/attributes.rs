@@ -9,46 +9,6 @@ use crate::paint::CellAttributes;
 use crate::widget::ValueKey;
 use crate::WidgetId;
 
-// impl CellAttributes for Attributes<'_> {
-//     fn with_str(&self, key: &str, f: &mut dyn FnMut(&str)) {
-//         panic!("maybe this can be removed?");
-//         // let Some(value) = self.get_val(key).and_then(|value| value.load_common_val()) else { return };
-//         // let Some(value) = value.to_common() else { return };
-//         // let CommonVal::Str(s) = value else { return };
-//         // f(s);
-//     }
-
-//     fn get_i64(&self, key: &str) -> Option<i64> {
-//         self.get_int(key)
-//     }
-
-//     fn get_u8(&self, key: &str) -> Option<u8> {
-//         self.get_int(key).map(|i| i as u8)
-//     }
-
-//     fn get_hex(&self, key: &str) -> Option<anathema_state::Hex> {
-//         let value = self.get_val(key)?;
-//         let value = value.load_common_val()?;
-//         match value.to_common()? {
-//             CommonVal::Hex(hex) => Some(hex),
-//             _ => None,
-//         }
-//     }
-
-//     fn get_color(&self, key: &str) -> Option<anathema_state::Color> {
-//         let value = self.get_val(key)?;
-//         let value = value.load_common_val()?;
-//         match value.to_common()? {
-//             CommonVal::Color(color) => Some(color),
-//             _ => None,
-//         }
-//     }
-
-//     fn get_bool(&self, key: &str) -> bool {
-//         Attributes::get_bool(self, key)
-//     }
-// }
-
 #[cfg(test)]
 mod test {
     use super::*;

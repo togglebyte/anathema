@@ -114,7 +114,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         let mut for_each = LayoutForEach::new(tree, &scope, filter, None);
         let constraints = self.constraints;
         _ = for_each.each(ctx, |ctx, widget, children| {
-            let _ = widget.layout(children, constraints, ctx)?;
+            _ = widget.layout(children, constraints, ctx)?;
             Ok(ControlFlow::Break(()))
         })?;
         Ok(())
