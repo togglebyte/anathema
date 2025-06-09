@@ -163,7 +163,7 @@ where
     type Kind = A::Kind;
 
     fn filter(&self, arg: &Self::Kind, attributes: &mut AttributeStorage<'bp>) -> bool {
-        self.a.filter(arg, attributes) | self.b.filter(arg, attributes)
+        self.a.filter(arg, attributes) && self.b.filter(arg, attributes)
     }
 }
 
