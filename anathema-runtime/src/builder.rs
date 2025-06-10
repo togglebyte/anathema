@@ -176,22 +176,27 @@ impl<G: GlobalEventHandler> Builder<G> {
         //       however with this enabled the `with_frame` function
         //       on the runtime will repeat
         loop {
-            match f(&mut inst) {
-                Ok(()) => (),
-                e => match e {
+            if let Err(e) = f(&mut inst) {
+                let res = match e {
                     Ok(_) => continue,
                     Err(Error::Stop) => break Ok(()),
-                    Err(Error::Template(_error)) => todo!(),
-                    Err(Error::Widget(err)) => panic!("this should not panic in the future: {err}"),
-                    Err(e) => break Err(e),
-                },
+                    Err(Error::Template(err)) => inst.show_error(&format!("{err}")),
+                    Err(Error::Widget(err)) => inst.show_error(&format!("{err}")),
+                    e => break e,
+                };
+                if !res.is_ok() {
+                    break res;
+                }
             }
-            match inst.reload() {
+            let res = match inst.reload() {
                 Ok(()) => continue,
-                Err(Error::Stop) => todo!(),
-                Err(Error::Template(_error)) => todo!(),
-                Err(Error::Widget(_error)) => todo!(),
+                Err(Error::Stop) => break Ok(()),
+                Err(Error::Template(err)) => inst.show_error(&format!("{err}")),
+                Err(Error::Widget(err)) => inst.show_error(&format!("{err}")),
                 Err(e) => break Err(e),
+            };
+            if !res.is_ok() {
+                break res;
             }
         }
     }

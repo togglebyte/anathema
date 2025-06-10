@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
+use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
@@ -17,8 +17,8 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer,
-    WidgetId, WidgetKind, WidgetTree,
+    Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind, WidgetTree,
+    eval_blueprint, update_widget,
 };
 use flume::Receiver;
 use notify::RecommendedWatcher;
@@ -31,6 +31,7 @@ use crate::{Error, REBUILD};
 mod testing;
 
 pub struct Runtime<G> {
+    pub(super) error_stuff: Option<(Document, Blueprint, Globals)>,
     pub(super) blueprint: Blueprint,
     pub(super) globals: Globals,
     pub(super) factory: Factory,
@@ -98,6 +99,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             deferred_components: DeferredComponents::new(),
             sleep_micros,
             global_event_handler,
+            error_stuff: None,
         };
         Ok(inst)
     }
@@ -105,18 +107,28 @@ impl<G: GlobalEventHandler> Runtime<G> {
     pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
     where
         B: Backend,
-        F: FnMut(&mut B, Frame<'_, '_, G>) -> Result<()>,
+        F: FnMut(&mut B, &mut Frame<'_, '_, G>) -> Result<()>,
     {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
-        let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
-        frame.init_tree()?;
-        f(backend, frame)
+        let mut frame = self.next_frame(&mut tree, &mut attribute_storage);
+        match frame.init_tree() {
+            Ok(_) => {}
+            Err(e) => {
+                frame.return_state();
+                return Err(e);
+            }
+        }
+        let res = f(backend, &mut frame);
+        if res.is_ok() || matches!(res, Err(Error::Template(_) | Error::Widget(_))) {
+            frame.return_state();
+        }
+        res
     }
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let sleep_micros = self.sleep_micros;
-        self.with_frame(backend, |backend, mut frame| {
+        let res = self.with_frame(backend, |backend, frame| {
             // Perform the initial tick so tab index has a tree to work with
             frame.tick(backend)?;
 
@@ -141,21 +153,31 @@ impl<G: GlobalEventHandler> Runtime<G> {
                 std::thread::sleep(Duration::from_micros(sleep_micros));
 
                 if REBUILD.swap(false, Ordering::Relaxed) {
-                    frame.return_state();
-                    backend.clear();
                     break Ok(());
                 }
             }
-        })?;
+        });
 
-        Ok(())
+        if res.is_ok() {
+            backend.clear();
+            self.error_stuff = None;
+        }
+        res
     }
 
     pub fn next_frame<'frame, 'bp>(
         &'bp mut self,
         tree: &'frame mut WidgetTree<'bp>,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
-    ) -> Result<Frame<'frame, 'bp, G>> {
+    ) -> Frame<'frame, 'bp, G> {
+        if self.error_stuff.is_some() {
+            return self.next_frame_err(tree, attribute_storage);
+        }
+        let Some((document, blueprint, globals)) = match self.error_stuff.as_ref() {
+            Some(v) => v,
+            None => (&self.document, &self.blueprint, &self.globals),
+        };
+
         let layout_ctx = LayoutCtx::new(
             &self.globals,
             &self.factory,
@@ -168,7 +190,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             &mut self.viewport,
         );
 
-        let inst = Frame {
+        Frame {
             document: &self.document,
             blueprint: &self.blueprint,
             tree,
@@ -188,9 +210,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             global_event_handler: &self.global_event_handler,
             tabindex: None,
-        };
-
-        Ok(inst)
+        }
     }
 
     pub(super) fn reload(&mut self) -> Result<()> {
@@ -206,6 +226,33 @@ impl<G: GlobalEventHandler> Runtime<G> {
         let (blueprint, globals) = self.document.compile()?;
         self.blueprint = blueprint;
         self.globals = globals;
+
+        Ok(())
+    }
+
+    fn error_document(error: &str) -> String {
+        format!(
+            r#"
+align [alignment: center]
+    border [foreground: "white", background: "red"]
+        padding [left: 1, right: 1]
+            vstack
+                text "An error occurred:"
+                text {error:?}
+        "#
+        )
+    }
+
+    pub(super) fn show_error(&mut self, error: &str) -> Result<()> {
+        clear_all_changes();
+        clear_all_subs();
+
+        self.components = Components::new();
+        self.floating_widgets = FloatingWidgets::empty();
+
+        let mut document = Document::new(Self::error_document(error));
+        let (blueprint, globals) = document.compile()?;
+        self.error_stuff = Some((document, blueprint, globals));
 
         Ok(())
     }
