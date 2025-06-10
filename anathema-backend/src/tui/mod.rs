@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use anathema_geometry::{LocalPos, Pos, Size};
 use anathema_value_resolver::AttributeStorage;
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::ComponentEvent;
 pub use anathema_widgets::{Attributes, Style};
 use anathema_widgets::{GlyphMap, PaintChildren, WidgetRenderer};
 use crossterm::cursor::{RestorePosition, SavePosition};
@@ -153,7 +153,7 @@ impl Backend for TuiBackend {
         self.screen.size()
     }
 
-    fn next_event(&mut self, timeout: Duration) -> Option<Event> {
+    fn next_event(&mut self, timeout: Duration) -> Option<ComponentEvent> {
         self.events.poll(timeout)
     }
 

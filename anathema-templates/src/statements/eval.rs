@@ -153,11 +153,13 @@ impl Scope {
             }
         }
 
-        let name = ctx.components.name(component_id);
         let body = ctx.load_component(component_id, slots)?;
+        let name_id = ctx.components.name(component_id);
+        let name = ctx.strings.get_unchecked(name_id);
 
         let component = Component {
             name,
+            name_id,
             id: component_id,
             body,
             attributes,

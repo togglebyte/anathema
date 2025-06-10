@@ -199,6 +199,7 @@ impl Evaluator for ComponentEval {
 
         let comp_widget = component::Component::new(
             &input.name,
+            input.name_id,
             &input.body,
             component,
             state_id,

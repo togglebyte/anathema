@@ -11,7 +11,7 @@ pub struct Strings {
 }
 
 impl Strings {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let mut inner = StringStore::empty();
         let children = inner.push(CHILDREN);
 
@@ -34,7 +34,7 @@ impl Strings {
         self.inner.get_ref_unchecked(string_id)
     }
 
-    pub fn lookup(&self, string: &str) -> Option<StringId> {
-        self.inner.lookup(string)
+    pub fn lookup(&self, string: impl AsRef<str>) -> Option<StringId> {
+        self.inner.lookup(string.as_ref())
     }
 }

@@ -9,7 +9,7 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::ComponentEvent;
 use anathema_widgets::components::{
     AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
 };
@@ -230,7 +230,7 @@ pub struct Frame<'rt, 'bp, G> {
 }
 
 impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
-    pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
+    pub fn handle_global_event(&mut self, event: ComponentEvent) -> Option<ComponentEvent> {
         let mut changed = false;
         let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut(), &mut changed);
 
@@ -257,21 +257,21 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         event
     }
 
-    pub fn event(&mut self, event: Event) {
+    pub fn event(&mut self, event: ComponentEvent) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
         let Some(event) = self.handle_global_event(event) else { return };
-        if let Event::Stop = event {
+        if let ComponentEvent::Stop = event {
             self.stop = true;
             return;
         }
 
         match event {
-            Event::Noop => return,
-            Event::Stop => todo!(),
+            ComponentEvent::Noop => return,
+            ComponentEvent::Stop => todo!(),
             // Component specific event
-            Event::Blur | Event::Focus | Event::Key(_) => {
+            ComponentEvent::Blur | ComponentEvent::Focus | ComponentEvent::Key(_) => {
                 let Some(Index {
                     widget_id, state_id, ..
                 }) = self.tabindex
@@ -280,13 +280,13 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 };
                 self.send_event_to_component(event, widget_id, state_id);
             }
-            Event::Mouse(_) | Event::Resize(_) => {
+            ComponentEvent::Mouse(_) | ComponentEvent::Resize(_) => {
                 for i in 0..self.layout_ctx.components.len() {
                     let Some((widget_id, state_id)) = self.layout_ctx.components.get(i) else { continue };
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
-            Event::Tick(_) => panic!("this event should never be sent to the runtime"),
+            ComponentEvent::Tick(_) => panic!("this event should never be sent to the runtime"),
         }
     }
 
@@ -376,7 +376,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
     fn poll_events<B: Backend>(&mut self, remaining: Duration, fps_now: Instant, backend: &mut B) {
         while let Some(event) = backend.next_event(remaining) {
-            if let Event::Resize(size) = event {
+            if let ComponentEvent::Resize(size) = event {
                 self.layout_ctx.viewport.resize(size);
                 self.needs_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
@@ -434,25 +434,36 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        while let Some(event) = self.assoc_events.next() {
-            let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(event.parent.into()) else {
-                return;
-            };
+        while let Some(assoc_event) = self.assoc_events.next() {
+            let mut parent = assoc_event.parent;
+            let external_ident = self.document.strings.get_ref_unchecked(assoc_event.external());
+            let internal_ident = self.document.strings.get_ref_unchecked(assoc_event.internal());
+            let sender = self.document.strings.get_ref_unchecked(assoc_event.sender);
+            let mut event = assoc_event.to_event(internal_ident, external_ident, sender);
 
-            panic!(
-                "this is going to be reworked. this was working while SharedState didn't have a lifetime, it does now so... figure it out"
-            );
-            // let Some(remote_state) = self.layout_ctx.states.get(event.state) else { return };
-            // let Some(remote_state) = remote_state.shared_state() else { return };
-            // self.with_component(widget_id, state_id, |comp, children, ctx| {
-            //     // TODO:
-            //     // Create a new event type
-            //     // if the event is stopped then return from drain_assoc_events
+            loop {
+                let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(parent.into()) else {
+                    return;
+                };
 
-            //     let event_ident = self.document.strings.get_ref_unchecked(event.external);
-            //     comp.dyn_component
-            //         .any_receive(children, ctx, event_ident, &*remote_state);
-            // });
+                let stop_propagation = self
+                    .with_component(widget_id, state_id, |comp, children, ctx| {
+                        let next_parent = ctx.parent();
+                        comp.dyn_component.any_component_event(children, ctx, &mut event);
+
+                        parent = match next_parent {
+                            Some(p) => p,
+                            None => return true,
+                        };
+
+                        event.should_stop_propagation()
+                    })
+                    .unwrap_or(true);
+
+                if stop_propagation {
+                    break;
+                }
+            }
         }
     }
 
@@ -521,7 +532,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         Ok(())
     }
 
-    fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
+    fn send_event_to_component(&mut self, event: ComponentEvent, widget_id: WidgetId, state_id: StateId) {
         self.with_component(widget_id, state_id, |comp, elements, ctx| {
             comp.dyn_component.any_event(elements, ctx, event);
         });
@@ -537,6 +548,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             let WidgetKind::Component(component) = &mut container.kind else {
                 panic!("this is always a component")
             };
+
             let Some(state) = self.layout_ctx.states.get_mut(state_id) else {
                 panic!("a component always has a state")
             };
@@ -548,6 +560,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
                     let ctx = AnyComponentContext::new(
                         component.parent.map(Into::into),
+                        component.name_id,
                         state_id,
                         component.assoc_functions,
                         self.assoc_events,
@@ -570,7 +583,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         for i in 0..self.layout_ctx.components.len() {
             let Some((widget_id, state_id)) = self.layout_ctx.components.get_ticking(i) else { continue };
-            let event = Event::Tick(dt);
+            let event = ComponentEvent::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
         }
     }

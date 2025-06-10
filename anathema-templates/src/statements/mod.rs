@@ -2,7 +2,7 @@ use anathema_store::smallmap::SmallMap;
 
 use crate::ComponentBlueprintId;
 use crate::blueprints::Blueprint;
-use crate::components::ComponentTemplates;
+use crate::components::{AssocEventMapping, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::strings::{StringId, Strings};
@@ -61,7 +61,7 @@ impl Context<'_> {
 pub(crate) enum Statement {
     LoadValue(Expression),
     LoadAttribute { key: StringId, value: Expression },
-    AssociatedFunction { internal: StringId, external: StringId },
+    AssociatedFunction(AssocEventMapping),
     Component(ComponentBlueprintId),
     ComponentSlot(StringId),
     Node(StringId),
@@ -118,11 +118,11 @@ impl Statements {
         v
     }
 
-    fn take_assoc_functions(&mut self) -> Vec<(StringId, StringId)> {
+    fn take_assoc_functions(&mut self) -> Vec<AssocEventMapping> {
         let mut v = vec![];
         while matches!(&self.0.first(), Some(Statement::AssociatedFunction { .. })) {
             match self.0.remove(0) {
-                Statement::AssociatedFunction { internal, external } => v.push((internal, external)),
+                Statement::AssociatedFunction(map) => v.push(map),
                 _ => unreachable!(),
             }
         }
@@ -229,8 +229,8 @@ mod test {
         }
     }
 
-    pub(crate) fn component(id: impl Into<ComponentBlueprintId>) -> Statement {
-        Statement::Component(id.into())
+    pub(crate) fn component(id: ComponentBlueprintId) -> Statement {
+        Statement::Component(id)
     }
 
     pub(crate) fn slot(id: usize) -> Statement {
@@ -238,11 +238,8 @@ mod test {
         Statement::ComponentSlot(id.into())
     }
 
-    pub(crate) fn associated_fun(internal: usize, external: usize) -> Statement {
-        Statement::AssociatedFunction {
-            internal: StringId::from_usize(internal),
-            external: StringId::from_usize(external),
-        }
+    pub(crate) fn associated_fun(internal: StringId, external: StringId) -> Statement {
+        Statement::AssociatedFunction { internal, external }
     }
 
     pub(crate) fn node(id: usize) -> Statement {

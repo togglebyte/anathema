@@ -24,7 +24,7 @@ impl Component for C {
     type Message = ();
     type State = Num;
 
-    fn tick(
+    fn on_tick(
         &mut self,
         state: &mut Self::State,
         elements: Children<'_, '_>,

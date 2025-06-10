@@ -1,6 +1,7 @@
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
+use crate::components::AssocEventMapping;
 use crate::{ComponentBlueprintId, Expression};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -33,10 +34,11 @@ pub struct Else {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
     pub name: String,
+    pub name_id: StringId,
     pub id: ComponentBlueprintId,
     pub body: Vec<Blueprint>,
     pub attributes: SmallMap<String, Expression>,
-    pub assoc_functions: Vec<(StringId, StringId)>,
+    pub assoc_functions: Vec<AssocEventMapping>,
     /// The parent component in the blueprint
     pub parent: Option<ComponentBlueprintId>,
 }

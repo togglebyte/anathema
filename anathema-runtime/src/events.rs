@@ -1,19 +1,24 @@
 use anathema_widgets::components::deferred::DeferredComponents;
-use anathema_widgets::components::events::{Event, KeyCode, KeyEvent};
+use anathema_widgets::components::events::{ComponentEvent, KeyCode, KeyEvent};
 use anathema_widgets::tabindex::TabIndex;
 
 pub trait GlobalEventHandler {
     fn handle(
         &self,
-        event: Event,
+        event: ComponentEvent,
         tabindex: &mut TabIndex<'_, '_>,
         components: &mut DeferredComponents,
-    ) -> Option<Event>;
+    ) -> Option<ComponentEvent>;
 }
 
 impl GlobalEventHandler for () {
-    fn handle(&self, event: Event, tabindex: &mut TabIndex<'_, '_>, _: &mut DeferredComponents) -> Option<Event> {
-        if let Event::Key(KeyEvent {
+    fn handle(
+        &self,
+        event: ComponentEvent,
+        tabindex: &mut TabIndex<'_, '_>,
+        _: &mut DeferredComponents,
+    ) -> Option<ComponentEvent> {
+        if let ComponentEvent::Key(KeyEvent {
             code: KeyCode::Tab,
             ctrl: false,
             ..
@@ -23,7 +28,7 @@ impl GlobalEventHandler for () {
             return None;
         }
 
-        if let Event::Key(KeyEvent {
+        if let ComponentEvent::Key(KeyEvent {
             code: KeyCode::BackTab, ..
         }) = event
         {
@@ -32,7 +37,7 @@ impl GlobalEventHandler for () {
         }
 
         if event.is_ctrl_c() {
-            return Some(Event::Stop);
+            return Some(ComponentEvent::Stop);
         }
         Some(event)
     }
@@ -40,14 +45,14 @@ impl GlobalEventHandler for () {
 
 impl<T> GlobalEventHandler for T
 where
-    T: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>,
+    T: Fn(ComponentEvent, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<ComponentEvent>,
 {
     fn handle(
         &self,
-        event: Event,
+        event: ComponentEvent,
         tabindex: &mut TabIndex<'_, '_>,
         components: &mut DeferredComponents,
-    ) -> Option<Event> {
+    ) -> Option<ComponentEvent> {
         self(event, tabindex, components)
     }
 }

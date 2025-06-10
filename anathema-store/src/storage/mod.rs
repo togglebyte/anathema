@@ -1,4 +1,4 @@
-use crate::slab::{Slab, SlabIndex};
+use crate::slab::{Slab, SlabIndex, Ticket};
 
 pub mod strings;
 
@@ -8,10 +8,7 @@ pub struct Storage<I, K, V>(Slab<I, (K, V)>);
 /// and associate values with keys
 impl<I, K, V> Storage<I, K, V>
 where
-    I: SlabIndex, // I: From<usize>,
-                  // I: Into<usize>,
-                  // I: Copy,
-                  // I: PartialEq,
+    I: SlabIndex,
 {
     /// Create an empty store
     pub const fn empty() -> Self {
@@ -55,6 +52,14 @@ where
         }
     }
 
+    pub fn checkout(&mut self, index: I) -> Ticket<I, (K, V)> {
+        self.0.checkout(index)
+    }
+
+    pub fn restore(&mut self, ticket: Ticket<I, (K, V)>) {
+        self.0.restore(ticket)
+    }
+
     /// Get a reference by index
     pub fn get(&self, index: I) -> Option<&(K, V)> {
         self.0.get(index)
@@ -63,6 +68,13 @@ where
     /// Get a mutable reference by index
     pub fn get_mut(&mut self, index: I) -> Option<&mut (K, V)> {
         self.0.get_mut(index)
+    }
+
+    pub fn index_by_key(&self, key: K) -> Option<I>
+    where
+        K: PartialEq,
+    {
+        self.0.iter().filter(|(_, (k, _))| key.eq(k)).map(|(i, _)| i).next()
     }
 
     /// Get a value by index assuming the value exists.

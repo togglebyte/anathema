@@ -65,6 +65,7 @@ impl Display for ParseError {
             ParseErrorKind::InvalidDedent => "dedent does not match previous indentation levels".into(),
             ParseErrorKind::InvalidOperator(_op) => "invalid operator: {op}".into(),
             ParseErrorKind::UnexpectedToken(_msg) => "unexpected token: {msg}".into(),
+            ParseErrorKind::UnregisteredComponent(name) => "unregistered component: {name}".into(),
             ParseErrorKind::InvalidKey => todo!(),
         };
 
@@ -106,4 +107,5 @@ pub enum ParseErrorKind {
     InvalidOperator(Operator),
     UnexpectedToken(String),
     InvalidKey,
+    UnregisteredComponent(String),
 }

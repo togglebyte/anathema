@@ -4,7 +4,7 @@ use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_widgets::components::deferred::DeferredComponents;
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::ComponentEvent;
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::tabindex::TabIndex;
 use anathema_widgets::{Factory, Widget};
@@ -86,7 +86,6 @@ impl<G: GlobalEventHandler> Builder<G> {
         component: C,
         state: C::State,
     ) -> Result<ComponentId<C::Message>> {
-        let ident = ident.into();
         let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_component(id, component, state);
         Ok(id.into())
@@ -106,7 +105,6 @@ impl<G: GlobalEventHandler> Builder<G> {
     {
         let component = C::default();
         let state = C::State::default();
-        let ident = ident.into();
         let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_component(id, component, state);
         Ok(id.into())
@@ -126,7 +124,6 @@ impl<G: GlobalEventHandler> Builder<G> {
         FS: 'static + FnMut() -> C::State,
         C: Component + 'static,
     {
-        let ident = ident.into();
         let id = self.document.add_component(ident, template.to_source_kind())?.into();
         self.component_registry.add_prototype(id, proto, state);
         Ok(())
@@ -134,7 +131,7 @@ impl<G: GlobalEventHandler> Builder<G> {
 
     pub fn with_global_event_handler<Eh>(self, global_event_handler: Eh) -> Builder<Eh>
     where
-        Eh: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>,
+        Eh: Fn(ComponentEvent, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<ComponentEvent>,
     {
         Builder {
             factory: self.factory,
@@ -185,7 +182,7 @@ impl<G: GlobalEventHandler> Builder<G> {
                     Ok(_) => continue,
                     Err(Error::Stop) => break Ok(()),
                     Err(Error::Template(_error)) => todo!(),
-                    Err(Error::Widget(_error)) => {}
+                    Err(Error::Widget(err)) => panic!("this should not panic in the future: {err}"),
                     Err(e) => break Err(e),
                 },
             }

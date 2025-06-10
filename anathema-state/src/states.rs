@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use anathema_store::slab::{Slab, SlabIndex};
+use anathema_store::slab::{Slab, SlabIndex, Ticket};
 
 use crate::{Color, Hex, PendingValue, Type, Value};
 

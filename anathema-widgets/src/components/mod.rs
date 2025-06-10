@@ -5,13 +5,13 @@ use std::time::Duration;
 
 use anathema_state::{State, StateId, Value as StateValue};
 use anathema_store::slab::Slab;
-use anathema_templates::ComponentBlueprintId;
 use anathema_templates::strings::{StringId, Strings};
+use anathema_templates::{AssocEventMapping, ComponentBlueprintId};
 use anathema_value_resolver::{Attributes, ValueKind};
 use deferred::DeferredComponents;
 use flume::SendError;
 
-use self::events::{Event, KeyEvent, MouseEvent};
+use self::events::{ComponentEvent, KeyEvent, MouseEvent};
 use crate::layout::Viewport;
 use crate::query::Children;
 use crate::widget::Parent;
@@ -178,17 +178,19 @@ impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
     ///
     /// This will panic if the shared value is exclusively borrowed
     /// at the time of the invocation.
-    pub fn publish(&mut self, ident: &str) {
+    pub fn publish<D: 'static>(&mut self, ident: &str, data: D) {
         // If there is no parent there is no one to emit the event to.
         let Some(parent) = self.parent else { return };
 
         let Some(ident_id) = self.inner.strings.lookup(ident) else { return };
 
-        let ids = self.assoc_functions.iter().find(|(id, _)| *id == ident_id);
+        let ids = self.assoc_functions.iter().find(|assoc| assoc.internal == ident_id);
 
-        let Some((_, external)) = ids else { return };
+        let Some(assoc_event_map) = ids else { return };
 
-        self.inner.assoc_events.push(self.state_id, parent, *external);
+        self.inner
+            .assoc_events
+            .push(self.state_id, parent, *assoc_event_map, self.ident_id, data);
     }
 
     /// Get a value from the component attributes
@@ -220,8 +222,9 @@ impl<'frame, 'bp, T> DerefMut for Context<'frame, 'bp, T> {
 
 pub struct AnyComponentContext<'frame, 'bp> {
     parent: Option<Parent>,
+    ident_id: StringId,
     state_id: StateId,
-    assoc_functions: &'frame [(StringId, StringId)],
+    assoc_functions: &'frame [AssocEventMapping],
     assoc_events: &'frame mut AssociatedEvents,
     pub attributes: &'frame mut Attributes<'bp>,
     state: Option<&'frame mut StateValue<Box<dyn State>>>,
@@ -234,8 +237,9 @@ pub struct AnyComponentContext<'frame, 'bp> {
 impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
     pub fn new(
         parent: Option<Parent>,
+        ident_id: StringId,
         state_id: StateId,
-        assoc_functions: &'frame [(StringId, StringId)],
+        assoc_functions: &'frame [AssocEventMapping],
         assoc_events: &'frame mut AssociatedEvents,
         components: &'frame mut DeferredComponents,
         attributes: &'frame mut Attributes<'bp>,
@@ -246,6 +250,7 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
     ) -> Self {
         Self {
             parent,
+            ident_id,
             state_id,
             assoc_functions,
             assoc_events,
@@ -257,12 +262,78 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
             strings,
         }
     }
+
+    pub fn parent(&self) -> Option<Parent> {
+        self.parent
+    }
 }
 
 pub struct AssociatedEvent {
     pub state: StateId,
     pub parent: Parent,
-    pub external: StringId,
+    pub sender: StringId,
+    event_map: AssocEventMapping,
+    data: Box<dyn Any>,
+}
+
+impl AssociatedEvent {
+    pub fn to_event<'a>(&'a self, internal: &'a str, external: &'a str, sender: &'a str) -> Event<'a> {
+        Event {
+            external_ident: external,
+            internal_ident: internal,
+            data: &*self.data,
+            sender,
+            stop_propagation: false,
+        }
+    }
+
+    pub fn external(&self) -> StringId {
+        self.event_map.external
+    }
+
+    pub fn internal(&self) -> StringId {
+        self.event_map.internal
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Event<'a> {
+    pub sender: &'a str,
+    pub external_ident: &'a str,
+    pub internal_ident: &'a str,
+    data: &'a dyn Any,
+    stop_propagation: bool,
+}
+
+impl<'a> Event<'a> {
+    pub fn stop_propagation(&mut self) {
+        self.stop_propagation = true;
+    }
+
+    pub fn name(&self) -> &str {
+        self.external_ident
+    }
+
+    /// Try to cast the event payload to a specific type
+    pub fn data<T: 'static>(&self) -> Option<&'a T> {
+        self.data.downcast_ref()
+    }
+
+    /// Cast the event payload to a specific type
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the type is incorrect
+    pub fn data_unchecked<T: 'static>(&self) -> &'a T {
+        match self.data.downcast_ref() {
+            Some(data) => data,
+            None => panic!("invalid type"),
+        }
+    }
+
+    pub fn should_stop_propagation(&self) -> bool {
+        self.stop_propagation
+    }
 }
 
 // The reason the component can not have access
@@ -277,11 +348,20 @@ impl AssociatedEvents {
         Self { inner: vec![] }
     }
 
-    fn push(&mut self, state: StateId, parent: Parent, external: StringId) {
+    fn push<T: 'static>(
+        &mut self,
+        state: StateId,
+        parent: Parent,
+        assoc_event_map: AssocEventMapping,
+        sender: StringId,
+        data: T,
+    ) {
         self.inner.push(AssociatedEvent {
             state,
             parent,
-            external,
+            sender,
+            event_map: assoc_event_map,
+            data: Box::new(data),
         })
     }
 
@@ -364,10 +444,9 @@ pub trait Component: 'static {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn receive(
+    fn on_event(
         &mut self,
-        ident: &str,
-        value: &dyn State,
+        event: &mut Event<'_>,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
@@ -397,7 +476,12 @@ pub enum ComponentKind {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, ev: Event) -> Event;
+    fn any_event(
+        &mut self,
+        children: Children<'_, '_>,
+        ctx: AnyComponentContext<'_, '_>,
+        ev: ComponentEvent,
+    ) -> ComponentEvent;
 
     fn any_message(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>);
 
@@ -409,12 +493,11 @@ pub trait AnyComponent {
 
     fn any_resize(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_receive(
+    fn any_component_event(
         &mut self,
         children: Children<'_, '_>,
         ctx: AnyComponentContext<'_, '_>,
-        name: &str,
-        value: &dyn State,
+        value: &mut Event<'_>,
     );
 
     fn any_accept_focus(&self) -> bool;
@@ -427,7 +510,12 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, event: Event) -> Event {
+    fn any_event(
+        &mut self,
+        children: Children<'_, '_>,
+        mut ctx: AnyComponentContext<'_, '_>,
+        event: ComponentEvent,
+    ) -> ComponentEvent {
         let mut state = ctx
             .state
             .take()
@@ -435,12 +523,12 @@ where
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         match event {
-            Event::Blur | Event::Focus => (), // Application focus, not component focus.
-            Event::Key(ev) => self.on_key(ev, &mut *state, children, context),
-            Event::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
-            Event::Tick(dt) => self.tick(&mut *state, children, context, dt),
-            Event::Resize(_) => self.resize(&mut *state, children, context),
-            Event::Noop | Event::Stop => (),
+            ComponentEvent::Blur | ComponentEvent::Focus => (), // Application focus, not component focus.
+            ComponentEvent::Key(ev) => self.on_key(ev, &mut *state, children, context),
+            ComponentEvent::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
+            ComponentEvent::Tick(dt) => self.tick(&mut *state, children, context, dt),
+            ComponentEvent::Resize(_) => self.resize(&mut *state, children, context),
+            ComponentEvent::Noop | ComponentEvent::Stop => (),
         }
         event
     }
@@ -504,12 +592,11 @@ where
         self.resize(&mut *state, children, context);
     }
 
-    fn any_receive(
+    fn any_component_event(
         &mut self,
         children: Children<'_, '_>,
         mut ctx: AnyComponentContext<'_, '_>,
-        name: &str,
-        value: &dyn State,
+        event: &mut Event<'_>,
     ) {
         let mut state = ctx
             .state
@@ -519,7 +606,7 @@ where
 
         let context = Context::<T::State>::new(ctx);
 
-        self.receive(name, value, &mut *state, children, context);
+        self.on_event(event, &mut *state, children, context);
     }
 }
 

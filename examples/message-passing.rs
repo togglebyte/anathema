@@ -46,7 +46,7 @@ impl Component for Messages {
     type Message = String;
     type State = MessagesState;
 
-    fn message(
+    fn on_message(
         &mut self,
         message: Self::Message,
         state: &mut Self::State,

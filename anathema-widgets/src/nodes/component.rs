@@ -1,7 +1,7 @@
 use anathema_state::StateId;
 use anathema_store::storage::strings::StringId;
-use anathema_templates::ComponentBlueprintId;
 use anathema_templates::blueprints::Blueprint;
+use anathema_templates::{AssocEventMapping, ComponentBlueprintId};
 
 use crate::WidgetId;
 use crate::components::{AnyComponent, ComponentKind};
@@ -9,6 +9,7 @@ use crate::components::{AnyComponent, ComponentKind};
 #[derive(Debug)]
 pub struct Component<'bp> {
     pub name: &'bp str,
+    pub name_id: StringId,
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
@@ -18,24 +19,26 @@ pub struct Component<'bp> {
     pub widget_id: WidgetId,
     pub parent: Option<WidgetId>,
     pub kind: ComponentKind,
-    pub assoc_functions: &'bp [(StringId, StringId)],
+    pub assoc_functions: &'bp [AssocEventMapping],
     pub tabindex: u16,
 }
 
 impl<'bp> Component<'bp> {
     pub fn new(
         name: &'bp str,
+        name_id: StringId,
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
         component_id: ComponentBlueprintId,
         widget_id: WidgetId,
         kind: ComponentKind,
-        assoc_functions: &'bp [(StringId, StringId)],
+        assoc_functions: &'bp [AssocEventMapping],
         parent: Option<WidgetId>,
     ) -> Self {
         Self {
             name,
+            name_id,
             body,
             dyn_component,
             state_id,
@@ -50,14 +53,5 @@ impl<'bp> Component<'bp> {
 
     pub(crate) fn state_id(&self) -> StateId {
         self.state_id
-    }
-
-    pub fn lookup_assoc_function(&self, internal: StringId) -> Option<StringId> {
-        self.assoc_functions
-            .iter()
-            .find_map(|(int, ext)| match *int == internal {
-                true => Some(*ext),
-                false => None,
-            })
     }
 }

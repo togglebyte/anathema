@@ -14,7 +14,7 @@ impl Component for App {
 
     const TICKS: bool = false;
 
-    fn receive(
+    fn on_event(
         &mut self,
         ident: &str,
         _: &dyn State,

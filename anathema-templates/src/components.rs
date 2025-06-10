@@ -78,6 +78,12 @@ pub(crate) enum ComponentSource {
     Empty,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct AssocEventMapping {
+    pub internal: StringId,
+    pub external: StringId,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentBlueprintId(u32);
 
@@ -116,10 +122,16 @@ impl From<usize> for ComponentBlueprintId {
 
 pub(crate) struct ComponentTemplates {
     dependencies: Stack<ComponentBlueprintId>,
-    components: Storage<ComponentBlueprintId, String, ComponentSource>,
+    components: Storage<ComponentBlueprintId, StringId, ComponentSource>,
 }
 
 impl ComponentTemplates {
+    pub fn debug_bs(&self) {
+        for (a, (b, c)) in self.components.iter() {
+            eprintln!("{b:?}");
+        }
+    }
+
     pub(crate) fn new() -> Self {
         Self {
             dependencies: Stack::empty(),
@@ -127,20 +139,19 @@ impl ComponentTemplates {
         }
     }
 
-    pub(crate) fn name(&self, blueprint_id: ComponentBlueprintId) -> String {
+    pub(crate) fn name(&self, blueprint_id: ComponentBlueprintId) -> StringId {
         let (k, _) = self
             .components
             .get(blueprint_id)
             .expect("if a component is registered it has a name");
-        k.into()
+        *k
     }
 
-    pub(crate) fn insert_id(&mut self, name: impl Into<String>) -> ComponentBlueprintId {
-        self.components.push(name.into(), ComponentSource::Empty)
+    pub(crate) fn insert_id(&mut self, name: StringId) -> ComponentBlueprintId {
+        self.components.push(name, ComponentSource::Empty)
     }
 
-    pub(crate) fn insert(&mut self, ident: impl Into<String>, template: ComponentSource) -> ComponentBlueprintId {
-        let ident = ident.into();
+    pub(crate) fn insert(&mut self, ident: StringId, template: ComponentSource) -> ComponentBlueprintId {
         self.components.insert(ident, template)
     }
 
@@ -157,31 +168,21 @@ impl ComponentTemplates {
 
         self.dependencies.push(parent_id);
 
-        let ret = match self.components.remove(parent_id) {
-            Some((key, component_src)) => {
-                let template = match &component_src {
-                    ComponentSource::File { template, .. } => template,
-                    ComponentSource::InMemory(template) => template,
-                    ComponentSource::Empty => return Err(Error::MissingComponent(key)),
-                };
-                let ret = self.compile(template, globals, slots, strings, parent_id);
-                // This will re-insert the component in the same location
-                // as it was removed from since nothing else has
-                // written to the component storage since the component
-                // was removed.
-                let new_id = self.components.insert(key, component_src);
-
-                // If this assertion fails it means this is a component
-                // that was never registered. This should probably
-                // return an error stating so instead
-                assert_eq!(parent_id, new_id);
-                ret
-            }
-            _ => unreachable!(
-                "a component entry exists if it's mentioned in the template, even if the component it self doesn't exist"
-            ),
+        let ticket = self.components.checkout(parent_id);
+        let (key, component_src) = &*ticket;
+        let ident = strings.get_unchecked(*key);
+        let template = match component_src {
+            ComponentSource::File { template, .. } => template,
+            ComponentSource::InMemory(template) => template,
+            ComponentSource::Empty => return Err(Error::MissingComponent(ident)),
         };
 
+        // NOTE
+        // The ticket has to be restored to the component store,
+        // this is why the error is returned rather than using `?` on `self.compile`.
+        let ret = self.compile(template, globals, slots, strings, parent_id);
+
+        self.components.restore(ticket);
         self.dependencies.pop();
 
         ret
@@ -224,5 +225,9 @@ impl ComponentTemplates {
             }
         }
         Ok(())
+    }
+
+    pub(crate) fn get_component_by_string_id(&self, ident: StringId) -> Option<ComponentBlueprintId> {
+        self.components.index_by_key(ident)
     }
 }

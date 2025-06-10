@@ -1,5 +1,5 @@
 use super::Statement;
-use crate::components::ComponentTemplates;
+use crate::components::{AssocEventMapping, ComponentTemplates};
 use crate::error::{ParseError, ParseErrorKind, Result, src_line_no};
 use crate::expressions::Expression;
 use crate::expressions::parser::parse_expr;
@@ -332,8 +332,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         self.tokens.consume_indent();
 
         let ident = self.read_ident()?;
-        let ident = self.strings.get_unchecked(ident);
-        let component_id = self.components.insert_id(ident);
+        let component_id = match self.components.get_component_by_string_id(ident) {
+            Some(cid) => cid,
+            None => return Err(self.error(ParseErrorKind::UnregisteredComponent(self.strings.get_unchecked(ident)))),
+        };
         self.tokens.consume_indent();
 
         self.next_state();
@@ -386,7 +388,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             return Err(self.error(ParseErrorKind::UnterminatedAssociation));
         }
 
-        Ok(Some(Statement::AssociatedFunction { internal, external }))
+        Ok(Some(Statement::AssociatedFunction(AssocEventMapping {
+            internal,
+            external,
+        })))
     }
 
     fn parse_component_slot(&mut self) -> Result<Option<Statement>, ParseError> {

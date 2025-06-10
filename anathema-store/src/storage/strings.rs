@@ -38,6 +38,7 @@ impl Strings {
     }
 }
 
+// TODO: change this to u16
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StringId(usize);
 

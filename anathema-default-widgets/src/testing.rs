@@ -6,7 +6,7 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
 use anathema_value_resolver::{AttributeStorage, Attributes, Scope};
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::ComponentEvent;
 use anathema_widgets::layout::{Constraints, LayoutCtx, Viewport};
 use anathema_widgets::paint::{Glyph, paint};
 use anathema_widgets::query::{Children, Elements};
@@ -37,7 +37,7 @@ impl Backend for TestBackend {
         self.surface.size
     }
 
-    fn next_event(&mut self, _timeout: std::time::Duration) -> Option<Event> {
+    fn next_event(&mut self, _timeout: std::time::Duration) -> Option<ComponentEvent> {
         None
     }
 
