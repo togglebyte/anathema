@@ -15,12 +15,6 @@ pub use crate::error::{Error, Result};
 use crate::events::GlobalEventHandler;
 use crate::runtime::Runtime;
 
-fn error_doc() -> Document {
-    let template = "text 'you goofed up'";
-    let doc = Document::new(template);
-    doc
-}
-
 pub struct Builder<G> {
     factory: Factory,
     document: Document,
@@ -162,7 +156,6 @@ impl<G: GlobalEventHandler> Builder<G> {
         let mut inst = Runtime::new(
             self.component_registry,
             self.document,
-            error_doc(),
             self.factory,
             self.message_receiver,
             self.emitter,
@@ -176,24 +169,22 @@ impl<G: GlobalEventHandler> Builder<G> {
         //       however with this enabled the `with_frame` function
         //       on the runtime will repeat
         loop {
-            if let Err(e) = f(&mut inst) {
-                let res = match e {
-                    Ok(_) => continue,
-                    Err(Error::Stop) => break Ok(()),
-                    Err(Error::Template(err)) => inst.show_error(&format!("{err}")),
-                    Err(Error::Widget(err)) => inst.show_error(&format!("{err}")),
-                    e => break e,
-                };
-                if !res.is_ok() {
-                    break res;
-                }
+            let res = match f(&mut inst) {
+                Ok(()) => Ok(()),
+                Err(Error::Stop) => break Ok(()),
+                Err(Error::Template(err)) => inst.show_error(&format!("{err}")),
+                Err(Error::Widget(err)) => inst.show_error(&format!("{err}")),
+                e @ Err(_) => break e,
+            };
+            if !res.is_ok() {
+                break res;
             }
             let res = match inst.reload() {
                 Ok(()) => continue,
                 Err(Error::Stop) => break Ok(()),
                 Err(Error::Template(err)) => inst.show_error(&format!("{err}")),
                 Err(Error::Widget(err)) => inst.show_error(&format!("{err}")),
-                Err(e) => break Err(e),
+                e @ Err(_) => break e,
             };
             if !res.is_ok() {
                 break res;

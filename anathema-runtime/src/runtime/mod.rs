@@ -1,3 +1,4 @@
+use std::sync::LazyLock;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
@@ -59,11 +60,16 @@ impl Runtime<()> {
     }
 }
 
+const DUMMY_DOC: LazyLock<(Blueprint, Globals)> = LazyLock::new(|| {
+    Document::new("text 'a'")
+        .compile()
+        .expect("a perfectly valid document should always compile.")
+});
+
 impl<G: GlobalEventHandler> Runtime<G> {
     pub(crate) fn new(
         component_registry: ComponentRegistry,
         mut document: Document,
-        mut err_document: Document,
         factory: Factory,
         message_receiver: Receiver<ViewMessage>,
         emitter: Emitter,
@@ -72,14 +78,13 @@ impl<G: GlobalEventHandler> Runtime<G> {
         fps: u32,
         global_event_handler: G,
     ) -> Result<Self> {
-        let (blueprint, globals) = document.compile()?;
-        let Ok((_err_blueprint, _err_globals)) = err_document.compile() else {
-            panic!("the error display failed to compile")
+        let ((blueprint, globals), error) = match document.compile() {
+            Ok(v) => (v, None),
+            Err(e) => (DUMMY_DOC.clone(), Some(e)),
         };
-
         let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
 
-        let inst = Self {
+        let mut inst = Self {
             component_registry,
             components: Components::new(),
             document,
@@ -101,6 +106,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
             global_event_handler,
             error_stuff: None,
         };
+        if let Some(err) = error {
+            inst.show_error(&format!("{err}"))?;
+        }
         Ok(inst)
     }
 
@@ -170,16 +178,13 @@ impl<G: GlobalEventHandler> Runtime<G> {
         tree: &'frame mut WidgetTree<'bp>,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
     ) -> Frame<'frame, 'bp, G> {
-        if self.error_stuff.is_some() {
-            return self.next_frame_err(tree, attribute_storage);
-        }
-        let Some((document, blueprint, globals)) = match self.error_stuff.as_ref() {
-            Some(v) => v,
+        let (document, blueprint, globals) = match self.error_stuff.as_ref() {
+            Some((document, blueprint, globals)) => (document, blueprint, globals),
             None => (&self.document, &self.blueprint, &self.globals),
         };
 
         let layout_ctx = LayoutCtx::new(
-            &self.globals,
+            globals,
             &self.factory,
             &mut self.states,
             attribute_storage,
@@ -191,8 +196,8 @@ impl<G: GlobalEventHandler> Runtime<G> {
         );
 
         Frame {
-            document: &self.document,
-            blueprint: &self.blueprint,
+            document,
+            blueprint,
             tree,
             layout_ctx,
             changes: &mut self.changes,
