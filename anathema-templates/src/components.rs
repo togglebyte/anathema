@@ -6,7 +6,6 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::Storage;
 
-use crate::Lexer;
 use crate::blueprints::Blueprint;
 use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
@@ -15,6 +14,7 @@ use crate::statements::{Context, Statements};
 use crate::strings::{StringId, Strings};
 use crate::token::Tokens;
 use crate::variables::Variables;
+use crate::Lexer;
 
 pub trait ToSourceKind {
     fn to_path(self) -> SourceKind;
@@ -75,7 +75,6 @@ impl From<&str> for SourceKind {
 pub(crate) enum ComponentSource {
     File { path: PathBuf, template: String },
     InMemory(String),
-    Empty,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -99,6 +98,13 @@ impl SlabIndex for ComponentBlueprintId {
         Self: Sized,
     {
         Self(index as u32)
+    }
+}
+
+#[cfg(test)]
+impl From<u32> for ComponentBlueprintId {
+    fn from(value: u32) -> Self {
+        Self(value)
     }
 }
 
@@ -126,12 +132,6 @@ pub(crate) struct ComponentTemplates {
 }
 
 impl ComponentTemplates {
-    pub fn debug_bs(&self) {
-        for (a, (b, c)) in self.components.iter() {
-            eprintln!("{b:?}");
-        }
-    }
-
     pub(crate) fn new() -> Self {
         Self {
             dependencies: Stack::empty(),
@@ -145,10 +145,6 @@ impl ComponentTemplates {
             .get(blueprint_id)
             .expect("if a component is registered it has a name");
         *k
-    }
-
-    pub(crate) fn insert_id(&mut self, name: StringId) -> ComponentBlueprintId {
-        self.components.push(name, ComponentSource::Empty)
     }
 
     pub(crate) fn insert(&mut self, ident: StringId, template: ComponentSource) -> ComponentBlueprintId {
@@ -174,7 +170,6 @@ impl ComponentTemplates {
         let template = match component_src {
             ComponentSource::File { template, .. } => template,
             ComponentSource::InMemory(template) => template,
-            ComponentSource::Empty => return Err(Error::MissingComponent(ident)),
         };
 
         // NOTE
@@ -211,7 +206,6 @@ impl ComponentTemplates {
         self.components.iter().filter_map(|(_, (_, src))| match src {
             ComponentSource::File { path, .. } => Some(path),
             ComponentSource::InMemory(_) => None,
-            ComponentSource::Empty => None,
         })
     }
 
@@ -221,7 +215,7 @@ impl ComponentTemplates {
                 ComponentSource::File { path, template } => {
                     *template = read_to_string(path)?;
                 }
-                ComponentSource::InMemory(_) | ComponentSource::Empty => (),
+                ComponentSource::InMemory(_) => (),
             }
         }
         Ok(())

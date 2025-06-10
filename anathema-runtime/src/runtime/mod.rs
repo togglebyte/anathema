@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
+use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
@@ -17,8 +17,8 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind, WidgetTree,
-    eval_blueprint, update_widget,
+    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer,
+    WidgetId, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use notify::RecommendedWatcher;

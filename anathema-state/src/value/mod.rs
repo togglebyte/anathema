@@ -12,12 +12,12 @@ pub use self::list::List;
 pub use self::map::Map;
 pub use self::maybe::{Maybe, Nullable};
 use crate::states::State;
-use crate::store::subscriber::{SubKey, subscribe, unsubscribe};
+use crate::store::subscriber::{subscribe, unsubscribe, SubKey};
 use crate::store::values::{
-    OwnedValue, copy_val, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared,
+    drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, OwnedValue,
 };
-use crate::store::watchers::{Watcher, monitor, queue_monitor};
-use crate::store::{ValueKey, changed};
+use crate::store::watchers::{monitor, queue_monitor, Watcher};
+use crate::store::{changed, ValueKey};
 use crate::{Change, Subscriber};
 
 mod list;
@@ -157,11 +157,9 @@ impl<T: State> Value<T> {
 }
 
 /// Copy the inner value from the owned value.
-///
-/// This does not copy any auxillary data attached to the key
 impl<T: State + Copy> Value<T> {
     pub fn copy_value(&self) -> T {
-        copy_val(self.key.owned())
+        *self.to_ref()
     }
 }
 

@@ -560,7 +560,9 @@ mod test {
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
         let mut strings = Strings::new();
+        let x_id = strings.push("x");
         let mut components = ComponentTemplates::new();
+        components.insert(x_id, crate::components::ComponentSource::InMemory(String::new()));
         let lexer = Lexer::new(src, &mut strings);
         let tokens = Tokens::new(lexer.collect::<Result<Vec<_>>>().unwrap(), src.len());
         let parser = Parser::new(tokens, &mut strings, src, &mut components);
@@ -582,13 +584,13 @@ mod test {
     #[test]
     fn parse_single_instruction() {
         let actual = parse_ok("a").remove(0);
-        assert_eq!(node(1), actual);
+        assert_eq!(node(2), actual);
     }
 
     #[test]
     fn parse_attributes() {
         let src = "a [a: a]";
-        let expected = vec![node(1), load_attrib(1, ident("a")), eof()];
+        let expected = vec![node(2), load_attrib(2, ident("a")), eof()];
 
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
@@ -597,7 +599,7 @@ mod test {
     #[test]
     fn parse_text() {
         let src = "a 'a'      \n\n//some comments \n    ";
-        let expected = vec![node(1), load_value(strlit("a")), eof()];
+        let expected = vec![node(2), load_value(strlit("a")), eof()];
 
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
@@ -613,15 +615,15 @@ mod test {
             a
             ";
         let expected = vec![
-            node(1),
-            scope_start(),
             node(2),
             scope_start(),
             node(3),
+            scope_start(),
+            node(4),
+            scope_end(),
+            node(3),
             scope_end(),
             node(2),
-            scope_end(),
-            node(1),
             eof(),
         ];
 
@@ -634,11 +636,11 @@ mod test {
                     c
             ";
         let expected = vec![
-            node(1),
-            scope_start(),
             node(2),
             scope_start(),
             node(3),
+            scope_start(),
+            node(4),
             scope_end(),
             scope_end(),
             eof(),
@@ -699,7 +701,7 @@ mod test {
 
         assert_eq!(statements.remove(0), if_stmt(ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(2));
+        assert_eq!(statements.remove(0), node(1));
         assert_eq!(statements.remove(0), scope_end());
     }
 
@@ -715,7 +717,7 @@ mod test {
 
         assert_eq!(statements.remove(0), if_stmt(*ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(2));
+        assert_eq!(statements.remove(0), node(1));
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), else_stmt());
         assert_eq!(statements.remove(0), scope_start());
@@ -737,7 +739,7 @@ mod test {
 
         assert_eq!(statements.remove(0), if_stmt(ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(2));
+        assert_eq!(statements.remove(0), node(1));
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), if_else(ident("data")));
         assert_eq!(statements.remove(0), scope_start());
@@ -751,11 +753,11 @@ mod test {
 
     #[test]
     fn parse_component() {
-        let src = "@mycomp";
+        let src = "@x";
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), component(0));
 
-        let src = "@mycomp state";
+        let src = "@x state";
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), component(0));
         assert_eq!(statements.remove(0), load_value(ident("state")));
@@ -765,7 +767,7 @@ mod test {
     fn parse_component_slot() {
         let src = "$slot";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), slot(1));
+        assert_eq!(statements.remove(0), slot(2));
     }
 
     #[test]
@@ -810,7 +812,7 @@ mod test {
     fn parse_text_with_multiple_values() {
         let src = "a 'a' 'b'";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), node(2));
         assert_eq!(
             statements.remove(0),
             load_value(text_segments([strlit("a"), strlit("b")]))

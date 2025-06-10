@@ -62,3 +62,9 @@ impl Display for StringId {
         write!(f, "<sid {}>", self.0)
     }
 }
+
+impl From<usize> for StringId {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
+}

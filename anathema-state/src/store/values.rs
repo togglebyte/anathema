@@ -131,18 +131,6 @@ pub(crate) fn drop_value(key: ValueKey) -> OwnedValue {
     value
 }
 
-pub(crate) fn copy_val<T: 'static + Copy>(key: OwnedKey) -> T {
-    OWNED
-        .with(|owned| {
-            owned.with(key, |val| {
-                let val: &dyn std::any::Any = &val.val;
-                let val = val.downcast_ref::<T>();
-                *val.expect("the value type is determined by the wrapping Value<T> and should not change")
-            })
-        })
-        .expect("the value is assumed to not be checked out or borrowed")
-}
-
 // /// This should only be used for debugging.
 // pub fn dump_state() -> String {
 //     use std::fmt::Write;

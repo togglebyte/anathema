@@ -16,15 +16,14 @@ impl Component for App {
 
     fn on_event(
         &mut self,
-        ident: &str,
-        _: &dyn State,
+        event: &mut Event<'_>,
         state: &mut Self::State,
         _: Children<'_, '_>,
         _: Context<'_, '_, Self::State>,
     ) {
-        if ident == "increment" {
+        if event.name() == "increment" {
             *state.number.to_mut() += 1;
-        } else if ident == "decrement" {
+        } else if event.name() == "decrement" {
             *state.number.to_mut() -= 1;
         }
     }
@@ -55,6 +54,24 @@ impl Component for Button {
         state.active.set(1);
     }
 
+    fn on_mouse(
+        &mut self,
+        mouse: MouseEvent,
+        state: &mut Self::State,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
+    ) {
+        let pos = mouse.pos();
+        children.elements().at_position(pos).first(|el, att| {
+            if mouse.lsb_down() {
+                context.publish("click", ());
+
+                let id = context.attributes.get_as::<i64>("id").unwrap();
+                context.components.by_attribute("id", id).focus();
+            }
+        });
+    }
+
     fn on_key(
         &mut self,
         key: KeyEvent,
@@ -67,7 +84,7 @@ impl Component for Button {
         }
 
         if let KeyCode::Enter = key.code {
-            context.publish("click")
+            context.publish("click", ());
         }
     }
 }
@@ -80,6 +97,7 @@ fn main() {
         .enable_raw_mode()
         .clear()
         .hide_cursor()
+        .enable_mouse()
         .finish()
         .unwrap();
     backend.finalize();

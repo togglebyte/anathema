@@ -1,12 +1,12 @@
 use anathema_store::smallmap::SmallMap;
 
-use crate::ComponentBlueprintId;
 use crate::blueprints::Blueprint;
 use crate::components::{AssocEventMapping, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::strings::{StringId, Strings};
 use crate::variables::Variables;
+use crate::ComponentBlueprintId;
 
 mod const_eval;
 pub(crate) mod eval;
@@ -229,8 +229,9 @@ mod test {
         }
     }
 
-    pub(crate) fn component(id: ComponentBlueprintId) -> Statement {
-        Statement::Component(id)
+    pub(crate) fn component(id: u32) -> Statement {
+        let comp_id = ComponentBlueprintId::from(id);
+        Statement::Component(comp_id)
     }
 
     pub(crate) fn slot(id: usize) -> Statement {
@@ -238,8 +239,11 @@ mod test {
         Statement::ComponentSlot(id.into())
     }
 
-    pub(crate) fn associated_fun(internal: StringId, external: StringId) -> Statement {
-        Statement::AssociatedFunction { internal, external }
+    pub(crate) fn associated_fun(internal: usize, external: usize) -> Statement {
+        Statement::AssociatedFunction(AssocEventMapping {
+            internal: internal.into(),
+            external: external.into(),
+        })
     }
 
     pub(crate) fn node(id: usize) -> Statement {

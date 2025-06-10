@@ -11,10 +11,6 @@ use crate::nodes::component::Component;
 use crate::nodes::element::Element;
 use crate::{DirtyWidgets, WidgetContainer, WidgetId, WidgetKind, WidgetTreeView};
 
-fn comptest_delete_this<'tree, 'bp>(components: ComponentQuery<'_, 'tree, 'bp, Kind<'bp>>) {
-    let value = components.by_name("").by_name("").by_name("").first(|id, c, a| 123);
-}
-
 pub struct DeferredComponents {
     pub(super) elements: &'children mut Nodes<'tree, 'bp>,
 }

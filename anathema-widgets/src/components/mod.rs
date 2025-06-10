@@ -415,7 +415,7 @@ pub trait Component: 'static {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn tick(
+    fn on_tick(
         &mut self,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
@@ -425,7 +425,7 @@ pub trait Component: 'static {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn message(
+    fn on_message(
         &mut self,
         message: Self::Message,
         state: &mut Self::State,
@@ -435,7 +435,7 @@ pub trait Component: 'static {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn resize(
+    fn on_resize(
         &mut self,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
@@ -526,8 +526,8 @@ where
             ComponentEvent::Blur | ComponentEvent::Focus => (), // Application focus, not component focus.
             ComponentEvent::Key(ev) => self.on_key(ev, &mut *state, children, context),
             ComponentEvent::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
-            ComponentEvent::Tick(dt) => self.tick(&mut *state, children, context, dt),
-            ComponentEvent::Resize(_) => self.resize(&mut *state, children, context),
+            ComponentEvent::Tick(dt) => self.on_tick(&mut *state, children, context, dt),
+            ComponentEvent::Resize(_) => self.on_resize(&mut *state, children, context),
             ComponentEvent::Noop | ComponentEvent::Stop => (),
         }
         event
@@ -549,7 +549,7 @@ where
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
         let context = Context::<T::State>::new(ctx);
-        self.message(*message, &mut *state, children, context);
+        self.on_message(*message, &mut *state, children, context);
     }
 
     fn any_focus(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
@@ -579,7 +579,7 @@ where
             .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.tick(&mut *state, children, context, dt);
+        self.on_tick(&mut *state, children, context, dt);
     }
 
     fn any_resize(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
@@ -589,7 +589,7 @@ where
             .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
-        self.resize(&mut *state, children, context);
+        self.on_resize(&mut *state, children, context);
     }
 
     fn any_component_event(

@@ -15,4 +15,7 @@ let THEME = [
 
 border
     row
-        text [background: THEME[state.active].background, foreground: THEME[state.active].foreground] attributes.caption
+        text [
+            background: THEME[state.active].background,
+            foreground: THEME[state.active].foreground
+        ] attributes.caption
