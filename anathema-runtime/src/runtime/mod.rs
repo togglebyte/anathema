@@ -399,7 +399,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         for mut cmd in commands {
             // Blur the current component if the message is a `Focus` message
             if let CommandKind::Focus = cmd.kind {
-                if let Some(current) = &self.tabindex {
+                if let Some(current) = self.tabindex.take() {
                     self.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
                         comp.dyn_component.any_blur(children, ctx)
                     });

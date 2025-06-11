@@ -28,28 +28,9 @@ pub mod events;
 mod screen;
 mod style;
 
-fn output() -> (Stdout, File) {
-    let output = std::io::stdout();
-
-    #[cfg(not(windows))]
-    use std::os::fd::AsFd as _;
-    #[cfg(windows)]
-    use std::os::windows::io::AsHandle as _;
-
-    #[cfg(windows)]
-    let owned = output.as_handle().try_clone_to_owned().expect("ownable handle");
-
-    #[cfg(not(windows))]
-    let owned = output.as_fd().try_clone_to_owned().expect("ownable fd");
-
-    let file = File::from(owned);
-    (output, file)
-}
-
 /// Backend builder for a tui backend.
 pub struct TuiBackendBuilder {
-    _stdout: Stdout,
-    output: File,
+    output: Stdout,
     hide_cursor: bool,
     enable_raw_mode: bool,
     enable_alt_screen: bool,
@@ -98,8 +79,7 @@ impl TuiBackendBuilder {
 
         let backend = TuiBackend {
             screen,
-            _stdout: self._stdout,
-            output: BufWriter::new(self.output),
+            output: self.output,
             events: Events,
 
             hide_cursor: self.hide_cursor,
@@ -115,8 +95,7 @@ impl TuiBackendBuilder {
 /// Terminal backend
 pub struct TuiBackend {
     screen: Screen,
-    _stdout: Stdout,
-    output: BufWriter<File>,
+    output: Stdout,
     events: Events,
 
     // Settings
@@ -129,11 +108,8 @@ pub struct TuiBackend {
 impl TuiBackend {
     /// Create a new instance of the tui backend.
     pub fn builder() -> TuiBackendBuilder {
-        let (_stdout, output) = output();
-
         TuiBackendBuilder {
-            _stdout,
-            output,
+            output: std::io::stdout(),
             hide_cursor: false,
             enable_raw_mode: false,
             enable_alt_screen: false,
