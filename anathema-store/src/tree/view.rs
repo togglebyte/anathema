@@ -27,12 +27,7 @@ impl<'tree, T> TreeView<'tree, T> {
     }
 
     pub fn view_mut(&mut self) -> TreeView<'_, T> {
-        TreeView::new(
-            self.offset,
-            &mut self.layout,
-            &mut self.values,
-            &mut self.removed_values,
-        )
+        TreeView::new(self.offset, self.layout, self.values, self.removed_values)
     }
 
     pub fn get_mut(&mut self, value_id: ValueId) -> Option<&mut T> {

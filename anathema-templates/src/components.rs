@@ -6,6 +6,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::Storage;
 
+use crate::Lexer;
 use crate::blueprints::Blueprint;
 use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
@@ -14,7 +15,6 @@ use crate::statements::{Context, Statements};
 use crate::strings::{StringId, Strings};
 use crate::token::Tokens;
 use crate::variables::Variables;
-use crate::Lexer;
 
 pub trait ToSourceKind {
     fn to_path(self) -> SourceKind;

@@ -115,16 +115,13 @@ impl Many {
             }
         })?;
 
-        // Apply spacer and expand if the layout is constrained and we have remaining space
-        if !self.unconstrained && !self.used_size.no_space_left() {
-            let constraints = self.used_size.to_constraints();
-            let expanded_size = expand::layout_all_expansions(&mut children, constraints, self.axis, ctx)?;
-            self.used_size.apply(expanded_size);
+        let constraints = self.used_size.to_constraints();
+        let expanded_size = expand::layout_all_expansions(&mut children, constraints, self.axis, ctx)?;
+        self.used_size.apply(expanded_size);
 
-            let constraints = self.used_size.to_constraints();
-            let spacer_size = spacers::layout_all_spacers(&mut children, constraints, self.axis, ctx)?;
-            self.used_size.apply(spacer_size);
-        }
+        let constraints = self.used_size.to_constraints();
+        let spacer_size = spacers::layout_all_spacers(&mut children, constraints, self.axis, ctx)?;
+        self.used_size.apply(spacer_size);
 
         size.width = self.used_size.inner.width.max(max_constraints.min_width);
         size.height = (self.used_size.inner.height).max(max_constraints.min_height);

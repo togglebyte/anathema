@@ -16,20 +16,12 @@ const DEFAULT_FACTOR: u16 = 1;
 /// Panics when called with more weights than the total number of available size.
 /// Allocates a minimum of one to each weight.
 fn distribute_size(weights: &[u16], mut total: u16) -> Vec<u16> {
-    assert!(
-        total >= weights.len() as u16,
-        "{total} is not larger than {}",
-        weights.len()
-    );
-
     let mut indexed = weights
         .iter()
         .copied()
         .enumerate()
-        .map(|(i, w)| (i, w, 1u16))
+        .map(|(i, w)| (i, w, 0u16))
         .collect::<Vec<_>>();
-
-    total -= weights.len() as u16;
 
     fn pop(n: &mut u16) -> bool {
         if let Some(nn) = n.checked_sub(1) {
