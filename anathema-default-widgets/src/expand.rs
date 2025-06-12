@@ -65,7 +65,53 @@ impl Widget for Expand {
 
 #[cfg(test)]
 mod test {
+    use crate::testing::TestRunner;
 
     #[test]
-    fn expand() {}
+    fn hstack_expand_nospace() {
+        let tpl = "
+        border
+            container [width:12]
+                hstack
+                    expand
+                    text \"this is text\"
+        ";
+
+        let expected = "
+            ╔══════════════╗
+            ║┌────────────┐║
+            ║│this is text│║
+            ║│            │║
+            ║└────────────┘║
+            ╚══════════════╝
+        ";
+
+        let mut runner = TestRunner::new(tpl, (14, 4));
+        let mut runner = runner.instance();
+        runner.render_assert(expected);
+    }
+
+    #[test]
+    fn vstack_expand_nospace() {
+        let tpl = "
+        border
+            container [height:1]
+                vstack
+                    expand
+                    text \"this is text\"
+        ";
+
+        let expected = "
+            ╔═════════════════╗
+            ║┌───────────────┐║
+            ║│this is text   │║
+            ║└───────────────┘║
+            ║                 ║
+            ╚═════════════════╝
+        ";
+
+        let mut runner = TestRunner::new(tpl, (17, 4));
+        let mut runner = runner.instance();
+        runner.render_assert(expected);
+    }
 }

@@ -33,3 +33,56 @@ impl Widget for Spacer {
         // The spacer widget has no children
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::testing::TestRunner;
+
+    #[test]
+    fn hstack_spacer_nospace() {
+        let tpl = "
+        border
+            container [width:12]
+                hstack
+                    spacer
+                    text \"this is text\"
+        ";
+
+        let expected = "
+            ╔══════════════╗
+            ║┌────────────┐║
+            ║│this is text│║
+            ║└────────────┘║
+            ║              ║
+            ╚══════════════╝
+        ";
+
+        let mut runner = TestRunner::new(tpl, (14, 4));
+        let mut runner = runner.instance();
+        runner.render_assert(expected);
+    }
+
+    #[test]
+    fn vstack_spacer_nospace() {
+        let tpl = "
+        border
+            container [height:1]
+                vstack
+                    spacer
+                    text \"this is text\"
+        ";
+
+        let expected = "
+            ╔═════════════════╗
+            ║┌────────────┐   ║
+            ║│this is text│   ║
+            ║└────────────┘   ║
+            ║                 ║
+            ╚═════════════════╝
+        ";
+
+        let mut runner = TestRunner::new(tpl, (17, 4));
+        let mut runner = runner.instance();
+        runner.render_assert(expected);
+    }
+}
