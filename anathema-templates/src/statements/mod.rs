@@ -1,12 +1,12 @@
 use anathema_store::smallmap::SmallMap;
 
+use crate::ComponentBlueprintId;
 use crate::blueprints::Blueprint;
 use crate::components::{AssocEventMapping, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::strings::{StringId, Strings};
 use crate::variables::Variables;
-use crate::ComponentBlueprintId;
 
 mod const_eval;
 pub(crate) mod eval;

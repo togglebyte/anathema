@@ -12,12 +12,12 @@ pub use self::list::List;
 pub use self::map::Map;
 pub use self::maybe::{Maybe, Nullable};
 use crate::states::State;
-use crate::store::subscriber::{subscribe, unsubscribe, SubKey};
+use crate::store::subscriber::{SubKey, subscribe, unsubscribe};
 use crate::store::values::{
-    drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared, OwnedValue,
+    OwnedValue, drop_value, get_unique, make_shared, new_value, return_owned, return_shared, try_make_shared,
 };
-use crate::store::watchers::{monitor, queue_monitor, Watcher};
-use crate::store::{changed, ValueKey};
+use crate::store::watchers::{Watcher, monitor, queue_monitor};
+use crate::store::{ValueKey, changed};
 use crate::{Change, Subscriber};
 
 mod list;
