@@ -45,7 +45,7 @@ mod test {
             container [width:12]
                 hstack
                     spacer
-                    text \"this is text\"
+                    text 'this is text'
         ";
 
         let expected = "
@@ -69,7 +69,7 @@ mod test {
             container [height:1]
                 vstack
                     spacer
-                    text \"this is text\"
+                    text 'this is text'
         ";
 
         let expected = "

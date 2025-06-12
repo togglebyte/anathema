@@ -74,7 +74,7 @@ mod test {
             container [width:12]
                 hstack
                     expand
-                    text \"this is text\"
+                    text 'this is text'
         ";
 
         let expected = "
@@ -98,7 +98,7 @@ mod test {
             container [height:1]
                 vstack
                     expand
-                    text \"this is text\"
+                    text 'this is text'
         ";
 
         let expected = "
