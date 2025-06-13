@@ -1,6 +1,5 @@
 use anathema::backend::tui::TuiBackend;
-use anathema::component::{Children, Component, MouseEvent};
-use anathema::prelude::Context;
+use anathema::component::{Children, Component, Context, MouseEvent};
 use anathema::runtime::Runtime;
 use anathema::state::{List, State, Value};
 use anathema::templates::Document;

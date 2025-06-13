@@ -57,6 +57,18 @@ impl Hex {
     pub const GREEN: Self = Self { r: 0, g: 255, b: 0 };
     pub const RED: Self = Self { r: 255, g: 0, b: 0 };
     pub const WHITE: Self = Self { r: 255, g: 255, b: 255 };
+
+    pub const fn red_f32(&self) -> f32 {
+        self.r as f32 / u8::MAX as f32
+    }
+
+    pub const fn green_f32(&self) -> f32 {
+        self.g as f32 / u8::MAX as f32
+    }
+
+    pub const fn blue_f32(&self) -> f32 {
+        self.b as f32 / u8::MAX as f32
+    }
 }
 
 impl Display for Hex {

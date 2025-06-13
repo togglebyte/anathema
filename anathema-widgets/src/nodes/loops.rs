@@ -76,8 +76,7 @@ impl<'bp> For<'bp> {
 
                 tree.relative_remove(&[*index as u16])
             }
-            Change::Dropped => tree.truncate_children(),
-            Change::Changed => {
+            Change::Dropped | Change::Changed => {
                 // If the collection has changed to a different collection
                 // then truncate the tree
                 self.collection.reload(attribute_storage);

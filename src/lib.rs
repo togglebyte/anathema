@@ -17,7 +17,6 @@ pub mod prelude {
     pub use crate::backend::tui::TuiBackend;
     pub use crate::runtime::Runtime;
     pub use crate::templates::{ComponentBlueprintId, Document, SourceKind, ToSourceKind};
-    pub use crate::widgets::components::{Context, Event};
 }
 
 pub mod component {
@@ -25,6 +24,6 @@ pub mod component {
     pub use crate::widgets::components::events::{
         ComponentEvent, KeyCode, KeyEvent, KeyState, MouseButton, MouseEvent, MouseState,
     };
-    pub use crate::widgets::components::{Component, ComponentId, Context, Emitter};
+    pub use crate::widgets::components::{Component, ComponentId, Context, Emitter, Event};
     pub use crate::widgets::query::Children;
 }

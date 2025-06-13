@@ -270,6 +270,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         match event {
             ComponentEvent::Noop => return,
             ComponentEvent::Stop => todo!(),
+
             // Component specific event
             ComponentEvent::Blur | ComponentEvent::Focus | ComponentEvent::Key(_) => {
                 let Some(Index {
@@ -395,6 +396,10 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
+        // TODO: let's keep some memory around to drain this into instead of allocating
+        // a new vector every time.
+        // E.g `self.deferred_components.drain_into(&mut self.deferred_buffer)`
+        // Nb: Add drain_into to DeferredComponents
         let commands = self.deferred_components.drain().collect::<Vec<_>>();
         for mut cmd in commands {
             // Blur the current component if the message is a `Focus` message

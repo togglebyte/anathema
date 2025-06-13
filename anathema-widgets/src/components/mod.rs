@@ -314,21 +314,21 @@ impl<'a> Event<'a> {
         self.external_ident
     }
 
-    /// Try to cast the event payload to a specific type
-    pub fn data<T: 'static>(&self) -> Option<&'a T> {
-        self.data.downcast_ref()
-    }
-
     /// Cast the event payload to a specific type
     ///
     /// # Panics
     ///
     /// This will panic if the type is incorrect
-    pub fn data_unchecked<T: 'static>(&self) -> &'a T {
+    pub fn data<T: 'static>(&self) -> &'a T {
         match self.data.downcast_ref() {
             Some(data) => data,
-            None => panic!("invalid type"),
+            None => panic!("invalid type when casting event data"),
         }
+    }
+
+    /// Try to cast the event payload to a specific type
+    pub fn data_checked<T: 'static>(&self) -> Option<&'a T> {
+        self.data.downcast_ref()
     }
 
     pub fn should_stop_propagation(&self) -> bool {
