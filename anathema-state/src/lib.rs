@@ -83,6 +83,15 @@ impl From<(u8, u8, u8)> for Hex {
     }
 }
 
+impl From<(f32, f32, f32)> for Hex {
+    fn from((r, g, b): (f32, f32, f32)) -> Self {
+        let r = (r * u8::MAX as f32) as u8;
+        let g = (g * u8::MAX as f32) as u8;
+        let b = (b * u8::MAX as f32) as u8;
+        Self { r, g, b }
+    }
+}
+
 impl TryFrom<&str> for Hex {
     type Error = ();
 

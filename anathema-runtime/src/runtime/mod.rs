@@ -102,6 +102,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
         Ok(inst)
     }
 
+    // TODO
+    // Rename Frame as it does not represent an individual frame
+    // but rather something that can continuously draw.
     pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
     where
         B: Backend,
@@ -117,7 +120,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let sleep_micros = self.sleep_micros;
         self.with_frame(backend, |backend, mut frame| {
-            // Perform the initial tick so tab index has a tree to work with
+            // Perform the initial tick so tab index has a tree to work with.
+            // This means we can not react to any events in this tick as the tree does not
+            // yet have any widgets or components.
             frame.tick(backend)?;
 
             let mut changed = false;
@@ -427,7 +432,15 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 }
 
                 self.with_component(widget_id, state_id, |comp, children, ctx| match cmd.kind {
-                    CommandKind::Focus => comp.dyn_component.any_focus(children, ctx),
+                    CommandKind::Focus => {
+                        // Some(Index {
+                        //     path: panic!(),//children.offset.into(),
+                        //     index: comp.tabindex,
+                        //     widget_id,
+                        //     state_id,
+                        // });
+                        comp.dyn_component.any_focus(children, ctx);
+                    }
                     CommandKind::SendMessage(msg) => comp.dyn_component.any_message(children, ctx, msg),
                 });
                 break;

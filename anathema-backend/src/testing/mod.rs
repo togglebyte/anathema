@@ -1,0 +1,86 @@
+use std::collections::VecDeque;
+use std::time::Duration;
+
+use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::components::events::ComponentEvent;
+use anathema_widgets::paint::{paint, Glyph};
+use anathema_widgets::{GlyphMap, PaintChildren};
+use surface::TestSurface;
+
+use crate::Backend;
+
+mod surface;
+
+pub struct GlyphSomething<'a> {
+    inner: Option<&'a Glyph>,
+}
+
+impl<'a> GlyphSomething<'a> {
+    pub fn is_char(&self, rhs: char) -> bool {
+        let Some(glyph) = self.inner else { return false };
+        match glyph {
+            Glyph::Single(lhs, _) => *lhs == rhs,
+            Glyph::Cluster(glyph_index, _) => todo!(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TestBackend {
+    surface: TestSurface,
+    event_queue: VecDeque<Option<ComponentEvent>>,
+}
+
+impl TestBackend {
+    pub fn new(size: impl Into<Size>) -> Self {
+        let size = size.into();
+        Self {
+            surface: TestSurface::new(size),
+            // NOTE:
+            // we have to start by return None for the first event,
+            // as the first frame tick is there to populate the widget tree.
+            //
+            // This is required for tab indexing
+            event_queue: VecDeque::from([None]),
+        }
+    }
+
+    pub fn add_event(&mut self, event: Option<ComponentEvent>) {
+        self.event_queue.push_back(event);
+    }
+
+    pub fn at(&self, x: usize, y: usize) -> GlyphSomething<'_> {
+        GlyphSomething { inner: self.surface.get(x, y) }
+    }
+}
+
+impl Backend for TestBackend {
+    fn size(&self) -> Size {
+        self.surface.size
+    }
+
+    fn next_event(&mut self, timeout: Duration) -> Option<ComponentEvent> {
+        self.event_queue.pop_front()?
+    }
+
+    fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap) {
+        self.surface.resize(new_size, glyph_map);
+    }
+
+    fn paint<'bp>(
+        &mut self,
+        glyph_map: &mut GlyphMap,
+        widgets: PaintChildren<'_, 'bp>,
+        attribute_storage: &AttributeStorage<'bp>,
+    ) {
+        paint(&mut self.surface, glyph_map, widgets, attribute_storage);
+    }
+
+    fn render(&mut self, glyph_map: &mut GlyphMap) {
+        // this does nothing here as everything written to the test buffer
+    }
+
+    fn clear(&mut self) {
+    }
+}

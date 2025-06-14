@@ -10,6 +10,7 @@ use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::{GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
 
 pub mod tui;
+pub mod testing;
 
 pub trait Backend {
     fn size(&self) -> Size;

@@ -55,7 +55,7 @@ members = [
     "anathema-store",
     "anathema-templates", 
     "anathema-widgets", 
-    "anathema-value-resolver", 
+    "anathema-value-resolver",
 ]
 
 [workspace.lints.rust]
@@ -69,3 +69,6 @@ should_implement_trait = "allow"
 type_complexity = "allow"
 too_many_arguments = "allow"
 wrong_self_convention = "allow"
+
+[dev-dependencies]
+testutils = { path = "testutils" }

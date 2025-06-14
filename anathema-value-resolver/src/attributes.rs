@@ -3,9 +3,9 @@ use std::borrow::Borrow;
 use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
-use crate::ValueKind;
 use crate::expression::ValueExpr;
 use crate::value::{Value, Values};
+use crate::ValueKind;
 
 type WidgetId = anathema_store::slab::Key;
 
@@ -153,6 +153,24 @@ impl<'bp> Attributes<'bp> {
         self.attribs.get(key).and_then(|val| (&val.kind).try_into().ok())
     }
 
+    pub fn iter_as<'a, T>(&'a self, key: &str) -> impl Iterator<Item = T>
+    where
+        T: TryFrom<&'a ValueKind<'bp>>,
+    {
+        self.attribs
+            .get(key)
+            .and_then(|val| match &val.kind {
+                ValueKind::List(value_kinds) => {
+                    let list = value_kinds.iter().filter_map(|v| T::try_from(v).ok());
+                    Some(list)
+                }
+
+                _ => None,
+            })
+            .into_iter()
+            .flatten()
+    }
+
     pub fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp>> {
         self.attribs.get_mut_with_index(index)
     }
@@ -169,5 +187,23 @@ impl<'bp> Attributes<'bp> {
     pub(super) fn get_value_expr(&self, key: &str) -> Option<ValueExpr<'bp>> {
         let value = self.attribs.get(key)?;
         Some(value.expr.clone())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn iter_as_int() {
+        let mut attributes = Attributes::empty();
+        let values = ValueKind::List([ValueKind::Int(1), ValueKind::Bool(true), ValueKind::Int(2)].into());
+        attributes.set("a", values);
+
+        let values = attributes.iter_as::<u8>("a").collect::<Vec<_>>();
+        assert_eq!(vec![1, 2], values);
+
+        let values = attributes.iter_as::<bool>("a").collect::<Vec<_>>();
+        assert_eq!(vec![true], values);
     }
 }

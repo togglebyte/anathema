@@ -1,0 +1,10 @@
+[package]
+name = "testutils"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anathema = { path = "../" }
+
+[lints]
+workspace = true
