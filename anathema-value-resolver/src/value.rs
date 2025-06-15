@@ -385,6 +385,12 @@ impl<'a> From<&'a str> for ValueKind<'a> {
     }
 }
 
+impl From<String> for ValueKind<'_> {
+    fn from(value: String) -> Self {
+        ValueKind::Str(value.into())
+    }
+}
+
 // -----------------------------------------------------------------------------
 //   - Try From -
 // -----------------------------------------------------------------------------
@@ -426,11 +432,13 @@ try_from_valuekind!(Hex, Hex);
 try_from_valuekind!(Color, Color);
 
 try_from_valuekind_int!(usize, Int);
+try_from_valuekind_int!(isize, Int);
 try_from_valuekind_int!(i32, Int);
 try_from_valuekind_int!(f32, Float);
 try_from_valuekind_int!(i16, Int);
 try_from_valuekind_int!(i8, Int);
 try_from_valuekind_int!(u32, Int);
+try_from_valuekind_int!(u64, Int);
 try_from_valuekind_int!(u16, Int);
 try_from_valuekind_int!(u8, Int);
 

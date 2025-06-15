@@ -110,6 +110,14 @@ impl<'bp> Attributes<'bp> {
         }
     }
 
+    /// Set an attribute value.
+    /// ```
+    /// # use anathema_value_resolver::{Attributes, ValueKind};
+    ///
+    /// let mut attributes = Attributes::empty();
+    /// attributes.set("name", "Nonsense");
+    /// attributes.get_as::<&str>("name").unwrap();
+    /// ```
     pub fn set(&mut self, key: &'bp str, value: impl Into<ValueKind<'bp>>) {
         let key = ValueKey::Attribute(key);
         let value = value.into();
@@ -123,6 +131,7 @@ impl<'bp> Attributes<'bp> {
         self.attribs.set(key, value);
     }
 
+    #[doc(hidden)]
     pub fn insert_with<F>(&mut self, key: ValueKey<'bp>, f: F) -> SmallIndex
     where
         F: FnMut(SmallIndex) -> Value<'bp>,
@@ -130,6 +139,7 @@ impl<'bp> Attributes<'bp> {
         self.attribs.insert_with(key, f)
     }
 
+    /// Remove a value from attributes
     pub fn remove(&mut self, key: &'bp str) -> Option<Value<'bp>> {
         let key = ValueKey::Attribute(key);
         self.attribs.remove(&key)
@@ -146,6 +156,18 @@ impl<'bp> Attributes<'bp> {
         self.attribs.get(key).map(|val| &val.kind)
     }
 
+    /// Get a value as a given type.
+    /// If the value doesn't exist or can not be cast to the
+    /// expected type `None` is returned.
+    /// ```
+    /// # use anathema_value_resolver::{Attributes, ValueKind};
+    ///
+    /// let mut attributes = Attributes::empty();
+    /// attributes.set("num", 123);
+    ///
+    /// assert_eq!(attributes.get_as::<u32>("num").unwrap(), 123);
+    /// assert_eq!(attributes.get_as::<i16>("num").unwrap(), 123);
+    /// ```
     pub fn get_as<'a, T>(&'a self, key: &str) -> Option<T>
     where
         T: TryFrom<&'a ValueKind<'bp>>,
@@ -153,6 +175,18 @@ impl<'bp> Attributes<'bp> {
         self.attribs.get(key).and_then(|val| (&val.kind).try_into().ok())
     }
 
+    /// Iterate over values of a given type
+    /// ```
+    /// # use anathema_value_resolver::{Attributes, ValueKind};
+    ///
+    /// let mut attributes = Attributes::empty();
+    /// let values =
+    ///     ValueKind::List([ValueKind::Int(1), ValueKind::Bool(true), ValueKind::Int(2)].into());
+    /// attributes.set("mixed_list", values);
+    ///
+    /// let iter = attributes.iter_as::<u32>("mixed_list");
+    /// assert_eq!(vec![1u32, 2], iter.collect::<Vec<_>>());
+    /// ```
     pub fn iter_as<'a, T>(&'a self, key: &str) -> impl Iterator<Item = T>
     where
         T: TryFrom<&'a ValueKind<'bp>>,
@@ -171,6 +205,9 @@ impl<'bp> Attributes<'bp> {
             .flatten()
     }
 
+    #[doc(hidden)]
+    /// This should only be used internally by the widgets
+    /// when updating a value.
     pub fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp>> {
         self.attribs.get_mut_with_index(index)
     }
@@ -192,18 +229,87 @@ impl<'bp> Attributes<'bp> {
 
 #[cfg(test)]
 mod test {
+    use anathema_state::{Color, Hex};
+
     use super::*;
 
-    #[test]
-    fn iter_as_int() {
+    fn attribs() -> Attributes<'static> {
         let mut attributes = Attributes::empty();
-        let values = ValueKind::List([ValueKind::Int(1), ValueKind::Bool(true), ValueKind::Int(2)].into());
-        attributes.set("a", values);
 
-        let values = attributes.iter_as::<u8>("a").collect::<Vec<_>>();
+        let values = ValueKind::List([ValueKind::Int(1), ValueKind::Bool(true), ValueKind::Int(2)].into());
+        attributes.set("mixed_list", values);
+        attributes.set("num", 123);
+        attributes.set("static_str", "static");
+        attributes.set("string", String::from("string"));
+        attributes.set("hex", Hex::from((1, 2, 3)));
+        attributes.set("red", Color::Red);
+        attributes.set("float", 1.23);
+        attributes.set("bool", true);
+        attributes.set("char", 'a');
+
+        attributes
+    }
+
+    #[test]
+    fn iter_as_type() {
+        let attributes = attribs();
+
+        let values = attributes.iter_as::<u8>("mixed_list").collect::<Vec<_>>();
         assert_eq!(vec![1, 2], values);
 
-        let values = attributes.iter_as::<bool>("a").collect::<Vec<_>>();
+        let values = attributes.iter_as::<bool>("mixed_list").collect::<Vec<_>>();
         assert_eq!(vec![true], values);
+    }
+
+    #[test]
+    fn get_as_int() {
+        assert_eq!(123, attribs().get_as::<u8>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<i8>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<u16>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<i16>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<u32>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<i32>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<u64>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<i64>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<usize>("num").unwrap());
+        assert_eq!(123, attribs().get_as::<isize>("num").unwrap());
+    }
+
+    #[test]
+    fn get_as_strings() {
+        let attributes = attribs();
+        assert_eq!("static", attributes.get_as::<&str>("static_str").unwrap());
+        assert_eq!("string", attributes.get_as::<&str>("string").unwrap());
+    }
+
+    #[test]
+    fn get_as_hex() {
+        let attributes = attribs();
+        assert_eq!(Hex::from((1, 2, 3)), attributes.get_as::<Hex>("hex").unwrap());
+    }
+
+    #[test]
+    fn get_as_color() {
+        let attributes = attribs();
+        assert_eq!(Color::Red, attributes.get_as::<Color>("red").unwrap());
+    }
+
+    #[test]
+    fn get_as_float() {
+        let attributes = attribs();
+        assert_eq!(1.23, attributes.get_as::<f32>("float").unwrap());
+        assert_eq!(1.23, attributes.get_as::<f64>("float").unwrap());
+    }
+
+    #[test]
+    fn get_as_bool() {
+        let attributes = attribs();
+        assert_eq!(true, attributes.get_as::<bool>("bool").unwrap());
+    }
+
+    #[test]
+    fn get_as_char() {
+        let attributes = attribs();
+        assert_eq!('a', attributes.get_as::<char>("char").unwrap());
     }
 }
