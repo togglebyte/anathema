@@ -2,29 +2,20 @@ use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
 use anathema_runtime::Error;
-use testutils::{char_press, Thing};
+use testutils::{char_press, BasicComp, BasicState};
 
-#[derive(Debug, Default)]
-struct Comp;
-
-impl Component for Comp {
-    type Message = ();
-    type State = Thing;
-
-    fn on_key(
-        &mut self,
-        key: KeyEvent,
-        state: &mut Self::State,
-        mut children: Children<'_, '_>,
-        mut context: Context<'_, '_, Self::State>,
-    ) {
-        state.value.set(9);
-    }
+fn keypress(
+    key: KeyEvent,
+    state: &mut BasicState,
+    mut children: Children<'_, '_>,
+    mut context: Context<'_, '_, BasicState>,
+) {
+    state.number.set(9);
 }
 
 #[test]
-fn lol() {
-    let tpl = "text state.value";
+fn state_change() {
+    let tpl = "text state.number";
     let doc = Document::new("@index");
 
     let mut backend = TestBackend::new((10, 3));
@@ -34,7 +25,14 @@ fn lol() {
     backend.add_event(Some(ComponentEvent::Stop));
 
     let mut builder = Runtime::builder(doc, &backend);
-    builder.from_default::<Comp>("index", tpl.to_template()).unwrap();
+    builder
+        .component(
+            "index",
+            tpl.to_template(),
+            BasicComp::<_, BasicState>::new(keypress),
+            BasicState::default(),
+        )
+        .unwrap();
 
     let res = builder.finish(|runtime| runtime.run(&mut backend));
 
