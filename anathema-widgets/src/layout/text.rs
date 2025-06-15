@@ -38,6 +38,17 @@ impl TryFrom<&ValueKind<'_>> for Wrap {
     }
 }
 
+impl From<Wrap> for ValueKind<'_> {
+    fn from(value: Wrap) -> Self {
+        let value = match value {
+            Wrap::Normal => "normal",
+            Wrap::WordBreak => "break"
+        };
+
+        ValueKind::Str(value.into())
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct LineWidth(usize);
 
@@ -509,5 +520,18 @@ mod test {
     #[test]
     fn limited_space() {
         test_layout(Size::new(58, 0), &["meh"], "", Wrap::Normal);
+    }
+
+    #[test]
+    fn wrap_from_attribute() {
+        let mut attributes = anathema_value_resolver::Attributes::empty();
+
+        attributes.set("break", Wrap::WordBreak);
+        let word_break = attributes.get_as::<Wrap>("break").unwrap();
+        assert_eq!(word_break, Wrap::WordBreak);
+
+        attributes.set("normal", Wrap::Normal);
+        let word_break = attributes.get_as::<Wrap>("normal").unwrap();
+        assert_eq!(word_break, Wrap::Normal);
     }
 }
