@@ -40,7 +40,7 @@ impl<'bp> For<'bp> {
                     loop_index: anathema_state::Value::new(*index as i64),
                     binding: self.binding,
                 });
-                let widget = WidgetContainer::new(widget, &self.body);
+                let widget = WidgetContainer::new(widget, self.body);
                 let _ = transaction.commit_at(widget).ok_or(Error::TreeTransactionFailed)?;
 
                 for child in &tree.layout[*index as usize + 1..] {

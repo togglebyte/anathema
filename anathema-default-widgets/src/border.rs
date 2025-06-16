@@ -64,7 +64,7 @@ impl TryFrom<&ValueKind<'_>> for Sides {
     fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
         let mut sides = Sides::EMPTY;
         match value {
-            ValueKind::Str(cow) => Sides::from_str(&*cow),
+            ValueKind::Str(cow) => Sides::from_str(cow),
             ValueKind::List(list) => {
                 for x in list {
                     sides |= Sides::try_from(x)?;
@@ -85,7 +85,7 @@ impl TryFrom<&ValueKind<'_>> for Sides {
                 }
                 Ok(sides)
             }
-            _ => return Err(()),
+            _ => Err(()),
         }
     }
 }
@@ -259,16 +259,16 @@ impl BorderPainter {
             end_cap: (border_size.top_right > 0).then(|| Brush::new(glyphs[2], border_size.top_right)),
             start: LocalPos::ZERO,
             axis: Axis::Horizontal,
-            end: size.width as u16,
+            end: size.width,
         };
 
         let bottom = Line {
             start_cap: (border_size.bottom_left > 0).then(|| Brush::new(glyphs[6], border_size.bottom_left)),
             middle: (border_size.bottom > 0).then(|| Brush::new(glyphs[5], border_size.bottom)),
             end_cap: (border_size.bottom_right > 0).then(|| Brush::new(glyphs[4], border_size.bottom_right)),
-            start: LocalPos::new(0, height as u16 - 1),
+            start: LocalPos::new(0, height - 1),
             axis: Axis::Horizontal,
-            end: size.width as u16,
+            end: size.width,
         };
 
         if bottom.will_draw() {
@@ -286,7 +286,7 @@ impl BorderPainter {
             end_cap: None,
             start: LocalPos::new(0, offset),
             axis: Axis::Vertical,
-            end: height as u16,
+            end: height,
         };
 
         let right = Line {
@@ -295,7 +295,7 @@ impl BorderPainter {
             end_cap: None,
             start: LocalPos::new(size.width - border_size.right as u16, offset),
             axis: Axis::Vertical,
-            end: height as u16,
+            end: height,
         };
 
         Self {

@@ -119,7 +119,7 @@ impl Components {
     pub fn get_ticking(&self, index: usize) -> Option<(WidgetId, StateId)> {
         self.inner
             .get(index)
-            .and_then(|e| e.accept_ticks.then(|| (e.widget_id, e.state_id)))
+            .and_then(|e| e.accept_ticks.then_some((e.widget_id, e.state_id)))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {

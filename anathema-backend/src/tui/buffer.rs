@@ -211,7 +211,7 @@ impl Buffer {
             // If this is a unicode char that is wider than one cell,
             // add a continuation cell if it fits, this way if we overwrite it
             // we can set the continuation cell to `Empty`.
-            if pos.x < self.size.width as u16 {
+            if pos.x < self.size.width {
                 if let 2.. = c.width() {
                     self.put(Cell::continuation(cell.style), LocalPos::new(pos.x + 1, pos.y));
                 }

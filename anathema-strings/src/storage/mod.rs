@@ -8,7 +8,7 @@ mod transaction;
 
 const END: usize = 5;
 
-fn bytes_to_str<'a, 'slice>(bytes: &mut &'a [u8], slices: &'a Slab<u16, &'slice str>) -> &'a str {
+fn bytes_to_str<'a>(bytes: &mut &'a [u8], slices: &'a Slab<u16, &str>) -> &'a str {
     match &bytes[..2] {
         [0xFF, 0xFF] => {
             let len = u16::from_ne_bytes([bytes[2], bytes[3]]) as usize;
@@ -24,7 +24,7 @@ fn bytes_to_str<'a, 'slice>(bytes: &mut &'a [u8], slices: &'a Slab<u16, &'slice 
     }
 }
 
-fn remove_slice<'slice>(bytes: &mut &[u8], slices: &mut Slab<u16, &'slice str>) {
+fn remove_slice(bytes: &mut &[u8], slices: &mut Slab<u16, &str>) {
     while !bytes.is_empty() {
         match &bytes[..2] {
             [0xFF, 0xFF] => {
@@ -84,8 +84,8 @@ impl<'slice> Storage<'slice> {
         let mut bytes = &self.inner[hoppstr.index as usize..][..hoppstr.len as usize];
         remove_slice(&mut bytes, &mut self.slices);
         let region = hoppstr.to_region();
-        self.free
-            .get_mut(region.bucket_index())
-            .map(|regions| regions.push(region));
+        if let Some(regions) = self.free.get_mut(region.bucket_index()) {
+            regions.push(region);
+        }
     }
 }

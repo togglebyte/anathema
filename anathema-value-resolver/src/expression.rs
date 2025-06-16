@@ -421,10 +421,7 @@ fn resolve_index<'bp>(
     }
 }
 
-fn resolve_expr<'a, 'bp>(
-    expr: &'a ValueExpr<'bp>,
-    ctx: &mut ValueResolutionContext<'_, 'bp>,
-) -> Option<ValueExpr<'bp>> {
+fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<ValueExpr<'bp>> {
     match expr {
         ValueExpr::Either(first, second) => match resolve_expr(first, ctx) {
             None | Some(ValueExpr::Null) => resolve_expr(second, ctx),
@@ -435,10 +432,7 @@ fn resolve_expr<'a, 'bp>(
     }
 }
 
-fn resolve_str<'a, 'bp>(
-    index: &'a ValueExpr<'bp>,
-    ctx: &mut ValueResolutionContext<'_, 'bp>,
-) -> Option<Kind<&'bp str>> {
+fn resolve_str<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Kind<&'bp str>> {
     match index {
         ValueExpr::Str(kind) => Some(*kind),
         ValueExpr::Index(src, index) => match resolve_index(src, index, ctx) {
@@ -452,7 +446,7 @@ fn resolve_str<'a, 'bp>(
     }
 }
 
-fn resolve_int<'a, 'bp>(index: &'a ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> i64 {
+fn resolve_int<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> i64 {
     let value = resolve_value(index, ctx);
     match value {
         ValueKind::Int(index) => index,

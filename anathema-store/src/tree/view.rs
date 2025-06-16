@@ -146,7 +146,7 @@ impl<'tree, T> TreeView<'tree, T> {
 
     /// Remove all the nodes in this view
     pub fn truncate_children(&mut self) {
-        self.layout.clear(&mut self.values, &mut self.removed_values);
+        self.layout.clear(self.values, self.removed_values);
     }
 
     /// Remove a `Node` and value from the tree.
@@ -172,7 +172,7 @@ impl<'tree, T> TreeView<'tree, T> {
                 // Clone the path to drop the borrow of the tree
                 let path = path.clone();
                 // Update the root of all the children of the preceeding siblings
-                node.reparent(&path, &mut self.values);
+                node.reparent(&path, self.values);
             });
 
             node
@@ -184,7 +184,7 @@ impl<'tree, T> TreeView<'tree, T> {
                 .values
                 .remove(value_key)
                 .expect("a node is always associated with a value");
-            node.children.clear(&mut self.values, &mut self.removed_values);
+            node.children.clear(self.values, self.removed_values);
         }
     }
 
@@ -214,7 +214,7 @@ impl<'tree, T> TreeView<'tree, T> {
 
     /// Apply a [`NodeVisitor`], depth first
     pub fn apply_visitor<V: NodeVisitor<T>>(&mut self, visitor: &mut V) {
-        _ = super::visitor::apply_visitor(&self.layout, &mut self.values, visitor);
+        _ = super::visitor::apply_visitor(self.layout, self.values, visitor);
     }
 
     /// Perform a given operation (`F`) on a reference to a value in the tree
@@ -240,12 +240,6 @@ impl<'tree, T> TreeView<'tree, T> {
 mod test {
     use super::*;
     use crate::tree::{Tree, root_node};
-
-    #[derive(Debug, PartialEq)]
-    enum Value {
-        S(String),
-        I(usize),
-    }
 
     #[test]
     fn insert_and_commit() {
@@ -370,21 +364,21 @@ mod test {
 
     #[test]
     fn modify_tree() {
-        let mut tree = Tree::<Value>::empty();
-        tree.view_mut().insert(root_node()).commit_child(Value::I(123));
+        let mut tree = Tree::<usize>::empty();
+        tree.view_mut().insert(root_node()).commit_child(123);
         let path = &[0, 0];
-        tree.view_mut().insert(path).commit_at(Value::I(1));
+        tree.view_mut().insert(path).commit_at(1);
 
         let mut tree = tree.view_mut();
         tree.for_each(|_path, outer_value, mut children| {
             children.for_each(|_path, inner_value, mut children| {
                 let parent = &[0, 0];
-                children.insert(parent).commit_child(Value::I(999));
+                children.insert(parent).commit_child(999);
                 let path = &[0, 0, 0];
                 let value = children.get_mut_by_path(path).unwrap();
-                assert_eq!(*value, Value::I(999));
-                assert_eq!(*outer_value, Value::I(123));
-                assert_eq!(*inner_value, Value::I(1));
+                assert_eq!(*value, 999);
+                assert_eq!(*outer_value, 123);
+                assert_eq!(*inner_value, 1);
                 ControlFlow::Continue::<(), _>(())
             });
             ControlFlow::Break(())

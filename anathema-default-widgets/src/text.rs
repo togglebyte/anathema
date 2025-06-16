@@ -85,12 +85,12 @@ impl Widget for Text {
         self.strings.set_style(id);
 
         // Layout text
-        attributes.value().map(|text| {
+        if let Some(text) = attributes.value() {
             text.strings(|s| match self.strings.add_str(s) {
                 ProcessResult::Break => false,
                 ProcessResult::Continue => true,
             });
-        });
+        }
 
         // Layout text of all the sub-nodes
         _ = children.each(ctx, |ctx, child, _| {
@@ -130,8 +130,8 @@ impl Widget for Text {
         for line in lines {
             let x = match alignment {
                 TextAlignment::Left => 0,
-                TextAlignment::Centre => ctx.local_size.width as u16 / 2 - line.width / 2,
-                TextAlignment::Right => ctx.local_size.width as u16 - line.width,
+                TextAlignment::Centre => ctx.local_size.width / 2 - line.width / 2,
+                TextAlignment::Right => ctx.local_size.width - line.width,
             };
 
             pos.x = x;

@@ -19,7 +19,7 @@ impl Events {
     pub fn poll(&self, timeout: Duration) -> Option<ComponentEvent> {
         match crossterm::event::poll(timeout).ok()? {
             true => {
-                let event = read().map(Into::into).ok()?;
+                let event = read().ok()?;
 
                 let event = match event {
                     CTEvent::Paste(_) => ComponentEvent::Noop,

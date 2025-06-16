@@ -11,6 +11,7 @@ use crate::{LayoutForEach, PaintChildren, Style, WidgetId};
 #[derive(Debug, PartialEq)]
 pub struct Cache {
     pub(super) size: Size,
+    pub(super) pos: Option<Pos>,
     constraints: Option<Constraints>,
     pub(super) child_count: usize,
     valid: bool,
@@ -19,6 +20,7 @@ pub struct Cache {
 impl Cache {
     pub(crate) const ZERO: Self = Self {
         size: Size::ZERO,
+        pos: None,
         // Constraints are `None` for the root node
         constraints: None,
         child_count: 0,
@@ -28,6 +30,7 @@ impl Cache {
     const fn new(size: Size, constraints: Constraints) -> Self {
         Self {
             size,
+            pos: None,
             constraints: Some(constraints),
             child_count: 0,
             valid: true,
@@ -37,11 +40,12 @@ impl Cache {
     // Get the size if the constraints are matching, but only
     // if the size is not max, as that would be an invalid cache
     pub(super) fn size(&self) -> Option<Size> {
-        self.valid.then(|| self.size)
+        self.valid.then_some(self.size)
     }
 
     pub(super) fn invalidate(&mut self) {
         self.valid = false;
+        self.pos = None;
     }
 
     fn changed(&mut self, mut cache: Cache) -> bool {
@@ -67,7 +71,6 @@ impl Cache {
 pub(crate) struct Container {
     pub inner: Box<dyn AnyWidget>,
     pub id: WidgetId,
-    pub pos: Pos,
     pub inner_bounds: Region,
     pub(super) cache: Cache,
 }
@@ -92,8 +95,13 @@ impl Container {
             return Ok(Layout::Unchanged(Size::ZERO));
         }
 
+        // If the layout is changed but the widget is floating it will
+        // have no impact on the parent widget
         let layout = match changed {
-            true => Layout::Changed(self.cache.size),
+            true => match self.inner.any_floats() {
+                false => Layout::Changed(self.cache.size),
+                true => Layout::Floating(self.cache.size),
+            },
             false => Layout::Unchanged(self.cache.size),
         };
         Ok(layout)
@@ -106,14 +114,19 @@ impl Container {
         attribute_storage: &AttributeStorage<'bp>,
         viewport: Viewport,
     ) {
-        self.pos = pos;
+        if self.cache.size().is_none() {
+            return;
+        }
+
+        let pos = *self.cache.pos.get_or_insert(pos);
+
         let ctx = PositionCtx {
             inner_size: self.cache.size,
             pos,
             viewport,
         };
         self.inner.any_position(children, self.id, attribute_storage, ctx);
-        self.inner_bounds = self.inner.any_inner_bounds(self.pos, self.cache.size);
+        self.inner_bounds = self.inner.any_inner_bounds(pos, self.cache.size);
     }
 
     pub(crate) fn paint<'bp>(
@@ -122,7 +135,11 @@ impl Container {
         ctx: PaintCtx<'_, Unsized>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
-        let mut ctx = ctx.into_sized(self.cache.size, self.pos);
+        if self.cache.size().is_none() {
+            return;
+        }
+
+        let mut ctx = ctx.into_sized(self.cache.size, self.cache.pos.expect("only paint laid-out widgets"));
         let region = ctx.create_region();
         ctx.set_clip_region(region);
 
@@ -132,17 +149,17 @@ impl Container {
             let style = Style::from_cell_attribs(attributes);
             // Apply all attributes to the widget
             // as long as it's **not** a floating widget.
-            for y in 0..self.cache.size.height as u16 {
-                for x in 0..self.cache.size.width as u16 {
+            for y in 0..self.cache.size.height {
+                for x in 0..self.cache.size.width {
                     let pos = LocalPos::new(x, y);
                     ctx.set_style(style, pos);
                 }
             }
 
             if let Some(fill) = attributes.get("fill") {
-                for y in 0..ctx.local_size.height as u16 {
+                for y in 0..ctx.local_size.height {
                     let mut used_width = 0;
-                    while used_width < ctx.local_size.width as u16 {
+                    while used_width < ctx.local_size.width {
                         let pos = LocalPos::new(used_width, y);
 
                         fill.strings(|s| {

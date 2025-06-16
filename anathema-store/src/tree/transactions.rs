@@ -59,7 +59,7 @@ impl<'a, 'tree, T> InsertTransaction<'a, 'tree, T> {
                 let path = path.clone();
 
                 // Update the root of all the children of the preceeding siblings
-                node.reparent(&path, &mut self.tree.values);
+                node.reparent(&path, self.tree.values);
             });
             value_id
         })?;

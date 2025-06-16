@@ -50,7 +50,7 @@ impl<'children, 'tree, 'bp> Elements<'children, 'tree, 'bp> {
         ElementQuery {
             query: Query {
                 filter: kind,
-                elements: &mut self.elements,
+                elements: self.elements,
             },
         }
     }
@@ -180,7 +180,7 @@ impl<'bp, 'a> Filter<'bp> for Kind<'a> {
                 attribs.get(key).map(|attribute| value.eq(attribute)).unwrap_or(false)
             }
             Kind::AtPosition(pos) => {
-                let region = Region::from((el.container.pos, el.size()));
+                let region = Region::from((el.get_pos(), el.size()));
                 region.contains(*pos)
             }
             Kind::ById(id) => el.id() == *id,

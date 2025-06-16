@@ -27,7 +27,7 @@ impl Component for C {
     fn on_tick(
         &mut self,
         state: &mut Self::State,
-        elements: Children<'_, '_>,
+        _: Children<'_, '_>,
         context: Context<'_, '_, Self::State>,
         dt: Duration,
     ) {
@@ -38,13 +38,7 @@ impl Component for C {
         state.x.set(x as i32);
     }
 
-    fn on_key(
-        &mut self,
-        key: KeyEvent,
-        state: &mut Self::State,
-        elements: Children<'_, '_>,
-        context: Context<'_, '_, Self::State>,
-    ) {
+    fn on_key(&mut self, key: KeyEvent, state: &mut Self::State, _: Children<'_, '_>, _: Context<'_, '_, Self::State>) {
         if matches!(key.state, KeyState::Press) {
             match key.code {
                 KeyCode::Char('k') => *state.speed.to_mut() += 0.1,

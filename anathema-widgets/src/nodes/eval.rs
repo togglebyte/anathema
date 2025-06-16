@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Region};
+use anathema_geometry::Region;
 use anathema_state::Subscriber;
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
@@ -59,7 +59,7 @@ impl Evaluator for SingleEval {
 
         for (key, expr) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+                let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
                 resolve(expr, &ctx, (widget_id, value_index))
             });
         }
@@ -77,7 +77,6 @@ impl Evaluator for SingleEval {
         let container = Container {
             inner: widget,
             id: widget_id,
-            pos: Pos::ZERO,
             inner_bounds: Region::ZERO,
             cache: Cache::ZERO,
         };
@@ -108,7 +107,7 @@ impl Evaluator for ForLoopEval {
         let transaction = tree.insert(parent);
         let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
-        let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+        let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
         let collection = resolve_collection(&for_loop.data, &ctx, value_id);
 
         let for_loop = super::loops::For {
@@ -186,7 +185,7 @@ impl Evaluator for ComponentEval {
 
         for (key, expr) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                let ctx = ResolverCtx::new(ctx.globals, &scope, ctx.states, ctx.attribute_storage);
+                let ctx = ResolverCtx::new(ctx.globals, scope, ctx.states, ctx.attribute_storage);
                 resolve(expr, &ctx, (widget_id, value_index))
             });
         }

@@ -1,7 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
-use testutils::{char_press, BasicComp};
+use testutils::{BasicComp, char_press};
 
 #[derive(Debug, State)]
 struct Inner {
@@ -23,7 +23,7 @@ struct Outer {
 
 type Comp<F> = BasicComp<F, Outer>;
 
-fn keypress(key: KeyEvent, state: &mut Outer, mut children: Children<'_, '_>, mut context: Context<'_, '_, Outer>) {
+fn keypress(_: KeyEvent, state: &mut Outer, _: Children<'_, '_>, _: Context<'_, '_, Outer>) {
     state.inner.set(Inner {
         list: List::from_iter([2]).into(),
     });

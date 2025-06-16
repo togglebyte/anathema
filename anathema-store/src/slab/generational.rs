@@ -45,28 +45,8 @@ impl Display for Gen {
 /// Bits 48..64 is the 16-bit aux storage in the key.
 ///
 /// This is used to attach additional data to the key.
-#[derive(Hash, Copy, Clone)]
+#[derive(Hash, Copy, Clone, PartialEq, PartialOrd)]
 pub struct Key(u64);
-
-impl PartialEq for Key {
-    fn eq(&self, other: &Self) -> bool {
-        self.index().eq(&other.index())
-    }
-}
-
-impl Eq for Key {}
-
-impl PartialOrd for Key {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.index().partial_cmp(&other.index())
-    }
-}
-
-impl Ord for Key {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.index().cmp(&other.index())
-    }
-}
 
 impl Key {
     const AUX_BITS: usize = 16;
@@ -78,7 +58,7 @@ impl Key {
     pub const MAX: Self = Self::new(u32::MAX, 0);
     /// One (generation is set to zero)
     pub const ONE: Self = Self::new(1, 0);
-    /// Zero for both index and generation
+    /// Zero for both index and generation.
     pub const ZERO: Self = Self::new(0, 0);
 
     /// Create a new instance of a key
@@ -90,7 +70,7 @@ impl Key {
 
     /// Set the upper auxillary value
     pub fn set_aux(&mut self, aux: u16) {
-        let aux = (aux as u64) << Self::INDEX_BITS + Self::GEN_BITS;
+        let aux = (aux as u64) << (Self::INDEX_BITS + Self::GEN_BITS);
         self.0 = self.0 << Self::GEN_BITS >> Self::GEN_BITS | aux;
     }
 
@@ -339,75 +319,6 @@ impl<T> GenSlab<T> {
         }
     }
 
-    /// Insert a value at a given index.
-    /// This will force the underlying storage to grow if
-    /// the index given is larger than the current capacity.
-    ///
-    /// This will overwrite any value currently at that index.
-    ///
-    /// # Panics
-    ///
-    /// Panics if a value is inserted at a position that is currently checked out
-    pub fn insert_at(&mut self, index: u32, value: T) {
-        let key = Key::new(index, 0);
-
-        // If the index is outside of the current
-        // length then fill the slots in between with
-        // vacant entries
-        if key.index() >= self.inner.len() {
-            for i in self.inner.len()..key.index() {
-                let entry = Entry::Vacant(self.next_id.take());
-                self.next_id = Some(Key::new(i as u32, 0));
-                self.inner.push(entry);
-            }
-            self.inner.push(Entry::Occupied(value, key.generation()));
-        // If the index is inside the current length:
-        } else {
-            let entry = self
-                .inner
-                .get_mut(key.index())
-                .expect("there should be entries up to self.len()");
-
-            match entry {
-                Entry::CheckedOut(_) => panic!("value is checked out"),
-                Entry::Vacant(None) => *entry = Entry::Occupied(value, key.generation()),
-                Entry::Occupied(val, generation) => {
-                    *val = value;
-                    *generation = key.generation();
-                }
-                &mut Entry::Vacant(Some(next_free)) => {
-                    // Find the values that points to `index`
-                    // and replace that with `next_free`
-
-                    let next_id = &mut self.next_id;
-                    loop {
-                        match next_id {
-                            Some(id) if *id == key => {
-                                *id = next_free;
-                                break;
-                            }
-                            Some(id) => match self.inner.get_mut(id.index()) {
-                                Some(Entry::Vacant(id)) => {
-                                    *next_id = *id;
-                                    continue;
-                                }
-                                Some(Entry::Occupied(..)) => {
-                                    unreachable!("entry is occupied, so this should never be the next value")
-                                }
-                                Some(Entry::CheckedOut(_)) => unreachable!("entry checked out"),
-                                None => unreachable!("the index can only point to a vacant value"),
-                            },
-                            None => todo!(),
-                        }
-                    }
-
-                    // Insert new value
-                    self.inner[key.index()] = Entry::Occupied(value, key.generation());
-                }
-            }
-        }
-    }
-
     /// Remove a value from the slab, as long as the index and generation matches
     #[must_use]
     pub fn remove(&mut self, mut key: Key) -> Option<T> {
@@ -593,13 +504,6 @@ mod test {
 
         let value = slab.get(key).unwrap();
         assert_eq!(*value, 2);
-    }
-
-    #[test]
-    fn insert_at() {
-        let mut slab = GenSlab::empty();
-        slab.insert_at(5, ());
-        // assert_eq!(expected, actual);
     }
 
     #[test]

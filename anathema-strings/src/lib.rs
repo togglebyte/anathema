@@ -203,7 +203,7 @@ mod test {
         let mut strings = HStrings::empty();
         let hstr = strings.insert_with(|tx| {
             tx.add_slice("hello");
-            write!(tx, " ");
+            write!(tx, " ").unwrap();
             tx.add_slice("world");
         });
         let s = strings.get(hstr);

@@ -17,8 +17,7 @@ use crate::runtime::Runtime;
 
 fn error_doc() -> Document {
     let template = "text 'you goofed up'";
-    let doc = Document::new(template);
-    doc
+    Document::new(template)
 }
 
 pub struct Builder<G> {
@@ -86,7 +85,7 @@ impl<G: GlobalEventHandler> Builder<G> {
         component: C,
         state: C::State,
     ) -> Result<ComponentId<C::Message>> {
-        let id = self.document.add_component(ident, template.to_source_kind())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?;
         self.component_registry.add_component(id, component, state);
         Ok(id.into())
     }
@@ -105,7 +104,7 @@ impl<G: GlobalEventHandler> Builder<G> {
     {
         let component = C::default();
         let state = C::State::default();
-        let id = self.document.add_component(ident, template.to_source_kind())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?;
         self.component_registry.add_component(id, component, state);
         Ok(id.into())
     }
@@ -124,7 +123,7 @@ impl<G: GlobalEventHandler> Builder<G> {
         FS: 'static + FnMut() -> C::State,
         C: Component + 'static,
     {
-        let id = self.document.add_component(ident, template.to_source_kind())?.into();
+        let id = self.document.add_component(ident, template.to_source_kind())?;
         self.component_registry.add_prototype(id, proto, state);
         Ok(())
     }

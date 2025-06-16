@@ -60,11 +60,11 @@ impl Scope {
     fn eval_node(&mut self, ident: StringId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let ident = ctx.strings.get_unchecked(ident);
         let attributes = self.eval_attributes(ctx)?;
-        let value = self.statements.take_value().map(|v| const_eval(v, ctx)).flatten();
+        let value = self.statements.take_value().and_then(|v| const_eval(v, ctx));
         let children = self.consume_scope(ctx)?;
 
         let node = Blueprint::Single(Single {
-            ident: ident.into(),
+            ident,
             children,
             attributes,
             value,
@@ -93,7 +93,7 @@ impl Scope {
         for (key, value) in self.statements.take_attributes() {
             let Some(value) = const_eval(value, ctx) else { continue };
             let key = ctx.strings.get_unchecked(key);
-            hm.set(key.into(), value);
+            hm.set(key, value);
         }
 
         Ok(hm)

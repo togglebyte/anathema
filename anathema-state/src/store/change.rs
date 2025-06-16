@@ -34,7 +34,6 @@ pub(crate) fn changed(key: ValueKey, change: Change) {
         return;
     }
 
-    anathema_debug::debug_to_file!("changed {:?}", key);
     CHANGES.with_borrow_mut(|changes| {
         changes.push((subscribers, change));
     });

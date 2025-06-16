@@ -224,7 +224,7 @@ mod test {
     pub(crate) fn load_attrib(key: usize, expr: impl Into<Expression>) -> Statement {
         let key = StringId::from_usize(key);
         Statement::LoadAttribute {
-            key: key.into(),
+            key,
             value: expr.into(),
         }
     }
@@ -236,7 +236,7 @@ mod test {
 
     pub(crate) fn slot(id: usize) -> Statement {
         let id = StringId::from_usize(id);
-        Statement::ComponentSlot(id.into())
+        Statement::ComponentSlot(id)
     }
 
     pub(crate) fn associated_fun(internal: usize, external: usize) -> Statement {

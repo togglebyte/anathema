@@ -14,7 +14,7 @@ impl Component for Index {
     fn on_mouse(
         &mut self,
         mouse: MouseEvent,
-        state: &mut Self::State,
+        _: &mut Self::State,
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
@@ -24,7 +24,6 @@ impl Component for Index {
                 .at_position(mouse.pos())
                 .by_attribute("id", "button")
                 .first(|_, attr| {
-                    panic!("this example is broken untl the query is fixed");
                     let Some(value) = attr.get_as::<&str>("id").map(|s| s.to_string()) else { return };
                     context.components.by_name("messages").send(value);
                 });

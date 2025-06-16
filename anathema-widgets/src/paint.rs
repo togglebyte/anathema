@@ -122,7 +122,7 @@ impl<'bp> crate::widget::Filter<'bp> for PaintFilter {
     type Output = Element<'bp>;
 
     fn filter<'a>(
-        &self,
+        &mut self,
         widget: &'a mut WidgetContainer<'bp>,
         attribute_storage: &AttributeStorage<'_>,
     ) -> FilterOutput<&'a mut Self::Output, Self> {
@@ -139,6 +139,8 @@ impl<'bp> crate::widget::Filter<'bp> for PaintFilter {
                             false => FilterOutput::Include(element, *self),
                             true => FilterOutput::Exclude,
                         },
+                        WidgetPositionFilter::All => FilterOutput::Include(element, *self),
+                        WidgetPositionFilter::None => FilterOutput::Exclude,
                     },
                     Display::Hide | Display::Exclude => FilterOutput::Exclude,
                 }

@@ -54,7 +54,7 @@ impl PartialOrd for IndexRef<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let ord = match self.index.cmp(&other.index) {
             ord @ (Ordering::Less | Ordering::Greater) => ord,
-            Ordering::Equal => self.path.cmp(&other.path),
+            Ordering::Equal => self.path.cmp(other.path),
         };
         Some(ord)
     }
@@ -129,13 +129,12 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
                     }
 
                     // Skip the current index
-                    match &mut next_index.origin {
-                        Some(origin) => match dir {
+                    if let Some(origin) = &mut next_index.origin {
+                        match dir {
                             Direction::Forward if *origin >= index => continue,
                             Direction::Backward if *origin <= index => continue,
                             _ => {}
-                        },
-                        None => (),
+                        }
                     }
 
                     match &mut next_index.next {

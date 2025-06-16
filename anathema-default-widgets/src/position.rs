@@ -97,27 +97,11 @@ impl Widget for Position {
             },
         };
 
-        // Relative:
-        // Position relative to parent means calculating a new constraint
-        // based of the position of the top, left - the size
-        //
-        // Given a constraint of 10 x 10 and a left of 2 and a top of 3 it would
-        // produce a new set of constraints at 8 x 7
-        //
-        // Absolute:
-        // Position relative to the viewport,
-        // Has no constraints other than the viewport
-
-        let constraints = match self.placement {
-            Placement::Relative => constraints,
-            Placement::Absolute => ctx.viewport.constraints(),
-        };
-
         let size = constraints.max_size();
 
         _ = children.each(ctx, |ctx, child, children| {
             // size is determined by the constraint
-            _ = child.layout(children, constraints, ctx)?;
+            _ = child.layout(children, ctx.viewport.constraints(), ctx)?;
             Ok(ControlFlow::Break(()))
         })?;
 

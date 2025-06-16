@@ -12,7 +12,6 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
-anathema-debug = { path = "./anathema-debug" }
 anathema-default-widgets = { path = "./anathema-default-widgets" }
 anathema-backend = { path = "./anathema-backend" }
 anathema-runtime = { path = "./anathema-runtime" }
@@ -27,7 +26,7 @@ anathema-value-resolver = { path = "./anathema-value-resolver" }
 [features]
 default = []
 profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
-filelog = ["anathema-debug/filelog"]
+# filelog = ["anathema-debug/filelog"]
 
 [lints]
 workspace = true
@@ -42,6 +41,7 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
+anathema-debug = { path = "testutils" }
 
 [workspace]
 members = [

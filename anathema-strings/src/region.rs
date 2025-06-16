@@ -7,8 +7,8 @@ pub(crate) struct Region {
 }
 
 impl Region {
-    pub(crate) fn apply(&self, inner: &mut Vec<u8>, buffer: &mut Vec<u8>, len: usize) -> StrIndex {
-        inner[self.start as usize..][..len as usize].copy_from_slice(&buffer[..len]);
+    pub(crate) fn apply(&self, inner: &mut [u8], buffer: &mut Vec<u8>, len: usize) -> StrIndex {
+        inner[self.start as usize..][..len].copy_from_slice(&buffer[..len]);
         buffer.clear();
         StrIndex::from((self.start, len as u32))
     }

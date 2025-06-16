@@ -12,14 +12,13 @@ pub struct TestSurface {
 impl TestSurface {
     pub fn new(size: Size) -> Self {
         let len = size.width * size.height;
-        let mut lines = vec![Glyph::space(); len as usize];
-
+        let lines = vec![Glyph::space(); len as usize];
         Self { size, lines }
     }
 
-    pub(crate) fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap) {
+    pub(crate) fn resize(&mut self, new_size: Size, _glyph_map: &mut GlyphMap) {
         self.size = new_size;
-        panic!("truncate and pop lines outside of the new size")
+        todo!("truncate and pop lines outside of the new size")
     }
 
     pub(crate) fn get(&self, x: usize, y: usize) -> Option<&Glyph> {
@@ -40,7 +39,7 @@ impl WidgetRenderer for TestSurface {
         self.set_style(style, local_pos)
     }
 
-    fn set_style(&mut self, style: Style, local_pos: Pos) {}
+    fn set_style(&mut self, _style: Style, _local_pos: Pos) {}
 
     fn size(&self) -> Size {
         self.size

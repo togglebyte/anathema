@@ -20,6 +20,6 @@ fn main() {
     backend.finalize();
 
     let mut builder = Runtime::builder(doc, &backend);
-    builder.template("index", template.to_template());
+    builder.template("index", template.to_template()).unwrap();
     builder.finish(|runtime| runtime.run(&mut backend)).unwrap();
 }

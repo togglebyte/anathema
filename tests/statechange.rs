@@ -1,15 +1,9 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
-use anathema_runtime::Error;
-use testutils::{char_press, BasicComp, BasicState};
+use testutils::{BasicComp, BasicState, char_press};
 
-fn keypress(
-    key: KeyEvent,
-    state: &mut BasicState,
-    mut children: Children<'_, '_>,
-    mut context: Context<'_, '_, BasicState>,
-) {
+fn keypress(_: KeyEvent, state: &mut BasicState, _: Children<'_, '_>, _: Context<'_, '_, BasicState>) {
     state.number.set(9);
 }
 

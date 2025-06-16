@@ -295,8 +295,8 @@ mod test {
 
     fn token_kind(input: &str) -> Kind {
         let mut strings = Strings::new();
-        let kind = Lexer::new(input, &mut strings).next().unwrap().unwrap().0;
-        kind
+
+        Lexer::new(input, &mut strings).next().unwrap().unwrap().0
     }
 
     fn operator(input: &str) -> Operator {

@@ -27,7 +27,7 @@ impl<'children, 'tree, 'bp> Components<'children, 'tree, 'bp> {
         ComponentQuery {
             query: Query {
                 filter: kind,
-                elements: &mut self.elements,
+                elements: self.elements,
             },
         }
     }

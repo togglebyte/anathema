@@ -2,7 +2,6 @@ use std::fs::read_to_string;
 use std::path::PathBuf;
 
 use anathema_store::smallmap::SmallMap;
-use anathema_store::storage::strings::StringId;
 
 use crate::blueprints::Blueprint;
 use crate::components::{ComponentSource, ComponentTemplates, SourceKind};

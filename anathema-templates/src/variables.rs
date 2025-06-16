@@ -329,7 +329,7 @@ impl Variables {
 
     pub fn declare(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> VarId {
         let value = value.into();
-        let var_id = self.store.insert(Variable::Global(value.into()));
+        let var_id = self.store.insert(Variable::Global(value));
         let scope_id = self.current.clone();
         self.declare_at(ident, var_id, scope_id)
     }

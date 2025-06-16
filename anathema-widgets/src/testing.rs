@@ -13,9 +13,9 @@ use crate::{
     Components, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Widget, WidgetTree, WidgetTreeView, eval_blueprint,
 };
 
-pub fn with_template<F>(tpl: &str, f: F)
+pub fn with_template<F>(tpl: &str, mut f: F)
 where
-    F: for<'bp> Fn(WidgetTreeView<'_, 'bp>, &mut AttributeStorage<'bp>),
+    F: for<'bp> FnMut(WidgetTreeView<'_, 'bp>, &mut AttributeStorage<'bp>),
 {
     let mut tree = WidgetTree::empty();
     let mut doc = Document::new(tpl);
@@ -25,6 +25,7 @@ where
 
     let mut factory = Factory::new();
     factory.register_default::<Many>("many");
+    factory.register_default::<Float>("float");
     factory.register_default::<Text>("text");
 
     let mut states = States::new();
@@ -56,6 +57,15 @@ where
     eval_blueprint(blueprint, &mut ctx, &scope, root_node(), &mut tree.view_mut()).unwrap();
 
     let filter = crate::layout::LayoutFilter::fixed();
+    let mut for_each = LayoutForEach::new(tree.view_mut(), &scope, filter, None);
+    _ = for_each
+        .each(&mut layout_ctx, |ctx, widget, children| {
+            _ = widget.layout(children, ctx.viewport.constraints(), ctx)?;
+            Ok(ControlFlow::Break(()))
+        })
+        .unwrap();
+
+    let filter = crate::layout::LayoutFilter::floating();
     let mut for_each = LayoutForEach::new(tree.view_mut(), &scope, filter, None);
     _ = for_each
         .each(&mut layout_ctx, |ctx, widget, children| {
@@ -135,5 +145,45 @@ impl Widget for Text {
         _: &AttributeStorage<'bp>,
         _: crate::layout::PositionCtx,
     ) {
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Float;
+
+impl Widget for Float {
+    fn layout<'bp>(
+        &mut self,
+        mut children: crate::LayoutForEach<'_, 'bp>,
+        constraints: crate::layout::Constraints,
+        _: crate::WidgetId,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> crate::error::Result<anathema_geometry::Size> {
+        let mut size = Size::ZERO;
+        _ = children.each(ctx, |ctx, child, children| {
+            let child_size: Size = child.layout(children, constraints, ctx)?.into();
+            size.width = size.width.max(child_size.width);
+            size.height += child_size.height;
+            Ok(ControlFlow::Continue(()))
+        });
+
+        Ok(size)
+    }
+
+    fn position<'bp>(
+        &mut self,
+        mut children: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
+        _: crate::WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: crate::layout::PositionCtx,
+    ) {
+        _ = children.each(|child, children| {
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            ControlFlow::Continue(())
+        });
+    }
+
+    fn floats(&self) -> bool {
+        true
     }
 }

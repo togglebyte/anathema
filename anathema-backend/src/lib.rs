@@ -9,8 +9,8 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFil
 use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::{GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
 
-pub mod tui;
 pub mod testing;
+pub mod tui;
 
 pub trait Backend {
     fn size(&self) -> Size;
@@ -55,34 +55,12 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         }
     }
 
-    fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
-        // -----------------------------------------------------------------------------
-        //   - Layout -
-        // -----------------------------------------------------------------------------
-        if needs_layout {
-            let filter = LayoutFilter::floating();
-            self.layout(ctx, filter)?;
-        }
-
-        // -----------------------------------------------------------------------------
-        //   - Position -
-        // -----------------------------------------------------------------------------
-        self.position(ctx.attribute_storage, *ctx.viewport, PositionFilter::floating());
-
-        // -----------------------------------------------------------------------------
-        //   - Paint -
-        // -----------------------------------------------------------------------------
-        self.paint(ctx, PaintFilter::floating());
-
-        Ok(())
-    }
-
     fn fixed(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
         // -----------------------------------------------------------------------------
         //   - Layout -
         // -----------------------------------------------------------------------------
         if needs_layout {
-            let filter = LayoutFilter::fixed();
+            let filter = LayoutFilter::all();
             self.layout(ctx, filter)?;
         }
 
@@ -99,10 +77,23 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         Ok(())
     }
 
+    fn floating(&mut self, ctx: &mut LayoutCtx<'_, 'bp>) -> Result<()> {
+        // -----------------------------------------------------------------------------
+        //   - Position -
+        // -----------------------------------------------------------------------------
+        self.position(ctx.attribute_storage, *ctx.viewport, PositionFilter::floating());
+
+        // -----------------------------------------------------------------------------
+        //   - Paint -
+        // -----------------------------------------------------------------------------
+        self.paint(ctx, PaintFilter::floating());
+
+        Ok(())
+    }
+
     pub fn run(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, needs_layout: bool) -> Result<()> {
         self.fixed(ctx, needs_layout)?;
-        self.floating(ctx, needs_layout)?;
-
+        self.floating(ctx)?;
         Ok(())
     }
 

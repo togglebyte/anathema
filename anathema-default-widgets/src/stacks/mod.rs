@@ -54,7 +54,7 @@ impl Stack {
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = false;
         let mut many = Many::new(dir, self.0, unconstrained);
-        many.layout(children, constraints, ctx, 0)
+        many.layout(children, constraints, ctx)
     }
 
     fn position<'bp>(

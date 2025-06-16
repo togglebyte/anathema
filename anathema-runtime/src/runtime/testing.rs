@@ -67,7 +67,7 @@ where
             }
 
             let sleep = self.sleep_micros - dur.as_micros() as u64;
-            std::thread::sleep(Duration::from_micros(sleep as u64));
+            std::thread::sleep(Duration::from_micros(sleep));
         }
     }
 }

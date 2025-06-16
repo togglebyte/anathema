@@ -35,7 +35,7 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
                     }
                 };
                 let rhs = strings.get_unchecked(string_id);
-                Expression::Index(lhs, Expression::Str(rhs.into()).into())
+                Expression::Index(lhs, Expression::Str(rhs).into())
             }
             Operator::Mul | Operator::Plus | Operator::Minus | Operator::Div | Operator::Mod => {
                 let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());
@@ -99,8 +99,7 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
         Expr::List(list) => Expression::List(
             list.into_iter()
                 .map(|expr| eval(expr, strings))
-                .collect::<Result<Vec<_>, _>>()?
-                .into(),
+                .collect::<Result<Vec<_>, _>>()?,
         ),
         Expr::Map(map) => {
             let mut inner = HashMap::default();
@@ -112,7 +111,7 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
                 inner.insert(key, eval(value, strings)?);
             }
 
-            Expression::Map(inner.into())
+            Expression::Map(inner)
         }
         Expr::Call { fun, args } => {
             let args = args

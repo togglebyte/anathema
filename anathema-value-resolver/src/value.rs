@@ -226,7 +226,7 @@ impl ValueKind<'_> {
 
     pub fn as_str(&self) -> Option<&str> {
         let ValueKind::Str(i) = &self else { return None };
-        Some(&*i)
+        Some(i)
     }
 
     pub fn strings<F>(&self, mut f: F)
@@ -254,7 +254,7 @@ impl ValueKind<'_> {
             ValueKind::Map => f("<map>"),
             ValueKind::Composite(_) => f("<composite>"),
             ValueKind::Attributes => f("<attributes>"),
-            ValueKind::Null => return true,
+            ValueKind::Null => true,
         }
     }
 
@@ -293,7 +293,7 @@ where
             Type::Int => f(&state.as_int().expect("type info dictates this").to_string()),
             Type::Float => f(&state.as_float().expect("type info dictates this").to_string()),
             Type::Char => f(&state.as_char().expect("type info dictates this").to_string()),
-            Type::String => f(&state.as_str().expect("type info dictates this")),
+            Type::String => f(state.as_str().expect("type info dictates this")),
             Type::Bool => f(&state.as_bool().expect("type info dictates this").to_string()),
             Type::Hex => f(&state.as_hex().expect("type info dictates this").to_string()),
             Type::Map => f("<map>"),
@@ -474,7 +474,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             test.set_attribute("a", &int);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123, value.as_int().unwrap());
         });
     }
@@ -488,7 +488,7 @@ pub(crate) mod test {
         globals.declare("index", 0);
 
         setup(&mut states, globals, |test| {
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(2, value.as_int().unwrap());
         });
     }
@@ -499,7 +499,7 @@ pub(crate) mod test {
 
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(1, value.as_int().unwrap());
         });
     }
@@ -521,7 +521,7 @@ pub(crate) mod test {
 
             // Evaluate the value.
             // The state is not yet set so it will fall back to attributes
-            let mut value = test.eval(&*expr);
+            let mut value = test.eval(&expr);
             assert_eq!("from attribute", value.as_str().unwrap());
 
             // Set the state value
@@ -549,11 +549,11 @@ pub(crate) mod test {
             );
 
             test.with_state(|state| state.list.push("a string"));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!("a string", value.as_str().unwrap());
 
             test.set_attribute("list", &list);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123, value.as_int().unwrap());
         });
     }
@@ -570,7 +570,7 @@ pub(crate) mod test {
                 index(ident("state"), strlit("num_3")),
                 index(ident("state"), strlit("num_2")),
             );
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(2, value.as_int().unwrap());
 
             // There is a, so don't use b
@@ -578,7 +578,7 @@ pub(crate) mod test {
                 index(ident("state"), strlit("num")),
                 index(ident("state"), strlit("num_2")),
             );
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(1, value.as_int().unwrap());
         });
     }
@@ -590,7 +590,7 @@ pub(crate) mod test {
             test.with_state(|state| state.num.set(5));
             let lookup = index(ident("state"), strlit("num"));
             let expr = modulo(lookup, num(3));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(2, value.as_int().unwrap());
         });
     }
@@ -602,7 +602,7 @@ pub(crate) mod test {
             test.with_state(|state| state.num.set(6));
             let lookup = index(ident("state"), strlit("num"));
             let expr = div(lookup, num(2));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(3, value.as_int().unwrap());
         });
     }
@@ -614,7 +614,7 @@ pub(crate) mod test {
             test.with_state(|state| state.num.set(2));
             let lookup = index(ident("state"), strlit("num"));
             let expr = mul(lookup, num(2));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(4, value.as_int().unwrap());
         });
     }
@@ -626,7 +626,7 @@ pub(crate) mod test {
             test.with_state(|state| state.num.set(1));
             let lookup = index(ident("state"), strlit("num"));
             let expr = sub(lookup, num(2));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(-1, value.as_int().unwrap());
         });
     }
@@ -638,7 +638,7 @@ pub(crate) mod test {
             test.with_state(|state| state.num.set(1));
             let lookup = index(ident("state"), strlit("num"));
             let expr = add(lookup, num(2));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(3, value.as_int().unwrap());
         });
     }
@@ -648,8 +648,8 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let is_true = or(boolean(false), boolean(true));
-            let is_true = test.eval(&*is_true);
-            assert_eq!(true, is_true.as_bool().unwrap());
+            let is_true = test.eval(&is_true);
+            assert!(is_true.as_bool().unwrap());
         });
     }
 
@@ -658,8 +658,8 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let is_true = and(boolean(true), boolean(true));
-            let is_true = test.eval(&*is_true);
-            assert_eq!(true, is_true.as_bool().unwrap());
+            let is_true = test.eval(&is_true);
+            assert!(is_true.as_bool().unwrap());
         });
     }
 
@@ -669,10 +669,10 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let is_true = less_than_equal(num(1), num(2));
             let is_also_true = less_than_equal(num(1), num(1));
-            let is_true = test.eval(&*is_true);
-            let is_also_true = test.eval(&*is_also_true);
-            assert_eq!(true, is_true.as_bool().unwrap());
-            assert_eq!(true, is_also_true.as_bool().unwrap());
+            let is_true = test.eval(&is_true);
+            let is_also_true = test.eval(&is_also_true);
+            assert!(is_true.as_bool().unwrap());
+            assert!(is_also_true.as_bool().unwrap());
         });
     }
 
@@ -682,10 +682,10 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let is_true = less_than(num(1), num(2));
             let is_false = less_than(num(1), num(1));
-            let is_true = test.eval(&*is_true);
-            let is_false = test.eval(&*is_false);
-            assert_eq!(true, is_true.as_bool().unwrap());
-            assert_eq!(false, is_false.as_bool().unwrap());
+            let is_true = test.eval(&is_true);
+            let is_false = test.eval(&is_false);
+            assert!(is_true.as_bool().unwrap());
+            assert!(!is_false.as_bool().unwrap());
         });
     }
 
@@ -695,10 +695,10 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let is_true = greater_than_equal(num(2), num(1));
             let is_also_true = greater_than_equal(num(2), num(2));
-            let is_true = test.eval(&*is_true);
-            let is_also_true = test.eval(&*is_also_true);
-            assert_eq!(true, is_true.as_bool().unwrap());
-            assert_eq!(true, is_also_true.as_bool().unwrap());
+            let is_true = test.eval(&is_true);
+            let is_also_true = test.eval(&is_also_true);
+            assert!(is_true.as_bool().unwrap());
+            assert!(is_also_true.as_bool().unwrap());
         });
     }
 
@@ -708,10 +708,10 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let is_true = greater_than(num(2), num(1));
             let is_false = greater_than(num(2), num(2));
-            let is_true = test.eval(&*is_true);
-            let is_false = test.eval(&*is_false);
-            assert_eq!(true, is_true.as_bool().unwrap());
-            assert_eq!(false, is_false.as_bool().unwrap());
+            let is_true = test.eval(&is_true);
+            let is_false = test.eval(&is_false);
+            assert!(is_true.as_bool().unwrap());
+            assert!(!is_false.as_bool().unwrap());
         });
     }
 
@@ -723,8 +723,8 @@ pub(crate) mod test {
             let is_true = test.eval(&is_true);
             let is_false = &not(eq(num(1), num(1)));
             let is_false = test.eval(is_false);
-            assert_eq!(true, is_true.as_bool().unwrap());
-            assert_eq!(false, is_false.as_bool().unwrap());
+            assert!(is_true.as_bool().unwrap());
+            assert!(!is_false.as_bool().unwrap());
         });
     }
 
@@ -733,7 +733,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = neg(float(123.1));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(-123.1, value.as_float().unwrap());
         });
     }
@@ -743,7 +743,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = neg(num(123));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(-123, value.as_int().unwrap());
         });
     }
@@ -753,8 +753,8 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = not(boolean(false));
-            let value = test.eval(&*expr);
-            assert_eq!(true, value.as_bool().unwrap());
+            let value = test.eval(&expr);
+            assert!(value.as_bool().unwrap());
         });
     }
 
@@ -763,7 +763,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = map([("a", 123), ("b", 456)]);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(ValueKind::Map, value.kind);
         });
     }
@@ -774,7 +774,7 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             // At first there is no map...
             let expr = index(ident("state"), strlit("opt_map"));
-            let mut value = test.eval(&*expr);
+            let mut value = test.eval(&expr);
             assert!(matches!(value.kind, ValueKind::Null));
 
             // ... then we insert a map
@@ -797,7 +797,7 @@ pub(crate) mod test {
         setup(&mut states, globals, |test| {
             let expr = index(ident("state"), either(ident("empty"), ident("full")));
             test.with_state(|state| state.string.set("a string"));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!("a string", value.as_str().unwrap());
         });
     }
@@ -808,7 +808,7 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             test.with_state(|state| state.string.set("a string"));
             let expr = index(ident("state"), strlit("string"));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!("a string", value.as_str().unwrap());
         });
     }
@@ -819,7 +819,7 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let expr = index(ident("state"), strlit("float"));
             test.with_state(|state| state.float.set(1.2));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(1.2, value.as_float().unwrap());
         });
     }
@@ -831,7 +831,7 @@ pub(crate) mod test {
         globals.declare("missing", 111);
         setup(&mut states, globals, |test| {
             let expr = either(ident("missings"), num(2));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(2, value.as_int().unwrap());
         });
     }
@@ -841,7 +841,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = hex((1, 2, 3));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(Hex::from((1, 2, 3)), value.as_hex().unwrap());
         });
     }
@@ -851,7 +851,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = chr('x');
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!('x', value.as_char().unwrap());
         });
     }
@@ -861,7 +861,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = float(123.123);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123.123, value.as_float().unwrap());
         });
     }
@@ -871,7 +871,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = num(123);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123, value.as_int().unwrap());
         });
     }
@@ -881,7 +881,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = boolean(true);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert!(value.as_bool().unwrap());
         });
     }
@@ -895,7 +895,7 @@ pub(crate) mod test {
                 state.list.push("def");
             });
             let expr = index(index(ident("state"), strlit("list")), num(1));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!("def", value.as_str().unwrap());
         });
     }
@@ -906,7 +906,7 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let expr = index(map([("value", 123)]), index(ident("state"), strlit("string")));
             test.with_state(|state| state.string.set("value"));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123, value.as_int().unwrap());
         });
     }
@@ -916,7 +916,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = index(map([("value", 123)]), strlit("value"));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123, value.as_int().unwrap());
         });
     }
@@ -926,7 +926,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = index(ident("state"), strlit("num"));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(0, value.as_int().unwrap());
         });
     }
@@ -937,7 +937,7 @@ pub(crate) mod test {
         setup(&mut states, Default::default(), |test| {
             let expr = index(index(ident("state"), strlit("map")), strlit("value"));
             test.with_state(|state| state.map.to_mut().insert("value", 123));
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             assert_eq!(123, value.as_int().unwrap());
         });
     }
@@ -966,7 +966,7 @@ pub(crate) mod test {
         let mut states = States::new();
         setup(&mut states, Default::default(), |test| {
             let expr = text_segments([strlit("hello"), strlit(" "), strlit("world")]);
-            let value = test.eval(&*expr);
+            let value = test.eval(&expr);
             let mut actual = String::new();
             value.strings(|st| {
                 actual.push_str(st);

@@ -3,8 +3,7 @@
 //! It uses two buffers and only draws the diffs from top left to bottom right, making it less
 //! likely to flicker when moving the cursor etc.
 #![deny(missing_docs)]
-use std::fs::File;
-use std::io::{BufWriter, Stdout, Write};
+use std::io::{Stdout, Write};
 use std::ops::Add;
 use std::time::Duration;
 

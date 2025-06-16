@@ -115,7 +115,6 @@ impl Widget for Overflow {
     ) -> Result<Size> {
         let attributes = ctx.attribute_storage.get(id);
         let axis = attributes.get_as(AXIS).unwrap_or(Axis::Vertical);
-        let offset = attributes.get_as::<usize>("offest").unwrap_or_default();
 
         let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
 
@@ -144,7 +143,7 @@ impl Widget for Overflow {
         let mut many = Many::new(self.direction, axis, unconstrained);
 
         // NOTE: we use the inner size here from many.layout
-        _ = many.layout(children, constraints, ctx, offset)?;
+        _ = many.layout(children, constraints, ctx)?;
 
         self.inner_size = many.used_size.inner_size();
 

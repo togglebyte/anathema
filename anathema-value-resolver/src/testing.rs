@@ -81,14 +81,14 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     pub(crate) fn eval(&self, expr: &'bp Expression) -> crate::value::Value<'bp> {
         let state_id = StateId::ZERO;
         let scope = Scope::with_component(state_id, Key::ZERO, None);
-        let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, &self.attributes);
+        let ctx = ResolverCtx::new(self.globals, &scope, self.states, &self.attributes);
         resolve(expr, &ctx, Subscriber::ZERO)
     }
 
     pub fn set_attribute(&mut self, key: &'bp str, expr: &'bp Expression) {
         let scope = Scope::with_component(StateId::ZERO, Key::ZERO, None);
         self.attributes.with_mut(Key::ZERO, |attributes, storage| {
-            let ctx = ResolverCtx::new(&self.globals, &scope, &self.states, storage);
+            let ctx = ResolverCtx::new(self.globals, &scope, self.states, storage);
             attributes.insert_with(ValueKey::Attribute(key), |_index| resolve(expr, &ctx, Subscriber::ZERO));
         });
     }
@@ -99,7 +99,7 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     {
         let state = self.states.get_mut(StateId::ZERO).unwrap();
         let mut state = state.to_mut_cast::<TestState>();
-        f(&mut *state)
+        f(&mut state)
     }
 }
 

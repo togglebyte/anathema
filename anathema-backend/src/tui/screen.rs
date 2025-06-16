@@ -67,8 +67,8 @@ impl Screen {
     /// Erase a specific region.
     /// Will reset the styles for all the cells as well.
     pub(crate) fn erase_region(&mut self, pos: LocalPos, size: Size) {
-        let to_x = (size.width as u16 + pos.x).min(self.size().width as u16);
-        let to_y = (size.height as u16 + pos.y).min(self.size().height as u16);
+        let to_x = (size.width + pos.x).min(self.size().width);
+        let to_y = (size.height + pos.y).min(self.size().height);
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
@@ -169,7 +169,7 @@ mod test {
         for y in 0..size.height {
             let c = y.to_string().chars().next().unwrap();
             for x in 0..size.width {
-                screen.paint_glyph(Glyph::from_char(c, 1), LocalPos::new(x as u16, y as u16));
+                screen.paint_glyph(Glyph::from_char(c, 1), LocalPos::new(x, y));
             }
         }
 

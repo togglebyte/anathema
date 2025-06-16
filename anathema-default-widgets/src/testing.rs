@@ -156,7 +156,7 @@ impl TestRunner {
         ";
         let mut doc = Document::new(root);
         let main = doc.add_component("main", src.to_template()).unwrap();
-        component_registry.add_component(main.into(), (), TestState::new());
+        component_registry.add_component(main, (), TestState::new());
 
         let (blueprint, globals) = doc.compile().unwrap();
 
@@ -217,8 +217,8 @@ impl<'bp> TestInstance<'bp> {
 
         let scope = Scope::root();
         let mut ctx = LayoutCtx::new(
-            &globals,
-            &factory,
+            globals,
+            factory,
             states,
             &mut attribute_storage,
             components,
@@ -255,7 +255,7 @@ impl<'bp> TestInstance<'bp> {
     {
         let state = self.states.get_mut(StateId::ZERO).unwrap();
         let mut state = state.to_mut_cast::<TestState>();
-        f(&mut *state);
+        f(&mut state);
         drop(state);
 
         drain_changes(&mut self.changes);

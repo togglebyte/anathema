@@ -259,18 +259,18 @@ pub fn strlit(lit: &str) -> Box<Expression> {
 // -----------------------------------------------------------------------------
 pub fn list<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
     let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
-    Expression::List(vec.into()).into()
+    Expression::List(vec).into()
 }
 
 pub fn text_segments<E: Into<Expression>>(input: impl IntoIterator<Item = E>) -> Box<Expression> {
     let vec = input.into_iter().map(|val| val.into()).collect::<Vec<_>>();
-    Expression::TextSegments(vec.into()).into()
+    Expression::TextSegments(vec).into()
 }
 
 pub fn map<E: Into<Expression>>(input: impl IntoIterator<Item = (&'static str, E)>) -> Box<Expression> {
     let input = input.into_iter().map(|(k, v)| (k.into(), v.into()));
     let hm: HashMap<String, Expression> = HashMap::from_iter(input);
-    Expression::Map(hm.into()).into()
+    Expression::Map(hm).into()
 }
 
 // -----------------------------------------------------------------------------

@@ -105,7 +105,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
     // TODO
     // Rename Frame as it does not represent an individual frame
     // but rather something that can continuously draw.
-    pub fn with_frame<B: Backend, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
+    pub fn with_frame<B, F>(&mut self, backend: &mut B, mut f: F) -> Result<()>
     where
         B: Backend,
         F: FnMut(&mut B, Frame<'_, '_, G>) -> Result<()>,
@@ -241,7 +241,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let event = self
             .global_event_handler
-            .handle(event, &mut tabindex, &mut self.deferred_components);
+            .handle(event, &mut tabindex, self.deferred_components);
 
         let prev = tabindex.consume();
 
@@ -273,7 +273,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         }
 
         match event {
-            ComponentEvent::Noop => return,
+            ComponentEvent::Noop => (),
             ComponentEvent::Stop => todo!(),
 
             // Component specific event
@@ -622,8 +622,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         }
     }
 
-    fn display_error(&mut self, backend: &mut impl Backend) {
-        let _tpl = "text 'you goofed up'";
-        backend.render(self.layout_ctx.glyph_map);
-    }
+    // fn display_error(&mut self, backend: &mut impl Backend) {
+    //     let _tpl = "text 'you goofed up'";
+    //     backend.render(self.layout_ctx.glyph_map);
+    // }
 }

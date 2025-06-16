@@ -57,12 +57,12 @@ impl Component for Button {
     fn on_mouse(
         &mut self,
         mouse: MouseEvent,
-        state: &mut Self::State,
+        _: &mut Self::State,
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
         let pos = mouse.pos();
-        children.elements().at_position(pos).first(|el, att| {
+        children.elements().at_position(pos).first(|_, _| {
             if mouse.lsb_down() {
                 context.publish("click", ());
 

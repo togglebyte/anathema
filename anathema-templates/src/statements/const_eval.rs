@@ -18,8 +18,8 @@ fn eval_path(expr: Expression, ctx: &Context<'_>) -> Option<Expression> {
     match expr {
         // Don't return None here, as this is possibly the ident of a state value,
         // or an attribute
-        E::Ident(ref ident) => Some(ctx.fetch(&ident).unwrap_or(expr)),
-        E::Str(ref strlit) => Some(ctx.fetch(&strlit).unwrap_or(expr)),
+        E::Ident(ref ident) => Some(ctx.fetch(ident).unwrap_or(expr)),
+        E::Str(ref strlit) => Some(ctx.fetch(strlit).unwrap_or(expr)),
         E::Index(lhs, rhs) => {
             let lhs = const_eval(lhs, ctx)?;
             let rhs = const_eval(rhs, ctx)?;
@@ -50,7 +50,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
     let expr = match expr {
         expr @ (E::Primitive(_) | E::Str(_)) => expr,
         E::Either(first, second) => match const_eval(first, ctx) {
-            Some(expr @ (E::Primitive(_) | E::Str(_))) => expr.into(),
+            Some(expr @ (E::Primitive(_) | E::Str(_))) => expr,
             Some(expr) => E::Either(expr.into(), ce!(second)),
             None => return None,
         },
@@ -72,7 +72,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
         }
         E::Map(map) => {
             let hm = HashMap::from_iter(map.into_iter().flat_map(|(k, v)| Some((k, ce!(v)))));
-            E::Map(hm.into())
+            E::Map(hm)
         }
         E::Op(lhs, rhs, op) => match (ce!(*lhs), ce!(*rhs)) {
             (E::Primitive(P::Int(lhs)), E::Primitive(P::Int(rhs))) => {

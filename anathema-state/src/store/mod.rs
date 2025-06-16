@@ -104,7 +104,10 @@ mod test {
     #[test]
     fn store_value() {
         let key = new_value(Box::new(0usize), Type::Int);
-        assert_eq!(key.owned(), OwnedKey::ZERO);
+        let mut zero = OwnedKey::ZERO;
+        zero.set_aux(Type::Int as u16);
+
+        assert_eq!(key.owned(), zero);
         assert_eq!(key.sub(), SubKey::from_usize(0));
     }
 }

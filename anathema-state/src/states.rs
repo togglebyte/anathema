@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use anathema_store::slab::{Slab, SlabIndex, Ticket};
+use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::{Color, Hex, PendingValue, Type, Value};
 
@@ -310,7 +310,7 @@ impl States {
     }
 
     pub fn get(&self, state_id: impl Into<StateId>) -> Option<&Value<Box<dyn State>>> {
-        self.inner.get(state_id.into()).map(|b| b)
+        self.inner.get(state_id.into())
     }
 
     pub fn get_mut(&mut self, state_id: impl Into<StateId>) -> Option<&mut Value<Box<dyn State>>> {

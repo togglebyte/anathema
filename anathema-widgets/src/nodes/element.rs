@@ -13,16 +13,19 @@ use crate::{LayoutForEach, WidgetId};
 pub enum Layout {
     Changed(Size),
     Unchanged(Size),
+    Floating(Size),
 }
 
 impl From<Layout> for Size {
     fn from(value: Layout) -> Self {
         match value {
-            Layout::Changed(size) | Layout::Unchanged(size) => size,
+            Layout::Changed(size) | Layout::Unchanged(size) | Layout::Floating(size) => size,
         }
     }
 }
 
+// TODO
+// Merge the `Element` and the `Container` into one type
 #[derive(Debug)]
 pub struct Element<'bp> {
     pub ident: &'bp str,
@@ -76,9 +79,9 @@ impl<'bp> Element<'bp> {
                 match node.layout(children, constraints, ctx)? {
                     Layout::Changed(_) => {
                         rebuild = true;
-                        return Ok(ControlFlow::Break(()));
+                        Ok(ControlFlow::Break(()))
                     }
-                    Layout::Unchanged(_) => return Ok(ControlFlow::Continue(())),
+                    Layout::Floating(_) | Layout::Unchanged(_) => Ok(ControlFlow::Continue(())),
                 }
             })?;
 
@@ -162,9 +165,9 @@ impl<'bp> Element<'bp> {
         self.container.inner.to_any_ref().downcast_ref::<T>()
     }
 
-    /// Get the position of the container
+    /// Get the position of the container.
     pub fn get_pos(&self) -> Pos {
-        self.container.pos
+        self.container.cache.pos.unwrap_or(Pos::ZERO)
     }
 
     /// Returns true if the widget is a floating widget

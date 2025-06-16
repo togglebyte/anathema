@@ -165,8 +165,7 @@ impl ComponentTemplates {
         self.dependencies.push(parent_id);
 
         let ticket = self.components.checkout(parent_id);
-        let (key, component_src) = &*ticket;
-        let ident = strings.get_unchecked(*key);
+        let (_, component_src) = &*ticket;
         let template = match component_src {
             ComponentSource::File { template, .. } => template,
             ComponentSource::InMemory(template) => template,

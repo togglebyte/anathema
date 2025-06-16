@@ -4,7 +4,7 @@ use std::time::Duration;
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::ComponentEvent;
-use anathema_widgets::paint::{paint, Glyph};
+use anathema_widgets::paint::{Glyph, paint};
 use anathema_widgets::{GlyphMap, PaintChildren};
 use surface::TestSurface;
 
@@ -21,7 +21,7 @@ impl<'a> GlyphSomething<'a> {
         let Some(glyph) = self.inner else { return false };
         match glyph {
             Glyph::Single(lhs, _) => *lhs == rhs,
-            Glyph::Cluster(glyph_index, _) => todo!(),
+            Glyph::Cluster(_glyph_index, _) => todo!(),
         }
     }
 }
@@ -51,7 +51,9 @@ impl TestBackend {
     }
 
     pub fn at(&self, x: usize, y: usize) -> GlyphSomething<'_> {
-        GlyphSomething { inner: self.surface.get(x, y) }
+        GlyphSomething {
+            inner: self.surface.get(x, y),
+        }
     }
 }
 
@@ -60,7 +62,7 @@ impl Backend for TestBackend {
         self.surface.size
     }
 
-    fn next_event(&mut self, timeout: Duration) -> Option<ComponentEvent> {
+    fn next_event(&mut self, _timeout: Duration) -> Option<ComponentEvent> {
         self.event_queue.pop_front()?
     }
 
@@ -77,10 +79,9 @@ impl Backend for TestBackend {
         paint(&mut self.surface, glyph_map, widgets, attribute_storage);
     }
 
-    fn render(&mut self, glyph_map: &mut GlyphMap) {
+    fn render(&mut self, _glyph_map: &mut GlyphMap) {
         // this does nothing here as everything written to the test buffer
     }
 
-    fn clear(&mut self) {
-    }
+    fn clear(&mut self) {}
 }

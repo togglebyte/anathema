@@ -42,7 +42,7 @@ impl From<Wrap> for ValueKind<'_> {
     fn from(value: Wrap) -> Self {
         let value = match value {
             Wrap::Normal => "normal",
-            Wrap::WordBreak => "break"
+            Wrap::WordBreak => "break",
         };
 
         ValueKind::Str(value.into())

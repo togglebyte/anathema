@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
+
 use anathema::component::*;
-use anathema::prelude::*;
 
 #[derive(Debug, State, Default)]
 pub struct BasicState {
@@ -18,7 +18,7 @@ impl<F, T> BasicComp<F, T> {
 impl<F, T> Component for BasicComp<F, T>
 where
     F: FnMut(KeyEvent, &mut T, Children<'_, '_>, Context<'_, '_, T>) + 'static,
-    T: State
+    T: State,
 {
     type Message = ();
     type State = T;
@@ -27,8 +27,8 @@ where
         &mut self,
         key: KeyEvent,
         state: &mut Self::State,
-        mut children: Children<'_, '_>,
-        mut context: Context<'_, '_, Self::State>,
+        children: Children<'_, '_>,
+        context: Context<'_, '_, Self::State>,
     ) {
         self.0(key, state, children, context);
     }

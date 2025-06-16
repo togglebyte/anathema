@@ -62,11 +62,11 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         EvalCtx {
             floating_widgets: self.floating_widgets,
             attribute_storage: self.attribute_storage,
-            states: &mut self.states,
+            states: self.states,
             component_registry: self.component_registry,
             components: self.components,
             globals: self.globals,
-            factory: &self.factory,
+            factory: self.factory,
             parent_component,
         }
     }
@@ -139,13 +139,17 @@ impl LayoutFilter {
     pub fn floating() -> Self {
         Self(WidgetPositionFilter::Floating)
     }
+
+    pub fn all() -> Self {
+        Self(WidgetPositionFilter::All)
+    }
 }
 
 impl<'bp> crate::widget::Filter<'bp> for LayoutFilter {
     type Output = WidgetContainer<'bp>;
 
     fn filter<'a>(
-        &self,
+        &mut self,
         widget: &'a mut WidgetContainer<'bp>,
         attribute_storage: &AttributeStorage<'_>,
     ) -> FilterOutput<&'a mut Self::Output, Self> {
@@ -154,12 +158,21 @@ impl<'bp> crate::widget::Filter<'bp> for LayoutFilter {
                 let attributes = attribute_storage.get(element.id());
                 match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
                     Display::Show | Display::Hide => match self.0 {
+                        // All
+                        WidgetPositionFilter::All => FilterOutput::Include(widget, *self),
+
+                        // All
+                        WidgetPositionFilter::None => FilterOutput::Exclude,
+
                         // Floating
-                        WidgetPositionFilter::Floating => FilterOutput::Include(widget, *self),
+                        WidgetPositionFilter::Floating if element.is_floating() => {
+                            FilterOutput::Include(widget, Self::all())
+                        }
+                        WidgetPositionFilter::Floating => FilterOutput::Continue,
 
                         // Fixed
-                        WidgetPositionFilter::Fixed if !element.is_floating() => FilterOutput::Include(widget, *self),
-                        _ => FilterOutput::Exclude,
+                        WidgetPositionFilter::Fixed if element.is_floating() => FilterOutput::Continue,
+                        WidgetPositionFilter::Fixed => FilterOutput::Include(widget, *self),
                     },
                     Display::Exclude => FilterOutput::Exclude,
                 }
@@ -193,28 +206,87 @@ impl PositionFilter {
     pub fn floating() -> Self {
         Self(WidgetPositionFilter::Floating)
     }
+
+    pub fn all() -> Self {
+        Self(WidgetPositionFilter::All)
+    }
+
+    pub fn none() -> Self {
+        Self(WidgetPositionFilter::None)
+    }
 }
 
 impl<'bp> crate::widget::Filter<'bp> for PositionFilter {
     type Output = Element<'bp>;
 
     fn filter<'a>(
-        &self,
+        &mut self,
         widget: &'a mut WidgetContainer<'bp>,
         attribute_storage: &AttributeStorage<'_>,
     ) -> FilterOutput<&'a mut Self::Output, Self> {
         match &mut widget.kind {
-            // If this is the floating widget step then once a floating widget is found
-            // the filter should change for the children of the floating widget to be a fixed
-            // filter instead.
             WidgetKind::Element(element) => {
                 let attributes = attribute_storage.get(element.id());
                 match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
-                    Display::Show | Display::Hide => FilterOutput::Include(element, *self),
-                    Display::Exclude => FilterOutput::Exclude,
+                    Display::Show => match self.0 {
+                        WidgetPositionFilter::Floating => match element.is_floating() {
+                            true => FilterOutput::Include(element, Self::all()),
+                            false => FilterOutput::Continue,
+                        },
+                        WidgetPositionFilter::Fixed => match element.is_floating() {
+                            false => FilterOutput::Include(element, *self),
+                            true => FilterOutput::Include(element, Self::none()),
+                        },
+                        WidgetPositionFilter::All => FilterOutput::Include(element, *self),
+                        WidgetPositionFilter::None => FilterOutput::Exclude,
+                    },
+                    Display::Hide | Display::Exclude => FilterOutput::Exclude,
                 }
             }
             _ => FilterOutput::Continue,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::ops::ControlFlow;
+
+    use super::*;
+    use crate::widget::ForEach;
+
+    #[test]
+    fn filter_floating_positioning() {
+        let tpl = "
+        many
+            many
+                many
+                // --------------------
+                float                //
+                    text             // <- only these
+                        text         // <------------
+                            float    //
+                                text //
+                // --------------------
+                many
+            many
+                many
+                    many
+        ";
+
+        let mut expected = vec!["float", "text", "text", "float", "text"];
+        crate::testing::with_template(tpl, move |tree, attributes| {
+            let filter = PositionFilter::floating();
+            let children = ForEach::new(tree, attributes, filter);
+            recur(children, &mut expected);
+        });
+
+        fn recur(mut f: ForEach<'_, '_, PositionFilter>, expected: &mut Vec<&'static str>) {
+            _ = f.each(|el, nodes| {
+                assert_eq!(expected.remove(0), el.ident);
+                recur(nodes, expected);
+                ControlFlow::Continue(())
+            });
         }
     }
 }
