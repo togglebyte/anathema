@@ -1,8 +1,8 @@
 use std::fmt::Write;
 
-use super::{Storage, END};
+use super::{END, Storage};
 use crate::region::Region;
-use crate::{StrIndex, BUCKET_SIZE};
+use crate::{BUCKET_SIZE, StrIndex};
 
 pub struct Transaction<'a, 'slice> {
     storage: &'a mut Storage<'slice>,
@@ -58,8 +58,7 @@ impl<'a, 'slice> Transaction<'a, 'slice> {
     }
 
     fn get_storage(&mut self, index: usize) -> &mut Vec<Region> {
-        let storage = self.storage.free.get_mut(index as u8).expect("this is pre-generated");
-        storage
+        self.storage.free.get_mut(index as u8).expect("this is pre-generated")
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{StrIndex, BUCKET_SIZE};
+use crate::{BUCKET_SIZE, StrIndex};
 
 #[derive(Debug)]
 pub(crate) struct Region {
