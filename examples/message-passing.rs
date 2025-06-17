@@ -18,7 +18,7 @@ impl Component for Index {
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
     ) {
-        if mouse.lsb_down() {
+        if mouse.left_down() {
             children
                 .elements()
                 .at_position(mouse.pos())

@@ -56,16 +56,7 @@ where
 
     eval_blueprint(blueprint, &mut ctx, &scope, root_node(), &mut tree.view_mut()).unwrap();
 
-    let filter = crate::layout::LayoutFilter::fixed();
-    let mut for_each = LayoutForEach::new(tree.view_mut(), &scope, filter, None);
-    _ = for_each
-        .each(&mut layout_ctx, |ctx, widget, children| {
-            _ = widget.layout(children, ctx.viewport.constraints(), ctx)?;
-            Ok(ControlFlow::Break(()))
-        })
-        .unwrap();
-
-    let filter = crate::layout::LayoutFilter::floating();
+    let filter = crate::layout::LayoutFilter;
     let mut for_each = LayoutForEach::new(tree.view_mut(), &scope, filter, None);
     _ = for_each
         .each(&mut layout_ctx, |ctx, widget, children| {

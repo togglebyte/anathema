@@ -26,6 +26,10 @@ impl<'tree, 'bp> Children<'tree, 'bp> {
     pub fn components(&mut self) -> Components<'_, 'tree, 'bp> {
         Components { elements: &mut self.0 }
     }
+
+    pub fn parent_path(&self) -> &[u16] {
+        self.0.children.offset
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

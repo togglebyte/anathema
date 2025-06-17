@@ -34,9 +34,17 @@ where
     }
 }
 
-pub fn char_press(c: char) -> KeyEvent {
+pub fn character(c: char) -> KeyEvent {
     KeyEvent {
         code: KeyCode::Char(c),
+        ctrl: false,
+        state: KeyState::Press,
+    }
+}
+
+pub fn tab() -> KeyEvent {
+    KeyEvent {
+        code: KeyCode::Tab,
         ctrl: false,
         state: KeyState::Press,
     }

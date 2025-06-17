@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
 use anathema_value_resolver::{AttributeStorage, Scope};
-use anathema_widgets::components::events::ComponentEvent;
+use anathema_widgets::components::events::Event;
 use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFilter, Viewport};
 use anathema_widgets::paint::PaintFilter;
@@ -15,7 +15,7 @@ pub mod tui;
 pub trait Backend {
     fn size(&self) -> Size;
 
-    fn next_event(&mut self, timeout: Duration) -> Option<ComponentEvent>;
+    fn next_event(&mut self, timeout: Duration) -> Option<Event>;
 
     fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap);
 
@@ -60,8 +60,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         //   - Layout -
         // -----------------------------------------------------------------------------
         if needs_layout {
-            let filter = LayoutFilter::all();
-            self.layout(ctx, filter)?;
+            self.layout(ctx, LayoutFilter)?;
         }
 
         // -----------------------------------------------------------------------------

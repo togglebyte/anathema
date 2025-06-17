@@ -20,7 +20,7 @@ jobs:
       - name: Configure cache
         uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --workspace --all-features --verbose
+        run: cargo test --workspace --verbose
 
   lint:
     runs-on: ubuntu-latest

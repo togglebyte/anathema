@@ -10,7 +10,7 @@ mod mouse;
 
 /// An event
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ComponentEvent {
+pub enum Event {
     /// No op
     Noop,
     /// Stop the runtime
@@ -29,7 +29,7 @@ pub enum ComponentEvent {
     Tick(Duration),
 }
 
-impl ComponentEvent {
+impl Event {
     pub fn is_mouse_event(&self) -> bool {
         matches!(self, Self::Mouse(_))
     }

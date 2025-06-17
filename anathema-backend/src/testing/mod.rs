@@ -1,22 +1,24 @@
-use std::collections::VecDeque;
 use std::time::Duration;
 
 use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
-use anathema_widgets::components::events::ComponentEvent;
+use anathema_widgets::components::events::Event;
 use anathema_widgets::paint::{Glyph, paint};
 use anathema_widgets::{GlyphMap, PaintChildren};
 use surface::TestSurface;
 
 use crate::Backend;
 
+mod events;
 mod surface;
 
-pub struct GlyphSomething<'a> {
+#[derive(Debug)]
+/// This is used for testing
+pub struct GlyphRef<'a> {
     inner: Option<&'a Glyph>,
 }
 
-impl<'a> GlyphSomething<'a> {
+impl<'a> GlyphRef<'a> {
     pub fn is_char(&self, rhs: char) -> bool {
         let Some(glyph) = self.inner else { return false };
         match glyph {
@@ -29,7 +31,7 @@ impl<'a> GlyphSomething<'a> {
 #[derive(Debug)]
 pub struct TestBackend {
     surface: TestSurface,
-    event_queue: VecDeque<Option<ComponentEvent>>,
+    events: events::Events,
 }
 
 impl TestBackend {
@@ -37,23 +39,31 @@ impl TestBackend {
         let size = size.into();
         Self {
             surface: TestSurface::new(size),
-            // NOTE:
-            // we have to start by return None for the first event,
-            // as the first frame tick is there to populate the widget tree.
-            //
-            // This is required for tab indexing
-            event_queue: VecDeque::from([None]),
+            events: events::Events::new(),
         }
     }
 
-    pub fn add_event(&mut self, event: Option<ComponentEvent>) {
-        self.event_queue.push_back(event);
-    }
-
-    pub fn at(&self, x: usize, y: usize) -> GlyphSomething<'_> {
-        GlyphSomething {
+    pub fn at(&self, x: usize, y: usize) -> GlyphRef<'_> {
+        GlyphRef {
             inner: self.surface.get(x, y),
         }
+    }
+
+    pub fn line(&self, index: usize) -> String {
+        let glyphs = self.surface.line(index);
+        glyphs
+            .iter()
+            .filter_map(|g| match g {
+                Glyph::Single(c, _) => Some(c),
+                Glyph::Cluster(_, _) => None,
+            })
+            .collect::<String>()
+            .trim()
+            .to_string()
+    }
+
+    pub fn events(&mut self) -> events::EventsMut<'_> {
+        self.events.mut_ref()
     }
 }
 
@@ -62,8 +72,8 @@ impl Backend for TestBackend {
         self.surface.size
     }
 
-    fn next_event(&mut self, _timeout: Duration) -> Option<ComponentEvent> {
-        self.event_queue.pop_front()?
+    fn next_event(&mut self, _timeout: Duration) -> Option<Event> {
+        self.events.pop()
     }
 
     fn resize(&mut self, new_size: Size, glyph_map: &mut GlyphMap) {
@@ -76,6 +86,7 @@ impl Backend for TestBackend {
         widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
     ) {
+        self.surface.clear();
         paint(&mut self.surface, glyph_map, widgets, attribute_storage);
     }
 

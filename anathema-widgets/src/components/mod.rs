@@ -11,7 +11,7 @@ use anathema_value_resolver::{Attributes, ValueKind};
 use deferred::DeferredComponents;
 use flume::SendError;
 
-use self::events::{ComponentEvent, KeyEvent, MouseEvent};
+use self::events::{Event, KeyEvent, MouseEvent};
 use crate::layout::Viewport;
 use crate::query::Children;
 use crate::widget::Parent;
@@ -277,8 +277,8 @@ pub struct AssociatedEvent {
 }
 
 impl AssociatedEvent {
-    pub fn to_event<'a>(&'a self, internal: &'a str, external: &'a str, sender: &'a str) -> Event<'a> {
-        Event {
+    pub fn to_event<'a>(&'a self, internal: &'a str, external: &'a str, sender: &'a str) -> UserEvent<'a> {
+        UserEvent {
             external_ident: external,
             internal_ident: internal,
             data: &*self.data,
@@ -297,7 +297,7 @@ impl AssociatedEvent {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Event<'a> {
+pub struct UserEvent<'a> {
     pub sender: &'a str,
     pub external_ident: &'a str,
     pub internal_ident: &'a str,
@@ -305,7 +305,7 @@ pub struct Event<'a> {
     stop_propagation: bool,
 }
 
-impl<'a> Event<'a> {
+impl<'a> UserEvent<'a> {
     pub fn stop_propagation(&mut self) {
         self.stop_propagation = true;
     }
@@ -446,7 +446,7 @@ pub trait Component: 'static {
     #[allow(unused_variables, unused_mut)]
     fn on_event(
         &mut self,
-        event: &mut Event<'_>,
+        event: &mut UserEvent<'_>,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
@@ -476,12 +476,7 @@ pub enum ComponentKind {
 }
 
 pub trait AnyComponent {
-    fn any_event(
-        &mut self,
-        children: Children<'_, '_>,
-        ctx: AnyComponentContext<'_, '_>,
-        ev: ComponentEvent,
-    ) -> ComponentEvent;
+    fn any_event(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, ev: Event) -> Event;
 
     fn any_message(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>);
 
@@ -497,7 +492,7 @@ pub trait AnyComponent {
         &mut self,
         children: Children<'_, '_>,
         ctx: AnyComponentContext<'_, '_>,
-        value: &mut Event<'_>,
+        value: &mut UserEvent<'_>,
     );
 
     fn any_accept_focus(&self) -> bool;
@@ -510,12 +505,7 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(
-        &mut self,
-        children: Children<'_, '_>,
-        mut ctx: AnyComponentContext<'_, '_>,
-        event: ComponentEvent,
-    ) -> ComponentEvent {
+    fn any_event(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, event: Event) -> Event {
         let mut state = ctx
             .state
             .take()
@@ -523,12 +513,12 @@ where
             .expect("components always have a state");
         let context = Context::<T::State>::new(ctx);
         match event {
-            ComponentEvent::Blur | ComponentEvent::Focus => (), // Application focus, not component focus.
-            ComponentEvent::Key(ev) => self.on_key(ev, &mut *state, children, context),
-            ComponentEvent::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
-            ComponentEvent::Tick(dt) => self.on_tick(&mut *state, children, context, dt),
-            ComponentEvent::Resize(_) => self.on_resize(&mut *state, children, context),
-            ComponentEvent::Noop | ComponentEvent::Stop => (),
+            Event::Blur | Event::Focus => (), // Application focus, not component focus.
+            Event::Key(ev) => self.on_key(ev, &mut *state, children, context),
+            Event::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
+            Event::Tick(dt) => self.on_tick(&mut *state, children, context, dt),
+            Event::Resize(_) => self.on_resize(&mut *state, children, context),
+            Event::Noop | Event::Stop => (),
         }
         event
     }
@@ -596,7 +586,7 @@ where
         &mut self,
         children: Children<'_, '_>,
         mut ctx: AnyComponentContext<'_, '_>,
-        event: &mut Event<'_>,
+        event: &mut UserEvent<'_>,
     ) {
         let mut state = ctx
             .state

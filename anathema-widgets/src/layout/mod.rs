@@ -129,21 +129,7 @@ impl Viewport {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct LayoutFilter(WidgetPositionFilter);
-
-impl LayoutFilter {
-    pub fn fixed() -> Self {
-        Self(WidgetPositionFilter::Fixed)
-    }
-
-    pub fn floating() -> Self {
-        Self(WidgetPositionFilter::Floating)
-    }
-
-    pub fn all() -> Self {
-        Self(WidgetPositionFilter::All)
-    }
-}
+pub struct LayoutFilter;
 
 impl<'bp> crate::widget::Filter<'bp> for LayoutFilter {
     type Output = WidgetContainer<'bp>;
@@ -157,23 +143,7 @@ impl<'bp> crate::widget::Filter<'bp> for LayoutFilter {
             WidgetKind::Element(element) => {
                 let attributes = attribute_storage.get(element.id());
                 match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
-                    Display::Show | Display::Hide => match self.0 {
-                        // All
-                        WidgetPositionFilter::All => FilterOutput::Include(widget, *self),
-
-                        // All
-                        WidgetPositionFilter::None => FilterOutput::Exclude,
-
-                        // Floating
-                        WidgetPositionFilter::Floating if element.is_floating() => {
-                            FilterOutput::Include(widget, Self::all())
-                        }
-                        WidgetPositionFilter::Floating => FilterOutput::Continue,
-
-                        // Fixed
-                        WidgetPositionFilter::Fixed if element.is_floating() => FilterOutput::Continue,
-                        WidgetPositionFilter::Fixed => FilterOutput::Include(widget, *self),
-                    },
+                    Display::Show | Display::Hide => FilterOutput::Include(widget, *self),
                     Display::Exclude => FilterOutput::Exclude,
                 }
             }

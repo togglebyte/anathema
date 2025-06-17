@@ -16,7 +16,7 @@ impl Component for App {
 
     fn on_event(
         &mut self,
-        event: &mut Event<'_>,
+        event: &mut UserEvent<'_>,
         state: &mut Self::State,
         _: Children<'_, '_>,
         _: Context<'_, '_, Self::State>,
@@ -63,7 +63,7 @@ impl Component for Button {
     ) {
         let pos = mouse.pos();
         children.elements().at_position(pos).first(|_, _| {
-            if mouse.lsb_down() {
+            if mouse.left_down() {
                 context.publish("click", ());
 
                 let id = context.attributes.get_as::<i64>("id").unwrap();
@@ -93,7 +93,7 @@ fn main() {
     let doc = Document::new("@main");
 
     let mut backend = TuiBackend::builder()
-        // .enable_alt_screen()
+        .enable_alt_screen()
         .enable_raw_mode()
         .clear()
         .hide_cursor()
@@ -117,7 +117,7 @@ fn main() {
         .prototype(
             "button",
             "examples/templates/buttons/button.aml",
-            move || Button,
+            || Button,
             || ButtonState { active: 0.into() },
         )
         .unwrap();

@@ -9,7 +9,7 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
 use anathema_value_resolver::{AttributeStorage, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
-use anathema_widgets::components::events::ComponentEvent;
+use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
     AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
 };
@@ -125,8 +125,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             // yet have any widgets or components.
             frame.tick(backend)?;
 
-            let mut changed = false;
-            let mut tabindex = TabIndex::new(&mut frame.tabindex, frame.tree.view_mut(), &mut changed);
+            let mut tabindex = TabIndex::new(&mut frame.tabindex, frame.tree.view_mut());
             tabindex.next();
 
             if let Some(current) = frame.tabindex.as_ref() {
@@ -231,21 +230,19 @@ pub struct Frame<'rt, 'bp, G> {
     needs_layout: bool,
     stop: bool,
     global_event_handler: &'rt G,
-    tabindex: Option<Index>,
+    pub tabindex: Option<Index>,
 }
 
 impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
-    pub fn handle_global_event(&mut self, event: ComponentEvent) -> Option<ComponentEvent> {
-        let mut changed = false;
-        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut(), &mut changed);
+    pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
+        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut());
 
         let event = self
             .global_event_handler
             .handle(event, &mut tabindex, self.deferred_components);
 
-        let prev = tabindex.consume();
-
-        if changed {
+        if tabindex.changed {
+            let prev = tabindex.consume();
             if let Some(prev) = prev {
                 self.with_component(prev.widget_id, prev.state_id, |comp, children, ctx| {
                     comp.dyn_component.any_blur(children, ctx)
@@ -262,22 +259,22 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         event
     }
 
-    pub fn event(&mut self, event: ComponentEvent) {
+    pub fn event(&mut self, event: Event) {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
         let Some(event) = self.handle_global_event(event) else { return };
-        if let ComponentEvent::Stop = event {
+        if let Event::Stop = event {
             self.stop = true;
             return;
         }
 
         match event {
-            ComponentEvent::Noop => (),
-            ComponentEvent::Stop => todo!(),
+            Event::Noop => (),
+            Event::Stop => todo!(),
 
             // Component specific event
-            ComponentEvent::Blur | ComponentEvent::Focus | ComponentEvent::Key(_) => {
+            Event::Blur | Event::Focus | Event::Key(_) => {
                 let Some(Index {
                     widget_id, state_id, ..
                 }) = self.tabindex
@@ -286,13 +283,13 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 };
                 self.send_event_to_component(event, widget_id, state_id);
             }
-            ComponentEvent::Mouse(_) | ComponentEvent::Resize(_) => {
+            Event::Mouse(_) | Event::Resize(_) => {
                 for i in 0..self.layout_ctx.components.len() {
                     let Some((widget_id, state_id)) = self.layout_ctx.components.get(i) else { continue };
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
-            ComponentEvent::Tick(_) => panic!("this event should never be sent to the runtime"),
+            Event::Tick(_) => panic!("this event should never be sent to the runtime"),
         }
     }
 
@@ -315,6 +312,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::GlobalProfiler::lock().new_frame();
 
         let now = Instant::now();
+        self.cycle(backend)?;
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.poll_events(elapsed, now, backend);
@@ -324,7 +322,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         // TODO: this secondary call is here to deal with changes causing changes
         //       which happens when values are removed or inserted and indices needs updating
         self.apply_changes()?;
-        self.cycle(backend)?;
 
         *self.dt = Instant::now();
         Ok(now.elapsed())
@@ -382,7 +379,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
     fn poll_events<B: Backend>(&mut self, remaining: Duration, fps_now: Instant, backend: &mut B) {
         while let Some(event) = backend.next_event(remaining) {
-            if let ComponentEvent::Resize(size) = event {
+            if let Event::Resize(size) = event {
                 self.layout_ctx.viewport.resize(size);
                 self.needs_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
@@ -407,15 +404,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         // Nb: Add drain_into to DeferredComponents
         let commands = self.deferred_components.drain().collect::<Vec<_>>();
         for mut cmd in commands {
-            // Blur the current component if the message is a `Focus` message
-            if let CommandKind::Focus = cmd.kind {
-                if let Some(current) = self.tabindex.take() {
-                    self.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
-                        comp.dyn_component.any_blur(children, ctx)
-                    });
-                }
-            }
-
             for index in 0..self.layout_ctx.components.len() {
                 let Some((widget_id, state_id)) = self.layout_ctx.components.get(index) else { continue };
                 let Some(comp) = self.tree.get_ref(widget_id) else { continue };
@@ -431,18 +419,59 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     continue;
                 }
 
-                self.with_component(widget_id, state_id, |comp, children, ctx| match cmd.kind {
-                    CommandKind::Focus => {
-                        // Some(Index {
-                        //     path: panic!(),//children.offset.into(),
-                        //     index: comp.tabindex,
-                        //     widget_id,
-                        //     state_id,
-                        // });
-                        comp.dyn_component.any_focus(children, ctx);
+                // -----------------------------------------------------------------------------
+                //   - Set focus -
+                //   TODO: here is another candidate for refactoring to make it
+                //   less cludgy and verbose.
+                // -----------------------------------------------------------------------------
+                // Blur the current component if the message is a `Focus` message
+                if let CommandKind::Focus = cmd.kind {
+                    // If this component current has focus ignore this command
+                    if let Some(index) = self.tabindex.as_ref() {
+                        if index.widget_id == widget_id {
+                            continue;
+                        }
                     }
-                    CommandKind::SendMessage(msg) => comp.dyn_component.any_message(children, ctx, msg),
-                });
+
+                    // here we can find the component that should receive focus
+                    let new_index = self
+                        .with_component(widget_id, state_id, |comp, children, ctx| {
+                            if comp.dyn_component.any_accept_focus() {
+                                let index = Index {
+                                    path: children.parent_path().into(),
+                                    index: comp.tabindex,
+                                    widget_id,
+                                    state_id,
+                                };
+
+                                comp.dyn_component.any_focus(children, ctx);
+
+                                Some(index)
+                            } else {
+                                None
+                            }
+                        })
+                        .flatten();
+
+                    if let Some(index) = new_index {
+                        // If there is currently a component with focus that component
+                        // should only lose focus if the selected component accepts focus.
+                        if let Some(old) = self.tabindex.replace(index) {
+                            self.with_component(old.widget_id, old.state_id, |comp, children, ctx| {
+                                comp.dyn_component.any_blur(children, ctx)
+                            });
+                        }
+                    }
+                }
+
+                // -----------------------------------------------------------------------------
+                //   - Send message -
+                // -----------------------------------------------------------------------------
+                if let CommandKind::SendMessage(msg) = cmd.kind {
+                    self.with_component(widget_id, state_id, |comp, children, ctx| {
+                        comp.dyn_component.any_message(children, ctx, msg);
+                    });
+                }
                 break;
             }
         }
@@ -550,7 +579,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         Ok(())
     }
 
-    fn send_event_to_component(&mut self, event: ComponentEvent, widget_id: WidgetId, state_id: StateId) {
+    fn send_event_to_component(&mut self, event: Event, widget_id: WidgetId, state_id: StateId) {
         self.with_component(widget_id, state_id, |comp, elements, ctx| {
             comp.dyn_component.any_event(elements, ctx, event);
         });
@@ -601,7 +630,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         for i in 0..self.layout_ctx.components.len() {
             let Some((widget_id, state_id)) = self.layout_ctx.components.get_ticking(i) else { continue };
-            let event = ComponentEvent::Tick(dt);
+            let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
         }
     }

@@ -1,7 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
-use testutils::{BasicComp, BasicState, char_press};
+use testutils::{BasicComp, BasicState, character};
 
 fn keypress(_: KeyEvent, state: &mut BasicState, _: Children<'_, '_>, _: Context<'_, '_, BasicState>) {
     state.number.set(9);
@@ -14,9 +14,7 @@ fn state_change() {
 
     let mut backend = TestBackend::new((10, 3));
 
-    backend.add_event(None);
-    backend.add_event(Some(ComponentEvent::Key(char_press(' '))));
-    backend.add_event(Some(ComponentEvent::Stop));
+    backend.events().next().press(character(' ')).next().stop();
 
     let mut builder = Runtime::builder(doc, &backend);
     builder

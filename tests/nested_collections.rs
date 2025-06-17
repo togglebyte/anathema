@@ -1,7 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
-use testutils::{BasicComp, char_press};
+use testutils::{BasicComp, character};
 
 #[derive(Debug, State)]
 struct Inner {
@@ -39,9 +39,7 @@ fn nested_collections() {
 
     let mut backend = TestBackend::new((10, 3));
 
-    backend.add_event(None);
-    backend.add_event(Some(ComponentEvent::Key(char_press(' '))));
-    backend.add_event(Some(ComponentEvent::Stop));
+    backend.events().next().press(character(' ')).next().stop();
 
     let mut builder = Runtime::builder(doc, &backend);
     builder

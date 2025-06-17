@@ -4,7 +4,7 @@ use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_templates::{Document, ToSourceKind};
 use anathema_widgets::components::deferred::DeferredComponents;
-use anathema_widgets::components::events::ComponentEvent;
+use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
 use anathema_widgets::tabindex::TabIndex;
 use anathema_widgets::{Factory, Widget};
@@ -130,7 +130,7 @@ impl<G: GlobalEventHandler> Builder<G> {
 
     pub fn with_global_event_handler<Eh>(self, global_event_handler: Eh) -> Builder<Eh>
     where
-        Eh: Fn(ComponentEvent, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<ComponentEvent>,
+        Eh: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>,
     {
         Builder {
             factory: self.factory,

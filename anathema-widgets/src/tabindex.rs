@@ -11,9 +11,10 @@ use crate::{WidgetId, WidgetKind, WidgetTreeView};
 // * Many components
 // * No components that accepts focus
 
+#[derive(Clone)]
 pub struct Index {
-    path: Box<[u16]>,
-    index: u16,
+    pub path: Box<[u16]>,
+    pub index: u16,
     pub widget_id: WidgetId,
     pub state_id: StateId,
 }
@@ -70,16 +71,16 @@ pub struct TabIndex<'a, 'bp> {
     pub previous: Option<Index>,
     pub current: &'a mut Option<Index>,
     tree: WidgetTreeView<'a, 'bp>,
-    pub changed: &'a mut bool,
+    pub changed: bool,
 }
 
 impl<'a, 'bp> TabIndex<'a, 'bp> {
-    pub fn new(current: &'a mut Option<Index>, tree: WidgetTreeView<'a, 'bp>, changed: &'a mut bool) -> Self {
+    pub fn new(current: &'a mut Option<Index>, tree: WidgetTreeView<'a, 'bp>) -> Self {
         Self {
             current,
             previous: None,
             tree,
-            changed,
+            changed: false,
         }
     }
 
@@ -174,7 +175,7 @@ impl<'a, 'bp> TabIndex<'a, 'bp> {
         let next = IndexRef::to_owned(next, widget_id, comp.state_id);
 
         self.previous = self.current.replace(next);
-        *self.changed = true;
+        self.changed = true;
     }
 }
 
