@@ -2,27 +2,31 @@ use std::cell::RefCell;
 
 use anathema_store::stack::Stack;
 use anathema_store::store::{Owned, OwnedKey, Shared};
+use values::OwnedValue;
+pub use watchers::Watched;
+use watchers::{Watcher, Watchers};
 
 pub(crate) use self::change::changed;
-pub use self::change::{clear_all_changes, drain_changes, Change, Changes};
-pub use self::subscriber::{FutureValues, Subscriber};
+pub use self::change::{Change, Changes, clear_all_changes, drain_changes};
 use self::subscriber::{SubKey, SubscriberMap};
-use crate::states::AnyState;
+pub use self::subscriber::{SubTo, Subscriber};
+use crate::Type;
 
 mod change;
-pub mod debug;
 pub(crate) mod subscriber;
 pub(crate) mod values;
+pub(crate) mod watchers;
 
 thread_local! {
-    static OWNED: Owned<Box<dyn AnyState>> = const { Owned::empty() };
-    static SHARED: Shared<Box<dyn AnyState>> = const { Shared::empty() };
+    static OWNED: Owned<OwnedValue> = const { Owned::empty() };
+    static SHARED: Shared<OwnedValue> = const { Shared::empty() };
     static SUBSCRIBERS: RefCell<SubscriberMap> = const { RefCell::new(SubscriberMap::empty()) };
     static CHANGES: RefCell<Changes> = const { RefCell::new(Stack::empty()) };
-    static FUTURE_VALUES: RefCell<FutureValues> = const { RefCell::new(Stack::empty()) };
+    static WATCHERS: RefCell<Watchers> = const { RefCell::new(Watchers::new()) };
+    static WATCH_QUEUE: RefCell<Stack<Watcher>> = const { RefCell::new(Stack::empty()) };
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 /// A value key is a composite from an owned key and a sub key.
 pub struct ValueKey(OwnedKey, SubKey);
 
@@ -34,21 +38,30 @@ impl ValueKey {
     pub(crate) fn sub(&self) -> SubKey {
         self.1
     }
+
+    pub fn type_info(&self) -> Type {
+        let type_info = self.0.aux();
+        match type_info {
+            1 => Type::Int,
+            2 => Type::Float,
+            3 => Type::Char,
+            4 => Type::String,
+            5 => Type::Bool,
+            6 => Type::Hex,
+            7 => Type::Map,
+            8 => Type::List,
+            9 => Type::Composite,
+            10 => Type::Unit,
+            11 => Type::Color,
+            12 => Type::Maybe,
+            _ => unreachable!("corrupt type information"),
+        }
+    }
 }
 
-/// Register a slab key that has an interest in a future value.
-pub fn register_future(sub: Subscriber) {
-    FUTURE_VALUES.with_borrow_mut(|futures| futures.push(sub));
-}
-
-/// Drain values from FUTURE_VALUES into the local stack.
-pub fn drain_futures(local: &mut Stack<Subscriber>) {
-    FUTURE_VALUES.with_borrow_mut(|futures| futures.drain_copy_into(local));
-}
-
-/// Clear all FUTURE_VALUES
-pub fn clear_all_futures() {
-    FUTURE_VALUES.with_borrow_mut(|futures| futures.clear());
+/// Drain values from WATCH_QUEUE into the local stack.
+pub fn drain_watchers(local: &mut Stack<Watcher>) {
+    WATCH_QUEUE.with_borrow_mut(|watchers| watchers.drain_copy_into(local));
 }
 
 /// Remove all subscribers from values.
@@ -83,15 +96,18 @@ pub(crate) mod testing {
 
 #[cfg(test)]
 mod test {
+    use anathema_store::slab::SlabIndex;
     use test::values::new_value;
 
     use super::*;
 
     #[test]
     fn store_value() {
-        let value = Box::new(0usize);
-        let key = new_value(value);
-        assert_eq!(key.owned(), 0.into());
-        assert_eq!(key.sub(), 0.into());
+        let key = new_value(Box::new(0usize), Type::Int);
+        let mut zero = OwnedKey::ZERO;
+        zero.set_aux(Type::Int as u16);
+
+        assert_eq!(key.owned(), zero);
+        assert_eq!(key.sub(), SubKey::from_usize(0));
     }
 }

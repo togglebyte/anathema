@@ -1,0 +1,10 @@
+[package]
+name = "anathema-strings"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anathema-store = { path = "../anathema-store" }
+
+[lints]
+workspace = true

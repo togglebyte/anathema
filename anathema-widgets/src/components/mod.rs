@@ -1,36 +1,35 @@
 use std::any::Any;
-use std::borrow::Cow;
-use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
-use anathema_state::{AnyState, CommonVal, SharedState, State, StateId, Value};
+use anathema_state::{State, StateId, Value as StateValue};
 use anathema_store::slab::Slab;
-use anathema_store::storage::strings::{StringId, Strings};
-use anathema_templates::WidgetComponentId;
+use anathema_templates::strings::{StringId, Strings};
+use anathema_templates::{AssocEventMapping, ComponentBlueprintId};
+use anathema_value_resolver::{Attributes, ValueKind};
+use deferred::DeferredComponents;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
-use crate::expressions::Either;
 use crate::layout::Viewport;
-use crate::nodes::ExternalState;
+use crate::query::Children;
 use crate::widget::Parent;
-use crate::Elements;
 
+pub mod deferred;
 pub mod events;
 
 pub type ComponentFn = dyn Fn() -> Box<dyn AnyComponent>;
-pub type StateFn = dyn FnMut() -> Box<dyn AnyState>;
+pub type StateFn = dyn FnMut() -> Box<dyn State>;
 
 enum ComponentType {
-    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn AnyState>>),
+    Component(Option<Box<dyn AnyComponent>>, Option<Box<dyn State>>),
     Prototype(Box<ComponentFn>, Box<StateFn>),
 }
 
 /// Store component factories.
 /// This is how components are created.
-pub struct ComponentRegistry(Slab<WidgetComponentId, ComponentType>);
+pub struct ComponentRegistry(Slab<ComponentBlueprintId, ComponentType>);
 
 impl ComponentRegistry {
     pub fn new() -> Self {
@@ -40,17 +39,12 @@ impl ComponentRegistry {
     /// Both `add_component` and `add_prototype` are using `Slab::insert_at`.
     ///
     /// This is fine as the component ids are generated at the same time.
-    pub fn add_component<S: 'static + State>(
-        &mut self,
-        id: WidgetComponentId,
-        component: impl Component + 'static,
-        state: S,
-    ) {
+    pub fn add_component<S: State>(&mut self, id: ComponentBlueprintId, component: impl Component + 'static, state: S) {
         let comp_type = ComponentType::Component(Some(Box::new(component)), Some(Box::new(state)));
         self.0.insert_at(id, comp_type);
     }
 
-    pub fn add_prototype<FC, FS, C, S>(&mut self, id: WidgetComponentId, proto: FC, mut state: FS)
+    pub fn add_prototype<FC, FS, C, S>(&mut self, id: ComponentBlueprintId, proto: FC, mut state: FS)
     where
         FC: 'static + Fn() -> C,
         FS: 'static + FnMut() -> S,
@@ -67,7 +61,7 @@ impl ComponentRegistry {
     ///
     /// Panics if the component isn't registered.
     /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(&mut self, id: WidgetComponentId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn AnyState>)> {
+    pub fn get(&mut self, id: ComponentBlueprintId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => Some((ComponentKind::Instance, comp.take()?, state.take()?)),
@@ -84,9 +78,9 @@ impl ComponentRegistry {
     /// Panics if the component entry doesn't exist or if the entry is for a prototype.
     pub fn return_component(
         &mut self,
-        id: WidgetComponentId,
+        id: ComponentBlueprintId,
         current_component: Box<dyn AnyComponent>,
-        current_state: Box<dyn AnyState>,
+        current_state: Box<dyn State>,
     ) {
         match self.0.get_mut(id) {
             Some(component) => match component {
@@ -102,10 +96,10 @@ impl ComponentRegistry {
 }
 
 #[derive(Debug)]
-pub struct ComponentId<T>(pub(crate) WidgetComponentId, pub(crate) PhantomData<T>);
+pub struct ComponentId<T>(pub(crate) ComponentBlueprintId, pub(crate) PhantomData<T>);
 
-impl<T> From<WidgetComponentId> for ComponentId<T> {
-    fn from(value: WidgetComponentId) -> Self {
+impl<T> From<ComponentBlueprintId> for ComponentId<T> {
+    fn from(value: ComponentBlueprintId) -> Self {
         Self(value, PhantomData)
     }
 }
@@ -120,11 +114,11 @@ impl<T> Copy for ComponentId<T> {}
 
 pub struct ViewMessage {
     pub(super) payload: Box<dyn Any + Send + Sync>,
-    pub(super) recipient: WidgetComponentId,
+    pub(super) recipient: ComponentBlueprintId,
 }
 
 impl ViewMessage {
-    pub fn recipient(&self) -> WidgetComponentId {
+    pub fn recipient(&self) -> ComponentBlueprintId {
         self.recipient
     }
 
@@ -168,19 +162,14 @@ impl Emitter {
     }
 }
 
-pub struct Context<'rt, T> {
-    inner: UntypedContext<'rt>,
+pub struct Context<'frame, 'bp, T> {
+    inner: AnyComponentContext<'frame, 'bp>,
     _p: PhantomData<T>,
-    component_ctx: ComponentContext<'rt>,
 }
 
-impl<'rt, T: 'static> Context<'rt, T> {
-    fn new(context: UntypedContext<'rt>, component_ctx: ComponentContext<'rt>) -> Self {
-        Self {
-            inner: context,
-            _p: PhantomData,
-            component_ctx,
-        }
+impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
+    pub fn new(inner: AnyComponentContext<'frame, 'bp>) -> Self {
+        Self { inner, _p: PhantomData }
     }
 
     /// Publish event
@@ -189,43 +178,24 @@ impl<'rt, T: 'static> Context<'rt, T> {
     ///
     /// This will panic if the shared value is exclusively borrowed
     /// at the time of the invocation.
-    pub fn publish<F, V>(&mut self, ident: &str, mut f: F)
-    where
-        F: FnMut(&T) -> &Value<V> + 'static,
-        V: AnyState,
-    {
-        let Some(internal) = self.inner.strings.lookup(ident) else { return };
-
-        let ids = self.component_ctx.assoc_functions.iter().find(|(i, _)| *i == internal);
-
+    pub fn publish<D: 'static>(&mut self, ident: &str, data: D) {
         // If there is no parent there is no one to emit the event to.
-        let Some(parent) = self.component_ctx.parent else { return };
-        let Some((_, external)) = ids else { return };
+        let Some(parent) = self.parent else { return };
 
-        self.component_ctx.assoc_events.push(
-            self.component_ctx.state_id,
-            parent,
-            *external,
-            Box::new(move |state: &dyn AnyState| -> SharedState<'_> {
-                let state = state
-                    .to_any_ref()
-                    .downcast_ref::<T>()
-                    .expect("the state type is associated with the context");
+        let Some(ident_id) = self.inner.strings.lookup(ident) else { return };
 
-                let value = f(state);
+        let ids = self.assoc_functions.iter().find(|assoc| assoc.internal == ident_id);
 
-                match value.shared_state() {
-                    Some(val) => val,
-                    None => panic!("there is currently a unique reference to this value"),
-                }
-            }),
-        );
+        let Some(assoc_event_map) = ids else { return };
+
+        self.inner
+            .assoc_events
+            .push(self.state_id, parent, *assoc_event_map, self.ident_id, data);
     }
 
-    /// Get a value from external state
-    pub fn get_external<'a>(&'a self, key: &str) -> Option<Either<'a>> {
-        let val = self.component_ctx.external_state?.get(key);
-        val.and_then(|(_, val)| val.load_common_val())
+    /// Get a value from the component attributes
+    pub fn attribute(&self, key: &str) -> Option<&ValueKind<'_>> {
+        self.attributes.get(key)
     }
 
     /// Send a message to a given component
@@ -234,76 +204,136 @@ impl<'rt, T: 'static> Context<'rt, T> {
             .emit(recipient, value)
             .expect("this will not fail unless the runtime is droped")
     }
-
-    /// Queue a focus call to a component that might have
-    /// an attribute matching the key and value pair
-    pub fn set_focus(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<CommonVal<'static>>) {
-        self.component_ctx.focus_queue.push(key.into(), value.into());
-    }
 }
 
-impl<'rt, T> Deref for Context<'rt, T> {
-    type Target = UntypedContext<'rt>;
+impl<'frame, 'bp, T> Deref for Context<'frame, 'bp, T> {
+    type Target = AnyComponentContext<'frame, 'bp>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<'rt, T> DerefMut for Context<'rt, T> {
+impl<'frame, 'bp, T> DerefMut for Context<'frame, 'bp, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-pub struct AnyEventCtx<'state, 'tree, 'bp> {
-    pub state: Option<&'state mut dyn AnyState>,
-    pub elements: Elements<'tree, 'bp>,
-    pub context: UntypedContext<'tree>,
-    pub component_ctx: ComponentContext<'tree>,
+pub struct AnyComponentContext<'frame, 'bp> {
+    parent: Option<Parent>,
+    ident_id: StringId,
+    state_id: StateId,
+    assoc_functions: &'frame [AssocEventMapping],
+    assoc_events: &'frame mut AssociatedEvents,
+    pub attributes: &'frame mut Attributes<'bp>,
+    state: Option<&'frame mut StateValue<Box<dyn State>>>,
+    pub emitter: &'frame Emitter,
+    pub viewport: &'frame Viewport,
+    pub strings: &'frame Strings,
+    pub components: &'frame mut DeferredComponents,
 }
 
-#[derive(Copy, Clone)]
-pub struct UntypedContext<'rt> {
-    pub emitter: &'rt Emitter,
-    pub viewport: Viewport,
-    pub strings: &'rt Strings,
-}
-
-pub struct ComponentContext<'rt> {
-    pub parent: Option<Parent>,
-    pub state_id: StateId,
-    pub assoc_functions: &'rt [(StringId, StringId)],
-    pub assoc_events: &'rt mut AssociatedEvents,
-    focus_queue: &'rt mut FocusQueue<'static>,
-    external_state: Option<&'rt ExternalState<'rt>>,
-}
-
-impl<'rt> ComponentContext<'rt> {
+impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
     pub fn new(
+        parent: Option<Parent>,
+        ident_id: StringId,
         state_id: StateId,
-        parent: Option<WidgetComponentId>,
-        assoc_functions: &'rt [(StringId, StringId)],
-        assoc_events: &'rt mut AssociatedEvents,
-        focus_queue: &'rt mut FocusQueue<'static>,
-        external_state: Option<&'rt ExternalState<'rt>>,
+        assoc_functions: &'frame [AssocEventMapping],
+        assoc_events: &'frame mut AssociatedEvents,
+        components: &'frame mut DeferredComponents,
+        attributes: &'frame mut Attributes<'bp>,
+        state: Option<&'frame mut StateValue<Box<dyn State>>>,
+        emitter: &'frame Emitter,
+        viewport: &'frame Viewport,
+        strings: &'frame Strings,
     ) -> Self {
         Self {
-            parent: parent.map(Into::into),
+            parent,
+            ident_id,
             state_id,
             assoc_functions,
             assoc_events,
-            focus_queue,
-            external_state,
+            attributes,
+            components,
+            state,
+            emitter,
+            viewport,
+            strings,
         }
+    }
+
+    pub fn parent(&self) -> Option<Parent> {
+        self.parent
     }
 }
 
 pub struct AssociatedEvent {
     pub state: StateId,
     pub parent: Parent,
-    pub external: StringId,
-    pub f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_> + 'static>,
+    pub sender: StringId,
+    event_map: AssocEventMapping,
+    data: Box<dyn Any>,
+}
+
+impl AssociatedEvent {
+    pub fn to_event<'a>(&'a self, internal: &'a str, external: &'a str, sender: &'a str) -> UserEvent<'a> {
+        UserEvent {
+            external_ident: external,
+            internal_ident: internal,
+            data: &*self.data,
+            sender,
+            stop_propagation: false,
+        }
+    }
+
+    pub fn external(&self) -> StringId {
+        self.event_map.external
+    }
+
+    pub fn internal(&self) -> StringId {
+        self.event_map.internal
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct UserEvent<'a> {
+    pub sender: &'a str,
+    pub external_ident: &'a str,
+    pub internal_ident: &'a str,
+    data: &'a dyn Any,
+    stop_propagation: bool,
+}
+
+impl<'a> UserEvent<'a> {
+    pub fn stop_propagation(&mut self) {
+        self.stop_propagation = true;
+    }
+
+    pub fn name(&self) -> &str {
+        self.external_ident
+    }
+
+    /// Cast the event payload to a specific type
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the type is incorrect
+    pub fn data<T: 'static>(&self) -> &'a T {
+        match self.data.downcast_ref() {
+            Some(data) => data,
+            None => panic!("invalid type when casting event data"),
+        }
+    }
+
+    /// Try to cast the event payload to a specific type
+    pub fn data_checked<T: 'static>(&self) -> Option<&'a T> {
+        self.data.downcast_ref()
+    }
+
+    pub fn should_stop_propagation(&self) -> bool {
+        self.stop_propagation
+    }
 }
 
 // The reason the component can not have access
@@ -318,18 +348,20 @@ impl AssociatedEvents {
         Self { inner: vec![] }
     }
 
-    fn push(
+    fn push<T: 'static>(
         &mut self,
         state: StateId,
         parent: Parent,
-        external: StringId,
-        f: Box<dyn FnMut(&dyn AnyState) -> SharedState<'_>>,
+        assoc_event_map: AssocEventMapping,
+        sender: StringId,
+        data: T,
     ) {
         self.inner.push(AssociatedEvent {
             state,
             parent,
-            external,
-            f,
+            sender,
+            event_map: assoc_event_map,
+            data: Box::new(data),
         })
     }
 
@@ -338,36 +370,18 @@ impl AssociatedEvents {
     }
 }
 
-pub struct FocusQueue<'rt> {
-    focus_queue: VecDeque<(Cow<'static, str>, CommonVal<'rt>)>,
-}
-
-impl<'rt> FocusQueue<'rt> {
-    pub fn new() -> Self {
-        Self {
-            focus_queue: VecDeque::new(),
-        }
-    }
-
-    pub fn push(&mut self, key: Cow<'static, str>, value: CommonVal<'rt>) {
-        self.focus_queue.push_back((key, value));
-    }
-
-    pub fn pop(&mut self) -> Option<(Cow<'static, str>, CommonVal<'rt>)> {
-        self.focus_queue.pop_front()
-    }
-}
-
-pub trait Component {
+pub trait Component: 'static {
     type State: State;
     type Message;
+
+    const TICKS: bool = true;
 
     #[allow(unused_variables, unused_mut)]
     fn on_blur(
         &mut self,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -375,8 +389,8 @@ pub trait Component {
     fn on_focus(
         &mut self,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -385,8 +399,8 @@ pub trait Component {
         &mut self,
         key: KeyEvent,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -395,48 +409,47 @@ pub trait Component {
         &mut self,
         mouse: MouseEvent,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn tick(
+    fn on_tick(
         &mut self,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        context: Context<'_, '_, Self::State>,
         dt: Duration,
     ) {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn message(
+    fn on_message(
         &mut self,
         message: Self::Message,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn resize(
+    fn on_resize(
         &mut self,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn receive(
+    fn on_event(
         &mut self,
-        ident: &str,
-        value: CommonVal<'_>,
+        event: &mut UserEvent<'_>,
         state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        mut context: Context<'_, Self::State>,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
     }
 
@@ -448,6 +461,8 @@ pub trait Component {
 impl Component for () {
     type Message = ();
     type State = ();
+
+    const TICKS: bool = false;
 
     fn accept_focus(&self) -> bool {
         false
@@ -461,21 +476,28 @@ pub enum ComponentKind {
 }
 
 pub trait AnyComponent {
-    fn any_event(&mut self, ctx: AnyEventCtx<'_, '_, '_>, ev: Event) -> Event;
+    fn any_event(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, ev: Event) -> Event;
 
-    fn any_message(&mut self, message: Box<dyn Any>, ctx: AnyEventCtx<'_, '_, '_>);
+    fn any_message(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>);
 
-    fn any_tick(&mut self, ctx: AnyEventCtx<'_, '_, '_>, dt: Duration);
+    fn any_tick(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>, dt: Duration);
 
-    fn any_focus(&mut self, ctx: AnyEventCtx<'_, '_, '_>);
+    fn any_focus(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_blur(&mut self, ctx: AnyEventCtx<'_, '_, '_>);
+    fn any_blur(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_resize(&mut self, ctx: AnyEventCtx<'_, '_, '_>);
+    fn any_resize(&mut self, children: Children<'_, '_>, ctx: AnyComponentContext<'_, '_>);
 
-    fn any_receive(&mut self, ctx: AnyEventCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>);
+    fn any_component_event(
+        &mut self,
+        children: Children<'_, '_>,
+        ctx: AnyComponentContext<'_, '_>,
+        value: &mut UserEvent<'_>,
+    );
 
     fn any_accept_focus(&self) -> bool;
+
+    fn any_ticks(&self) -> bool;
 }
 
 impl<T> AnyComponent for T
@@ -483,17 +505,20 @@ where
     T: Component,
     T: 'static,
 {
-    fn any_event(&mut self, ctx: AnyEventCtx<'_, '_, '_>, event: Event) -> Event {
-        let state = ctx
+    fn any_event(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, event: Event) -> Event {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
+        let context = Context::<T::State>::new(ctx);
         match event {
             Event::Blur | Event::Focus => (), // Application focus, not component focus.
-            Event::Key(ev) => self.on_key(ev, state, ctx.elements, context),
-            Event::Mouse(ev) => self.on_mouse(ev, state, ctx.elements, context),
-            Event::Resize(_, _) | Event::Noop | Event::Stop => (),
+            Event::Key(ev) => self.on_key(ev, &mut *state, children, context),
+            Event::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
+            Event::Tick(dt) => self.on_tick(&mut *state, children, context, dt),
+            Event::Resize(_) => self.on_resize(&mut *state, children, context),
+            Event::Noop | Event::Stop => (),
         }
         event
     }
@@ -502,61 +527,76 @@ where
         self.accept_focus()
     }
 
-    fn any_message(&mut self, message: Box<dyn Any>, ctx: AnyEventCtx<'_, '_, '_>) {
-        let state = ctx
+    fn any_ticks(&self) -> bool {
+        T::TICKS
+    }
+
+    fn any_message(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, message: Box<dyn Any>) {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
         let Ok(message) = message.downcast::<T::Message>() else { return };
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
-        self.message(*message, state, ctx.elements, context);
+        let context = Context::<T::State>::new(ctx);
+        self.on_message(*message, &mut *state, children, context);
     }
 
-    fn any_focus(&mut self, ctx: AnyEventCtx<'_, '_, '_>) {
-        let state = ctx
+    fn any_focus(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
-        self.on_focus(state, ctx.elements, context);
+        let context = Context::<T::State>::new(ctx);
+        self.on_focus(&mut *state, children, context);
     }
 
-    fn any_blur(&mut self, ctx: AnyEventCtx<'_, '_, '_>) {
-        let state = ctx
+    fn any_blur(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
-        self.on_blur(state, ctx.elements, context);
+        let context = Context::<T::State>::new(ctx);
+        self.on_blur(&mut *state, children, context);
     }
 
-    fn any_tick(&mut self, ctx: AnyEventCtx<'_, '_, '_>, dt: Duration) {
-        let state = ctx
+    fn any_tick(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>, dt: Duration) {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
-        self.tick(state, ctx.elements, context, dt);
+        let context = Context::<T::State>::new(ctx);
+        self.on_tick(&mut *state, children, context, dt);
     }
 
-    fn any_resize(&mut self, ctx: AnyEventCtx<'_, '_, '_>) {
-        let state = ctx
+    fn any_resize(&mut self, children: Children<'_, '_>, mut ctx: AnyComponentContext<'_, '_>) {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
-        self.resize(state, ctx.elements, context);
+        let context = Context::<T::State>::new(ctx);
+        self.on_resize(&mut *state, children, context);
     }
 
-    fn any_receive(&mut self, ctx: AnyEventCtx<'_, '_, '_>, name: &str, value: CommonVal<'_>) {
-        let state = ctx
+    fn any_component_event(
+        &mut self,
+        children: Children<'_, '_>,
+        mut ctx: AnyComponentContext<'_, '_>,
+        event: &mut UserEvent<'_>,
+    ) {
+        let mut state = ctx
             .state
-            .and_then(|s| s.to_any_mut().downcast_mut::<T::State>())
+            .take()
+            .map(|s| s.to_mut_cast::<T::State>())
             .expect("components always have a state");
 
-        let context = Context::<T::State>::new(ctx.context, ctx.component_ctx);
+        let context = Context::<T::State>::new(ctx);
 
-        self.receive(name, value, state, ctx.elements, context);
+        self.on_event(event, &mut *state, children, context);
     }
 }
 

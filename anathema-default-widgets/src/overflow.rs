@@ -1,12 +1,14 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
 use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Widget, WidgetId};
 
 use crate::layout::many::Many;
-use crate::layout::{Axis, Direction, AXIS, DIRECTION};
+use crate::layout::{AXIS, Axis, DIRECTION, Direction};
 use crate::{HEIGHT, WIDTH};
 
 const UNCONSTRAINED: &str = "unconstrained";
@@ -106,13 +108,13 @@ impl Overflow {
 impl Widget for Overflow {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let attributes = ctx.attribs.get(id);
-        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+    ) -> Result<Size> {
+        let attributes = ctx.attribute_storage.get(id);
+        let axis = attributes.get_as(AXIS).unwrap_or(Axis::Vertical);
 
         let output_size: Size = (constraints.max_width(), constraints.max_height()).into();
 
@@ -121,48 +123,49 @@ impl Widget for Overflow {
             Axis::Vertical => constraints.unbound_height(),
         }
 
-        if attributes.get_bool(UNCONSTRAINED) {
+        if attributes.get_as::<bool>(UNCONSTRAINED).unwrap_or_default() {
             constraints.unbound_width();
             constraints.unbound_height();
         }
 
-        if let Some(width) = attributes.get_usize(WIDTH) {
+        if let Some(width) = attributes.get_as::<u16>(WIDTH) {
             constraints.make_width_tight(width);
         }
 
-        if let Some(height) = attributes.get_usize(HEIGHT) {
+        if let Some(height) = attributes.get_as::<u16>(HEIGHT) {
             constraints.make_height_tight(height);
         }
 
-        self.direction = attributes.get(DIRECTION).unwrap_or_default();
+        self.direction = attributes.get_as(DIRECTION).unwrap_or_default();
 
         // Make `unconstrained` an enum instead of a `bool`
         let unconstrained = true;
         let mut many = Many::new(self.direction, axis, unconstrained);
 
-        let _size = many.layout(children, constraints, ctx);
+        // NOTE: we use the inner size here from many.layout
+        _ = many.layout(children, constraints, ctx)?;
 
         self.inner_size = many.used_size.inner_size();
 
-        output_size
+        Ok(output_size)
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let direction = attributes.get(DIRECTION).unwrap_or_default();
-        let axis = attributes.get(AXIS).unwrap_or(Axis::Vertical);
+        let direction = attributes.get_as(DIRECTION).unwrap_or_default();
+        let axis = attributes.get_as(AXIS).unwrap_or(Axis::Vertical);
         let mut pos = ctx.pos;
 
         // If the value is clamped, update the offset
-        match attributes.get(CLAMP) {
-            Some(false) => {}
-            _ => self.clamp(self.inner_size, ctx.inner_size),
+        match attributes.get_as::<bool>(CLAMP).unwrap_or_default() {
+            false => (),
+            true => self.clamp(self.inner_size, ctx.inner_size),
         }
 
         if let Direction::Backward = direction {
@@ -177,7 +180,8 @@ impl Widget for Overflow {
             Direction::Backward => pos + self.offset,
         };
 
-        children.for_each(|node, children| {
+        let mut count = 0;
+        _ = children.each(|node, children| {
             match direction {
                 Direction::Forward => {
                     node.position(children, pos, attribute_storage, ctx.viewport);
@@ -195,19 +199,21 @@ impl Widget for Overflow {
                 }
             }
 
+            count += 1;
             ControlFlow::Continue(())
         });
     }
 
     fn paint<'bp>(
         &mut self,
-        mut children: anathema_widgets::PaintChildren<'_, '_, 'bp>,
+        mut children: PaintChildren<'_, 'bp>,
         _: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         let region = ctx.create_region();
-        children.for_each(|widget, children| {
+
+        _ = children.each(|widget, children| {
             ctx.set_clip_region(region);
             let ctx = ctx.to_unsized();
             widget.paint(children, ctx, attribute_storage);
@@ -215,16 +221,18 @@ impl Widget for Overflow {
         });
     }
 
-    fn needs_reflow(&self) -> bool {
-        self.is_dirty
+    fn needs_reflow(&mut self) -> bool {
+        let needs_reflow = self.is_dirty;
+        self.is_dirty = false;
+        needs_reflow
     }
 }
 
 #[cfg(test)]
 mod test {
 
-    use crate::testing::TestRunner;
     use crate::Overflow;
+    use crate::testing::TestRunner;
 
     #[test]
     fn overflow() {

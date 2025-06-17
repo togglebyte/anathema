@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use anathema_state::{CommonVal, Hex};
+use anathema_state::Hex;
 
 /// Primitive values such as booleans and integers.
 /// These values are all static and resolved at eval time.
@@ -39,22 +39,11 @@ from_value!(f64, Float);
 from_value!(i64, Int);
 from_value!(bool, Bool);
 from_value!(char, Char);
+from_value!(Hex, Hex);
 
 impl From<(u8, u8, u8)> for Primitive {
     fn from(value: (u8, u8, u8)) -> Self {
         let (r, g, b) = value;
         Self::Hex(Hex { r, g, b })
-    }
-}
-
-impl From<Primitive> for CommonVal<'_> {
-    fn from(value: Primitive) -> Self {
-        match value {
-            Primitive::Bool(val) => Self::Bool(val),
-            Primitive::Char(val) => Self::Char(val),
-            Primitive::Int(val) => Self::Int(val),
-            Primitive::Float(val) => Self::Float(val),
-            Primitive::Hex(hex) => Self::Hex(hex),
-        }
     }
 }

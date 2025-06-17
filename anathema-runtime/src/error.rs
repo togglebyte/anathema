@@ -11,6 +11,7 @@ pub enum Error {
     Notify(notify::Error),
     Widget(anathema_widgets::error::Error),
     Stop,
+    InvalidComponentName,
 }
 
 impl Display for Error {
@@ -20,6 +21,7 @@ impl Display for Error {
             Error::Stop => write!(f, "stopping"),
             Error::Notify(err) => write!(f, "{err}"),
             Error::Widget(err) => write!(f, "{err}"),
+            Error::InvalidComponentName => write!(f, "no such component"),
         }
     }
 }

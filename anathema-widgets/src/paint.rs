@@ -1,90 +1,171 @@
 use std::ops::{ControlFlow, Deref};
 
 use anathema_geometry::{LocalPos, Pos, Region, Size};
-use anathema_state::{Color, Hex};
-use anathema_store::tree::{Node, TreeFilter, TreeForEach, TreeValues};
-use unicode_width::UnicodeWidthChar;
+use anathema_store::indexmap::IndexMap;
+use anathema_store::slab::SlabIndex;
+use anathema_value_resolver::{AttributeStorage, Attributes};
+use unicode_segmentation::{Graphemes, UnicodeSegmentation};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::layout::Display;
+use crate::layout::display::DISPLAY;
 use crate::nodes::element::Element;
-use crate::widget::WidgetRenderer;
-use crate::{AttributeStorage, WidgetId, WidgetKind};
+use crate::tree::{FilterOutput, WidgetPositionFilter};
+use crate::widget::Style;
+use crate::{PaintChildren, WidgetContainer, WidgetKind};
 
-pub trait CellAttributes {
-    fn with_str(&self, key: &str, f: &mut dyn FnMut(&str));
+pub type GlyphMap = IndexMap<GlyphIndex, String>;
 
-    fn get_i64(&self, key: &str) -> Option<i64>;
-
-    fn get_u8(&self, key: &str) -> Option<u8>;
-
-    fn get_hex(&self, key: &str) -> Option<Hex>;
-
-    fn get_color(&self, key: &str) -> Option<Color>;
-
-    fn get_bool(&self, key: &str) -> bool;
+pub struct Glyphs<'a> {
+    inner: Graphemes<'a>,
 }
 
-pub struct PaintFilter<'frame, 'bp> {
-    attributes: &'frame AttributeStorage<'bp>,
-    ignore_floats: bool,
-}
+impl<'a> Glyphs<'a> {
+    pub fn new(src: &'a str) -> Self {
+        let inner = src.graphemes(true);
+        Self { inner }
+    }
 
-impl<'frame, 'bp> PaintFilter<'frame, 'bp> {
-    pub fn new(ignore_floats: bool, attributes: &'frame AttributeStorage<'bp>) -> Self {
-        Self {
-            attributes,
-            ignore_floats,
+    pub fn next(&mut self, map: &mut GlyphMap) -> Option<Glyph> {
+        let g = self.inner.next()?;
+        let mut chars = g.chars();
+        let c = chars.next()?;
+
+        match chars.next() {
+            None => Glyph::Single(c, c.width().unwrap_or(0) as u8),
+            Some(_) => {
+                let width = g.width();
+                let glyph = map.insert(g.into());
+                Glyph::Cluster(glyph, width as u8)
+            }
         }
+        .into()
     }
 }
 
-impl<'frame, 'bp> TreeFilter for PaintFilter<'frame, 'bp> {
-    type Input = WidgetKind<'bp>;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Glyph {
+    // Character and the number of cells it occypies
+    Single(char, u8),
+    // Glyph index and the number of cells it occypies
+    Cluster(GlyphIndex, u8),
+}
+
+impl Glyph {
+    pub fn space() -> Self {
+        Self::Single(' ', 1)
+    }
+
+    pub fn is_newline(&self) -> bool {
+        matches!(self, Self::Single('\n', _))
+    }
+
+    pub fn width(&self) -> usize {
+        match self {
+            Glyph::Single(_, width) | Glyph::Cluster(_, width) => *width as usize,
+        }
+    }
+
+    pub const fn from_char(c: char, width: u8) -> Self {
+        Self::Single(c, width)
+    }
+}
+
+pub trait WidgetRenderer {
+    fn draw_glyph(&mut self, glyph: Glyph, local_pos: Pos);
+
+    fn draw(&mut self) {
+        todo!(
+            "this function is only here to remind us that we should have a raw draw function for Kitty image protocol and such"
+        );
+    }
+
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, local_pos: Pos);
+
+    fn set_style(&mut self, style: Style, local_pos: Pos);
+
+    fn size(&self) -> Size;
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+pub struct GlyphIndex(u32);
+
+impl SlabIndex for GlyphIndex {
+    const MAX: usize = u32::MAX as usize;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct PaintFilter(WidgetPositionFilter);
+
+impl PaintFilter {
+    pub fn fixed() -> Self {
+        Self(WidgetPositionFilter::Fixed)
+    }
+
+    pub fn floating() -> Self {
+        Self(WidgetPositionFilter::Floating)
+    }
+}
+
+impl<'bp> crate::widget::Filter<'bp> for PaintFilter {
     type Output = Element<'bp>;
 
-    fn filter<'val>(
-        &self,
-        _widget_id: WidgetId,
-        input: &'val mut Self::Input,
-        _children: &[Node],
-        _widgets: &mut TreeValues<WidgetKind<'bp>>,
-    ) -> ControlFlow<(), Option<&'val mut Self::Output>> {
-        match input {
-            WidgetKind::Element(el) if el.container.inner.any_floats() && self.ignore_floats => ControlFlow::Break(()),
-            WidgetKind::Element(el) => match self
-                .attributes
-                .get(el.id())
-                .get::<Display>("display")
-                .unwrap_or_default()
-            {
-                Display::Show => ControlFlow::Continue(Some(el)),
-                Display::Hide | Display::Exclude => ControlFlow::Continue(None),
-            },
-            WidgetKind::If(widget) if !widget.show => ControlFlow::Break(()),
-            WidgetKind::Else(widget) if !widget.show => ControlFlow::Break(()),
-            _ => ControlFlow::Continue(None),
+    fn filter<'a>(
+        &mut self,
+        widget: &'a mut WidgetContainer<'bp>,
+        attribute_storage: &AttributeStorage<'_>,
+    ) -> FilterOutput<&'a mut Self::Output, Self> {
+        match &mut widget.kind {
+            WidgetKind::Element(element) => {
+                let attributes = attribute_storage.get(element.id());
+                match attributes.get_as::<Display>(DISPLAY).unwrap_or_default() {
+                    Display::Show => match self.0 {
+                        WidgetPositionFilter::Floating => match element.is_floating() {
+                            true => FilterOutput::Include(element, PaintFilter::fixed()),
+                            false => FilterOutput::Continue,
+                        },
+                        WidgetPositionFilter::Fixed => match element.is_floating() {
+                            false => FilterOutput::Include(element, *self),
+                            true => FilterOutput::Exclude,
+                        },
+                        WidgetPositionFilter::All => FilterOutput::Include(element, *self),
+                        WidgetPositionFilter::None => FilterOutput::Exclude,
+                    },
+                    Display::Hide | Display::Exclude => FilterOutput::Exclude,
+                }
+            }
+            _ => FilterOutput::Continue,
         }
     }
 }
 
 pub fn paint<'bp>(
     surface: &mut impl WidgetRenderer,
-    element: &mut Element<'bp>,
-    children: &[Node],
-    values: &mut TreeValues<WidgetKind<'bp>>,
+    glyph_index: &mut GlyphMap,
+    mut widgets: PaintChildren<'_, 'bp>,
     attribute_storage: &AttributeStorage<'bp>,
-    ignore_floats: bool,
 ) {
-    let filter = PaintFilter::new(ignore_floats, attribute_storage);
-    let children = TreeForEach::new(children, values, &filter);
-    let ctx = PaintCtx::new(surface, None);
-    element.paint(children, ctx, attribute_storage);
+    _ = widgets.each(|widget, children| {
+        let ctx = PaintCtx::new(surface, None, glyph_index);
+        widget.paint(children, ctx, attribute_storage);
+        ControlFlow::Continue(())
+    });
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Unsized;
 
-// TODO rename this as it contains both size and position
 pub struct SizePos {
     pub local_size: Size,
     pub global_pos: Pos,
@@ -107,6 +188,7 @@ pub struct PaintCtx<'surface, Size> {
     surface: &'surface mut dyn WidgetRenderer,
     pub clip: Option<Region>,
     pub(crate) state: Size,
+    glyph_map: &'surface mut GlyphMap,
 }
 
 impl<'surface> Deref for PaintCtx<'surface, SizePos> {
@@ -118,11 +200,16 @@ impl<'surface> Deref for PaintCtx<'surface, SizePos> {
 }
 
 impl<'surface> PaintCtx<'surface, Unsized> {
-    pub fn new(surface: &'surface mut dyn WidgetRenderer, clip: Option<Region>) -> Self {
+    pub fn new(
+        surface: &'surface mut dyn WidgetRenderer,
+        clip: Option<Region>,
+        glyph_map: &'surface mut GlyphMap,
+    ) -> Self {
         Self {
             surface,
             clip,
             state: Unsized,
+            glyph_map,
         }
     }
 
@@ -130,6 +217,7 @@ impl<'surface> PaintCtx<'surface, Unsized> {
     pub fn into_sized(self, size: Size, global_pos: Pos) -> PaintCtx<'surface, SizePos> {
         PaintCtx {
             surface: self.surface,
+            glyph_map: self.glyph_map,
             clip: self.clip,
             state: SizePos::new(size, global_pos),
         }
@@ -138,7 +226,7 @@ impl<'surface> PaintCtx<'surface, Unsized> {
 
 impl<'screen> PaintCtx<'screen, SizePos> {
     pub fn to_unsized(&mut self) -> PaintCtx<'_, Unsized> {
-        PaintCtx::new(self.surface, self.clip)
+        PaintCtx::new(self.surface, self.clip, self.glyph_map)
     }
 
     pub fn update(&mut self, new_size: Size, new_pos: Pos) {
@@ -173,8 +261,8 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         clip.contains(pos)
     }
 
-    fn pos_inside_local_region(&self, pos: LocalPos, width: usize) -> bool {
-        (pos.x as usize) + width <= self.local_size.width && (pos.y as usize) < self.local_size.height
+    fn pos_inside_local_region(&self, pos: LocalPos, width: u16) -> bool {
+        pos.x + width <= self.local_size.width && pos.y < self.local_size.height
     }
 
     // Translate local coordinates to screen coordinates.
@@ -196,22 +284,37 @@ impl<'screen> PaintCtx<'screen, SizePos> {
 
     fn newline(&mut self, pos: LocalPos) -> Option<LocalPos> {
         let y = pos.y + 1; // next line
-        if y as usize >= self.local_size.height {
-            None
-        } else {
-            Some(LocalPos { x: 0, y })
-        }
+        if y >= self.local_size.height { None } else { Some(LocalPos { x: 0, y }) }
     }
 
-    pub fn place_glyphs(&mut self, s: &str, mut pos: LocalPos) -> Option<LocalPos> {
-        for c in s.chars() {
-            let p = self.place_glyph(c, pos)?;
-            pos = p;
+    pub fn to_glyphs<'a>(&mut self, s: &'a str) -> Glyphs<'a> {
+        Glyphs::new(s)
+    }
+
+    pub fn place_glyphs(&mut self, mut glyphs: Glyphs<'_>, mut pos: LocalPos) -> Option<LocalPos> {
+        while let Some(glyph) = glyphs.next(self.glyph_map) {
+            pos = self.place_glyph(glyph, pos)?;
         }
         Some(pos)
     }
 
-    pub fn set_attributes(&mut self, attrs: &dyn CellAttributes, pos: LocalPos) {
+    pub fn set_style(&mut self, style: Style, pos: LocalPos) {
+        // Ensure that the position is inside provided clipping region
+        if let Some(clip) = self.clip.as_ref() {
+            if !self.clip(pos, clip) {
+                return;
+            }
+        }
+
+        let screen_pos = match self.translate_to_global(pos) {
+            Some(pos) => pos,
+            None => return,
+        };
+
+        self.surface.set_style(style, screen_pos);
+    }
+
+    pub fn set_attributes(&mut self, attrs: &Attributes<'_>, pos: LocalPos) {
         // Ensure that the position is inside provided clipping region
         if let Some(clip) = self.clip.as_ref() {
             if !self.clip(pos, clip) {
@@ -233,10 +336,10 @@ impl<'screen> PaintCtx<'screen, SizePos> {
     // should be placed. This will (possibly) be offset if there is clipping available.
     //
     // The `output_pos` is the same as the `input_pos` unless clipping has been applied.
-    pub fn place_glyph(&mut self, c: char, input_pos: LocalPos) -> Option<LocalPos> {
-        let width = c.width().unwrap_or(0);
+    pub fn place_glyph(&mut self, glyph: Glyph, input_pos: LocalPos) -> Option<LocalPos> {
+        let width = glyph.width() as u16;
         let next = LocalPos {
-            x: input_pos.x + width as u16,
+            x: input_pos.x + width,
             y: input_pos.y,
         };
 
@@ -248,7 +351,7 @@ impl<'screen> PaintCtx<'screen, SizePos> {
         }
 
         // 1. Newline (yes / no)
-        if c == '\n' {
+        if glyph.is_newline() {
             return self.newline(input_pos);
         }
 
@@ -257,19 +360,21 @@ impl<'screen> PaintCtx<'screen, SizePos> {
             return None;
         }
 
-        // 3. Place the char
+        // 3. Find position on the screen
         let screen_pos = match self.translate_to_global(input_pos) {
             Some(pos) => pos,
             None => return Some(next),
         };
-        self.surface.draw_glyph(c, screen_pos);
+
+        // 4. Place the char
+        self.surface.draw_glyph(glyph, screen_pos);
 
         // 4. Advance the cursor (which might trigger another newline)
-        if input_pos.x >= self.local_size.width as u16 {
+        if input_pos.x >= self.local_size.width {
             self.newline(input_pos)
         } else {
             Some(LocalPos {
-                x: input_pos.x + width as u16,
+                x: input_pos.x + width,
                 y: input_pos.y,
             })
         }

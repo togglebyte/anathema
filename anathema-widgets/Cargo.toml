@@ -8,9 +8,19 @@ anathema-debug = { path = "../anathema-debug" }
 anathema-geometry = { path = "../anathema-geometry" }
 anathema-state = { path = "../anathema-state" }
 anathema-store = { path = "../anathema-store" }
+anathema-strings = { path = "../anathema-strings" }
 anathema-templates = { path = "../anathema-templates" }
-unicode-width = { workspace = true }
+anathema-value-resolver = { path = "../anathema-value-resolver" }
 flume = { workspace = true }
+bitflags = { workspace = true }
+unicode-width = { workspace = true }
+unicode-segmentation = "1.11.0"
+puffin = { version = "0.19.1", features = ["web"], optional = true }
+
+[features]
+default = []
+profile = ["puffin"]
+debuggy = []
 
 [lints]
 workspace = true

@@ -1,17 +1,17 @@
 use std::cell::RefCell;
 
-use super::{OwnedKey, RcSlab};
-use crate::slab::Element;
+use super::OwnedKey;
+use crate::slab::{RcElement, RcSlab, SharedSlab};
 
 // -----------------------------------------------------------------------------
 //   - Shared key -
 // -----------------------------------------------------------------------------
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SharedKey(usize, OwnedKey);
+pub struct SharedKey(pub u32, pub OwnedKey);
 
 impl From<SharedKey> for usize {
     fn from(key: SharedKey) -> usize {
-        key.0
+        key.0 as usize
     }
 }
 
@@ -37,7 +37,7 @@ impl<T> Shared<T> {
 
     // Get a shared value under the assumption that the value exists.
     // This should only be called if the Rc::strong count is greater than one
-    pub fn get(&self, key: SharedKey) -> Element<T> {
+    pub fn get(&self, key: SharedKey) -> RcElement<T> {
         self.inner
             .borrow_mut()
             .get(key.into())
@@ -46,7 +46,7 @@ impl<T> Shared<T> {
 
     pub fn insert(&self, owned_key: OwnedKey, value: T) -> SharedKey {
         let key = self.inner.borrow_mut().insert(value);
-        SharedKey(key, owned_key)
+        SharedKey(key as u32, owned_key)
     }
 
     pub fn try_evict(&self, key: SharedKey) -> Option<T> {

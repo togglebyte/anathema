@@ -8,15 +8,17 @@ use std::ops::Add;
 use std::time::Duration;
 
 use anathema_geometry::{LocalPos, Pos, Size};
-use anathema_store::tree::{Node, TreeValues};
+use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
-use anathema_widgets::{AttributeStorage, Element, WidgetKind, WidgetRenderer};
-use crossterm::terminal::size;
+pub use anathema_widgets::{Attributes, Style};
+use anathema_widgets::{GlyphMap, PaintChildren, WidgetRenderer};
+use crossterm::cursor::{RestorePosition, SavePosition};
+use crossterm::execute;
+use crossterm::terminal::{BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate, size};
 pub use screen::Screen;
 
 pub use self::buffer::Buffer;
 use self::events::Events;
-pub use self::style::{Attributes, Style};
 use crate::Backend;
 
 mod buffer;
@@ -28,8 +30,6 @@ mod style;
 /// Backend builder for a tui backend.
 pub struct TuiBackendBuilder {
     output: Stdout,
-    quit_on_ctrl_c: bool,
-
     hide_cursor: bool,
     enable_raw_mode: bool,
     enable_alt_screen: bool,
@@ -65,13 +65,18 @@ impl TuiBackendBuilder {
         self
     }
 
+    /// Clear the screen using ansi escape codes.
+    pub fn clear(mut self) -> Self {
+        let _ = execute!(&mut self.output, Clear(ClearType::All));
+        self
+    }
+
     /// Consume self and create the tui backend.
     pub fn finish(self) -> Result<TuiBackend, std::io::Error> {
         let size = size()?;
         let screen = Screen::new(size);
 
         let backend = TuiBackend {
-            quit_on_ctrl_c: self.quit_on_ctrl_c,
             screen,
             output: self.output,
             events: Events,
@@ -88,8 +93,6 @@ impl TuiBackendBuilder {
 
 /// Terminal backend
 pub struct TuiBackend {
-    /// Stop the runtime if Ctrl+c was pressed.
-    pub quit_on_ctrl_c: bool,
     screen: Screen,
     output: Stdout,
     events: Events,
@@ -104,12 +107,8 @@ pub struct TuiBackend {
 impl TuiBackend {
     /// Create a new instance of the tui backend.
     pub fn builder() -> TuiBackendBuilder {
-        let output = std::io::stdout();
-
         TuiBackendBuilder {
-            output,
-            quit_on_ctrl_c: true,
-
+            output: std::io::stdout(),
             hide_cursor: false,
             enable_raw_mode: false,
             enable_alt_screen: false,
@@ -133,31 +132,23 @@ impl Backend for TuiBackend {
         self.events.poll(timeout)
     }
 
-    fn resize(&mut self, new_size: Size) {
+    fn resize(&mut self, new_size: Size, _: &mut GlyphMap) {
         self.screen.resize(new_size);
     }
 
     fn paint<'bp>(
         &mut self,
-        element: &mut Element<'bp>,
-        children: &[Node],
-        values: &mut TreeValues<WidgetKind<'bp>>,
+        glyph_map: &mut GlyphMap,
+        widgets: PaintChildren<'_, 'bp>,
         attribute_storage: &AttributeStorage<'bp>,
-        ignore_floats: bool,
     ) {
-        anathema_widgets::paint::paint(
-            &mut self.screen,
-            element,
-            children,
-            values,
-            attribute_storage,
-            ignore_floats,
-        );
-        // TODO: decide if we need `paint` to return a Result or not
+        anathema_widgets::paint::paint(&mut self.screen, glyph_map, widgets, attribute_storage);
     }
 
-    fn render(&mut self) {
-        let _ = self.screen.render(&mut self.output);
+    fn render(&mut self, glyph_map: &mut GlyphMap) {
+        let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
+        let _ = self.screen.render(&mut self.output, glyph_map);
+        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
     }
 
     fn clear(&mut self) {
@@ -165,6 +156,11 @@ impl Backend for TuiBackend {
     }
 
     fn finalize(&mut self) {
+        if self.enable_alt_screen {
+            let _ = execute!(&mut self.output, SavePosition);
+            let _ = Screen::enter_alt_screen(&mut self.output);
+        }
+
         if self.hide_cursor {
             // This is to fix an issue with Windows cmd.exe
             let _ = Screen::show_cursor(&mut self.output);
@@ -173,10 +169,6 @@ impl Backend for TuiBackend {
 
         if self.enable_raw_mode {
             let _ = Screen::enable_raw_mode();
-        }
-
-        if self.enable_alt_screen {
-            let _ = Screen::enter_alt_screen(&mut self.output);
         }
 
         if self.enable_mouse {
@@ -189,7 +181,10 @@ impl Backend for TuiBackend {
 
 impl Drop for TuiBackend {
     fn drop(&mut self) {
-        let _ = self.screen.restore(&mut self.output);
+        if self.enable_alt_screen {
+            let _ = execute!(&mut self.output, RestorePosition);
+        }
+        let _ = self.screen.restore(&mut self.output, self.enable_alt_screen);
     }
 }
 

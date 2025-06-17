@@ -63,8 +63,9 @@ impl Display for ParseError {
             ParseErrorKind::UnexpectedEof => "unexpected end of file".into(),
             ParseErrorKind::TrailingPipe => "trailing pipe character".into(),
             ParseErrorKind::InvalidDedent => "dedent does not match previous indentation levels".into(),
-            ParseErrorKind::InvalidOperator(_op) => "invalid operator: {op}".into(),
-            ParseErrorKind::UnexpectedToken(_msg) => "unexpected token: {msg}".into(),
+            ParseErrorKind::InvalidOperator(op) => format!("invalid operator: {op}"),
+            ParseErrorKind::UnexpectedToken(msg) => format!("unexpected token: {msg}"),
+            ParseErrorKind::UnregisteredComponent(name) => format!("unregistered component: {name}"),
             ParseErrorKind::InvalidKey => todo!(),
         };
 
@@ -106,4 +107,5 @@ pub enum ParseErrorKind {
     InvalidOperator(Operator),
     UnexpectedToken(String),
     InvalidKey,
+    UnregisteredComponent(String),
 }

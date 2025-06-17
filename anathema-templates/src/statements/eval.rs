@@ -1,14 +1,12 @@
-use std::rc::Rc;
-
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
 use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
-use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, If, Single};
+use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
 use crate::error::{Error, Result};
 use crate::expressions::Expression;
-use crate::WidgetComponentId;
+use crate::{ComponentBlueprintId, Primitive};
 
 pub(crate) struct Scope {
     statements: Statements,
@@ -26,16 +24,20 @@ impl Scope {
             match statement {
                 Statement::Node(ident) => output.push(self.eval_node(ident, ctx)?),
                 Statement::Component(component_id) => output.push(self.eval_component(component_id, ctx)?),
-                Statement::For { binding, data } => output.push(self.eval_for(binding, data, ctx)?),
+                Statement::For { binding, data } => {
+                    if let Some(expr) = self.eval_for(binding, data, ctx)? {
+                        output.push(expr);
+                    }
+                }
                 Statement::If(cond) => output.push(self.eval_if(cond, ctx)?),
                 Statement::Declaration { binding, value } => {
-                    let value = const_eval(value, ctx);
+                    let Some(value) = const_eval(value, ctx) else { continue };
                     let binding = ctx.strings.get_unchecked(binding);
                     ctx.globals.declare(binding, value);
                 }
                 Statement::ComponentSlot(slot_id) => {
                     if let Some(bp) = ctx.slots.get(&slot_id).cloned() {
-                        output.extend(bp);
+                        output.push(Blueprint::Slot(bp));
                     }
                 }
 
@@ -58,11 +60,11 @@ impl Scope {
     fn eval_node(&mut self, ident: StringId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let ident = ctx.strings.get_unchecked(ident);
         let attributes = self.eval_attributes(ctx)?;
-        let value = self.statements.take_value().map(|v| const_eval(v, ctx));
+        let value = self.statements.take_value().and_then(|v| const_eval(v, ctx));
         let children = self.consume_scope(ctx)?;
 
         let node = Blueprint::Single(Single {
-            ident: ident.into(),
+            ident,
             children,
             attributes,
             value,
@@ -70,16 +72,14 @@ impl Scope {
         Ok(node)
     }
 
-    fn eval_for(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
-        let data = const_eval(data, ctx);
+    fn eval_for(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Option<Blueprint>> {
+        let Some(data) = const_eval(data, ctx) else { return Ok(None) };
         let binding = ctx.strings.get_unchecked(binding);
+        // add binding to globals so nothing can resolve past the binding outside of the loop
+        ctx.globals.declare_local(binding.clone());
         let body = self.consume_scope(ctx)?;
-        let node = Blueprint::For(For {
-            binding: binding.into(),
-            data,
-            body,
-        });
-        Ok(node)
+        let node = Blueprint::For(For { binding, data, body });
+        Ok(Some(node))
     }
 
     fn consume_scope(&mut self, ctx: &mut Context<'_>) -> Result<Vec<Blueprint>> {
@@ -87,30 +87,33 @@ impl Scope {
         scope.eval(ctx)
     }
 
-    fn eval_attributes(&mut self, ctx: &mut Context<'_>) -> Result<SmallMap<Rc<str>, Expression>> {
+    fn eval_attributes(&mut self, ctx: &mut Context<'_>) -> Result<SmallMap<String, Expression>> {
         let mut hm = SmallMap::empty();
 
         for (key, value) in self.statements.take_attributes() {
-            let value = const_eval(value, ctx);
+            let Some(value) = const_eval(value, ctx) else { continue };
             let key = ctx.strings.get_unchecked(key);
-            hm.set(key.into(), value);
+            hm.set(key, value);
         }
 
         Ok(hm)
     }
 
     fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
-        let cond = const_eval(cond, ctx);
+        // Const eval fail = static false
+        let cond = const_eval(cond, ctx).unwrap_or(Expression::Primitive(Primitive::Bool(false)));
         let body = self.consume_scope(ctx)?;
         if body.is_empty() {
             return Err(Error::EmptyBody);
         }
 
-        let if_node = If { cond, body };
-        let mut elses = vec![];
+        // let if_node = If { cond, body };
+
+        let mut elses = vec![Else { cond: Some(cond), body }];
+
         while let Some(cond) = self.statements.next_else() {
-            let cond = cond.map(|v| const_eval(v, ctx));
             let body = self.consume_scope(ctx)?;
+            let cond = cond.and_then(|v| const_eval(v, ctx));
 
             if body.is_empty() {
                 return Err(Error::EmptyBody);
@@ -118,10 +121,10 @@ impl Scope {
 
             elses.push(Else { cond, body });
         }
-        Ok(Blueprint::ControlFlow(ControlFlow { if_node, elses }))
+        Ok(Blueprint::ControlFlow(ControlFlow { elses }))
     }
 
-    fn eval_component(&mut self, component_id: WidgetComponentId, ctx: &mut Context<'_>) -> Result<Blueprint> {
+    fn eval_component(&mut self, component_id: ComponentBlueprintId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let parent = ctx.component_parent();
 
         // Associated functions
@@ -130,32 +133,36 @@ impl Scope {
         // Attributes
         let attributes = self.eval_attributes(ctx)?;
 
-        // State
-        let state = self.statements.take_value().map(|v| const_eval(v, ctx));
-        let state = match state {
-            Some(Expression::Map(map)) => Some(map),
-            Some(_) => todo!("Invalid state: state has to be a map or nothing"),
-            None => None,
-        };
-
         // Slots
         let mut slots = SmallMap::empty();
         let mut scope = self.statements.take_scope();
 
-        // for each slot take the scope and associate it with the slot id
-        while let Some(slot_id) = scope.next_slot() {
-            let scope = Scope::new(scope.take_scope());
+        // If the next statement is NOT a slot id then assume $children
+        // and still try to take the scope
+        if !scope.is_next_slot() {
+            let slot_id = ctx.strings.children();
+            let scope = Scope::new(scope);
             let body = scope.eval(ctx)?;
             slots.set(slot_id, body);
+        } else {
+            // for each slot take the scope and associate it with the slot id
+            while let Some(slot_id) = scope.next_slot() {
+                let scope = Scope::new(scope.take_scope());
+                let body = scope.eval(ctx)?;
+                slots.set(slot_id, body);
+            }
         }
 
         let body = ctx.load_component(component_id, slots)?;
+        let name_id = ctx.components.name(component_id);
+        let name = ctx.strings.get_unchecked(name_id);
 
         let component = Component {
+            name,
+            name_id,
             id: component_id,
             body,
             attributes,
-            state,
             assoc_functions,
             parent,
         };
@@ -166,10 +173,9 @@ impl Scope {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
     use crate::document::Document;
-    use crate::{single, ToSourceKind};
+    use crate::{ToSourceKind, single};
 
     #[test]
     fn eval_node() {
@@ -186,7 +192,7 @@ mod test {
         ";
         let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
-        assert_eq!(blueprint, single!("a", vec![single!("b")]));
+        assert_eq!(blueprint, single!(children @ "a", vec![single!("b")]));
     }
 
     #[test]
@@ -213,8 +219,24 @@ mod test {
     }
 
     #[test]
+    fn if_else() {
+        let src = "
+            if 1 == 2
+                text
+            else
+                border
+        ";
+
+        let mut doc = Document::new(src);
+        let (blueprint, _) = doc.compile().unwrap();
+        let Blueprint::ControlFlow(controlflow) = blueprint else { panic!() };
+        assert!(matches!(controlflow.elses[0], Else { .. }));
+        assert!(!controlflow.elses.is_empty());
+    }
+
+    #[test]
     fn eval_component() {
-        let src = "@comp {a: 1}";
+        let src = "@comp [a: 1]";
         let comp_src = "node a + 2";
 
         let mut doc = Document::new(src);
@@ -225,6 +247,9 @@ mod test {
 
     #[test]
     fn eval_component_slots() {
+        // TODO: this test is incomplete.
+        // It should verify that node '1' and node '2' are in the components
+        // blueprint
         let src = "
             @comp
                 $s1
@@ -249,8 +274,8 @@ mod test {
     fn eval_two_identical_components() {
         let src = "
             vstack
-                @comp (a->b) { a: 1 }
-                @comp (a->b) { a: 2 }
+                @comp (a->b) [ a: 1 ]
+                @comp (a->b) [ a: 2 ]
         ";
 
         let mut doc = Document::new(src);
@@ -261,7 +286,7 @@ mod test {
     #[test]
     fn component_with_assoc_attrs_state() {
         let src = "
-            @comp (a->b) [a: 1] { a: 1 }
+            @comp (a->b) [a: 1]
         ";
 
         let mut doc = Document::new(src);

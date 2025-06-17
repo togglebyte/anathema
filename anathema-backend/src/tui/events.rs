@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anathema_widgets::components::events::{Event, KeyCode, KeyEvent, KeyState, MouseButton, MouseEvent, MouseState};
-use crossterm::event::{read, Event as CTEvent, KeyEventKind};
+use crossterm::event::{Event as CTEvent, KeyEventKind, read};
 pub use crossterm::event::{
     KeyCode as CTKeyCode, KeyEvent as CTKeyEvent, KeyEventState, KeyModifiers, MouseButton as CTMouseButton,
     MouseEvent as CTMouseEvent, MouseEventKind,
@@ -17,21 +17,15 @@ impl Events {
     pub fn poll(&self, timeout: Duration) -> Option<Event> {
         match crossterm::event::poll(timeout).ok()? {
             true => {
-                let event = read().map(Into::into).ok()?;
+                let event = read().ok()?;
 
                 let event = match event {
                     CTEvent::Paste(_) => Event::Noop,
                     CTEvent::FocusGained => Event::Focus,
                     CTEvent::FocusLost => Event::Blur,
-                    CTEvent::Key(CTKeyEvent {
-                        kind: KeyEventKind::Press,
-                        code: CTKeyCode::Char('c'),
-                        modifiers: KeyModifiers::CONTROL,
-                        ..
-                    }) => Event::Stop,
                     CTEvent::Key(key_ev) => Event::Key(key_code_to_key_code(key_ev)),
                     CTEvent::Mouse(mouse_ev) => Event::Mouse(mouse_to_mouse(mouse_ev)),
-                    CTEvent::Resize(width, height) => Event::Resize(width, height),
+                    CTEvent::Resize(width, height) => Event::Resize((width, height).into()),
                 };
 
                 Some(event)

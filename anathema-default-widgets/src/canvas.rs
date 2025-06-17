@@ -1,8 +1,10 @@
-use anathema_backend::tui::Style;
 use anathema_geometry::{LocalPos, Pos, Size};
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::paint::{PaintCtx, SizePos};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::paint::{Glyph, PaintCtx, SizePos};
+use anathema_widgets::{LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId};
+use unicode_width::UnicodeWidthChar;
 
 use crate::{HEIGHT, WIDTH};
 
@@ -22,7 +24,7 @@ struct Buffer {
 impl Buffer {
     pub fn new(size: Size) -> Self {
         Self {
-            positions: vec![Cell::Empty; size.width * size.height].into_boxed_slice(),
+            positions: vec![Cell::Empty; size.area()].into_boxed_slice(),
             size,
         }
     }
@@ -30,8 +32,8 @@ impl Buffer {
     fn put(&mut self, c: char, style: Style, pos: impl Into<LocalPos>) {
         let pos = pos.into();
 
-        if pos.x as usize >= self.size.width || pos.y as usize >= self.size.height {
-            return
+        if pos.x >= self.size.width || pos.y >= self.size.height {
+            return;
         }
         let index = pos.to_index(self.size.width);
 
@@ -40,7 +42,12 @@ impl Buffer {
     }
 
     fn get(&self, pos: impl Into<LocalPos>) -> Option<&Cell> {
-        let index = pos.into().to_index(self.size.width);
+        let pos = pos.into();
+        if pos.x >= self.size.width || pos.y >= self.size.height {
+            return None;
+        }
+
+        let index = pos.to_index(self.size.width);
         match self.positions.get(index)? {
             cell @ Cell::Occupied(..) => Some(cell),
             Cell::Empty => None,
@@ -48,7 +55,12 @@ impl Buffer {
     }
 
     fn get_mut(&mut self, pos: impl Into<LocalPos>) -> Option<&mut Cell> {
-        let index = pos.into().to_index(self.size.width);
+        let pos = pos.into();
+        if pos.x >= self.size.width || pos.y >= self.size.height {
+            return None;
+        }
+
+        let index = pos.to_index(self.size.width);
         match self.positions.get_mut(index)? {
             cell @ Cell::Occupied(..) => Some(cell),
             Cell::Empty => None,
@@ -56,7 +68,12 @@ impl Buffer {
     }
 
     fn remove(&mut self, pos: impl Into<LocalPos>) {
-        let index = pos.into().to_index(self.size.width);
+        let pos = pos.into();
+        if pos.x >= self.size.width || pos.y >= self.size.height {
+            return;
+        }
+
+        let index = pos.to_index(self.size.width);
         if index < self.positions.len() {
             let mut cell = Cell::Empty;
             std::mem::swap(&mut self.positions[index], &mut cell);
@@ -67,7 +84,7 @@ impl Buffer {
         let mut new_buffer = Buffer::new(size);
 
         for (pos, c, attrs) in other.drain() {
-            if pos.x >= size.width as u16 || pos.y >= size.height as u16 {
+            if pos.x >= size.width || pos.y >= size.height {
                 continue;
             }
             new_buffer.put(c, attrs, pos);
@@ -84,9 +101,9 @@ impl Buffer {
             match old {
                 Cell::Empty => None,
                 Cell::Occupied(c, attribs) => {
-                    let y = index / self.size.width;
-                    let x = index % self.size.width;
-                    let pos = LocalPos::new(x as u16, y as u16);
+                    let y = index as u16 / self.size.width;
+                    let x = index as u16 % self.size.width;
+                    let pos = LocalPos::new(x, y);
                     Some((pos, c, attribs))
                 }
             }
@@ -95,9 +112,9 @@ impl Buffer {
 
     fn iter(&self) -> impl Iterator<Item = (LocalPos, char, &Style)> + '_ {
         self.positions.iter().enumerate().filter_map(|(index, cell)| {
-            let x = index % self.size.width;
-            let y = index / self.size.width;
-            let pos = LocalPos::new(x as u16, y as u16);
+            let x = index as u16 % self.size.width;
+            let y = index as u16 / self.size.width;
+            let pos = LocalPos::new(x, y);
             //
             match cell {
                 Cell::Empty => None,
@@ -161,18 +178,18 @@ impl Default for Canvas {
 impl Widget for Canvas {
     fn layout<'bp>(
         &mut self,
-        _children: LayoutChildren<'_, '_, 'bp>,
+        _: LayoutForEach<'_, 'bp>,
         mut constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        let attribs = ctx.attribs.get(id);
+    ) -> Result<Size> {
+        let attribs = ctx.attribute_storage.get(id);
 
-        if let Some(width) = attribs.get_usize(WIDTH) {
+        if let Some(width) = attribs.get_as::<u16>(WIDTH) {
             constraints.set_max_width(width);
         }
 
-        if let Some(height) = attribs.get_usize(HEIGHT) {
+        if let Some(height) = attribs.get_as::<u16>(HEIGHT) {
             constraints.set_max_height(height);
         }
 
@@ -182,12 +199,12 @@ impl Widget for Canvas {
             self.buffer = Buffer::copy_from(&mut self.buffer, size);
         }
 
-        self.buffer.size
+        Ok(self.buffer.size)
     }
 
     fn position<'bp>(
         &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
+        _: PositionChildren<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -197,19 +214,22 @@ impl Widget for Canvas {
 
     fn paint<'bp>(
         &mut self,
-        _children: PaintChildren<'_, '_, 'bp>,
+        _children: PaintChildren<'_, 'bp>,
         _id: WidgetId,
         _attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
         for (pos, c, style) in self.buffer.iter() {
-            ctx.set_attributes(style, pos);
-            ctx.place_glyph(c, pos);
+            ctx.set_style(*style, pos);
+            let glyph = Glyph::from_char(c, c.width().unwrap_or(0) as u8);
+            ctx.place_glyph(glyph, pos);
         }
     }
 
-    fn needs_reflow(&self) -> bool {
-        self.is_dirty
+    fn needs_reflow(&mut self) -> bool {
+        let needs_reflow = self.is_dirty;
+        self.is_dirty = false;
+        needs_reflow
     }
 }
 
@@ -244,5 +264,69 @@ mod test {
         assert!(canvas.get((0, 0)).is_some());
         canvas.erase((0, 0));
         assert!(canvas.get((0, 0)).is_none());
+    }
+
+    #[test]
+    fn put_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+        under_test.put('o', Style::reset(), LocalPos::new(1, 0));
+
+        for cell in under_test.buffer.positions {
+            match cell {
+                Cell::Empty => panic!("Should not be empty"),
+                Cell::Occupied(c, _) => assert_eq!(c, 'x'),
+            }
+        }
+    }
+
+    #[test]
+    fn get_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+
+        assert!(under_test.get(LocalPos::new(1, 0)).is_none());
+    }
+
+    #[test]
+    fn get_mut_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+
+        assert!(under_test.get_mut(LocalPos::new(1, 0)).is_none());
+    }
+
+    #[test]
+    fn remove_buffer_out_of_range() {
+        let mut under_test = Canvas {
+            buffer: Buffer::new(Size::new(1, 2)),
+            ..Default::default()
+        };
+
+        under_test.put('x', Style::reset(), LocalPos::new(0, 0));
+        under_test.put('x', Style::reset(), LocalPos::new(0, 1));
+        under_test.erase(LocalPos::new(1, 0));
+
+        for cell in under_test.buffer.positions {
+            match cell {
+                Cell::Empty => panic!("Should not be empty"),
+                Cell::Occupied(c, _) => assert_eq!(c, 'x'),
+            }
+        }
     }
 }

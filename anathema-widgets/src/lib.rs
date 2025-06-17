@@ -1,24 +1,25 @@
-pub use scope::{DebugScope, Scope};
-pub use values::ValueIndex;
+use anathema_state::Subscriber;
 
-pub use crate::nodes::eval::EvalContext;
-pub use crate::nodes::{eval_blueprint, try_resolve_future_values, update_tree, Element, Stringify, WidgetKind};
-pub use crate::values::{Value, Values};
+pub use crate::nodes::component::Component;
+pub use crate::nodes::{Element, WidgetContainer, WidgetGenerator, WidgetKind, eval_blueprint, update_widget};
+pub use crate::paint::{GlyphMap, WidgetRenderer};
 pub use crate::widget::{
-    AnyWidget, AttributeStorage, Attributes, ComponentParents, Components, DirtyWidgets, Elements, Factory,
-    FloatingWidgets, LayoutChildren, PaintChildren, PositionChildren, Widget, WidgetId, WidgetRenderer, WidgetTree,
+    AnyWidget, Attributes, ComponentParents, Components, Factory, FloatingWidgets, ForEach, LayoutChildren,
+    LayoutForEach, PaintChildren, PositionChildren, Style, Widget, WidgetId, WidgetTree, WidgetTreeView,
 };
+
+pub type ChangeList = anathema_store::regionlist::RegionList<32, WidgetId, Subscriber>;
 
 pub mod components;
 mod container;
-pub mod debug;
 pub mod error;
-pub mod expressions;
 pub mod layout;
 mod nodes;
 pub mod paint;
-mod scope;
+pub mod query;
+pub mod tabindex;
+pub mod tree;
+mod widget;
+
 #[cfg(test)]
 mod testing;
-mod values;
-mod widget;

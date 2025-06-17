@@ -1,9 +1,8 @@
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-use anathema_store::storage::strings::Strings;
-
 use crate::error::{ParseError, ParseErrorKind, Result};
+use crate::strings::Strings;
 use crate::token::{Kind, Operator, Token, Value};
 
 impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
@@ -103,6 +102,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             ('%', _) => Ok(Kind::Op(Operator::Mod).to_token(index)),
             ('>', _) => Ok(Kind::Op(Operator::GreaterThan).to_token(index)),
             ('<', _) => Ok(Kind::Op(Operator::LessThan).to_token(index)),
+            ('?', _) => Ok(Kind::Op(Operator::Either).to_token(index)),
             ('=', _) => Ok(Kind::Equal.to_token(index)),
             ('\n', _) => Ok(Kind::Newline.to_token(index)),
             ('@', _) => Ok(Kind::Component.to_token(index)),
@@ -166,7 +166,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                         self.src,
                         ParseErrorKind::UnterminatedString,
                     )
-                    .into())
+                    .into());
                 }
                 _ => {} // consume chars
             }
@@ -287,13 +287,16 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
 
 #[cfg(test)]
 mod test {
+    use anathema_store::slab::SlabIndex;
+    use anathema_store::storage::strings::StringId;
+
     use super::*;
     use crate::error::ParseErrorKind;
 
     fn token_kind(input: &str) -> Kind {
-        let mut strings = Strings::empty();
-        let kind = Lexer::new(input, &mut strings).next().unwrap().unwrap().0;
-        kind
+        let mut strings = Strings::new();
+
+        Lexer::new(input, &mut strings).next().unwrap().unwrap().0
     }
 
     fn operator(input: &str) -> Operator {
@@ -305,7 +308,7 @@ mod test {
     }
 
     fn error_kind(input: &str) -> ParseErrorKind {
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
         let mut lexer = Lexer::new(input, &mut strings);
         match lexer.next().unwrap().unwrap_err() {
             crate::error::Error::ParseError(err) => err.kind,
@@ -319,7 +322,7 @@ mod test {
 
     #[test]
     fn comment() {
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
         let input = "// hello world";
         let mut lexer = Lexer::new(input, &mut strings);
         assert!(lexer.next().is_none());
@@ -365,7 +368,7 @@ mod test {
 
         for input in inputs {
             let actual = token_kind(input);
-            let expected = Kind::Value(Value::Ident(0.into()));
+            let expected = Kind::Value(Value::Ident(StringId::from_usize(1)));
             assert_eq!(expected, actual);
         }
     }
@@ -407,7 +410,7 @@ mod test {
             ("''", ""), // empty string
         ];
 
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
 
         for (input, expected) in inputs {
             let Kind::Value(Value::String(string_id)) = Lexer::new(input, &mut strings).next().unwrap().unwrap().0
@@ -493,5 +496,11 @@ mod test {
     fn association() {
         let decl = token_kind("->");
         assert_eq!(decl, Kind::Op(Operator::Association));
+    }
+
+    #[test]
+    fn either() {
+        let decl = token_kind("?");
+        assert_eq!(decl, Kind::Op(Operator::Either));
     }
 }

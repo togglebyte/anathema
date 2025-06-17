@@ -1,6 +1,21 @@
+let THEME = [
+    // Inactive
+    {
+        "background": "black",
+        "foreground": "reset",
+    },
+
+    // Active
+    {
+        "background": "grey",
+        "foreground": "black",
+    }
+]
+
+
 border
     row
-        if in_focus
-            text [background: "grey", foreground: "black"] caption
-        else
-            text [background: "black"] caption
+        text [
+            background: THEME[state.active].background,
+            foreground: THEME[state.active].foreground
+        ] attributes.caption

@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use anathema_geometry::Size;
+
 pub use self::key::{KeyCode, KeyEvent, KeyState};
 pub use self::mouse::{MouseButton, MouseEvent, MouseState};
 
@@ -5,7 +9,7 @@ mod key;
 mod mouse;
 
 /// An event
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Event {
     /// No op
     Noop,
@@ -20,7 +24,9 @@ pub enum Event {
     /// Mouse event
     Mouse(MouseEvent),
     /// Window was resized
-    Resize(u16, u16),
+    Resize(Size),
+    /// Tick
+    Tick(Duration),
 }
 
 impl Event {
@@ -32,6 +38,16 @@ impl Event {
         match self {
             Self::Key(event) => event.get_char(),
             _ => None,
+        }
+    }
+
+    pub fn is_ctrl_c(&self) -> bool {
+        match self {
+            Self::Key(event) => match event.code {
+                KeyCode::Char('c') => event.ctrl,
+                _ => false,
+            },
+            _ => false,
         }
     }
 }

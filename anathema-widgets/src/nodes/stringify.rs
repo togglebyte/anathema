@@ -3,9 +3,11 @@ use std::ops::ControlFlow;
 
 use anathema_store::tree::visitor::NodeVisitor;
 use anathema_store::tree::ValueId;
+use anathema_value_resolver::AttributeStorage;
 
 use super::element::Element;
-use crate::{AttributeStorage, WidgetKind};
+use super::WidgetContainer;
+use crate::WidgetKind;
 
 /// Stringify the tree.
 /// Used for debugging
@@ -31,10 +33,10 @@ impl<'a, 'bp> Stringify<'a, 'bp> {
     }
 }
 
-impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
-    fn visit(&mut self, value: &mut WidgetKind<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
+impl<'a, 'bp> NodeVisitor<WidgetContainer<'_>> for Stringify<'a, 'bp> {
+    fn visit(&mut self, value: &mut WidgetContainer<'_>, _path: &[u16], _: ValueId) -> ControlFlow<bool> {
         let _ = write!(&mut self.output, "{}", self.indent);
-        match value {
+        match &value.kind {
             WidgetKind::Element(Element { ident, container, .. }) => {
                 let _ = write!(&mut self.output, "{ident}");
 
@@ -44,25 +46,17 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
                     // Print attributes
                     let _ = write!(&mut self.output, "[");
                     for (i, (key, val)) in attribs.iter().enumerate() {
-                        if let Some(common_val) = val.load_common_val() {
-                            let v = common_val.to_common().unwrap();
-                            // Write a comma before the values if this is not the first entry
-                            if i > 0 {
-                                let _ = write!(&mut self.output, ", ");
-                            }
-                            let _ = write!(&mut self.output, "{}: {:?}", key.to_str(), v);
+                        // Write a comma before the values if this is not the first entry
+                        if i > 0 {
+                            let _ = write!(&mut self.output, ", ");
                         }
+                        let _ = write!(&mut self.output, "{}: {:?}", key.as_str(), val);
                     }
                     let _ = write!(&mut self.output, "]");
                 }
 
                 if let Some(val) = attribs.value() {
-                    if let Some(common_val) = val.load_common_val() {
-                        let v = common_val.to_common().unwrap();
-                        let _ = write!(&mut self.output, " {:?}", v);
-                    }
-
-                    // let _ = write!(&mut self.output, " (expr: {:?})", val.expr);
+                    let _ = write!(&mut self.output, " {:?}", val);
                 }
             }
             WidgetKind::For(_) => drop(write!(&mut self.output, "<for>")),
@@ -77,16 +71,20 @@ impl<'a, 'bp> NodeVisitor<WidgetKind<'_>> for Stringify<'a, 'bp> {
             WidgetKind::ControlFlow(_) => {
                 let _ = write!(&mut self.output, "<control flow>");
             }
-            WidgetKind::If(if_widget) => {
-                let _ = write!(&mut self.output, "<if cond = {}>", if_widget.cond.load_bool());
+            WidgetKind::ControlFlowContainer(id) => {
+                let _ = write!(&mut self.output, "<control flow container {id}>");
             }
-            WidgetKind::Else(if_widget) => match &if_widget.cond {
-                Some(cond) => {
-                    let _ = write!(&mut self.output, "<else cond = {}>", cond.load_bool());
-                }
-                None => drop(write!(&mut self.output, "<else>")),
-            },
+            // WidgetKind::If(if_widget) => {
+            //     let _ = write!(&mut self.output, "<if cond = {}>", if_widget.cond.load_bool());
+            // }
+            // WidgetKind::Else(if_widget) => match &if_widget.cond {
+            //     Some(cond) => {
+            //         let _ = write!(&mut self.output, "<else cond = {}>", cond.load_bool());
+            //     }
+            //     None => drop(write!(&mut self.output, "<else>")),
+            // },
             WidgetKind::Component(_) => drop(write!(&mut self.output, "<component>")),
+            WidgetKind::Slot => todo!(),
         }
 
         let _ = writeln!(&mut self.output);

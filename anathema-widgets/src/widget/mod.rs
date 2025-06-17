@@ -3,32 +3,42 @@ use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::ops::ControlFlow;
 
-pub type WidgetId = anathema_store::slab::Key;
-
-use anathema_geometry::{Pos, Rect, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_state::StateId;
 use anathema_store::slab::SecondaryMap;
-use anathema_store::smallmap::SmallMap;
-use anathema_store::sorted::SortedList;
-use anathema_store::tree::{NodeWalker, Tree, TreeForEach};
-use anathema_templates::WidgetComponentId;
+use anathema_store::tree::{Tree, TreeView};
+use anathema_templates::ComponentBlueprintId;
+use anathema_value_resolver::AttributeStorage;
 
-pub use self::attributes::{AttributeStorage, Attributes};
 pub use self::factory::Factory;
-pub use self::query::Elements;
-use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::paint::{CellAttributes, PaintCtx, PaintFilter, SizePos};
-use crate::WidgetKind;
+pub use self::style::{Attributes, Style};
+use crate::WidgetContainer;
+use crate::error::Result;
+use crate::layout::{Constraints, LayoutCtx, PositionCtx, PositionFilter};
+use crate::paint::{PaintCtx, PaintFilter, SizePos};
+pub use crate::tree::{Filter, ForEach, LayoutForEach};
 
-mod attributes;
 mod factory;
-mod query;
+mod style;
+
+pub type WidgetTreeView<'a, 'bp> = TreeView<'a, WidgetContainer<'bp>>;
+pub type WidgetTree<'a> = Tree<WidgetContainer<'a>>;
+pub type LayoutChildren<'a, 'bp> = LayoutForEach<'a, 'bp>;
+pub type PositionChildren<'a, 'bp> = ForEach<'a, 'bp, PositionFilter>;
+pub type PaintChildren<'a, 'bp> = ForEach<'a, 'bp, PaintFilter>;
+pub type WidgetId = anathema_store::slab::Key;
 
 #[derive(Debug)]
 pub struct CompEntry {
-    pub widget_id: WidgetId,
-    pub component_id: WidgetComponentId,
+    /// The state owned by this component
     pub state_id: StateId,
+    /// The components id in the widget tree
+    pub widget_id: WidgetId,
+
+    /// Does the component accept tick events
+    pub accept_ticks: bool,
+
+    component_id: ComponentBlueprintId,
     path: Box<[u16]>,
 }
 
@@ -52,50 +62,64 @@ impl PartialEq for CompEntry {
     }
 }
 
+/// Store a list of components currently in the tree
 pub struct Components {
-    pub tab_index: usize,
-    inner: SortedList<CompEntry>,
-    comp_ids: SmallMap<WidgetComponentId, usize>,
+    inner: Vec<CompEntry>,
 }
 
 impl Components {
     pub fn new() -> Self {
-        Self {
-            tab_index: 0,
-            inner: SortedList::empty(),
-            comp_ids: SmallMap::empty(),
-        }
+        Self { inner: vec![] }
     }
 
-    pub fn push(&mut self, path: Box<[u16]>, widget_id: WidgetId, state_id: StateId, component_id: WidgetComponentId) {
+    pub fn push(
+        &mut self,
+        path: Box<[u16]>,
+        component_id: ComponentBlueprintId,
+        widget_id: WidgetId,
+        state_id: StateId,
+        accept_ticks: bool,
+    ) {
         let entry = CompEntry {
             path,
+            component_id,
             widget_id,
             state_id,
-            component_id,
+            accept_ticks,
         };
-        self.comp_ids.set(component_id, self.inner.len());
-        self.inner.push(entry);
+
+        self.inner.push(entry)
     }
 
-    pub fn remove(&mut self, path: &[u16]) {
-        if let Some(index) = self.inner.binary_search_by(|entry| (*entry.path).cmp(path)) {
-            let entry = self.inner.remove(index);
-            self.comp_ids.remove(&entry.component_id);
-        }
+    pub fn try_remove(&mut self, widget_id: WidgetId) {
+        self.inner.retain(|entry| entry.widget_id != widget_id);
     }
 
-    pub fn current(&mut self) -> Option<(WidgetId, StateId)> {
-        self.get(self.tab_index)
-    }
-
+    /// Get the component by its index
     pub fn get(&mut self, index: usize) -> Option<(WidgetId, StateId)> {
         self.inner.get(index).map(|e| (e.widget_id, e.state_id))
     }
 
-    pub fn get_by_component_id(&mut self, id: WidgetComponentId) -> Option<&CompEntry> {
-        let index = self.comp_ids.get(&id)?;
-        self.inner.get(*index)
+    /// This is used to send messages to components.
+    /// The `ComponentBlueprintId` is only available to components that were added
+    /// as a singular component, not prototypes
+    pub fn get_by_component_id(&mut self, id: ComponentBlueprintId) -> Option<&CompEntry> {
+        self.inner.iter().find(|e| e.component_id == id)
+    }
+
+    /// Get the component by its widget id
+    pub fn get_by_widget_id(&mut self, id: WidgetId) -> Option<(WidgetId, StateId)> {
+        self.inner
+            .iter()
+            .find(|entry| entry.widget_id == id)
+            .map(|e| (e.widget_id, e.state_id))
+    }
+
+    /// Get widget id and state id for a component that accepts tick events
+    pub fn get_ticking(&self, index: usize) -> Option<(WidgetId, StateId)> {
+        self.inner
+            .get(index)
+            .and_then(|e| e.accept_ticks.then_some((e.widget_id, e.state_id)))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &CompEntry> {
@@ -105,14 +129,9 @@ impl Components {
     pub fn len(&self) -> usize {
         self.inner.len()
     }
-
-    pub fn dodgy_remove(&mut self, widget_id: WidgetId) {
-        let Some(index) = self.inner.iter().position(|entry| entry.widget_id == widget_id) else { return };
-        let entry = self.inner.remove(index);
-        self.comp_ids.remove(&entry.component_id);
-    }
 }
 
+#[derive(Debug)]
 pub struct FloatingWidgets(SecondaryMap<WidgetId, WidgetId>);
 
 impl FloatingWidgets {
@@ -133,96 +152,36 @@ impl FloatingWidgets {
     }
 }
 
-pub struct DirtyWidgets {
-    inner: Vec<WidgetId>,
-}
-
-impl DirtyWidgets {
-    pub fn empty() -> Self {
-        Self { inner: vec![] }
-    }
-
-    pub fn push(&mut self, widget_id: WidgetId) {
-        self.inner.push(widget_id);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
-
-    pub fn clear(&mut self) {
-        self.inner.clear();
-    }
-
-    pub fn apply(&self, tree: &mut Tree<WidgetKind<'_>>) {
-        for id in &self.inner {
-            let path = tree.path(*id);
-            tree.apply_node_walker(&path, WidgetNeedsLayout);
-        }
-    }
-}
-
-struct WidgetNeedsLayout;
-
-impl NodeWalker<WidgetKind<'_>> for WidgetNeedsLayout {
-    fn apply(&mut self, widget: &mut WidgetKind<'_>) {
-        if let WidgetKind::Element(el) = widget {
-            el.container.needs_layout = true;
-        }
-    }
-}
-
 /// Parent in a component relationship
 #[derive(Debug, Copy, Clone)]
-pub struct Parent(pub WidgetComponentId);
+pub struct Parent(pub WidgetId);
 
-impl From<Parent> for WidgetComponentId {
+impl From<Parent> for WidgetId {
     fn from(value: Parent) -> Self {
         value.0
     }
 }
 
-impl From<WidgetComponentId> for Parent {
-    fn from(value: WidgetComponentId) -> Self {
+impl From<WidgetId> for Parent {
+    fn from(value: WidgetId) -> Self {
         Self(value)
     }
 }
 
 /// Component relationships, tracking the parent component of each component
-pub struct ComponentParents(SecondaryMap<WidgetComponentId, Parent>);
+pub struct ComponentParents(SecondaryMap<ComponentBlueprintId, Parent>);
 
 impl ComponentParents {
     pub fn empty() -> Self {
         Self(SecondaryMap::empty())
     }
 
-    pub fn try_remove(&mut self, key: WidgetComponentId) {
+    pub fn try_remove(&mut self, key: ComponentBlueprintId) {
         self.0.try_remove(key);
     }
 
-    pub fn get_parent(&self, child: WidgetComponentId) -> Option<Parent> {
+    pub fn get_parent(&self, child: ComponentBlueprintId) -> Option<Parent> {
         self.0.get(child).copied()
-    }
-}
-
-pub type WidgetTree<'a> = Tree<WidgetKind<'a>>;
-pub type LayoutChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PositionChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, LayoutFilter<'frame, 'bp>>;
-pub type PaintChildren<'a, 'frame, 'bp> = TreeForEach<'a, 'frame, WidgetKind<'bp>, PaintFilter<'frame, 'bp>>;
-
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
-pub enum ValueKey<'bp> {
-    #[default]
-    Value,
-    Attribute(&'bp str),
-}
-
-impl ValueKey<'_> {
-    pub fn to_str(&self) -> &str {
-        match self {
-            ValueKey::Value => "value",
-            ValueKey::Attribute(name) => name,
-        }
     }
 }
 
@@ -234,15 +193,15 @@ pub trait AnyWidget {
 
     fn any_layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size;
+    ) -> Result<Size>;
 
     fn any_position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -250,7 +209,7 @@ pub trait AnyWidget {
 
     fn any_paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PaintFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -258,9 +217,9 @@ pub trait AnyWidget {
 
     fn any_floats(&self) -> bool;
 
-    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect;
+    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Region;
 
-    fn any_needs_reflow(&self) -> bool;
+    fn any_needs_reflow(&mut self) -> bool;
 }
 
 impl<T: 'static + Widget> AnyWidget for T {
@@ -274,17 +233,17 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
+    ) -> Result<Size> {
         self.layout(children, constraints, id, ctx)
     }
 
     fn any_position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -294,7 +253,7 @@ impl<T: 'static + Widget> AnyWidget for T {
 
     fn any_paint<'bp>(
         &mut self,
-        children: PaintChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PaintFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PaintCtx<'_, SizePos>,
@@ -302,7 +261,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         self.paint(children, id, attribute_storage, ctx)
     }
 
-    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Rect {
+    fn any_inner_bounds(&self, pos: Pos, size: Size) -> Region {
         self.inner_bounds(pos, size)
     }
 
@@ -310,7 +269,7 @@ impl<T: 'static + Widget> AnyWidget for T {
         self.floats()
     }
 
-    fn any_needs_reflow(&self) -> bool {
+    fn any_needs_reflow(&mut self) -> bool {
         self.needs_reflow()
     }
 }
@@ -324,20 +283,20 @@ impl Debug for dyn AnyWidget {
 pub trait Widget {
     fn layout<'bp>(
         &mut self,
-        children: LayoutChildren<'_, '_, 'bp>,
+        children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size;
+    ) -> Result<Size>;
 
     fn paint<'bp>(
         &mut self,
-        mut children: PaintChildren<'_, '_, 'bp>,
+        mut children: ForEach<'_, 'bp, PaintFilter>,
         _id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         mut ctx: PaintCtx<'_, SizePos>,
     ) {
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let ctx = ctx.to_unsized();
             child.paint(children, ctx, attribute_storage);
             ControlFlow::Continue(())
@@ -346,7 +305,7 @@ pub trait Widget {
 
     fn position<'bp>(
         &mut self,
-        children: PositionChildren<'_, '_, 'bp>,
+        children: ForEach<'_, 'bp, PositionFilter>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
@@ -356,11 +315,11 @@ pub trait Widget {
         false
     }
 
-    fn inner_bounds(&self, pos: Pos, size: Size) -> Rect {
-        Rect::from((pos, size))
+    fn inner_bounds(&self, pos: Pos, size: Size) -> Region {
+        Region::from((pos, size))
     }
 
-    fn needs_reflow(&self) -> bool {
+    fn needs_reflow(&mut self) -> bool {
         false
     }
 }
@@ -369,12 +328,4 @@ impl Debug for dyn Widget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "<dyn Widget>")
     }
-}
-
-pub trait WidgetRenderer {
-    fn draw_glyph(&mut self, c: char, local_pos: Pos);
-
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, local_pos: Pos);
-
-    fn size(&self) -> Size;
 }

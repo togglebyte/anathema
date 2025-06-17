@@ -1,20 +1,11 @@
 use anathema::backend::tui::TuiBackend;
-use anathema::component::{Component, ComponentId, MouseEvent};
+use anathema::component::{Children, Component, Context, MouseEvent};
 use anathema::runtime::Runtime;
 use anathema::state::{List, State, Value};
 use anathema::templates::Document;
-use anathema::widgets::components::Context;
-use anathema::widgets::Elements;
+use anathema_backend::Backend;
 
-pub struct Index {
-    recipient: ComponentId<String>,
-}
-
-impl Index {
-    pub fn new(recipient: ComponentId<String>) -> Self {
-        Self { recipient }
-    }
-}
+pub struct Index;
 
 impl Component for Index {
     type Message = ();
@@ -23,19 +14,18 @@ impl Component for Index {
     fn on_mouse(
         &mut self,
         mouse: MouseEvent,
-        _state: &mut Self::State,
-        mut elements: Elements<'_, '_>,
-        context: Context<'_, Self::State>,
+        _: &mut Self::State,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
     ) {
-        if mouse.lsb_down() {
-            elements
+        if mouse.left_down() {
+            children
+                .elements()
                 .at_position(mouse.pos())
                 .by_attribute("id", "button")
-                .first(|_, _| {
-                    context
-                        .emitter
-                        .emit(self.recipient, "hey look, thats a message!".into())
-                        .unwrap();
+                .first(|_, attr| {
+                    let Some(value) = attr.get_as::<&str>("id").map(|s| s.to_string()) else { return };
+                    context.components.by_name("messages").send(value);
                 });
         }
     }
@@ -54,12 +44,12 @@ impl Component for Messages {
     type Message = String;
     type State = MessagesState;
 
-    fn message(
+    fn on_message(
         &mut self,
         message: Self::Message,
         state: &mut Self::State,
-        _: Elements<'_, '_>,
-        _: Context<'_, Self::State>,
+        _: Children<'_, '_>,
+        _: Context<'_, '_, Self::State>,
     ) {
         if state.messages.len() > 20 {
             state.messages.pop_front();
@@ -72,28 +62,30 @@ impl Component for Messages {
 
 fn main() {
     let doc = Document::new("@index");
-    let backend = TuiBackend::builder()
-        .enable_alt_screen()
+    let mut backend = TuiBackend::builder()
+        // .enable_alt_screen()
         .enable_raw_mode()
         .enable_mouse()
         .hide_cursor()
+        .clear()
         .finish()
         .unwrap();
+    backend.finalize();
 
-    let mut runtime = Runtime::builder(doc, backend);
+    let mut builder = Runtime::builder(doc, &backend);
 
-    let recipient = runtime
-        .register_default::<Messages>("messages", "examples/templates/message-passing/messages.aml")
+    builder
+        .from_default::<Messages>("messages", "examples/templates/message-passing/messages.aml")
         .expect("failed to register messages component");
 
-    runtime
-        .register_component(
+    builder
+        .component(
             "index",
             "examples/templates/message-passing/message_passing.aml",
-            Index::new(recipient),
+            Index,
             (),
         )
         .expect("failed to register index component");
 
-    runtime.finish().unwrap().run();
+    builder.finish(|runtime| runtime.run(&mut backend)).unwrap();
 }

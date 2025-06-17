@@ -1,4 +1,4 @@
-use anathema::CommonVal;
+use anathema_value_resolver::ValueKind;
 
 pub const ALIGNMENT: &str = "alignment";
 
@@ -17,12 +17,12 @@ pub enum Alignment {
     Centre,
 }
 
-impl TryFrom<CommonVal<'_>> for Alignment {
+impl TryFrom<&ValueKind<'_>> for Alignment {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
         match value {
-            CommonVal::Str(wrap) => match wrap {
+            ValueKind::Str(wrap) => match wrap.as_ref() {
                 "top_left" => Ok(Alignment::TopLeft),
                 "top" => Ok(Alignment::Top),
                 "top_right" => Ok(Alignment::TopRight),

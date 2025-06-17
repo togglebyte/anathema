@@ -1,18 +1,18 @@
+use std::fmt::Display;
+
 pub use anathema_state_derive::State;
 use anathema_store::slab::Key;
 
 pub use crate::colors::{Color, FromColor};
-pub use crate::common::{CommonString, CommonVal};
 pub use crate::numbers::Number;
-pub use crate::states::{AnyState, State, StateId, States};
+pub use crate::states::{AnyMap, State, StateId, States, TypeId};
+pub use crate::store::watchers::Watcher;
 pub use crate::store::{
-    clear_all_changes, clear_all_futures, clear_all_subs, debug, drain_changes, drain_futures, register_future, Change,
-    Changes, FutureValues, Subscriber,
+    Change, Changes, SubTo, Subscriber, Watched, clear_all_changes, clear_all_subs, drain_changes, drain_watchers,
 };
-pub use crate::value::{List, Map, PendingValue, SharedState, Value, ValueRef};
+pub use crate::value::{List, Map, Maybe, Nullable, PendingValue, SharedState, Type, Value, ValueRef};
 
 mod colors;
-mod common;
 mod numbers;
 mod states;
 mod store;
@@ -44,7 +44,7 @@ impl<'a> From<&'a str> for Path<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Hex {
     pub r: u8,
     pub g: u8,
@@ -57,10 +57,37 @@ impl Hex {
     pub const GREEN: Self = Self { r: 0, g: 255, b: 0 };
     pub const RED: Self = Self { r: 255, g: 0, b: 0 };
     pub const WHITE: Self = Self { r: 255, g: 255, b: 255 };
+
+    pub const fn red_f32(&self) -> f32 {
+        self.r as f32 / u8::MAX as f32
+    }
+
+    pub const fn green_f32(&self) -> f32 {
+        self.g as f32 / u8::MAX as f32
+    }
+
+    pub const fn blue_f32(&self) -> f32 {
+        self.b as f32 / u8::MAX as f32
+    }
+}
+
+impl Display for Hex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{:x}{:x}{:x}", self.r, self.g, self.b)
+    }
 }
 
 impl From<(u8, u8, u8)> for Hex {
     fn from((r, g, b): (u8, u8, u8)) -> Self {
+        Self { r, g, b }
+    }
+}
+
+impl From<(f32, f32, f32)> for Hex {
+    fn from((r, g, b): (f32, f32, f32)) -> Self {
+        let r = (r * u8::MAX as f32) as u8;
+        let g = (g * u8::MAX as f32) as u8;
+        let b = (b * u8::MAX as f32) as u8;
         Self { r, g, b }
     }
 }

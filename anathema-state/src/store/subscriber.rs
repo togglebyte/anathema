@@ -1,12 +1,115 @@
-use anathema_debug::DebugWriter;
-use anathema_store::slab::Slab;
+use anathema_store::slab::{Slab, SlabIndex};
 use anathema_store::smallmap::SmallIndex;
-use anathema_store::stack::Stack;
 
 use super::SUBSCRIBERS;
 use crate::Key;
 
-pub type FutureValues = Stack<Subscriber>;
+/// Store sub keys.
+/// This is used by any type that needs to track any or all the
+/// values that it subscribes to.
+#[derive(Debug, Default)]
+pub enum SubTo {
+    #[default]
+    Zero,
+    One(SubKey),
+    Two(SubKey, SubKey),
+    Three(SubKey, SubKey, SubKey),
+    Four(SubKey, SubKey, SubKey, SubKey),
+    Many(Vec<SubKey>),
+}
+
+impl SubTo {
+    pub fn empty() -> Self {
+        Self::Zero
+    }
+
+    pub fn push(&mut self, key: SubKey) {
+        let this = std::mem::take(self);
+        *self = match this {
+            Self::Zero => Self::One(key),
+            Self::One(key1) => Self::Two(key1, key),
+            Self::Two(key1, key2) => Self::Three(key1, key2, key),
+            Self::Three(key1, key2, key3) => Self::Four(key1, key2, key3, key),
+            Self::Four(key1, key2, key3, key4) => Self::Many(vec![key1, key2, key3, key4]),
+            Self::Many(mut keys) => {
+                keys.push(key);
+                Self::Many(keys)
+            }
+        }
+    }
+
+    pub fn unsubscribe(&mut self, sub: Subscriber) {
+        match std::mem::take(self) {
+            SubTo::Zero => (),
+            SubTo::One(key) => {
+                unsubscribe(key, sub);
+            }
+            SubTo::Two(key1, key2) => {
+                unsubscribe(key1, sub);
+                unsubscribe(key2, sub);
+            }
+            SubTo::Three(key1, key2, key3) => {
+                unsubscribe(key1, sub);
+                unsubscribe(key2, sub);
+                unsubscribe(key3, sub);
+            }
+            SubTo::Four(key1, key2, key3, key4) => {
+                unsubscribe(key1, sub);
+                unsubscribe(key2, sub);
+                unsubscribe(key3, sub);
+                unsubscribe(key4, sub);
+            }
+            SubTo::Many(vec) => vec.into_iter().for_each(|key| unsubscribe(key, sub)),
+        }
+    }
+
+    // TODO: clean this up, it's gross
+    pub fn remove(&mut self, sub_key: SubKey) {
+        match self {
+            SubTo::Zero => (),
+            SubTo::One(key) if *key == sub_key => *self = SubTo::Zero,
+            SubTo::Two(key1, key2) if *key1 == sub_key => *self = SubTo::One(*key2),
+            SubTo::Two(key1, key2) if *key2 == sub_key => *self = SubTo::One(*key1),
+            SubTo::Three(key1, key2, key3) => {
+                if sub_key == *key1 {
+                    *self = SubTo::Two(*key2, *key3);
+                    return;
+                }
+
+                if sub_key == *key2 {
+                    *self = SubTo::Two(*key1, *key3);
+                    return;
+                }
+
+                if sub_key == *key3 {
+                    *self = SubTo::Two(*key1, *key2);
+                }
+            }
+            SubTo::Four(key1, key2, key3, key4) => {
+                if sub_key == *key1 {
+                    *self = SubTo::Three(*key2, *key3, *key4);
+                    return;
+                }
+
+                if sub_key == *key2 {
+                    *self = SubTo::Three(*key1, *key3, *key4);
+                    return;
+                }
+
+                if sub_key == *key3 {
+                    *self = SubTo::Three(*key1, *key2, *key4);
+                    return;
+                }
+
+                if sub_key == *key4 {
+                    *self = SubTo::Three(*key1, *key2, *key3);
+                }
+            }
+            SubTo::Many(vec) => vec.retain(|key| *key != sub_key),
+            _ => {}
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 #[repr(transparent)]
@@ -34,18 +137,21 @@ impl KeyIndex {
 }
 
 // The key associated with the value that is being subscribed to.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) struct SubKey(u32);
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+pub struct SubKey(u32);
 
-impl From<SubKey> for usize {
-    fn from(key: SubKey) -> usize {
-        key.0 as usize
+impl SlabIndex for SubKey {
+    const MAX: usize = u32::MAX as usize;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
     }
-}
 
-impl From<usize> for SubKey {
-    fn from(value: usize) -> Self {
-        Self(value as u32)
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
     }
 }
 
@@ -77,14 +183,6 @@ impl From<(Key, SmallIndex)> for Subscriber {
 impl From<Subscriber> for Key {
     fn from(Subscriber(value, _): Subscriber) -> Self {
         value
-    }
-}
-
-pub(crate) struct SubscriberDebug(pub(crate) Subscriber);
-
-impl DebugWriter for SubscriberDebug {
-    fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        writeln!(output, "<sub key {:?} | index {}>", self.0 .0, usize::from(self.0 .1))
     }
 }
 
@@ -184,6 +282,16 @@ impl Subscribers {
     fn clear(&mut self) {
         *self = Subscribers::Empty;
     }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        match self {
+            Subscribers::Empty => 0,
+            Subscribers::One(_) => 1,
+            Subscribers::Arr(_, index) => index.0 as usize,
+            Subscribers::Heap(vec) => vec.len(),
+        }
+    }
 }
 
 pub(super) struct SubscriberMap {
@@ -228,7 +336,7 @@ impl SubscriberMap {
 
     #[cfg(test)]
     fn count(&self) -> usize {
-        self.inner.iter_values().count()
+        self.inner.iter_values().map(|s| s.len()).sum()
     }
 }
 

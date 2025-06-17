@@ -1,12 +1,10 @@
-use anathema_store::storage::strings::{StringId, Strings};
-
 use super::Statement;
-use crate::components::ComponentTemplates;
-use crate::error::{src_line_no, ParseError, ParseErrorKind, Result};
-use crate::expressions::parser::parse_expr;
+use crate::components::{AssocEventMapping, ComponentTemplates};
+use crate::error::{ParseError, ParseErrorKind, Result, src_line_no};
 use crate::expressions::Expression;
+use crate::expressions::parser::parse_expr;
+use crate::strings::{StringId, Strings};
 use crate::token::{Kind, Operator, Tokens, Value};
-// use crate::variables::Visibility;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum State {
@@ -334,8 +332,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         self.tokens.consume_indent();
 
         let ident = self.read_ident()?;
-        let ident = self.strings.get_unchecked(ident);
-        let component_id = self.components.insert_id(ident.to_owned());
+        let component_id = match self.components.get_component_by_string_id(ident) {
+            Some(cid) => cid,
+            None => return Err(self.error(ParseErrorKind::UnregisteredComponent(self.strings.get_unchecked(ident)))),
+        };
         self.tokens.consume_indent();
 
         self.next_state();
@@ -388,7 +388,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             return Err(self.error(ParseErrorKind::UnterminatedAssociation));
         }
 
-        Ok(Some(Statement::AssociatedFunction { internal, external }))
+        Ok(Some(Statement::AssociatedFunction(AssocEventMapping {
+            internal,
+            external,
+        })))
     }
 
     fn parse_component_slot(&mut self) -> Result<Option<Statement>, ParseError> {
@@ -486,7 +489,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         let value = match values.len() {
             0 => panic!("invalid state"),
             1 => values.remove(0),
-            _ => Expression::List(values.into()),
+            _ => Expression::TextSegments(values),
         };
 
         self.next_state();
@@ -548,7 +551,7 @@ impl Iterator for Parser<'_, '_, '_> {
 mod test {
     use super::*;
     use crate::error::Error;
-    use crate::expressions::{ident, list, map, num, strlit};
+    use crate::expressions::{ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
         associated_fun, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node,
@@ -556,8 +559,10 @@ mod test {
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
-        let mut strings = Strings::empty();
+        let mut strings = Strings::new();
+        let x_id = strings.push("x");
         let mut components = ComponentTemplates::new();
+        components.insert(x_id, crate::components::ComponentSource::InMemory(String::new()));
         let lexer = Lexer::new(src, &mut strings);
         let tokens = Tokens::new(lexer.collect::<Result<Vec<_>>>().unwrap(), src.len());
         let parser = Parser::new(tokens, &mut strings, src, &mut components);
@@ -579,13 +584,13 @@ mod test {
     #[test]
     fn parse_single_instruction() {
         let actual = parse_ok("a").remove(0);
-        assert_eq!(node(0), actual);
+        assert_eq!(node(2), actual);
     }
 
     #[test]
     fn parse_attributes() {
         let src = "a [a: a]";
-        let expected = vec![node(0), load_attrib(0, ident("a")), eof()];
+        let expected = vec![node(2), load_attrib(2, ident("a")), eof()];
 
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
@@ -594,7 +599,7 @@ mod test {
     #[test]
     fn parse_text() {
         let src = "a 'a'      \n\n//some comments \n    ";
-        let expected = vec![node(0), load_value(strlit("a")), eof()];
+        let expected = vec![node(2), load_value(strlit("a")), eof()];
 
         let actual = parse_ok(src);
         assert_eq!(expected, actual);
@@ -610,15 +615,15 @@ mod test {
             a
             ";
         let expected = vec![
-            node(0),
-            scope_start(),
-            node(1),
-            scope_start(),
             node(2),
+            scope_start(),
+            node(3),
+            scope_start(),
+            node(4),
             scope_end(),
-            node(1),
+            node(3),
             scope_end(),
-            node(0),
+            node(2),
             eof(),
         ];
 
@@ -631,11 +636,11 @@ mod test {
                     c
             ";
         let expected = vec![
-            node(0),
-            scope_start(),
-            node(1),
-            scope_start(),
             node(2),
+            scope_start(),
+            node(3),
+            scope_start(),
+            node(4),
             scope_end(),
             scope_end(),
             eof(),
@@ -655,13 +660,13 @@ mod test {
         ";
         let mut statements = parse_ok(src);
 
-        assert_eq!(statements.remove(0), node(0));
+        assert_eq!(statements.remove(0), node(1));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), for_loop(0, ident("data")));
+        assert_eq!(statements.remove(0), for_loop(1, ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), for_loop(2, ident("data")));
+        assert_eq!(statements.remove(0), for_loop(3, ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(0));
+        assert_eq!(statements.remove(0), node(1));
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), scope_end());
@@ -676,13 +681,13 @@ mod test {
             y
         ";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), node(0));
-        assert_eq!(statements.remove(0), scope_start());
         assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), node(2));
         assert_eq!(statements.remove(0), scope_end());
-        assert_eq!(statements.remove(0), for_loop(0, ident("data")));
+        assert_eq!(statements.remove(0), for_loop(1, ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), node(2));
         assert_eq!(statements.remove(0), scope_end());
     }
 
@@ -716,7 +721,7 @@ mod test {
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), else_stmt());
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(2));
+        assert_eq!(statements.remove(0), node(3));
         assert_eq!(statements.remove(0), scope_end());
     }
 
@@ -738,21 +743,21 @@ mod test {
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), if_else(ident("data")));
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(2));
+        assert_eq!(statements.remove(0), node(3));
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), else_stmt());
         assert_eq!(statements.remove(0), scope_start());
-        assert_eq!(statements.remove(0), node(3));
+        assert_eq!(statements.remove(0), node(4));
         assert_eq!(statements.remove(0), scope_end());
     }
 
     #[test]
     fn parse_component() {
-        let src = "@mycomp";
+        let src = "@x";
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), component(0));
 
-        let src = "@mycomp state";
+        let src = "@x state";
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), component(0));
         assert_eq!(statements.remove(0), load_value(ident("state")));
@@ -762,7 +767,7 @@ mod test {
     fn parse_component_slot() {
         let src = "$slot";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), slot(0));
+        assert_eq!(statements.remove(0), slot(2));
     }
 
     #[test]
@@ -774,7 +779,7 @@ mod test {
 
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), if_stmt(ident("x")));
-        assert_eq!(statements.remove(0), node(0));
+        assert_eq!(statements.remove(0), node(1));
     }
 
     #[test]
@@ -807,15 +812,18 @@ mod test {
     fn parse_text_with_multiple_values() {
         let src = "a 'a' 'b'";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), node(0));
-        assert_eq!(statements.remove(0), load_value(list([strlit("a"), strlit("b")])));
+        assert_eq!(statements.remove(0), node(2));
+        assert_eq!(
+            statements.remove(0),
+            load_value(text_segments([strlit("a"), strlit("b")]))
+        );
     }
 
     #[test]
     fn parse_declaration() {
         let src = "let x = 1";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), decl(0, num(1)));
+        assert_eq!(statements.remove(0), decl(1, num(1)));
     }
 
     #[test]
@@ -854,7 +862,7 @@ mod test {
         let mut statements = parse_ok(src);
         assert_eq!(
             statements.remove(0),
-            decl(0, map([("a", num(1)), ("b", map([("a", num(2))]))])),
+            decl(1, map([("a", num(1)), ("b", map([("a", num(2))]))])),
         );
     }
 
@@ -864,8 +872,8 @@ mod test {
         let mut statements = parse_ok(src);
 
         assert_eq!(statements.remove(0), component(0));
-        assert_eq!(statements.remove(0), associated_fun(1, 2));
-        assert_eq!(statements.remove(0), associated_fun(3, 4));
+        assert_eq!(statements.remove(0), associated_fun(2, 3));
+        assert_eq!(statements.remove(0), associated_fun(4, 5));
     }
 
     #[test]
@@ -877,7 +885,7 @@ mod test {
         let mut statements = parse_ok(src);
 
         assert_eq!(statements.remove(0), component(0));
-        assert_eq!(statements.remove(0), associated_fun(1, 2));
-        assert_eq!(statements.remove(0), associated_fun(3, 4));
+        assert_eq!(statements.remove(0), associated_fun(2, 3));
+        assert_eq!(statements.remove(0), associated_fun(4, 5));
     }
 }

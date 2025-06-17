@@ -10,20 +10,37 @@
 //! * Fixed indices
 use std::ops::{Deref, DerefMut};
 
-pub use self::basic::Slab;
+pub use self::basic::{Slab, SlabIndex};
 pub use self::generational::{Gen, GenSlab, Key};
-pub use self::rc::{Element, RcSlab};
 pub use self::secondary_map::SecondaryMap;
+pub use self::shared::SharedSlab;
+pub use self::shared::arc::{ArcElement, ArcSlab};
+pub use self::shared::rc::{RcElement, RcSlab};
 
 mod basic;
 mod generational;
-mod rc;
 mod secondary_map;
+mod shared;
 
 /// Index value for a slab
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Index(u32);
+
+impl SlabIndex for Index {
+    const MAX: usize = u32::MAX as usize;
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    fn from_usize(index: usize) -> Self
+    where
+        Self: Sized,
+    {
+        Self(index as u32)
+    }
+}
 
 impl Deref for Index {
     type Target = u32;

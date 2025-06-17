@@ -1,60 +1,57 @@
 use anathema_state::StateId;
-use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::WidgetComponentId;
+use anathema_templates::{AssocEventMapping, ComponentBlueprintId};
 
+use crate::WidgetId;
 use crate::components::{AnyComponent, ComponentKind};
-use crate::expressions::EvalValue;
-use crate::{Value, ValueIndex};
-
-pub type ExternalState<'bp> = SmallMap<&'bp str, (ValueIndex, Value<'bp, EvalValue<'bp>>)>;
 
 #[derive(Debug)]
 pub struct Component<'bp> {
+    pub name: &'bp str,
+    pub name_id: StringId,
     pub body: &'bp [Blueprint],
     pub dyn_component: Box<dyn AnyComponent>,
     pub state_id: StateId,
-    pub external_state: Option<ExternalState<'bp>>,
-    pub component_id: WidgetComponentId,
-    pub parent: Option<WidgetComponentId>,
+    /// Used to identify the component in the component registry.
+    /// This id will not be unique for prototypes
+    pub component_id: ComponentBlueprintId,
+    pub widget_id: WidgetId,
+    pub parent: Option<WidgetId>,
     pub kind: ComponentKind,
-    pub assoc_functions: &'bp [(StringId, StringId)],
+    pub assoc_functions: &'bp [AssocEventMapping],
+    pub tabindex: u16,
 }
 
 impl<'bp> Component<'bp> {
     pub fn new(
+        name: &'bp str,
+        name_id: StringId,
         body: &'bp [Blueprint],
         dyn_component: Box<dyn AnyComponent>,
         state_id: StateId,
-        external_state: Option<ExternalState<'bp>>,
-        component_id: WidgetComponentId,
+        component_id: ComponentBlueprintId,
+        widget_id: WidgetId,
         kind: ComponentKind,
-        assoc_functions: &'bp [(StringId, StringId)],
-        parent: Option<WidgetComponentId>,
+        assoc_functions: &'bp [AssocEventMapping],
+        parent: Option<WidgetId>,
     ) -> Self {
         Self {
+            name,
+            name_id,
             body,
             dyn_component,
             state_id,
-            external_state,
             component_id,
+            widget_id,
             kind,
             assoc_functions,
             parent,
+            tabindex: 0,
         }
     }
 
     pub(crate) fn state_id(&self) -> StateId {
         self.state_id
-    }
-
-    pub fn lookup_assoc_function(&self, internal: StringId) -> Option<StringId> {
-        self.assoc_functions
-            .iter()
-            .find_map(|(int, ext)| match *int == internal {
-                true => Some(*ext),
-                false => None,
-            })
     }
 }

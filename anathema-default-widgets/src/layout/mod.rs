@@ -1,9 +1,10 @@
 use std::ops::ControlFlow;
 
-use anathema::CommonVal;
 use anathema_geometry::Size;
+use anathema_value_resolver::ValueKind;
+use anathema_widgets::LayoutForEach;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx};
-use anathema_widgets::LayoutChildren;
 
 pub static DIRECTION: &str = "direction";
 pub static AXIS: &str = "axis";
@@ -15,18 +16,18 @@ pub(crate) mod many;
 mod spacers;
 
 pub(crate) fn single_layout<'bp>(
-    mut children: LayoutChildren<'_, '_, 'bp>,
+    mut children: LayoutForEach<'_, 'bp>,
     constraints: Constraints,
     ctx: &mut LayoutCtx<'_, 'bp>,
-) -> Size {
+) -> Result<Size> {
     let mut size = Size::ZERO;
 
-    children.for_each(|node, children| {
-        size = node.layout(children, constraints, ctx);
-        ControlFlow::Break(())
-    });
+    _ = children.each(ctx, |ctx, node, children| {
+        size = node.layout(children, constraints, ctx)?.into();
+        Ok(ControlFlow::Break(()))
+    })?;
 
-    size
+    Ok(size)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -35,11 +36,12 @@ pub enum Axis {
     Vertical,
 }
 
-impl TryFrom<CommonVal<'_>> for Axis {
+impl TryFrom<&ValueKind<'_>> for Axis {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value.to_common_str().as_ref() {
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let s = value.as_str().ok_or(())?;
+        match s {
             "horz" | "horizontal" => Ok(Self::Horizontal),
             "vert" | "vertical" => Ok(Self::Vertical),
             _ => Err(()),
@@ -54,11 +56,12 @@ pub enum Direction {
     Backward,
 }
 
-impl TryFrom<CommonVal<'_>> for Direction {
+impl TryFrom<&ValueKind<'_>> for Direction {
     type Error = ();
 
-    fn try_from(value: CommonVal<'_>) -> Result<Self, Self::Error> {
-        match value.to_common_str().as_ref() {
+    fn try_from(value: &ValueKind<'_>) -> Result<Self, Self::Error> {
+        let s = value.as_str().ok_or(())?;
+        match s {
             "fwd" | "forward" | "forwards" => Ok(Self::Forward),
             "back" | "backward" | "backwards" => Ok(Self::Backward),
             _ => Err(()),

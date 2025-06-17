@@ -1,18 +1,129 @@
-use anathema::{drain_changes, Changes};
-use anathema_backend::test::TestBackend;
+use anathema::{Changes, drain_changes};
 use anathema_backend::{Backend, WidgetCycle};
-use anathema_geometry::Size;
+use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
+use anathema_value_resolver::{AttributeStorage, Attributes, Scope};
 use anathema_widgets::components::ComponentRegistry;
-use anathema_widgets::layout::{Constraints, Viewport};
+use anathema_widgets::components::events::Event;
+use anathema_widgets::layout::{Constraints, LayoutCtx, Viewport};
+use anathema_widgets::paint::{Glyph, paint};
+use anathema_widgets::query::{Children, Elements};
 use anathema_widgets::{
-    eval_blueprint, update_tree, AttributeStorage, Components, DirtyWidgets, Elements, EvalContext, Factory,
-    FloatingWidgets, Scope, WidgetRenderer as _, WidgetTree,
+    Components, Factory, FloatingWidgets, GlyphMap, Style, WidgetKind, WidgetRenderer, WidgetTree, eval_blueprint,
+    update_widget,
 };
 
 use crate::register_default_widgets;
+
+pub struct TestBackend {
+    pub surface: TestSurface,
+    pub output: String,
+}
+
+impl TestBackend {
+    pub fn new(size: impl Into<Size>) -> Self {
+        let size = size.into();
+        Self {
+            surface: TestSurface::new(size),
+            output: String::new(),
+        }
+    }
+}
+
+impl Backend for TestBackend {
+    fn size(&self) -> Size {
+        self.surface.size
+    }
+
+    fn next_event(&mut self, _timeout: std::time::Duration) -> Option<Event> {
+        None
+    }
+
+    fn paint<'bp>(
+        &mut self,
+        glyph_map: &mut GlyphMap,
+        widgets: anathema_widgets::PaintChildren<'_, 'bp>,
+        attribute_storage: &AttributeStorage<'bp>,
+    ) {
+        paint(&mut self.surface, glyph_map, widgets, attribute_storage);
+    }
+
+    fn render(&mut self, _glyph_map: &mut GlyphMap) {
+        self.output = format!("{}", self.surface);
+    }
+
+    fn clear(&mut self) {
+        self.surface.clear();
+    }
+
+    fn finalize(&mut self) {}
+
+    fn resize(&mut self, _new_size: Size, _glyph_map: &mut GlyphMap) {
+        todo!()
+    }
+}
+
+pub struct TestSurface {
+    size: Size,
+    buffer: Vec<char>,
+}
+
+impl TestSurface {
+    pub fn new(size: impl Into<Size>) -> Self {
+        let size = size.into();
+        let buffer_size = size.width * size.height;
+        Self {
+            buffer: vec![' '; buffer_size as usize],
+            size,
+        }
+    }
+
+    fn clear(&mut self) {
+        self.buffer.fill_with(|| ' ');
+    }
+}
+
+impl WidgetRenderer for TestSurface {
+    fn draw_glyph(&mut self, c: Glyph, local_pos: Pos) {
+        let y_offset = local_pos.y as usize * self.size.width as usize;
+        let x_offset = local_pos.x as usize;
+        let index = y_offset + x_offset;
+
+        match c {
+            Glyph::Single(c, _width) => self.buffer[index] = c,
+            Glyph::Cluster(_glyph_index, _) => todo!(),
+        }
+    }
+
+    fn size(&self) -> Size {
+        self.size
+    }
+
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, local_pos: Pos) {
+        let style = Style::from_cell_attribs(attribs);
+        self.set_style(style, local_pos);
+    }
+
+    // This does nothing for the test backend,
+    // which is only used to test layouts
+    fn set_style(&mut self, _: Style, _: Pos) {}
+}
+
+impl std::fmt::Display for TestSurface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for y in 0..self.size.height {
+            for x in 0..self.size.width {
+                let idx = y * self.size.width + x;
+                write!(f, "{}", self.buffer[idx as usize])?;
+            }
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
 
 pub struct TestRunner {
     states: States,
@@ -30,8 +141,7 @@ impl TestRunner {
         register_default_widgets(&mut factory);
 
         let mut component_registry = ComponentRegistry::new();
-        let mut states = States::new();
-        states.insert(Box::new(TestState::new()));
+        let states = States::new();
 
         // Add two to both dimensions to compensate
         // for the border size that we inject here.
@@ -46,7 +156,7 @@ impl TestRunner {
         ";
         let mut doc = Document::new(root);
         let main = doc.add_component("main", src.to_template()).unwrap();
-        component_registry.add_component(main.into(), (), ());
+        component_registry.add_component(main, (), TestState::new());
 
         let (blueprint, globals) = doc.compile().unwrap();
 
@@ -62,40 +172,15 @@ impl TestRunner {
     }
 
     pub fn instance(&mut self) -> TestInstance<'_> {
-        let mut tree = WidgetTree::empty();
-        let mut attribute_storage = AttributeStorage::empty();
-        let mut floating_widgets = FloatingWidgets::empty();
-        let viewport = Viewport::new(self.backend.surface.size());
-
-        let mut scope = Scope::new();
-        scope.insert_state(StateId::ZERO);
-        let mut ctx = EvalContext::new(
+        TestInstance::new(
+            &self.blueprint,
+            &mut self.states,
+            &mut self.backend,
             &self.globals,
             &self.factory,
-            &mut scope,
-            &mut self.states,
             &mut self.component_registry,
-            &mut attribute_storage,
-            &mut floating_widgets,
             &mut self.components,
-        );
-
-        eval_blueprint(&self.blueprint, &mut ctx, &[], &mut tree).unwrap();
-
-        TestInstance {
-            states: &mut self.states,
-            backend: &mut self.backend,
-            globals: &self.globals,
-            floating_widgets,
-            tree,
-            attribute_storage,
-            viewport,
-            dirty_widgets: DirtyWidgets::empty(),
-            factory: &self.factory,
-            component_registry: &mut self.component_registry,
-            components: &mut self.components,
-            changes: Changes::empty(),
-        }
+        )
     }
 }
 
@@ -107,41 +192,100 @@ pub struct TestInstance<'bp> {
     globals: &'bp Globals,
     backend: &'bp mut TestBackend,
     viewport: Viewport,
-    dirty_widgets: DirtyWidgets,
     factory: &'bp Factory,
     component_registry: &'bp mut ComponentRegistry,
     components: &'bp mut Components,
     changes: Changes,
+    glyph_map: GlyphMap,
 }
 
-impl TestInstance<'_> {
+impl<'bp> TestInstance<'bp> {
+    fn new(
+        blueprint: &'bp Blueprint,
+        states: &'bp mut States,
+        backend: &'bp mut TestBackend,
+        globals: &'bp Globals,
+        factory: &'bp Factory,
+        component_registry: &'bp mut ComponentRegistry,
+        components: &'bp mut Components,
+    ) -> Self {
+        let mut tree = WidgetTree::empty();
+        let mut attribute_storage = AttributeStorage::empty();
+        let mut floating_widgets = FloatingWidgets::empty();
+        let mut viewport = Viewport::new(backend.size());
+        let mut glyph_map = GlyphMap::empty();
+
+        let scope = Scope::root();
+        let mut ctx = LayoutCtx::new(
+            globals,
+            factory,
+            states,
+            &mut attribute_storage,
+            components,
+            component_registry,
+            &mut floating_widgets,
+            &mut glyph_map,
+            &mut viewport,
+        );
+
+        let mut ctx = ctx.eval_ctx(None);
+        let mut view = tree.view_mut();
+
+        eval_blueprint(blueprint, &mut ctx, &scope, &[], &mut view).unwrap();
+
+        Self {
+            tree,
+            attribute_storage,
+            floating_widgets,
+            states,
+            globals,
+            backend,
+            viewport,
+            factory,
+            component_registry,
+            components,
+            changes: Changes::empty(),
+            glyph_map,
+        }
+    }
+
     pub fn with_state<F>(&mut self, mut f: F) -> &mut Self
     where
         F: FnMut(&mut TestState),
     {
         let state = self.states.get_mut(StateId::ZERO).unwrap();
-        let state = state.to_any_mut().downcast_mut::<TestState>().unwrap();
-        f(state);
+        let mut state = state.to_mut_cast::<TestState>();
+        f(&mut state);
+        drop(state);
 
-        let mut scope = Scope::new();
         drain_changes(&mut self.changes);
+
+        if self.changes.is_empty() {
+            return self;
+        }
+
+        let mut tree = self.tree.view_mut();
+
         self.changes.iter().for_each(|(sub, change)| {
-            sub.iter().for_each(|sub| {
-                let Some(path): Option<Box<_>> = self.tree.try_path_ref(sub).map(Into::into) else { return };
-                update_tree(
-                    self.globals,
-                    self.factory,
-                    &mut scope,
-                    self.states,
-                    self.component_registry,
-                    change,
-                    sub,
-                    &path,
-                    &mut self.tree,
-                    &mut self.attribute_storage,
-                    &mut self.floating_widgets,
-                    self.components,
-                );
+            sub.iter().for_each(|value_id| {
+                let widget_id = value_id.key();
+
+                if let Some(widget) = tree.get_mut(widget_id) {
+                    if let WidgetKind::Element(element) = &mut widget.kind {
+                        element.invalidate_cache();
+                    }
+                }
+
+                // check that the node hasn't already been removed
+                if !tree.contains(widget_id) {
+                    return;
+                }
+
+                _ = tree
+                    .with_value_mut(value_id.key(), |_path, widget, tree| {
+                        update_widget(widget, value_id, change, tree, &mut self.attribute_storage)
+                    })
+                    .unwrap();
             })
         });
 
@@ -151,51 +295,48 @@ impl TestInstance<'_> {
     pub fn render_assert(&mut self, expected: &str) -> &mut Self {
         let expected = expected.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");
 
-        let (width, height) = self.backend.surface.size().into();
-        let constraints = Constraints::new(width as usize, height as usize);
+        let (width, height) = self.backend.size().into();
+        let constraints = Constraints::new(width as u16, height as u16);
 
-        let attribute_storage = &self.attribute_storage;
+        let mut ctx = LayoutCtx::new(
+            self.globals,
+            self.factory,
+            self.states,
+            &mut self.attribute_storage,
+            self.components,
+            self.component_registry,
+            &mut self.floating_widgets,
+            &mut self.glyph_map,
+            &mut self.viewport,
+        );
 
-        WidgetCycle::new(
-            self.backend,
-            &mut self.tree,
-            constraints,
-            attribute_storage,
-            &self.floating_widgets,
-            self.viewport,
-        )
-        .run();
+        let mut cycle = WidgetCycle::new(self.backend, self.tree.view_mut(), constraints);
+        _ = cycle.run(&mut ctx, true);
 
-        self.backend.render();
+        self.backend.render(&mut self.glyph_map);
 
         let actual = std::mem::take(&mut self.backend.output);
         let actual = actual.trim().lines().map(str::trim).collect::<Vec<_>>().join("\n");
 
-        eprintln!("{actual}");
-
-        assert_eq!(actual, expected);
+        assert_eq!(expected, actual, "\nExpected:\n{expected}\nGot:\n{actual}");
         self
     }
 
     pub(crate) fn with_widget<F>(&mut self, mut f: F) -> &mut Self
     where
-        F: FnMut(Elements<'_, '_>),
+        F: FnMut(Elements<'_, '_, '_>),
     {
         // path [0, 0, 0] points to:
         // border [0]
         //     expand [0, 0]
         //          @main [0, 0, 0] <- this one
-        let path = [0, 0, 0];
+        // let path = &[0, 0, 0];
 
-        let Some((node, values)) = self.tree.get_node_by_path(&path) else { return self };
-        let elements = Elements::new(
-            node.children(),
-            values,
-            &mut self.attribute_storage,
-            &mut self.dirty_widgets,
-        );
+        let tree = self.tree.view_mut();
+        let mut update = true;
+        let mut children = Children::new(tree, &mut self.attribute_storage, &mut update);
+        let elements = children.elements();
         f(elements);
-        self.dirty_widgets.apply(&mut self.tree);
         self
     }
 }

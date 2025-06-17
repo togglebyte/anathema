@@ -1,14 +1,15 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::{Pos, Size};
-use anathema_widgets::paint::CellAttributes;
-use anathema_widgets::WidgetRenderer;
+use anathema_value_resolver::Attributes;
+use anathema_widgets::paint::Glyph;
+use anathema_widgets::{GlyphMap, Style, WidgetRenderer};
 use crossterm::event::EnableMouseCapture;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{cursor, ExecutableCommand, QueueableCommand};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
+use crossterm::{ExecutableCommand, QueueableCommand, cursor};
 
-use super::buffer::{diff, draw_changes, Buffer, Change};
-use super::{LocalPos, Style};
+use super::LocalPos;
+use super::buffer::{Buffer, Change, diff, draw_changes};
 
 /// The `Screen` is used to draw to some `std::io::Write`able output (generally `stdout`);
 pub struct Screen {
@@ -66,12 +67,12 @@ impl Screen {
     /// Erase a specific region.
     /// Will reset the styles for all the cells as well.
     pub(crate) fn erase_region(&mut self, pos: LocalPos, size: Size) {
-        let to_x = (size.width as u16 + pos.x).min(self.size().width as u16);
-        let to_y = (size.height as u16 + pos.y).min(self.size().height as u16);
+        let to_x = (size.width + pos.x).min(self.size().width);
+        let to_y = (size.height + pos.y).min(self.size().height);
 
         for x in pos.x.min(to_x)..to_x {
             for y in pos.y.min(to_y)..to_y {
-                self.new_buffer.empty(LocalPos::new(x, y));
+                self.new_buffer.reset_cell(LocalPos::new(x, y));
             }
         }
     }
@@ -79,8 +80,8 @@ impl Screen {
     /// Put a char at the given screen position, with a given style.
     /// If the screen position is outside the [`Buffer`]s size then this is
     /// out of bounds and will panic.
-    pub(crate) fn paint_glyph(&mut self, c: char, pos: LocalPos) {
-        self.new_buffer.put_char(c, pos);
+    pub(crate) fn paint_glyph(&mut self, glyph: Glyph, pos: LocalPos) {
+        self.new_buffer.put_glyph(glyph, pos);
     }
 
     pub(crate) fn update_cell(&mut self, style: Style, pos: LocalPos) {
@@ -88,20 +89,18 @@ impl Screen {
     }
 
     /// Draw the changes to the screen
-    pub(crate) fn render(&mut self, mut output: impl Write) -> Result<()> {
-        diff(&self.old_buffer, &self.new_buffer, &mut self.changes)?;
+    pub(crate) fn render(&mut self, mut output: impl Write, glyph_map: &GlyphMap) -> Result<()> {
+        diff(&mut self.old_buffer, &mut self.new_buffer, &mut self.changes)?;
 
         if self.changes.is_empty() {
             return Ok(());
         }
 
-        draw_changes(&mut output, &self.changes)?;
+        draw_changes(&mut output, glyph_map, &self.changes)?;
 
         self.changes.clear();
 
         output.flush()?;
-
-        self.old_buffer = self.new_buffer.clone();
 
         Ok(())
     }
@@ -127,9 +126,11 @@ impl Screen {
 
     /// Restore the terminal by setting the cursor to show, disable raw mode, disable mouse capture
     /// and leave any alternative screens
-    pub fn restore(&mut self, mut output: impl Write) -> Result<()> {
+    pub fn restore(&mut self, mut output: impl Write, leave_alt_screen: bool) -> Result<()> {
         disable_raw_mode()?;
-        output.execute(LeaveAlternateScreen)?;
+        if leave_alt_screen {
+            output.execute(LeaveAlternateScreen)?;
+        }
         #[cfg(not(target_os = "windows"))]
         output.execute(crossterm::event::DisableMouseCapture)?;
         output.execute(cursor::Show)?;
@@ -138,14 +139,18 @@ impl Screen {
 }
 
 impl WidgetRenderer for Screen {
-    fn draw_glyph(&mut self, c: char, pos: Pos) {
+    fn draw_glyph(&mut self, c: Glyph, pos: Pos) {
         let Ok(screen_pos) = pos.try_into() else { return };
         self.paint_glyph(c, screen_pos);
     }
 
-    fn set_attributes(&mut self, attribs: &dyn CellAttributes, pos: Pos) {
-        let Ok(screen_pos) = pos.try_into() else { return };
+    fn set_attributes(&mut self, attribs: &Attributes<'_>, pos: Pos) {
         let style = Style::from_cell_attribs(attribs);
+        self.set_style(style, pos)
+    }
+
+    fn set_style(&mut self, style: Style, local_pos: Pos) {
+        let Ok(screen_pos) = local_pos.try_into() else { return };
         self.update_cell(style, screen_pos);
     }
 
@@ -164,7 +169,7 @@ mod test {
         for y in 0..size.height {
             let c = y.to_string().chars().next().unwrap();
             for x in 0..size.width {
-                screen.paint_glyph(c, LocalPos::new(x as u16, y as u16));
+                screen.paint_glyph(Glyph::from_char(c, 1), LocalPos::new(x, y));
             }
         }
 
@@ -175,37 +180,39 @@ mod test {
     fn render() {
         // Render a character
         let mut render_output = vec![];
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph('x', LocalPos::ZERO);
-        screen.render(&mut render_output).unwrap();
+        screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::ZERO);
+        screen.render(&mut render_output, &glyph_map).unwrap();
 
-        let expected = Cell::new('x', Style::reset());
+        let expected = Cell::new(Glyph::from_char('x', 1), Style::reset());
         let actual = screen.new_buffer.inner[0];
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn erase_region() {
-        // Erase a whole region, leaving all cells `empty`
         let mut render_output = vec![];
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(2, 2));
-        screen.render(&mut render_output).unwrap();
+        screen.render(&mut render_output, &glyph_map).unwrap();
 
+        // Erase the bottom right corner of the 2x2 region
         screen.erase_region(LocalPos::new(1, 1), Size::new(1, 1));
-        screen.render(&mut render_output).unwrap();
 
         let top_left = screen.new_buffer.inner[0];
-        assert_eq!(Cell::new('0', Style::reset()), top_left);
+        assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), top_left);
         let bottom_right = screen.new_buffer.inner[3];
         assert_eq!(Cell::empty(), bottom_right);
     }
 
     #[test]
-    #[should_panic(expected = "index out of bounds: the len is 1 but the index is 4")]
+    #[should_panic(expected = "position out of bounds")]
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
+        let glyph_map = GlyphMap::empty();
         let mut screen = make_screen(Size::new(1, 1));
-        screen.paint_glyph('x', LocalPos::new(2, 2));
-        screen.render(&mut vec![]).unwrap();
+        screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::new(3, 0));
+        screen.render(&mut vec![], &glyph_map).unwrap();
     }
 }

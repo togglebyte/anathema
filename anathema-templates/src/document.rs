@@ -2,7 +2,6 @@ use std::fs::read_to_string;
 use std::path::PathBuf;
 
 use anathema_store::smallmap::SmallMap;
-use anathema_store::storage::strings::Strings;
 
 use crate::blueprints::Blueprint;
 use crate::components::{ComponentSource, ComponentTemplates, SourceKind};
@@ -10,9 +9,10 @@ use crate::error::{Error, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
+use crate::strings::Strings;
 use crate::token::Tokens;
 use crate::variables::Variables;
-use crate::{Globals, Lexer};
+use crate::{ComponentBlueprintId, Globals, Lexer};
 
 /// A document containing templates and components
 /// ```
@@ -32,7 +32,7 @@ impl Document {
         let template = template.into();
         Self {
             template,
-            strings: Strings::empty(),
+            strings: Strings::new(),
             globals: Variables::default(),
             components: ComponentTemplates::new(),
             hot_reload: true,
@@ -40,8 +40,9 @@ impl Document {
     }
 
     #[allow(private_bounds)]
-    pub fn add_component(&mut self, name: impl Into<String>, src: SourceKind) -> Result<usize> {
+    pub fn add_component(&mut self, name: impl Into<String>, src: SourceKind) -> Result<ComponentBlueprintId> {
         let name = name.into();
+        let name = self.strings.push(name);
 
         let component_src = match src {
             SourceKind::Str(s) => ComponentSource::InMemory(s),
@@ -52,11 +53,10 @@ impl Document {
         };
 
         let id = self.components.insert(name, component_src);
-        Ok(id.into())
+        Ok(id)
     }
 
     pub fn compile(&mut self) -> Result<(Blueprint, Globals)> {
-        self.strings = Strings::empty();
         self.globals = Variables::default();
 
         let tokens = Lexer::new(&self.template, &mut self.strings).collect::<Result<Vec<_>>>()?;

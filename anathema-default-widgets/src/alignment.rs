@@ -1,10 +1,12 @@
 use std::ops::ControlFlow;
 
 use anathema_geometry::{Pos, Size};
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::error::Result;
 use anathema_widgets::layout::{Constraints, LayoutCtx, PositionCtx};
-use anathema_widgets::{AttributeStorage, LayoutChildren, PositionChildren, Widget, WidgetId};
+use anathema_widgets::{LayoutForEach, PositionChildren, Widget, WidgetId};
 
-use crate::layout::alignment::{Alignment, ALIGNMENT};
+use crate::layout::alignment::{ALIGNMENT, Alignment};
 
 #[derive(Default)]
 pub struct Align;
@@ -12,30 +14,30 @@ pub struct Align;
 impl Widget for Align {
     fn layout<'bp>(
         &mut self,
-        mut children: LayoutChildren<'_, '_, 'bp>,
+        mut children: LayoutForEach<'_, 'bp>,
         constraints: Constraints,
         _: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
-    ) -> Size {
-        children.for_each(|widget, children| {
-            let _ = widget.layout(children, constraints, ctx);
-            ControlFlow::Break(())
-        });
+    ) -> Result<Size> {
+        _ = children.each(ctx, |ctx, widget, children| {
+            _ = widget.layout(children, constraints, ctx);
+            Ok(ControlFlow::Break(()))
+        })?;
 
-        constraints.max_size()
+        Ok(constraints.max_size())
     }
 
     fn position<'bp>(
         &mut self,
-        mut children: PositionChildren<'_, '_, 'bp>,
+        mut children: PositionChildren<'_, 'bp>,
         id: WidgetId,
         attribute_storage: &AttributeStorage<'bp>,
         ctx: PositionCtx,
     ) {
         let attributes = attribute_storage.get(id);
-        let alignment = attributes.get(ALIGNMENT).unwrap_or_default();
+        let alignment = attributes.get_as::<Alignment>(ALIGNMENT).unwrap_or_default();
 
-        children.for_each(|child, children| {
+        _ = children.each(|child, children| {
             let width = ctx.inner_size.width as i32;
             let height = ctx.inner_size.height as i32;
             let child_width = child.size().width as i32;
@@ -61,7 +63,6 @@ impl Widget for Align {
 
 #[cfg(test)]
 mod test {
-
     use crate::testing::TestRunner;
 
     #[test]

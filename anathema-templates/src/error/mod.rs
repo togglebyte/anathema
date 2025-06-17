@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 use std::fmt::{self, Display, Formatter};
 
-pub(crate) use self::parse::{src_line_no, ParseError, ParseErrorKind};
+pub(crate) use self::parse::{ParseError, ParseErrorKind, src_line_no};
 
 mod parse;
 

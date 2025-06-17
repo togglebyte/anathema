@@ -1,116 +1,180 @@
-use std::marker::PhantomData;
+use std::fmt::Write;
+use std::ops::ControlFlow;
 
 use anathema_geometry::Size;
-use anathema_state::{Map, State, StateId, States};
-use anathema_store::tree::TreeForEach;
-use anathema_templates::{Expression, Globals};
+use anathema_state::States;
+use anathema_store::tree::root_node;
+use anathema_templates::Document;
+use anathema_value_resolver::{AttributeStorage, Scope};
 
-use crate::expressions::{eval, EvalValue};
-use crate::layout::{Constraints, LayoutCtx, LayoutFilter, PositionCtx};
-use crate::scope::{Scope, ScopeLookup};
-use crate::values::{ValueId, ValueIndex};
-use crate::{AttributeStorage, Factory, PositionChildren, Value, Widget, WidgetId, WidgetKind};
+use crate::components::ComponentRegistry;
+use crate::layout::{LayoutCtx, Viewport};
+use crate::{
+    Components, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Widget, WidgetTree, WidgetTreeView, eval_blueprint,
+};
 
-pub struct NoExpr;
-pub struct WithExpr(Expression);
+pub fn with_template<F>(tpl: &str, mut f: F)
+where
+    F: for<'bp> FnMut(WidgetTreeView<'_, 'bp>, &mut AttributeStorage<'bp>),
+{
+    let mut tree = WidgetTree::empty();
+    let mut doc = Document::new(tpl);
+    let (blueprint, globals) = doc.compile().unwrap();
+    let globals = Box::leak(Box::new(globals));
+    let blueprint = Box::leak(Box::new(blueprint));
 
-pub struct ScopedTest<T, S> {
-    _p: PhantomData<T>,
-    test_state: S,
-    states: States,
+    let mut factory = Factory::new();
+    factory.register_default::<Many>("many");
+    factory.register_default::<Float>("float");
+    factory.register_default::<Text>("text");
+
+    let mut states = States::new();
+    let mut attribute_storage = AttributeStorage::empty();
+
+    let mut components = Components::new();
+    let mut component_registry = ComponentRegistry::new();
+
+    let mut viewport = Viewport::new((80, 25));
+
+    let mut floating = FloatingWidgets::empty();
+    let mut glyph_map = GlyphMap::empty();
+
+    let mut layout_ctx = LayoutCtx::new(
+        globals,
+        &factory,
+        &mut states,
+        &mut attribute_storage,
+        &mut components,
+        &mut component_registry,
+        &mut floating,
+        &mut glyph_map,
+        &mut viewport,
+    );
+
+    let mut ctx = layout_ctx.eval_ctx(None);
+    let scope = Scope::root();
+
+    eval_blueprint(blueprint, &mut ctx, &scope, root_node(), &mut tree.view_mut()).unwrap();
+
+    let filter = crate::layout::LayoutFilter;
+    let mut for_each = LayoutForEach::new(tree.view_mut(), &scope, filter, None);
+    _ = for_each
+        .each(&mut layout_ctx, |ctx, widget, children| {
+            _ = widget.layout(children, ctx.viewport.constraints(), ctx)?;
+            Ok(ControlFlow::Break(()))
+        })
+        .unwrap();
+
+    f(tree.view_mut(), layout_ctx.attribute_storage);
 }
 
-impl<T: 'static + State> ScopedTest<T, NoExpr> {
-    pub fn new() -> Self {
-        let mut states = States::new();
-        let map = Map::<T>::empty();
-        states.insert(Box::new(map));
-        Self {
-            _p: PhantomData,
-            test_state: NoExpr,
-            states,
-        }
-    }
-
-    pub fn with_expr(self, expr: impl Into<Expression>) -> ScopedTest<T, WithExpr> {
-        ScopedTest {
-            _p: PhantomData,
-            test_state: WithExpr(expr.into()),
-            states: self.states,
-        }
-    }
-}
-
-impl<T: 'static + State, S> ScopedTest<T, S> {
-    pub fn with_value(mut self, key: &str, value: T) -> Self {
-        let map = self.states.get_mut(StateId::ZERO).unwrap();
-        let map = map
-            .to_any_mut()
-            .downcast_mut::<anathema_state::Value<Map<T>>>()
-            .unwrap();
-        map.insert(key, value);
-        self
-    }
-
-    pub fn lookup<F>(self, lookup: ScopeLookup<'_>, f: F)
-    where
-        F: FnOnce(EvalValue<'_>),
-    {
-        let mut scope = Scope::new();
-        scope.insert_state(StateId::ZERO);
-        let value = scope
-            .get(lookup, &mut None, &self.states)
-            .expect("should contain value");
-        f(value);
-    }
-}
-
-impl<T: 'static + State> ScopedTest<T, WithExpr> {
-    pub fn eval<F>(&mut self, f: F)
-    where
-        F: FnOnce(Value<'_, EvalValue<'_>>),
-    {
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-
-        let key = WidgetId::from((NEXT_ID.fetch_add(1, Ordering::Relaxed), 0));
-        let index = ValueIndex::ZERO;
-        let value_id = ValueId::from((key, index));
-        let mut scope = Scope::new();
-        let globals = Globals::new(Default::default());
-        scope.insert_state(StateId::ZERO);
-        let value = eval(&self.test_state.0, &globals, &scope, &self.states, value_id);
-        f(value)
-    }
-}
+// -----------------------------------------------------------------------------
+//   - Test widgets -
+// -----------------------------------------------------------------------------
 
 #[derive(Debug, Default)]
-struct TestWidget;
+pub(crate) struct Many;
 
-impl Widget for TestWidget {
-    fn layout(
+impl Widget for Many {
+    fn layout<'bp>(
         &mut self,
-        _children: TreeForEach<'_, '_, WidgetKind<'_>, LayoutFilter<'_, '_>>,
-        _: Constraints,
-        _: WidgetId,
-        _: &mut LayoutCtx<'_, '_>,
-    ) -> Size {
-        todo!()
+        mut children: crate::LayoutForEach<'_, 'bp>,
+        constraints: crate::layout::Constraints,
+        _: crate::WidgetId,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> crate::error::Result<anathema_geometry::Size> {
+        let mut size = Size::ZERO;
+        _ = children.each(ctx, |ctx, child, children| {
+            let child_size: Size = child.layout(children, constraints, ctx)?.into();
+            size.width = size.width.max(child_size.width);
+            size.height += child_size.height;
+            Ok(ControlFlow::Continue(()))
+        });
+
+        Ok(size)
     }
 
     fn position<'bp>(
         &mut self,
-        _children: PositionChildren<'_, '_, 'bp>,
-        _: WidgetId,
-        _: &AttributeStorage<'bp>,
-        _ctx: PositionCtx,
+        mut children: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
+        _: crate::WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: crate::layout::PositionCtx,
     ) {
-        todo!()
+        _ = children.each(|child, children| {
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            ControlFlow::Continue(())
+        });
     }
 }
 
-pub(crate) fn setup_test_factory() -> Factory {
-    let mut fac = Factory::new();
-    fac.register_default::<TestWidget>("test");
-    fac
+#[derive(Debug, Default)]
+pub(crate) struct Text(String);
+
+impl Widget for Text {
+    fn layout<'bp>(
+        &mut self,
+        _: crate::LayoutForEach<'_, 'bp>,
+        _: crate::layout::Constraints,
+        id: crate::WidgetId,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> crate::error::Result<anathema_geometry::Size> {
+        let attributes = ctx.attributes(id);
+        let Some(value) = attributes.value() else { return Ok(Size::ZERO) };
+
+        let mut buffer = String::new();
+        value.strings(|s| write!(&mut buffer, "{s}").is_ok());
+        self.0 = buffer;
+
+        Ok(Size::new(self.0.chars().count() as u16, 1))
+    }
+
+    fn position<'bp>(
+        &mut self,
+        _: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
+        _: crate::WidgetId,
+        _: &AttributeStorage<'bp>,
+        _: crate::layout::PositionCtx,
+    ) {
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Float;
+
+impl Widget for Float {
+    fn layout<'bp>(
+        &mut self,
+        mut children: crate::LayoutForEach<'_, 'bp>,
+        constraints: crate::layout::Constraints,
+        _: crate::WidgetId,
+        ctx: &mut LayoutCtx<'_, 'bp>,
+    ) -> crate::error::Result<anathema_geometry::Size> {
+        let mut size = Size::ZERO;
+        _ = children.each(ctx, |ctx, child, children| {
+            let child_size: Size = child.layout(children, constraints, ctx)?.into();
+            size.width = size.width.max(child_size.width);
+            size.height += child_size.height;
+            Ok(ControlFlow::Continue(()))
+        });
+
+        Ok(size)
+    }
+
+    fn position<'bp>(
+        &mut self,
+        mut children: crate::ForEach<'_, 'bp, crate::layout::PositionFilter>,
+        _: crate::WidgetId,
+        attribute_storage: &AttributeStorage<'bp>,
+        ctx: crate::layout::PositionCtx,
+    ) {
+        _ = children.each(|child, children| {
+            child.position(children, ctx.pos, attribute_storage, ctx.viewport);
+            ControlFlow::Continue(())
+        });
+    }
+
+    fn floats(&self) -> bool {
+        true
+    }
 }
