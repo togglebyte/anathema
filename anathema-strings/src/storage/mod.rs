@@ -1,8 +1,8 @@
 use anathema_store::slab::Slab;
 
 pub use self::transaction::Transaction;
-use crate::region::Region;
 use crate::StrIndex;
+use crate::region::Region;
 
 mod transaction;
 

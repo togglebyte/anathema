@@ -1,8 +1,8 @@
 use std::fmt::Write;
 
-use super::{Storage, END};
+use super::{END, Storage};
 use crate::region::Region;
-use crate::{StrIndex, BUCKET_SIZE};
+use crate::{BUCKET_SIZE, StrIndex};
 
 pub struct Transaction<'a, 'slice> {
     storage: &'a mut Storage<'slice>,
