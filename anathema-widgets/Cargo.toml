@@ -1,16 +1,18 @@
 [package]
 name = "anathema-widgets"
+license = "MIT"
+description = "Anathema widget base"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-debug = { path = "../anathema-debug" }
-anathema-geometry = { path = "../anathema-geometry" }
-anathema-state = { path = "../anathema-state" }
-anathema-store = { path = "../anathema-store" }
-anathema-strings = { path = "../anathema-strings" }
-anathema-templates = { path = "../anathema-templates" }
-anathema-value-resolver = { path = "../anathema-value-resolver" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.0" }
+anathema-geometry = { path = "../anathema-geometry", version = "0.2.0" }
+anathema-state = { path = "../anathema-state", version = "0.2.0" }
+anathema-store = { path = "../anathema-store", version = "0.2.0" }
+anathema-strings = { path = "../anathema-strings", version = "0.2.0" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.0" }
+anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.0" }
 flume = { workspace = true }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }

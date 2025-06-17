@@ -1,5 +1,7 @@
 [package]
 name = "anathema-state-derive"
+license = "MIT"
+description = "Derive macro for Anathema state"
 version.workspace = true
 edition.workspace = true
 

@@ -1,19 +1,21 @@
 [package]
 name = "anathema-runtime"
+license = "MIT"
+description = "Anathema runtime"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-geometry = { path = "../anathema-geometry" }
-anathema-debug = { path = "../anathema-debug" }
-anathema-default-widgets = { path = "../anathema-default-widgets" }
-anathema-backend = { path = "../anathema-backend" }
-anathema-state = { path = "../anathema-state" }
-anathema-store = { path = "../anathema-store" }
-anathema-strings = { path = "../anathema-strings" }
-anathema-templates = { path = "../anathema-templates" }
-anathema-widgets = { path = "../anathema-widgets" }
-anathema-value-resolver = { path = "../anathema-value-resolver" }
+anathema-geometry = { path = "../anathema-geometry", version = "0.2.0" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.0" }
+anathema-default-widgets = { path = "../anathema-default-widgets", version = "0.2.0" }
+anathema-backend = { path = "../anathema-backend", version = "0.2.0" }
+anathema-state = { path = "../anathema-state", version = "0.2.0" }
+anathema-store = { path = "../anathema-store", version = "0.2.0" }
+anathema-strings = { path = "../anathema-strings", version = "0.2.0" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.0" }
+anathema-widgets = { path = "../anathema-widgets", version = "0.2.0" }
+anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.0" }
 flume = { workspace = true }
 notify = { workspace = true }
 puffin = { version = "0.19.1", features = ["web"], optional = true }

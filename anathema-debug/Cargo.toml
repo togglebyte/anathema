@@ -1,5 +1,7 @@
 [package]
 name = "anathema-debug"
+license = "MIT"
+description = "Debug utils for Anathema"
 version.workspace = true
 edition.workspace = true
 

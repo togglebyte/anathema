@@ -1,5 +1,7 @@
 [package]
 name = "anathema-geometry"
+license = "MIT"
+description = "Geometry, positions and sizes for Anathema"
 version.workspace = true
 edition.workspace = true
 
