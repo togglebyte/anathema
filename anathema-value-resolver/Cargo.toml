@@ -1,14 +1,16 @@
 [package]
 name = "anathema-value-resolver"
+license = "MIT"
+description = "Anathema value resolver"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-state = { path = "../anathema-state" }
-anathema-strings = { path = "../anathema-strings" }
-anathema-templates = { path = "../anathema-templates" }
-anathema-store = { path = "../anathema-store" }
-anathema-debug = { path = "../anathema-debug" }
+anathema-state = { path = "../anathema-state", version = "0.2.0" }
+anathema-strings = { path = "../anathema-strings", version = "0.2.0" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.0" }
+anathema-store = { path = "../anathema-store", version = "0.2.0" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.0" }
 
 [lints]
 workspace = true

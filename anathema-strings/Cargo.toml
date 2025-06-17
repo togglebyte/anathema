@@ -1,10 +1,12 @@
 [package]
 name = "anathema-strings"
+license = "MIT"
+description = "Custom strings for Anathema"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-store = { path = "../anathema-store" }
+anathema-store = { path = "../anathema-store", version = "0.2.0" }
 
 [lints]
 workspace = true
