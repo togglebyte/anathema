@@ -150,15 +150,19 @@ impl<T: State> Value<List<T>> {
     /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
         let value = self.with_mut(|list| list.inner.pop_back());
-        changed(self.key, Change::Removed(0));
+        if value.is_some() {
+            changed(self.key, Change::Removed(0));
+        }
         value
     }
 
     /// Pop a value from the back of the list
     pub fn pop_back(&mut self) -> Option<Value<T>> {
         let value = self.with_mut(|list| list.inner.pop_back());
-        let index = self.len();
-        changed(self.key, Change::Removed(index as u32));
+        if value.is_some() {
+            let index = self.len();
+            changed(self.key, Change::Removed(index as u32));
+        }
         value
     }
 
@@ -307,5 +311,18 @@ mod test {
 
         let change = drain_changes().remove(0);
         assert!(matches!(change, (_, Change::Removed(1))));
+    }
+
+    #[test]
+    fn pop_empty_list() {
+        let mut list = Value::new(List::<u32>::empty());
+        list.reference().subscribe(Subscriber::ZERO);
+        list.pop_back();
+        let changes = drain_changes();
+        assert!(changes.is_empty());
+
+        list.pop_front();
+        let changes = drain_changes();
+        assert!(changes.is_empty());
     }
 }

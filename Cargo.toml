@@ -4,24 +4,25 @@ edition = "2024"
 version = "0.2.0"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
-keywords = ["tui", "terminal", "widgets", "ui"]
-categories = ["command-line-interface", "tui", "terminal", "template", "markup"]
+keywords = ["tui", "terminal", "widgets", "ui", "markup", "layout"]
+categories = ["command-line-interface", "tui", "terminal", "markup", "layout"]
 readme = "./README.md"
-documentation = "https://docs.rs/anathema"
+documentation = "https://togglebyte.github.io/anathema-guide/"
 homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
+publish = true
 
 [dependencies]
-anathema-default-widgets = { path = "./anathema-default-widgets" }
-anathema-backend = { path = "./anathema-backend" }
-anathema-runtime = { path = "./anathema-runtime" }
-anathema-state = { path = "./anathema-state" }
-anathema-state-derive = { path = "./anathema-state-derive" }
-anathema-store = { path = "./anathema-store" }
-anathema-templates = { path = "./anathema-templates" }
-anathema-widgets = { path = "./anathema-widgets" }
-anathema-geometry = { path = "./anathema-geometry" }
-anathema-value-resolver = { path = "./anathema-value-resolver" }
+anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.0" }
+anathema-backend = { path = "./anathema-backend", version = "0.2.0" }
+anathema-runtime = { path = "./anathema-runtime", version = "0.2.0" }
+anathema-state = { path = "./anathema-state", version = "0.2.0" }
+anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.0" }
+anathema-store = { path = "./anathema-store", version = "0.2.0" }
+anathema-templates = { path = "./anathema-templates", version = "0.2.0" }
+anathema-widgets = { path = "./anathema-widgets", version = "0.2.0" }
+anathema-geometry = { path = "./anathema-geometry", version = "0.2.0" }
+anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.0" }
 
 [features]
 default = []
@@ -32,8 +33,8 @@ profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-bac
 workspace = true
 
 [workspace.package]
-version = "0.2.0"
 edition = "2024"
+version = "0.2.0"
 
 [workspace.dependencies]
 bitflags = "2.4.1"
