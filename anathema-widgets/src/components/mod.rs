@@ -172,7 +172,7 @@ impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
         Self { inner, _p: PhantomData }
     }
 
-    /// Publish event
+    /// Publish an event
     ///
     /// # Panics
     ///

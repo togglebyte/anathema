@@ -93,7 +93,7 @@ impl<G: GlobalEventHandler> Builder<G> {
     /// Registers a [Component] with the runtime as long as the component and the associated state
     /// implements the `Default` trait.
     /// This returns a unique [ComponentId] that is used to send messages to the component.
-    pub fn from_default<C>(
+    pub fn default<C>(
         &mut self,
         ident: impl Into<String>,
         template: impl ToSourceKind,
