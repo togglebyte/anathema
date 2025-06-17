@@ -58,8 +58,7 @@ impl<'a, 'slice> Transaction<'a, 'slice> {
     }
 
     fn get_storage(&mut self, index: usize) -> &mut Vec<Region> {
-        let storage = self.storage.free.get_mut(index as u8).expect("this is pre-generated");
-        storage
+        self.storage.free.get_mut(index as u8).expect("this is pre-generated")
     }
 }
 

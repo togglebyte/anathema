@@ -4,7 +4,7 @@ edition = "2024"
 version = "0.2.0"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
-keywords = ["tui", "terminal", "widgets", "ui", "markup", "layout"]
+keywords = ["tui", "terminal", "widgets", "ui", "layout"]
 categories = ["command-line-interface", "tui", "terminal", "markup", "layout"]
 readme = "./README.md"
 documentation = "https://togglebyte.github.io/anathema-guide/"
@@ -73,3 +73,4 @@ wrong_self_convention = "allow"
 
 [dev-dependencies]
 testutils = { path = "testutils" }
+

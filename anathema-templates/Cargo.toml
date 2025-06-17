@@ -1,12 +1,14 @@
 [package]
 name = "anathema-templates"
+license = "MIT"
+description = "Anathema template parser (aml)"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-debug = { path = "../anathema-debug" }
-anathema-state = { path = "../anathema-state" }
-anathema-store = { path = "../anathema-store" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.0" }
+anathema-state = { path = "../anathema-state", version = "0.2.0" }
+anathema-store = { path = "../anathema-store", version = "0.2.0" }
 
 [lints]
 workspace = true

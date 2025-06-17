@@ -1,16 +1,18 @@
 [package]
 name = "anathema-default-widgets"
+license = "MIT"
+description = "Default widget implementations for Anathema"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-backend = { path = "../anathema-backend" }
-anathema-geometry = { path = "../anathema-geometry" }
-anathema-state = { path = "../anathema-state" }
-anathema-store = { path = "../anathema-store" }
-anathema-templates = { path = "../anathema-templates" }
-anathema-value-resolver = { path = "../anathema-value-resolver" }
-anathema-widgets = { path = "../anathema-widgets" }
+anathema-backend = { path = "../anathema-backend", version = "0.2.0" }
+anathema-geometry = { path = "../anathema-geometry", version = "0.2.0" }
+anathema-state = { path = "../anathema-state", version = "0.2.0" }
+anathema-store = { path = "../anathema-store", version = "0.2.0" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.0" }
+anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.0" }
+anathema-widgets = { path = "../anathema-widgets", version = "0.2.0" }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }
 

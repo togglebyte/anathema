@@ -1,10 +1,12 @@
 [package]
 name = "testutils"
+license = "MIT"
+description = "Test utilities for Anathema"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema = { path = "../" }
+anathema = { path = "../", version = "0.2.0" }
 
 [lints]
 workspace = true
