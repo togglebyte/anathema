@@ -75,7 +75,7 @@ fn main() {
     let mut builder = Runtime::builder(doc, &backend);
 
     builder
-        .from_default::<Messages>("messages", "examples/templates/message-passing/messages.aml")
+        .default::<Messages>("messages", "examples/templates/message-passing/messages.aml")
         .expect("failed to register messages component");
 
     builder
