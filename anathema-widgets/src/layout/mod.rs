@@ -1,5 +1,5 @@
 use anathema_geometry::{Pos, Region, Size};
-use anathema_state::{State, States};
+use anathema_state::{State, StateId, States};
 use anathema_templates::{ComponentBlueprintId, Globals};
 use anathema_value_resolver::{AttributeStorage, Attributes};
 use display::DISPLAY;
@@ -27,6 +27,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     // Need these for the eval context
     pub floating_widgets: &'frame mut FloatingWidgets,
     pub component_registry: &'frame mut ComponentRegistry,
+    pub new_components: Vec<(WidgetId, StateId)>,
 }
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
@@ -51,6 +52,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             floating_widgets,
             glyph_map,
             viewport,
+            new_components: vec![],
         }
     }
 
@@ -68,11 +70,13 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             globals: self.globals,
             factory: self.factory,
             parent_component,
+            new_components: &mut self.new_components,
         }
     }
 }
 
 pub struct EvalCtx<'frame, 'bp> {
+    pub(super) new_components: &'frame mut Vec<(WidgetId, StateId)>,
     pub(super) floating_widgets: &'frame mut FloatingWidgets,
     pub(super) attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub(super) states: &'frame mut States,

@@ -212,6 +212,7 @@ impl Evaluator for ComponentEval {
         let widget = WidgetKind::Component(comp_widget);
         let widget = WidgetContainer::new(widget, &input.body);
         let widget_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        ctx.new_components.push((widget_id, state_id));
 
         let path = tree.path(widget_id);
         ctx.components

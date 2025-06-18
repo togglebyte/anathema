@@ -40,28 +40,3 @@ pub fn update_widget<'bp>(
 
     Ok(())
 }
-
-// pub(super) fn scope_value<'bp>(widget: &WidgetKind<'bp>, scope: &mut Scope<'bp>, children: &[u16]) {
-//     match widget {
-//         WidgetKind::For(for_loop) => match children {
-//             [next, ..] => {
-//                 panic!("this should not be used, instead this should happen in the LayoutForEach");
-//                 // let index = *next as usize;
-//                 // for_loop.collection.scope(scope, for_loop.binding, index);
-//             }
-//             [] => {}
-//         },
-//         WidgetKind::Iteration(iter) => {
-//             scope.scope_pending(LOOP_INDEX, iter.loop_index.to_pending());
-//         }
-//         WidgetKind::Component(component) => {
-//             scope.scope_component_attributes(component.widget_id);
-
-//             // Insert internal state
-//             let state_id = component.state_id();
-//             scope.insert_state(state_id);
-//         }
-//         _ => panic!("let's remove this in favour of the local tree impl"),
-//         // WidgetKind::ControlFlow(_) | WidgetKind::Element(Element { .. }) | WidgetKind::If(_) | WidgetKind::Else(_) => {}
-//     }
-// }
