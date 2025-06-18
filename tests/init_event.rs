@@ -1,0 +1,35 @@
+use anathema::component::*;
+use anathema::prelude::*;
+use anathema_backend::testing::TestBackend;
+
+struct Comp;
+
+impl Component for Comp {
+    type Message = ();
+    type State = bool;
+
+    fn on_init(&mut self, state: &mut Self::State, _: Children<'_, '_>, _: Context<'_, '_, Self::State>) {
+        *state = true;
+    }
+}
+
+#[test]
+fn state_change() {
+    let tpl = "text state";
+    let doc = Document::new("@index");
+
+    let mut backend = TestBackend::new((10, 3));
+
+    backend.events().next().stop();
+
+    let mut builder = Runtime::builder(doc, &backend);
+    builder.component("index", tpl.to_template(), Comp, false).unwrap();
+
+    let res = builder.finish(|runtime| runtime.run(&mut backend));
+
+    assert_eq!(backend.line(0), "true");
+
+    if let Err(e) = res {
+        panic!("{e}");
+    }
+}

@@ -377,6 +377,25 @@ pub trait Component: 'static {
     const TICKS: bool = true;
 
     #[allow(unused_variables, unused_mut)]
+    fn on_key(
+        &mut self,
+        key: KeyEvent,
+        state: &mut Self::State,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
+    ) {
+    }
+
+    #[allow(unused_variables, unused_mut)]
+    fn on_init(
+        &mut self,
+        state: &mut Self::State,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
+    ) {
+    }
+
+    #[allow(unused_variables, unused_mut)]
     fn on_blur(
         &mut self,
         state: &mut Self::State,
@@ -388,16 +407,6 @@ pub trait Component: 'static {
     #[allow(unused_variables, unused_mut)]
     fn on_focus(
         &mut self,
-        state: &mut Self::State,
-        mut children: Children<'_, '_>,
-        mut context: Context<'_, '_, Self::State>,
-    ) {
-    }
-
-    #[allow(unused_variables, unused_mut)]
-    fn on_key(
-        &mut self,
-        key: KeyEvent,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
         mut context: Context<'_, '_, Self::State>,
@@ -518,6 +527,7 @@ where
             Event::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
             Event::Tick(dt) => self.on_tick(&mut *state, children, context, dt),
             Event::Resize(_) => self.on_resize(&mut *state, children, context),
+            Event::Init => self.on_init(&mut *state, children, context),
             Event::Noop | Event::Stop => (),
         }
         event

@@ -13,6 +13,8 @@ mod mouse;
 pub enum Event {
     /// No op
     Noop,
+    /// Init, called first time a component is added to the tree
+    Init,
     /// Stop the runtime
     Stop,
     /// Terminal lost focus (not widely supported)

@@ -427,7 +427,6 @@ macro_rules! try_from_valuekind_int {
 try_from_valuekind!(i64, Int);
 try_from_valuekind!(f64, Float);
 try_from_valuekind!(bool, Bool);
-try_from_valuekind!(char, Char);
 try_from_valuekind!(Hex, Hex);
 try_from_valuekind!(Color, Color);
 
@@ -441,6 +440,18 @@ try_from_valuekind_int!(u32, Int);
 try_from_valuekind_int!(u64, Int);
 try_from_valuekind_int!(u16, Int);
 try_from_valuekind_int!(u8, Int);
+
+impl<'bp> TryFrom<&ValueKind<'bp>> for char {
+    type Error = ();
+
+    fn try_from(value: &ValueKind<'bp>) -> Result<Self, Self::Error> {
+        match value {
+            ValueKind::Char(c) => Ok(*c),
+            ValueKind::Str(s) => s.chars().next().ok_or(()),
+            _ => Err(()),
+        }
+    }
+}
 
 impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
     type Error = ();
