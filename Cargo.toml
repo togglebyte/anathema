@@ -1,7 +1,7 @@
 [package]
 name = "anathema"
 edition = "2024"
-version = "0.2.0"
+version = "0.2.1"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
 keywords = ["tui", "terminal", "widgets", "ui", "layout"]
@@ -13,16 +13,16 @@ repository = "https://github.com/togglebyte/anathema"
 publish = true
 
 [dependencies]
-anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.0" }
-anathema-backend = { path = "./anathema-backend", version = "0.2.0" }
-anathema-runtime = { path = "./anathema-runtime", version = "0.2.0" }
-anathema-state = { path = "./anathema-state", version = "0.2.0" }
-anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.0" }
-anathema-store = { path = "./anathema-store", version = "0.2.0" }
-anathema-templates = { path = "./anathema-templates", version = "0.2.0" }
-anathema-widgets = { path = "./anathema-widgets", version = "0.2.0" }
-anathema-geometry = { path = "./anathema-geometry", version = "0.2.0" }
-anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.0" }
+anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.1" }
+anathema-backend = { path = "./anathema-backend", version = "0.2.1" }
+anathema-runtime = { path = "./anathema-runtime", version = "0.2.1" }
+anathema-state = { path = "./anathema-state", version = "0.2.1" }
+anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.1" }
+anathema-store = { path = "./anathema-store", version = "0.2.1" }
+anathema-templates = { path = "./anathema-templates", version = "0.2.1" }
+anathema-widgets = { path = "./anathema-widgets", version = "0.2.1" }
+anathema-geometry = { path = "./anathema-geometry", version = "0.2.1" }
+anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.1" }
 
 [features]
 default = []
@@ -34,7 +34,7 @@ workspace = true
 
 [workspace.package]
 edition = "2024"
-version = "0.2.0"
+version = "0.2.1"
 
 [workspace.dependencies]
 bitflags = "2.4.1"
@@ -42,7 +42,7 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
-anathema-debug = { path = "testutils" }
+anathema-debug = { path = "anathema-testutils" }
 
 [workspace]
 members = [
@@ -72,5 +72,5 @@ too_many_arguments = "allow"
 wrong_self_convention = "allow"
 
 [dev-dependencies]
-testutils = { path = "testutils" }
+anathema-testutils = { path = "anathema-testutils" }
 
