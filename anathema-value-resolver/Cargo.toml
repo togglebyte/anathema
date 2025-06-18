@@ -6,11 +6,11 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-state = { path = "../anathema-state", version = "0.2.0" }
-anathema-strings = { path = "../anathema-strings", version = "0.2.0" }
-anathema-templates = { path = "../anathema-templates", version = "0.2.0" }
-anathema-store = { path = "../anathema-store", version = "0.2.0" }
-anathema-debug = { path = "../anathema-debug", version = "0.2.0" }
+anathema-state = { path = "../anathema-state", version = "0.2.1" }
+anathema-strings = { path = "../anathema-strings", version = "0.2.1" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.1" }
+anathema-store = { path = "../anathema-store", version = "0.2.1" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.1" }
 
 [lints]
 workspace = true

@@ -345,7 +345,11 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         self.apply_changes()?;
 
         *self.dt = Instant::now();
-        Ok(now.elapsed())
+
+        match self.layout_ctx.stop_runtime {
+            false => Ok(now.elapsed()),
+            true => Err(Error::Stop),
+        }
     }
 
     pub fn present<B: Backend>(&mut self, backend: &mut B) -> Duration {
@@ -639,6 +643,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                         Some(state),
                         self.emitter,
                         self.layout_ctx.viewport,
+                        &mut self.layout_ctx.stop_runtime,
                         &self.document.strings,
                     );
 
