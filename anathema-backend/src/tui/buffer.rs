@@ -273,10 +273,7 @@ pub(crate) fn diff(
             }
 
             let change = match new_cell.state {
-                CellState::Empty => {
-                    new_cell.style.reset_attributes();
-                    Change::Remove
-                }
+                CellState::Empty => Change::Remove,
                 CellState::Continuation => continue,
                 CellState::Occupied(c) => Change::Insert(c),
             };

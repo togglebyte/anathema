@@ -507,7 +507,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             let external_ident = self.document.strings.get_ref_unchecked(assoc_event.external());
             let internal_ident = self.document.strings.get_ref_unchecked(assoc_event.internal());
             let sender = self.document.strings.get_ref_unchecked(assoc_event.sender);
-            let mut event = assoc_event.to_event(internal_ident, external_ident, sender);
+            let sender_id = assoc_event.sender_id;
+            let mut event = assoc_event.to_event(internal_ident, external_ident, sender, sender_id);
 
             loop {
                 let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(parent.into()) else {
@@ -629,6 +630,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     let ctx = AnyComponentContext::new(
                         component.parent.map(Into::into),
                         component.name_id,
+                        widget_id,
                         state_id,
                         component.assoc_functions,
                         self.assoc_events,
