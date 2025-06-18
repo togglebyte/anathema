@@ -48,7 +48,11 @@ impl Style {
     }
 
     pub fn reset_attributes(&mut self) {
-        self.attributes = Attributes::NOT_UNDERLINED | Attributes::NOT_CROSSED_OUT | Attributes::NOT_OVERLINED;
+        self.attributes = Attributes::NOT_UNDERLINED
+            | Attributes::NOT_CROSSED_OUT
+            | Attributes::NOT_OVERLINED
+            | Attributes::NOT_REVERSED
+            | Attributes::NOT_ITALIC;
     }
 
     /// Create an instance of `Style` from `CellAttributes`.
@@ -116,9 +120,9 @@ impl Style {
         }
 
         if let Some(true) = attributes.get_as::<bool>("inverse") {
-            style.attributes |= Attributes::INVERSE;
+            style.attributes |= Attributes::REVERSED;
         } else if let Some(false) = attributes.get_as::<bool>("inverse") {
-            style.attributes |= Attributes::NOT_INVERSE;
+            style.attributes |= Attributes::NOT_REVERSED;
         }
 
         style
@@ -189,11 +193,11 @@ impl Style {
     }
 
     /// Invert the foreground and background
-    pub fn set_inverse(&mut self, inverse: bool) {
+    pub fn set_reversed(&mut self, inverse: bool) {
         if inverse {
-            self.attributes |= Attributes::INVERSE;
+            self.attributes |= Attributes::REVERSED;
         } else {
-            self.attributes &= !Attributes::INVERSE;
+            self.attributes &= !Attributes::REVERSED;
         }
     }
 
@@ -239,7 +243,7 @@ bitflags::bitflags! {
         /// Make the characters overlined
         const OVERLINED =       0b0000_0000_0010_0000;
         /// Make the characters inverse
-        const INVERSE =         0b0000_0000_0100_0000;
+        const REVERSED =        0b0000_0000_0100_0000;
 
         // Turn style off
         /// Make the characters not bold
@@ -255,7 +259,7 @@ bitflags::bitflags! {
         /// Make the characters not overlined
         const NOT_OVERLINED =   0b0001_0000_0000_0000;
         /// Make the characters not inverse
-        const NOT_INVERSE =     0b0010_0000_0000_0000;
+        const NOT_REVERSED =    0b0010_0000_0000_0000;
     }
 }
 

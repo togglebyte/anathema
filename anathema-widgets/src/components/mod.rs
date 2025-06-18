@@ -387,7 +387,16 @@ pub trait Component: 'static {
     }
 
     #[allow(unused_variables, unused_mut)]
-    fn on_init(
+    fn on_mount(
+        &mut self,
+        state: &mut Self::State,
+        mut children: Children<'_, '_>,
+        mut context: Context<'_, '_, Self::State>,
+    ) {
+    }
+
+    #[allow(unused_variables, unused_mut)]
+    fn on_unmount(
         &mut self,
         state: &mut Self::State,
         mut children: Children<'_, '_>,
@@ -527,7 +536,8 @@ where
             Event::Mouse(ev) => self.on_mouse(ev, &mut *state, children, context),
             Event::Tick(dt) => self.on_tick(&mut *state, children, context, dt),
             Event::Resize(_) => self.on_resize(&mut *state, children, context),
-            Event::Init => self.on_init(&mut *state, children, context),
+            Event::Mount => self.on_mount(&mut *state, children, context),
+            Event::Unmount => self.on_unmount(&mut *state, children, context),
             Event::Noop | Event::Stop => (),
         }
         event

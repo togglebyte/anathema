@@ -85,9 +85,9 @@ pub(crate) fn write_style(style: &Style, w: &mut impl Write) -> Result<()> {
         w.queue(SetAttribute(CrossAttrib::CrossedOut))?;
     }
 
-    if style.attributes.contains(Attributes::NOT_INVERSE) {
+    if style.attributes.contains(Attributes::NOT_REVERSED) {
         w.queue(SetAttribute(CrossAttrib::NoReverse))?;
-    } else if style.attributes.contains(Attributes::INVERSE) {
+    } else if style.attributes.contains(Attributes::REVERSED) {
         w.queue(SetAttribute(CrossAttrib::Reverse))?;
     }
 
