@@ -6,7 +6,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anathema-store = { path = "../anathema-store", version = "0.2.0" }
+anathema-store = { path = "../anathema-store", version = "0.2.1" }
 
 [lints]
 workspace = true
