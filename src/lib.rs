@@ -1,4 +1,4 @@
-//! A TUI framework with a custom template language and runtime.
+//! A TUI library with a custom template language and runtime.
 //!
 //! See the guide to get stared: https://togglebyte.github.io/anathema-guide/
 pub use {
