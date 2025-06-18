@@ -1,7 +1,6 @@
 //! A TUI library with a custom template language and runtime.
 //!
 //! See the guide to get stared: https://togglebyte.github.io/anathema-guide/
-//!
 pub use {
     anathema_backend as backend,                 // backend
     anathema_default_widgets as default_widgets, // default widgets

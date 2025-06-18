@@ -289,7 +289,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
-            Event::Tick(_) => panic!("this event should never be sent to the runtime"),
+            Event::Tick(_) | Event::Init => panic!("this event should never be sent to the runtime"),
         }
     }
 
@@ -313,6 +313,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let now = Instant::now();
         self.cycle(backend)?;
+        self.init_new_components();
         self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.poll_events(elapsed, now, backend);
@@ -632,6 +633,14 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             let Some((widget_id, state_id)) = self.layout_ctx.components.get_ticking(i) else { continue };
             let event = Event::Tick(dt);
             self.send_event_to_component(event, widget_id, state_id);
+        }
+    }
+
+    fn init_new_components(&mut self) {
+        while let Some((widget_id, state_id)) = self.layout_ctx.new_components.pop() {
+            self.with_component(widget_id, state_id, |comp, elements, ctx| {
+                comp.dyn_component.any_event(elements, ctx, Event::Init);
+            });
         }
     }
 

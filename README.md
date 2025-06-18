@@ -2,7 +2,7 @@
 
 A TUI library with a custom template language and runtime.
 
-**Note** Anathema should be considered alpha for now.
+**Note** Anathema should be considered beta for now.
 
 [Getting started](https://togglebyte.github.io/anathema-guide/)
 
