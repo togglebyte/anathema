@@ -137,6 +137,13 @@ impl<'bp> Element<'bp> {
         self.container.inner_bounds
     }
 
+    /// Bounds in global space
+    pub fn bounds(&self) -> Region {
+        let pos = self.get_pos();
+        let size = self.size();
+        Region::from((pos, size))
+    }
+
     /// Get a mutable reference to the underlying widget of the given type
     ///
     /// # Panics

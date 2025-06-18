@@ -15,6 +15,16 @@ impl<'children, 'tree, 'bp> Components<'children, 'tree, 'bp> {
         self.make_query(Kind::ByName(name))
     }
 
+    pub fn by_id<F, U>(&mut self, id: WidgetId, mut f: F) -> Option<U>
+    where
+        F: FnMut(&mut Component<'_>, &mut Attributes<'_>) -> U,
+    {
+        let widget = self.elements.children.get_mut_by_id(id)?;
+        let WidgetKind::Component(component) = &mut widget.kind else { return None };
+        let attributes = self.elements.attributes.get_mut(id);
+        Some(f(component, attributes))
+    }
+
     pub fn by_attribute<'a>(
         &mut self,
         key: &'a str,

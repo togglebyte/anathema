@@ -198,7 +198,7 @@ mod test {
         screen.render(&mut render_output, &glyph_map).unwrap();
 
         // Erase the bottom right corner of the 2x2 region
-        screen.erase_region(LocalPos::new(1, 1), Size::new(1, 1));
+        screen.erase_region(LocalPos::new(1, 1), Size::new(2, 2));
 
         let top_left = screen.new_buffer.inner[0];
         assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), top_left);

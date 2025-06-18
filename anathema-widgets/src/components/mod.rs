@@ -12,6 +12,7 @@ use deferred::DeferredComponents;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
+use crate::WidgetId;
 use crate::layout::Viewport;
 use crate::query::Children;
 use crate::widget::Parent;
@@ -188,9 +189,14 @@ impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
 
         let Some(assoc_event_map) = ids else { return };
 
-        self.inner
-            .assoc_events
-            .push(self.state_id, parent, *assoc_event_map, self.ident_id, data);
+        self.inner.assoc_events.push(
+            self.state_id,
+            parent,
+            *assoc_event_map,
+            self.ident_id,
+            self.sender_id,
+            data,
+        );
     }
 
     /// Get a value from the component attributes
@@ -223,6 +229,7 @@ impl<'frame, 'bp, T> DerefMut for Context<'frame, 'bp, T> {
 pub struct AnyComponentContext<'frame, 'bp> {
     parent: Option<Parent>,
     ident_id: StringId,
+    sender_id: WidgetId,
     state_id: StateId,
     assoc_functions: &'frame [AssocEventMapping],
     assoc_events: &'frame mut AssociatedEvents,
@@ -238,6 +245,7 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
     pub fn new(
         parent: Option<Parent>,
         ident_id: StringId,
+        sender_id: WidgetId,
         state_id: StateId,
         assoc_functions: &'frame [AssocEventMapping],
         assoc_events: &'frame mut AssociatedEvents,
@@ -251,6 +259,7 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
         Self {
             parent,
             ident_id,
+            sender_id,
             state_id,
             assoc_functions,
             assoc_events,
@@ -272,17 +281,25 @@ pub struct AssociatedEvent {
     pub state: StateId,
     pub parent: Parent,
     pub sender: StringId,
+    pub sender_id: WidgetId,
     event_map: AssocEventMapping,
     data: Box<dyn Any>,
 }
 
 impl AssociatedEvent {
-    pub fn to_event<'a>(&'a self, internal: &'a str, external: &'a str, sender: &'a str) -> UserEvent<'a> {
+    pub fn to_event<'a>(
+        &'a self,
+        internal: &'a str,
+        external: &'a str,
+        sender: &'a str,
+        sender_id: WidgetId,
+    ) -> UserEvent<'a> {
         UserEvent {
             external_ident: external,
             internal_ident: internal,
             data: &*self.data,
             sender,
+            sender_id,
             stop_propagation: false,
         }
     }
@@ -299,6 +316,7 @@ impl AssociatedEvent {
 #[derive(Debug, Copy, Clone)]
 pub struct UserEvent<'a> {
     pub sender: &'a str,
+    pub sender_id: WidgetId,
     pub external_ident: &'a str,
     pub internal_ident: &'a str,
     data: &'a dyn Any,
@@ -354,12 +372,14 @@ impl AssociatedEvents {
         parent: Parent,
         assoc_event_map: AssocEventMapping,
         sender: StringId,
+        sender_id: WidgetId,
         data: T,
     ) {
         self.inner.push(AssociatedEvent {
             state,
             parent,
             sender,
+            sender_id,
             event_map: assoc_event_map,
             data: Box::new(data),
         })
