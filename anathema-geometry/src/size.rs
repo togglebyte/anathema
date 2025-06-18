@@ -1,7 +1,6 @@
 use std::ops::{Add, AddAssign, Sub};
 
 /// Size
-// TODO: make size u16xu16
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Size {
     /// Width

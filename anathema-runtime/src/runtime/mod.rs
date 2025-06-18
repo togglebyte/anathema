@@ -145,7 +145,15 @@ impl<G: GlobalEventHandler> Runtime<G> {
                 std::thread::sleep(Duration::from_micros(sleep_micros));
 
                 if REBUILD.swap(false, Ordering::Relaxed) {
-                    frame.return_state();
+                    frame.force_rebuild()?;
+                    // call unmount on all components
+                    // for i in 0..frame.layout_ctx.components.len() {
+                    //     let Some((widget_id, state_id)) = frame.layout_ctx.components.get_ticking(i) else { continue };
+                    //     let event = Event::Unmount;
+                    //     frame.send_event_to_component(event, widget_id, state_id);
+                    // }
+
+                    // frame.return_state_and_component();
                     backend.clear();
                     break Ok(());
                 }
@@ -234,6 +242,18 @@ pub struct Frame<'rt, 'bp, G> {
 }
 
 impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
+    pub fn force_rebuild(mut self) -> Result<()> {
+        // call unmount on all components
+        for i in 0..self.layout_ctx.components.len() {
+            let Some((widget_id, state_id)) = self.layout_ctx.components.get_ticking(i) else { continue };
+            let event = Event::Unmount;
+            self.send_event_to_component(event, widget_id, state_id);
+        }
+
+        self.return_state_and_component();
+        Ok(())
+    }
+
     pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
         let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut());
 
@@ -289,7 +309,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     self.send_event_to_component(event, widget_id, state_id);
                 }
             }
-            Event::Tick(_) | Event::Init => panic!("this event should never be sent to the runtime"),
+            Event::Tick(_) | Event::Mount | Event::Unmount => panic!("this event should never be sent to the runtime"),
         }
     }
 
@@ -487,7 +507,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             let external_ident = self.document.strings.get_ref_unchecked(assoc_event.external());
             let internal_ident = self.document.strings.get_ref_unchecked(assoc_event.internal());
             let sender = self.document.strings.get_ref_unchecked(assoc_event.sender);
-            let mut event = assoc_event.to_event(internal_ident, external_ident, sender);
+            let sender_id = assoc_event.sender_id;
+            let mut event = assoc_event.to_event(internal_ident, external_ident, sender, sender_id);
 
             loop {
                 let Some((widget_id, state_id)) = self.layout_ctx.components.get_by_widget_id(parent.into()) else {
@@ -609,6 +630,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     let ctx = AnyComponentContext::new(
                         component.parent.map(Into::into),
                         component.name_id,
+                        widget_id,
                         state_id,
                         component.assoc_functions,
                         self.assoc_events,
@@ -639,13 +661,13 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     fn init_new_components(&mut self) {
         while let Some((widget_id, state_id)) = self.layout_ctx.new_components.pop() {
             self.with_component(widget_id, state_id, |comp, elements, ctx| {
-                comp.dyn_component.any_event(elements, ctx, Event::Init);
+                comp.dyn_component.any_event(elements, ctx, Event::Mount);
             });
         }
     }
 
     // Return the state for each component back into the component registry
-    fn return_state(self) {
+    fn return_state_and_component(self) {
         // Return all states
         let mut tree = WidgetTree::empty();
         std::mem::swap(&mut tree, self.tree);

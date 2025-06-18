@@ -15,13 +15,13 @@ enum Cell {
     Occupied(char, Style),
 }
 
-#[derive(Debug)]
-struct Buffer {
+#[derive(Debug, Default)]
+pub struct CanvasBuffer {
     positions: Box<[Cell]>,
     size: Size,
 }
 
-impl Buffer {
+impl CanvasBuffer {
     pub fn new(size: Size) -> Self {
         Self {
             positions: vec![Cell::Empty; size.area()].into_boxed_slice(),
@@ -80,8 +80,8 @@ impl Buffer {
         }
     }
 
-    fn copy_from(other: &mut Buffer, size: Size) -> Self {
-        let mut new_buffer = Buffer::new(size);
+    fn copy_from(other: &mut CanvasBuffer, size: Size) -> Self {
+        let mut new_buffer = CanvasBuffer::new(size);
 
         for (pos, c, attrs) in other.drain() {
             if pos.x >= size.width || pos.y >= size.height {
@@ -122,16 +122,28 @@ impl Buffer {
             }
         })
     }
+
+    pub fn clear(&mut self) {
+        *self = Self::new(self.size);
+    }
 }
 
 #[derive(Debug)]
 pub struct Canvas {
-    buffer: Buffer,
+    buffer: CanvasBuffer,
     pos: Pos,
     is_dirty: bool,
 }
 
 impl Canvas {
+    pub fn restore_buffer(&mut self, buffer: &mut CanvasBuffer) {
+        self.buffer = std::mem::take(buffer);
+    }
+
+    pub fn take_buffer(&mut self) -> CanvasBuffer {
+        std::mem::take(&mut self.buffer)
+    }
+
     pub fn translate(&self, pos: Pos) -> LocalPos {
         let offset = pos - self.pos;
         LocalPos::new(offset.x as u16, offset.y as u16)
@@ -163,12 +175,16 @@ impl Canvas {
         self.is_dirty = true;
         self.buffer.remove(pos)
     }
+
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+    }
 }
 
 impl Default for Canvas {
     fn default() -> Self {
         Self {
-            buffer: Buffer::new((32, 32).into()),
+            buffer: CanvasBuffer::new((32, 32).into()),
             pos: Pos::ZERO,
             is_dirty: true,
         }
@@ -196,7 +212,7 @@ impl Widget for Canvas {
         let size = constraints.max_size();
 
         if self.buffer.size != size {
-            self.buffer = Buffer::copy_from(&mut self.buffer, size);
+            self.buffer = CanvasBuffer::copy_from(&mut self.buffer, size);
         }
 
         Ok(self.buffer.size)
@@ -269,7 +285,7 @@ mod test {
     #[test]
     fn put_buffer_out_of_range() {
         let mut under_test = Canvas {
-            buffer: Buffer::new(Size::new(1, 2)),
+            buffer: CanvasBuffer::new(Size::new(1, 2)),
             ..Default::default()
         };
 
@@ -288,7 +304,7 @@ mod test {
     #[test]
     fn get_buffer_out_of_range() {
         let mut under_test = Canvas {
-            buffer: Buffer::new(Size::new(1, 2)),
+            buffer: CanvasBuffer::new(Size::new(1, 2)),
             ..Default::default()
         };
 
@@ -301,7 +317,7 @@ mod test {
     #[test]
     fn get_mut_buffer_out_of_range() {
         let mut under_test = Canvas {
-            buffer: Buffer::new(Size::new(1, 2)),
+            buffer: CanvasBuffer::new(Size::new(1, 2)),
             ..Default::default()
         };
 
@@ -314,7 +330,7 @@ mod test {
     #[test]
     fn remove_buffer_out_of_range() {
         let mut under_test = Canvas {
-            buffer: Buffer::new(Size::new(1, 2)),
+            buffer: CanvasBuffer::new(Size::new(1, 2)),
             ..Default::default()
         };
 
