@@ -1,5 +1,5 @@
 [package]
-name = "testutils"
+name = "anathema-testutils"
 license = "MIT"
 description = "Test utilities for Anathema"
 version.workspace = true

@@ -3,9 +3,9 @@ use anathema::prelude::*;
 use anathema::runtime::Builder;
 use anathema_backend::testing::TestBackend;
 use anathema_runtime::Error;
+use anathema_testutils::{BasicComp, BasicState, character, tab};
 use anathema_widgets::WidgetId;
 use anathema_widgets::tabindex::Index;
-use testutils::{BasicComp, BasicState, character, tab};
 
 fn keypress(_: KeyEvent, state: &mut BasicState, _: Children<'_, '_>, _: Context<'_, '_, BasicState>) {
     state.number.set(9);

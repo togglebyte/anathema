@@ -1,7 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
-use testutils::{BasicComp, character};
+use anathema_testutils::{BasicComp, character};
 
 #[derive(Debug, State)]
 struct Inner {
