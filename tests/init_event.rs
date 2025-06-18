@@ -1,7 +1,6 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
-use testutils::{BasicComp, BasicState, character};
 
 struct Comp;
 
@@ -9,12 +8,7 @@ impl Component for Comp {
     type Message = ();
     type State = bool;
 
-    fn on_init(
-        &mut self,
-        state: &mut Self::State,
-        mut children: Children<'_, '_>,
-        mut context: Context<'_, '_, Self::State>,
-    ) {
+    fn on_init(&mut self, state: &mut Self::State, _: Children<'_, '_>, _: Context<'_, '_, Self::State>) {
         *state = true;
     }
 }
