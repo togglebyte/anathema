@@ -61,34 +61,42 @@ pub(crate) fn write_style(style: &Style, w: &mut impl Write) -> Result<()> {
         w.queue(SetAttribute(CrossAttrib::Dim))?;
     }
 
-    if style.attributes.contains(Attributes::NOT_ITALIC) {
-        w.queue(SetAttribute(CrossAttrib::NoItalic))?;
-    } else if style.attributes.contains(Attributes::ITALIC) {
+    macro_rules! check {
+        ($inc:expr, $exc:expr) => {
+            style.attributes.contains($inc) && !style.attributes.contains($exc)
+        };
+    }
+
+    // Italic
+    if check!(Attributes::ITALIC, Attributes::NOT_ITALIC) {
         w.queue(SetAttribute(CrossAttrib::Italic))?;
+    } else {
+        w.queue(SetAttribute(CrossAttrib::NoItalic))?;
     }
 
-    if style.attributes.contains(Attributes::NOT_UNDERLINED) {
-        w.queue(SetAttribute(CrossAttrib::NoUnderline))?;
-    } else if style.attributes.contains(Attributes::UNDERLINED) {
+    // Underlined
+    if check!(Attributes::UNDERLINED, Attributes::NOT_UNDERLINED) {
         w.queue(SetAttribute(CrossAttrib::Underlined))?;
+    } else {
+        w.queue(SetAttribute(CrossAttrib::NoUnderline))?;
     }
 
-    if style.attributes.contains(Attributes::NOT_OVERLINED) {
-        w.queue(SetAttribute(CrossAttrib::NotOverLined))?;
-    } else if style.attributes.contains(Attributes::OVERLINED) {
+    if check!(Attributes::OVERLINED, Attributes::NOT_OVERLINED) {
         w.queue(SetAttribute(CrossAttrib::OverLined))?;
+    } else {
+        w.queue(SetAttribute(CrossAttrib::NotOverLined))?;
     }
 
-    if style.attributes.contains(Attributes::NOT_CROSSED_OUT) {
-        w.queue(SetAttribute(CrossAttrib::NotCrossedOut))?;
-    } else if style.attributes.contains(Attributes::CROSSED_OUT) {
+    if check!(Attributes::CROSSED_OUT, Attributes::NOT_CROSSED_OUT) {
         w.queue(SetAttribute(CrossAttrib::CrossedOut))?;
+    } else {
+        w.queue(SetAttribute(CrossAttrib::NotCrossedOut))?;
     }
 
-    if style.attributes.contains(Attributes::NOT_REVERSED) {
-        w.queue(SetAttribute(CrossAttrib::NoReverse))?;
-    } else if style.attributes.contains(Attributes::REVERSED) {
+    if check!(Attributes::REVERSED, Attributes::NOT_REVERSED) {
         w.queue(SetAttribute(CrossAttrib::Reverse))?;
+    } else {
+        w.queue(SetAttribute(CrossAttrib::NoReverse))?;
     }
 
     Ok(())
