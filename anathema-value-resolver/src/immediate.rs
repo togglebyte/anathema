@@ -70,7 +70,34 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
                 let index = self.resolve(index);
                 ValueExpr::Index(source.into(), index.into())
             }
-            Expression::Call { .. } => unimplemented!(),
+            Expression::Call { fun, args } => {
+                match &**fun {
+                    Expression::Ident(fun) => match self.ctx.lookup_function(fun) {
+                        Some(fun_ptr) => {
+                            let args = args.iter().map(|arg| self.resolve(arg)).collect::<Box<_>>();
+                            ValueExpr::Call { fun_ptr, args }
+                        }
+                        None => ValueExpr::Null,
+                    },
+                    Expression::Index(lhs, rhs) => {
+                        let first_arg = self.resolve(lhs);
+                        let Expression::Str(fun) = &**rhs else { return ValueExpr::Null };
+                        match self.ctx.lookup_function(fun) {
+                            Some(fun_ptr) => {
+                                let args = std::iter::once(first_arg)
+                                    .chain(args.iter().map(|arg| self.resolve(arg)))
+                                    .collect::<Box<_>>();
+                                ValueExpr::Call { fun_ptr, args }
+                            }
+                            None => ValueExpr::Null,
+                        }
+                    }
+                    _ => {
+                        // Here is where we have to continue if we want Uniform function calls
+                        ValueExpr::Null
+                    }
+                }
+            }
         }
     }
 }

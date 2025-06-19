@@ -5,6 +5,7 @@ use anathema::component::*;
 #[derive(Debug, State, Default)]
 pub struct BasicState {
     pub number: Value<u32>,
+    pub string: Value<String>,
 }
 
 pub struct BasicComp<F, T>(F, PhantomData<T>);
