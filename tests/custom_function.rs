@@ -4,7 +4,7 @@ use anathema_backend::testing::TestBackend;
 use anathema_testutils::{BasicComp, BasicState, character};
 use anathema_value_resolver::ValueKind;
 
-fn keypress(_: KeyEvent, state: &mut BasicState, _: Children<'_, '_>, _: Context<'_, '_, BasicState>) {}
+fn keypress(_: KeyEvent, _: &mut BasicState, _: Children<'_, '_>, _: Context<'_, '_, BasicState>) {}
 
 #[test]
 fn run_custom_function() {

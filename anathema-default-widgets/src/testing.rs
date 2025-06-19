@@ -4,7 +4,7 @@ use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals, ToSourceKind};
-use anathema_value_resolver::{AttributeStorage, Attributes, Scope};
+use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable, Scope};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::layout::{Constraints, LayoutCtx, Viewport};
@@ -133,6 +133,7 @@ pub struct TestRunner {
     blueprint: Blueprint,
     globals: Globals,
     components: Components,
+    function_table: FunctionTable,
 }
 
 impl TestRunner {
@@ -168,6 +169,7 @@ impl TestRunner {
             blueprint,
             globals,
             components: Components::new(),
+            function_table: FunctionTable::new(),
         }
     }
 
@@ -180,6 +182,7 @@ impl TestRunner {
             &self.factory,
             &mut self.component_registry,
             &mut self.components,
+            &self.function_table,
         )
     }
 }
@@ -197,6 +200,7 @@ pub struct TestInstance<'bp> {
     components: &'bp mut Components,
     changes: Changes,
     glyph_map: GlyphMap,
+    function_table: &'bp FunctionTable,
 }
 
 impl<'bp> TestInstance<'bp> {
@@ -208,6 +212,7 @@ impl<'bp> TestInstance<'bp> {
         factory: &'bp Factory,
         component_registry: &'bp mut ComponentRegistry,
         components: &'bp mut Components,
+        function_table: &'bp FunctionTable,
     ) -> Self {
         let mut tree = WidgetTree::empty();
         let mut attribute_storage = AttributeStorage::empty();
@@ -226,6 +231,7 @@ impl<'bp> TestInstance<'bp> {
             &mut floating_widgets,
             &mut glyph_map,
             &mut viewport,
+            function_table,
         );
 
         let mut ctx = ctx.eval_ctx(None);
@@ -246,6 +252,7 @@ impl<'bp> TestInstance<'bp> {
             components,
             changes: Changes::empty(),
             glyph_map,
+            function_table,
         }
     }
 
@@ -308,6 +315,7 @@ impl<'bp> TestInstance<'bp> {
             &mut self.floating_widgets,
             &mut self.glyph_map,
             &mut self.viewport,
+            self.function_table,
         );
 
         let mut cycle = WidgetCycle::new(self.backend, self.tree.view_mut(), constraints);
