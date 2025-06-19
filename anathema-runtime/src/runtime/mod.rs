@@ -23,13 +23,16 @@ use anathema_widgets::{
 use flume::Receiver;
 use notify::RecommendedWatcher;
 
+pub(crate) use self::error::show_error;
 use crate::builder::Builder;
 pub use crate::error::Result;
 use crate::events::GlobalEventHandler;
 use crate::{Error, REBUILD};
 
+mod error;
 mod testing;
 
+/// Anathema runtime
 pub struct Runtime<G> {
     pub(super) blueprint: Blueprint,
     pub(super) globals: Globals,
@@ -53,6 +56,7 @@ pub struct Runtime<G> {
 }
 
 impl Runtime<()> {
+    /// Create a runtime builder
     pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder<()> {
         Builder::new(doc, backend.size(), ())
     }
@@ -60,9 +64,10 @@ impl Runtime<()> {
 
 impl<G: GlobalEventHandler> Runtime<G> {
     pub(crate) fn new(
+        blueprint: Blueprint,
+        globals: Globals,
         component_registry: ComponentRegistry,
-        mut document: Document,
-        mut err_document: Document,
+        document: Document,
         factory: Factory,
         message_receiver: Receiver<ViewMessage>,
         emitter: Emitter,
@@ -70,15 +75,10 @@ impl<G: GlobalEventHandler> Runtime<G> {
         size: Size,
         fps: u32,
         global_event_handler: G,
-    ) -> Result<Self> {
-        let (blueprint, globals) = document.compile()?;
-        let Ok((_err_blueprint, _err_globals)) = err_document.compile() else {
-            panic!("the error display failed to compile")
-        };
-
+    ) -> Self {
         let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
 
-        let inst = Self {
+        Self {
             component_registry,
             components: Components::new(),
             document,
@@ -98,8 +98,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             deferred_components: DeferredComponents::new(),
             sleep_micros,
             global_event_handler,
-        };
-        Ok(inst)
+        }
     }
 
     // TODO
@@ -146,14 +145,6 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
                 if REBUILD.swap(false, Ordering::Relaxed) {
                     frame.force_rebuild()?;
-                    // call unmount on all components
-                    // for i in 0..frame.layout_ctx.components.len() {
-                    //     let Some((widget_id, state_id)) = frame.layout_ctx.components.get_ticking(i) else { continue };
-                    //     let event = Event::Unmount;
-                    //     frame.send_event_to_component(event, widget_id, state_id);
-                    // }
-
-                    // frame.return_state_and_component();
                     backend.clear();
                     break Ok(());
                 }

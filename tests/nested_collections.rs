@@ -46,7 +46,7 @@ fn nested_collections() {
         .component("index", tpl.to_template(), Comp::<_>::new(keypress), Outer::default())
         .unwrap();
 
-    let res = builder.finish(|runtime| runtime.run(&mut backend));
+    let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
     assert!(backend.at(0, 0).is_char('2'));
 

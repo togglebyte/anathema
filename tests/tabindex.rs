@@ -57,8 +57,8 @@ fn tabindex_change() {
 
     let builder = builder(tpl, &mut backend);
     builder
-        .finish(|runtime| {
-            runtime.with_frame(&mut backend, |backend, mut frame| {
+        .finish(&mut backend, |runtime, backend| {
+            runtime.with_frame(backend, |backend, mut frame| {
                 // Initial tick to build the tree
                 assert!(frame.tabindex.is_none());
                 frame.tick(backend)?;
@@ -92,8 +92,8 @@ fn tabindex_single_component() {
 
     let builder = builder(tpl, &mut backend);
     builder
-        .finish(|runtime| {
-            runtime.with_frame(&mut backend, |backend, mut frame| {
+        .finish(&mut backend, |runtime, backend| {
+            runtime.with_frame(backend, |backend, mut frame| {
                 // Initial tick to build the tree
                 assert!(frame.tabindex.is_none());
                 frame.tick(backend)?;
@@ -121,8 +121,8 @@ fn tabindex_no_component() {
     let builder = builder(tpl, &mut backend);
 
     builder
-        .finish(|runtime| {
-            runtime.with_frame(&mut backend, |backend, mut frame| {
+        .finish(&mut backend, |runtime, backend| {
+            runtime.with_frame(backend, |backend, mut frame| {
                 // Initial tick to build the tree
                 assert!(frame.tabindex.is_none());
                 frame.tick(backend)?;
@@ -186,7 +186,9 @@ fn tabindex_change_via_deferred_command() {
     builder
         .component("comp_b", comp_tpl.to_template(), CompB, false)
         .unwrap();
-    builder.finish(|runtime| runtime.run(&mut backend)).unwrap();
+    builder
+        .finish(&mut backend, |runtime, backend| runtime.run(backend))
+        .unwrap();
 
     assert_eq!("false", backend.line(0));
     assert_eq!("true", backend.line(1));
