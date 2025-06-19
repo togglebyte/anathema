@@ -4,9 +4,12 @@ license = "MIT"
 description = "Test utilities for Anathema"
 version.workspace = true
 edition.workspace = true
+documentation = "https://togglebyte.github.io/anathema-guide/"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
-anathema = { path = "../", version = "0.2.1" }
+anathema = { path = "../", version = "0.2.2" }
 
 [lints]
 workspace = true

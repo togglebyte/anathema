@@ -1,5 +1,6 @@
 use std::sync::atomic::Ordering;
 
+use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_templates::{Document, ToSourceKind};
@@ -13,12 +14,7 @@ use notify::{Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher, r
 use crate::REBUILD;
 pub use crate::error::{Error, Result};
 use crate::events::GlobalEventHandler;
-use crate::runtime::Runtime;
-
-fn error_doc() -> Document {
-    let template = "text 'you goofed up'";
-    Document::new(template)
-}
+use crate::runtime::{Runtime, show_error};
 
 pub struct Builder<G> {
     factory: Factory,
@@ -29,6 +25,7 @@ pub struct Builder<G> {
     fps: u32,
     size: Size,
     global_event_handler: G,
+    hot_reload: bool,
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
@@ -49,13 +46,21 @@ impl<G: GlobalEventHandler> Builder<G> {
             fps: 30,
             size,
             global_event_handler,
+            hot_reload: true,
         }
     }
 
+    /// Disable hot reloading
+    pub fn disable_hot_reload(&mut self) {
+        self.hot_reload = false;
+    }
+
+    /// Register a new widget
     pub fn register_widget<T: Widget + Default + 'static>(&mut self, ident: &'static str) {
         self.factory.register_default::<T>(ident);
     }
 
+    /// Set the expected frame rate
     pub fn fps(&mut self, fps: u32) {
         self.fps = fps;
     }
@@ -128,6 +133,8 @@ impl<G: GlobalEventHandler> Builder<G> {
         Ok(())
     }
 
+    /// Assign a new event handler (make sure not to forget to add some mechanism to stop the
+    /// runtime)
     pub fn with_global_event_handler<Eh>(self, global_event_handler: Eh) -> Builder<Eh>
     where
         Eh: Fn(Event, &mut TabIndex<'_, '_>, &mut DeferredComponents) -> Option<Event>,
@@ -141,12 +148,14 @@ impl<G: GlobalEventHandler> Builder<G> {
             fps: self.fps,
             size: self.size,
             global_event_handler,
+            hot_reload: self.hot_reload,
         }
     }
 
-    pub fn finish<F>(mut self, mut f: F) -> Result<()>
+    pub fn finish<F, B>(mut self, backend: &mut B, mut f: F) -> Result<()>
     where
-        F: FnMut(&mut Runtime<G>) -> Result<()>,
+        F: FnMut(&mut Runtime<G>, &mut B) -> Result<()>,
+        B: Backend,
     {
         #[cfg(feature = "profile")]
         let _puffin_server = {
@@ -156,46 +165,72 @@ impl<G: GlobalEventHandler> Builder<G> {
             server
         };
 
-        let watcher = self.set_watcher()?;
+        let (blueprint, globals) = loop {
+            match self.document.compile() {
+                Ok(val) => break val,
+                Err(error) => {
+                    show_error(error, backend, &mut self.document)?;
+                }
+            }
+        };
+
+        let watcher = self.set_watcher(self.hot_reload)?;
 
         let mut inst = Runtime::new(
+            blueprint,
+            globals,
             self.component_registry,
             self.document,
-            error_doc(),
             self.factory,
             self.message_receiver,
             self.emitter,
-            Some(watcher),
+            watcher,
             self.size,
             self.fps,
             self.global_event_handler,
-        )?;
+        );
 
-        // TODO: this enables hot reload,
-        //       however with this enabled the `with_frame` function
-        //       on the runtime will repeat
+        // NOTE:
+        // this enables hot reload,
+        // however with this enabled the `with_frame` function
+        // on the runtime will repeat
         loop {
-            match f(&mut inst) {
+            match f(&mut inst, backend) {
                 Ok(()) => (),
                 e => match e {
                     Ok(_) => continue,
                     Err(Error::Stop) => break Ok(()),
-                    Err(Error::Template(_error)) => todo!(),
+                    Err(Error::Template(error)) => match show_error(error, backend, &mut inst.document) {
+                        Ok(_) => continue,
+                        Err(err) => panic!("error console failed: {err}"),
+                    },
                     Err(Error::Widget(err)) => panic!("this should not panic in the future: {err}"),
                     Err(e) => break Err(e),
                 },
             }
+
+            if !self.hot_reload {
+                break Ok(());
+            }
+
             match inst.reload() {
                 Ok(()) => continue,
                 Err(Error::Stop) => todo!(),
-                Err(Error::Template(_error)) => todo!(),
+                Err(Error::Template(error)) => match show_error(error, backend, &mut inst.document) {
+                    Ok(_) => continue,
+                    Err(err) => panic!("error console failed: {err}"),
+                },
                 Err(Error::Widget(_error)) => todo!(),
                 Err(e) => break Err(e),
             }
         }
     }
 
-    fn set_watcher(&mut self) -> Result<RecommendedWatcher> {
+    fn set_watcher(&mut self, hot_reload: bool) -> Result<Option<RecommendedWatcher>> {
+        if !hot_reload {
+            return Ok(None);
+        }
+
         let paths = self
             .document
             .template_paths()
@@ -222,6 +257,6 @@ impl<G: GlobalEventHandler> Builder<G> {
             }
         }
 
-        Ok(watcher)
+        Ok(Some(watcher))
     }
 }

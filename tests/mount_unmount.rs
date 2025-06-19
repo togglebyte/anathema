@@ -33,8 +33,8 @@ fn state_change() {
     let mut builder = Runtime::builder(doc, &backend);
     builder.component("index", tpl.to_template(), Comp, true).unwrap();
 
-    let res = builder.finish(|runtime| {
-        runtime.with_frame(&mut backend, |backend, mut frame| {
+    let res = builder.finish(&mut backend, |runtime, backend| {
+        runtime.with_frame(backend, |backend, mut frame| {
             frame.tick(backend)?;
             frame.force_rebuild().unwrap();
             Err(Error::Stop)
