@@ -239,6 +239,7 @@ pub struct AnyComponentContext<'frame, 'bp> {
     pub viewport: &'frame Viewport,
     pub strings: &'frame Strings,
     pub components: &'frame mut DeferredComponents,
+    stop_runtime: &'frame mut bool,
 }
 
 impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
@@ -254,6 +255,7 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
         state: Option<&'frame mut StateValue<Box<dyn State>>>,
         emitter: &'frame Emitter,
         viewport: &'frame Viewport,
+        stop_runtime: &'frame mut bool,
         strings: &'frame Strings,
     ) -> Self {
         Self {
@@ -269,11 +271,16 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
             emitter,
             viewport,
             strings,
+            stop_runtime,
         }
     }
 
     pub fn parent(&self) -> Option<Parent> {
         self.parent
+    }
+
+    pub fn stop_runtime(&mut self) {
+        *self.stop_runtime = true;
     }
 }
 

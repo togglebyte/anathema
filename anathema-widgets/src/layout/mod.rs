@@ -28,6 +28,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub floating_widgets: &'frame mut FloatingWidgets,
     pub component_registry: &'frame mut ComponentRegistry,
     pub new_components: Vec<(WidgetId, StateId)>,
+    pub stop_runtime: bool,
 }
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
@@ -53,6 +54,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             glyph_map,
             viewport,
             new_components: vec![],
+            stop_runtime: false,
         }
     }
 
