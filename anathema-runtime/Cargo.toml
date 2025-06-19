@@ -4,6 +4,9 @@ license = "MIT"
 description = "Anathema runtime"
 version.workspace = true
 edition.workspace = true
+documentation = "https://togglebyte.github.io/anathema-guide/"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
 anathema-geometry = { path = "../anathema-geometry", version = "0.2.1" }
