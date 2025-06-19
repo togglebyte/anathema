@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
+use string::{to_lower, to_upper};
+
 use crate::ValueKind;
+
+mod string;
 
 pub struct Function {
     inner: Box<dyn for<'bp> Fn(&[ValueKind<'bp>]) -> ValueKind<'bp>>,
@@ -36,7 +40,6 @@ pub struct FunctionTable {
 impl FunctionTable {
     pub fn new() -> Self {
         let mut inner = HashMap::new();
-        inner.insert("add".into(), Function::from(add));
         inner.insert("to_upper".into(), Function::from(to_upper));
         inner.insert("to_lower".into(), Function::from(to_lower));
         Self { inner }
@@ -49,45 +52,4 @@ impl FunctionTable {
     pub fn lookup(&self, ident: &str) -> Option<&Function> {
         self.inner.get(ident)
     }
-}
-
-fn add<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
-    if args.len() != 2 {
-        return ValueKind::Null;
-    }
-
-    let values = args[0].as_int().zip(args[1].as_int());
-
-    match values {
-        Some((lhs, rhs)) => ValueKind::Int(lhs + rhs),
-        None => ValueKind::Null,
-    }
-}
-
-fn to_upper<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
-    if args.len() != 1 {
-        return ValueKind::Null;
-    }
-
-    let mut buffer = String::new();
-    args[0].strings(|s| {
-        buffer.push_str(&s.to_uppercase());
-        true
-    });
-
-    ValueKind::Str(buffer.into())
-}
-
-fn to_lower<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
-    if args.len() != 1 {
-        return ValueKind::Null;
-    }
-
-    let mut buffer = String::new();
-    args[0].strings(|s| {
-        buffer.push_str(&s.to_lowercase());
-        true
-    });
-
-    ValueKind::Str(buffer.into())
 }
