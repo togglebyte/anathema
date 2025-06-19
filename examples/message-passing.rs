@@ -63,7 +63,6 @@ impl Component for Messages {
 fn main() {
     let doc = Document::new("@index");
     let mut backend = TuiBackend::builder()
-        // .enable_alt_screen()
         .enable_raw_mode()
         .enable_mouse()
         .hide_cursor()
@@ -87,5 +86,7 @@ fn main() {
         )
         .expect("failed to register index component");
 
-    builder.finish(|runtime| runtime.run(&mut backend)).unwrap();
+    builder
+        .finish(&mut backend, |runtime, backend| runtime.run(backend))
+        .unwrap();
 }

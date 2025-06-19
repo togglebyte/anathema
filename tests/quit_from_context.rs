@@ -26,7 +26,7 @@ fn quit_from_context() {
         )
         .unwrap();
 
-    let res = builder.finish(|runtime| runtime.run(&mut backend));
+    let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
     if let Err(e) = res {
         panic!("{e}");

@@ -26,7 +26,7 @@ fn state_change() {
         )
         .unwrap();
 
-    let res = builder.finish(|runtime| runtime.run(&mut backend));
+    let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
     assert!(backend.at(0, 0).is_char('9'));
 

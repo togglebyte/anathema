@@ -73,5 +73,7 @@ fn main() {
         )
         .unwrap();
 
-    builder.finish(|runtime| runtime.run(&mut backend)).unwrap();
+    builder
+        .finish(&mut backend, |runtime, backend| runtime.run(backend))
+        .unwrap();
 }
