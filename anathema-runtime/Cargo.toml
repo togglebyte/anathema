@@ -9,16 +9,16 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
-anathema-geometry = { path = "../anathema-geometry", version = "0.2.1" }
-anathema-debug = { path = "../anathema-debug", version = "0.2.1" }
-anathema-default-widgets = { path = "../anathema-default-widgets", version = "0.2.1" }
-anathema-backend = { path = "../anathema-backend", version = "0.2.1" }
-anathema-state = { path = "../anathema-state", version = "0.2.1" }
-anathema-store = { path = "../anathema-store", version = "0.2.1" }
-anathema-strings = { path = "../anathema-strings", version = "0.2.1" }
-anathema-templates = { path = "../anathema-templates", version = "0.2.1" }
-anathema-widgets = { path = "../anathema-widgets", version = "0.2.1" }
-anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.1" }
+anathema-geometry = { path = "../anathema-geometry", version = "0.2.2" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.2" }
+anathema-default-widgets = { path = "../anathema-default-widgets", version = "0.2.2" }
+anathema-backend = { path = "../anathema-backend", version = "0.2.2" }
+anathema-state = { path = "../anathema-state", version = "0.2.2" }
+anathema-store = { path = "../anathema-store", version = "0.2.2" }
+anathema-strings = { path = "../anathema-strings", version = "0.2.2" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.2" }
+anathema-widgets = { path = "../anathema-widgets", version = "0.2.2" }
+anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.2" }
 flume = { workspace = true }
 notify = { workspace = true }
 puffin = { version = "0.19.1", features = ["web"], optional = true }

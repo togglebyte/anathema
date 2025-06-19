@@ -9,13 +9,13 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
-anathema-debug = { path = "../anathema-debug", version = "0.2.1" }
-anathema-geometry = { path = "../anathema-geometry", version = "0.2.1" }
-anathema-state = { path = "../anathema-state", version = "0.2.1" }
-anathema-store = { path = "../anathema-store", version = "0.2.1" }
-anathema-strings = { path = "../anathema-strings", version = "0.2.1" }
-anathema-templates = { path = "../anathema-templates", version = "0.2.1" }
-anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.1" }
+anathema-debug = { path = "../anathema-debug", version = "0.2.2" }
+anathema-geometry = { path = "../anathema-geometry", version = "0.2.2" }
+anathema-state = { path = "../anathema-state", version = "0.2.2" }
+anathema-store = { path = "../anathema-store", version = "0.2.2" }
+anathema-strings = { path = "../anathema-strings", version = "0.2.2" }
+anathema-templates = { path = "../anathema-templates", version = "0.2.2" }
+anathema-value-resolver = { path = "../anathema-value-resolver", version = "0.2.2" }
 flume = { workspace = true }
 bitflags = { workspace = true }
 unicode-width = { workspace = true }
