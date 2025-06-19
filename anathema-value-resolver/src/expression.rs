@@ -7,6 +7,7 @@ use anathema_templates::Primitive;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
 
 use crate::AttributeStorage;
+use crate::functions::Function;
 use crate::value::ValueKind;
 
 macro_rules! or_null {
@@ -91,7 +92,10 @@ pub enum ValueExpr<'bp> {
     Op(Box<Self>, Box<Self>, Op),
     Either(Box<Self>, Box<Self>),
 
-    Call,
+    Call {
+        fun_ptr: &'bp Function,
+        args: Box<[ValueExpr<'bp>]>,
+    },
 
     Null,
 }
@@ -283,7 +287,10 @@ pub(crate) fn resolve_value<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Call -
         // -----------------------------------------------------------------------------
-        ValueExpr::Call => todo!(),
+        ValueExpr::Call { fun_ptr, args } => {
+            let args = args.iter().map(|arg| resolve_value(arg, ctx)).collect::<Box<_>>();
+            fun_ptr.invoke(&args)
+        }
 
         // -----------------------------------------------------------------------------
         //   - Null -
@@ -441,7 +448,7 @@ fn resolve_str<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_,
         },
         ValueExpr::Either(first, second) => resolve_str(first, ctx).or_else(|| resolve_str(second, ctx)),
         ValueExpr::Null => None,
-        ValueExpr::Call => todo!(),
+        ValueExpr::Call { .. } => todo!(),
         _ => None,
     }
 }

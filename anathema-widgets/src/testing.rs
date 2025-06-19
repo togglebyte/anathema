@@ -5,7 +5,7 @@ use anathema_geometry::Size;
 use anathema_state::States;
 use anathema_store::tree::root_node;
 use anathema_templates::Document;
-use anathema_value_resolver::{AttributeStorage, Scope};
+use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 
 use crate::components::ComponentRegistry;
 use crate::layout::{LayoutCtx, Viewport};
@@ -22,6 +22,7 @@ where
     let (blueprint, globals) = doc.compile().unwrap();
     let globals = Box::leak(Box::new(globals));
     let blueprint = Box::leak(Box::new(blueprint));
+    let function_table = Box::leak(Box::new(FunctionTable::new()));
 
     let mut factory = Factory::new();
     factory.register_default::<Many>("many");
@@ -49,6 +50,7 @@ where
         &mut floating,
         &mut glyph_map,
         &mut viewport,
+        function_table,
     );
 
     let mut ctx = layout_ctx.eval_ctx(None);

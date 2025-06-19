@@ -1,7 +1,7 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{State, StateId, States};
 use anathema_templates::{ComponentBlueprintId, Globals};
-use anathema_value_resolver::{AttributeStorage, Attributes};
+use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable};
 use display::DISPLAY;
 
 pub use self::constraints::Constraints;
@@ -29,6 +29,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub component_registry: &'frame mut ComponentRegistry,
     pub new_components: Vec<(WidgetId, StateId)>,
     pub stop_runtime: bool,
+    pub(super) function_table: &'bp FunctionTable,
 }
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
@@ -42,6 +43,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         floating_widgets: &'frame mut FloatingWidgets,
         glyph_map: &'frame mut GlyphMap,
         viewport: &'frame mut Viewport,
+        function_table: &'bp FunctionTable,
     ) -> Self {
         Self {
             states,
@@ -55,6 +57,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             viewport,
             new_components: vec![],
             stop_runtime: false,
+            function_table,
         }
     }
 
@@ -73,6 +76,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             factory: self.factory,
             parent_component,
             new_components: &mut self.new_components,
+            function_table: self.function_table,
         }
     }
 }
@@ -86,6 +90,7 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) components: &'frame mut Components,
     pub(super) globals: &'bp Globals,
     pub(super) factory: &'frame Factory,
+    pub(super) function_table: &'bp FunctionTable,
     pub(super) parent_component: Option<WidgetId>,
 }
 

@@ -7,7 +7,7 @@ use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_value_resolver::{AttributeStorage, Scope};
+use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
@@ -53,6 +53,7 @@ pub struct Runtime<G> {
     pub(super) _watcher: Option<RecommendedWatcher>,
     pub(super) deferred_components: DeferredComponents,
     pub(super) global_event_handler: G,
+    pub(super) function_table: FunctionTable,
 }
 
 impl Runtime<()> {
@@ -75,6 +76,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         size: Size,
         fps: u32,
         global_event_handler: G,
+        function_table: FunctionTable,
     ) -> Self {
         let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
 
@@ -98,6 +100,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             deferred_components: DeferredComponents::new(),
             sleep_micros,
             global_event_handler,
+            function_table,
         }
     }
 
@@ -169,6 +172,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             &mut self.floating_widgets,
             &mut self.glyph_map,
             &mut self.viewport,
+            &self.function_table,
         );
 
         let inst = Frame {
