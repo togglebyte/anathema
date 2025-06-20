@@ -138,7 +138,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             loop {
                 frame.tick(backend)?;
-                if frame.stop {
+                if frame.layout_ctx.stop_runtime {
                     return Err(Error::Stop);
                 }
 
@@ -191,7 +191,6 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             dt: &mut self.dt,
             needs_layout: true,
-            stop: false,
 
             global_event_handler: &self.global_event_handler,
             tabindex: None,
@@ -231,7 +230,6 @@ pub struct Frame<'rt, 'bp, G> {
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
     needs_layout: bool,
-    stop: bool,
     global_event_handler: &'rt G,
     pub tabindex: Option<Index>,
 }
@@ -280,7 +278,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let Some(event) = self.handle_global_event(event) else { return };
         if let Event::Stop = event {
-            self.stop = true;
+            self.layout_ctx.stop_runtime = true;
             return;
         }
 
@@ -327,17 +325,20 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::GlobalProfiler::lock().new_frame();
 
         let now = Instant::now();
-        self.cycle(backend)?;
         self.init_new_components();
-        self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.poll_events(elapsed, now, backend);
         self.drain_deferred_commands();
         self.drain_assoc_events();
+
+        // TODO:
+        // this secondary call is here to deal with changes causing changes
+        // which happens when values are removed or inserted and indices needs updating
         self.apply_changes()?;
-        // TODO: this secondary call is here to deal with changes causing changes
-        //       which happens when values are removed or inserted and indices needs updating
         self.apply_changes()?;
+
+        self.tick_components(self.dt.elapsed());
+        self.cycle(backend)?;
 
         *self.dt = Instant::now();
 
@@ -403,6 +404,11 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 self.layout_ctx.viewport.resize(size);
                 self.needs_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
+            }
+
+            if let Event::Stop = event {
+                self.layout_ctx.stop_runtime = true;
+                break;
             }
 
             self.event(event);
@@ -491,8 +497,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     self.with_component(widget_id, state_id, |comp, children, ctx| {
                         comp.dyn_component.any_message(children, ctx, msg);
                     });
+                    break;
                 }
-                break;
             }
         }
     }
@@ -564,16 +570,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 let widget_id = value_id.key();
 
                 if let Some(widget) = tree.get_mut(widget_id) {
-                    let kind = &widget.kind;
-                    match kind {
-                        WidgetKind::Element(_element) => {}
-                        WidgetKind::For(_forloop) => {}
-                        WidgetKind::Iteration(_) => {}
-                        _ => (), // WidgetKind::ControlFlow(control_flow) => todo!(),
-                                 // WidgetKind::ControlFlowContainer(_) => todo!(),
-                                 // WidgetKind::Component(component) => todo!(),
-                                 // WidgetKind::Slot => todo!(),
-                    }
                     if let WidgetKind::Element(element) = &mut widget.kind {
                         element.invalidate_cache();
                     }

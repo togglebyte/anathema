@@ -13,21 +13,25 @@ repository = "https://github.com/togglebyte/anathema"
 publish = true
 
 [dependencies]
-anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.2" }
-anathema-backend = { path = "./anathema-backend", version = "0.2.2" }
-anathema-runtime = { path = "./anathema-runtime", version = "0.2.2" }
-anathema-state = { path = "./anathema-state", version = "0.2.2" }
-anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.2" }
-anathema-store = { path = "./anathema-store", version = "0.2.2" }
-anathema-templates = { path = "./anathema-templates", version = "0.2.2" }
-anathema-widgets = { path = "./anathema-widgets", version = "0.2.2" }
-anathema-geometry = { path = "./anathema-geometry", version = "0.2.2" }
-anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.2" }
+anathema-backend = { workspace = true }
+anathema-default-widgets = { workspace = true }
+anathema-geometry = { workspace = true }
+anathema-runtime = { workspace = true }
+anathema-state = { workspace = true }
+anathema-state-derive = { workspace = true }
+anathema-store = { workspace = true }
+anathema-templates = { workspace = true }
+anathema-value-resolver = { workspace = true }
+anathema-widgets = { workspace = true }
+
+[dev-dependencies]
+# anathema-debug = { path = "anathema-debug" }
+anathema-testutils = { path = "anathema-testutils" }
 
 [features]
 default = []
-profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
-# filelog = ["anathema-debug/filelog"]
+# profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
+# filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
 [lints]
 workspace = true
@@ -42,13 +46,21 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
-anathema-debug = { path = "anathema-testutils" }
+anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.2" }
+anathema-backend = { path = "./anathema-backend", version = "0.2.2" }
+anathema-runtime = { path = "./anathema-runtime", version = "0.2.2" }
+anathema-state = { path = "./anathema-state", version = "0.2.2" }
+anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.2" }
+anathema-store = { path = "./anathema-store", version = "0.2.2" }
+anathema-templates = { path = "./anathema-templates", version = "0.2.2" }
+anathema-widgets = { path = "./anathema-widgets", version = "0.2.2" }
+anathema-geometry = { path = "./anathema-geometry", version = "0.2.2" }
+anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.2" }
 
 [workspace]
 members = [
     "anathema-backend", 
     "anathema-runtime", 
-    "anathema-debug", 
     "anathema-default-widgets", 
     "anathema-geometry", 
     "anathema-state",
@@ -70,9 +82,6 @@ should_implement_trait = "allow"
 type_complexity = "allow"
 too_many_arguments = "allow"
 wrong_self_convention = "allow"
-
-[dev-dependencies]
-anathema-testutils = { path = "anathema-testutils" }
 
 [package.metadata.release]
 shared-version = true

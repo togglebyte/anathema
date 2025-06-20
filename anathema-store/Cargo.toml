@@ -9,7 +9,7 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
-anathema-debug = { path = "../anathema-debug", version = "0.2.2" }
+# anathema-debug = { path = "../anathema-debug", version = "0.2.2" }
 
 [lints]
 workspace = true

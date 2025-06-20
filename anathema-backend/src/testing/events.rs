@@ -12,6 +12,13 @@ impl EventsMut<'_> {
         self
     }
 
+    pub fn next_frames(self, count: usize) -> Self {
+        for _ in 0..count {
+            self.event_queue.push_back(None);
+        }
+        self
+    }
+
     pub fn stop(self) -> Self {
         self.event_queue.push_back(Some(Event::Stop));
         self

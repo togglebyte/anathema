@@ -159,19 +159,26 @@ impl State for Box<dyn State> {
     }
 }
 
-pub trait AnyMap {
+pub trait AnyMap: 'static {
     fn lookup(&self, key: &str) -> Option<PendingValue>;
 
     fn is_empty(&self) -> bool;
 }
 
-pub trait AnyList {
+pub trait AnyList: 'static {
     fn lookup(&self, index: usize) -> Option<PendingValue>;
 
     fn len(&self) -> usize;
 
     fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+impl dyn AnyList {
+    pub fn iter(&self) -> impl Iterator<Item = PendingValue> {
+        let len = self.len();
+        (0..len).filter_map(|i| self.lookup(i))
     }
 }
 

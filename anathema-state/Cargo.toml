@@ -9,9 +9,8 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
-anathema-debug = { path = "../anathema-debug", version = "0.2.2" }
-anathema-state-derive = { path = "../anathema-state-derive", version = "0.2.2" }
-anathema-store = { path = "../anathema-store", version = "0.2.2" }
+anathema-state-derive = { workspace = true }
+anathema-store = { workspace = true }
 
 [lints]
 workspace = true
