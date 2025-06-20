@@ -234,10 +234,7 @@ impl ValueKind<'_> {
     }
 
     pub fn is_null(&self) -> bool {
-        match self {
-            ValueKind::Null => true,
-            _ => false,
-        }
+        matches!(self, ValueKind::Null)
     }
 
     pub fn strings<F>(&self, mut f: F)
@@ -348,7 +345,7 @@ impl ValueKind<'_> {
             Type::List => match self {
                 ValueKind::List(rhs) => dyn_static_eq(pending, rhs),
                 ValueKind::DynList(rhs) => rhs.pending_eq(pending),
-                _ => return false,
+                _ => false,
             },
             Type::Unit => self.is_null(),
             Type::Composite => match self {
