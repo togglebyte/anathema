@@ -4,6 +4,7 @@ use anathema::component::*;
 
 #[derive(Debug, State, Default)]
 pub struct BasicState {
+    pub boolean: Value<bool>,
     pub number: Value<u32>,
     pub string: Value<String>,
 }

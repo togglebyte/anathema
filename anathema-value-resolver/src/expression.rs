@@ -230,8 +230,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
             let lhs = resolve_value(lhs, ctx);
             let rhs = resolve_value(rhs, ctx);
             let b = match equality {
-                Equality::Eq => lhs == rhs,
-                Equality::NotEq => lhs != rhs,
+                Equality::Eq => lhs.value_eq(&rhs),
+                Equality::NotEq => !lhs.value_eq(&rhs),
                 Equality::Gt => lhs > rhs,
                 Equality::Gte => lhs >= rhs,
                 Equality::Lt => lhs < rhs,

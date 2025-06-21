@@ -45,6 +45,7 @@ fn tabindex_change() {
 
     backend
         .events()
+        .next()
         .press(tab())
         .next()
         .press(tab())
@@ -60,6 +61,8 @@ fn tabindex_change() {
         .finish(&mut backend, |runtime, backend| {
             runtime.with_frame(backend, |backend, mut frame| {
                 // Initial tick to build the tree
+                frame.tick(backend)?;
+
                 assert!(frame.tabindex.is_none());
                 frame.tick(backend)?;
                 comp_index(1, frame.tabindex.clone());
@@ -95,6 +98,8 @@ fn tabindex_single_component() {
         .finish(&mut backend, |runtime, backend| {
             runtime.with_frame(backend, |backend, mut frame| {
                 // Initial tick to build the tree
+                frame.tick(backend)?;
+
                 assert!(frame.tabindex.is_none());
                 frame.tick(backend)?;
                 comp_index(1, frame.tabindex.clone());

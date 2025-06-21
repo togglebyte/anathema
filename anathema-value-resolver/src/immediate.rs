@@ -15,11 +15,8 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
     fn lookup(&self, ident: &str) -> ValueExpr<'bp> {
         match ident {
             "state" => {
-                // TODO: filthy unwraps all over this function
-                let state_id = self.ctx.scope.get_state().unwrap();
-                // TODO: There is yet to be a requirement for a state in the root
-                //       so this unwrap can't become an expect until that's in place
-                let state = self.ctx.states.get(state_id).unwrap();
+                let Some(state_id) = self.ctx.scope.get_state() else { return ValueExpr::Null };
+                let Some(state) = self.ctx.states.get(state_id) else { return ValueExpr::Null };
                 let value = state.reference();
                 value.into()
             }
