@@ -149,7 +149,7 @@ impl<T: State> Value<List<T>> {
 
     /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
-        let value = self.with_mut(|list| list.inner.pop_back());
+        let value = self.with_mut(|list| list.inner.pop_front());
         if value.is_some() {
             changed(self.key, Change::Removed(0));
         }
@@ -294,11 +294,13 @@ mod test {
     fn notify_pop_front() {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(1);
+        list.push_back(2);
         list.reference().subscribe(Subscriber::ZERO);
-        list.pop_front();
+        let front = list.pop_front();
 
         let change = drain_changes().remove(0);
         assert!(matches!(change, (_, Change::Removed(0))));
+        assert_eq!(*front.unwrap().to_ref(), 1);
     }
 
     #[test]
