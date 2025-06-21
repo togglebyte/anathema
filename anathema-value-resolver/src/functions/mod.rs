@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use string::{to_lower, to_upper};
-
 use crate::ValueKind;
 
+mod list;
+mod number;
 mod string;
 
 pub struct Function {
@@ -40,8 +40,11 @@ pub struct FunctionTable {
 impl FunctionTable {
     pub fn new() -> Self {
         let mut inner = HashMap::new();
-        inner.insert("to_upper".into(), Function::from(to_upper));
-        inner.insert("to_lower".into(), Function::from(to_lower));
+        inner.insert("to_upper".into(), Function::from(string::to_upper));
+        inner.insert("to_lower".into(), Function::from(string::to_lower));
+        inner.insert("to_str".into(), Function::from(string::to_str));
+        inner.insert("to_int".into(), Function::from(number::to_int));
+        inner.insert("contains".into(), Function::from(list::contains));
         Self { inner }
     }
 
@@ -51,5 +54,27 @@ impl FunctionTable {
 
     pub fn lookup(&self, ident: &str) -> Option<&Function> {
         self.inner.get(ident)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::ValueKind;
+
+    pub(crate) fn list<T, U>(items: T) -> ValueKind<'static>
+    where
+        U: Into<ValueKind<'static>>,
+        T: IntoIterator<Item = U>,
+    {
+        let inner = items.into_iter().map(Into::into).collect::<Box<[ValueKind<'_>]>>();
+
+        ValueKind::List(inner)
+    }
+
+    pub(crate) fn value<T>(val: T) -> ValueKind<'static>
+    where
+        T: Into<ValueKind<'static>>,
+    {
+        val.into()
     }
 }

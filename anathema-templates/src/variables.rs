@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-#[cfg(not(target_os = "windows"))]
-use anathema_debug::DebugWriter;
 use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::expressions::Expression;
@@ -397,57 +395,6 @@ impl From<Variables> for HashMap<String, Variable> {
         }
 
         hm
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
-pub struct ScopeDebug<'a> {
-    level: usize,
-    scope: &'a Scope,
-    store: &'a Slab<VarId, Variable>,
-}
-
-#[cfg(not(target_os = "windows"))]
-impl DebugWriter for ScopeDebug<'_> {
-    fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        let indent = " ".repeat(self.level * 4);
-
-        for (key, var_ids) in self.scope.variables.iter() {
-            let iter = var_ids.iter().filter_map(|id| self.store.get(*id));
-
-            for (cntr, val) in iter.enumerate() {
-                if cntr > 0 {
-                    writeln!(output, ", ")?;
-                }
-                writeln!(output, "{indent}{key}: {val:?}")?;
-            }
-        }
-
-        for child in &self.scope.children {
-            ScopeDebug {
-                level: self.level + 1,
-                scope: child,
-                store: self.store,
-            }
-            .write(output)?;
-        }
-
-        Ok(())
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
-pub struct VariablesDebug<'a>(pub(crate) &'a Variables);
-
-#[cfg(not(target_os = "windows"))]
-impl DebugWriter for VariablesDebug<'_> {
-    fn write(&mut self, output: &mut impl std::fmt::Write) -> std::fmt::Result {
-        ScopeDebug {
-            level: 0,
-            scope: &self.0.root.0,
-            store: &self.0.store,
-        }
-        .write(output)
     }
 }
 

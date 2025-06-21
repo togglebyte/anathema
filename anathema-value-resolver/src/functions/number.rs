@@ -1,0 +1,66 @@
+use crate::ValueKind;
+
+pub(super) fn to_int<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
+    if args.len() != 1 {
+        return ValueKind::Null;
+    }
+
+    match &args[0] {
+        ValueKind::Int(i) => ValueKind::Int(*i),
+        ValueKind::Float(f) => ValueKind::Int(*f as i64),
+        ValueKind::Bool(b) if !b => ValueKind::Int(0),
+        ValueKind::Bool(_) => ValueKind::Int(1),
+        ValueKind::Char(c) => match c.to_digit(10) {
+            Some(i) => ValueKind::Int(i as i64),
+            None => ValueKind::Null,
+        },
+        ValueKind::Hex(hex) => ValueKind::Int(hex.as_u32() as i64),
+        ValueKind::Str(s) => match s.parse() {
+            Ok(i) => ValueKind::Int(i),
+            Err(_) => ValueKind::Null,
+        },
+        ValueKind::Color(_)
+        | ValueKind::Null
+        | ValueKind::Map
+        | ValueKind::Attributes
+        | ValueKind::List(_)
+        | ValueKind::DynList(_)
+        | ValueKind::DynMap(_)
+        | ValueKind::Composite(_) => ValueKind::Null,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::functions::test::value;
+
+    #[test]
+    fn str_to_int() {
+        let arg = value("123");
+        let output = to_int(&[arg]);
+        assert_eq!(ValueKind::Int(123), output);
+
+        let arg = value("not a number");
+        let output = to_int(&[arg]);
+        assert_eq!(ValueKind::Null, output);
+    }
+
+    #[test]
+    fn char_to_int() {
+        let arg = value('4');
+        let output = to_int(&[arg]);
+        assert_eq!(ValueKind::Int(4), output);
+
+        let arg = value('G');
+        let output = to_int(&[arg]);
+        assert_eq!(ValueKind::Null, output);
+    }
+
+    #[test]
+    fn float_to_int() {
+        let arg = value(1.1234);
+        let output = to_int(&[arg]);
+        assert_eq!(ValueKind::Int(1), output);
+    }
+}
