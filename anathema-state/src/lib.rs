@@ -69,6 +69,10 @@ impl Hex {
     pub const fn blue_f32(&self) -> f32 {
         self.b as f32 / u8::MAX as f32
     }
+
+    pub fn as_u32(&self) -> u32 {
+        ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
+    }
 }
 
 impl Display for Hex {

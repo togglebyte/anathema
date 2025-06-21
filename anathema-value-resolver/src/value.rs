@@ -108,7 +108,6 @@ impl<'bp> Value<'bp> {
         // {}           = false
         // Some(bool)   = bool
         // _            = true
-
         self.kind.truthiness()
     }
 
@@ -229,6 +228,15 @@ impl ValueKind<'_> {
         Some(i)
     }
 
+    pub fn as_list(&self) -> Option<&[Self]> {
+        let ValueKind::List(list) = &self else { return None };
+        Some(list)
+    }
+
+    pub fn is_null(&self) -> bool {
+        matches!(self, ValueKind::Null)
+    }
+
     pub fn strings<F>(&self, mut f: F)
     where
         F: FnMut(&str) -> bool,
@@ -278,6 +286,75 @@ impl ValueKind<'_> {
             _ => true,
         }
     }
+
+    pub(crate) fn value_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ValueKind::Int(lhs), ValueKind::Int(rhs)) => lhs == rhs,
+            (ValueKind::Float(lhs), ValueKind::Float(rhs)) => lhs == rhs,
+            (ValueKind::Bool(lhs), ValueKind::Bool(rhs)) => lhs == rhs,
+            (ValueKind::Char(lhs), ValueKind::Char(rhs)) => lhs == rhs,
+            (ValueKind::Hex(lhs), ValueKind::Hex(rhs)) => lhs == rhs,
+            (ValueKind::Color(lhs), ValueKind::Color(rhs)) => lhs == rhs,
+            (ValueKind::Str(lhs), ValueKind::Str(rhs)) => lhs == rhs,
+            (ValueKind::Null, ValueKind::Null) => true,
+            (ValueKind::Attributes, ValueKind::Attributes) => true,
+            (ValueKind::List(lhs), ValueKind::List(rhs)) => lhs == rhs,
+            (ValueKind::DynList(lhs), ValueKind::DynList(rhs)) => lhs.pending_eq(*rhs),
+            (ValueKind::DynList(lhs), ValueKind::List(rhs)) => dyn_static_eq(*lhs, rhs),
+            (ValueKind::List(lhs), ValueKind::DynList(rhs)) => dyn_static_eq(*rhs, lhs),
+            (ValueKind::DynMap(lhs), ValueKind::DynMap(rhs)) => lhs.pending_eq(*rhs),
+            (ValueKind::Composite(lhs), ValueKind::Composite(rhs)) => lhs.pending_eq(*rhs),
+            _ => false,
+        }
+    }
+
+    pub(crate) fn compare_pending(&self, pending: PendingValue) -> bool {
+        let type_info = pending.type_info();
+        let Some(rhs) = pending.as_state() else { return false };
+
+        match type_info {
+            Type::Int => compare_owned(self.as_int(), rhs.as_int()),
+            Type::Float => compare_owned(self.as_float(), rhs.as_float()),
+            Type::Char => compare_owned(self.as_char(), rhs.as_char()),
+            Type::Bool => compare_owned(self.as_bool(), rhs.as_bool()),
+            Type::Hex => compare_owned(self.as_hex(), rhs.as_hex()),
+            Type::Color => compare_owned(self.as_color(), rhs.as_color()),
+            Type::String => compare_owned(self.as_str(), rhs.as_str()),
+            Type::Map => false,
+            Type::List => match self {
+                ValueKind::List(rhs) => dyn_static_eq(pending, rhs),
+                ValueKind::DynList(rhs) => rhs.pending_eq(pending),
+                _ => false,
+            },
+            Type::Composite => match self {
+                ValueKind::Composite(pending_value) => pending.pending_eq(*pending_value),
+                _ => false,
+            },
+            Type::Unit => self.is_null(),
+            Type::Maybe => unreachable!("ValueKind can never be a Maybe as it's the final value"),
+        }
+    }
+}
+
+fn compare_owned<T: PartialEq>(lhs: Option<T>, rhs: Option<T>) -> bool {
+    lhs.is_some() && lhs == rhs
+}
+
+fn dyn_static_eq(pending: PendingValue, val_kind: &[ValueKind<'_>]) -> bool {
+    let Some(state) = pending.as_state() else { return false };
+    let Some(lhs) = state.as_any_list() else { return false };
+
+    if lhs.len() != val_kind.len() {
+        return false;
+    }
+
+    for (lhs, rhs) in lhs.iter().zip(val_kind) {
+        if !rhs.compare_pending(lhs) {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn dyn_string<F>(value: PendingValue, f: &mut F) -> bool

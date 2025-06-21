@@ -4,6 +4,7 @@ use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
 use anathema_templates::{Document, ToSourceKind};
+use anathema_value_resolver::{Function, FunctionTable};
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{Component, ComponentId, ComponentRegistry, Emitter, ViewMessage};
@@ -26,6 +27,7 @@ pub struct Builder<G> {
     size: Size,
     global_event_handler: G,
     hot_reload: bool,
+    function_table: FunctionTable,
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
@@ -47,6 +49,7 @@ impl<G: GlobalEventHandler> Builder<G> {
             size,
             global_event_handler,
             hot_reload: true,
+            function_table: FunctionTable::new(),
         }
     }
 
@@ -149,6 +152,7 @@ impl<G: GlobalEventHandler> Builder<G> {
             size: self.size,
             global_event_handler,
             hot_reload: self.hot_reload,
+            function_table: self.function_table,
         }
     }
 
@@ -188,6 +192,7 @@ impl<G: GlobalEventHandler> Builder<G> {
             self.size,
             self.fps,
             self.global_event_handler,
+            self.function_table,
         );
 
         // NOTE:
@@ -258,5 +263,9 @@ impl<G: GlobalEventHandler> Builder<G> {
         }
 
         Ok(Some(watcher))
+    }
+
+    pub fn add_function(&mut self, ident: impl Into<String>, f: impl Into<Function>) {
+        self.function_table.insert(ident, f)
     }
 }

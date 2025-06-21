@@ -7,6 +7,7 @@ use anathema_templates::Primitive;
 use anathema_templates::expressions::{Equality, LogicalOp, Op};
 
 use crate::AttributeStorage;
+use crate::functions::Function;
 use crate::value::ValueKind;
 
 macro_rules! or_null {
@@ -40,31 +41,6 @@ pub enum Kind<T> {
     Dyn(PendingValue),
 }
 
-impl<'bp> Kind<&'bp str> {
-    pub(crate) fn with_str<F, U>(&self, f: F) -> Option<U>
-    where
-        F: Fn(&str) -> U,
-    {
-        match self {
-            Kind::Static(s) => Some(f(s)),
-            Kind::Dyn(pending_value) => pending_value
-                .as_state()
-                .map(|s| f(s.as_str().expect("type can not change at runtime"))),
-        }
-    }
-
-    pub(crate) fn to_str(&self) -> Cow<'bp, str> {
-        match self {
-            Kind::Static(s) => Cow::Borrowed(s),
-            Kind::Dyn(pending_value) => pending_value
-                .as_state()
-                .map(|s| s.as_str().unwrap().to_owned())
-                .unwrap()
-                .into(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum ValueExpr<'bp> {
     Bool(Kind<bool>),
@@ -91,7 +67,10 @@ pub enum ValueExpr<'bp> {
     Op(Box<Self>, Box<Self>, Op),
     Either(Box<Self>, Box<Self>),
 
-    Call,
+    Call {
+        fun_ptr: &'bp Function,
+        args: Box<[ValueExpr<'bp>]>,
+    },
 
     Null,
 }
@@ -214,7 +193,6 @@ pub(crate) fn resolve_value<'a, 'bp>(
         // -----------------------------------------------------------------------------
         ValueExpr::Not(value_expr) => {
             let value = resolve_value(value_expr, ctx);
-            // let ValueKind::Bool(val) = resolve_value(value_expr, ctx) else { return ValueKind::Null };
             ValueKind::Bool(!value.truthiness())
         }
         ValueExpr::Negative(value_expr) => match resolve_value(value_expr, ctx) {
@@ -226,8 +204,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
             let lhs = resolve_value(lhs, ctx);
             let rhs = resolve_value(rhs, ctx);
             let b = match equality {
-                Equality::Eq => lhs == rhs,
-                Equality::NotEq => lhs != rhs,
+                Equality::Eq => lhs.value_eq(&rhs),
+                Equality::NotEq => !lhs.value_eq(&rhs),
                 Equality::Gt => lhs > rhs,
                 Equality::Gte => lhs >= rhs,
                 Equality::Lt => lhs < rhs,
@@ -283,7 +261,10 @@ pub(crate) fn resolve_value<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Call -
         // -----------------------------------------------------------------------------
-        ValueExpr::Call => todo!(),
+        ValueExpr::Call { fun_ptr, args } => {
+            let args = args.iter().map(|arg| resolve_value(arg, ctx)).collect::<Box<_>>();
+            fun_ptr.invoke(&args)
+        }
 
         // -----------------------------------------------------------------------------
         //   - Null -
@@ -341,7 +322,7 @@ fn resolve_index<'bp>(
             };
 
             let key = or_null!(resolve_str(index, ctx));
-            let val = key.with_str(|key| map.lookup(key)).flatten();
+            let val = map.lookup(&key);
 
             let val = match val {
                 Some(key) => key,
@@ -386,10 +367,7 @@ fn resolve_index<'bp>(
         ValueExpr::Attributes(widget_id) => {
             let key = or_null!(resolve_str(index, ctx));
             let attributes = ctx.attribute_storage.get(*widget_id);
-            match key.with_str(|key| attributes.get_value_expr(key)).flatten() {
-                Some(value) => value,
-                None => ValueExpr::Null,
-            }
+            or_null!(attributes.get_value_expr(&key))
         }
         ValueExpr::List(list) => {
             let index = resolve_int(index, ctx);
@@ -397,7 +375,7 @@ fn resolve_index<'bp>(
         }
         ValueExpr::Map(hash_map) => {
             let key = or_null!(resolve_str(index, ctx));
-            or_null!(hash_map.get(&*key.to_str()).cloned())
+            or_null!(hash_map.get(&*key).cloned())
         }
         ValueExpr::Index(inner_src, inner_index) => {
             let src = resolve_index(inner_src, inner_index, ctx);
@@ -432,16 +410,9 @@ fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_,
     }
 }
 
-fn resolve_str<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Kind<&'bp str>> {
-    match index {
-        ValueExpr::Str(kind) => Some(*kind),
-        ValueExpr::Index(src, index) => match resolve_index(src, index, ctx) {
-            ValueExpr::Str(kind) => Some(kind),
-            _ => None,
-        },
-        ValueExpr::Either(first, second) => resolve_str(first, ctx).or_else(|| resolve_str(second, ctx)),
-        ValueExpr::Null => None,
-        ValueExpr::Call => todo!(),
+fn resolve_str<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Cow<'bp, str>> {
+    match resolve_value(index, ctx) {
+        ValueKind::Str(s) => Some(s),
         _ => None,
     }
 }

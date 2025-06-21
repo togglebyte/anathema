@@ -15,11 +15,8 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
     fn lookup(&self, ident: &str) -> ValueExpr<'bp> {
         match ident {
             "state" => {
-                // TODO: filthy unwraps all over this function
-                let state_id = self.ctx.scope.get_state().unwrap();
-                // TODO: There is yet to be a requirement for a state in the root
-                //       so this unwrap can't become an expect until that's in place
-                let state = self.ctx.states.get(state_id).unwrap();
+                let Some(state_id) = self.ctx.scope.get_state() else { return ValueExpr::Null };
+                let Some(state) = self.ctx.states.get(state_id) else { return ValueExpr::Null };
                 let value = state.reference();
                 value.into()
             }
@@ -70,7 +67,33 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
                 let index = self.resolve(index);
                 ValueExpr::Index(source.into(), index.into())
             }
-            Expression::Call { .. } => unimplemented!(),
+            Expression::Call { fun, args } => {
+                match &**fun {
+                    // function(args)
+                    Expression::Ident(fun) => match self.ctx.lookup_function(fun) {
+                        Some(fun_ptr) => {
+                            let args = args.iter().map(|arg| self.resolve(arg)).collect::<Box<_>>();
+                            ValueExpr::Call { fun_ptr, args }
+                        }
+                        None => ValueExpr::Null,
+                    },
+                    // some.value.function(args)
+                    Expression::Index(lhs, rhs) => {
+                        let first_arg = self.resolve(lhs);
+                        let Expression::Str(fun) = &**rhs else { return ValueExpr::Null };
+                        match self.ctx.lookup_function(fun) {
+                            Some(fun_ptr) => {
+                                let args = std::iter::once(first_arg)
+                                    .chain(args.iter().map(|arg| self.resolve(arg)))
+                                    .collect::<Box<_>>();
+                                ValueExpr::Call { fun_ptr, args }
+                            }
+                            None => ValueExpr::Null,
+                        }
+                    }
+                    _ => ValueExpr::Null,
+                }
+            }
         }
     }
 }

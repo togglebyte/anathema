@@ -64,6 +64,7 @@ pub(crate) struct TestCase<'a, 'bp> {
     globals: &'static Globals,
     states: &'a mut States,
     pub attributes: AttributeStorage<'bp>,
+    function_table: &'static FunctionTable,
 }
 
 impl<'a, 'bp> TestCase<'a, 'bp> {
@@ -75,20 +76,21 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
             globals: Box::leak(globals.into()),
             states,
             attributes,
+            function_table: Box::leak(FunctionTable::new().into()),
         }
     }
 
     pub(crate) fn eval(&self, expr: &'bp Expression) -> crate::value::Value<'bp> {
         let state_id = StateId::ZERO;
         let scope = Scope::with_component(state_id, Key::ZERO, None);
-        let ctx = ResolverCtx::new(self.globals, &scope, self.states, &self.attributes);
+        let ctx = ResolverCtx::new(self.globals, &scope, self.states, &self.attributes, self.function_table);
         resolve(expr, &ctx, Subscriber::ZERO)
     }
 
     pub fn set_attribute(&mut self, key: &'bp str, expr: &'bp Expression) {
         let scope = Scope::with_component(StateId::ZERO, Key::ZERO, None);
         self.attributes.with_mut(Key::ZERO, |attributes, storage| {
-            let ctx = ResolverCtx::new(self.globals, &scope, self.states, storage);
+            let ctx = ResolverCtx::new(self.globals, &scope, self.states, storage, self.function_table);
             attributes.insert_with(ValueKey::Attribute(key), |_index| resolve(expr, &ctx, Subscriber::ZERO));
         });
     }

@@ -7,7 +7,7 @@ use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Globals};
-use anathema_value_resolver::{AttributeStorage, Scope};
+use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
@@ -53,6 +53,7 @@ pub struct Runtime<G> {
     pub(super) _watcher: Option<RecommendedWatcher>,
     pub(super) deferred_components: DeferredComponents,
     pub(super) global_event_handler: G,
+    pub(super) function_table: FunctionTable,
 }
 
 impl Runtime<()> {
@@ -75,6 +76,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         size: Size,
         fps: u32,
         global_event_handler: G,
+        function_table: FunctionTable,
     ) -> Self {
         let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
 
@@ -98,6 +100,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             deferred_components: DeferredComponents::new(),
             sleep_micros,
             global_event_handler,
+            function_table,
         }
     }
 
@@ -135,7 +138,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             loop {
                 frame.tick(backend)?;
-                if frame.stop {
+                if frame.layout_ctx.stop_runtime {
                     return Err(Error::Stop);
                 }
 
@@ -169,6 +172,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             &mut self.floating_widgets,
             &mut self.glyph_map,
             &mut self.viewport,
+            &self.function_table,
         );
 
         let inst = Frame {
@@ -187,7 +191,6 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             dt: &mut self.dt,
             needs_layout: true,
-            stop: false,
 
             global_event_handler: &self.global_event_handler,
             tabindex: None,
@@ -227,7 +230,6 @@ pub struct Frame<'rt, 'bp, G> {
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
     needs_layout: bool,
-    stop: bool,
     global_event_handler: &'rt G,
     pub tabindex: Option<Index>,
 }
@@ -276,7 +278,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
         let Some(event) = self.handle_global_event(event) else { return };
         if let Event::Stop = event {
-            self.stop = true;
+            self.layout_ctx.stop_runtime = true;
             return;
         }
 
@@ -323,17 +325,20 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::GlobalProfiler::lock().new_frame();
 
         let now = Instant::now();
-        self.cycle(backend)?;
         self.init_new_components();
-        self.tick_components(self.dt.elapsed());
         let elapsed = self.handle_messages(now);
         self.poll_events(elapsed, now, backend);
         self.drain_deferred_commands();
         self.drain_assoc_events();
+
+        // TODO:
+        // this secondary call is here to deal with changes causing changes
+        // which happens when values are removed or inserted and indices needs updating
         self.apply_changes()?;
-        // TODO: this secondary call is here to deal with changes causing changes
-        //       which happens when values are removed or inserted and indices needs updating
         self.apply_changes()?;
+
+        self.tick_components(self.dt.elapsed());
+        self.cycle(backend)?;
 
         *self.dt = Instant::now();
 
@@ -399,6 +404,11 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 self.layout_ctx.viewport.resize(size);
                 self.needs_layout = true;
                 backend.resize(size, self.layout_ctx.glyph_map);
+            }
+
+            if let Event::Stop = event {
+                self.layout_ctx.stop_runtime = true;
+                break;
             }
 
             self.event(event);
@@ -487,8 +497,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                     self.with_component(widget_id, state_id, |comp, children, ctx| {
                         comp.dyn_component.any_message(children, ctx, msg);
                     });
+                    break;
                 }
-                break;
             }
         }
     }
@@ -560,16 +570,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 let widget_id = value_id.key();
 
                 if let Some(widget) = tree.get_mut(widget_id) {
-                    let kind = &widget.kind;
-                    match kind {
-                        WidgetKind::Element(_element) => {}
-                        WidgetKind::For(_forloop) => {}
-                        WidgetKind::Iteration(_) => {}
-                        _ => (), // WidgetKind::ControlFlow(control_flow) => todo!(),
-                                 // WidgetKind::ControlFlowContainer(_) => todo!(),
-                                 // WidgetKind::Component(component) => todo!(),
-                                 // WidgetKind::Slot => todo!(),
-                    }
                     if let WidgetKind::Element(element) = &mut widget.kind {
                         element.invalidate_cache();
                     }

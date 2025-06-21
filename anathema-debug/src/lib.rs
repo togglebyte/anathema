@@ -54,7 +54,7 @@ pub mod macros {
     #[macro_export]
     macro_rules! debug_tree {
         ($tree:expr) => {
-            let mut d = $crate::tree::debug::DebugTree::new();
+            let mut d = anathema_widgets::tree::debug::DebugTree::new();
             $tree.apply_visitor(&mut d);
             $crate::debug_to_file!("{}", d.output);
         };

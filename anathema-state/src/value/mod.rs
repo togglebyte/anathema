@@ -443,7 +443,7 @@ impl PendingValue {
     /// Try to get access to the underlying value as a `dyn AnyState`.
     /// This will return `None` if the `Value<T>` behind this `ValueRef` has
     /// been dropped.
-    pub fn as_state(&self) -> Option<SharedState<'_>> {
+    pub fn as_state<'a>(&'a self) -> Option<SharedState<'a>> {
         let (key, value) = try_make_shared(self.0.owned())?;
         let shared = SharedState::new(key, value);
         Some(shared)
@@ -468,6 +468,75 @@ impl PendingValue {
 
     pub fn key(&self) -> ValueKey {
         self.0
+    }
+
+    pub fn pending_eq(&self, rhs: PendingValue) -> bool {
+        let lhs = self;
+        // -----------------------------------------------------------------------------
+        //   - Composite -
+        //   If two keys are the same it's the same value.
+        //   This is mostly for composite values
+        // -----------------------------------------------------------------------------
+        if lhs.key() == rhs.key() {
+            return true;
+        }
+
+        let lhs_type = lhs.type_info();
+        let rhs_type = rhs.type_info();
+
+        // -----------------------------------------------------------------------------
+        //   - Maybe -
+        // -----------------------------------------------------------------------------
+        if let Type::Maybe = lhs_type {
+            let Some(lhs) = lhs.as_state() else { return false };
+            let lhs = lhs.as_maybe().expect("type checked");
+            if let Some(lhs) = lhs.get() {
+                return lhs.pending_eq(rhs);
+            }
+        }
+
+        if let Type::Maybe = rhs_type {
+            let Some(rhs) = rhs.as_state() else { return false };
+            let rhs = rhs.as_maybe().expect("type checked");
+
+            if let Some(rhs) = rhs.get() {
+                return lhs.pending_eq(rhs);
+            }
+        }
+
+        let Some(lhs) = lhs.as_state() else { return false };
+        let Some(rhs) = rhs.as_state() else { return false };
+
+        match (lhs_type, rhs_type) {
+            (Type::Int, Type::Int) => lhs.as_int() == rhs.as_int(),
+            (Type::Float, Type::Float) => lhs.as_float() == rhs.as_float(),
+            (Type::Char, Type::Char) => lhs.as_char() == rhs.as_char(),
+            (Type::String, Type::String) => lhs.as_str() == rhs.as_str(),
+            (Type::Bool, Type::Bool) => lhs.as_bool() == rhs.as_bool(),
+            (Type::Hex, Type::Hex) => lhs.as_hex() == rhs.as_hex(),
+            (Type::Map, Type::Map) => false,
+            (Type::Unit, Type::Unit) => true,
+            (Type::List, Type::List) => {
+                let lhs = lhs.as_any_list().expect("type checked");
+                let rhs = rhs.as_any_list().expect("type checked");
+
+                if lhs.len() != rhs.len() {
+                    return false;
+                }
+
+                for (lhs, rhs) in lhs.iter().zip(rhs.iter()) {
+                    if !lhs.pending_eq(rhs) {
+                        return false;
+                    }
+                }
+
+                true
+            }
+            (Type::Color, Type::Color) => lhs.as_color() == rhs.as_color(),
+            (Type::Maybe, Type::Maybe) => true, // both are None
+
+            _ => false,
+        }
     }
 }
 
