@@ -313,48 +313,31 @@ impl ValueKind<'_> {
         let Some(rhs) = pending.as_state() else { return false };
 
         match type_info {
-            Type::Int => {
-                let Some(lhs) = self.as_int() else { return false };
-                rhs.as_int().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
-            Type::Float => {
-                let Some(lhs) = self.as_float() else { return false };
-                rhs.as_float().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
-            Type::Char => {
-                let Some(lhs) = self.as_char() else { return false };
-                rhs.as_char().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
-            Type::String => {
-                let Some(lhs) = self.as_str() else { return false };
-                rhs.as_str().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
-            Type::Bool => {
-                let Some(lhs) = self.as_bool() else { return false };
-                rhs.as_bool().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
-            Type::Hex => {
-                let Some(lhs) = self.as_hex() else { return false };
-                rhs.as_hex().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
-            Type::Color => {
-                let Some(lhs) = self.as_color() else { return false };
-                rhs.as_color().map(|rhs| rhs == lhs).unwrap_or(false)
-            }
+            Type::Int => compare_owned(self.as_int(), rhs.as_int()),
+            Type::Float => compare_owned(self.as_float(), rhs.as_float()),
+            Type::Char => compare_owned(self.as_char(), rhs.as_char()),
+            Type::Bool => compare_owned(self.as_bool(), rhs.as_bool()),
+            Type::Hex => compare_owned(self.as_hex(), rhs.as_hex()),
+            Type::Color => compare_owned(self.as_color(), rhs.as_color()),
+            Type::String => compare_owned(self.as_str(), rhs.as_str()),
             Type::Map => false,
             Type::List => match self {
                 ValueKind::List(rhs) => dyn_static_eq(pending, rhs),
                 ValueKind::DynList(rhs) => rhs.pending_eq(pending),
                 _ => false,
             },
-            Type::Unit => self.is_null(),
             Type::Composite => match self {
                 ValueKind::Composite(pending_value) => pending.pending_eq(*pending_value),
                 _ => false,
             },
-            Type::Maybe => todo!(),
+            Type::Unit => self.is_null(),
+            Type::Maybe => unreachable!("ValueKind can never be a Maybe as it's the final value"),
         }
     }
+}
+
+fn compare_owned<T: PartialEq>(lhs: Option<T>, rhs: Option<T>) -> bool {
+    lhs.is_some() && lhs == rhs
 }
 
 fn dyn_static_eq(pending: PendingValue, val_kind: &[ValueKind<'_>]) -> bool {
