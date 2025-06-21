@@ -44,6 +44,7 @@ impl FunctionTable {
         inner.insert("to_lower".into(), Function::from(string::to_lower));
         inner.insert("to_str".into(), Function::from(string::to_str));
         inner.insert("to_int".into(), Function::from(number::to_int));
+        inner.insert("round".into(), Function::from(number::round));
         inner.insert("contains".into(), Function::from(list::contains));
         Self { inner }
     }

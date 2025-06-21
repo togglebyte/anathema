@@ -30,6 +30,22 @@ pub(super) fn to_int<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
     }
 }
 
+pub(super) fn round<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
+    if args.is_empty() || args.len() > 2 {
+        return ValueKind::Null;
+    }
+
+    let precision = match to_int(&args[1..]) {
+        ValueKind::Int(i) => i as usize,
+        _ => 0,
+    };
+
+    match &args[0] {
+        ValueKind::Float(f) => ValueKind::Str(format!("{f:.*}", precision).into()),
+        _ => ValueKind::Null,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -62,5 +78,26 @@ mod test {
         let arg = value(1.1234);
         let output = to_int(&[arg]);
         assert_eq!(ValueKind::Int(1), output);
+    }
+
+    #[test]
+    fn rounding_default_zero() {
+        let args = [value(1.1234)];
+        let output = round(&args);
+        assert_eq!(value("1"), output);
+    }
+
+    #[test]
+    fn rounding_with_arg() {
+        let args = [value(1.1234), value(2)];
+        let output = round(&args);
+        assert_eq!(value("1.12"), output);
+    }
+
+    #[test]
+    fn invalid_rounding() {
+        let args = [value("1.1234"), value(2)];
+        let output = round(&args);
+        assert_eq!(ValueKind::Null, output);
     }
 }
