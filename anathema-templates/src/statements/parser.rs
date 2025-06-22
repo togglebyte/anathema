@@ -12,6 +12,8 @@ enum State {
     ExitScope,
     ParseFor,
     ParseIf,
+    ParseSwitch,
+    ParseCase,
     ParseDeclaration,
     ParseComponent,
     ParseAssociatedFunctions,
@@ -85,7 +87,8 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     pub(crate) fn parse(&mut self) -> Result<Statement> {
         // * It is okay to advance the state once and only once
         //   in any parse function using `self.next_state()`.
-        //   The exception to this is he parse view function
+        //   The exception to this is the parse_switch function,
+        //   where we skip to EnterScope.
         // * State should never be set directly in any of the parse functions.
         //   There is one exception of this, and that's when moving from
         //   `ParseAttributes` to `ParseText`.
@@ -94,6 +97,8 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
                 State::EnterScope => self.enter_scope()?,
                 State::ParseFor => self.parse_for()?,
                 State::ParseIf => self.parse_if()?,
+                State::ParseSwitch => self.parse_switch()?,
+                State::ParseCase => self.parse_case()?,
                 State::ParseDeclaration => self.parse_declaration()?,
                 State::ParseComponent => self.parse_component()?,
                 State::ParseAssociatedFunctions => {
@@ -132,7 +137,9 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             State::EnterScope => self.state = State::ExitScope,
             State::ExitScope => self.state = State::ParseFor,
             State::ParseFor => self.state = State::ParseIf,
-            State::ParseIf => self.state = State::ParseDeclaration,
+            State::ParseIf => self.state = State::ParseSwitch,
+            State::ParseSwitch => self.state = State::ParseCase,
+            State::ParseCase => self.state = State::ParseDeclaration,
             State::ParseDeclaration => self.state = State::ParseIdent,
             State::ParseIdent => self.state = State::ParseComponent,
             State::ParseComponent => self.state = State::ParseAssociatedFunctions,
@@ -286,9 +293,51 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             Kind::If => {
                 self.tokens.consume();
                 let cond = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
-
-                self.next_state();
+                self.state = State::EnterScope;
                 Ok(Some(Statement::If(cond)))
+            }
+            _ => {
+                self.next_state();
+                Ok(None)
+            }
+        }
+    }
+
+    fn parse_switch(&mut self) -> Result<Option<Statement>, ParseError> {
+        match self.tokens.peek_skip_indent() {
+            Kind::Switch => {
+                self.tokens.consume();
+                let cond = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
+                self.state = State::EnterScope;
+                Ok(Some(Statement::Switch(cond)))
+            }
+            _ => {
+                self.next_state();
+                Ok(None)
+            }
+        }
+    }
+
+    fn parse_case(&mut self) -> Result<Option<Statement>, ParseError> {
+        // <ident> : <body>
+        match self.tokens.peek_skip_indent() {
+            Kind::Case => {
+                self.tokens.consume();
+                let cond = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
+
+                // peek colon
+                let Kind::Op(Operator::Colon) = self.tokens.peek() else { panic!() };
+                self.tokens.consume();
+                self.next_state();
+                Ok(Some(Statement::Case(cond)))
+            }
+            Kind::Default => {
+                self.tokens.consume();
+                // peek colon
+                let Kind::Op(Operator::Colon) = self.tokens.peek() else { panic!() };
+                self.tokens.consume();
+                self.next_state();
+                Ok(Some(Statement::Default))
             }
             _ => {
                 self.next_state();
@@ -551,11 +600,11 @@ impl Iterator for Parser<'_, '_, '_> {
 mod test {
     use super::*;
     use crate::error::Error;
-    use crate::expressions::{ident, map, num, strlit, text_segments};
+    use crate::expressions::{boolean, ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        associated_fun, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value, node,
-        scope_end, scope_start, slot,
+        associated_fun, case, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
+        node, scope_end, scope_start, slot, switch,
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
@@ -571,7 +620,10 @@ mod test {
     }
 
     fn parse_ok(src: &str) -> Vec<Statement> {
-        parse(src).into_iter().map(Result::unwrap).collect()
+        match parse(src).into_iter().collect::<Result<Vec<_>>>() {
+            Ok(stmts) => stmts,
+            Err(e) => panic!("{e}"),
+        }
     }
 
     fn parse_err(src: &str) -> ParseError {
@@ -749,6 +801,54 @@ mod test {
         assert_eq!(statements.remove(0), scope_start());
         assert_eq!(statements.remove(0), node(4));
         assert_eq!(statements.remove(0), scope_end());
+    }
+
+    #[test]
+    fn parse_switch_oneline_case() {
+        let src = "
+            switch data
+                case true: x
+                case false: y
+    ";
+        let mut statements = parse_ok(src);
+
+        assert_eq!(statements.remove(0), switch(ident("data")));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), case(boolean(true)));
+        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), case(boolean(false)));
+        assert_eq!(statements.remove(0), node(3));
+        assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), eof());
+    }
+
+    #[test]
+    fn parse_switch_case() {
+        let src = "
+            switch data
+                case true: 
+                    x
+                    x
+                case false: 
+                    y
+                    y
+    ";
+        let mut statements = parse_ok(src);
+
+        assert_eq!(statements.remove(0), switch(ident("data")));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), case(boolean(true)));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), case(boolean(false)));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), node(3));
+        assert_eq!(statements.remove(0), node(3));
+        assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), eof());
     }
 
     #[test]

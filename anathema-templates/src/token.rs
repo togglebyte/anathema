@@ -105,6 +105,9 @@ pub(crate) enum Kind {
     In,
     If,
     Else,
+    Switch,
+    Case,
+    Default,
     Component,
     ComponentSlot,
     Newline,
@@ -132,6 +135,9 @@ impl Display for Kind {
             Self::In => write!(f, "<in>"),
             Self::If => write!(f, "<if>"),
             Self::Else => write!(f, "<else>"),
+            Self::Switch => write!(f, "<switch>"),
+            Self::Case => write!(f, "<case>"),
+            Self::Default => write!(f, "<default>"),
             Self::Component => write!(f, "<component>"),
             Self::ComponentSlot => write!(f, "<slot>"),
             Self::Newline => write!(f, "\\n"),
@@ -160,7 +166,7 @@ impl Tokens {
     }
 
     pub fn consume(&mut self) {
-        let _ = self.next();
+        self.index += 1;
     }
 
     pub fn next(&mut self) -> Kind {

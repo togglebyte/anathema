@@ -219,6 +219,9 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             "true" => Kind::Value(true.into()),
             "false" => Kind::Value(false.into()),
             "let" => Kind::Decl,
+            "switch" => Kind::Switch,
+            "case" => Kind::Case,
+            "default" => Kind::Default,
             s => {
                 let string_id = self.strings.push(s.to_string());
                 Kind::Value(Value::Ident(string_id))
