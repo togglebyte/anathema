@@ -31,6 +31,7 @@ pub fn update_widget<'bp>(
             }
         }
         WidgetKind::For(for_loop) => for_loop.update(change, tree, attribute_storage)?,
+        WidgetKind::With(with) => with.update(change, tree, attribute_storage)?,
         WidgetKind::Iteration(_) => todo!(),
         WidgetKind::ControlFlow(controlflow) => controlflow.update(change, value_id.index().into(), attribute_storage),
         WidgetKind::ControlFlowContainer(_) => unreachable!("control flow containers have no values"),

@@ -19,6 +19,13 @@ pub struct For {
     pub body: Vec<Blueprint>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct With {
+    pub binding: String,
+    pub data: Expression,
+    pub body: Vec<Blueprint>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlFlow {
     // pub if_node: If,
@@ -48,6 +55,7 @@ pub struct Component {
 pub enum Blueprint {
     Single(Single),
     For(For),
+    With(With),
     ControlFlow(ControlFlow),
     Component(Component),
     Slot(Vec<Self>),

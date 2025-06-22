@@ -32,6 +32,7 @@ impl<'a> NodeVisitor<WidgetContainer<'a>> for DebugTree {
         match &value.kind {
             WidgetKind::Element(element) => self.write(element.ident, value_id),
             WidgetKind::For(_) => self.write("<for>", value_id),
+            WidgetKind::With(_) => self.write("<with>", value_id),
             WidgetKind::Iteration(_) => self.write("<iter>", value_id),
             WidgetKind::ControlFlow(_) => self.write("<control flow>", value_id),
             WidgetKind::ControlFlowContainer(_) => self.write("<control flow container>", value_id),

@@ -66,6 +66,7 @@ pub(crate) enum Statement {
     ComponentSlot(StringId),
     Node(StringId),
     For { binding: StringId, data: Expression },
+    With { binding: StringId, data: Expression },
     Declaration { binding: StringId, value: Expression },
     If(Expression),
     Switch(Expression),

@@ -2,7 +2,7 @@ use anathema_geometry::Region;
 use anathema_state::Subscriber;
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
-use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, Single};
+use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, With, Single};
 use anathema_value_resolver::{Attributes, ResolverCtx, Scope, ValueKey, resolve, resolve_collection};
 
 use super::element::Element;
@@ -136,6 +136,45 @@ impl Evaluator for ForLoopEval {
 
         let body = for_loop.body;
         let widget = WidgetKind::For(for_loop);
+        let widget = WidgetContainer::new(widget, body);
+        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        Ok(())
+    }
+}
+
+pub(super) struct WithEval;
+
+impl Evaluator for WithEval {
+    type Input<'bp> = &'bp With;
+
+    fn eval<'bp>(
+        &mut self,
+        with: Self::Input<'bp>,
+        ctx: &mut EvalCtx<'_, 'bp>,
+        scope: &Scope<'_, 'bp>,
+        parent: &[u16],
+        tree: &mut WidgetTreeView<'_, 'bp>,
+    ) -> Result<()> {
+        let transaction = tree.insert(parent);
+        let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
+
+        let ctx = ResolverCtx::new(
+            ctx.globals,
+            scope,
+            ctx.states,
+            ctx.attribute_storage,
+            ctx.function_table,
+        );
+        let data = resolve(&with.data, &ctx, value_id);
+
+        let with = super::with::With {
+            binding: &with.binding,
+            body: &with.body,
+            data,
+        };
+
+        let body = with.body;
+        let widget = WidgetKind::With(with);
         let widget = WidgetContainer::new(widget, body);
         transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
         Ok(())
