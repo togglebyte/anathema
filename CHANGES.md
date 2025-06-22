@@ -1,3 +1,6 @@
+* 0.2.4
+    * Switch / case / default
+    * BUGFIX: Tuple structs now works as state
 * 0.2.3
     * Templates now has functions
         * to_upper
