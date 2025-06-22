@@ -52,10 +52,9 @@ impl Display for ParseError {
             ParseErrorKind::UnterminatedString => "unterminated string".into(),
             ParseErrorKind::UnterminatedAttributes => "unterminated attributes (missing `]`)".into(),
             ParseErrorKind::UnterminatedAssociation => "unterminated association (missing `)`)".into(),
+            ParseErrorKind::UnterminatedCase => "missing `:`".into(),
             ParseErrorKind::UnterminatedElement => "unterminated element".into(),
-            ParseErrorKind::InvalidToken { expected } => {
-                format!("invalid token (expected: \"{expected}\")")
-            }
+            ParseErrorKind::InvalidToken { expected } => format!("invalid token (expected: \"{expected}\")"),
             ParseErrorKind::InvalidNumber => "invalid number".into(),
             ParseErrorKind::InvalidIndex => "invalid index".into(),
             ParseErrorKind::InvalidPath => "invalid path".into(),
@@ -96,6 +95,7 @@ pub enum ParseErrorKind {
     UnterminatedElement,
     UnterminatedAttributes,
     UnterminatedAssociation,
+    UnterminatedCase,
     InvalidToken { expected: &'static str },
     InvalidNumber,
     InvalidIndex,

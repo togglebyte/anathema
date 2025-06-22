@@ -49,7 +49,7 @@ impl Scope {
                 | Statement::LoadValue(_)
                 | Statement::Case(_)
                 | Statement::Default => {
-                    unreachable!("\"{statement:?}\" found: this is a bug in Anathema. Please open an issue")
+                    return Err(Error::InvalidStatement(format!("{statement:?}")));
                 }
                 Statement::Eof => break,
             }
@@ -292,7 +292,7 @@ mod test {
     }
 
     #[test]
-    fn eval_switch_case_multi() {
+    fn eval_switch_case_multi_line() {
         let src = "
             switch 1 == 2
                 case true: 

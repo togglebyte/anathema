@@ -316,6 +316,7 @@ mod test {
         match lexer.next().unwrap().unwrap_err() {
             crate::error::Error::ParseError(err) => err.kind,
             crate::error::Error::CircularDependency
+            | crate::error::Error::InvalidStatement(_)
             | crate::error::Error::MissingComponent(_)
             | crate::error::Error::EmptyTemplate
             | crate::error::Error::EmptyBody

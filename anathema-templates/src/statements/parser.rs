@@ -321,23 +321,24 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     fn parse_case(&mut self) -> Result<Option<Statement>, ParseError> {
         // <ident> : <body>
         match self.tokens.peek_skip_indent() {
-            Kind::Case => {
+            kind @ (Kind::Case | Kind::Default) => {
                 self.tokens.consume();
-                let cond = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
+
+                let stmt = match kind {
+                    Kind::Case => {
+                        Statement::Case(parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?)
+                    }
+                    Kind::Default => Statement::Default,
+                    _ => unreachable!(),
+                };
 
                 // peek colon
-                let Kind::Op(Operator::Colon) = self.tokens.peek() else { panic!() };
+                let Kind::Op(Operator::Colon) = self.tokens.peek() else {
+                    return Err(self.error(ParseErrorKind::UnterminatedCase));
+                };
                 self.tokens.consume();
                 self.next_state();
-                Ok(Some(Statement::Case(cond)))
-            }
-            Kind::Default => {
-                self.tokens.consume();
-                // peek colon
-                let Kind::Op(Operator::Colon) = self.tokens.peek() else { panic!() };
-                self.tokens.consume();
-                self.next_state();
-                Ok(Some(Statement::Default))
+                Ok(Some(stmt))
             }
             _ => {
                 self.next_state();
