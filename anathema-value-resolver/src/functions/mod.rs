@@ -1,11 +1,26 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use crate::ValueKind;
 
 mod list;
 mod number;
 mod string;
+
+#[derive(Debug)]
+pub enum Error {
+    FunctionAlreadyRegistered(String),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::FunctionAlreadyRegistered(name) => write!(f, "function `{name}` is already registered"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub struct Function {
     inner: Box<dyn for<'bp> Fn(&[ValueKind<'bp>]) -> ValueKind<'bp>>,
@@ -49,8 +64,13 @@ impl FunctionTable {
         Self { inner }
     }
 
-    pub fn insert(&mut self, ident: impl Into<String>, f: impl Into<Function>) {
-        self.inner.insert(ident.into(), f.into());
+    pub fn insert(&mut self, ident: impl Into<String>, f: impl Into<Function>) -> Result<(), Error> {
+        let key = ident.into();
+        if self.inner.contains_key(&key) {
+            return Err(Error::FunctionAlreadyRegistered(key));
+        }
+        self.inner.insert(key, f.into());
+        Ok(())
     }
 
     pub fn lookup(&self, ident: &str) -> Option<&Function> {

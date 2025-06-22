@@ -68,6 +68,9 @@ pub(crate) enum Statement {
     For { binding: StringId, data: Expression },
     Declaration { binding: StringId, value: Expression },
     If(Expression),
+    Switch(Expression),
+    Case(Expression),
+    Default,
     Else(Option<Expression>),
     ScopeStart,
     ScopeEnd,
@@ -155,7 +158,25 @@ impl Statements {
             }
         }
 
-        panic!("unclosed scope");
+        panic!("Unclosed scope. this is a bug with Anathema and should be reported");
+    }
+
+    fn take_until_case_or_default(&mut self) -> Statements {
+        if self.is_empty() {
+            return vec![].into();
+        }
+
+        let mut statements = vec![];
+
+        while !self.0.is_empty() {
+            match self.0[0] {
+                Statement::Case(_) | Statement::Default | Statement::Eof => break,
+                _ => {}
+            }
+            statements.push(self.0.remove(0));
+        }
+
+        statements.into()
     }
 
     fn next_else(&mut self) -> Option<Option<Expression>> {
@@ -165,6 +186,26 @@ impl Statements {
                 _ => unreachable!(),
             },
             false => None,
+        }
+    }
+
+    fn next_case(&mut self) -> Option<Expression> {
+        match matches!(self.0.first(), Some(Statement::Case(_))) {
+            true => match self.0.remove(0) {
+                Statement::Case(cond) => Some(cond),
+                _ => unreachable!(),
+            },
+            false => None,
+        }
+    }
+
+    fn next_default(&mut self) -> bool {
+        match matches!(self.0.first(), Some(Statement::Default)) {
+            true => {
+                _ = self.0.remove(0);
+                true
+            }
+            false => false,
         }
     }
 
@@ -180,6 +221,10 @@ impl Statements {
 
     fn is_next_slot(&mut self) -> bool {
         matches!(self.0.first(), Some(Statement::ComponentSlot(_)))
+    }
+
+    fn is_next_scope(&mut self) -> bool {
+        matches!(self.0.first(), Some(Statement::ScopeStart))
     }
 
     fn is_empty(&self) -> bool {
@@ -269,6 +314,14 @@ mod test {
 
     pub(crate) fn if_stmt(cond: impl Into<Expression>) -> Statement {
         Statement::If(cond.into())
+    }
+
+    pub(crate) fn switch(cond: impl Into<Expression>) -> Statement {
+        Statement::Switch(cond.into())
+    }
+
+    pub(crate) fn case(cond: impl Into<Expression>) -> Statement {
+        Statement::Case(cond.into())
     }
 
     pub(crate) fn if_else(cond: impl Into<Expression>) -> Statement {

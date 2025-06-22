@@ -65,6 +65,10 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
             fn type_info(&self) -> ::anathema::state::Type {
                 ::anathema::state::Type::List
             }
+
+            fn as_any_list(&self) -> Option<&dyn ::anathema::state::AnyList> {
+                Some(self)
+            }
         }
 
         impl ::anathema::state::TypeId for #name {

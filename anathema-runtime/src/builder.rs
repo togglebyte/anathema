@@ -265,7 +265,7 @@ impl<G: GlobalEventHandler> Builder<G> {
         Ok(Some(watcher))
     }
 
-    pub fn add_function(&mut self, ident: impl Into<String>, f: impl Into<Function>) {
-        self.function_table.insert(ident, f)
+    pub fn register_function(&mut self, ident: impl Into<String>, f: impl Into<Function>) -> Result<()> {
+        Ok(self.function_table.insert(ident, f)?)
     }
 }

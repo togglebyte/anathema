@@ -12,6 +12,7 @@ pub enum Error {
     Widget(anathema_widgets::error::Error),
     Stop,
     InvalidComponentName,
+    Resolver(anathema_value_resolver::Error),
 }
 
 impl Display for Error {
@@ -21,6 +22,7 @@ impl Display for Error {
             Error::Stop => write!(f, "stopping"),
             Error::Notify(err) => write!(f, "{err}"),
             Error::Widget(err) => write!(f, "{err}"),
+            Error::Resolver(err) => write!(f, "{err}"),
             Error::InvalidComponentName => write!(f, "no such component"),
         }
     }
@@ -43,5 +45,11 @@ impl From<notify::Error> for Error {
 impl From<anathema_widgets::error::Error> for Error {
     fn from(value: anathema_widgets::error::Error) -> Self {
         Self::Widget(value)
+    }
+}
+
+impl From<anathema_value_resolver::Error> for Error {
+    fn from(value: anathema_value_resolver::Error) -> Self {
+        Self::Resolver(value)
     }
 }
