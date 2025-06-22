@@ -370,8 +370,11 @@ fn resolve_index<'bp>(
             or_null!(attributes.get_value_expr(&key))
         }
         ValueExpr::List(list) => {
-            let index = resolve_int(index, ctx);
-            list[index as usize].clone()
+            let index = resolve_int(index, ctx) as usize;
+            match list.get(index).cloned() {
+                Some(val) => val,
+                None => ValueExpr::Null,
+            }
         }
         ValueExpr::Map(hash_map) => {
             let key = or_null!(resolve_str(index, ctx));

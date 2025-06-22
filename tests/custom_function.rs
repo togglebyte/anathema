@@ -25,7 +25,7 @@ fn run_custom_function() {
         )
         .unwrap();
 
-    builder.add_function("custom", custom);
+    builder.register_function("custom", custom).unwrap();
 
     let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 

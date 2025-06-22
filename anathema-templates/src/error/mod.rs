@@ -14,6 +14,7 @@ pub enum Error {
     MissingComponent(String),
     EmptyTemplate,
     EmptyBody,
+    InvalidStatement(String),
     Io(std::io::Error),
 }
 
@@ -25,6 +26,7 @@ impl Display for Error {
             Error::MissingComponent(name) => write!(f, "`@{name}` is not a registered component"),
             Error::EmptyTemplate => write!(f, "empty template"),
             Error::EmptyBody => write!(f, "if or else node has no children"),
+            Error::InvalidStatement(stmt) => write!(f, "invalid statement: {stmt}"),
             Error::Io(err) => write!(f, "{err}"),
         }
     }
