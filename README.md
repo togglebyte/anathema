@@ -21,36 +21,67 @@ Anathema has a single pass layout inspired by Flutter and Swift UI.
 * Template functions
 * Third party components
 * Distributable templates
+* Message passing supports async
+* Message passing between components via an emitter
 
 **Note** Anathema should be considered beta for now.
 
 See [The Guide](https://togglebyte.github.io/anathema-guide/) for getting started.
 
-```
-hstack [width: 40, height: 10]
-    // Left pane
-    expand [factor: 1]
-        border
-            vstack
-                for item in [1, 2, 3]
-                    text "Item " item
+### Example component
 
-    // Right pane
-    expand [factor: 4]
-        border
-            expand
-                text "This isn't where I parked my car!"
+```rust
+struct MyComponent;
+
+impl Component for MyComponent {
+    type State = MyState;
+    type Message = ();
+
+    fn on_tick(
+        &mut self,
+        state: &mut Self::State,
+        children: Children<'_, '_>,
+        context: Context<'_, '_, Self::State>,
+        dt: Duration,
+    ) {
+        *state.value.to_mut() += 1;
+    }
+}
+
+#[derive(State)]
+struct MyState {
+    counter: Value<u32>,
+}
+```
+
+### Example template
+
+```
+vstack
+    text "the counter is " state.counter
+    text "the counter will be " state.counter + 1
+    if state.count > 10
+        text "the counter is more than ten"
 ```
 output
 ```
-┌──────┐┌──────────────────────────────┐
-│Item 1││This isn't where I parked my  │
-│Item 2││car!                          │
-│Item 3││                              │
-└──────┘│                              │
-        │                              │
-        │                              │
-        │                              │
-        │                              │
-        └──────────────────────────────┘
+the counter is 11
+the counter will be 12
+the counter is more than ten
 ```
+
+### Screenshots etc.
+
+#### [Bubbles by Jyn](https://asciinema.org/a/LsUSqMlSu3OlhraQOSXMpCXhZ) ASCII
+  cinema
+
+#### Markdown reader by Doddi
+![Markdown reader by Doddi](https://github.com/togglebyte/anathema/blob/dev/assets/markdown.gif?raw=true)
+
+#### Screenshot by Jyn
+![Bunny rpg by Jyn](https://github.com/togglebyte/anathema/blob/dev/assets/anathema.png?raw=true)
+
+#### Twitch UI by Twitch user s9tpepper_
+![Twitch ui by Twitch user s9tpepper_](https://github.com/togglebyte/anathema/blob/dev/assets/twitch-ui.webp?raw=true)
+
+
