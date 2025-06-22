@@ -1,5 +1,8 @@
 # Anathema
 
+[![Crates.io](https://img.shields.io/crates/v/anathema.svg)](https://crates.io/crates/anathema)
+[![Docs.rs](https://img.shields.io/docsrs/anathema)](https://docs.rs/anathema)
+
 A TUI library with a custom template language and runtime.
 
 **Note** Anathema should be considered beta for now.
