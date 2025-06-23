@@ -305,6 +305,14 @@ mod test {
         }
     }
 
+    pub(crate) fn with(binding: usize, data: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
+        Statement::With {
+            binding,
+            data: data.into(),
+        }
+    }
+
     pub(crate) fn decl(binding: usize, value: impl Into<Expression>) -> Statement {
         let binding = StringId::from_usize(binding);
         Statement::Declaration {

@@ -1,9 +1,8 @@
 use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{AttributeStorage, Collection, Value};
+use anathema_value_resolver::{AttributeStorage, Value};
 
-use super::{WidgetContainer, WidgetKind};
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::widget::WidgetTreeView;
 
 #[derive(Debug)]
@@ -21,7 +20,7 @@ impl<'bp> With<'bp> {
     pub(super) fn update(
         &mut self,
         change: &Change,
-        mut tree: WidgetTreeView<'_, 'bp>,
+        _: WidgetTreeView<'_, 'bp>,
         attribute_storage: &mut AttributeStorage<'bp>,
     ) -> Result<()> {
         match change {
@@ -34,10 +33,3 @@ impl<'bp> With<'bp> {
         Ok(())
     }
 }
-
-#[derive(Debug)]
-pub struct Iteration<'bp> {
-    pub loop_index: anathema_state::Value<i64>,
-    pub binding: &'bp str,
-}
-

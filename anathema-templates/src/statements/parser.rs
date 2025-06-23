@@ -633,7 +633,7 @@ mod test {
     use crate::expressions::{boolean, ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        associated_fun, case, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
+        associated_fun, case, component, decl, else_stmt, eof, for_loop, with, if_else, if_stmt, load_attrib, load_value,
         node, scope_end, scope_start, slot, switch,
     };
 
@@ -757,21 +757,17 @@ mod test {
     #[test]
     fn parse_with() {
         let src = "
-            with data + 1 as val
+            with val as data
                 x val
         ";
         let mut statements = parse_ok(src);
 
-        // assert_eq!(statements.remove(0), node(1));
-        // assert_eq!(statements.remove(0), scope_start());
-        // assert_eq!(statements.remove(0), for_loop(1, ident("data")));
-        // assert_eq!(statements.remove(0), scope_start());
-        // assert_eq!(statements.remove(0), for_loop(3, ident("data")));
-        // assert_eq!(statements.remove(0), scope_start());
-        // assert_eq!(statements.remove(0), node(1));
-        // assert_eq!(statements.remove(0), scope_end());
-        // assert_eq!(statements.remove(0), scope_end());
-        // assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), with(2, ident("data")));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), load_value(ident("val")));
+        assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), eof());
     }
 
     #[test]

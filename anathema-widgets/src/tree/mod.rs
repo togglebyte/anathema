@@ -16,7 +16,6 @@ use anathema_value_resolver::{AttributeStorage, Scope};
 use crate::error::Result;
 use crate::layout::{LayoutCtx, LayoutFilter};
 use crate::nodes::loops::Iteration;
-use crate::nodes::with::With;
 use crate::nodes::{controlflow, eval_blueprint};
 use crate::widget::WidgetTreeView;
 use crate::{Element, WidgetContainer, WidgetId, WidgetKind};

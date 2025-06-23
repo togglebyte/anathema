@@ -383,4 +383,17 @@ mod test {
         doc.add_component("comp", "node a".to_template()).unwrap();
         let _ = doc.compile().unwrap();
     }
+
+    #[test]
+    fn with_value() {
+        let src = "
+            with val as 1 + 1
+                text val
+        ";
+
+        let mut doc = Document::new(src);
+        doc.add_component("comp", "node a".to_template()).unwrap();
+        let (blueprint, _) = doc.compile().unwrap();
+        assert!(matches!(blueprint, Blueprint::With(With { .. })));
+    }
 }

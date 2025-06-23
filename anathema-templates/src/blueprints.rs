@@ -59,8 +59,6 @@ pub enum Blueprint {
     ControlFlow(ControlFlow),
     Component(Component),
     Slot(Vec<Self>),
-    // PushParentScope,
-    // PopParentScope,
 }
 
 #[macro_export]
