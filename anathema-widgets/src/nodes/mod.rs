@@ -7,6 +7,7 @@ use self::eval::{ComponentEval, ControlFlowEval, Evaluator, ForLoopEval, SingleE
 pub use self::update::update_widget;
 use crate::error::Result;
 use crate::layout::EvalCtx;
+use crate::nodes::eval::WithEval;
 use crate::widget::WidgetTreeView;
 
 pub(crate) mod component;
@@ -15,6 +16,7 @@ pub(crate) mod element;
 pub(crate) mod eval;
 pub(crate) mod loops;
 mod update;
+pub(crate) mod with;
 
 // -----------------------------------------------------------------------------
 //   - Generators -
@@ -32,6 +34,7 @@ pub enum WidgetGenerator<'bp> {
 pub enum WidgetKind<'bp> {
     Element(Element<'bp>),
     For(loops::For<'bp>),
+    With(with::With<'bp>),
     Iteration(loops::Iteration<'bp>),
     ControlFlow(controlflow::ControlFlow<'bp>),
     ControlFlowContainer(u16),
@@ -64,6 +67,7 @@ pub fn eval_blueprint<'bp>(
     match blueprint {
         Blueprint::Single(single) => SingleEval.eval(single, ctx, scope, parent, tree),
         Blueprint::For(for_loop) => ForLoopEval.eval(for_loop, ctx, scope, parent, tree),
+        Blueprint::With(with) => WithEval.eval(with, ctx, scope, parent, tree),
         Blueprint::ControlFlow(flow) => ControlFlowEval.eval(flow, ctx, scope, parent, tree),
         Blueprint::Component(component) => ComponentEval.eval(component, ctx, scope, parent, tree),
         Blueprint::Slot(blueprints) => SlotEval.eval(blueprints, ctx, scope, parent, tree),

@@ -10,6 +10,7 @@ use crate::token::{Kind, Operator, Tokens, Value};
 enum State {
     EnterScope,
     ExitScope,
+    ParseWith,
     ParseFor,
     ParseIf,
     ParseSwitch,
@@ -95,6 +96,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         loop {
             let output = match self.state {
                 State::EnterScope => self.enter_scope()?,
+                State::ParseWith => self.parse_with()?,
                 State::ParseFor => self.parse_for()?,
                 State::ParseIf => self.parse_if()?,
                 State::ParseSwitch => self.parse_switch()?,
@@ -135,7 +137,8 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     fn next_state(&mut self) {
         match self.state {
             State::EnterScope => self.state = State::ExitScope,
-            State::ExitScope => self.state = State::ParseFor,
+            State::ExitScope => self.state = State::ParseWith,
+            State::ParseWith => self.state = State::ParseFor,
             State::ParseFor => self.state = State::ParseIf,
             State::ParseIf => self.state = State::ParseSwitch,
             State::ParseSwitch => self.state = State::ParseCase,
@@ -252,6 +255,32 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         self.tokens.consume_indent();
         self.next_state();
         Ok(Some(Statement::Node(ident)))
+    }
+
+    fn parse_with(&mut self) -> Result<Option<Statement>, ParseError> {
+        // with <binding> as <expr>
+        if Kind::With != self.tokens.peek_skip_indent() {
+            self.next_state();
+            return Ok(None);
+        }
+
+        self.tokens.consume();
+
+        let binding = self.read_ident()?;
+
+        if Kind::As != self.tokens.peek_skip_indent() {
+            return Err(self.error(ParseErrorKind::InvalidToken { expected: "as" }));
+        }
+        // Consume `As`
+        self.tokens.consume();
+
+        let data = match parse_expr(&mut self.tokens, self.strings) {
+            Ok(data) => data,
+            Err(e) => return Err(self.error(e)),
+        };
+
+        self.next_state();
+        Ok(Some(Statement::With { data, binding }))
     }
 
     fn parse_for(&mut self) -> Result<Option<Statement>, ParseError> {
@@ -605,7 +634,7 @@ mod test {
     use crate::lexer::Lexer;
     use crate::statements::test::{
         associated_fun, case, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
-        node, scope_end, scope_start, slot, switch,
+        node, scope_end, scope_start, slot, switch, with,
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
@@ -723,6 +752,22 @@ mod test {
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), scope_end());
         assert_eq!(statements.remove(0), scope_end());
+    }
+
+    #[test]
+    fn parse_with() {
+        let src = "
+            with val as data
+                x val
+        ";
+        let mut statements = parse_ok(src);
+
+        assert_eq!(statements.remove(0), with(2, ident("data")));
+        assert_eq!(statements.remove(0), scope_start());
+        assert_eq!(statements.remove(0), node(1));
+        assert_eq!(statements.remove(0), load_value(ident("val")));
+        assert_eq!(statements.remove(0), scope_end());
+        assert_eq!(statements.remove(0), eof());
     }
 
     #[test]

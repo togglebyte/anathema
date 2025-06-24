@@ -51,6 +51,10 @@ pub enum Generator<'widget, 'bp> {
         binding: &'bp str,
         body: &'bp [Blueprint],
     },
+    With {
+        binding: &'bp str,
+        body: &'bp [Blueprint],
+    },
     ControlFlow(&'widget controlflow::ControlFlow<'bp>),
     ControlFlowContainer(&'bp [Blueprint]),
     Slot(&'bp [Blueprint]),
@@ -60,13 +64,18 @@ impl<'widget, 'bp> Generator<'widget, 'bp> {
     fn from_loop(body: &'bp [Blueprint], binding: &'bp str, len: usize) -> Self {
         Self::Loop { binding, body, len }
     }
+
+    fn from_with(body: &'bp [Blueprint], binding: &'bp str) -> Self {
+        Self::With { binding, body }
+    }
 }
 
 impl<'widget, 'bp> From<&'widget WidgetContainer<'bp>> for Generator<'widget, 'bp> {
     fn from(widget: &'widget WidgetContainer<'bp>) -> Self {
         match &widget.kind {
             WidgetKind::Element(_) => panic!("use Self::Single directly"),
-            WidgetKind::For(_) => panic!("use Self::Loop directory"),
+            WidgetKind::For(_) => panic!("use Self::Loop directly"),
+            WidgetKind::With(_) => panic!("use Self::With directly"),
             WidgetKind::ControlFlowContainer(_) => Self::ControlFlowContainer(widget.children),
             WidgetKind::Component(comp) => Self::Single {
                 ident: comp.name,
@@ -206,7 +215,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
                     WidgetKind::ControlFlow(controlflow) => {
                         if controlflow.has_changed(&children) {
-                            children.truncate_children();
+                            ctx.truncate_children(&mut children);
                         }
                         let generator = Generator::from(&*widget);
                         let mut children = LayoutForEach::with_generator(
@@ -250,6 +259,18 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                             self.filter,
                             self.parent_component,
                         );
+                        children.inner_each(ctx, f)
+                    }
+                    WidgetKind::With(with) => {
+                        let scope = Scope::with_value(with.binding, &with.data, self.scope);
+                        let mut children = LayoutForEach::with_generator(
+                            children,
+                            &scope,
+                            Generator::from_with(widget.children, with.binding),
+                            self.filter,
+                            self.parent_component,
+                        );
+
                         children.inner_each(ctx, f)
                     }
                     WidgetKind::Component(component) => {
@@ -308,6 +329,7 @@ fn generate<'bp>(
     match parent {
         Generator::Single { body: blueprints, .. }
         | Generator::Iteration { body: blueprints, .. }
+        | Generator::With { body: blueprints, .. }
         | Generator::ControlFlowContainer(blueprints) => {
             if blueprints.is_empty() {
                 return Ok(false);

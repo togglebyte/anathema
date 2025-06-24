@@ -99,7 +99,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
     fn layout(&mut self, ctx: &mut LayoutCtx<'_, 'bp>, filter: LayoutFilter) -> Result<()> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
-        let tree = self.tree.view_mut();
+        let tree = self.tree.view();
 
         let scope = Scope::root();
         let mut for_each = LayoutForEach::new(tree, &scope, filter, None);
@@ -115,7 +115,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let mut for_each = PositionChildren::new(self.tree.view_mut(), attributes, filter);
+        let mut for_each = PositionChildren::new(self.tree.view(), attributes, filter);
         _ = for_each.each(|widget, children| {
             widget.position(children, Pos::ZERO, attributes, viewport);
             ControlFlow::Break(())
@@ -126,7 +126,7 @@ impl<'rt, 'bp, T: Backend> WidgetCycle<'rt, 'bp, T> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let for_each = PaintChildren::new(self.tree.view_mut(), ctx.attribute_storage, filter);
+        let for_each = PaintChildren::new(self.tree.view(), ctx.attribute_storage, filter);
         self.backend.paint(ctx.glyph_map, for_each, ctx.attribute_storage);
     }
 }

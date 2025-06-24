@@ -1,5 +1,7 @@
 # Anathema
 
+## [The Guide](https://togglebyte.github.io/anathema-guide/)
+
 [![Crates.io](https://img.shields.io/crates/v/anathema.svg)](https://crates.io/crates/anathema)
 [![Docs.rs](https://img.shields.io/docsrs/anathema)](https://docs.rs/anathema)
 

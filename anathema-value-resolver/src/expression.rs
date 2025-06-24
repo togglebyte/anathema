@@ -347,7 +347,7 @@ fn resolve_index<'bp>(
                     return ValueExpr::Null;
                 }
             };
-            let index = resolve_int(index, ctx) as usize;
+            let index = or_null!(resolve_int(index, ctx));
             let val = list.lookup(index);
 
             // If the values doesn't exist subscribe to the underlying map / state
@@ -370,7 +370,7 @@ fn resolve_index<'bp>(
             or_null!(attributes.get_value_expr(&key))
         }
         ValueExpr::List(list) => {
-            let index = resolve_int(index, ctx) as usize;
+            let index = or_null!(resolve_int(index, ctx));
             match list.get(index).cloned() {
                 Some(val) => val,
                 None => ValueExpr::Null,
@@ -420,13 +420,13 @@ fn resolve_str<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_,
     }
 }
 
-fn resolve_int<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> i64 {
+fn resolve_int<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<usize> {
     let value = resolve_value(index, ctx);
     match value {
-        ValueKind::Int(index) => index,
-        ValueKind::Bool(false) => 0,
-        ValueKind::Bool(true) => 1,
-        ValueKind::Float(index) => index as i64,
+        ValueKind::Int(index) => Some(index as usize),
+        ValueKind::Bool(false) => Some(0),
+        ValueKind::Bool(true) => Some(1),
+        ValueKind::Float(index) => Some(index as usize),
         ValueKind::Char(_)
         | ValueKind::Hex(_)
         | ValueKind::Color(_)
@@ -437,7 +437,7 @@ fn resolve_int<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_,
         | ValueKind::DynMap(_)
         | ValueKind::Attributes
         | ValueKind::List(_)
-        | ValueKind::DynList(_) => todo!("resolving int: the value is {value:?}"),
+        | ValueKind::DynList(_) => None,
     }
 }
 
