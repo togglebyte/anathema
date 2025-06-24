@@ -35,7 +35,7 @@ impl Scope {
                     let Some(value) = const_eval(value, ctx) else { continue };
                     let binding = ctx.strings.get_unchecked(binding);
                     if binding == "state" {
-                        return Err(Error::InvalidStatement(format!("{binding} is a reserved keyword")));
+                        return Err(Error::InvalidStatement(format!("{binding} is a reserved identifier")));
                     }
                     ctx.globals.declare(binding, value);
                 }
