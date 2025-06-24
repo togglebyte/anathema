@@ -30,7 +30,7 @@ anathema-testutils = { path = "anathema-testutils" }
 
 [features]
 default = []
-# profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
+profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
 # filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
 [lints]

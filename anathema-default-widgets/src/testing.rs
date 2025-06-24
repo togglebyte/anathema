@@ -235,7 +235,7 @@ impl<'bp> TestInstance<'bp> {
         );
 
         let mut ctx = ctx.eval_ctx(None);
-        let mut view = tree.view_mut();
+        let mut view = tree.view();
 
         eval_blueprint(blueprint, &mut ctx, &scope, &[], &mut view).unwrap();
 
@@ -271,7 +271,20 @@ impl<'bp> TestInstance<'bp> {
             return self;
         }
 
-        let mut tree = self.tree.view_mut();
+        let mut tree = self.tree.view();
+
+        let mut ctx = LayoutCtx::new(
+            self.globals,
+            self.factory,
+            self.states,
+            &mut self.attribute_storage,
+            self.components,
+            self.component_registry,
+            &mut self.floating_widgets,
+            &mut self.glyph_map,
+            &mut self.viewport,
+            self.function_table,
+        );
 
         self.changes.iter().for_each(|(sub, change)| {
             sub.iter().for_each(|value_id| {
@@ -290,7 +303,7 @@ impl<'bp> TestInstance<'bp> {
 
                 _ = tree
                     .with_value_mut(value_id.key(), |_path, widget, tree| {
-                        update_widget(widget, value_id, change, tree, &mut self.attribute_storage)
+                        update_widget(widget, value_id, change, tree, &mut ctx)
                     })
                     .unwrap();
             })
@@ -318,7 +331,7 @@ impl<'bp> TestInstance<'bp> {
             self.function_table,
         );
 
-        let mut cycle = WidgetCycle::new(self.backend, self.tree.view_mut(), constraints);
+        let mut cycle = WidgetCycle::new(self.backend, self.tree.view(), constraints);
         _ = cycle.run(&mut ctx, true);
 
         self.backend.render(&mut self.glyph_map);
@@ -340,7 +353,7 @@ impl<'bp> TestInstance<'bp> {
         //          @main [0, 0, 0] <- this one
         // let path = &[0, 0, 0];
 
-        let tree = self.tree.view_mut();
+        let tree = self.tree.view();
         let mut update = true;
         let mut children = Children::new(tree, &mut self.attribute_storage, &mut update);
         let elements = children.elements();

@@ -127,7 +127,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             // yet have any widgets or components.
             frame.tick(backend)?;
 
-            let mut tabindex = TabIndex::new(&mut frame.tabindex, frame.tree.view_mut());
+            let mut tabindex = TabIndex::new(&mut frame.tabindex, frame.tree.view());
             tabindex.next();
 
             if let Some(current) = frame.tabindex.as_ref() {
@@ -248,7 +248,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     }
 
     pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
-        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view_mut());
+        let mut tabindex = TabIndex::new(&mut self.tabindex, self.tree.view());
 
         let event = self
             .global_event_handler
@@ -314,7 +314,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
             &mut ctx,
             &Scope::root(),
             root_node(),
-            &mut self.tree.view_mut(),
+            &mut self.tree.view(),
         )?;
 
         Ok(())
@@ -545,7 +545,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         #[cfg(feature = "profile")]
         puffin::profile_function!();
 
-        let mut cycle = WidgetCycle::new(backend, self.tree.view_mut(), self.layout_ctx.viewport.constraints());
+        let mut cycle = WidgetCycle::new(backend, self.tree.view(), self.layout_ctx.viewport.constraints());
         cycle.run(&mut self.layout_ctx, self.needs_layout)?;
 
         self.needs_layout = false;
@@ -563,7 +563,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         }
 
         self.needs_layout = true;
-        let mut tree = self.tree.view_mut();
+        let mut tree = self.tree.view();
 
         self.changes.iter().try_for_each(|(sub, change)| {
             sub.iter().try_for_each(|value_id| {
@@ -581,7 +581,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 }
 
                 tree.with_value_mut(widget_id, |_path, widget, tree| {
-                    update_widget(widget, value_id, change, tree, self.layout_ctx.attribute_storage)
+                    update_widget(widget, value_id, change, tree, &mut self.layout_ctx)
                 })
                 .unwrap_or(Ok(()))?;
 
@@ -606,7 +606,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     where
         F: FnOnce(&mut Component<'_>, Children<'_, '_>, AnyComponentContext<'_, '_>) -> U,
     {
-        let mut tree = self.tree.view_mut();
+        let mut tree = self.tree.view();
 
         tree.with_value_mut(widget_id, |_path, container, children| {
             let WidgetKind::Component(component) = &mut container.kind else {

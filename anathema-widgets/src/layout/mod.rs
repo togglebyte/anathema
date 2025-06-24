@@ -1,5 +1,6 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{State, StateId, States};
+use anathema_store::tree::TreeView;
 use anathema_templates::{ComponentBlueprintId, Globals};
 use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable};
 use display::DISPLAY;
@@ -78,6 +79,25 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             new_components: &mut self.new_components,
             function_table: self.function_table,
         }
+    }
+
+    pub(crate) fn truncate_children(&mut self, tree: &mut TreeView<'_, WidgetContainer<'bp>>) {
+        tree.truncate_children(&mut &mut |widget| {
+            self.return_component(widget);
+        });
+    }
+
+    pub(crate) fn relative_remove(&mut self, path: &[u16], mut tree: TreeView<'_, WidgetContainer<'bp>>) {
+        tree.relative_remove(path, &mut |widget| {
+            self.return_component(widget);
+        });
+    }
+
+    fn return_component(&mut self, widget: WidgetContainer<'_>) {
+        let WidgetKind::Component(comp) = widget.kind else { return };
+        let id = comp.component_id;
+        let state = self.states.remove(comp.state_id).take();
+        self.component_registry.return_component(id, comp.dyn_component, state);
     }
 }
 
