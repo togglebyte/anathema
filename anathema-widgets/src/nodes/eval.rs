@@ -2,7 +2,7 @@ use anathema_geometry::Region;
 use anathema_state::Subscriber;
 use anathema_store::slab::SlabIndex;
 use anathema_store::smallmap::SmallIndex;
-use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, With, Single};
+use anathema_templates::blueprints::{Blueprint, Component, ControlFlow, For, Single, With};
 use anathema_value_resolver::{Attributes, ResolverCtx, Scope, ValueKey, resolve, resolve_collection};
 
 use super::element::Element;

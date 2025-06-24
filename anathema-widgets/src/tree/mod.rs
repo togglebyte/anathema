@@ -215,7 +215,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                     }
                     WidgetKind::ControlFlow(controlflow) => {
                         if controlflow.has_changed(&children) {
-                            children.truncate_children();
+                            ctx.truncate_children(&mut children);
                         }
                         let generator = Generator::from(&*widget);
                         let mut children = LayoutForEach::with_generator(

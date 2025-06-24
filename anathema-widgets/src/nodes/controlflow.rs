@@ -16,7 +16,7 @@ impl<'bp> ControlFlow<'bp> {
             Change::Changed | Change::Dropped => {
                 let Some(el) = self.elses.get_mut(branch_id as usize) else { return };
                 let Some(cond) = el.cond.as_mut() else { return };
-                cond.reload(attribute_storage)
+                cond.reload(attribute_storage);
             }
             // TODO:
             // this could probably happen given something like this

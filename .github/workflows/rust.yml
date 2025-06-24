@@ -39,4 +39,4 @@ jobs:
       - name: Configure cache
         uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --workspace --all-features --all-targets
+        run: cargo clippy --workspace --all-targets

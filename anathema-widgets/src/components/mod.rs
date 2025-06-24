@@ -89,7 +89,9 @@ impl ComponentRegistry {
                     *comp = Some(current_component);
                     *state = Some(current_state);
                 }
-                ComponentType::Prototype(..) => panic!("trying to return a prototype"),
+                ComponentType::Prototype(..) => {
+                    // Can't return a prototype
+                }
             },
             None => panic!(),
         }

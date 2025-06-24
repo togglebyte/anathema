@@ -104,25 +104,25 @@ impl SlabIndex for ComponentBlueprintId {
 #[cfg(test)]
 impl From<u32> for ComponentBlueprintId {
     fn from(value: u32) -> Self {
-        Self(value)
+        Self::from_usize(value as usize)
     }
 }
 
 impl From<ComponentBlueprintId> for Index {
     fn from(value: ComponentBlueprintId) -> Self {
-        value.0.into()
+        Index::from(value.0.as_usize() as u32)
     }
 }
 
 impl From<ComponentBlueprintId> for usize {
     fn from(value: ComponentBlueprintId) -> Self {
-        value.0 as usize
+        value.as_usize()
     }
 }
 
 impl From<usize> for ComponentBlueprintId {
     fn from(value: usize) -> Self {
-        Self(value as u32)
+        Self::from_usize(value)
     }
 }
 

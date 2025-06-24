@@ -1,3 +1,6 @@
+* 0.2.5
+    * BUGFIX: component reuse in if / else
+    * `with` statement
 * 0.2.4
     * Switch / case / default
     * BUGFIX: Tuple structs now works as state

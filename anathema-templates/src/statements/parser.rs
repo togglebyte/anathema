@@ -633,8 +633,8 @@ mod test {
     use crate::expressions::{boolean, ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        associated_fun, case, component, decl, else_stmt, eof, for_loop, with, if_else, if_stmt, load_attrib, load_value,
-        node, scope_end, scope_start, slot, switch,
+        associated_fun, case, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
+        node, scope_end, scope_start, slot, switch, with,
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {

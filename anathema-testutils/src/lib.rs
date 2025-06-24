@@ -9,7 +9,7 @@ pub struct BasicState {
     pub string: Value<String>,
 }
 
-pub struct BasicComp<F, T>(F, PhantomData<T>);
+pub struct BasicComp<F, T = BasicState>(F, PhantomData<T>);
 
 impl<F, T> BasicComp<F, T> {
     pub fn new(f: F) -> Self {
