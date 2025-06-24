@@ -46,7 +46,9 @@ fn bug_component_reuse_bug() {
             BasicState::default(),
         )
         .unwrap();
-    builder.template("comp", "text attributes.val".to_template()).unwrap();
+    builder
+        .component("comp", "text attributes.val".to_template(), (), ())
+        .unwrap();
 
     let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
