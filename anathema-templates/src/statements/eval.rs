@@ -260,7 +260,7 @@ mod test {
         let response = doc.compile();
         assert_eq!(
             response.err().unwrap().to_string(),
-            "invalid statement: state is a reserved keyword"
+            "invalid statement: state is a reserved identifier"
         );
     }
 
