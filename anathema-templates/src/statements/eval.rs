@@ -24,8 +24,15 @@ impl Scope {
             match statement {
                 Statement::Node(ident) => output.push(self.eval_node(ident, ctx)?),
                 Statement::Component(component_id) => output.push(self.eval_component(component_id, ctx)?),
-                Statement::For { binding, data } => {
-                    if let Some(expr) = self.eval_for(binding, data, ctx)? {
+                Statement::For {
+                    binding: binding_id,
+                    data,
+                } => {
+                    let binding = ctx.strings.get_unchecked(binding_id);
+                    if "state" == binding {
+                        return Err(Error::InvalidStatement(format!("{binding} is a reserved identifier")));
+                    }
+                    if let Some(expr) = self.eval_for(binding_id, data, ctx)? {
                         output.push(expr);
                     }
                 }
@@ -270,6 +277,21 @@ mod test {
     #[test]
     fn eval_declaration_should_not_uses_reserved_identifiers() {
         let src = "let state = 1";
+
+        let mut doc = Document::new(src);
+        let response = doc.compile();
+        assert_eq!(
+            response.err().unwrap().to_string(),
+            "invalid statement: state is a reserved identifier"
+        );
+    }
+
+    #[test]
+    fn for_loop_binding_reserved_identifier() {
+        let src = "
+        for state in []
+            node
+        ";
 
         let mut doc = Document::new(src);
         let response = doc.compile();
