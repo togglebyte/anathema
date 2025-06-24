@@ -1,9 +1,9 @@
 use anathema_state::{Change, Subscriber};
-use anathema_value_resolver::AttributeStorage;
 
 use super::WidgetContainer;
 use crate::WidgetKind;
 use crate::error::Result;
+use crate::layout::LayoutCtx;
 use crate::widget::WidgetTreeView;
 
 pub fn update_widget<'bp>(
@@ -11,8 +11,9 @@ pub fn update_widget<'bp>(
     value_id: Subscriber,
     change: &Change,
     tree: WidgetTreeView<'_, 'bp>,
-    attribute_storage: &mut AttributeStorage<'bp>,
+    ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> Result<()> {
+    let attribute_storage = &mut ctx.attribute_storage;
     match &mut widget.kind {
         WidgetKind::Element(element) => {
             attribute_storage.with_mut(element.container.id, |attributes, storage| {
@@ -30,7 +31,7 @@ pub fn update_widget<'bp>(
                 //     });
             }
         }
-        WidgetKind::For(for_loop) => for_loop.update(change, tree, attribute_storage)?,
+        WidgetKind::For(for_loop) => for_loop.update(change, tree, ctx)?,
         WidgetKind::Iteration(_) => todo!(),
         WidgetKind::ControlFlow(controlflow) => controlflow.update(change, value_id.index().into(), attribute_storage),
         WidgetKind::ControlFlowContainer(_) => unreachable!("control flow containers have no values"),

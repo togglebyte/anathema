@@ -17,18 +17,9 @@ impl<'bp, G> Frame<'_, 'bp, G>
 where
     G: GlobalEventHandler,
 {
-    pub fn components(&mut self) -> anathema_widgets::query::Components<'_, '_, 'bp> {
-        panic!()
-        // anathema_widgets::query::Components::new(
-        //     self.tree.view_mut(),
-        //     self.layout_ctx.attribute_storage,
-        //     self.layout_ctx.dirty_widgets,
-        // )
-    }
-
     pub fn elements(&mut self) -> Children<'_, 'bp> {
         Children::new(
-            self.tree.view_mut(),
+            self.tree.view(),
             self.layout_ctx.attribute_storage,
             &mut self.needs_layout,
         )

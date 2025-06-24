@@ -420,10 +420,6 @@ impl<T> GenSlab<T> {
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
-
-    pub(crate) fn is_vacant(&self, key: Key) -> bool {
-        matches!(self.inner.get(key.index()), Some(Entry::Vacant(_)))
-    }
 }
 
 impl<T> GenSlab<T>

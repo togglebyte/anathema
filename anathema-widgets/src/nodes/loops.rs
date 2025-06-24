@@ -1,9 +1,10 @@
 use anathema_state::Change;
 use anathema_templates::blueprints::Blueprint;
-use anathema_value_resolver::{AttributeStorage, Collection};
+use anathema_value_resolver::Collection;
 
 use super::{WidgetContainer, WidgetKind};
 use crate::error::{Error, Result};
+use crate::layout::LayoutCtx;
 use crate::widget::WidgetTreeView;
 
 #[derive(Debug)]
@@ -22,7 +23,7 @@ impl<'bp> For<'bp> {
         &mut self,
         change: &Change,
         mut tree: WidgetTreeView<'_, 'bp>,
-        attribute_storage: &mut AttributeStorage<'bp>,
+        ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<()> {
         match change {
             Change::Inserted(index) => {
@@ -74,13 +75,14 @@ impl<'bp> For<'bp> {
                     *iter.loop_index.to_mut() -= 1;
                 }
 
-                tree.relative_remove(&[*index as u16])
+                ctx.relative_remove(&[*index as u16], tree);
             }
             Change::Dropped | Change::Changed => {
                 // If the collection has changed to a different collection
                 // then truncate the tree
-                self.collection.reload(attribute_storage);
-                tree.truncate_children();
+                self.collection.reload(ctx.attribute_storage);
+                ctx.truncate_children(&mut tree);
+                // tree.truncate_children();
             }
         }
 
