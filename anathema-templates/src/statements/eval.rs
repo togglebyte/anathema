@@ -253,7 +253,7 @@ mod test {
     }
 
     #[test]
-    fn eval_declaration_should_not_uses_reserved_keyword() {
+    fn eval_declaration_should_not_uses_reserved_identifiers() {
         let src = "let state = 1;";
 
         let mut doc = Document::new(src);
