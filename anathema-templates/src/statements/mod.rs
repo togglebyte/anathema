@@ -66,6 +66,7 @@ pub(crate) enum Statement {
     ComponentSlot(StringId),
     Node(StringId),
     For { binding: StringId, data: Expression },
+    With { binding: StringId, data: Expression },
     Declaration { binding: StringId, value: Expression },
     If(Expression),
     Switch(Expression),
@@ -299,6 +300,14 @@ mod test {
     pub(crate) fn for_loop(binding: usize, data: impl Into<Expression>) -> Statement {
         let binding = StringId::from_usize(binding);
         Statement::For {
+            binding,
+            data: data.into(),
+        }
+    }
+
+    pub(crate) fn with(binding: usize, data: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
+        Statement::With {
             binding,
             data: data.into(),
         }

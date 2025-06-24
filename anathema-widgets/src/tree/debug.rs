@@ -31,6 +31,7 @@ fn write_value(widget: &WidgetContainer<'_>, level: usize, widget_id: WidgetId, 
     match &widget.kind {
         WidgetKind::Element(element) => writeln!(output, "{}", element.ident),
         WidgetKind::For(_) => writeln!(output, "<for>"),
+        WidgetKind::With(_) => writeln!(output, "<with>"),
         WidgetKind::Iteration(_) => writeln!(output, "<iter>"),
         WidgetKind::ControlFlow(_) => writeln!(output, "<control flow>"),
         WidgetKind::ControlFlowContainer(_) => writeln!(output, "<control flow container>"),

@@ -13,13 +13,13 @@ pub fn update_widget<'bp>(
     tree: WidgetTreeView<'_, 'bp>,
     ctx: &mut LayoutCtx<'_, 'bp>,
 ) -> Result<()> {
-    let attribute_storage = &mut ctx.attribute_storage;
     match &mut widget.kind {
         WidgetKind::Element(element) => {
-            attribute_storage.with_mut(element.container.id, |attributes, storage| {
-                let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
-                value.reload(storage);
-            });
+            ctx.attribute_storage
+                .with_mut(element.container.id, |attributes, storage| {
+                    let Some(value) = attributes.get_mut_with_index(value_id.index()) else { return };
+                    value.reload(storage);
+                });
 
             if let Change::Dropped = change {
                 // TODO: figure out why this is still here?
@@ -32,8 +32,11 @@ pub fn update_widget<'bp>(
             }
         }
         WidgetKind::For(for_loop) => for_loop.update(change, tree, ctx)?,
+        WidgetKind::With(with) => with.update(change, tree, ctx.attribute_storage)?,
         WidgetKind::Iteration(_) => todo!(),
-        WidgetKind::ControlFlow(controlflow) => controlflow.update(change, value_id.index().into(), attribute_storage),
+        WidgetKind::ControlFlow(controlflow) => {
+            controlflow.update(change, value_id.index().into(), ctx.attribute_storage)
+        }
         WidgetKind::ControlFlowContainer(_) => unreachable!("control flow containers have no values"),
         WidgetKind::Component(_) => (),
         WidgetKind::Slot => todo!(),

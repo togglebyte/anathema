@@ -3,7 +3,7 @@ use anathema_store::storage::strings::StringId;
 
 use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
-use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single};
+use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single, With};
 use crate::error::{Error, Result};
 use crate::expressions::{Equality, Expression};
 use crate::{ComponentBlueprintId, Primitive};
@@ -26,6 +26,11 @@ impl Scope {
                 Statement::Component(component_id) => output.push(self.eval_component(component_id, ctx)?),
                 Statement::For { binding, data } => {
                     if let Some(expr) = self.eval_for(binding, data, ctx)? {
+                        output.push(expr);
+                    }
+                }
+                Statement::With { binding, data } => {
+                    if let Some(expr) = self.eval_with(binding, data, ctx)? {
                         output.push(expr);
                     }
                 }
@@ -79,6 +84,16 @@ impl Scope {
         ctx.globals.declare_local(binding.clone());
         let body = self.consume_scope(ctx)?;
         let node = Blueprint::For(For { binding, data, body });
+        Ok(Some(node))
+    }
+
+    fn eval_with(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Option<Blueprint>> {
+        let Some(data) = const_eval(data, ctx) else { return Ok(None) };
+        let binding = ctx.strings.get_unchecked(binding);
+        // add binding to globals so nothing can resolve past the binding outside of the loop
+        ctx.globals.declare_local(binding.clone());
+        let body = self.consume_scope(ctx)?;
+        let node = Blueprint::With(With { binding, data, body });
         Ok(Some(node))
     }
 
@@ -367,5 +382,18 @@ mod test {
         let mut doc = Document::new(src);
         doc.add_component("comp", "node a".to_template()).unwrap();
         let _ = doc.compile().unwrap();
+    }
+
+    #[test]
+    fn with_value() {
+        let src = "
+            with val as 1 + 1
+                text val
+        ";
+
+        let mut doc = Document::new(src);
+        doc.add_component("comp", "node a".to_template()).unwrap();
+        let (blueprint, _) = doc.compile().unwrap();
+        assert!(matches!(blueprint, Blueprint::With(With { .. })));
     }
 }
