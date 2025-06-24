@@ -1,7 +1,7 @@
 [package]
 name = "anathema"
 edition = "2024"
-version = "0.2.4"
+version = "0.2.5"
 license = "MIT"
 description = "Create beautiful, easily customisable terminal applications"
 keywords = ["tui", "terminal", "widgets", "ui", "layout"]
@@ -38,7 +38,7 @@ workspace = true
 
 [workspace.package]
 edition = "2024"
-version = "0.2.4"
+version = "0.2.5"
 
 [workspace.dependencies]
 bitflags = "2.4.1"
@@ -46,16 +46,16 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
-anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.4" }
-anathema-backend = { path = "./anathema-backend", version = "0.2.4" }
-anathema-runtime = { path = "./anathema-runtime", version = "0.2.4" }
-anathema-state = { path = "./anathema-state", version = "0.2.4" }
-anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.4" }
-anathema-store = { path = "./anathema-store", version = "0.2.4" }
-anathema-templates = { path = "./anathema-templates", version = "0.2.4" }
-anathema-widgets = { path = "./anathema-widgets", version = "0.2.4" }
-anathema-geometry = { path = "./anathema-geometry", version = "0.2.4" }
-anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.4" }
+anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.5" }
+anathema-backend = { path = "./anathema-backend", version = "0.2.5" }
+anathema-runtime = { path = "./anathema-runtime", version = "0.2.5" }
+anathema-state = { path = "./anathema-state", version = "0.2.5" }
+anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.5" }
+anathema-store = { path = "./anathema-store", version = "0.2.5" }
+anathema-templates = { path = "./anathema-templates", version = "0.2.5" }
+anathema-widgets = { path = "./anathema-widgets", version = "0.2.5" }
+anathema-geometry = { path = "./anathema-geometry", version = "0.2.5" }
+anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.5" }
 
 [workspace]
 members = [
