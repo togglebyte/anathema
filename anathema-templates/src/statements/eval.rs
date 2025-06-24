@@ -34,6 +34,9 @@ impl Scope {
                 Statement::Declaration { binding, value } => {
                     let Some(value) = const_eval(value, ctx) else { continue };
                     let binding = ctx.strings.get_unchecked(binding);
+                    if binding == "state" {
+                        return Err(Error::InvalidStatement(format!("{binding} is a reserved keyword")));
+                    }
                     ctx.globals.declare(binding, value);
                 }
                 Statement::ComponentSlot(slot_id) => {
@@ -247,6 +250,18 @@ mod test {
         let mut doc = Document::new(src);
         let (blueprint, _) = doc.compile().unwrap();
         assert!(matches!(blueprint, Blueprint::Single(Single { value: Some(_), .. })));
+    }
+
+    #[test]
+    fn eval_declaration_should_not_uses_reserved_keyword() {
+        let src = "let state = 1;";
+
+        let mut doc = Document::new(src);
+        let response = doc.compile();
+        assert_eq!(
+            response.err().unwrap().to_string(),
+            "invalid statement: state is a reserved keyword"
+        );
     }
 
     #[test]
