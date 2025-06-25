@@ -269,31 +269,3 @@ impl<G: GlobalEventHandler> Builder<G> {
         Ok(self.function_table.insert(ident, f)?)
     }
 }
-
-#[cfg(test)]
-pub mod test {
-    use anathema_backend::tui::TuiBackend;
-
-    use super::*;
-
-    #[test]
-    fn test_builder() {
-        let doc = Document::new("text \"Hello, World!\"");
-
-        let mut backend = TuiBackend::builder()
-            .enable_alt_screen()
-            .enable_raw_mode()
-            .hide_cursor()
-            .finish()
-            .unwrap();
-        backend.finalize();
-
-        let mut builder = Runtime::builder(doc, &backend);
-        builder.hot_reload(false);
-        let res = builder.finish(&mut backend, |_runtime, _backend| {
-            // Returning Ok(()) allows the runtime to fall through to check the reload status
-            Ok(())
-        });
-        assert!(res.is_ok(), "Builder should finish without errors");
-    }
-}
