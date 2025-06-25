@@ -231,10 +231,10 @@ pub(crate) fn resolve_value<'a, 'bp>(
         },
         ValueExpr::Either(first, second) => {
             let value = resolve_value(first, ctx);
-            match value {
-                ValueKind::Null => resolve_value(second, ctx),
-                first => first,
+            if value.truthiness() {
+                return value;
             }
+            resolve_value(second, ctx)
         }
 
         // -----------------------------------------------------------------------------
