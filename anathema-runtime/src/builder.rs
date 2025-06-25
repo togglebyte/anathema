@@ -53,9 +53,9 @@ impl<G: GlobalEventHandler> Builder<G> {
         }
     }
 
-    /// Disable hot reloading
-    pub fn disable_hot_reload(&mut self) {
-        self.hot_reload = false;
+    /// Enable/Disable hot reloading
+    pub fn hot_reload(&mut self, value: bool) {
+        self.hot_reload = value;
     }
 
     /// Register a new widget
