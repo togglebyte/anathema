@@ -152,6 +152,7 @@ impl Scope {
         let mut elses = vec![];
 
         let mut body = self.statements.take_scope();
+        let mut default = None;
 
         while let Some(case) = body.next_case() {
             let cond = match switch {
@@ -160,31 +161,23 @@ impl Scope {
             };
 
             let body = match body.is_next_scope() {
-                true => {
-                    let scope = Scope::new(body.take_scope());
-                    scope.eval(ctx)?
-                }
-                false => {
-                    let scope = Scope::new(body.take_until_case_or_default());
-                    scope.eval(ctx)?
-                }
+                true => body.take_scope(),
+                false => body.take_until_case_or_default(),
             };
+            let body = Scope::new(body).eval(ctx)?;
 
             elses.push(Else { cond: Some(cond), body });
         }
 
         if body.next_default() {
             let body = match body.is_next_scope() {
-                true => {
-                    let scope = Scope::new(body.take_scope());
-                    scope.eval(ctx)?
-                }
-                false => {
-                    let scope = Scope::new(body.take_until_case_or_default());
-                    scope.eval(ctx)?
-                }
+                true => body.take_scope(),
+                false => body.take_until_case_or_default(),
             };
+            default = Some(Scope::new(body).eval(ctx)?);
+        }
 
+        if let Some(body) = default {
             elses.push(Else { cond: None, body });
         }
 
