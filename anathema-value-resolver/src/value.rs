@@ -913,6 +913,24 @@ pub(crate) mod test {
     }
 
     #[test]
+    fn test_either_with_state() {
+        let mut states = States::new();
+        let expr = either(index(ident("state"), strlit("num")), num(2));
+
+        setup(&mut states, Variables::new(), |test| {
+            test.with_state(|state| state.num.set(0));
+            let value = test.eval(&expr);
+            assert_eq!(2, value.as_int().unwrap());
+        });
+
+        setup(&mut states, Variables::new(), |test| {
+            test.with_state(|state| state.num.set(1));
+            let value = test.eval(&expr);
+            assert_eq!(1, value.as_int().unwrap());
+        });
+    }
+
+    #[test]
     fn test_either() {
         let mut states = States::new();
         let mut globals = Variables::new();
@@ -1029,25 +1047,6 @@ pub(crate) mod test {
             assert_eq!(123, value.as_int().unwrap());
         });
     }
-
-    // #[test]
-    // fn test_nested_maps() {
-    //     let mut states = States::new();
-    //     setup(&mut states, Default::default(), |test| {
-    //         let expr = index(
-    //             index(index(ident("state"), strlit("value")), strlit("value")),
-    //             strlit("value"),
-    //         );
-    //         let mut inner_map = Value::new(Map::empty());
-    //         let mut inner_inner_map = Value::new(Map::empty());
-    //         inner_inner_map.insert("value", 123);
-    //         inner_map.insert("value", inner_inner_map);
-
-    //         test.set_state("value", inner_map);
-    //         let value = test.eval(&*expr);
-    //         assert_eq!(123, value.as_int().unwrap());
-    //     });
-    // }
 
     #[test]
     fn stringify() {

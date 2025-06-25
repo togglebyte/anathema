@@ -215,7 +215,7 @@ impl Widget for Canvas {
             self.buffer = CanvasBuffer::copy_from(&mut self.buffer, size);
         }
 
-        Ok(self.buffer.size)
+        Ok(size)
     }
 
     fn position<'bp>(
