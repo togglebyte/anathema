@@ -34,7 +34,7 @@ align [alignment: 'centre']
     let _watcher = set_watcher(document)?;
 
     let mut builder = Runtime::builder(doc, backend);
-    builder.disable_hot_reload();
+    builder.hot_reload(false);
     builder.finish(backend, |runtime, backend| {
         runtime.with_frame(backend, |backend, mut frame| {
             loop {
