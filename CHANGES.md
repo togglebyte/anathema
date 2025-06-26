@@ -1,6 +1,8 @@
 * 0.2.6
     * `Either` now works by doing truthiness checks on state
     * `Backend::full_screen()` convenience function
+    * `to_float` template function
+    * `PathBuf`s can now be used as templates
 * 0.2.5
     * BUGFIX: component reuse in if / else
     * `with` statement

@@ -29,13 +29,33 @@ pub trait ToSourceKind {
     }
 }
 
-impl<T: AsRef<str>> ToSourceKind for T {
+impl ToSourceKind for String {
     fn to_path(self) -> SourceKind {
-        SourceKind::Path(self.as_ref().into())
+        SourceKind::Path(self.into())
     }
 
     fn to_template(self) -> SourceKind {
-        SourceKind::Str(self.as_ref().into())
+        SourceKind::Str(self)
+    }
+}
+
+impl ToSourceKind for &str {
+    fn to_path(self) -> SourceKind {
+        SourceKind::Path(self.into())
+    }
+
+    fn to_template(self) -> SourceKind {
+        SourceKind::Str(self.into())
+    }
+}
+
+impl ToSourceKind for PathBuf {
+    fn to_path(self) -> SourceKind {
+        SourceKind::Path(self)
+    }
+
+    fn to_template(self) -> SourceKind {
+        panic!("PathBuf can not be a template, only a path to one")
     }
 }
 
