@@ -3,6 +3,7 @@
     * `Backend::full_screen()` convenience function
     * `to_float` template function
     * `PathBuf`s can now be used as templates
+    * BUGFIX: tick events no longer tries to use removed components
 * 0.2.5
     * BUGFIX: component reuse in if / else
     * `with` statement

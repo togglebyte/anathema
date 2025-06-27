@@ -117,7 +117,7 @@ impl TuiBackend {
     }
 
     /// Convenience function this is the same as calling
-    /// ```
+    /// ```no_run
     /// # use anathema_backend::tui::TuiBackend;
     /// # use anathema_backend::Backend;
     /// let mut backend = TuiBackend::builder()

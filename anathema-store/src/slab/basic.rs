@@ -69,7 +69,7 @@ impl<I, T> Entry<I, T> {
     // Insert an Occupied entry in place of a vacant one.
     fn swap(&mut self, value: T) {
         debug_assert!(matches!(self, Entry::Vacant(_)));
-        std::mem::swap(self, &mut Entry::Occupied(value));
+        *self = Entry::Occupied(value);
     }
 
     // Create a new occupied entry
