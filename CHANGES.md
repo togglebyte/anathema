@@ -1,3 +1,5 @@
+* 0.2.7
+    * BUGFIX: use correct truthiness check in control flow update
 * 0.2.6
     * `Either` now works by doing truthiness checks on state
     * `Backend::full_screen()` convenience function
