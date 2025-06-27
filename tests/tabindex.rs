@@ -91,7 +91,7 @@ fn tabindex_single_component() {
 
     let mut backend = TestBackend::new((10, 3));
 
-    backend.events().press(tab()).next().press(tab()).next().stop();
+    backend.events().next().press(tab()).next().press(tab()).next().stop();
 
     let builder = builder(tpl, &mut backend);
     builder

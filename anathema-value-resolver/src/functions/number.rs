@@ -64,7 +64,7 @@ pub(super) fn round<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
     };
 
     match &args[0] {
-        ValueKind::Float(f) => ValueKind::Str(format!("{f:.*}", precision).into()),
+        ValueKind::Float(f) => ValueKind::Str(format!("{f:.precision$}").into()),
         _ => ValueKind::Null,
     }
 }

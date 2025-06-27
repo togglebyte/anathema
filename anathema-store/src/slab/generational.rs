@@ -144,7 +144,7 @@ impl<T> Entry<T> {
     // Insert an Occupied entry in place of a vacant one.
     fn swap(&mut self, value: T, generation: Gen) {
         debug_assert!(matches!(self, Entry::Vacant(_)));
-        std::mem::swap(self, &mut Entry::Occupied(value, generation));
+        *self = Entry::Occupied(value, generation);
     }
 
     // Create a new occupied entry
@@ -437,7 +437,7 @@ where
                 Entry::Vacant(key) => {
                     let _ = write!(&mut s, "{idx}: vacant ");
                     match key {
-                        Some(key) => writeln!(&mut s, "next key: {:?}", key),
+                        Some(key) => writeln!(&mut s, "next key: {key:?}"),
                         None => writeln!(&mut s, "no next id"),
                     }
                 }
@@ -451,7 +451,7 @@ where
         let _ = writeln!(&mut s, "---- next id ----");
 
         let _ = match self.next_id {
-            Some(key) => writeln!(&mut s, "next key: {:?}", key),
+            Some(key) => writeln!(&mut s, "next key: {key:?}"),
             None => writeln!(&mut s, "no next id"),
         };
 

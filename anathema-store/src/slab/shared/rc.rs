@@ -44,7 +44,7 @@ impl<I, T> Entry<I, T> {
                     .expect("Rc strong count is always one here")
                     .replace(inner_value);
 
-                swap(self, &mut Entry::Occupied(storage_cell));
+                *self = Entry::Occupied(storage_cell);
             }
             _ => unreachable!(),
         }
@@ -68,7 +68,7 @@ impl<I, T> Entry<I, T> {
                     .expect("strong count is always one")
                     .take()
                     .expect("occupied variant never contains a None");
-                swap(self, &mut Entry::Vacant(next_id.take(), store));
+                *self = Entry::Vacant(next_id.take(), store);
                 Some(value)
             }
             _ => unreachable!(),

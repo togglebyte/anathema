@@ -193,7 +193,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
         let widget_id = node.value();
 
         self.tree
-            .with_value_mut(widget_id, |_, widget, mut children| {
+            .with_value_mut(widget_id, |_, widget, children| {
                 let output = self.filter.filter(widget, ctx.attribute_storage);
                 if let FilterOutput::Exclude = output {
                     return Ok(ControlFlow::Continue(()));
@@ -213,10 +213,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
                         );
                         f(ctx, el, children)
                     }
-                    WidgetKind::ControlFlow(controlflow) => {
-                        if controlflow.has_changed(&children) {
-                            ctx.truncate_children(&mut children);
-                        }
+                    WidgetKind::ControlFlow(_) => {
                         let generator = Generator::from(&*widget);
                         let mut children = LayoutForEach::with_generator(
                             children,

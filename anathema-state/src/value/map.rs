@@ -132,7 +132,7 @@ mod test {
     }
     impl Drop for DM {
         fn drop(&mut self) {
-            eprintln!("- drop: {}", self.0);
+            // eprintln!("- drop: {}", self.0);
         }
     }
 
