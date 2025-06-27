@@ -8,26 +8,48 @@ pub type Nullable<T> = Maybe<T>;
 pub struct Maybe<T>(Option<Value<T>>);
 
 impl<T: State> Maybe<T> {
+    /// Create a Maybe with no value
     pub fn none() -> Self {
         Self(None)
     }
 
+    /// Create a Maybe with a value
     pub fn some(value: T) -> Self {
         Self(Some(Value::new(value)))
     }
 
+    /// Take the underlying value
+    pub fn take(&mut self) -> Option<Value<T>> {
+        self.0.take()
+    }
+
+    /// Get option of a refernce to the underlying value
     pub fn get_ref(&self) -> Option<&Value<T>> {
         self.0.as_ref()
     }
 
+    /// Get option of a mutable refernce to the underlying value
     pub fn get_mut(&mut self) -> Option<&mut Value<T>> {
         self.0.as_mut()
     }
 
+    /// Set / update the value
     pub fn set(&mut self, value: T) {
         match &mut self.0 {
             None => self.0 = Some(Value::new(value)),
             Some(existing) => existing.set(value),
+        }
+    }
+
+    /// Update the current value.
+    /// If the input value is `None` the underlying value will be removed.
+    /// If the input value is `Some(T)` the underlying value will be replaced.
+    pub fn update(&mut self, value: Option<T>) {
+        match (self.get_mut(), value) {
+            (None, None) => (),
+            (None, Some(value)) => *self = Maybe::some(value),
+            (Some(_), None) => *self = Maybe::none(),
+            (Some(current), Some(new)) => current.set(new),
         }
     }
 
@@ -87,9 +109,15 @@ impl<T: State> AnyMaybe for Maybe<T> {
 
 impl<T: State + TypeId> From<Option<T>> for Value<Maybe<T>> {
     fn from(value: Option<T>) -> Self {
+        Maybe::from(value).into()
+    }
+}
+
+impl<T: State + TypeId> From<Option<T>> for Maybe<T> {
+    fn from(value: Option<T>) -> Self {
         match value {
-            Some(val) => Maybe::some(val).into(),
-            None => Maybe::none().into(),
+            Some(val) => Maybe::some(val),
+            None => Maybe::none(),
         }
     }
 }
