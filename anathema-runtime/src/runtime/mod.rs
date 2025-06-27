@@ -327,6 +327,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         let now = Instant::now();
         self.init_new_components();
         let elapsed = self.handle_messages(now);
+
         // Pre cycle events
         self.poll_events(elapsed, now, backend);
         self.drain_deferred_commands();

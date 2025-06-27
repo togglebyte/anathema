@@ -1,5 +1,6 @@
 #![deny(missing_docs)]
 use std::io::{Result, Write};
+use std::ops::Index;
 
 use anathema_geometry::Size;
 use anathema_widgets::Style;
@@ -11,7 +12,7 @@ use super::LocalPos;
 use super::style::write_style;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(crate) struct Cell {
+pub struct Cell {
     pub(crate) style: Style,
     pub(crate) state: CellState,
 }
@@ -49,7 +50,7 @@ impl Cell {
 }
 
 /// Represent the state of a cell inside a [`Buffer`].
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub(crate) enum CellState {
     /// Empty
     Empty,
@@ -58,6 +59,17 @@ pub(crate) enum CellState {
     /// A continuation means this cell is part of another cell
     /// representing a value that spans more than two chars, e.g 💖
     Continuation,
+}
+
+impl std::fmt::Debug for CellState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CellState::Empty => write!(f, "<E>"),
+            CellState::Occupied(Glyph::Single(glyph, _width)) => write!(f, "{glyph}"),
+            CellState::Occupied(Glyph::Cluster(index, width)) => write!(f, "<C{index:?},{width}>"),
+            CellState::Continuation => write!(f, "<C>"),
+        }
+    }
 }
 
 /// A buffer contains a list of cells representing characters that can be rendered.
@@ -163,7 +175,7 @@ impl Buffer {
             return None;
         }
 
-        let index = self.index(pos);
+        let index = pos.to_index(self.size.width);
         let cell = self.inner.get(index)?;
         match &cell.state {
             CellState::Occupied(c) => Some((c, &cell.style)),
@@ -177,7 +189,7 @@ impl Buffer {
             return None;
         }
 
-        let index = self.index(pos);
+        let index = pos.to_index(self.size.width);
         let cell = self.inner.get_mut(index)?;
         match &mut cell.state {
             CellState::Occupied(c) => Some((c, &mut cell.style)),
@@ -185,23 +197,9 @@ impl Buffer {
         }
     }
 
-    /// An iterator over all the rows in the buffer
-    pub fn rows(&mut self) -> impl Iterator<Item = impl Iterator<Item = Option<(Glyph, Style)>> + '_> {
-        self.cell_lines().map(|chunk| {
-            chunk.iter().map(|cell| match cell.state {
-                CellState::Occupied(c) => Some((c, cell.style)),
-                _ => None,
-            })
-        })
-    }
-
     pub(super) fn reset_cell(&mut self, pos: LocalPos) {
         let index = pos.to_index(self.size.width);
         self.inner[index] = Cell::empty();
-    }
-
-    fn index(&self, pos: LocalPos) -> usize {
-        (pos.y * self.size.width + pos.x) as usize
     }
 
     fn put(&mut self, mut cell: Cell, pos: LocalPos) {
@@ -211,10 +209,8 @@ impl Buffer {
             // If this is a unicode char that is wider than one cell,
             // add a continuation cell if it fits, this way if we overwrite it
             // we can set the continuation cell to `Empty`.
-            if pos.x < self.size.width {
-                if let 2.. = c.width() {
-                    self.put(Cell::continuation(cell.style), LocalPos::new(pos.x + 1, pos.y));
-                }
+            if pos.x < self.size.width && c.width() >= 2 {
+                self.put(Cell::continuation(cell.style), LocalPos::new(pos.x + 1, pos.y));
             }
         }
 
@@ -239,14 +235,25 @@ impl Buffer {
         }
     }
 
-    fn cell_lines(&mut self) -> impl Iterator<Item = &mut [Cell]> {
+    pub(super) fn cell_lines(&mut self) -> impl Iterator<Item = &mut [Cell]> {
         self.inner.chunks_mut(self.size.width as usize)
+    }
+}
+
+impl Index<(usize, usize)> for Buffer {
+    type Output = Cell;
+
+    fn index(&self, pos: (usize, usize)) -> &Self::Output {
+        let pos = LocalPos::from(pos);
+        let index = pos.to_index(self.size.width);
+        &self.inner[index]
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Change {
     Remove,
+    Continuation,
     Insert(Glyph),
 }
 
@@ -254,6 +261,7 @@ impl Change {
     fn width(self) -> usize {
         match self {
             Self::Remove => 1,
+            Self::Continuation => 0,
             Self::Insert(c) => c.width(),
         }
     }
@@ -274,7 +282,7 @@ pub(crate) fn diff(
 
             let change = match new_cell.state {
                 CellState::Empty => Change::Remove,
-                CellState::Continuation => continue,
+                CellState::Continuation => Change::Continuation,
                 CellState::Occupied(c) => Change::Insert(c),
             };
 
@@ -336,6 +344,7 @@ pub(crate) fn draw_changes(
                     }
                 }
             },
+            Change::Continuation => (), // Don't write on continuation, just advance
             Change::Remove => {
                 w.queue(Print(' '))?;
             }
