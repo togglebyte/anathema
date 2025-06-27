@@ -55,10 +55,10 @@ impl<I, T> Entry<I, T> {
     // Try to make the entry vacant and return the value
     fn try_evict(&mut self, next_id: &mut Option<I>) -> Option<T> {
         // If the strong count is anything but 1, then return None
-        if let Entry::Occupied(value) = self {
-            if Arc::strong_count(value) != 1 {
-                return None;
-            }
+        if let Entry::Occupied(value) = self
+            && Arc::strong_count(value) != 1
+        {
+            return None;
         }
 
         let mut value = Entry::Pending;
