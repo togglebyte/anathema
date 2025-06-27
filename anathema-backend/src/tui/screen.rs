@@ -162,18 +162,18 @@ impl WidgetRenderer for Screen {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::tui::buffer::Cell;
+    use crate::tui::buffer::{Cell, CellState};
 
-    fn make_screen(size: Size) -> Screen {
-        let mut screen = Screen::new(size);
-        for y in 0..size.height {
-            let c = y.to_string().chars().next().unwrap();
-            for x in 0..size.width {
-                screen.paint_glyph(Glyph::from_char(c, 1), LocalPos::new(x, y));
-            }
+    fn state_at(buffer: &Buffer, x: usize, y: usize) -> CellState {
+        let cell = buffer[(x, y)];
+        cell.state
+    }
+
+    fn char_at(buffer: &Buffer, x: usize, y: usize) -> char {
+        match state_at(buffer, x, y) {
+            CellState::Occupied(Glyph::Single(c, _)) => c,
+            _ => panic!(),
         }
-
-        screen
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod test {
         // Render a character
         let mut render_output = vec![];
         let glyph_map = GlyphMap::empty();
-        let mut screen = make_screen(Size::new(1, 1));
+        let mut screen = Screen::new(Size::new(1, 1));
         screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::ZERO);
         screen.render(&mut render_output, &glyph_map).unwrap();
 
@@ -194,14 +194,14 @@ mod test {
     fn erase_region() {
         let mut render_output = vec![];
         let glyph_map = GlyphMap::empty();
-        let mut screen = make_screen(Size::new(2, 2));
+        let mut screen = Screen::new(Size::new(2, 2));
         screen.render(&mut render_output, &glyph_map).unwrap();
 
         // Erase the bottom right corner of the 2x2 region
         screen.erase_region(LocalPos::new(1, 1), Size::new(2, 2));
 
         let top_left = screen.new_buffer.inner[0];
-        assert_eq!(Cell::new(Glyph::from_char('0', 1), Style::reset()), top_left);
+        assert_eq!(Cell::empty(), top_left);
         let bottom_right = screen.new_buffer.inner[3];
         assert_eq!(Cell::empty(), bottom_right);
     }
@@ -211,8 +211,48 @@ mod test {
     fn put_outside_of_screen() {
         // Put a character outside of the screen should panic
         let glyph_map = GlyphMap::empty();
-        let mut screen = make_screen(Size::new(1, 1));
+        let mut screen = Screen::new(Size::new(1, 1));
         screen.paint_glyph(Glyph::from_char('x', 1), LocalPos::new(3, 0));
         screen.render(&mut vec![], &glyph_map).unwrap();
+    }
+
+    #[test]
+    fn erasing_unicode_with_continuation_cell() {
+        // Paint a bunny in the next cell
+
+        let glyph_map = GlyphMap::empty();
+        let mut screen = Screen::new(Size::new(4, 1));
+        let bunny = '🐇';
+        // Where B = Bunny, c = continuation, 1 = some character
+        //
+        // Buffer
+        // B c 1 0
+        //
+        // Next buffer
+        // - B c 1
+
+        // First frame: Bc10
+        screen.paint_glyph(Glyph::from_char('1', 1), LocalPos::new(2, 0));
+        screen.paint_glyph(Glyph::from_char('0', 1), LocalPos::new(3, 0));
+        screen.paint_glyph(Glyph::from_char(bunny, 2), LocalPos::new(0, 0));
+
+        screen.render(&mut vec![], &glyph_map).unwrap();
+
+        assert_eq!(char_at(&screen.new_buffer, 0, 0), bunny);
+        assert_eq!(state_at(&screen.new_buffer, 1, 0), CellState::Continuation);
+        assert_eq!(char_at(&screen.new_buffer, 2, 0), '1');
+        assert_eq!(char_at(&screen.new_buffer, 3, 0), '0');
+
+        // // Second frame: -Bc1
+        screen.erase();
+
+        screen.paint_glyph(Glyph::from_char('1', 1), LocalPos::new(3, 0));
+        screen.paint_glyph(Glyph::from_char(bunny, 2), LocalPos::new(1, 0));
+        screen.render(&mut vec![], &glyph_map).unwrap();
+
+        assert_eq!(state_at(&screen.new_buffer, 0, 0), CellState::Empty);
+        assert_eq!(char_at(&screen.new_buffer, 1, 0), bunny);
+        assert_eq!(state_at(&screen.new_buffer, 2, 0), CellState::Continuation);
+        assert_eq!(char_at(&screen.new_buffer, 3, 0), '1');
     }
 }

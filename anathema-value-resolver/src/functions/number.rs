@@ -30,6 +30,29 @@ pub(super) fn to_int<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
     }
 }
 
+pub(super) fn to_float<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
+    if args.len() != 1 {
+        return ValueKind::Null;
+    }
+
+    match &args[0] {
+        ValueKind::Int(i) => ValueKind::Float(*i as f64),
+        ValueKind::Float(f) => ValueKind::Float(*f),
+        ValueKind::Bool(b) if !b => ValueKind::Float(0.0),
+        ValueKind::Bool(_) => ValueKind::Float(1.0),
+        ValueKind::Char(c) => match c.to_digit(10) {
+            Some(i) => ValueKind::Float(i as f64),
+            None => ValueKind::Null,
+        },
+        ValueKind::Hex(hex) => ValueKind::Float(hex.as_u32() as f64),
+        ValueKind::Str(s) => match s.parse() {
+            Ok(i) => ValueKind::Float(i),
+            Err(_) => ValueKind::Null,
+        },
+        _ => ValueKind::Null,
+    }
+}
+
 pub(super) fn round<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
     if args.is_empty() || args.len() > 2 {
         return ValueKind::Null;
@@ -41,7 +64,7 @@ pub(super) fn round<'bp>(args: &[ValueKind<'bp>]) -> ValueKind<'bp> {
     };
 
     match &args[0] {
-        ValueKind::Float(f) => ValueKind::Str(format!("{f:.*}", precision).into()),
+        ValueKind::Float(f) => ValueKind::Str(format!("{f:.precision$}").into()),
         _ => ValueKind::Null,
     }
 }

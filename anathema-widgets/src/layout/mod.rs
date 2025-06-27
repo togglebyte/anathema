@@ -82,7 +82,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
     }
 
     pub(crate) fn truncate_children(&mut self, tree: &mut TreeView<'_, WidgetContainer<'bp>>) {
-        tree.truncate_children(&mut &mut |widget| {
+        tree.truncate_children(&mut |widget| {
             self.return_component(widget);
         });
     }
@@ -95,6 +95,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
 
     fn return_component(&mut self, widget: WidgetContainer<'_>) {
         let WidgetKind::Component(comp) = widget.kind else { return };
+        self.components.try_remove(comp.widget_id);
         let id = comp.component_id;
         let state = self.states.remove(comp.state_id).take();
         self.component_registry.return_component(id, comp.dyn_component, state);

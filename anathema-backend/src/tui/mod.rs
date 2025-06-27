@@ -116,6 +116,29 @@ impl TuiBackend {
         }
     }
 
+    /// Convenience function this is the same as calling
+    /// ```no_run
+    /// # use anathema_backend::tui::TuiBackend;
+    /// # use anathema_backend::Backend;
+    /// let mut backend = TuiBackend::builder()
+    ///     .enable_alt_screen()
+    ///     .enable_raw_mode()
+    ///     .hide_cursor()
+    ///     .finish()
+    ///     .unwrap();
+    /// backend.finalize();
+    /// ```
+    pub fn full_screen() -> Self {
+        let mut inst = Self::builder()
+            .enable_alt_screen()
+            .enable_raw_mode()
+            .hide_cursor()
+            .finish()
+            .unwrap();
+        inst.finalize();
+        inst
+    }
+
     /// Disable raw mode.
     pub fn disable_raw_mode(self) -> Self {
         let _ = Screen::disable_raw_mode();
