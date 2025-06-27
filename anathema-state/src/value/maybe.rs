@@ -4,8 +4,14 @@ use crate::{State, TypeId};
 
 pub type Nullable<T> = Maybe<T>;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Maybe<T>(Option<Value<T>>);
+
+impl<T> Default for Maybe<T> {
+    fn default() -> Self {
+        Self(None)
+    }
+}
 
 impl<T: State> Maybe<T> {
     /// Create a Maybe with no value
