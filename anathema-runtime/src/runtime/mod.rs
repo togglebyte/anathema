@@ -9,7 +9,7 @@ use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Variables};
 use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::{Event, EventType};
 use anathema_widgets::components::{
     AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, MessageReceiver, Recipient,
     ViewMessage,
@@ -202,6 +202,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             dt: &mut self.dt,
             needs_layout: true,
+            post_cycle_events: vec![],
 
             global_event_handler: &self.global_event_handler,
             tabindex: None,
@@ -241,6 +242,8 @@ pub struct Frame<'rt, 'bp, G> {
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
     needs_layout: bool,
+    post_cycle_events: Vec<Event>,
+
     global_event_handler: &'rt G,
     pub tabindex: Option<Index>,
 }
@@ -351,6 +354,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         self.tick_components(self.dt.elapsed());
         self.cycle(backend)?;
 
+        self.post_cycle_events();
+
         *self.dt = Instant::now();
 
         match self.layout_ctx.stop_runtime {
@@ -432,7 +437,16 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 break;
             }
 
-            self.event(event);
+            match event.into() {
+                EventType::PreCycle => {
+                    // This is a pre-cycle event, we should notify immediately.
+                    self.event(event);
+                }
+                EventType::PostCycle => {
+                    // This is a post-cycle event, we should notify after the cycle is done.
+                    self.post_cycle_events.push(event);
+                }
+            }
 
             // Make sure event handling isn't holding up the rest of the event loop.
             if fps_now.elapsed().as_micros() as u64 > self.sleep_micros {
@@ -703,4 +717,19 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     //     let _tpl = "text 'you goofed up'";
     //     backend.render(self.layout_ctx.glyph_map);
     // }
+
+    fn post_cycle_events(&mut self) {
+        let events = self.post_cycle_events.clone();
+        for event in events {
+            match event.into() {
+                EventType::PreCycle => {
+                    // This should never happen
+                    panic!("pre cycle event should never be posted");
+                }
+                EventType::PostCycle => {
+                    self.event(event);
+                }
+            }
+        }
+    }
 }
