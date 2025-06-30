@@ -11,7 +11,8 @@ use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, Recipient, ViewMessage,
+    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, MessageReceiver, Recipient,
+    ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
@@ -60,6 +61,16 @@ impl Runtime<()> {
     /// Create a runtime builder
     pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder<()> {
         Builder::new(doc, backend.size(), ())
+    }
+
+    /// Create a runtime builder using an existing emitter
+    pub fn with_receiver<B: Backend>(
+        message_receiver: MessageReceiver,
+        emitter: Emitter,
+        doc: Document,
+        backend: &B,
+    ) -> Builder<()> {
+        Builder::with_receiver(message_receiver, emitter, doc, backend.size(), ())
     }
 }
 

@@ -148,8 +148,10 @@ impl From<flume::Sender<ViewMessage>> for Emitter {
     }
 }
 
+pub type MessageReceiver = flume::Receiver<ViewMessage>;
+
 impl Emitter {
-    pub fn new() -> (Self, flume::Receiver<ViewMessage>) {
+    pub fn new() -> (Self, MessageReceiver) {
         let (tx, rx) = flume::unbounded();
         (Self(tx), rx)
     }
