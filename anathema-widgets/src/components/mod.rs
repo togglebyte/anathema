@@ -12,10 +12,10 @@ use deferred::DeferredComponents;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
+use crate::WidgetId;
 use crate::layout::Viewport;
 use crate::query::Children;
 use crate::widget::Parent;
-use crate::WidgetId;
 
 pub mod deferred;
 pub mod events;
