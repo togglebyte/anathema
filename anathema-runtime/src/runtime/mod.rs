@@ -11,7 +11,7 @@ use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
+    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, Recipient, ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
@@ -381,16 +381,26 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::profile_function!();
 
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some((widget_id, state_id)) = self
-                .layout_ctx
-                .components
-                .get_by_component_id(msg.recipient())
-                .map(|e| (e.widget_id, e.state_id))
-            {
-                self.with_component(widget_id, state_id, |comp, elements, ctx| {
-                    comp.dyn_component.any_message(elements, ctx, msg.payload())
-                });
-            }
+            let (widget_id, state_id) = match msg.recipient() {
+                Recipient::ComponentId(id) => {
+                    let val = self
+                        .layout_ctx
+                        .components
+                        .get_by_component_id(id)
+                        .map(|e| (e.widget_id, e.state_id));
+                    let Some(id_and_state) = val else { continue };
+                    id_and_state
+                }
+                Recipient::WidgetId(id) => {
+                    let state_id = self.layout_ctx.components.get_by_widget_id(id).map(|(_, state)| state);
+                    let Some(state_id) = state_id else { continue };
+                    (id, state_id)
+                }
+            };
+
+            self.with_component(widget_id, state_id, |comp, elements, ctx| {
+                comp.dyn_component.any_message(elements, ctx, msg.payload())
+            });
 
             // Make sure event handling isn't holding up the rest of the event loop.
             if fps_now.elapsed().as_micros() as u64 >= self.sleep_micros / 2 {

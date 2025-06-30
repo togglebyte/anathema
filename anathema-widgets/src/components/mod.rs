@@ -58,11 +58,14 @@ impl ComponentRegistry {
         self.0.insert_at(id, comp_type);
     }
 
-    /// # Panics
-    ///
-    /// Panics if the component isn't registered.
-    /// This shouldn't happen as the statement eval should catch this.
-    pub fn get(&mut self, id: ComponentBlueprintId) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
+    // # Panics
+    //
+    // Panics if the component isn't registered.
+    // This shouldn't happen as the statement eval should catch this.
+    pub(super) fn get(
+        &mut self,
+        id: ComponentBlueprintId,
+    ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
         match self.0.get_mut(id) {
             Some(component) => match component {
                 ComponentType::Component(comp, state) => Some((ComponentKind::Instance, comp.take()?, state.take()?)),
@@ -117,17 +120,23 @@ impl<T> Copy for ComponentId<T> {}
 
 pub struct ViewMessage {
     pub(super) payload: Box<dyn Any + Send + Sync>,
-    pub(super) recipient: ComponentBlueprintId,
+    pub(super) recipient: Recipient,
 }
 
 impl ViewMessage {
-    pub fn recipient(&self) -> ComponentBlueprintId {
+    pub fn recipient(&self) -> Recipient {
         self.recipient
     }
 
     pub fn payload(self) -> Box<dyn Any + Send + Sync> {
         self.payload
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Recipient {
+    ComponentId(ComponentBlueprintId),
+    WidgetId(WidgetId),
 }
 
 #[derive(Debug, Clone)]
@@ -147,7 +156,7 @@ impl Emitter {
     ) -> Result<(), SendError<ViewMessage>> {
         let msg = ViewMessage {
             payload: Box::new(value),
-            recipient: component_id.0,
+            recipient: Recipient::ComponentId(component_id.0),
         };
         self.0.send(msg)
     }
@@ -159,7 +168,31 @@ impl Emitter {
     ) -> Result<(), SendError<ViewMessage>> {
         let msg = ViewMessage {
             payload: Box::new(value),
-            recipient: component_id.0,
+            recipient: Recipient::ComponentId(component_id.0),
+        };
+        self.0.send_async(msg).await
+    }
+
+    pub fn emit_to<T: 'static + Send + Sync>(
+        &self,
+        component_id: ComponentId<T>,
+        value: T,
+    ) -> Result<(), SendError<ViewMessage>> {
+        let msg = ViewMessage {
+            payload: Box::new(value),
+            recipient: Recipient::ComponentId(component_id.0),
+        };
+        self.0.send(msg)
+    }
+
+    pub async fn emit_async_to<T: 'static + Send + Sync>(
+        &self,
+        component_id: ComponentId<T>,
+        value: T,
+    ) -> Result<(), SendError<ViewMessage>> {
+        let msg = ViewMessage {
+            payload: Box::new(value),
+            recipient: Recipient::ComponentId(component_id.0),
         };
         self.0.send_async(msg).await
     }
