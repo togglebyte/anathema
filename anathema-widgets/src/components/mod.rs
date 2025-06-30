@@ -12,10 +12,10 @@ use deferred::DeferredComponents;
 use flume::SendError;
 
 use self::events::{Event, KeyEvent, MouseEvent};
-use crate::WidgetId;
 use crate::layout::Viewport;
 use crate::query::Children;
 use crate::widget::Parent;
+use crate::WidgetId;
 
 pub mod deferred;
 pub mod events;
@@ -149,6 +149,11 @@ impl From<flume::Sender<ViewMessage>> for Emitter {
 }
 
 impl Emitter {
+    pub fn new() -> (Self, flume::Receiver<ViewMessage>) {
+        let (tx, rx) = flume::unbounded();
+        (Self(tx), rx)
+    }
+
     pub fn emit<T: 'static + Send + Sync>(
         &self,
         component_id: ComponentId<T>,
@@ -175,24 +180,24 @@ impl Emitter {
 
     pub fn emit_to<T: 'static + Send + Sync>(
         &self,
-        component_id: ComponentId<T>,
+        widget_id: WidgetId,
         value: T,
     ) -> Result<(), SendError<ViewMessage>> {
         let msg = ViewMessage {
             payload: Box::new(value),
-            recipient: Recipient::ComponentId(component_id.0),
+            recipient: Recipient::WidgetId(widget_id),
         };
         self.0.send(msg)
     }
 
     pub async fn emit_async_to<T: 'static + Send + Sync>(
         &self,
-        component_id: ComponentId<T>,
+        widget_id: WidgetId,
         value: T,
     ) -> Result<(), SendError<ViewMessage>> {
         let msg = ViewMessage {
             payload: Box::new(value),
-            recipient: Recipient::ComponentId(component_id.0),
+            recipient: Recipient::WidgetId(widget_id),
         };
         self.0.send_async(msg).await
     }

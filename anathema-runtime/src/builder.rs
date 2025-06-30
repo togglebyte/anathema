@@ -31,13 +31,17 @@ pub struct Builder<G> {
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
-    /// Create a new runtime builder
-    pub(super) fn new(document: Document, size: Size, global_event_handler: G) -> Self {
+    /// Create a new runtime builder with a reciver.
+    /// Use this if the `Emitter` was created outside of the runtime.
+    pub(super) fn with_receiver(
+        message_receiver: flume::Receiver<ViewMessage>,
+        emitter: Emitter,
+        document: Document,
+        size: Size,
+        global_event_handler: G,
+    ) -> Self {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
-
-        let (tx, message_receiver) = flume::unbounded();
-        let emitter = tx.into();
 
         Self {
             factory,
@@ -51,6 +55,13 @@ impl<G: GlobalEventHandler> Builder<G> {
             hot_reload: true,
             function_table: FunctionTable::new(),
         }
+    }
+
+    /// Create a new runtime builder
+    pub(super) fn new(document: Document, size: Size, global_event_handler: G) -> Self {
+        let (tx, rx) = flume::unbounded();
+        let emitter = Emitter::from(tx);
+        Self::with_receiver(rx, emitter.clone(), document, size, global_event_handler)
     }
 
     /// Enable/Disable hot reloading

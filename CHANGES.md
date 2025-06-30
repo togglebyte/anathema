@@ -1,4 +1,5 @@
 * 0.2.8
+    * An emitter can be created before the runtime
     * Messages can be emitted to both widget ids and component ids
 * 0.2.7
     * BUGFIX: use correct truthiness check in control flow update
