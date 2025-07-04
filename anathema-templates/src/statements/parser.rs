@@ -162,6 +162,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     fn enter_scope(&mut self) -> Result<Option<Statement>, ParseError> {
         let indent = self.tokens.read_indent();
 
+        if let Kind::Op(op @ Operator::Semicolon) = self.tokens.peek() {
+            return Err(self.error(ParseErrorKind::InvalidOperator(op)));
+        }
+
         match self.tokens.peek() {
             Kind::Eof | Kind::Newline => {
                 self.next_state();

@@ -49,7 +49,7 @@ impl Scope {
                     if binding == "state" {
                         return Err(Error::InvalidStatement(format!("{binding} is a reserved identifier")));
                     }
-                    ctx.globals.declare(binding, value);
+                    ctx.variables.define_local(binding, value);
                 }
                 Statement::ComponentSlot(slot_id) => {
                     if let Some(bp) = ctx.slots.get(&slot_id).cloned() {
@@ -84,6 +84,7 @@ impl Scope {
             attributes,
             value,
         });
+
         Ok(node)
     }
 
@@ -91,7 +92,7 @@ impl Scope {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
-        ctx.globals.declare_local(binding.clone());
+        ctx.variables.declare_local(binding.clone());
         let body = self.consume_scope(ctx)?;
         let node = Blueprint::For(For { binding, data, body });
         Ok(Some(node))
@@ -101,7 +102,7 @@ impl Scope {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
-        ctx.globals.declare_local(binding.clone());
+        ctx.variables.declare_local(binding.clone());
         let body = self.consume_scope(ctx)?;
         let node = Blueprint::With(With { binding, data, body });
         Ok(Some(node))
@@ -185,6 +186,8 @@ impl Scope {
     }
 
     fn eval_component(&mut self, component_id: ComponentBlueprintId, ctx: &mut Context<'_>) -> Result<Blueprint> {
+        ctx.variables.push();
+
         let parent = ctx.component_parent();
 
         // Associated functions
@@ -227,6 +230,7 @@ impl Scope {
             parent,
         };
 
+        ctx.variables.pop();
         Ok(Blueprint::Component(component))
     }
 }

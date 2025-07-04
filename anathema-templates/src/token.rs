@@ -34,6 +34,7 @@ pub enum Operator {
     Dot,
     Comma,
     Colon,
+    Semicolon,
     Association,
     Either,
 }
@@ -67,6 +68,7 @@ impl Display for Operator {
             Self::Dot => write!(f, "."),
             Self::Comma => write!(f, ","),
             Self::Colon => write!(f, ":"),
+            Self::Semicolon => write!(f, ";"),
             Self::LCurly => write!(f, "{{"),
             Self::RCurly => write!(f, "}}"),
             Self::Association => write!(f, "->"),

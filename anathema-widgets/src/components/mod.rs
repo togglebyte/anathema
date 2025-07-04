@@ -236,7 +236,7 @@ impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
             parent,
             *assoc_event_map,
             self.ident_id,
-            self.sender_id,
+            self.widget_id,
             data,
         );
     }
@@ -271,7 +271,7 @@ impl<'frame, 'bp, T> DerefMut for Context<'frame, 'bp, T> {
 pub struct AnyComponentContext<'frame, 'bp> {
     parent: Option<Parent>,
     ident_id: StringId,
-    sender_id: WidgetId,
+    pub widget_id: WidgetId,
     state_id: StateId,
     assoc_functions: &'frame [AssocEventMapping],
     assoc_events: &'frame mut AssociatedEvents,
@@ -303,7 +303,7 @@ impl<'frame, 'bp> AnyComponentContext<'frame, 'bp> {
         Self {
             parent,
             ident_id,
-            sender_id,
+            widget_id: sender_id,
             state_id,
             assoc_functions,
             assoc_events,

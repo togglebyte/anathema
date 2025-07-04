@@ -27,8 +27,9 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
             ident => match self.ctx.scope.lookup(ident) {
                 Some(value) => value,
                 None => {
-                    let Some(expr) = self.ctx.globals.get(ident) else { return ValueExpr::Null };
-                    self.resolve(expr)
+                    panic!("here we need to resolve variables");
+                    // let Some(expr) = self.ctx.globals.get(ident) else { return ValueExpr::Null };
+                    // self.resolve(expr)
                 }
             },
         }
@@ -37,6 +38,10 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
     pub(crate) fn resolve(&self, expr: &'bp Expression) -> ValueExpr<'bp> {
         match expr {
             Expression::Primitive(primitive) => ValueExpr::from(*primitive),
+            Expression::Variable(var) => match self.ctx.variables.load(*var) {
+                Some(expr) => self.resolve(expr),
+                None => ValueExpr::Null,
+            },
             Expression::Str(s) => ValueExpr::Str(Kind::Static(s)),
             Expression::List(vec) => ValueExpr::List(vec.iter().map(|e| self.resolve(e)).collect()),
             Expression::Map(map) => ValueExpr::Map(map.iter().map(|(k, e)| (k.as_str(), self.resolve(e))).collect()),

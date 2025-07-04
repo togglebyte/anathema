@@ -92,6 +92,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             ('{', _) => Ok(Kind::Op(Operator::LCurly).to_token(index)),
             ('}', _) => Ok(Kind::Op(Operator::RCurly).to_token(index)),
             (':', _) => Ok(Kind::Op(Operator::Colon).to_token(index)),
+            (';', _) => Ok(Kind::Op(Operator::Semicolon).to_token(index)),
             (',', _) => Ok(Kind::Op(Operator::Comma).to_token(index)),
             ('.', _) => Ok(Kind::Op(Operator::Dot).to_token(index)),
             ('!', _) => Ok(Kind::Op(Operator::Not).to_token(index)),

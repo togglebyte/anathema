@@ -3,10 +3,10 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
+use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Variables};
 use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
@@ -18,8 +18,8 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind, WidgetTree,
-    eval_blueprint, update_widget,
+    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer,
+    WidgetId, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use notify::RecommendedWatcher;
@@ -36,7 +36,7 @@ mod testing;
 /// Anathema runtime
 pub struct Runtime<G> {
     pub(super) blueprint: Blueprint,
-    pub(super) globals: Globals,
+    pub(super) variables: Variables,
     pub(super) factory: Factory,
     pub(super) states: States,
     pub(super) component_registry: ComponentRegistry,
@@ -77,7 +77,7 @@ impl Runtime<()> {
 impl<G: GlobalEventHandler> Runtime<G> {
     pub(crate) fn new(
         blueprint: Blueprint,
-        globals: Globals,
+        variables: Variables,
         component_registry: ComponentRegistry,
         document: Document,
         factory: Factory,
@@ -101,7 +101,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             assoc_events: AssociatedEvents::new(),
             glyph_map: GlyphMap::empty(),
             blueprint,
-            globals,
+            variables,
             changes: Changes::empty(),
             viewport: Viewport::new(size),
             message_receiver,
@@ -174,7 +174,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         attribute_storage: &'frame mut AttributeStorage<'bp>,
     ) -> Result<Frame<'frame, 'bp, G>> {
         let layout_ctx = LayoutCtx::new(
-            &self.globals,
+            &self.variables,
             &self.factory,
             &mut self.states,
             attribute_storage,
@@ -220,9 +220,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
         // Reload templates
         self.document.reload_templates()?;
 
-        let (blueprint, globals) = self.document.compile()?;
+        let (blueprint, variables) = self.document.compile()?;
         self.blueprint = blueprint;
-        self.globals = globals;
+        self.variables = variables;
 
         Ok(())
     }
