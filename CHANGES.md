@@ -2,6 +2,7 @@
     * An emitter can be created before the runtime
     * Messages can be emitted to both widget ids and component ids
     * Feature flag: `serde` is now a feature flag that adds `Serialize` / `Deserialize` to `WidgetId`
+    * There is now a distinction between `global`s and `local`s
 * 0.2.7
     * BUGFIX: use correct truthiness check in control flow update
 * 0.2.6

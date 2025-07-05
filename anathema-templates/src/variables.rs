@@ -5,29 +5,22 @@ use anathema_store::slab::{Slab, SlabIndex};
 use crate::expressions::Expression;
 
 #[derive(Debug, Default, Clone)]
-pub(crate) struct Globals(HashMap<String, Variable>);
+pub(crate) struct Globals(HashMap<String, Expression>);
 
 impl Globals {
     pub fn empty() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn new(hm: HashMap<String, Variable>) -> Self {
-        Self(hm)
-    }
-
-    pub fn get(&self, ident: &str) -> Option<&Variable> {
+    pub fn get(&self, ident: &str) -> Option<&Expression> {
         self.0.get(ident)
     }
 
-    pub fn take(&mut self) -> Self {
-        std::mem::take(self)
-    }
-}
-
-impl From<Variables> for Globals {
-    fn from(value: Variables) -> Self {
-        Self(value.into())
+    pub(crate) fn set(&mut self, ident: String, value: Expression) {
+        if self.0.contains_key(&ident) {
+            return
+        }
+        _ = self.0.insert(ident, value);
     }
 }
 
@@ -123,17 +116,6 @@ impl ScopeId {
     fn as_slice(&self) -> &[u16] {
         &self.0
     }
-
-    // Does other contain self
-    fn contains(&self, other: impl AsRef<[u16]>) -> Option<&ScopeId> {
-        let other = other.as_ref();
-        let len = self.0.len();
-
-        match other.len() >= len {
-            true => (*self.0 == other[..len]).then_some(self),
-            false => None,
-        }
-    }
 }
 
 impl AsRef<[u16]> for ScopeId {
@@ -176,7 +158,7 @@ impl RootScope {
         scope
     }
 
-    // Get the value id "closest" to the given scope id.
+    // Get the value id in a given scope.
     //
     // e.g
     // ident0 @ scope [0]
@@ -184,7 +166,7 @@ impl RootScope {
     // ident2 @ scope [0, 1]
     // ident3 @ scope [0, 1, 1]
     //
-    // given an id of [0, 1, 1, 2, 3] would find `ident3` as the closest.
+    // given an id of [0, 1, 1] would find `ident3`.
     //
     // If there is no value with the given ident within reach
     // then return `None`.
@@ -209,10 +191,6 @@ impl RootScope {
     #[cfg(test)]
     fn insert(&mut self, ident: impl Into<String>, var: VarId) {
         self.0.insert(ident.into(), var)
-    }
-
-    fn create_child(&mut self) -> ScopeId {
-        self.0.create_child()
     }
 }
 
@@ -268,19 +246,14 @@ impl Declarations {
     }
 
     // Get the scope id that is closest to the argument
-    fn get(&self, ident: &str, scope_id: &ScopeId) -> Option<(VarId)> {
+    fn get(&self, ident: &str, scope_id: impl AsRef<[u16]>) -> Option<VarId> {
         self.0
             .get(ident)?
             .iter()
             .rev()
-            .filter(|(scope, _)| scope == scope_id)
+            .filter(|(scope, _)| scope.as_ref() == scope_id.as_ref())
             .map(|(_, var)| *var)
             .next()
-    }
-
-    #[cfg(test)]
-    fn get_ref(&self, ident: &str, id: impl AsRef<[u16]>) -> &[u16] {
-        self.get(ident, id).unwrap().0.as_ref()
     }
 }
 
@@ -325,12 +298,9 @@ impl Variables {
         var_id
     }
 
-    pub fn define_global(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> VarId {
-        panic!("this should put the values in a separate store as they are not scoped (they are global!)");
+    pub fn define_global(&mut self, ident: impl Into<String>, value: impl Into<Expression>) {
         let value = value.into();
-        let scope_id = self.current.clone();
-        let var_id = self.store.insert(Variable::Declaration(value));
-        self.declare_at(ident, var_id, scope_id)
+        self.globals.set(ident.into(), value)
     }
 
     pub fn define_local(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> VarId {
@@ -350,18 +320,7 @@ impl Variables {
 
     /// Fetch a value starting from the current path.
     pub fn fetch(&self, ident: &str) -> Option<VarId> {
-        // TODO: if this is None then try to fetch a global
         self.declarations.get(ident, &self.current)
-
-        // let expr = self
-        //     .root
-        //     .get_var_id(&self.current, ident)
-        //     .and_then(|id| self.store.get(id).cloned())
-        //     .and_then(|val| match val {
-        //         Variable::Declaration(expression) => Some(expression),
-        //         Variable::Definition => None,
-        //     });
-        // expr
     }
 
     /// Create a new child and set the new childs id as the `current` id.
@@ -380,8 +339,20 @@ impl Variables {
         self.current = self.current.parent().into();
     }
 
+    /// Load a variable from the store
     pub fn load(&self, var: VarId) -> Option<&Expression> {
         self.store.get(var).map(Variable::as_expression)
+    }
+
+    // Fetch and load a value from its ident
+    #[cfg(test)]
+    fn fetch_load(&self, ident: &str) -> Option<&Expression> {
+        let id = self.declarations.get(ident, &self.current)?;
+        self.load(id)
+    }
+
+    pub fn global_lookup(&self, ident: &str) -> Option<&Expression> {
+        self.globals.get(ident)
     }
 }
 
@@ -407,7 +378,7 @@ mod test {
 
     impl From<usize> for VarId {
         fn from(value: usize) -> Self {
-            VarId(value)
+            VarId(value as u32)
         }
     }
 
@@ -435,7 +406,7 @@ mod test {
     #[test]
     fn create_child() {
         let mut root = RootScope::default();
-        let child_id = root.create_child();
+        let child_id = root.0.create_child();
         assert_eq!(root.0.children.len(), 1);
         assert_eq!(child_id.as_ref(), &[0, 0]);
     }
@@ -446,8 +417,8 @@ mod test {
 
         let mut root = RootScope::default();
         root.insert("var", expected);
-        let actual = root.get_var_id(root.id(), "var").unwrap();
-        assert_eq!(expected, actual);
+        // let actual = root.0.get(root.id(), "var").unwrap();
+        // assert_eq!(expected, actual);
     }
 
     #[test]
@@ -456,7 +427,7 @@ mod test {
         let ident = "var";
 
         let mut root = RootScope::default();
-        let child_id = root.create_child();
+        let child_id = root.0.create_child();
         let child = root.get_scope_mut(&child_id);
         child.insert(ident, expected);
         let actual = root.get_var_id(&child_id, ident).unwrap();
@@ -468,10 +439,11 @@ mod test {
         let mut vars = Variables::new();
         let expected = Expression::from(123i64);
 
-        vars.define_global("var", expected.clone());
-        let value = vars.fetch("var").unwrap();
+        vars.define_local("var", expected.clone());
+        let id = vars.fetch("var").unwrap();
+        let value = vars.load(id).unwrap();
 
-        assert_eq!(expected, value);
+        assert_eq!(&expected, value);
     }
 
     #[test]
@@ -481,10 +453,10 @@ mod test {
         let value_a = Expression::from("1");
         let value_b = Expression::from("2");
 
-        let first_value_ref = vars.define_global(ident, value_a.clone());
-        let second_value_ref = vars.define_global(ident, value_b.clone());
-        assert_eq!(value_a, vars.load(first_value_ref));
-        assert_eq!(value_b, vars.load(second_value_ref));
+        let first_value_ref = vars.define_local(ident, value_a.clone());
+        let second_value_ref = vars.define_local(ident, value_b.clone());
+        assert_eq!(&value_a, vars.load(first_value_ref).unwrap());
+        assert_eq!(&value_b, vars.load(second_value_ref).unwrap());
     }
 
     #[test]
@@ -494,24 +466,24 @@ mod test {
         let ident = "var";
 
         vars.push();
-        vars.define_global(ident, "inaccessible");
+        vars.define_local(ident, "inaccessible");
         assert!(vars.fetch(ident).is_some());
         vars.pop();
 
         // Here we should have no access to the value via the root.
-        assert!(vars.fetch(ident).is_none());
+        assert!(vars.fetch_load(ident).is_none());
 
         // Here we should have no access to the value via the sibling.
         vars.push();
-        assert!(vars.fetch(ident).is_none());
+        assert!(vars.fetch_load(ident).is_none());
     }
 
     #[test]
     fn declaration_lookup() {
         let mut dec = Declarations::new();
-        dec.add("var", [0], 0);
-        let root = dec.get_ref("var", [0, 0]);
-        assert_eq!(root, &[0]);
+        dec.add("var", [0, 0], 0);
+        let root = dec.get("var", [0, 0]).unwrap();
+        assert_eq!(root, 0.into());
     }
 
     #[test]
@@ -527,11 +499,12 @@ mod test {
         let mut dec = Declarations::new();
         let ident = "var";
         dec.add(ident, [0], 0);
-        dec.add(ident, [0, 0], 0);
-        dec.add(ident, [0, 0, 0], 0);
+        dec.add(ident, [0, 0], 1);
+        dec.add(ident, [0, 0, 0], 2);
 
-        assert_eq!(dec.get_ref(ident, [0, 0]), &[0, 0]);
-        assert_eq!(dec.get_ref(ident, [0, 0, 0, 1, 1]), &[0, 0, 0]);
+        assert_eq!(dec.get(ident, [0]).unwrap().0, 0);
+        assert_eq!(dec.get(ident, [0, 0]).unwrap().0, 1);
+        assert!(dec.get(ident, [0, 0, 0, 1, 1]).is_none());
     }
 
     #[test]

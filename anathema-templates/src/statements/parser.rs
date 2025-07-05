@@ -382,8 +382,9 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
 
     fn parse_declaration(&mut self) -> Result<Option<Statement>, ParseError> {
         // Check if it's a declaration otherwise move on
-        match self.tokens.peek_skip_indent() {
-            Kind::Decl => (),
+        let is_global = match self.tokens.peek_skip_indent() {
+            Kind::Local => false,
+            Kind::Global => true,
             _ => {
                 self.next_state();
                 return Ok(None);
@@ -397,7 +398,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             self.tokens.consume();
             let value = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
             self.next_state();
-            let statement = Statement::Declaration { binding, value };
+            let statement = Statement::Declaration { binding, value, is_global };
             return Ok(Some(statement));
         }
 
@@ -637,7 +638,7 @@ mod test {
     use crate::expressions::{boolean, ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        associated_fun, case, component, decl, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
+        associated_fun, case, component, local, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
         node, scope_end, scope_start, slot, switch, with,
     };
 
@@ -973,7 +974,7 @@ mod test {
     fn parse_declaration() {
         let src = "let x = 1";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), decl(1, num(1)));
+        assert_eq!(statements.remove(0), local(1, num(1)));
     }
 
     #[test]
@@ -1012,7 +1013,7 @@ mod test {
         let mut statements = parse_ok(src);
         assert_eq!(
             statements.remove(0),
-            decl(1, map([("a", num(1)), ("b", map([("a", num(2))]))])),
+            local(1, map([("a", num(1)), ("b", map([("a", num(2))]))])),
         );
     }
 

@@ -43,13 +43,16 @@ impl Scope {
                 }
                 Statement::If(cond) => output.push(self.eval_if(cond, ctx)?),
                 Statement::Switch(cond) => output.push(self.eval_switch(cond, ctx)?),
-                Statement::Declaration { binding, value } => {
+                Statement::Declaration { binding, value, is_global } => {
                     let Some(value) = const_eval(value, ctx) else { continue };
                     let binding = ctx.strings.get_unchecked(binding);
                     if binding == "state" {
                         return Err(Error::InvalidStatement(format!("{binding} is a reserved identifier")));
                     }
-                    ctx.variables.define_local(binding, value);
+                    match is_global {
+                        false => _ = ctx.variables.define_local(binding, value),
+                        true => ctx.variables.define_global(binding, value),
+                    }
                 }
                 Statement::ComponentSlot(slot_id) => {
                     if let Some(bp) = ctx.slots.get(&slot_id).cloned() {

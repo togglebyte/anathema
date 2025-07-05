@@ -219,7 +219,8 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             "else" => Kind::Else,
             "true" => Kind::Value(true.into()),
             "false" => Kind::Value(false.into()),
-            "let" => Kind::Decl,
+            "local" | "let" => Kind::Local,
+            "global" => Kind::Global,
             "switch" => Kind::Switch,
             "case" => Kind::Case,
             "default" => Kind::Default,
@@ -494,9 +495,15 @@ mod test {
     }
 
     #[test]
-    fn declaration() {
-        let decl = token_kind("let");
-        assert_eq!(decl, Kind::Decl);
+    fn local_dec() {
+        let decl = token_kind("local");
+        assert_eq!(decl, Kind::Local);
+    }
+
+    #[test]
+    fn global_dec() {
+        let decl = token_kind("global");
+        assert_eq!(decl, Kind::Global);
     }
 
     #[test]

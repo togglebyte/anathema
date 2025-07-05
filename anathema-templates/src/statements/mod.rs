@@ -67,7 +67,7 @@ pub(crate) enum Statement {
     Node(StringId),
     For { binding: StringId, data: Expression },
     With { binding: StringId, data: Expression },
-    Declaration { binding: StringId, value: Expression },
+    Declaration { binding: StringId, value: Expression, is_global: bool },
     If(Expression),
     Switch(Expression),
     Case(Expression),
@@ -313,11 +313,21 @@ mod test {
         }
     }
 
-    pub(crate) fn decl(binding: usize, value: impl Into<Expression>) -> Statement {
+    pub(crate) fn local(binding: usize, value: impl Into<Expression>) -> Statement {
         let binding = StringId::from_usize(binding);
         Statement::Declaration {
             binding,
             value: value.into(),
+            is_global: false,
+        }
+    }
+
+    pub(crate) fn global(binding: usize, value: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
+        Statement::Declaration {
+            binding,
+            value: value.into(),
+            is_global: true,
         }
     }
 

@@ -27,9 +27,8 @@ impl<'a, 'frame, 'bp> Resolver<'a, 'frame, 'bp> {
             ident => match self.ctx.scope.lookup(ident) {
                 Some(value) => value,
                 None => {
-                    panic!("here we need to resolve variables");
-                    // let Some(expr) = self.ctx.globals.get(ident) else { return ValueExpr::Null };
-                    // self.resolve(expr)
+                    let Some(expr) = self.ctx.variables.global_lookup(ident) else { return ValueExpr::Null };
+                    self.resolve(expr)
                 }
             },
         }
