@@ -23,7 +23,7 @@ impl TestSurface {
 
     pub(crate) fn resize(&mut self, new_size: Size, _glyph_map: &mut GlyphMap) {
         self.size = new_size;
-        todo!("truncate and pop lines outside of the new size")
+        // TODO: this should pop and truncate the lines to fit the new size
     }
 
     // Get from previous lines as the clear function has most likely
