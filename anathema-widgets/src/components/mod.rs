@@ -156,6 +156,7 @@ impl Emitter {
         (Self(tx), rx)
     }
 
+    /// Emit a message to a component via a `ComponentId<T>`
     pub fn emit<T: 'static + Send + Sync>(
         &self,
         component_id: ComponentId<T>,
@@ -168,6 +169,7 @@ impl Emitter {
         self.0.send(msg)
     }
 
+    /// Emit a message to a component via a `ComponentId<T>` asynchronously
     pub async fn emit_async<T: 'static + Send + Sync>(
         &self,
         component_id: ComponentId<T>,
@@ -180,7 +182,10 @@ impl Emitter {
         self.0.send_async(msg).await
     }
 
-    pub fn emit_to<T: 'static + Send + Sync>(
+    /// Try to emit a message to a component via its `WidgetId`.
+    /// Unlike the `emit` function there is no type associated with the widget id,
+    /// and the message will fail to deliver silently if the wrong type is used.
+    pub fn try_emit<T: 'static + Send + Sync>(
         &self,
         widget_id: WidgetId,
         value: T,
@@ -192,7 +197,8 @@ impl Emitter {
         self.0.send(msg)
     }
 
-    pub async fn emit_async_to<T: 'static + Send + Sync>(
+    /// Async counterpart of `try_emit`.
+    pub async fn try_emit_async<T: 'static + Send + Sync>(
         &self,
         widget_id: WidgetId,
         value: T,
