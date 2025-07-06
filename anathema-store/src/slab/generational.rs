@@ -46,6 +46,7 @@ impl Display for Gen {
 ///
 /// This is used to attach additional data to the key.
 #[derive(Hash, Copy, Clone, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Key(u64);
 
 impl Key {

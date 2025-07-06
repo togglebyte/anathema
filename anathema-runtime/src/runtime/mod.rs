@@ -6,12 +6,13 @@ use anathema_geometry::Size;
 use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Variables};
 use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::Event;
 use anathema_widgets::components::{
-    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
+    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, MessageReceiver, Recipient,
+    ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
@@ -35,7 +36,7 @@ mod testing;
 /// Anathema runtime
 pub struct Runtime<G> {
     pub(super) blueprint: Blueprint,
-    pub(super) globals: Globals,
+    pub(super) variables: Variables,
     pub(super) factory: Factory,
     pub(super) states: States,
     pub(super) component_registry: ComponentRegistry,
@@ -61,12 +62,22 @@ impl Runtime<()> {
     pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder<()> {
         Builder::new(doc, backend.size(), ())
     }
+
+    /// Create a runtime builder using an existing emitter
+    pub fn with_receiver<B: Backend>(
+        message_receiver: MessageReceiver,
+        emitter: Emitter,
+        doc: Document,
+        backend: &B,
+    ) -> Builder<()> {
+        Builder::with_receiver(message_receiver, emitter, doc, backend.size(), ())
+    }
 }
 
 impl<G: GlobalEventHandler> Runtime<G> {
     pub(crate) fn new(
         blueprint: Blueprint,
-        globals: Globals,
+        variables: Variables,
         component_registry: ComponentRegistry,
         document: Document,
         factory: Factory,
@@ -90,7 +101,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             assoc_events: AssociatedEvents::new(),
             glyph_map: GlyphMap::empty(),
             blueprint,
-            globals,
+            variables,
             changes: Changes::empty(),
             viewport: Viewport::new(size),
             message_receiver,
@@ -163,7 +174,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         attribute_storage: &'frame mut AttributeStorage<'bp>,
     ) -> Result<Frame<'frame, 'bp, G>> {
         let layout_ctx = LayoutCtx::new(
-            &self.globals,
+            &self.variables,
             &self.factory,
             &mut self.states,
             attribute_storage,
@@ -209,9 +220,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
         // Reload templates
         self.document.reload_templates()?;
 
-        let (blueprint, globals) = self.document.compile()?;
+        let (blueprint, variables) = self.document.compile()?;
         self.blueprint = blueprint;
-        self.globals = globals;
+        self.variables = variables;
 
         Ok(())
     }
@@ -381,16 +392,26 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::profile_function!();
 
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some((widget_id, state_id)) = self
-                .layout_ctx
-                .components
-                .get_by_component_id(msg.recipient())
-                .map(|e| (e.widget_id, e.state_id))
-            {
-                self.with_component(widget_id, state_id, |comp, elements, ctx| {
-                    comp.dyn_component.any_message(elements, ctx, msg.payload())
-                });
-            }
+            let (widget_id, state_id) = match msg.recipient() {
+                Recipient::ComponentId(id) => {
+                    let val = self
+                        .layout_ctx
+                        .components
+                        .get_by_component_id(id)
+                        .map(|e| (e.widget_id, e.state_id));
+                    let Some(id_and_state) = val else { continue };
+                    id_and_state
+                }
+                Recipient::WidgetId(id) => {
+                    let state_id = self.layout_ctx.components.get_by_widget_id(id).map(|(_, state)| state);
+                    let Some(state_id) = state_id else { continue };
+                    (id, state_id)
+                }
+            };
+
+            self.with_component(widget_id, state_id, |comp, elements, ctx| {
+                comp.dyn_component.any_message(elements, ctx, msg.payload())
+            });
 
             // Make sure event handling isn't holding up the rest of the event loop.
             if fps_now.elapsed().as_micros() as u64 >= self.sleep_micros / 2 {

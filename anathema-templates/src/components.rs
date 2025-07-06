@@ -174,7 +174,7 @@ impl ComponentTemplates {
     pub(crate) fn load(
         &mut self,
         parent_id: ComponentBlueprintId,
-        globals: &mut Variables,
+        variables: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
     ) -> Result<Vec<Blueprint>> {
@@ -194,7 +194,7 @@ impl ComponentTemplates {
         // NOTE
         // The ticket has to be restored to the component store,
         // this is why the error is returned rather than using `?` on `self.compile`.
-        let ret = self.compile(template, globals, slots, strings, parent_id);
+        let ret = self.compile(template, variables, slots, strings, parent_id);
 
         self.components.restore(ticket);
         self.dependencies.pop();
@@ -205,7 +205,7 @@ impl ComponentTemplates {
     fn compile(
         &mut self,
         template: &str,
-        globals: &mut Variables,
+        variables: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
         parent: ComponentBlueprintId,
@@ -216,7 +216,7 @@ impl ComponentTemplates {
 
         let statements = parser.collect::<Result<Statements>>()?;
 
-        let mut context = Context::new(globals, self, strings, slots, Some(parent));
+        let mut context = Context::new(variables, self, strings, slots, Some(parent));
 
         Scope::new(statements).eval(&mut context)
     }

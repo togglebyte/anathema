@@ -573,7 +573,7 @@ pub(crate) mod test {
 
         let mut states = States::new();
         let mut globals = Variables::new();
-        globals.declare("index", 0);
+        globals.define_global("index", 0);
 
         setup(&mut states, globals, |test| {
             let value = test.eval(&expr);
@@ -881,7 +881,7 @@ pub(crate) mod test {
         // state[empty|full]
         let mut states = States::new();
         let mut globals = Variables::new();
-        globals.declare("full", "string");
+        globals.define_global("full", "string");
         setup(&mut states, globals, |test| {
             let expr = index(ident("state"), either(ident("empty"), ident("full")));
             test.with_state(|state| state.string.set("a string"));
@@ -934,7 +934,7 @@ pub(crate) mod test {
     fn test_either() {
         let mut states = States::new();
         let mut globals = Variables::new();
-        globals.declare("missing", 111);
+        globals.define_global("missing", 111);
         setup(&mut states, globals, |test| {
             let expr = either(ident("missings"), num(2));
             let value = test.eval(&expr);

@@ -34,6 +34,7 @@ pub enum Operator {
     Dot,
     Comma,
     Colon,
+    Semicolon,
     Association,
     Either,
 }
@@ -67,6 +68,7 @@ impl Display for Operator {
             Self::Dot => write!(f, "."),
             Self::Comma => write!(f, ","),
             Self::Colon => write!(f, ":"),
+            Self::Semicolon => write!(f, ";"),
             Self::LCurly => write!(f, "{{"),
             Self::RCurly => write!(f, "}}"),
             Self::Association => write!(f, "->"),
@@ -118,7 +120,8 @@ pub(crate) enum Kind {
     Value(Value),
     Op(Operator),
 
-    Decl,
+    Local,
+    Global,
 
     Eof,
 }
@@ -148,7 +151,8 @@ impl Display for Kind {
             Self::Indent(s) => write!(f, "<indent {s}>"),
             Self::Value(v) => write!(f, "<value {v}>"),
             Self::Op(o) => write!(f, "<op {o}>"),
-            Self::Decl => write!(f, "let"),
+            Self::Local => write!(f, "local"),
+            Self::Global => write!(f, "global"),
             Self::Eof => write!(f, "<Eof>"),
         }
     }

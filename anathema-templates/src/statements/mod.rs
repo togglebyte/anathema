@@ -6,14 +6,14 @@ use crate::components::{AssocEventMapping, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::strings::{StringId, Strings};
-use crate::variables::Variables;
+use crate::variables::{VarId, Variables};
 
 mod const_eval;
 pub(crate) mod eval;
 pub(super) mod parser;
 
 pub(crate) struct Context<'vars> {
-    pub(crate) globals: &'vars mut Variables,
+    pub(crate) variables: &'vars mut Variables,
     pub(crate) components: &'vars mut ComponentTemplates,
     pub(crate) strings: &'vars mut Strings,
     pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
@@ -22,14 +22,14 @@ pub(crate) struct Context<'vars> {
 
 impl<'vars> Context<'vars> {
     pub fn new(
-        globals: &'vars mut Variables,
+        variables: &'vars mut Variables,
         components: &'vars mut ComponentTemplates,
         strings: &'vars mut Strings,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         current_component_parent: Option<ComponentBlueprintId>,
     ) -> Self {
         Self {
-            globals,
+            variables,
             components,
             strings,
             slots,
@@ -43,8 +43,8 @@ impl Context<'_> {
         self.current_component_parent
     }
 
-    fn fetch(&self, key: &str) -> Option<Expression> {
-        self.globals.fetch(key)
+    fn fetch(&self, key: &str) -> Option<VarId> {
+        self.variables.fetch(key)
     }
 
     fn load_component(
@@ -53,21 +53,34 @@ impl Context<'_> {
         slots: SmallMap<StringId, Vec<Blueprint>>,
     ) -> Result<Vec<Blueprint>> {
         self.components
-            .load(parent_component_id, self.globals, slots, self.strings)
+            .load(parent_component_id, self.variables, slots, self.strings)
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Statement {
     LoadValue(Expression),
-    LoadAttribute { key: StringId, value: Expression },
+    LoadAttribute {
+        key: StringId,
+        value: Expression,
+    },
     AssociatedFunction(AssocEventMapping),
     Component(ComponentBlueprintId),
     ComponentSlot(StringId),
     Node(StringId),
-    For { binding: StringId, data: Expression },
-    With { binding: StringId, data: Expression },
-    Declaration { binding: StringId, value: Expression },
+    For {
+        binding: StringId,
+        data: Expression,
+    },
+    With {
+        binding: StringId,
+        data: Expression,
+    },
+    Declaration {
+        binding: StringId,
+        value: Expression,
+        is_global: bool,
+    },
     If(Expression),
     Switch(Expression),
     Case(Expression),
@@ -244,7 +257,7 @@ where
     let mut components = ComponentTemplates::new();
 
     let context = Context {
-        globals: &mut globals,
+        variables: &mut globals,
         strings: &mut strings,
         components: &mut components,
         slots: SmallMap::empty(),
@@ -313,11 +326,21 @@ mod test {
         }
     }
 
-    pub(crate) fn decl(binding: usize, value: impl Into<Expression>) -> Statement {
+    pub(crate) fn local(binding: usize, value: impl Into<Expression>) -> Statement {
         let binding = StringId::from_usize(binding);
         Statement::Declaration {
             binding,
             value: value.into(),
+            is_global: false,
+        }
+    }
+
+    pub(crate) fn global(binding: usize, value: impl Into<Expression>) -> Statement {
+        let binding = StringId::from_usize(binding);
+        Statement::Declaration {
+            binding,
+            value: value.into(),
+            is_global: true,
         }
     }
 

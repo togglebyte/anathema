@@ -11,8 +11,7 @@ use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
 use crate::strings::Strings;
 use crate::token::Tokens;
-use crate::variables::Variables;
-use crate::{ComponentBlueprintId, Globals, Lexer};
+use crate::{ComponentBlueprintId, Lexer, Variables};
 
 /// A document containing templates and components
 /// ```
@@ -56,7 +55,7 @@ impl Document {
         Ok(id)
     }
 
-    pub fn compile(&mut self) -> Result<(Blueprint, Globals)> {
+    pub fn compile(&mut self) -> Result<(Blueprint, Variables)> {
         self.globals = Variables::default();
 
         let tokens = Lexer::new(&self.template, &mut self.strings).collect::<Result<Vec<_>>>()?;
@@ -66,7 +65,7 @@ impl Document {
         let statements = parser.collect::<Result<Statements>>()?;
 
         let mut context = Context {
-            globals: &mut self.globals,
+            variables: &mut self.globals,
             strings: &mut self.strings,
             components: &mut self.components,
             slots: SmallMap::empty(),
@@ -76,7 +75,7 @@ impl Document {
         let mut blueprints = Scope::new(statements).eval(&mut context)?;
         match blueprints.is_empty() {
             true => Err(Error::EmptyTemplate),
-            false => Ok((blueprints.remove(0), self.globals.take().into())),
+            false => Ok((blueprints.remove(0), self.globals.take())),
         }
     }
 

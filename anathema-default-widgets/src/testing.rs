@@ -3,7 +3,7 @@ use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals, ToSourceKind};
+use anathema_templates::{Document, ToSourceKind, Variables};
 use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable, Scope};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::components::events::Event;
@@ -131,7 +131,7 @@ pub struct TestRunner {
     factory: Factory,
     backend: TestBackend,
     blueprint: Blueprint,
-    globals: Globals,
+    variables: Variables,
     components: Components,
     function_table: FunctionTable,
 }
@@ -167,7 +167,7 @@ impl TestRunner {
             states,
             component_registry,
             blueprint,
-            globals,
+            variables: globals,
             components: Components::new(),
             function_table: FunctionTable::new(),
         }
@@ -178,7 +178,7 @@ impl TestRunner {
             &self.blueprint,
             &mut self.states,
             &mut self.backend,
-            &self.globals,
+            &self.variables,
             &self.factory,
             &mut self.component_registry,
             &mut self.components,
@@ -192,7 +192,7 @@ pub struct TestInstance<'bp> {
     attribute_storage: AttributeStorage<'bp>,
     floating_widgets: FloatingWidgets,
     states: &'bp mut States,
-    globals: &'bp Globals,
+    variables: &'bp Variables,
     backend: &'bp mut TestBackend,
     viewport: Viewport,
     factory: &'bp Factory,
@@ -208,7 +208,7 @@ impl<'bp> TestInstance<'bp> {
         blueprint: &'bp Blueprint,
         states: &'bp mut States,
         backend: &'bp mut TestBackend,
-        globals: &'bp Globals,
+        variables: &'bp Variables,
         factory: &'bp Factory,
         component_registry: &'bp mut ComponentRegistry,
         components: &'bp mut Components,
@@ -222,7 +222,7 @@ impl<'bp> TestInstance<'bp> {
 
         let scope = Scope::root();
         let mut ctx = LayoutCtx::new(
-            globals,
+            variables,
             factory,
             states,
             &mut attribute_storage,
@@ -244,7 +244,7 @@ impl<'bp> TestInstance<'bp> {
             attribute_storage,
             floating_widgets,
             states,
-            globals,
+            variables,
             backend,
             viewport,
             factory,
@@ -274,7 +274,7 @@ impl<'bp> TestInstance<'bp> {
         let mut tree = self.tree.view();
 
         let mut ctx = LayoutCtx::new(
-            self.globals,
+            self.variables,
             self.factory,
             self.states,
             &mut self.attribute_storage,
@@ -319,7 +319,7 @@ impl<'bp> TestInstance<'bp> {
         let constraints = Constraints::new(width as u16, height as u16);
 
         let mut ctx = LayoutCtx::new(
-            self.globals,
+            self.variables,
             self.factory,
             self.states,
             &mut self.attribute_storage,
