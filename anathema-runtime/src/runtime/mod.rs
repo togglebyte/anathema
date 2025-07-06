@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
@@ -202,7 +203,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             dt: &mut self.dt,
             needs_layout: true,
-            post_cycle_events: vec![],
+            post_cycle_events: VecDeque::new(),
 
             global_event_handler: &self.global_event_handler,
             tabindex: None,
@@ -242,7 +243,7 @@ pub struct Frame<'rt, 'bp, G> {
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
     needs_layout: bool,
-    post_cycle_events: Vec<Event>,
+    post_cycle_events: VecDeque<Event>,
 
     global_event_handler: &'rt G,
     pub tabindex: Option<Index>,
@@ -444,7 +445,7 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 }
                 EventType::PostCycle => {
                     // This is a post-cycle event, we should notify after the cycle is done.
-                    self.post_cycle_events.push(event);
+                    self.post_cycle_events.push_back(event);
                 }
             }
 
@@ -719,17 +720,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
     // }
 
     fn post_cycle_events(&mut self) {
-        let events = self.post_cycle_events.clone();
-        for event in events {
-            match event.into() {
-                EventType::PreCycle => {
-                    // This should never happen
-                    panic!("pre cycle event should never be posted");
-                }
-                EventType::PostCycle => {
-                    self.event(event);
-                }
-            }
+        while let Some(event) = self.post_cycle_events.pop_front() {
+            self.event(event);
         }
     }
 }
