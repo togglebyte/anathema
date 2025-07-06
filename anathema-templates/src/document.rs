@@ -11,7 +11,7 @@ use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
 use crate::strings::Strings;
 use crate::token::Tokens;
-use crate::{ComponentBlueprintId, Variables, Lexer};
+use crate::{ComponentBlueprintId, Lexer, Variables};
 
 /// A document containing templates and components
 /// ```
@@ -75,7 +75,7 @@ impl Document {
         let mut blueprints = Scope::new(statements).eval(&mut context)?;
         match blueprints.is_empty() {
             true => Err(Error::EmptyTemplate),
-            false => Ok((blueprints.remove(0), self.globals.take().into())),
+            false => Ok((blueprints.remove(0), self.globals.take())),
         }
     }
 

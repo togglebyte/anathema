@@ -6,7 +6,7 @@ use crate::components::{AssocEventMapping, ComponentTemplates};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::strings::{StringId, Strings};
-use crate::variables::{VarId, Variable, Variables};
+use crate::variables::{VarId, Variables};
 
 mod const_eval;
 pub(crate) mod eval;
@@ -60,14 +60,27 @@ impl Context<'_> {
 #[derive(Debug, PartialEq)]
 pub(crate) enum Statement {
     LoadValue(Expression),
-    LoadAttribute { key: StringId, value: Expression },
+    LoadAttribute {
+        key: StringId,
+        value: Expression,
+    },
     AssociatedFunction(AssocEventMapping),
     Component(ComponentBlueprintId),
     ComponentSlot(StringId),
     Node(StringId),
-    For { binding: StringId, data: Expression },
-    With { binding: StringId, data: Expression },
-    Declaration { binding: StringId, value: Expression, is_global: bool },
+    For {
+        binding: StringId,
+        data: Expression,
+    },
+    With {
+        binding: StringId,
+        data: Expression,
+    },
+    Declaration {
+        binding: StringId,
+        value: Expression,
+        is_global: bool,
+    },
     If(Expression),
     Switch(Expression),
     Case(Expression),

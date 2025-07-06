@@ -60,7 +60,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
         E::LogicalOp(lhs, rhs, op) => E::LogicalOp(ce!(*lhs), ce!(*rhs), op),
 
         E::Ident(_) | E::Index(..) => eval_path(expr, ctx)?,
-        E::Variable(var) => panic!(),
+        E::Variable(_) => unreachable!("const eval is not recursive so this can never happen"),
 
         E::List(list) => {
             let list = list.into_iter().filter_map(|expr| ce!(expr)).collect();

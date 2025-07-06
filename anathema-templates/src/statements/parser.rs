@@ -398,7 +398,11 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             self.tokens.consume();
             let value = parse_expr(&mut self.tokens, self.strings).map_err(|e| self.error(e))?;
             self.next_state();
-            let statement = Statement::Declaration { binding, value, is_global };
+            let statement = Statement::Declaration {
+                binding,
+                value,
+                is_global,
+            };
             return Ok(Some(statement));
         }
 
@@ -638,8 +642,8 @@ mod test {
     use crate::expressions::{boolean, ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
-        associated_fun, case, component, local, else_stmt, eof, for_loop, if_else, if_stmt, load_attrib, load_value,
-        node, scope_end, scope_start, slot, switch, with,
+        associated_fun, case, component, else_stmt, eof, for_loop, global, if_else, if_stmt, load_attrib, load_value,
+        local, node, scope_end, scope_start, slot, switch, with,
     };
 
     fn parse(src: &str) -> Vec<Result<Statement>> {
@@ -971,10 +975,17 @@ mod test {
     }
 
     #[test]
-    fn parse_declaration() {
+    fn parse_local_declaration() {
         let src = "let x = 1";
         let mut statements = parse_ok(src);
         assert_eq!(statements.remove(0), local(1, num(1)));
+    }
+
+    #[test]
+    fn parse_global_declaration() {
+        let src = "global x = 1";
+        let mut statements = parse_ok(src);
+        assert_eq!(statements.remove(0), global(1, num(1)));
     }
 
     #[test]

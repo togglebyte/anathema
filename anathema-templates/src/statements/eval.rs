@@ -43,7 +43,11 @@ impl Scope {
                 }
                 Statement::If(cond) => output.push(self.eval_if(cond, ctx)?),
                 Statement::Switch(cond) => output.push(self.eval_switch(cond, ctx)?),
-                Statement::Declaration { binding, value, is_global } => {
+                Statement::Declaration {
+                    binding,
+                    value,
+                    is_global,
+                } => {
                     let Some(value) = const_eval(value, ctx) else { continue };
                     let binding = ctx.strings.get_unchecked(binding);
                     if binding == "state" {

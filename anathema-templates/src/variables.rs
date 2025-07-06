@@ -18,7 +18,7 @@ impl Globals {
 
     pub(crate) fn set(&mut self, ident: String, value: Expression) {
         if self.0.contains_key(&ident) {
-            return
+            return;
         }
         _ = self.0.insert(ident, value);
     }
@@ -59,24 +59,6 @@ impl Variable {
     }
 }
 
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum Variable {
-//     Static(Primitive),
-//     Str(Rc<str>),
-// }
-
-// impl From<&str> for Variable {
-//     fn from(value: &str) -> Self {
-//         Self::Str(value.into())
-//     }
-// }
-
-// impl From<Primitive> for Variable {
-//     fn from(value: Primitive) -> Self {
-//         Self::Static(value)
-//     }
-// }
-
 /// The scope id acts as a path made up of indices
 /// into the scope tree.
 /// E.g `[0, 1, 0]` would point to `root.children[0].children[1].children[0]`.
@@ -95,7 +77,7 @@ impl ScopeId {
     // Get the parent id as a slice.
     fn parent(&self) -> &[u16] {
         // Can't get the parent of the root
-        debug_assert!(self.0.len() > 1);
+        assert!(self.0.len() > 1);
 
         let to = self.0.len() - 1;
         &self.0[..to]
@@ -157,58 +139,18 @@ impl RootScope {
 
         scope
     }
-
-    // Get the value id in a given scope.
-    //
-    // e.g
-    // ident0 @ scope [0]
-    // ident1 @ scope [0, 0]
-    // ident2 @ scope [0, 1]
-    // ident3 @ scope [0, 1, 1]
-    //
-    // given an id of [0, 1, 1] would find `ident3`.
-    //
-    // If there is no value with the given ident within reach
-    // then return `None`.
-    fn get_var_id(&self, id: impl AsRef<[u16]>, ident: &str) -> Option<VarId> {
-        let mut scope = &self.0;
-
-        let mut id = &id.as_ref()[1..];
-
-        while !id.is_empty() {
-            scope = &scope.children[id[0] as usize];
-            id = &id[1..];
-        }
-
-        scope.variables.get(ident).and_then(|values| values.last()).copied()
-    }
-
-    #[cfg(test)]
-    fn id(&self) -> &ScopeId {
-        &self.0.id
-    }
-
-    #[cfg(test)]
-    fn insert(&mut self, ident: impl Into<String>, var: VarId) {
-        self.0.insert(ident.into(), var)
-    }
 }
 
 /// A scope stores versioned values
 #[derive(Debug)]
 pub struct Scope {
-    variables: HashMap<String, Vec<VarId>>,
     id: ScopeId,
     children: Vec<Scope>,
 }
 
 impl Scope {
     fn new(id: ScopeId) -> Self {
-        Self {
-            id,
-            variables: Default::default(),
-            children: vec![],
-        }
+        Self { id, children: vec![] }
     }
 
     // Create the next child scope id.
@@ -222,12 +164,6 @@ impl Scope {
         let id = self.id.next(index as u16);
         self.children.push(Scope::new(id.clone()));
         id
-    }
-
-    // Every call to `insert` will shadow the previous value, not replace it.
-    fn insert(&mut self, ident: impl Into<String>, value: VarId) {
-        let entry = self.variables.entry(ident.into()).or_default();
-        entry.push(value);
     }
 }
 
@@ -292,9 +228,7 @@ impl Variables {
 
     fn declare_at(&mut self, ident: impl Into<String>, var_id: VarId, id: ScopeId) -> VarId {
         let ident = ident.into();
-        let scope = self.root.get_scope_mut(id);
-        scope.insert(ident.clone(), var_id);
-        self.declarations.add(ident, scope.id.clone(), var_id);
+        self.declarations.add(ident, id.clone(), var_id);
         var_id
     }
 
@@ -409,29 +343,6 @@ mod test {
         let child_id = root.0.create_child();
         assert_eq!(root.0.children.len(), 1);
         assert_eq!(child_id.as_ref(), &[0, 0]);
-    }
-
-    #[test]
-    fn get_value() {
-        let expected: VarId = 123.into();
-
-        let mut root = RootScope::default();
-        root.insert("var", expected);
-        // let actual = root.0.get(root.id(), "var").unwrap();
-        // assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn child_get_value() {
-        let expected: VarId = 1.into();
-        let ident = "var";
-
-        let mut root = RootScope::default();
-        let child_id = root.0.create_child();
-        let child = root.get_scope_mut(&child_id);
-        child.insert(ident, expected);
-        let actual = root.get_var_id(&child_id, ident).unwrap();
-        assert_eq!(expected, actual);
     }
 
     #[test]
