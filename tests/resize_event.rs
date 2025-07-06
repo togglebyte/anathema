@@ -29,7 +29,7 @@ impl Component for C {
 }
 
 #[test]
-fn eval_if() {
+fn resize_event() {
     let mut backend = TestBackend::new((10, 3));
     let tpl = "
     expand
@@ -45,6 +45,7 @@ fn eval_if() {
 
     let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
+    // Resize event should be triggered after cycle so that the new size is available
     assert_eq!(backend.line(0), "4");
 
     if let Err(e) = res {
