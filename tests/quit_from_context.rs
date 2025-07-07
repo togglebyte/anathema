@@ -1,6 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 use anathema_testutils::{BasicComp, BasicState, character};
 
 fn keypress(_: KeyEvent, _: &mut BasicState, _: Children<'_, '_>, mut ctx: Context<'_, '_, BasicState>) {
@@ -28,7 +29,8 @@ fn quit_from_context() {
 
     let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }

@@ -268,15 +268,16 @@ mod test {
     use crate::lexer::Lexer;
     use crate::strings::Strings;
 
-    fn parse_src(input: &str) -> Expr {
+    fn parse_src(input: &'static str) -> Expr {
+        let input = input.into();
         let mut strings = Strings::new();
-        let lexer = Lexer::new(input, &mut strings);
+        let lexer = Lexer::new(&input, &mut strings);
         let tokens = lexer.collect::<Result<_>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());
         expr_bp(&mut tokens, prec::INITIAL).unwrap()
     }
 
-    fn parse(input: &str) -> String {
+    fn parse(input: &'static str) -> String {
         let expression = parse_src(input);
         expression.to_string()
     }

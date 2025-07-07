@@ -8,6 +8,7 @@ pub use self::mouse::{MouseButton, MouseEvent, MouseState};
 mod key;
 mod mouse;
 
+#[derive(Debug, Copy, Clone)]
 pub enum EventType {
     PreCycle,
     PostCycle,

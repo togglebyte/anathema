@@ -42,7 +42,7 @@ impl<'bp> For<'bp> {
                     binding: self.binding,
                 });
                 let widget = WidgetContainer::new(widget, self.body);
-                let _ = transaction.commit_at(widget).ok_or(Error::TreeTransactionFailed)?;
+                let _ = transaction.commit_at(widget).ok_or_else(Error::transaction_failed)?;
 
                 for child in &tree.layout[*index as usize + 1..] {
                     let iter_widget = tree.values.get_mut(child.value());

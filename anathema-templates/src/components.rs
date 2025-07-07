@@ -1,4 +1,5 @@
 use std::fs::read_to_string;
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use anathema_store::slab::{Index, SlabIndex};
@@ -8,7 +9,7 @@ use anathema_store::storage::Storage;
 
 use crate::Lexer;
 use crate::blueprints::Blueprint;
-use crate::error::{Error, Result};
+use crate::error::{Error, ErrorKind, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
@@ -92,9 +93,47 @@ impl From<&str> for SourceKind {
     }
 }
 
-pub(crate) enum ComponentSource {
+pub enum TemplateSource {
     File { path: PathBuf, template: String },
     InMemory(String),
+    Static(&'static str),
+}
+
+impl TemplateSource {
+    pub(crate) fn template(&self) -> &str {
+        match self {
+            Self::File { template, .. } | Self::InMemory(template) => template.as_str(),
+            Self::Static(template) => template,
+        }
+    }
+
+    pub(crate) fn path(&self) -> Option<PathBuf> {
+        match self {
+            TemplateSource::File { path, .. } => Some(path.clone()),
+            TemplateSource::InMemory(_) => None,
+            TemplateSource::Static(_) => None,
+        }
+    }
+}
+
+impl Deref for TemplateSource {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.template()
+    }
+}
+
+impl From<&'static str> for TemplateSource {
+    fn from(template: &'static str) -> Self {
+        Self::Static(template)
+    }
+}
+
+impl From<String> for TemplateSource {
+    fn from(template: String) -> Self {
+        Self::InMemory(template)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -148,7 +187,7 @@ impl From<usize> for ComponentBlueprintId {
 
 pub(crate) struct ComponentTemplates {
     dependencies: Stack<ComponentBlueprintId>,
-    components: Storage<ComponentBlueprintId, StringId, ComponentSource>,
+    components: Storage<ComponentBlueprintId, StringId, TemplateSource>,
 }
 
 impl ComponentTemplates {
@@ -167,7 +206,14 @@ impl ComponentTemplates {
         *k
     }
 
-    pub(crate) fn insert(&mut self, ident: StringId, template: ComponentSource) -> ComponentBlueprintId {
+    pub(crate) fn path(&self, blueprint_id: ComponentBlueprintId) -> Option<PathBuf> {
+        self.components.get(blueprint_id).and_then(|(_, comp)| match comp {
+            TemplateSource::File { path, .. } => Some(path.clone()),
+            TemplateSource::InMemory(_) | TemplateSource::Static(_) => None,
+        })
+    }
+
+    pub(crate) fn insert(&mut self, ident: StringId, template: TemplateSource) -> ComponentBlueprintId {
         self.components.insert(ident, template)
     }
 
@@ -178,33 +224,29 @@ impl ComponentTemplates {
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
     ) -> Result<Vec<Blueprint>> {
+        let ticket = self.components.checkout(parent_id);
+        let (_, component_src) = &*ticket;
+
         if self.dependencies.contains(&parent_id) {
-            return Err(Error::CircularDependency);
+            let path = component_src.path();
+            self.components.restore(ticket);
+            return Err(Error::new(path, ErrorKind::CircularDependency));
         }
 
         self.dependencies.push(parent_id);
 
-        let ticket = self.components.checkout(parent_id);
-        let (_, component_src) = &*ticket;
-        let template = match component_src {
-            ComponentSource::File { template, .. } => template,
-            ComponentSource::InMemory(template) => template,
-        };
-
         // NOTE
         // The ticket has to be restored to the component store,
         // this is why the error is returned rather than using `?` on `self.compile`.
-        let ret = self.compile(template, variables, slots, strings, parent_id);
-
+        let ret = self.compile(component_src, variables, slots, strings, parent_id);
         self.components.restore(ticket);
         self.dependencies.pop();
-
         ret
     }
 
     fn compile(
         &mut self,
-        template: &str,
+        template: &TemplateSource,
         variables: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
@@ -216,25 +258,28 @@ impl ComponentTemplates {
 
         let statements = parser.collect::<Result<Statements>>()?;
 
-        let mut context = Context::new(variables, self, strings, slots, Some(parent));
+        let mut context = Context::new(template, variables, self, strings, slots, Some(parent));
 
         Scope::new(statements).eval(&mut context)
     }
 
     pub(crate) fn file_paths(&self) -> impl Iterator<Item = &PathBuf> {
         self.components.iter().filter_map(|(_, (_, src))| match src {
-            ComponentSource::File { path, .. } => Some(path),
-            ComponentSource::InMemory(_) => None,
+            TemplateSource::File { path, .. } => Some(path),
+            TemplateSource::InMemory(_) | TemplateSource::Static(_) => None,
         })
     }
 
-    pub(crate) fn reload(&mut self) -> std::prelude::v1::Result<(), Error> {
+    pub(crate) fn reload(&mut self) -> Result<()> {
         for (_, component) in self.components.iter_mut() {
             match component {
-                ComponentSource::File { path, template } => {
-                    *template = read_to_string(path)?;
+                TemplateSource::File { path, template } => {
+                    *template = match read_to_string(&*path) {
+                        Ok(template) => template,
+                        Err(e) => return Err(Error::new(Some(path.clone()), ErrorKind::Io(e))),
+                    }
                 }
-                ComponentSource::InMemory(_) => (),
+                TemplateSource::InMemory(_) | TemplateSource::Static(_) => (),
             }
         }
         Ok(())

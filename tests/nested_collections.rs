@@ -1,6 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 use anathema_testutils::{BasicComp, character};
 
 #[derive(Debug, State)]
@@ -50,7 +51,8 @@ fn nested_collections() {
 
     assert!(backend.at(0, 0).is_char('2'));
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }

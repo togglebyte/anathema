@@ -13,7 +13,7 @@ use crate::{
     Components, Factory, FloatingWidgets, GlyphMap, LayoutForEach, Widget, WidgetTree, WidgetTreeView, eval_blueprint,
 };
 
-pub fn with_template<F>(tpl: &str, mut f: F)
+pub fn with_template<F>(tpl: &'static str, mut f: F)
 where
     F: for<'bp> FnMut(WidgetTreeView<'_, 'bp>, &mut AttributeStorage<'bp>),
 {

@@ -138,9 +138,10 @@ mod test {
     use crate::strings::Strings;
     use crate::token::Tokens;
 
-    fn eval_src(input: &str) -> Expression {
+    fn eval_src(input: &'static str) -> Expression {
+        let input = input.into();
         let mut strings = Strings::new();
-        let lexer = Lexer::new(input, &mut strings);
+        let lexer = Lexer::new(&input, &mut strings);
         let tokens = lexer.collect::<Result<_, _>>().unwrap();
         let mut tokens = Tokens::new(tokens, input.len());
         parse_expr(&mut tokens, &strings).unwrap()

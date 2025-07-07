@@ -8,6 +8,7 @@ use display::DISPLAY;
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
+use crate::error::{Error, ErrorKind};
 use crate::nodes::element::Element;
 use crate::tree::{FilterOutput, WidgetPositionFilter};
 use crate::{Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind};
@@ -121,6 +122,10 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         component_id: ComponentBlueprintId,
     ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
         self.component_registry.get(component_id)
+    }
+
+    pub(crate) fn error(&self, kind: ErrorKind) -> Error {
+        Error { kind, path: None }
     }
 }
 

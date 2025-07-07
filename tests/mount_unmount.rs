@@ -36,14 +36,15 @@ fn state_change() {
     let res = builder.finish(&mut backend, |runtime, backend| {
         runtime.with_frame(backend, |backend, mut frame| {
             frame.tick(backend)?;
-            frame.force_rebuild().unwrap();
+            frame.force_unmount_return();
             Err(Error::Stop)
         })
     });
 
     assert_eq!(backend.line(0), "true");
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }
