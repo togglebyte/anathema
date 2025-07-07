@@ -6,6 +6,7 @@
     * BUGFIX: ctrl+c works with the error display
     * Trying to use a component twice will now include the component name in the
       error
+    * Global definitions will raise an error if it's already assigned
 * 0.2.7
     * BUGFIX: use correct truthiness check in control flow update
 * 0.2.6

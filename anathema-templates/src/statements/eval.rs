@@ -61,7 +61,10 @@ impl Scope {
                     }
                     match is_global {
                         false => _ = ctx.variables.define_local(binding, value),
-                        true => ctx.variables.define_global(binding, value),
+                        true => match ctx.variables.define_global(binding, value) {
+                            Ok(()) => (),
+                            Err(kind) => return Err(kind.to_error(ctx.template.path())),
+                        }
                     }
                 }
                 Statement::ComponentSlot(slot_id) => {

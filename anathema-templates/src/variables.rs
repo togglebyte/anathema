@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::expressions::Expression;
+use crate::{error::ErrorKind, expressions::Expression};
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Globals(HashMap<String, Expression>);
@@ -10,6 +10,10 @@ pub(crate) struct Globals(HashMap<String, Expression>);
 impl Globals {
     pub fn empty() -> Self {
         Self(HashMap::new())
+    }
+
+    pub fn contains(&self, ident: &str) -> bool {
+        self.0.contains_key(ident)
     }
 
     pub fn get(&self, ident: &str) -> Option<&Expression> {
@@ -232,9 +236,15 @@ impl Variables {
         var_id
     }
 
-    pub fn define_global(&mut self, ident: impl Into<String>, value: impl Into<Expression>) {
+    pub fn define_global(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> Result<(), ErrorKind> {
+        let ident = ident.into();
+        if self.globals.contains(&ident) {
+            return Err(ErrorKind::GlobalAlreadyAssigned(ident));
+        }
+
         let value = value.into();
-        self.globals.set(ident.into(), value)
+        self.globals.set(ident, value);
+        Ok(())
     }
 
     pub fn define_local(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> VarId {
