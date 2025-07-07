@@ -9,7 +9,7 @@ use super::element::Element;
 use super::{WidgetContainer, component, controlflow};
 use crate::WidgetKind;
 use crate::container::{Cache, Container};
-use crate::error::{Error, Result};
+use crate::error::{ErrorKind, Result};
 use crate::layout::EvalCtx;
 use crate::widget::WidgetTreeView;
 
@@ -76,7 +76,10 @@ impl Evaluator for SingleEval {
             });
         }
 
-        let widget = ctx.factory.make(&single.ident, &attributes)?;
+        let widget = match ctx.factory.make(&single.ident, &attributes) {
+            Ok(widget) => widget,
+            Err(e) => return Err(ctx.error(e)),
+        };
 
         // Is the widget a floating widget?
         if widget.any_floats() {
@@ -97,7 +100,9 @@ impl Evaluator for SingleEval {
         let widget = WidgetKind::Element(Element::new(&single.ident, container));
         let widget = WidgetContainer::new(widget, &single.children);
 
-        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        transaction
+            .commit_child(widget)
+            .ok_or_else(|| ctx.error(ErrorKind::TreeTransactionFailed))?;
 
         Ok(())
     }
@@ -119,14 +124,14 @@ impl Evaluator for ForLoopEval {
         let transaction = tree.insert(parent);
         let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
-        let ctx = ResolverCtx::new(
+        let resolver_ctx = ResolverCtx::new(
             ctx.globals,
             scope,
             ctx.states,
             ctx.attribute_storage,
             ctx.function_table,
         );
-        let collection = resolve_collection(&for_loop.data, &ctx, value_id);
+        let collection = resolve_collection(&for_loop.data, &resolver_ctx, value_id);
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
@@ -137,7 +142,9 @@ impl Evaluator for ForLoopEval {
         let body = for_loop.body;
         let widget = WidgetKind::For(for_loop);
         let widget = WidgetContainer::new(widget, body);
-        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        transaction
+            .commit_child(widget)
+            .ok_or_else(|| ctx.error(ErrorKind::TreeTransactionFailed))?;
         Ok(())
     }
 }
@@ -158,14 +165,14 @@ impl Evaluator for WithEval {
         let transaction = tree.insert(parent);
         let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
-        let ctx = ResolverCtx::new(
+        let resolver_ctx = ResolverCtx::new(
             ctx.globals,
             scope,
             ctx.states,
             ctx.attribute_storage,
             ctx.function_table,
         );
-        let data = resolve(&with.data, &ctx, value_id);
+        let data = resolve(&with.data, &resolver_ctx, value_id);
 
         let with = super::with::With {
             binding: &with.binding,
@@ -176,7 +183,9 @@ impl Evaluator for WithEval {
         let body = with.body;
         let widget = WidgetKind::With(with);
         let widget = WidgetContainer::new(widget, body);
-        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        transaction
+            .commit_child(widget)
+            .ok_or_else(|| ctx.error(ErrorKind::TreeTransactionFailed))?;
         Ok(())
     }
 }
@@ -223,7 +232,9 @@ impl Evaluator for ControlFlowEval {
                 .collect(),
         });
         let widget = WidgetContainer::new(widget, &[]);
-        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        transaction
+            .commit_child(widget)
+            .ok_or_else(|| ctx.error(ErrorKind::TreeTransactionFailed))?;
         Ok(())
     }
 }
@@ -261,7 +272,14 @@ impl Evaluator for ComponentEval {
 
         let component_id = usize::from(input.id).into();
         ctx.attribute_storage.insert(widget_id, attributes);
-        let (kind, component, state) = ctx.get_component(component_id).ok_or(Error::ComponentConsumed)?;
+
+        // let (kind, component, state) = ctx.get_component(component_id);
+        let comp = ctx.get_component(component_id);
+        let (kind, component, state) = match comp {
+            Some(comp) => comp,
+            None => return Err(ctx.error(ErrorKind::ComponentConsumed(input.name.clone()))),
+        };
+
         let state_id = ctx.states.insert(state);
         let accept_ticks = component.any_ticks();
 
@@ -280,7 +298,9 @@ impl Evaluator for ComponentEval {
 
         let widget = WidgetKind::Component(comp_widget);
         let widget = WidgetContainer::new(widget, &input.body);
-        let widget_id = transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        let widget_id = transaction
+            .commit_child(widget)
+            .ok_or_else(|| ctx.error(ErrorKind::TreeTransactionFailed))?;
         ctx.new_components.push((widget_id, state_id));
 
         let path = tree.path(widget_id);
@@ -299,14 +319,16 @@ impl Evaluator for SlotEval {
     fn eval<'bp>(
         &mut self,
         input: Self::Input<'bp>,
-        _: &mut EvalCtx<'_, 'bp>,
+        ctx: &mut EvalCtx<'_, 'bp>,
         _: &Scope<'_, 'bp>,
         parent: &[u16],
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
         let widget = WidgetContainer::new(WidgetKind::Slot, input);
-        transaction.commit_child(widget).ok_or(Error::TreeTransactionFailed)?;
+        transaction
+            .commit_child(widget)
+            .ok_or_else(|| ctx.error(ErrorKind::TreeTransactionFailed))?;
         Ok(())
     }
 }

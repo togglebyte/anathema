@@ -4,6 +4,7 @@ use std::fmt::Display;
 use anathema_state::Hex;
 
 use crate::primitives::Primitive;
+use crate::variables::VarId;
 
 pub(crate) mod eval;
 pub(crate) mod parser;
@@ -52,6 +53,9 @@ pub enum Expression {
     Str(String),
     List(Vec<Self>),
     Map(HashMap<String, Self>),
+
+    // Lookup a variable in the var table
+    Variable(VarId),
 
     // This is specifically for the "value" of a node.
     TextSegments(Vec<Self>),
@@ -103,6 +107,7 @@ impl Display for Expression {
             Self::Str(val) => write!(f, "{val}"),
             Self::Ident(s) => write!(f, "{s}"),
             Self::Index(lhs, idx) => write!(f, "<{lhs}>[{idx}]"),
+            Self::Variable(var_id) => write!(f, "<var {var_id:?}>"),
             Self::Not(expr) => write!(f, "!{expr}"),
             Self::Negative(expr) => write!(f, "-{expr}"),
             Self::Op(lhs, rhs, op) => {

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anathema_value_resolver::Attributes;
 
 use super::{AnyWidget, Widget};
-use crate::error::{Error, Result};
+use crate::error::{ErrorKind, Result};
 
 pub struct Factory(HashMap<Box<str>, Box<dyn Fn(&Attributes<'_>) -> Box<dyn AnyWidget>>>);
 
@@ -12,8 +12,8 @@ impl Factory {
         Self(HashMap::new())
     }
 
-    pub(crate) fn make(&self, ident: &str, attribs: &Attributes<'_>) -> Result<Box<dyn AnyWidget>> {
-        let f = self.0.get(ident).ok_or(Error::InvalidElement(ident.to_string()))?;
+    pub(crate) fn make(&self, ident: &str, attribs: &Attributes<'_>) -> Result<Box<dyn AnyWidget>, ErrorKind> {
+        let f = self.0.get(ident).ok_or(ErrorKind::InvalidElement(ident.to_string()))?;
         Ok((f)(attribs))
     }
 

@@ -1,7 +1,10 @@
 use std::error::Error as StdError;
 use std::fmt::{self, Display, Formatter};
 use std::ops::Range;
+use std::path::PathBuf;
 
+use super::Error;
+use crate::components::TemplateSource;
 use crate::token::Operator;
 
 // Line number and column starts at one, not zero,
@@ -32,7 +35,7 @@ pub struct ParseError {
 impl StdError for ParseError {}
 
 impl ParseError {
-    pub(crate) fn new(range: Range<usize>, src: &str, kind: ParseErrorKind) -> Self {
+    pub(crate) fn new(range: Range<usize>, src: &TemplateSource, kind: ParseErrorKind) -> Self {
         let (line, col) = src_line_no(range.end, src);
         Self {
             line,
@@ -40,6 +43,10 @@ impl ParseError {
             src: src.to_string(),
             kind,
         }
+    }
+
+    pub(crate) fn to_error(self, template: Option<PathBuf>) -> Error {
+        Error::new(template, self)
     }
 }
 

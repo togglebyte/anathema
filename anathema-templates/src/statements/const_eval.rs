@@ -18,8 +18,8 @@ fn eval_path(expr: Expression, ctx: &Context<'_>) -> Option<Expression> {
     match expr {
         // Don't return None here, as this is possibly the ident of a state value,
         // or an attribute
-        E::Ident(ref ident) => Some(ctx.fetch(ident).unwrap_or(expr)),
-        E::Str(ref strlit) => Some(ctx.fetch(strlit).unwrap_or(expr)),
+        E::Ident(ref ident) => Some(ctx.fetch(ident).map(Expression::Variable).unwrap_or(expr)),
+        E::Str(ref strlit) => Some(ctx.fetch(strlit).map(Expression::Variable).unwrap_or(expr)),
         E::Index(lhs, rhs) => {
             let lhs = const_eval(lhs, ctx)?;
             let rhs = const_eval(rhs, ctx)?;
@@ -60,6 +60,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
         E::LogicalOp(lhs, rhs, op) => E::LogicalOp(ce!(*lhs), ce!(*rhs), op),
 
         E::Ident(_) | E::Index(..) => eval_path(expr, ctx)?,
+        E::Variable(_) => unreachable!("const eval is not recursive so this can never happen"),
 
         E::List(list) => {
             let list = list.into_iter().filter_map(|expr| ce!(expr)).collect();

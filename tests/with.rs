@@ -1,5 +1,6 @@
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 
 static TEMPLATE: &str = "
 with x as 1 + 2 * 3
@@ -19,7 +20,8 @@ fn eval_with() {
 
     assert_eq!(backend.line(0), "7");
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }

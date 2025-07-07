@@ -8,6 +8,21 @@ pub use self::mouse::{MouseButton, MouseEvent, MouseState};
 mod key;
 mod mouse;
 
+#[derive(Debug, Copy, Clone)]
+pub enum EventType {
+    PreCycle,
+    PostCycle,
+}
+
+impl From<Event> for EventType {
+    fn from(event: Event) -> Self {
+        match event {
+            Event::Resize(_) => EventType::PostCycle,
+            _ => EventType::PreCycle,
+        }
+    }
+}
+
 /// An event
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Event {
