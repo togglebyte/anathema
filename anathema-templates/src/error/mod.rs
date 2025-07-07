@@ -54,6 +54,7 @@ pub enum ErrorKind {
     EmptyBody,
     InvalidStatement(String),
     Io(std::io::Error),
+    GlobalAlreadyAssigned(String),
 }
 
 impl ErrorKind {
@@ -72,6 +73,7 @@ impl Display for ErrorKind {
             ErrorKind::EmptyBody => write!(f, "if or else node has no children"),
             ErrorKind::InvalidStatement(stmt) => write!(f, "invalid statement: {stmt}"),
             ErrorKind::Io(err) => write!(f, "{err}"),
+            ErrorKind::GlobalAlreadyAssigned(name) => write!(f, "global value `{name}` already assigned"),
         }
     }
 }

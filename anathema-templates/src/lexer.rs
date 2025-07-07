@@ -332,6 +332,7 @@ mod test {
             | crate::error::ErrorKind::MissingComponent(_)
             | crate::error::ErrorKind::EmptyTemplate
             | crate::error::ErrorKind::EmptyBody
+            | crate::error::ErrorKind::GlobalAlreadyAssigned(_)
             | crate::error::ErrorKind::Io(_) => panic!("invalid error"),
         }
     }
