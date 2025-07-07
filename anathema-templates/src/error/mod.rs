@@ -54,7 +54,7 @@ pub enum ErrorKind {
     EmptyBody,
     InvalidStatement(String),
     Io(std::io::Error),
-    GlobalAlreadyAssigned(String)
+    GlobalAlreadyAssigned(String),
 }
 
 impl ErrorKind {

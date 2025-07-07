@@ -64,7 +64,7 @@ impl Scope {
                         true => match ctx.variables.define_global(binding, value) {
                             Ok(()) => (),
                             Err(kind) => return Err(kind.to_error(ctx.template.path())),
-                        }
+                        },
                     }
                 }
                 Statement::ComponentSlot(slot_id) => {
@@ -92,7 +92,10 @@ impl Scope {
         let ident = ctx.strings.get_unchecked(ident);
         let attributes = self.eval_attributes(ctx)?;
         let value = self.statements.take_value().and_then(|v| const_eval(v, ctx));
+
+        ctx.variables.push();
         let children = self.consume_scope(ctx)?;
+        ctx.variables.pop();
 
         let node = Blueprint::Single(Single {
             ident,
@@ -202,8 +205,6 @@ impl Scope {
     }
 
     fn eval_component(&mut self, component_id: ComponentBlueprintId, ctx: &mut Context<'_>) -> Result<Blueprint> {
-        ctx.variables.push();
-
         let parent = ctx.component_parent();
 
         // Associated functions
@@ -211,6 +212,9 @@ impl Scope {
 
         // Attributes
         let attributes = self.eval_attributes(ctx)?;
+
+        // Scope variables to the component
+        ctx.variables.push_scope_boundary();
 
         // Slots
         let mut slots = SmallMap::empty();
@@ -246,7 +250,7 @@ impl Scope {
             parent,
         };
 
-        ctx.variables.pop();
+        ctx.variables.pop_scope_boundary();
         Ok(Blueprint::Component(component))
     }
 }

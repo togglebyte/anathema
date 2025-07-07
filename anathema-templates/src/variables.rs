@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::{error::ErrorKind, expressions::Expression};
+use crate::error::ErrorKind;
+use crate::expressions::Expression;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Globals(HashMap<String, Expression>);
@@ -70,6 +72,11 @@ impl Variable {
 pub struct ScopeId(Box<[u16]>);
 
 impl ScopeId {
+    fn root() -> &'static Self {
+        static ROOT: OnceLock<ScopeId> = OnceLock::new();
+        ROOT.get_or_init(|| ScopeId(Box::new([])))
+    }
+
     // Create the next child id.
     fn next(&self, index: u16) -> Self {
         let mut scope_id = Vec::with_capacity(self.0.len() + 1);
@@ -101,6 +108,16 @@ impl ScopeId {
     #[cfg(test)]
     fn as_slice(&self) -> &[u16] {
         &self.0
+    }
+
+    fn contains(&self, other: impl AsRef<[u16]>) -> Option<&ScopeId> {
+        let other = other.as_ref();
+        let len = self.0.len();
+
+        match other.len() >= len {
+            true => (*self.0 == other[..len]).then_some(self),
+            false => None,
+        }
     }
 }
 
@@ -186,13 +203,14 @@ impl Declarations {
     }
 
     // Get the scope id that is closest to the argument
-    fn get(&self, ident: &str, scope_id: impl AsRef<[u16]>) -> Option<VarId> {
+    fn get(&self, ident: &str, scope_id: impl AsRef<[u16]>, boundary: &ScopeId) -> Option<VarId> {
         self.0
             .get(ident)?
             .iter()
             .rev()
-            .filter(|(scope, _)| scope.as_ref() == scope_id.as_ref())
-            .map(|(_, var)| *var)
+            // here we need to look up closest scope that is still within the last boundary
+            .filter(|(scope, _)| boundary.contains(scope).is_some())
+            .filter_map(|(scope, var)| scope.contains(&scope_id).map(|_| *var))
             .next()
     }
 }
@@ -204,6 +222,7 @@ pub struct Variables {
     globals: Globals,
     root: RootScope,
     current: ScopeId,
+    boundary: Vec<ScopeId>,
     store: Slab<VarId, Variable>,
     declarations: Declarations,
 }
@@ -214,6 +233,7 @@ impl Default for Variables {
         Self {
             globals: Globals::empty(),
             current: root.0.id.clone(),
+            boundary: vec![],
             root,
             store: Slab::empty(),
             declarations: Declarations::new(),
@@ -264,7 +284,21 @@ impl Variables {
 
     /// Fetch a value starting from the current path.
     pub fn fetch(&self, ident: &str) -> Option<VarId> {
-        self.declarations.get(ident, &self.current)
+        self.declarations.get(ident, &self.current, self.boundary())
+    }
+
+    /// Create a new scope and set that scope as a boundary.
+    /// This prevents inner components from accessing values
+    /// declared outside of the component.
+    pub(crate) fn push_scope_boundary(&mut self) {
+        self.push();
+        self.boundary.push(self.current.clone());
+    }
+
+    /// Pop the scope boundary.
+    pub(crate) fn pop_scope_boundary(&mut self) {
+        self.pop();
+        self.boundary.pop();
     }
 
     /// Create a new child and set the new childs id as the `current` id.
@@ -291,12 +325,16 @@ impl Variables {
     // Fetch and load a value from its ident
     #[cfg(test)]
     fn fetch_load(&self, ident: &str) -> Option<&Expression> {
-        let id = self.declarations.get(ident, &self.current)?;
+        let id = self.declarations.get(ident, &self.current, self.boundary())?;
         self.load(id)
     }
 
     pub fn global_lookup(&self, ident: &str) -> Option<&Expression> {
         self.globals.get(ident)
+    }
+
+    fn boundary(&self) -> &ScopeId {
+        self.boundary.last().unwrap_or(ScopeId::root())
     }
 }
 
@@ -319,6 +357,7 @@ impl From<Variables> for HashMap<String, Variable> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::expressions::num;
 
     impl From<usize> for VarId {
         fn from(value: usize) -> Self {
@@ -403,7 +442,7 @@ mod test {
     fn declaration_lookup() {
         let mut dec = Declarations::new();
         dec.add("var", [0, 0], 0);
-        let root = dec.get("var", [0, 0]).unwrap();
+        let root = dec.get("var", [0, 0], ScopeId::root()).unwrap();
         assert_eq!(root, 0.into());
     }
 
@@ -411,7 +450,7 @@ mod test {
     fn declaration_failed_lookup() {
         let mut dec = Declarations::new();
         dec.add("var", [0], 0);
-        let root = dec.get("var", [1, 0]);
+        let root = dec.get("var", [1, 0], ScopeId::root());
         assert!(root.is_none());
     }
 
@@ -423,15 +462,40 @@ mod test {
         dec.add(ident, [0, 0], 1);
         dec.add(ident, [0, 0, 0], 2);
 
-        assert_eq!(dec.get(ident, [0]).unwrap().0, 0);
-        assert_eq!(dec.get(ident, [0, 0]).unwrap().0, 1);
-        assert!(dec.get(ident, [0, 0, 0, 1, 1]).is_none());
+        assert_eq!(dec.get(ident, [0], ScopeId::root()).unwrap().0, 0);
+        assert_eq!(dec.get(ident, [0, 0], ScopeId::root()).unwrap().0, 1);
+        assert_eq!(dec.get(ident, [0, 0, 0, 1, 1], ScopeId::root()).unwrap().0, 2);
     }
 
     #[test]
     fn unreachable_declaration() {
         let mut dec = Declarations::new();
         dec.add("var", [0, 1], 0);
-        assert!(dec.get("var", [0, 0, 1]).is_none());
+        assert!(dec.get("var", [0, 0, 1], ScopeId::root()).is_none());
+    }
+
+    #[test]
+    fn get_inside_boundary() {
+        let mut vars = Variables::new();
+
+        // Define a varialbe in the root scope
+        _ = vars.define_local("var", 1);
+
+        // Create a new unique scope and boundary.
+        // * `var` should be inaccessible from within the new scope boundary
+        // * `outer_var` should be inaccessible to the root scope
+        vars.push_scope_boundary();
+        assert!(vars.fetch("var").is_none());
+        _ = vars.define_local("var", 2);
+        _ = vars.define_local("other_var", 3);
+        assert_eq!(vars.fetch_load("var").unwrap(), &*num(2));
+        vars.push();
+        assert_eq!(vars.fetch_load("other_var").unwrap(), &*num(3));
+        vars.pop();
+
+        // Return to root scope
+        vars.pop_scope_boundary();
+        assert_eq!(vars.fetch_load("var").unwrap(), &*num(1));
+        assert!(vars.fetch("other_var").is_none());
     }
 }
