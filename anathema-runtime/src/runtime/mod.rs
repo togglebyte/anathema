@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::Size;
-use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
+use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, StateId, States};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Variables};
@@ -19,8 +19,8 @@ use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
 use anathema_widgets::tabindex::{Index, TabIndex};
 use anathema_widgets::{
-    Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind, WidgetTree,
-    eval_blueprint, update_widget,
+    eval_blueprint, update_widget, Component, Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer,
+    WidgetId, WidgetKind, WidgetTree,
 };
 use flume::Receiver;
 use notify::RecommendedWatcher;
@@ -132,6 +132,32 @@ impl<G: GlobalEventHandler> Runtime<G> {
         let mut frame = self.next_frame(&mut tree, &mut attribute_storage)?;
         frame.init_tree()?;
         f(backend, frame)
+    }
+
+    pub fn run_once<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
+        self.with_frame(backend, |backend, mut frame| {
+            _ = frame.tick(backend);
+            match frame.tick(backend) {
+                Ok(_duration) => (),
+                Err(err) => match err {
+                    err @ (Error::Template(_) | Error::Widget(_)) => {
+                        match show_error(err, backend, frame.document) {
+                            Err(Error::Stop) => return Err(Error::Stop),
+                            // NOTE: we continue here as this should
+                            // cause the REBUILD to trigger
+                            Err(Error::Reload) => return Ok(()),
+                            _ => unreachable!("show_error only return stop or rebuild"),
+                        }
+                    }
+                    err => return Err(err),
+                },
+            }
+
+            frame.present(backend);
+            frame.cleanup();
+
+            Ok(())
+        })
     }
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {

@@ -227,9 +227,6 @@ pub struct ScreenPos {
 }
 
 impl ScreenPos {
-    /// A zero screen size
-    pub const ZERO: Self = Self::new(0, 0);
-
     /// Create a new instance of a `ScreenPos`
     pub const fn new(x: u16, y: u16) -> Self {
         Self { x, y }

@@ -9,6 +9,7 @@ use anathema_widgets::layout::{Constraints, LayoutCtx, LayoutFilter, PositionFil
 use anathema_widgets::paint::PaintFilter;
 use anathema_widgets::{GlyphMap, LayoutForEach, PaintChildren, PositionChildren, WidgetTreeView};
 
+pub mod oneshot;
 pub mod testing;
 pub mod tui;
 
