@@ -4,7 +4,7 @@ use anathema_store::storage::strings::StringId;
 use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single, With};
-use crate::error::{Error, Result};
+use crate::error::{ErrorKind, Result};
 use crate::expressions::{Equality, Expression};
 use crate::{ComponentBlueprintId, Primitive};
 
@@ -30,7 +30,10 @@ impl Scope {
                 } => {
                     let binding = ctx.strings.get_unchecked(binding_id);
                     if "state" == binding {
-                        return Err(Error::InvalidStatement(format!("{binding} is a reserved identifier")));
+                        return Err(
+                            ErrorKind::InvalidStatement(format!("{binding} is a reserved identifier"))
+                                .to_error(ctx.template.path()),
+                        );
                     }
                     if let Some(expr) = self.eval_for(binding_id, data, ctx)? {
                         output.push(expr);
@@ -43,13 +46,26 @@ impl Scope {
                 }
                 Statement::If(cond) => output.push(self.eval_if(cond, ctx)?),
                 Statement::Switch(cond) => output.push(self.eval_switch(cond, ctx)?),
-                Statement::Declaration { binding, value } => {
+                Statement::Declaration {
+                    binding,
+                    value,
+                    is_global,
+                } => {
                     let Some(value) = const_eval(value, ctx) else { continue };
                     let binding = ctx.strings.get_unchecked(binding);
                     if binding == "state" {
-                        return Err(Error::InvalidStatement(format!("{binding} is a reserved identifier")));
+                        return Err(
+                            ErrorKind::InvalidStatement(format!("{binding} is a reserved identifier"))
+                                .to_error(ctx.template.path()),
+                        );
                     }
-                    ctx.globals.declare(binding, value);
+                    match is_global {
+                        false => _ = ctx.variables.define_local(binding, value),
+                        true => match ctx.variables.define_global(binding, value) {
+                            Ok(()) => (),
+                            Err(kind) => return Err(kind.to_error(ctx.template.path())),
+                        },
+                    }
                 }
                 Statement::ComponentSlot(slot_id) => {
                     if let Some(bp) = ctx.slots.get(&slot_id).cloned() {
@@ -64,7 +80,7 @@ impl Scope {
                 | Statement::LoadValue(_)
                 | Statement::Case(_)
                 | Statement::Default => {
-                    return Err(Error::InvalidStatement(format!("{statement:?}")));
+                    return Err(ErrorKind::InvalidStatement(format!("{statement:?}")).to_error(ctx.template.path()));
                 }
                 Statement::Eof => break,
             }
@@ -76,7 +92,10 @@ impl Scope {
         let ident = ctx.strings.get_unchecked(ident);
         let attributes = self.eval_attributes(ctx)?;
         let value = self.statements.take_value().and_then(|v| const_eval(v, ctx));
+
+        ctx.variables.push();
         let children = self.consume_scope(ctx)?;
+        ctx.variables.pop();
 
         let node = Blueprint::Single(Single {
             ident,
@@ -84,6 +103,7 @@ impl Scope {
             attributes,
             value,
         });
+
         Ok(node)
     }
 
@@ -91,7 +111,7 @@ impl Scope {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
-        ctx.globals.declare_local(binding.clone());
+        ctx.variables.declare_local(binding.clone());
         let body = self.consume_scope(ctx)?;
         let node = Blueprint::For(For { binding, data, body });
         Ok(Some(node))
@@ -101,7 +121,7 @@ impl Scope {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
-        ctx.globals.declare_local(binding.clone());
+        ctx.variables.declare_local(binding.clone());
         let body = self.consume_scope(ctx)?;
         let node = Blueprint::With(With { binding, data, body });
         Ok(Some(node))
@@ -129,7 +149,7 @@ impl Scope {
         let cond = const_eval(cond, ctx).unwrap_or(Expression::Primitive(Primitive::Bool(false)));
         let body = self.consume_scope(ctx)?;
         if body.is_empty() {
-            return Err(Error::EmptyBody);
+            return Err(ErrorKind::EmptyBody.to_error(ctx.template.path()));
         }
 
         let mut elses = vec![Else { cond: Some(cond), body }];
@@ -139,7 +159,7 @@ impl Scope {
             let cond = cond.and_then(|v| const_eval(v, ctx));
 
             if body.is_empty() {
-                return Err(Error::EmptyBody);
+                return Err(ErrorKind::EmptyBody.to_error(ctx.template.path()));
             }
 
             elses.push(Else { cond, body });
@@ -193,6 +213,9 @@ impl Scope {
         // Attributes
         let attributes = self.eval_attributes(ctx)?;
 
+        // Scope variables to the component
+        ctx.variables.push_scope_boundary();
+
         // Slots
         let mut slots = SmallMap::empty();
         let mut scope = self.statements.take_scope();
@@ -227,6 +250,7 @@ impl Scope {
             parent,
         };
 
+        ctx.variables.pop_scope_boundary();
         Ok(Blueprint::Component(component))
     }
 }

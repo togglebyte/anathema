@@ -16,7 +16,7 @@ fn comp_index(widget_id: u32, index: Option<Index>) {
     assert_eq!(WidgetId::new(widget_id, 0), index.widget_id);
 }
 
-fn builder(template: &str, backend: &mut impl Backend) -> Builder<()> {
+fn builder(template: &'static str, backend: &mut impl Backend) -> Builder<()> {
     let doc = Document::new(template);
 
     let mut builder = Runtime::builder(doc, backend);
@@ -57,29 +57,32 @@ fn tabindex_change() {
         .stop();
 
     let builder = builder(tpl, &mut backend);
-    builder
-        .finish(&mut backend, |runtime, backend| {
-            runtime.with_frame(backend, |backend, mut frame| {
-                // Initial tick to build the tree
-                frame.tick(backend)?;
+    let res = builder.finish(&mut backend, |runtime, backend| {
+        runtime.with_frame(backend, |backend, mut frame| {
+            // Initial tick to build the tree
+            frame.tick(backend)?;
 
-                assert!(frame.tabindex.is_none());
-                frame.tick(backend)?;
-                comp_index(1, frame.tabindex.clone());
+            assert!(frame.tabindex.is_none());
+            frame.tick(backend)?;
+            comp_index(1, frame.tabindex.clone());
 
-                frame.tick(backend)?;
-                comp_index(2, frame.tabindex.clone());
+            frame.tick(backend)?;
+            comp_index(2, frame.tabindex.clone());
 
-                frame.tick(backend)?;
-                comp_index(3, frame.tabindex.clone());
+            frame.tick(backend)?;
+            comp_index(3, frame.tabindex.clone());
 
-                frame.tick(backend)?;
-                comp_index(1, frame.tabindex.clone());
+            frame.tick(backend)?;
+            comp_index(1, frame.tabindex.clone());
 
-                Err(Error::Stop)
-            })
+            Err(Error::Stop)
         })
-        .unwrap();
+    });
+
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
+    }
 }
 
 #[test]
@@ -94,23 +97,26 @@ fn tabindex_single_component() {
     backend.events().next().press(tab()).next().press(tab()).next().stop();
 
     let builder = builder(tpl, &mut backend);
-    builder
-        .finish(&mut backend, |runtime, backend| {
-            runtime.with_frame(backend, |backend, mut frame| {
-                // Initial tick to build the tree
-                frame.tick(backend)?;
+    let res = builder.finish(&mut backend, |runtime, backend| {
+        runtime.with_frame(backend, |backend, mut frame| {
+            // Initial tick to build the tree
+            frame.tick(backend)?;
 
-                assert!(frame.tabindex.is_none());
-                frame.tick(backend)?;
-                comp_index(1, frame.tabindex.clone());
+            assert!(frame.tabindex.is_none());
+            frame.tick(backend)?;
+            comp_index(1, frame.tabindex.clone());
 
-                frame.tick(backend)?;
-                comp_index(1, frame.tabindex.clone());
+            frame.tick(backend)?;
+            comp_index(1, frame.tabindex.clone());
 
-                Err(Error::Stop)
-            })
+            Err(Error::Stop)
         })
-        .unwrap();
+    });
+
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
+    }
 }
 
 #[test]
@@ -125,19 +131,22 @@ fn tabindex_no_component() {
 
     let builder = builder(tpl, &mut backend);
 
-    builder
-        .finish(&mut backend, |runtime, backend| {
-            runtime.with_frame(backend, |backend, mut frame| {
-                // Initial tick to build the tree
-                assert!(frame.tabindex.is_none());
-                frame.tick(backend)?;
-                assert!(frame.tabindex.is_none());
-                frame.tick(backend)?;
-                assert!(frame.tabindex.is_none());
-                Err(Error::Stop)
-            })
+    let res = builder.finish(&mut backend, |runtime, backend| {
+        runtime.with_frame(backend, |backend, mut frame| {
+            // Initial tick to build the tree
+            assert!(frame.tabindex.is_none());
+            frame.tick(backend)?;
+            assert!(frame.tabindex.is_none());
+            frame.tick(backend)?;
+            assert!(frame.tabindex.is_none());
+            Err(Error::Stop)
         })
-        .unwrap();
+    });
+
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
+    }
 }
 
 struct CompA;
@@ -191,10 +200,13 @@ fn tabindex_change_via_deferred_command() {
     builder
         .component("comp_b", comp_tpl.to_template(), CompB, false)
         .unwrap();
-    builder
-        .finish(&mut backend, |runtime, backend| runtime.run(backend))
-        .unwrap();
+    let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
     assert_eq!("false", backend.line(0));
     assert_eq!("true", backend.line(1));
+
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
+    }
 }

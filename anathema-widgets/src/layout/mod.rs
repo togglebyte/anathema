@@ -1,13 +1,14 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{State, StateId, States};
 use anathema_store::tree::TreeView;
-use anathema_templates::{ComponentBlueprintId, Globals};
+use anathema_templates::{ComponentBlueprintId, Variables};
 use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable};
 use display::DISPLAY;
 
 pub use self::constraints::Constraints;
 pub use self::display::Display;
 use crate::components::{AnyComponent, ComponentKind, ComponentRegistry};
+use crate::error::{Error, ErrorKind};
 use crate::nodes::element::Element;
 use crate::tree::{FilterOutput, WidgetPositionFilter};
 use crate::{Components, Factory, FloatingWidgets, GlyphMap, WidgetContainer, WidgetId, WidgetKind};
@@ -18,7 +19,7 @@ pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
     pub states: &'frame mut States,
-    pub(super) globals: &'bp Globals,
+    pub(super) globals: &'bp Variables,
     factory: &'frame Factory,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
@@ -35,7 +36,7 @@ pub struct LayoutCtx<'frame, 'bp> {
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
     pub fn new(
-        globals: &'bp Globals,
+        globals: &'bp Variables,
         factory: &'frame Factory,
         states: &'frame mut States,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
@@ -109,7 +110,7 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) states: &'frame mut States,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
-    pub(super) globals: &'bp Globals,
+    pub(super) globals: &'bp Variables,
     pub(super) factory: &'frame Factory,
     pub(super) function_table: &'bp FunctionTable,
     pub(super) parent_component: Option<WidgetId>,
@@ -121,6 +122,10 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         component_id: ComponentBlueprintId,
     ) -> Option<(ComponentKind, Box<dyn AnyComponent>, Box<dyn State>)> {
         self.component_registry.get(component_id)
+    }
+
+    pub(crate) fn error(&self, kind: ErrorKind) -> Error {
+        Error { kind, path: None }
     }
 }
 

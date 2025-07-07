@@ -9,7 +9,12 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
+serde = { version = "1.0", optional = true, features = ["derive"] }
 # anathema-debug = { path = "../anathema-debug", version = "0.2.2" }
+
+[features]
+default = []
+serde = ["dep:serde"]
 
 [lints]
 workspace = true

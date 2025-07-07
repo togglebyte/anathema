@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use anathema_geometry::Size;
 use anathema_widgets::components::events::{Event, KeyEvent};
 
 pub struct EventsMut<'a> {
@@ -16,6 +17,12 @@ impl EventsMut<'_> {
         for _ in 0..count {
             self.event_queue.push_back(None);
         }
+        self
+    }
+
+    pub fn resize(self, new_size: impl Into<Size>) -> Self {
+        let size = new_size.into();
+        self.event_queue.push_back(Some(Event::Resize(size)));
         self
     }
 

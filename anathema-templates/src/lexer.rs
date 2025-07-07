@@ -1,6 +1,7 @@
 use std::iter::Peekable;
 use std::str::CharIndices;
 
+use crate::components::TemplateSource;
 use crate::error::{ParseError, ParseErrorKind, Result};
 use crate::strings::Strings;
 use crate::token::{Kind, Operator, Token, Value};
@@ -17,15 +18,15 @@ impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
 }
 
 pub struct Lexer<'src, 'strings> {
-    pub(super) src: &'src str,
+    pub(super) src: &'src TemplateSource,
     pub(crate) strings: &'strings mut Strings,
     chars: Peekable<CharIndices<'src>>,
 }
 
 impl<'src, 'strings> Lexer<'src, 'strings> {
-    pub(crate) fn new(src: &'src str, strings: &'strings mut Strings) -> Self {
+    pub(crate) fn new(src: &'src TemplateSource, strings: &'strings mut Strings) -> Self {
         Self {
-            chars: src.char_indices().peekable(),
+            chars: src.template().char_indices().peekable(),
             strings,
             src,
         }
@@ -92,6 +93,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             ('{', _) => Ok(Kind::Op(Operator::LCurly).to_token(index)),
             ('}', _) => Ok(Kind::Op(Operator::RCurly).to_token(index)),
             (':', _) => Ok(Kind::Op(Operator::Colon).to_token(index)),
+            (';', _) => Ok(Kind::Op(Operator::Semicolon).to_token(index)),
             (',', _) => Ok(Kind::Op(Operator::Comma).to_token(index)),
             ('.', _) => Ok(Kind::Op(Operator::Dot).to_token(index)),
             ('!', _) => Ok(Kind::Op(Operator::Not).to_token(index)),
@@ -166,7 +168,7 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
                         self.src,
                         ParseErrorKind::UnterminatedString,
                     )
-                    .into());
+                    .to_error(self.src.path()));
                 }
                 _ => {} // consume chars
             }
@@ -189,16 +191,19 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
 
         let input = &self.src[index..=end];
 
-        let kind = match parse_float {
-            true => match input.parse::<f64>() {
-                Ok(num) => Ok(Kind::Value(num.into())),
-                Err(_) => Err(ParseError::new(index..end + 1, self.src, ParseErrorKind::InvalidNumber)),
-            },
-            false => match input.parse::<i64>() {
-                Ok(num) => Ok(Kind::Value(num.into())),
-                Err(_) => Err(ParseError::new(index..end + 1, self.src, ParseErrorKind::InvalidNumber)),
-            },
-        }?;
+        let kind =
+            match parse_float {
+                true => match input.parse::<f64>() {
+                    Ok(num) => Ok(Kind::Value(num.into())),
+                    Err(_) => Err(ParseError::new(index..end + 1, self.src, ParseErrorKind::InvalidNumber)
+                        .to_error(self.src.path())),
+                },
+                false => match input.parse::<i64>() {
+                    Ok(num) => Ok(Kind::Value(num.into())),
+                    Err(_) => Err(ParseError::new(index..end + 1, self.src, ParseErrorKind::InvalidNumber)
+                        .to_error(self.src.path())),
+                },
+            }?;
 
         Ok(Token(kind, index))
     }
@@ -218,7 +223,8 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             "else" => Kind::Else,
             "true" => Kind::Value(true.into()),
             "false" => Kind::Value(false.into()),
-            "let" => Kind::Decl,
+            "local" | "let" => Kind::Local,
+            "global" => Kind::Global,
             "switch" => Kind::Switch,
             "case" => Kind::Case,
             "default" => Kind::Default,
@@ -264,7 +270,9 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
         // Make sure that it's either three or six characters,
         // otherwise it's an invalid hex
         if len != 3 && len != 6 {
-            return Err(ParseError::new(index..end, self.src, ParseErrorKind::InvalidHexValue).into());
+            return Err(
+                ParseError::new(index..end, self.src, ParseErrorKind::InvalidHexValue).to_error(self.src.path())
+            );
         }
 
         let kind = match len {
@@ -298,13 +306,13 @@ mod test {
     use super::*;
     use crate::error::ParseErrorKind;
 
-    fn token_kind(input: &str) -> Kind {
+    fn token_kind(input: &'static str) -> Kind {
         let mut strings = Strings::new();
-
-        Lexer::new(input, &mut strings).next().unwrap().unwrap().0
+        let input = input.into();
+        Lexer::new(&input, &mut strings).next().unwrap().unwrap().0
     }
 
-    fn operator(input: &str) -> Operator {
+    fn operator(input: &'static str) -> Operator {
         let kind = token_kind(input);
         match kind {
             Kind::Op(op) => op,
@@ -312,25 +320,28 @@ mod test {
         }
     }
 
-    fn error_kind(input: &str) -> ParseErrorKind {
+    fn error_kind(input: &'static str) -> ParseErrorKind {
+        let input = input.into();
         let mut strings = Strings::new();
-        let mut lexer = Lexer::new(input, &mut strings);
-        match lexer.next().unwrap().unwrap_err() {
-            crate::error::Error::ParseError(err) => err.kind,
-            crate::error::Error::CircularDependency
-            | crate::error::Error::InvalidStatement(_)
-            | crate::error::Error::MissingComponent(_)
-            | crate::error::Error::EmptyTemplate
-            | crate::error::Error::EmptyBody
-            | crate::error::Error::Io(_) => panic!("invalid error"),
+        let mut lexer = Lexer::new(&input, &mut strings);
+        let err = lexer.next().unwrap().unwrap_err();
+        match err.kind {
+            crate::error::ErrorKind::ParseError(err) => err.kind,
+            crate::error::ErrorKind::CircularDependency
+            | crate::error::ErrorKind::InvalidStatement(_)
+            | crate::error::ErrorKind::MissingComponent(_)
+            | crate::error::ErrorKind::EmptyTemplate
+            | crate::error::ErrorKind::EmptyBody
+            | crate::error::ErrorKind::GlobalAlreadyAssigned(_)
+            | crate::error::ErrorKind::Io(_) => panic!("invalid error"),
         }
     }
 
     #[test]
     fn comment() {
         let mut strings = Strings::new();
-        let input = "// hello world";
-        let mut lexer = Lexer::new(input, &mut strings);
+        let input = "// hello world".into();
+        let mut lexer = Lexer::new(&input, &mut strings);
         assert!(lexer.next().is_none());
     }
 
@@ -419,7 +430,8 @@ mod test {
         let mut strings = Strings::new();
 
         for (input, expected) in inputs {
-            let Kind::Value(Value::String(string_id)) = Lexer::new(input, &mut strings).next().unwrap().unwrap().0
+            let Kind::Value(Value::String(string_id)) =
+                Lexer::new(&input.into(), &mut strings).next().unwrap().unwrap().0
             else {
                 panic!("invalid token")
             };
@@ -493,9 +505,15 @@ mod test {
     }
 
     #[test]
-    fn declaration() {
-        let decl = token_kind("let");
-        assert_eq!(decl, Kind::Decl);
+    fn local_dec() {
+        let decl = token_kind("local");
+        assert_eq!(decl, Kind::Local);
+    }
+
+    #[test]
+    fn global_dec() {
+        let decl = token_kind("global");
+        assert_eq!(decl, Kind::Global);
     }
 
     #[test]

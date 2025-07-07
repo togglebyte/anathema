@@ -31,13 +31,17 @@ pub struct Builder<G> {
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
-    /// Create a new runtime builder
-    pub(super) fn new(document: Document, size: Size, global_event_handler: G) -> Self {
+    /// Create a new runtime builder with a reciver.
+    /// Use this if the `Emitter` was created outside of the runtime.
+    pub(super) fn with_receiver(
+        message_receiver: flume::Receiver<ViewMessage>,
+        emitter: Emitter,
+        document: Document,
+        size: Size,
+        global_event_handler: G,
+    ) -> Self {
         let mut factory = Factory::new();
         register_default_widgets(&mut factory);
-
-        let (tx, message_receiver) = flume::unbounded();
-        let emitter = tx.into();
 
         Self {
             factory,
@@ -51,6 +55,13 @@ impl<G: GlobalEventHandler> Builder<G> {
             hot_reload: true,
             function_table: FunctionTable::new(),
         }
+    }
+
+    /// Create a new runtime builder
+    pub(super) fn new(document: Document, size: Size, global_event_handler: G) -> Self {
+        let (tx, rx) = flume::unbounded();
+        let emitter = Emitter::from(tx);
+        Self::with_receiver(rx, emitter.clone(), document, size, global_event_handler)
     }
 
     /// Enable/Disable hot reloading
@@ -172,9 +183,15 @@ impl<G: GlobalEventHandler> Builder<G> {
         let (blueprint, globals) = loop {
             match self.document.compile() {
                 Ok(val) => break val,
-                Err(error) => {
-                    show_error(error, backend, &mut self.document)?;
-                }
+                // This can only show template errors.
+                // Widget errors doesn't become available until after the first tick.
+                Err(error) => match show_error(error.into(), backend, &self.document) {
+                    Ok(()) => return Err(Error::Stop),
+                    Err(Error::Reload) if self.hot_reload => {
+                        _ = self.document.reload_templates();
+                    }
+                    err => err?,
+                },
             }
         };
 
@@ -193,42 +210,10 @@ impl<G: GlobalEventHandler> Builder<G> {
             self.fps,
             self.global_event_handler,
             self.function_table,
+            self.hot_reload,
         );
 
-        // NOTE:
-        // this enables hot reload,
-        // however with this enabled the `with_frame` function
-        // on the runtime will repeat
-        loop {
-            match f(&mut inst, backend) {
-                Ok(()) => (),
-                e => match e {
-                    Ok(_) => continue,
-                    Err(Error::Stop) => break Ok(()),
-                    Err(Error::Template(error)) => match show_error(error, backend, &mut inst.document) {
-                        Ok(_) => continue,
-                        Err(err) => panic!("error console failed: {err}"),
-                    },
-                    Err(Error::Widget(err)) => panic!("this should not panic in the future: {err}"),
-                    Err(e) => break Err(e),
-                },
-            }
-
-            if !self.hot_reload {
-                break Ok(());
-            }
-
-            match inst.reload() {
-                Ok(()) => continue,
-                Err(Error::Stop) => todo!(),
-                Err(Error::Template(error)) => match show_error(error, backend, &mut inst.document) {
-                    Ok(_) => continue,
-                    Err(err) => panic!("error console failed: {err}"),
-                },
-                Err(Error::Widget(_error)) => todo!(),
-                Err(e) => break Err(e),
-            }
-        }
+        f(&mut inst, backend)
     }
 
     fn set_watcher(&mut self, hot_reload: bool) -> Result<Option<RecommendedWatcher>> {

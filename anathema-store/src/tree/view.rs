@@ -29,8 +29,14 @@ impl<'tree, T> TreeView<'tree, T> {
         TreeView::new(self.offset, self.layout, self.values, self.removed_values)
     }
 
+    /// Get a mutable reference by value id
     pub fn get_mut(&mut self, value_id: ValueId) -> Option<&mut T> {
         self.values.get_mut(value_id).map(|(_, value)| value)
+    }
+
+    /// Get a reference by value id
+    pub fn get(&self, value_id: ValueId) -> Option<&T> {
+        self.values.get(value_id).map(|(_, value)| value)
     }
 
     pub fn contains(&self, key: ValueId) -> bool {
@@ -92,11 +98,6 @@ impl<'tree, T> TreeView<'tree, T> {
         self.layout.with(path, |nodes| nodes.value())
     }
 
-    /// Get a mutable reference by value id
-    pub fn get_mut_by_id(&mut self, node_id: ValueId) -> Option<&mut T> {
-        self.values.get_mut(node_id).map(|(_, val)| val)
-    }
-
     /// Get a reference to the value and the value id
     /// This has an additional cost since the value id has to
     /// be found first.
@@ -114,7 +115,7 @@ impl<'tree, T> TreeView<'tree, T> {
     /// let mut tree = tree.view();
     /// let transaction = tree.insert(&[]);
     /// let value_id = transaction.commit_child(1usize).unwrap();
-    /// let one = tree.get_mut_by_id(value_id).unwrap();
+    /// let one = tree.get_mut(value_id).unwrap();
     /// assert_eq!(*one, 1);
     /// ```
     pub fn insert<'a>(&'a mut self, parent: &'a [u16]) -> InsertTransaction<'a, 'tree, T> {
@@ -257,7 +258,7 @@ mod test {
         tree.insert(root_node()).commit_child(1);
         tree.with_value_mut(key, |_path, _value, mut tree| {
             // The value is already checked out
-            assert!(tree.get_mut_by_id(key).is_none());
+            assert!(tree.get_mut(key).is_none());
         });
     }
 

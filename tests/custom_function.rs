@@ -1,6 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 use anathema_testutils::{BasicComp, BasicState, character};
 use anathema_value_resolver::ValueKind;
 
@@ -31,8 +32,9 @@ fn run_custom_function() {
 
     assert!(backend.at(0, 0).is_char('x'));
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }
 

@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
@@ -6,12 +7,13 @@ use anathema_geometry::Size;
 use anathema_state::{Changes, StateId, States, clear_all_changes, clear_all_subs, drain_changes};
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, Globals};
+use anathema_templates::{Document, Variables};
 use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
-use anathema_widgets::components::events::Event;
+use anathema_widgets::components::events::{Event, EventType};
 use anathema_widgets::components::{
-    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, ViewMessage,
+    AnyComponentContext, AssociatedEvents, ComponentKind, ComponentRegistry, Emitter, MessageReceiver, Recipient,
+    ViewMessage,
 };
 use anathema_widgets::layout::{LayoutCtx, Viewport};
 use anathema_widgets::query::Children;
@@ -35,7 +37,7 @@ mod testing;
 /// Anathema runtime
 pub struct Runtime<G> {
     pub(super) blueprint: Blueprint,
-    pub(super) globals: Globals,
+    pub(super) variables: Variables,
     pub(super) factory: Factory,
     pub(super) states: States,
     pub(super) component_registry: ComponentRegistry,
@@ -54,6 +56,7 @@ pub struct Runtime<G> {
     pub(super) deferred_components: DeferredComponents,
     pub(super) global_event_handler: G,
     pub(super) function_table: FunctionTable,
+    pub(super) hot_reload: bool,
 }
 
 impl Runtime<()> {
@@ -61,12 +64,22 @@ impl Runtime<()> {
     pub fn builder<B: Backend>(doc: Document, backend: &B) -> Builder<()> {
         Builder::new(doc, backend.size(), ())
     }
+
+    /// Create a runtime builder using an existing emitter
+    pub fn with_receiver<B: Backend>(
+        message_receiver: MessageReceiver,
+        emitter: Emitter,
+        doc: Document,
+        backend: &B,
+    ) -> Builder<()> {
+        Builder::with_receiver(message_receiver, emitter, doc, backend.size(), ())
+    }
 }
 
 impl<G: GlobalEventHandler> Runtime<G> {
     pub(crate) fn new(
         blueprint: Blueprint,
-        globals: Globals,
+        variables: Variables,
         component_registry: ComponentRegistry,
         document: Document,
         factory: Factory,
@@ -77,6 +90,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         fps: u32,
         global_event_handler: G,
         function_table: FunctionTable,
+        hot_reload: bool,
     ) -> Self {
         let sleep_micros: u64 = ((1.0 / fps as f64) * 1000.0 * 1000.0) as u64;
 
@@ -90,7 +104,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             assoc_events: AssociatedEvents::new(),
             glyph_map: GlyphMap::empty(),
             blueprint,
-            globals,
+            variables,
             changes: Changes::empty(),
             viewport: Viewport::new(size),
             message_receiver,
@@ -101,6 +115,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
             sleep_micros,
             global_event_handler,
             function_table,
+            hot_reload,
         }
     }
 
@@ -121,39 +136,81 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
     pub fn run<B: Backend>(&mut self, backend: &mut B) -> Result<()> {
         let sleep_micros = self.sleep_micros;
-        self.with_frame(backend, |backend, mut frame| {
-            // Perform the initial tick so tab index has a tree to work with.
-            // This means we can not react to any events in this tick as the tree does not
-            // yet have any widgets or components.
-            frame.tick(backend)?;
 
-            let mut tabindex = TabIndex::new(&mut frame.tabindex, frame.tree.view());
-            tabindex.next();
+        loop {
+            let res = self.with_frame(backend, |backend, mut frame| {
+                // Perform the initial tick so tab index has a tree to work with.
+                // This means we can not react to any events in this tick as the tree does not
+                // yet have any widgets or components.
+                _ = frame.tick(backend);
+                TabIndex::new(&mut frame.tabindex, frame.tree.view()).next();
 
-            if let Some(current) = frame.tabindex.as_ref() {
-                frame.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
-                    comp.dyn_component.any_focus(children, ctx)
-                });
-            }
-
-            loop {
-                frame.tick(backend)?;
-                if frame.layout_ctx.stop_runtime {
-                    return Err(Error::Stop);
+                if let Some(current) = frame.tabindex.as_ref() {
+                    frame.with_component(current.widget_id, current.state_id, |comp, children, ctx| {
+                        comp.dyn_component.any_focus(children, ctx)
+                    });
                 }
 
-                frame.present(backend);
-                frame.cleanup();
-                std::thread::sleep(Duration::from_micros(sleep_micros));
+                loop {
+                    if REBUILD.swap(false, Ordering::Relaxed) {
+                        frame.force_unmount_return();
+                        backend.clear();
+                        break Err(Error::Reload);
+                    }
 
-                if REBUILD.swap(false, Ordering::Relaxed) {
-                    frame.force_rebuild()?;
-                    backend.clear();
-                    break Ok(());
+                    match frame.tick(backend) {
+                        Ok(_duration) => (),
+                        Err(err) => match err {
+                            err @ (Error::Template(_) | Error::Widget(_)) => {
+                                match show_error(err, backend, frame.document) {
+                                    Err(Error::Stop) => return Err(Error::Stop),
+                                    // NOTE: we continue here as this should
+                                    // cause the REBUILD to trigger
+                                    Err(Error::Reload) => continue,
+                                    _ => unreachable!("show_error only return stop or rebuild"),
+                                }
+                            }
+                            err => return Err(err),
+                        },
+                    }
+
+                    if frame.layout_ctx.stop_runtime {
+                        return Err(Error::Stop);
+                    }
+
+                    frame.present(backend);
+                    frame.cleanup();
+                    std::thread::sleep(Duration::from_micros(sleep_micros));
                 }
-            }
-        })?;
+            });
 
+            match res {
+                Ok(()) => panic!(),
+                Err(e) => match e {
+                    Error::Template(_) | Error::Widget(_) => {
+                        unreachable!("these error variants are handled inside the tick loop")
+                    }
+                    Error::Stop => return Err(Error::Stop),
+
+                    Error::Reload => loop {
+                        // Reload can fail if the template fails to parse.
+                        match self.reload() {
+                            Ok(()) => break,
+                            Err(e) => {
+                                if let Err(Error::Stop) = show_error(e, backend, &self.document) {
+                                    return Err(Error::Stop);
+                                }
+                            }
+                        }
+                    },
+                    e => return Err(e),
+                },
+            }
+
+            if !self.hot_reload {
+                break;
+            }
+        }
         Ok(())
     }
 
@@ -163,7 +220,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
         attribute_storage: &'frame mut AttributeStorage<'bp>,
     ) -> Result<Frame<'frame, 'bp, G>> {
         let layout_ctx = LayoutCtx::new(
-            &self.globals,
+            &self.variables,
             &self.factory,
             &mut self.states,
             attribute_storage,
@@ -191,6 +248,7 @@ impl<G: GlobalEventHandler> Runtime<G> {
 
             dt: &mut self.dt,
             needs_layout: true,
+            post_cycle_events: VecDeque::new(),
 
             global_event_handler: &self.global_event_handler,
             tabindex: None,
@@ -209,9 +267,9 @@ impl<G: GlobalEventHandler> Runtime<G> {
         // Reload templates
         self.document.reload_templates()?;
 
-        let (blueprint, globals) = self.document.compile()?;
+        let (blueprint, variables) = self.document.compile()?;
         self.blueprint = blueprint;
-        self.globals = globals;
+        self.variables = variables;
 
         Ok(())
     }
@@ -230,12 +288,15 @@ pub struct Frame<'rt, 'bp, G> {
     message_receiver: &'rt flume::Receiver<ViewMessage>,
     dt: &'rt mut Instant,
     needs_layout: bool,
+    post_cycle_events: VecDeque<Event>,
+
     global_event_handler: &'rt G,
     pub tabindex: Option<Index>,
 }
 
 impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
-    pub fn force_rebuild(mut self) -> Result<()> {
+    /// Unmount all components and return them to storage
+    pub fn force_unmount_return(mut self) {
         // call unmount on all components
         for i in 0..self.layout_ctx.components.len() {
             let Some((widget_id, state_id)) = self.layout_ctx.components.get_ticking(i) else { continue };
@@ -244,7 +305,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         }
 
         self.return_state_and_component();
-        Ok(())
     }
 
     pub fn handle_global_event(&mut self, event: Event) -> Option<Event> {
@@ -327,8 +387,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         let now = Instant::now();
         self.init_new_components();
         let elapsed = self.handle_messages(now);
-
-        // Pre cycle events
         self.poll_events(elapsed, now, backend);
         self.drain_deferred_commands();
         self.drain_assoc_events();
@@ -342,7 +400,8 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         self.tick_components(self.dt.elapsed());
         self.cycle(backend)?;
 
-        // Post cycle events
+        self.post_cycle_events();
+
         *self.dt = Instant::now();
 
         match self.layout_ctx.stop_runtime {
@@ -381,16 +440,26 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         puffin::profile_function!();
 
         while let Ok(msg) = self.message_receiver.try_recv() {
-            if let Some((widget_id, state_id)) = self
-                .layout_ctx
-                .components
-                .get_by_component_id(msg.recipient())
-                .map(|e| (e.widget_id, e.state_id))
-            {
-                self.with_component(widget_id, state_id, |comp, elements, ctx| {
-                    comp.dyn_component.any_message(elements, ctx, msg.payload())
-                });
-            }
+            let (widget_id, state_id) = match msg.recipient() {
+                Recipient::ComponentId(id) => {
+                    let val = self
+                        .layout_ctx
+                        .components
+                        .get_by_component_id(id)
+                        .map(|e| (e.widget_id, e.state_id));
+                    let Some(id_and_state) = val else { continue };
+                    id_and_state
+                }
+                Recipient::WidgetId(id) => {
+                    let state_id = self.layout_ctx.components.get_by_widget_id(id).map(|(_, state)| state);
+                    let Some(state_id) = state_id else { continue };
+                    (id, state_id)
+                }
+            };
+
+            self.with_component(widget_id, state_id, |comp, elements, ctx| {
+                comp.dyn_component.any_message(elements, ctx, msg.payload())
+            });
 
             // Make sure event handling isn't holding up the rest of the event loop.
             if fps_now.elapsed().as_micros() as u64 >= self.sleep_micros / 2 {
@@ -414,7 +483,16 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
                 break;
             }
 
-            self.event(event);
+            match event.into() {
+                EventType::PreCycle => {
+                    // This is a pre-cycle event, we should notify immediately.
+                    self.event(event);
+                }
+                EventType::PostCycle => {
+                    // This is a post-cycle event, we should notify after the cycle is done.
+                    self.post_cycle_events.push_back(event);
+                }
+            }
 
             // Make sure event handling isn't holding up the rest of the event loop.
             if fps_now.elapsed().as_micros() as u64 > self.sleep_micros {
@@ -681,8 +759,9 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
         }
     }
 
-    // fn display_error(&mut self, backend: &mut impl Backend) {
-    //     let _tpl = "text 'you goofed up'";
-    //     backend.render(self.layout_ctx.glyph_map);
-    // }
+    fn post_cycle_events(&mut self) {
+        while let Some(event) = self.post_cycle_events.pop_front() {
+            self.event(event);
+        }
+    }
 }

@@ -1,5 +1,14 @@
+* 0.2.8
+    * An emitter can be created before the runtime
+    * Messages can be emitted to both widget ids and component ids
+    * Feature flag: `serde` is now a feature flag that adds `Serialize` / `Deserialize` to `WidgetId`
+    * There is now a distinction between `global`s and `local`s
+    * BUGFIX: ctrl+c works with the error display
+    * Trying to use a component twice will now include the component name in the
+      error
+    * Global definitions will raise an error if it's already assigned
 * 0.2.7
-    * BUGFIX: Fixed wrong truthiness check on control flow
+    * BUGFIX: use correct truthiness check in control flow update
 * 0.2.6
     * `Either` now works by doing truthiness checks on state
     * `Backend::full_screen()` convenience function

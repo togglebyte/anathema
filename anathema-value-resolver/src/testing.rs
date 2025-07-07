@@ -1,6 +1,6 @@
 use anathema_state::{AnyMap, List, Map, Maybe, State, StateId, States, Subscriber, Value};
 use anathema_store::slab::Key;
-use anathema_templates::{Expression, Globals, Variables};
+use anathema_templates::{Expression, Variables};
 
 use super::*;
 use crate::context::ResolverCtx;
@@ -61,19 +61,19 @@ impl AnyMap for TestState {
 }
 
 pub(crate) struct TestCase<'a, 'bp> {
-    globals: &'static Globals,
+    variables: &'static Variables,
     states: &'a mut States,
     pub attributes: AttributeStorage<'bp>,
     function_table: &'static FunctionTable,
 }
 
 impl<'a, 'bp> TestCase<'a, 'bp> {
-    pub fn new(states: &'a mut States, globals: Globals) -> Self {
+    pub fn new(states: &'a mut States, variables: Variables) -> Self {
         let mut attributes = AttributeStorage::empty();
         attributes.insert(Key::ZERO, Attributes::empty());
 
         Self {
-            globals: Box::leak(globals.into()),
+            variables: Box::leak(variables.into()),
             states,
             attributes,
             function_table: Box::leak(FunctionTable::new().into()),
@@ -83,14 +83,20 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     pub(crate) fn eval(&self, expr: &'bp Expression) -> crate::value::Value<'bp> {
         let state_id = StateId::ZERO;
         let scope = Scope::with_component(state_id, Key::ZERO, None);
-        let ctx = ResolverCtx::new(self.globals, &scope, self.states, &self.attributes, self.function_table);
+        let ctx = ResolverCtx::new(
+            self.variables,
+            &scope,
+            self.states,
+            &self.attributes,
+            self.function_table,
+        );
         resolve(expr, &ctx, Subscriber::ZERO)
     }
 
     pub fn set_attribute(&mut self, key: &'bp str, expr: &'bp Expression) {
         let scope = Scope::with_component(StateId::ZERO, Key::ZERO, None);
         self.attributes.with_mut(Key::ZERO, |attributes, storage| {
-            let ctx = ResolverCtx::new(self.globals, &scope, self.states, storage, self.function_table);
+            let ctx = ResolverCtx::new(self.variables, &scope, self.states, storage, self.function_table);
             attributes.insert_with(ValueKey::Attribute(key), |_index| resolve(expr, &ctx, Subscriber::ZERO));
         });
     }
@@ -105,11 +111,11 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     }
 }
 
-pub(crate) fn setup<'bp, F>(states: &mut States, globals: Variables, mut f: F)
+pub(crate) fn setup<'bp, F>(states: &mut States, variables: Variables, mut f: F)
 where
     F: FnMut(&mut TestCase<'_, 'bp>),
 {
     states.insert(Box::new(TestState::new()));
-    let mut test = TestCase::new(states, globals.into());
+    let mut test = TestCase::new(states, variables);
     f(&mut test)
 }
