@@ -2,7 +2,7 @@ use anathema_store::smallmap::SmallMap;
 
 use crate::ComponentBlueprintId;
 use crate::blueprints::Blueprint;
-use crate::components::{AssocEventMapping, ComponentTemplates};
+use crate::components::{AssocEventMapping, ComponentTemplates, TemplateSource};
 use crate::error::Result;
 use crate::expressions::Expression;
 use crate::strings::{StringId, Strings};
@@ -13,6 +13,7 @@ pub(crate) mod eval;
 pub(super) mod parser;
 
 pub(crate) struct Context<'vars> {
+    pub(crate) template: &'vars TemplateSource,
     pub(crate) variables: &'vars mut Variables,
     pub(crate) components: &'vars mut ComponentTemplates,
     pub(crate) strings: &'vars mut Strings,
@@ -22,6 +23,7 @@ pub(crate) struct Context<'vars> {
 
 impl<'vars> Context<'vars> {
     pub fn new(
+        template: &'vars TemplateSource,
         variables: &'vars mut Variables,
         components: &'vars mut ComponentTemplates,
         strings: &'vars mut Strings,
@@ -29,6 +31,7 @@ impl<'vars> Context<'vars> {
         current_component_parent: Option<ComponentBlueprintId>,
     ) -> Self {
         Self {
+            template,
             variables,
             components,
             strings,
@@ -255,8 +258,10 @@ where
     let mut globals = Variables::new();
     let mut strings = Strings::new();
     let mut components = ComponentTemplates::new();
+    let template_source = TemplateSource::Static("");
 
     let context = Context {
+        template: &template_source,
         variables: &mut globals,
         strings: &mut strings,
         components: &mut components,

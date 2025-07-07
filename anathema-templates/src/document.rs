@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use anathema_store::smallmap::SmallMap;
 
 use crate::blueprints::Blueprint;
-use crate::components::{ComponentSource, ComponentTemplates, SourceKind};
-use crate::error::{Error, Result};
+use crate::components::{ComponentTemplates, SourceKind, TemplateSource};
+use crate::error::{Error, ErrorKind, Result};
 use crate::statements::eval::Scope;
 use crate::statements::parser::Parser;
 use crate::statements::{Context, Statements};
@@ -19,7 +19,7 @@ use crate::{ComponentBlueprintId, Lexer, Variables};
 /// let mut doc = Document::new("text 'I am a widget'");
 /// ```
 pub struct Document {
-    template: String,
+    template: TemplateSource,
     pub strings: Strings,
     globals: Variables,
     components: ComponentTemplates,
@@ -27,7 +27,7 @@ pub struct Document {
 }
 
 impl Document {
-    pub fn new(template: impl Into<String>) -> Self {
+    pub fn new(template: impl Into<TemplateSource>) -> Self {
         let template = template.into();
         Self {
             template,
@@ -44,10 +44,13 @@ impl Document {
         let name = self.strings.push(name);
 
         let component_src = match src {
-            SourceKind::Str(s) => ComponentSource::InMemory(s),
+            SourceKind::Str(s) => TemplateSource::InMemory(s),
             SourceKind::Path(path) => {
-                let template = read_to_string(&path)?;
-                ComponentSource::File { path, template }
+                let template = match read_to_string(&path) {
+                    Err(e) => return Err(Error::new(Some(path), e)),
+                    Ok(t) => t,
+                };
+                TemplateSource::File { path, template }
             }
         };
 
@@ -65,6 +68,7 @@ impl Document {
         let statements = parser.collect::<Result<Statements>>()?;
 
         let mut context = Context {
+            template: &self.template,
             variables: &mut self.globals,
             strings: &mut self.strings,
             components: &mut self.components,
@@ -74,7 +78,7 @@ impl Document {
 
         let mut blueprints = Scope::new(statements).eval(&mut context)?;
         match blueprints.is_empty() {
-            true => Err(Error::EmptyTemplate),
+            true => Err(Error::no_template(ErrorKind::EmptyTemplate)),
             false => Ok((blueprints.remove(0), self.globals.take())),
         }
     }
@@ -85,5 +89,9 @@ impl Document {
 
     pub fn reload_templates(&mut self) -> Result<()> {
         self.components.reload()
+    }
+
+    pub fn get_component_source(&self, component_id: ComponentBlueprintId) -> Option<PathBuf> {
+        self.components.path(component_id)
     }
 }

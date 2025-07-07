@@ -8,9 +8,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     Template(TemplateError),
-    Notify(notify::Error),
     Widget(anathema_widgets::error::Error),
+    Notify(notify::Error),
     Stop,
+    Reload,
     InvalidComponentName,
     Resolver(anathema_value_resolver::Error),
 }
@@ -18,12 +19,13 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Template(template) => write!(f, "{template}"),
-            Error::Stop => write!(f, "stopping"),
-            Error::Notify(err) => write!(f, "{err}"),
-            Error::Widget(err) => write!(f, "{err}"),
-            Error::Resolver(err) => write!(f, "{err}"),
-            Error::InvalidComponentName => write!(f, "no such component"),
+            Self::Template(template) => write!(f, "{template}"),
+            Self::Stop => write!(f, "stopping"),
+            Self::Reload => write!(f, "reloading"),
+            Self::Notify(err) => write!(f, "{err}"),
+            Self::Widget(err) => write!(f, "{err}"),
+            Self::Resolver(err) => write!(f, "{err}"),
+            Self::InvalidComponentName => write!(f, "no such component"),
         }
     }
 }

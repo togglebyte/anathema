@@ -1,6 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 use anathema_testutils::character;
 
 #[derive(Debug, State)]
@@ -67,7 +68,10 @@ fn eval_if() {
     builder.default::<C>("comp", tpl.to_template()).unwrap();
     builder.default::<C>("inner", "text '1'".to_template()).unwrap();
 
-    builder
-        .finish(&mut backend, |runtime, backend| runtime.run(backend))
-        .unwrap();
+    let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
+
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
+    }
 }

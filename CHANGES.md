@@ -3,6 +3,9 @@
     * Messages can be emitted to both widget ids and component ids
     * Feature flag: `serde` is now a feature flag that adds `Serialize` / `Deserialize` to `WidgetId`
     * There is now a distinction between `global`s and `local`s
+    * BUGFIX: ctrl+c works with the error display
+    * Trying to use a component twice will now include the component name in the
+      error
 * 0.2.7
     * BUGFIX: use correct truthiness check in control flow update
 * 0.2.6

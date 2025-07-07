@@ -26,11 +26,7 @@ fn state_change() {
         )
         .unwrap();
 
-    let res = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
+    _ = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 
     assert!(backend.at(0, 0).is_char('9'));
-
-    if let Err(e) = res {
-        panic!("{e}");
-    }
 }

@@ -1,6 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 use anathema_testutils::{BasicComp, BasicState, character};
 
 // Bug triggered when a component is used in two separate branches:
@@ -54,7 +55,8 @@ fn bug_component_reuse_bug() {
 
     assert_eq!(backend.line(0), "false");
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }

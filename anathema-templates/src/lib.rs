@@ -1,4 +1,4 @@
-pub use crate::components::{AssocEventMapping, ComponentBlueprintId, SourceKind, ToSourceKind};
+pub use crate::components::{AssocEventMapping, ComponentBlueprintId, SourceKind, TemplateSource, ToSourceKind};
 pub use crate::document::Document;
 pub use crate::expressions::Expression;
 pub use crate::lexer::Lexer;

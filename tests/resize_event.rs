@@ -1,6 +1,7 @@
 use anathema::component::*;
 use anathema::prelude::*;
 use anathema_backend::testing::TestBackend;
+use anathema_runtime::Error;
 
 #[derive(Debug, State, Default)]
 struct S {
@@ -48,7 +49,8 @@ fn resize_event() {
     // Resize event should be triggered after cycle so that the new size is available
     assert_eq!(backend.line(0), "4");
 
-    if let Err(e) = res {
-        panic!("{e}");
+    match res {
+        Ok(_) | Err(Error::Stop) => (),
+        Err(err) => panic!("{err}"),
     }
 }

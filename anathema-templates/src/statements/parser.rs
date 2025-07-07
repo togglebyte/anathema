@@ -1,6 +1,6 @@
 use super::Statement;
-use crate::components::{AssocEventMapping, ComponentTemplates};
-use crate::error::{ParseError, ParseErrorKind, Result, src_line_no};
+use crate::components::{AssocEventMapping, ComponentTemplates, TemplateSource};
+use crate::error::{Error, ParseError, ParseErrorKind, Result, src_line_no};
 use crate::expressions::Expression;
 use crate::expressions::parser::parse_expr;
 use crate::strings::{StringId, Strings};
@@ -34,7 +34,7 @@ pub(crate) struct Parser<'src, 'strings, 'components> {
     tokens: Tokens,
     components: &'components mut ComponentTemplates,
     strings: &'strings mut Strings,
-    src: &'src str,
+    src: &'src TemplateSource,
     state: State,
     open_scopes: Vec<usize>,
     closed_scopes: Vec<usize>,
@@ -46,7 +46,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     pub(crate) fn new(
         mut tokens: Tokens,
         strings: &'strings mut Strings,
-        src: &'src str,
+        src: &'src TemplateSource,
         components: &'view mut ComponentTemplates,
     ) -> Self {
         tokens.consume_newlines();
@@ -68,7 +68,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         }
     }
 
-    fn error(&self, kind: ParseErrorKind) -> ParseError {
+    fn error(&self, kind: ParseErrorKind) -> Error {
         let (line, col) = src_line_no(self.tokens.previous().1, self.src);
         ParseError {
             line,
@@ -76,9 +76,10 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
             src: self.src.to_string(),
             kind,
         }
+        .to_error(self.src.path())
     }
 
-    fn read_ident(&mut self) -> Result<StringId, ParseError> {
+    fn read_ident(&mut self) -> Result<StringId> {
         match self.tokens.next_no_indent() {
             Kind::Value(Value::Ident(ident)) => Ok(ident),
             _ => Err(self.error(ParseErrorKind::InvalidToken { expected: "identifier" })),
@@ -159,7 +160,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     // -----------------------------------------------------------------------------
     //     - Stage 1: Parse enter / exit scopes and assignments -
     // -----------------------------------------------------------------------------
-    fn enter_scope(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn enter_scope(&mut self) -> Result<Option<Statement>> {
         let indent = self.tokens.read_indent();
 
         if let Kind::Op(op @ Operator::Semicolon) = self.tokens.peek() {
@@ -225,7 +226,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         ret
     }
 
-    fn exit_scope(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn exit_scope(&mut self) -> Result<Option<Statement>> {
         match self.closed_scopes.pop() {
             Some(_) => Ok(Some(Statement::ScopeEnd)),
             None => {
@@ -238,7 +239,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     // -----------------------------------------------------------------------------
     //     - Stage 2: Parse ident, For, If, declaration and assignment -
     // -----------------------------------------------------------------------------
-    fn parse_ident(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_ident(&mut self) -> Result<Option<Statement>> {
         if Kind::Eof == self.tokens.peek() {
             self.state = State::Done;
             return Ok(None);
@@ -261,7 +262,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         Ok(Some(Statement::Node(ident)))
     }
 
-    fn parse_with(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_with(&mut self) -> Result<Option<Statement>> {
         // with <binding> as <expr>
         if Kind::With != self.tokens.peek_skip_indent() {
             self.next_state();
@@ -287,7 +288,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         Ok(Some(Statement::With { data, binding }))
     }
 
-    fn parse_for(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_for(&mut self) -> Result<Option<Statement>> {
         if Kind::For != self.tokens.peek_skip_indent() {
             self.next_state();
             return Ok(None);
@@ -312,7 +313,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         Ok(Some(Statement::For { data, binding }))
     }
 
-    fn parse_if(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_if(&mut self) -> Result<Option<Statement>> {
         match self.tokens.peek_skip_indent() {
             Kind::Else => {
                 self.tokens.consume();
@@ -336,7 +337,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         }
     }
 
-    fn parse_switch(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_switch(&mut self) -> Result<Option<Statement>> {
         match self.tokens.peek_skip_indent() {
             Kind::Switch => {
                 self.tokens.consume();
@@ -351,7 +352,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         }
     }
 
-    fn parse_case(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_case(&mut self) -> Result<Option<Statement>> {
         // <ident> : <body>
         match self.tokens.peek_skip_indent() {
             kind @ (Kind::Case | Kind::Default) => {
@@ -380,7 +381,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         }
     }
 
-    fn parse_declaration(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_declaration(&mut self) -> Result<Option<Statement>> {
         // Check if it's a declaration otherwise move on
         let is_global = match self.tokens.peek_skip_indent() {
             Kind::Local => false,
@@ -410,7 +411,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         Ok(None)
     }
 
-    fn parse_component(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_component(&mut self) -> Result<Option<Statement>> {
         if Kind::Component != self.tokens.peek_skip_indent() {
             self.next_state();
             return Ok(None);
@@ -430,7 +431,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         Ok(Some(Statement::Component(component_id)))
     }
 
-    fn parse_associated_functions(&mut self) -> Result<bool, ParseError> {
+    fn parse_associated_functions(&mut self) -> Result<bool> {
         if Kind::Op(Operator::LParen) == self.tokens.peek_skip_indent() {
             self.tokens.consume();
             self.tokens.consume_all_whitespace();
@@ -441,7 +442,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         }
     }
 
-    fn parse_associated_function(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_associated_function(&mut self) -> Result<Option<Statement>> {
         // Check for the closing paren
         if Kind::Op(Operator::RParen) == self.tokens.peek_skip_indent() {
             self.tokens.consume();
@@ -482,7 +483,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
         })))
     }
 
-    fn parse_component_slot(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_component_slot(&mut self) -> Result<Option<Statement>> {
         if Kind::ComponentSlot != self.tokens.peek_skip_indent() {
             self.next_state();
             return Ok(None);
@@ -501,7 +502,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     // -----------------------------------------------------------------------------
     //     - Stage 3: Parse attributes -
     // -----------------------------------------------------------------------------
-    fn parse_attributes(&mut self) -> Result<bool, ParseError> {
+    fn parse_attributes(&mut self) -> Result<bool> {
         if Kind::Op(Operator::LBracket) == self.tokens.peek_skip_indent() {
             self.tokens.consume();
             self.tokens.consume_all_whitespace();
@@ -515,7 +516,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     // -----------------------------------------------------------------------------
     //     - Stage 4: Parse single attribute -
     // -----------------------------------------------------------------------------
-    fn parse_attribute(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_attribute(&mut self) -> Result<Option<Statement>> {
         // Check for the closing bracket
         if Kind::Op(Operator::RBracket) == self.tokens.peek_skip_indent() {
             self.tokens.consume();
@@ -556,7 +557,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     // -----------------------------------------------------------------------------
     //     - Stage 5: Node value -
     // -----------------------------------------------------------------------------
-    fn parse_value(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_value(&mut self) -> Result<Option<Statement>> {
         self.tokens.consume_indent();
 
         if matches!(self.tokens.peek(), Kind::Newline | Kind::Eof) {
@@ -589,7 +590,7 @@ impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
     //     Clear empty spaces, ready for next instructions,
     //     or deal with EOF
     // -----------------------------------------------------------------------------
-    fn parse_done(&mut self) -> Result<Option<Statement>, ParseError> {
+    fn parse_done(&mut self) -> Result<Option<Statement>> {
         let token = self.tokens.next();
 
         let ret = match token {
@@ -638,7 +639,7 @@ impl Iterator for Parser<'_, '_, '_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::error::Error;
+    use crate::error::ErrorKind;
     use crate::expressions::{boolean, ident, map, num, strlit, text_segments};
     use crate::lexer::Lexer;
     use crate::statements::test::{
@@ -646,28 +647,30 @@ mod test {
         local, node, scope_end, scope_start, slot, switch, with,
     };
 
-    fn parse(src: &str) -> Vec<Result<Statement>> {
+    fn parse(src: TemplateSource) -> Vec<Result<Statement>> {
         let mut strings = Strings::new();
         let x_id = strings.push("x");
         let mut components = ComponentTemplates::new();
-        components.insert(x_id, crate::components::ComponentSource::InMemory(String::new()));
-        let lexer = Lexer::new(src, &mut strings);
+        components.insert(x_id, crate::components::TemplateSource::InMemory(String::new()));
+        let lexer = Lexer::new(&src, &mut strings);
         let tokens = Tokens::new(lexer.collect::<Result<Vec<_>>>().unwrap(), src.len());
-        let parser = Parser::new(tokens, &mut strings, src, &mut components);
-
+        let parser = Parser::new(tokens, &mut strings, &src, &mut components);
         parser.collect::<Vec<_>>()
     }
 
-    fn parse_ok(src: &str) -> Vec<Statement> {
-        match parse(src).into_iter().collect::<Result<Vec<_>>>() {
+    fn parse_ok(src: &'static str) -> Vec<Statement> {
+        match parse(src.into()).into_iter().collect::<Result<Vec<_>>>() {
             Ok(stmts) => stmts,
             Err(e) => panic!("{e}"),
         }
     }
 
-    fn parse_err(src: &str) -> ParseError {
-        match parse(src).into_iter().collect::<Result<Vec<_>>>().unwrap_err() {
-            Error::ParseError(err) => err,
+    fn parse_err(src: &'static str) -> ParseError {
+        match parse(src.into()).into_iter().collect::<Result<Vec<_>>>().unwrap_err() {
+            Error {
+                kind: ErrorKind::ParseError(err),
+                ..
+            } => err,
             _ => panic!("invalid error kind"),
         }
     }
