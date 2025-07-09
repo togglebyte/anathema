@@ -163,7 +163,7 @@ impl<'a, 'bp> LayoutForEach<'a, 'bp> {
         // If there is no parent then there can be no children generated
         let Some(parent) = self.generator else { return Ok(ControlFlow::Continue(())) };
 
-        // NOTE: Generate will never happen unless the preceeding iteration returns `Continue(())`.
+        // NOTE: Generate will never happen unless the preceding iteration returns `Continue(())`.
         //       Therefore there is no need to worry about excessive creation of `Iter`s for loops.
         loop {
             let index = self.tree.layout_len();
