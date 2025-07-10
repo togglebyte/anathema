@@ -52,11 +52,10 @@ impl Context<'_> {
 
     fn load_component(
         &mut self,
-        parent_component_id: ComponentBlueprintId,
+        component_id: ComponentBlueprintId,
         slots: SmallMap<StringId, Vec<Blueprint>>,
     ) -> Result<Vec<Blueprint>> {
-        self.components
-            .load(parent_component_id, self.variables, slots, self.strings)
+        self.components.load(component_id, self.variables, slots, self.strings)
     }
 }
 

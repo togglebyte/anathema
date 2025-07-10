@@ -1,3 +1,7 @@
+* 0.2.9
+    * New border style: "rounded"
+    * Hex and Color can now be serialized / deserialized if the `serde` feature
+      is enabled.
 * 0.2.8
     * An emitter can be created before the runtime
     * Messages can be emitted to both widget ids and component ids
