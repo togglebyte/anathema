@@ -31,7 +31,7 @@ pub struct Builder<G> {
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
-    /// Create a new runtime builder with a reciver.
+    /// Create a new runtime builder with a receiver.
     /// Use this if the `Emitter` was created outside of the runtime.
     pub(super) fn with_receiver(
         message_receiver: flume::Receiver<ViewMessage>,

@@ -154,7 +154,7 @@ impl<'tree, T> TreeView<'tree, T> {
 
                 // Clone the path to drop the borrow of the tree
                 let path = path.clone();
-                // Update the root of all the children of the preceeding siblings
+                // Update the root of all the children of the preceding siblings
                 node.reparent(&path, self.values);
             });
 
@@ -276,7 +276,7 @@ mod test {
     }
 
     // This is where we start:
-    // Insert At has to be a posibility.
+    // Insert At has to be a possibility.
     // Scenario:
     // * Insert at 0
     // * Insert at len

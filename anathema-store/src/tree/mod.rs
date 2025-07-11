@@ -140,7 +140,7 @@ impl Nodes {
         self.inner.push(Node::new(key));
     }
 
-    // Clear nodes and remove associted values
+    // Clear nodes and remove associated values
     fn clear<T, F>(&mut self, values: &mut GenSlab<(Box<[u16]>, T)>, removed_values: &mut RemovedValues, f: &mut F)
     where
         F: FnMut(T),

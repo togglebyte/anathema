@@ -180,7 +180,7 @@ impl SizePos {
 // -----------------------------------------------------------------------------
 //     - Paint context -
 // -----------------------------------------------------------------------------
-// * Context should draw in local coordinates and tranlate to the screen
+// * Context should draw in local coordinates and translate to the screen
 // * A child always starts at 0, 0 in local space
 /// Paint context used by the widgets to paint.
 /// It works in local coordinates, translated to screen position.

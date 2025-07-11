@@ -29,12 +29,12 @@ impl<T: State> Maybe<T> {
         self.0.take()
     }
 
-    /// Get option of a refernce to the underlying value
+    /// Get option of a reference to the underlying value
     pub fn get_ref(&self) -> Option<&Value<T>> {
         self.0.as_ref()
     }
 
-    /// Get option of a mutable refernce to the underlying value
+    /// Get option of a mutable reference to the underlying value
     pub fn get_mut(&mut self) -> Option<&mut Value<T>> {
         self.0.as_mut()
     }

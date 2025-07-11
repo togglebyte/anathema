@@ -342,7 +342,7 @@ where
         match entry {
             Entry::Occupied(value) => Ticket { value, key },
             Entry::CheckedOut(_) => panic!("value already checked out"),
-            _ => panic!("no entry maching the key"),
+            _ => panic!("no entry matching the key"),
         }
     }
 

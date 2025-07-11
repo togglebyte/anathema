@@ -301,7 +301,7 @@ impl Variables {
         self.boundary.pop();
     }
 
-    /// Create a new child and set the new childs id as the `current` id.
+    /// Create a new child and set the new children id as the `current` id.
     /// Any operations done from here on out are acting upon the new child scope.
     pub(crate) fn push(&mut self) {
         let parent = self.root.get_scope_mut(&self.current);
@@ -478,7 +478,7 @@ mod test {
     fn get_inside_boundary() {
         let mut vars = Variables::new();
 
-        // Define a varialbe in the root scope
+        // Define a variable in the root scope
         _ = vars.define_local("var", 1);
 
         // Create a new unique scope and boundary.

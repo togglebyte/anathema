@@ -256,7 +256,7 @@ impl<'frame, 'bp, T: 'static> Context<'frame, 'bp, T> {
     pub fn emit<M: 'static + Send + Sync>(&self, recipient: ComponentId<M>, value: M) {
         self.emitter
             .emit(recipient, value)
-            .expect("this will not fail unless the runtime is droped")
+            .expect("this will not fail unless the runtime is dropped")
     }
 }
 

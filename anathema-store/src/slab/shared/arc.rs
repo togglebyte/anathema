@@ -236,7 +236,7 @@ mod test {
     }
 
     #[test]
-    fn ensure_arc_resuse() {
+    fn ensure_arc_reuse() {
         let mut slab = ArcSlab::<usize, _>::empty();
 
         // Add and remove the value to ensure there is
