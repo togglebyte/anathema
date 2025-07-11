@@ -1,9 +1,9 @@
+use anathema::backend::Backend;
 use anathema::backend::tui::TuiBackend;
 use anathema::component::{Children, Component, Context, MouseEvent};
 use anathema::runtime::Runtime;
 use anathema::state::{List, State, Value};
 use anathema::templates::Document;
-use anathema_backend::Backend;
 
 pub struct Index;
 
@@ -86,7 +86,5 @@ fn main() {
         )
         .expect("failed to register index component");
 
-    builder
-        .finish(&mut backend, |runtime, backend| runtime.run(backend))
-        .unwrap();
+    _ = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 }
