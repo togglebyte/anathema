@@ -301,7 +301,7 @@ impl Variables {
         self.boundary.pop();
     }
 
-    /// Create a new child and set the new children id as the `current` id.
+    /// Create a new child and set the new child's id as the `current` id.
     /// Any operations done from here on out are acting upon the new child scope.
     pub(crate) fn push(&mut self) {
         let parent = self.root.get_scope_mut(&self.current);
