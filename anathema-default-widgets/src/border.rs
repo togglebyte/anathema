@@ -131,6 +131,17 @@ pub const DEFAULT_THICK_EDGES: [Glyph; 8] = [
     Glyph::from_char('║', 1),
 ];
 
+pub const DEFAULT_ROUNDED_EDGES: [Glyph; 8] = [
+    Glyph::from_char('╭', 1),
+    Glyph::from_char('─', 1),
+    Glyph::from_char('╮', 1),
+    Glyph::from_char('│', 1),
+    Glyph::from_char('╯', 1),
+    Glyph::from_char('─', 1),
+    Glyph::from_char('╰', 1),
+    Glyph::from_char('│', 1),
+];
+
 /// The style of the border.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum BorderStyle {
@@ -152,6 +163,7 @@ pub enum BorderStyle {
     /// 7hello3
     /// 6555554
     /// ```
+    Rounded,
     Custom([Glyph; 8]),
 }
 
@@ -160,6 +172,7 @@ impl BorderStyle {
         match self {
             BorderStyle::Thin => DEFAULT_SLIM_EDGES,
             BorderStyle::Thick => DEFAULT_THICK_EDGES,
+            BorderStyle::Rounded => DEFAULT_ROUNDED_EDGES,
             BorderStyle::Custom(edges) => *edges,
         }
     }
@@ -429,6 +442,7 @@ impl Widget for Border {
                 match s {
                     Some("thin") | None => BorderStyle::default(),
                     Some("thick") => BorderStyle::Thick,
+                    Some("rounded") => BorderStyle::Rounded,
                     Some(s) => {
                         let mut glyphs = Glyphs::new(s);
                         while let Some(g) = glyphs.next(ctx.glyph_map) {

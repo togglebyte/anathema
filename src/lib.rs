@@ -19,6 +19,7 @@ pub mod prelude {
     pub use crate::backend::tui::TuiBackend;
     pub use crate::runtime::Runtime;
     pub use crate::templates::{ComponentBlueprintId, Document, SourceKind, ToSourceKind};
+    pub use crate::widgets::components::MessageReceiver;
 }
 
 pub mod component {

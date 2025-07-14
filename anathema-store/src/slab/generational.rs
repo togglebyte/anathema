@@ -69,13 +69,13 @@ impl Key {
         Self(index | generation)
     }
 
-    /// Set the upper auxillary value
+    /// Set the upper auxiliary value
     pub fn set_aux(&mut self, aux: u16) {
         let aux = (aux as u64) << (Self::INDEX_BITS + Self::GEN_BITS);
         self.0 = self.0 << Self::GEN_BITS >> Self::GEN_BITS | aux;
     }
 
-    /// Get the auxillary value
+    /// Get the auxiliary value
     pub fn aux(&self) -> u16 {
         (self.0 >> Self::AUX_OFFSET) as u16
     }

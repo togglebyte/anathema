@@ -133,22 +133,16 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
 /// A viewport represents the available space in the root
 pub struct Viewport {
     size: Size,
-    region: Region,
 }
 
 impl Viewport {
     pub fn new(size: impl Into<Size>) -> Self {
         let size = size.into();
-        let region = Region::from((Pos::ZERO, size));
-        Self { size, region }
+        Self { size }
     }
 
     pub fn size(&self) -> Size {
         self.size
-    }
-
-    pub fn region(&self) -> &Region {
-        &self.region
     }
 
     pub fn constraints(&self) -> Constraints {
@@ -157,11 +151,6 @@ impl Viewport {
 
     pub fn resize(&mut self, size: Size) {
         self.size = size;
-        self.region = Region::from((Pos::ZERO, size));
-    }
-
-    pub fn contains(&self, region: Region) -> bool {
-        self.region.intersects(&region)
     }
 }
 

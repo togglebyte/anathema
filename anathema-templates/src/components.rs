@@ -219,26 +219,26 @@ impl ComponentTemplates {
 
     pub(crate) fn load(
         &mut self,
-        parent_id: ComponentBlueprintId,
+        component_id: ComponentBlueprintId,
         variables: &mut Variables,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         strings: &mut Strings,
     ) -> Result<Vec<Blueprint>> {
-        let ticket = self.components.checkout(parent_id);
+        let ticket = self.components.checkout(component_id);
         let (_, component_src) = &*ticket;
 
-        if self.dependencies.contains(&parent_id) {
+        if self.dependencies.contains(&component_id) {
             let path = component_src.path();
             self.components.restore(ticket);
             return Err(Error::new(path, ErrorKind::CircularDependency));
         }
 
-        self.dependencies.push(parent_id);
+        self.dependencies.push(component_id);
 
         // NOTE
         // The ticket has to be restored to the component store,
         // this is why the error is returned rather than using `?` on `self.compile`.
-        let ret = self.compile(component_src, variables, slots, strings, parent_id);
+        let ret = self.compile(component_src, variables, slots, strings, component_id);
         self.components.restore(ticket);
         self.dependencies.pop();
         ret

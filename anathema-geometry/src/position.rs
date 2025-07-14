@@ -126,7 +126,7 @@ impl SubAssign for Pos {
 // -----------------------------------------------------------------------------
 
 /// Positions in a local space.
-/// These coordiantes can not be negative.
+/// These coordinates can not be negative.
 /// `0, 0` refers to top left.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct LocalPos {

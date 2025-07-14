@@ -1,3 +1,9 @@
+* 0.2.9
+    * New function: truncate
+    * New border style: "rounded"
+    * Hex and Color can now be serialized / deserialized if the `serde` feature
+      is enabled.
+    * `MessageReceiver` is now part of prelude
 * 0.2.8
     * An emitter can be created before the runtime
     * Messages can be emitted to both widget ids and component ids

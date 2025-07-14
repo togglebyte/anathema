@@ -11,6 +11,7 @@ pub trait FromColor {
 ///
 /// [ANSI color table](https://en.wikipedia.org/wiki/ANSI_escape_code#Colors)
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Color {
     #[default]
     Reset,

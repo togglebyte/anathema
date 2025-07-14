@@ -225,7 +225,7 @@ mod test {
     }
 
     #[test]
-    fn ensure_rc_resuse() {
+    fn ensure_rc_reuse() {
         let mut slab = RcSlab::<usize, _>::empty();
 
         // Add and remove the value to ensure there is

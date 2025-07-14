@@ -45,6 +45,7 @@ impl<'a> From<&'a str> for Path<'a> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Hex {
     pub r: u8,
     pub g: u8,

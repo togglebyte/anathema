@@ -162,7 +162,7 @@ impl<'bp> Element<'bp> {
     ///
     /// # Panics
     ///
-    /// Panics if hte element is of a different type
+    /// Panics if the element is of a different type
     pub fn to_ref<T: 'static>(&self) -> &T {
         self.try_to_ref().expect("wrong element type")
     }

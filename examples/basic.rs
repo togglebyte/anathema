@@ -1,10 +1,9 @@
 use std::fs::read_to_string;
 
+use anathema::backend::Backend;
 use anathema::backend::tui::TuiBackend;
 use anathema::runtime::Runtime;
-use anathema::templates::Document;
-use anathema_backend::Backend;
-use anathema_templates::ToSourceKind;
+use anathema::templates::{Document, ToSourceKind};
 
 fn main() {
     let template = read_to_string("examples/templates/basic/basic.aml").unwrap();

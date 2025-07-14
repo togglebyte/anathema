@@ -14,7 +14,7 @@ where
     K: std::hash::Hash,
     K: Clone,
 {
-    /// Create an empy index map
+    /// Create an empty index map
     pub fn empty() -> Self {
         Self {
             slab: Slab::empty(),
