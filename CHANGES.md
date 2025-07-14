@@ -1,4 +1,5 @@
 * 0.2.9
+    * New function: truncate
     * New border style: "rounded"
     * Hex and Color can now be serialized / deserialized if the `serde` feature
       is enabled.

@@ -12,6 +12,7 @@ repository = "https://github.com/togglebyte/anathema"
 anathema-state = { workspace = true }
 anathema-templates = { workspace = true }
 anathema-store = { workspace = true }
+unicode-width = { workspace = true }
 
 [lints]
 workspace = true
