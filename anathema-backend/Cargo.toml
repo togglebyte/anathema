@@ -23,6 +23,7 @@ puffin = { version = "0.19.1", optional = true }
 [features]
 default = []
 profile = ["puffin"]
+osc = []
 
 [lints]
 workspace = true

@@ -1,12 +1,15 @@
 use std::io::{Result, Write};
 
 use anathema_geometry::{Pos, Size};
+use anathema_state::Color;
 use anathema_value_resolver::Attributes;
 use anathema_widgets::paint::Glyph;
 use anathema_widgets::{GlyphMap, Style, WidgetRenderer};
 use crossterm::event::EnableMouseCapture;
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 use crossterm::{ExecutableCommand, QueueableCommand, cursor};
+
+use super::commands::{ResetTerminalBackground, SetTerminalBackground};
 
 use super::LocalPos;
 use super::buffer::{Buffer, Change, diff, draw_changes};
@@ -105,6 +108,12 @@ impl Screen {
         Ok(())
     }
 
+    /// Set Terminal background color
+    pub fn set_terminal_background_color(mut output: impl Write, color: Color) -> Result<()> {
+        output.queue(SetTerminalBackground(color))?;
+        Ok(())
+    }
+
     /// Enter an alternative screen.
     /// When using this with stdout it means the output will not persist once the program exits.
     pub fn enter_alt_screen(mut output: impl Write) -> Result<()> {
@@ -134,6 +143,7 @@ impl Screen {
         #[cfg(not(target_os = "windows"))]
         output.execute(crossterm::event::DisableMouseCapture)?;
         output.execute(cursor::Show)?;
+        output.execute(ResetTerminalBackground())?;
         Ok(())
     }
 }
