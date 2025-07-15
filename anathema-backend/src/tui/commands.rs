@@ -24,6 +24,11 @@ impl Command for SetTerminalBackground {
             write!(f, "\x1b]11;{}\x07", self.0)
         }
     }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// A command that resets the the background color with OSC 111.
@@ -37,5 +42,10 @@ pub struct ResetTerminalBackground();
 impl Command for ResetTerminalBackground {
     fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
         write!(f, "\x1b]111\x07")
+    }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> std::io::Result<()> {
+        Ok(())
     }
 }
