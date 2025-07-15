@@ -8,6 +8,7 @@ use std::ops::Add;
 use std::time::Duration;
 
 use anathema_geometry::{LocalPos, Pos, Size};
+#[cfg(feature = "osc")]
 use anathema_state::Color;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
@@ -150,6 +151,7 @@ impl TuiBackend {
     /// Set the background color of the terminal using OSC 11.
     /// Might not work on all terminals. Ansi values (0-255) are not supported.
     /// Use RGB or named colors.
+    #[cfg(feature = "osc")]
     pub fn set_background_color(&mut self, color: Color) {
         let _ = Screen::set_terminal_background_color(&mut self.output, color);
     }
