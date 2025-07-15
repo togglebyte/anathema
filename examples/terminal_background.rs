@@ -25,7 +25,5 @@ fn main() {
 
     let mut builder = Runtime::builder(doc, &backend);
     builder.template("index", template.to_template()).unwrap();
-    builder
-        .finish(&mut backend, |runtime, backend| runtime.run(backend))
-        .unwrap();
+    let _ = builder.finish(&mut backend, |runtime, backend| runtime.run(backend));
 }
