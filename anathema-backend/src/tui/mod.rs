@@ -8,6 +8,7 @@ use std::ops::Add;
 use std::time::Duration;
 
 use anathema_geometry::{LocalPos, Pos, Size};
+use anathema_state::Color;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::components::events::Event;
 pub use anathema_widgets::{Attributes, Style};
@@ -22,6 +23,7 @@ use self::events::Events;
 use crate::Backend;
 
 mod buffer;
+mod commands;
 /// Events
 pub mod events;
 mod screen;
@@ -143,6 +145,13 @@ impl TuiBackend {
     pub fn disable_raw_mode(self) -> Self {
         let _ = Screen::disable_raw_mode();
         self
+    }
+
+    /// Set the background color of the terminal using OSC 11.
+    /// Might not work on all terminals. Ansi values (0-255) are not supported.
+    /// Use RGB or named colors.
+    pub fn set_background_color(&mut self, color: Color) {
+        let _ = Screen::set_terminal_background_color(&mut self.output, color);
     }
 }
 
