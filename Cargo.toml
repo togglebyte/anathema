@@ -23,6 +23,7 @@ anathema-store = { workspace = true }
 anathema-templates = { workspace = true }
 anathema-value-resolver = { workspace = true }
 anathema-widgets = { workspace = true }
+anathema-ssh = { workspace = true }
 
 [dev-dependencies]
 # anathema-debug = { path = "anathema-debug" }
@@ -32,6 +33,7 @@ anathema-testutils = { path = "anathema-testutils" }
 default = []
 profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
 serde = ["anathema-state/serde", "anathema-store/serde"]
+ssh = ["anathema-ssh/ssh"]
 # filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
 [lints]
@@ -57,6 +59,7 @@ anathema-templates = { path = "./anathema-templates", version = "0.2.9" }
 anathema-widgets = { path = "./anathema-widgets", version = "0.2.9" }
 anathema-geometry = { path = "./anathema-geometry", version = "0.2.9" }
 anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.9" }
+anathema-ssh = { path = "./anathema-ssh", version = "0.2.9" }
 
 [workspace]
 members = [
@@ -70,6 +73,7 @@ members = [
     "anathema-templates", 
     "anathema-widgets", 
     "anathema-value-resolver",
+    "anathema-ssh",
 ]
 
 [workspace.lints.rust]
