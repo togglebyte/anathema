@@ -41,7 +41,7 @@ pub struct ResetTerminalBackground();
 
 impl Command for ResetTerminalBackground {
     fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
-        write!(f, "\x1b]111\x07")
+        write!(f, "\x1b]111;\x07")
     }
 
     #[cfg(windows)]
