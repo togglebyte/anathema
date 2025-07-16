@@ -4,166 +4,64 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anathema_backend::Backend;
-use anathema_backend::tui::TuiBackend;
 use anathema_geometry::Size;
 use anathema_widgets::GlyphMap;
-use anathema_widgets::components::events::Event;
+use crossterm::QueueableCommand;
+use crossterm::event::EnableMouseCapture;
 use rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
 use russh::{Channel, ChannelId, Pty};
 use russh::{CryptoVec, server::*};
 use tokio::sync::Mutex;
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-#[derive(Clone)]
-pub struct TerminalHandle {
-    sender: UnboundedSender<Vec<u8>>,
-    // The sink collects the data which is finally sent to sender.
-    sink: Vec<u8>,
-    // Event queue for processing input from SSH client
-    events: std::collections::VecDeque<Event>,
+use crate::sshbackend::SSHBackend;
+use crate::terminalhandle::TerminalHandle;
+
+pub struct AnathemaSSHServerBuilder {
+    app_runner_factory:
+        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync>,
+    mouse_enabled: bool,
 }
 
-impl TerminalHandle {
-    async fn start(handle: Handle, channel_id: ChannelId) -> Self {
-        let (sender, mut receiver) = unbounded_channel::<Vec<u8>>();
-        tokio::spawn(async move {
-            while let Some(data) = receiver.recv().await {
-                // println!("Sending {} bytes to SSH client", data.len());
-                let result = handle.data(channel_id, data.into()).await;
-                if result.is_err() {
-                    eprintln!("Failed to send data: {:?}", result);
-                }
-            }
-            println!("SSH data sender task ended");
-        });
-        Self {
-            sender,
-            sink: Vec::new(),
-            events: std::collections::VecDeque::new(),
-        }
+impl AnathemaSSHServerBuilder {
+    pub fn runtime_factory<F>(mut self, app_runner: F) -> Self
+    where
+        F: Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync + 'static,
+    {
+        self.app_runner_factory = Arc::new(app_runner);
+        self
     }
 
-    fn push_input(&mut self, data: &[u8]) {
-        eprintln!(
-            "TerminalHandle::push_input called with {} bytes: {:?}",
-            data.len(),
-            data
-        );
-        // Convert raw input bytes to Anathema events
-        for &byte in data {
-            match byte {
-                b'\x1b' => {
-                    // Escape sequence - for now, treat as escape key
-                    eprintln!("Processing escape key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Esc,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b'\r' | b'\n' => {
-                    // Enter key
-                    eprintln!("Processing enter key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Enter,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b'\x7f' => {
-                    // Backspace
-                    eprintln!("Processing backspace key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Backspace,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b'\t' => {
-                    // Tab
-                    eprintln!("Processing tab key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Tab,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b' '..=b'~' => {
-                    // Printable ASCII characters
-                    eprintln!("Processing character: '{}'", byte as char);
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Char(byte as char),
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                _ => {
-                    // For other control characters, we can add more handling as needed
-                    // For now, ignore or handle as needed
-                    eprintln!("Ignoring unknown byte: 0x{:02x}", byte);
-                }
-            }
-        }
-        eprintln!("TerminalHandle now has {} events queued", self.events.len());
+    pub fn enable_mouse(mut self) -> Self {
+        self.mouse_enabled = true;
+        self
     }
 
-    pub fn pop_event(&mut self) -> Option<Event> {
-        let event = self.events.pop_front();
-        if let Some(ref event) = event {
-            eprintln!("TerminalHandle::pop_event returning: {:?}", event);
-        } else {
-            // eprintln!("TerminalHandle::pop_event returning None (queue empty)");
+    pub fn build(self) -> AnathemaSSHServer {
+        AnathemaSSHServer {
+            clients: HashMap::new(),
+            id: 0,
+            app_runner_factory: self.app_runner_factory,
+            mouse_enabled: self.mouse_enabled,
         }
-        event
-    }
-}
-
-// The crossterm backend writes to the terminal handle.
-impl std::io::Write for TerminalHandle {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.sink.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        if !self.sink.is_empty() {
-            let result = self.sender.send(self.sink.clone());
-            if result.is_err() {
-                return Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, result.unwrap_err()));
-            }
-            self.sink.clear();
-        }
-        Ok(())
     }
 }
 
 #[derive(Clone)]
 pub struct AnathemaSSHServer {
-    clients: HashMap<usize, (Arc<Mutex<TuiBackend<TerminalHandle>>>, TerminalHandle)>,
+    clients: HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>,
     id: usize,
-    app_runner_factory: Arc<
-        dyn Fn() -> Box<dyn FnMut(&mut TuiBackend<TerminalHandle>) -> anyhow::Result<()> + Send + Sync> + Send + Sync,
-    >,
+    app_runner_factory:
+        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync>,
+
+    mouse_enabled: bool,
 }
 
 impl AnathemaSSHServer {
-    pub fn new<F>(app_runner: F) -> Self
-    where
-        F: Fn() -> Box<dyn FnMut(&mut TuiBackend<TerminalHandle>) -> anyhow::Result<()> + Send + Sync>
-            + Send
-            + Sync
-            + 'static,
-    {
-        Self {
-            clients: HashMap::new(),
-            id: 0,
-            app_runner_factory: Arc::new(app_runner),
+    pub fn builder() -> AnathemaSSHServerBuilder {
+        AnathemaSSHServerBuilder {
+            mouse_enabled: false,
+            app_runner_factory: Arc::new(|| Box::new(|_| Ok(()))),
         }
     }
 
@@ -248,12 +146,7 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<bool, Self::Error> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
-        let backend = TuiBackend::builder_with_output(terminal_handle.clone())
-            .enable_alt_screen()
-            .enable_raw_mode()
-            .enable_mouse()
-            .hide_cursor()
-            .finish()?;
+        let backend = SSHBackend::new(terminal_handle.clone())?;
 
         self.clients
             .insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
@@ -268,14 +161,10 @@ impl Handler for AnathemaSSHServer {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             let backend_clone = backend_arc.clone();
 
-            // Run the app in a blocking task to not block the async runtime
             match tokio::task::spawn_blocking(move || {
                 let mut backend = backend_clone.blocking_lock();
-                eprintln!("Backend clone LOCK acquired");
                 let mut app_runner = (app_runner_factory)();
-                eprintln!("App Runner created for client {}", client_id);
                 let r = (app_runner)(&mut backend);
-                eprintln!("App runner task completed for client {}", client_id);
                 r
             })
             .await
@@ -292,24 +181,14 @@ impl Handler for AnathemaSSHServer {
         Ok(Auth::Accept)
     }
 
-    async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
-        eprintln!(
-            "SSH data method called with {} bytes from client {}",
-            data.len(),
-            self.id
-        );
+    async fn data(&mut self, _channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
+        eprintln!("Received {} bytes from client {}", data.len(), self.id);
         if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
-            eprintln!("terminal_handle found");
-            //let mut backend = backend_arc.lock().await;
             terminal_handle.push_input(data);
-            eprintln!("Received {} bytes from client {}: {:?}", data.len(), self.id, data);
-            //backend.output_mut().push_input(data);
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);
         }
 
-        let data = CryptoVec::from(format!("Got data: {}\r\n", String::from_utf8_lossy(data)));
-        session.data(channel, data)?;
         Ok(())
     }
 
@@ -326,10 +205,7 @@ impl Handler for AnathemaSSHServer {
         let size = Size::new(col_width as u16, row_height as u16);
 
         if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
-            eprintln!("Client ID: {} requested window resize to: {:?}", self.id, size);
             let mut backend = backend_arc.lock().await;
-
-            eprintln!("Backend clone LOCK acquired for client {}", self.id);
             backend.resize(size, &mut GlyphMap::empty());
         }
 
@@ -355,13 +231,19 @@ impl Handler for AnathemaSSHServer {
         let size = Size::new(col_width as u16, row_height as u16);
 
         if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
-            println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
             let mut backend = backend_arc.lock().await;
-            eprintln!("Backend clone LOCK acquired for client {}", self.id);
             backend.resize(size, &mut GlyphMap::empty());
         }
 
         session.channel_success(channel)?;
+
+        if self.mouse_enabled {
+            let mut mouse_enable_buffer = Vec::new();
+            mouse_enable_buffer.queue(EnableMouseCapture)?;
+
+            let data = CryptoVec::from(mouse_enable_buffer);
+            session.data(channel, data)?;
+        }
 
         Ok(())
     }

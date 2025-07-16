@@ -5,7 +5,7 @@ use anathema_geometry::Size;
 use anathema_value_resolver::AttributeStorage;
 use anathema_widgets::{GlyphMap, PaintChildren, components::events::Event};
 
-use crate::sshserver::TerminalHandle;
+use crate::terminalhandle::TerminalHandle;
 
 /// SSH Backend that wraps TuiBackend and handles SSH-specific input/output
 pub struct SSHBackend {
@@ -14,18 +14,9 @@ pub struct SSHBackend {
 
 impl SSHBackend {
     pub fn new(terminal_handle: TerminalHandle) -> anyhow::Result<Self> {
-        let tui_backend = TuiBackend::builder_with_output(terminal_handle)
-            .enable_alt_screen()
-            .enable_raw_mode()
-            .enable_mouse()
-            .hide_cursor()
-            .finish()?;
+        let tui_backend = TuiBackend::builder_with_output(terminal_handle).finish()?;
 
         Ok(Self { tui_backend })
-    }
-
-    pub fn output_mut(&mut self) -> &mut TerminalHandle {
-        self.tui_backend.output()
     }
 }
 
@@ -35,7 +26,6 @@ impl Backend for SSHBackend {
     }
 
     fn next_event(&mut self, _timeout: Duration) -> Option<Event> {
-        // First check if there are any events in the terminal handle
         self.tui_backend.output().pop_event()
     }
 
