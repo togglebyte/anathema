@@ -171,7 +171,7 @@ impl Handler for AnathemaSSHServer {
             .await
             {
                 Ok(Ok(())) => { /* Success */ }
-                Ok(Err(e)) => eprintln!("App runner failed: {}", e),
+                Ok(Err(_)) => {}
                 Err(e) => eprintln!("App runner task failed: {}", e),
             }
         });
