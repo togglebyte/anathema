@@ -10,12 +10,14 @@ repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
 anathema-backend = { workspace = true }
+anathema-runtime = { workspace = true }
+anathema-geometry = { workspace = true }
+anathema-widgets = { workspace = true }
 async-trait = "0.1.88"
 futures = "0.3"
-ratatui = "0.29.0"
 russh = "0.53.0"
 ssh-key = "0.6.7"
-tokio = { version = "1.46.1", features = ["sync"] }
+tokio = { version = "1.46.1", features = ["sync", "rt-multi-thread", "macros"] }
 rand_core = { version = "0.6.4", features = ["getrandom", "std"] }
 anyhow = "1.0.4"
 

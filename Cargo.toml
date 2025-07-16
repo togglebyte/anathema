@@ -28,6 +28,8 @@ anathema-ssh = { workspace = true }
 [dev-dependencies]
 # anathema-debug = { path = "anathema-debug" }
 anathema-testutils = { path = "anathema-testutils" }
+anyhow = "1.0"
+tokio = { workspace = true }
 
 [features]
 default = []
@@ -49,6 +51,7 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util"] }
 anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.9" }
 anathema-backend = { path = "./anathema-backend", version = "0.2.9" }
 anathema-runtime = { path = "./anathema-runtime", version = "0.2.9" }

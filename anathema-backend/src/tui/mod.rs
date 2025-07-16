@@ -25,19 +25,18 @@ mod buffer;
 /// Events
 pub mod events;
 mod screen;
-mod ssh;
 mod style;
 
 /// Backend builder for a tui backend.
-pub struct TuiBackendBuilder {
-    output: Stdout,
+pub struct TuiBackendBuilder<W: Write> {
+    output: W,
     hide_cursor: bool,
     enable_raw_mode: bool,
     enable_alt_screen: bool,
     enable_mouse: bool,
 }
 
-impl TuiBackendBuilder {
+impl<W: Write> TuiBackendBuilder<W> {
     /// Enable an alternative screen.
     /// When using this with stdout it means the output will not persist
     /// once the program exits.
@@ -73,7 +72,7 @@ impl TuiBackendBuilder {
     }
 
     /// Consume self and create the tui backend.
-    pub fn finish(self) -> Result<TuiBackend, std::io::Error> {
+    pub fn finish(self) -> Result<TuiBackend<W>, std::io::Error> {
         let size = size()?;
         let screen = Screen::new(size);
 
@@ -93,9 +92,9 @@ impl TuiBackendBuilder {
 }
 
 /// Terminal backend
-pub struct TuiBackend {
+pub struct TuiBackend<W: Write> {
     screen: Screen,
-    output: Stdout,
+    output: W,
     events: Events,
 
     // Settings
@@ -105,9 +104,33 @@ pub struct TuiBackend {
     enable_mouse: bool,
 }
 
-impl TuiBackend {
+impl<W: Write> TuiBackend<W> {
     /// Create a new instance of the tui backend.
-    pub fn builder() -> TuiBackendBuilder {
+    pub fn builder_with_output(output: W) -> TuiBackendBuilder<W> {
+        TuiBackendBuilder {
+            output,
+            hide_cursor: false,
+            enable_raw_mode: false,
+            enable_alt_screen: false,
+            enable_mouse: false,
+        }
+    }
+
+    /// Disable raw mode.
+    pub fn disable_raw_mode(self) -> Self {
+        let _ = Screen::disable_raw_mode();
+        self
+    }
+
+    /// Get a mutable reference to the output writer.
+    pub fn output(&mut self) -> &mut W {
+        &mut self.output
+    }
+}
+
+impl TuiBackend<std::io::Stdout> {
+    /// Create a new instance of the tui backend.
+    pub fn builder() -> TuiBackendBuilder<std::io::Stdout> {
         TuiBackendBuilder {
             output: std::io::stdout(),
             hide_cursor: false,
@@ -139,15 +162,9 @@ impl TuiBackend {
         inst.finalize();
         inst
     }
-
-    /// Disable raw mode.
-    pub fn disable_raw_mode(self) -> Self {
-        let _ = Screen::disable_raw_mode();
-        self
-    }
 }
 
-impl Backend for TuiBackend {
+impl<W: Write> Backend for TuiBackend<W> {
     fn size(&self) -> Size {
         self.screen.size()
     }
@@ -203,7 +220,7 @@ impl Backend for TuiBackend {
     }
 }
 
-impl Drop for TuiBackend {
+impl<W: Write> Drop for TuiBackend<W> {
     fn drop(&mut self) {
         if self.enable_alt_screen {
             let _ = execute!(&mut self.output, RestorePosition);

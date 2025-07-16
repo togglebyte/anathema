@@ -1,31 +1,21 @@
 use std::collections::HashMap;
+use std::fs;
+use std::io::Write;
+use std::path::Path;
 use std::sync::Arc;
 
+use anathema_backend::Backend;
+use anathema_backend::tui::TuiBackend;
+use anathema_geometry::Size;
+use anathema_widgets::GlyphMap;
 use rand_core::OsRng;
-use ratatui::backend::CrosstermBackend;
-use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph};
-use ratatui::{Terminal, TerminalOptions, Viewport};
-use russh::keys::ssh_key::PublicKey;
+use russh::keys::ssh_key::{self, PublicKey};
 use russh::server::*;
 use russh::{Channel, ChannelId, Pty};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
-
-struct App {
-    pub counter: usize,
-}
-
-impl App {
-    pub fn new() -> App {
-        Self { counter: 0 }
-    }
-}
-
-struct TerminalHandle {
+pub struct TerminalHandle {
     sender: UnboundedSender<Vec<u8>>,
     // The sink collects the data which is finally sent to sender.
     sink: Vec<u8>,
@@ -68,55 +58,74 @@ impl std::io::Write for TerminalHandle {
 }
 
 #[derive(Clone)]
-struct AppServer {
-    clients: Arc<Mutex<HashMap<usize, (SshTerminal, App)>>>,
+pub struct AnathemaSSHServer {
+    clients: Arc<Mutex<HashMap<usize, Arc<Mutex<TuiBackend<TerminalHandle>>>>>>,
     id: usize,
+    app_runner: Arc<dyn Fn(TuiBackend<TerminalHandle>) -> anyhow::Result<()> + Send + Sync>,
 }
 
-impl AppServer {
-    pub fn new() -> Self {
+impl AnathemaSSHServer {
+    pub fn new(app_runner: impl Fn(TuiBackend<TerminalHandle>) -> anyhow::Result<()> + Send + Sync + 'static) -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
             id: 0,
+            app_runner: Arc::new(app_runner),
         }
     }
 
-    pub async fn run(&mut self) -> Result<(), anyhow::Error> {
-        let clients = self.clients.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    /// Load or create a persistent SSH key
+    fn load_or_create_key() -> Result<russh::keys::PrivateKey, anyhow::Error> {
+        let key_dir = Path::new(".ssh_keys");
+        let key_file = key_dir.join("server_key");
 
-                for (_, (terminal, app)) in clients.lock().await.iter_mut() {
-                    app.counter += 1;
+        // Create the directory if it doesn't exist
+        if !key_dir.exists() {
+            fs::create_dir_all(key_dir)?;
+        }
 
-                    terminal
-                        .draw(|f| {
-                            let area = f.area();
-                            f.render_widget(Clear, area);
-                            let style = match app.counter % 3 {
-                                0 => Style::default().fg(Color::Red),
-                                1 => Style::default().fg(Color::Green),
-                                _ => Style::default().fg(Color::Blue),
-                            };
-                            let paragraph = Paragraph::new(format!("Counter: {}", app.counter))
-                                .alignment(ratatui::layout::Alignment::Center)
-                                .style(style);
-                            let block = Block::default()
-                                .title("Press 'c' to reset the counter!")
-                                .borders(Borders::ALL);
-                            f.render_widget(paragraph.block(block), area);
-                        })
-                        .unwrap();
+        // Try to load existing key
+        if key_file.exists() {
+            match fs::read_to_string(&key_file) {
+                Ok(key_data) => match russh::keys::PrivateKey::from_openssh(&key_data) {
+                    Ok(key) => {
+                        println!("Loaded existing SSH key from {}", key_file.display());
+                        return Ok(key);
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to parse existing key: {}, generating new one", e);
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to read key file: {}, generating new one", e);
                 }
             }
-        });
+        }
+
+        // Generate new key
+        let key = russh::keys::PrivateKey::random(&mut OsRng, russh::keys::Algorithm::Ed25519)?;
+
+        // Save the key
+        let key_data = key.to_openssh(ssh_key::LineEnding::LF)?;
+        match fs::write(&key_file, &key_data) {
+            Ok(()) => {
+                println!("Generated and saved new SSH key to {}", key_file.display());
+            }
+            Err(e) => {
+                eprintln!("Failed to save key file: {}", e);
+            }
+        }
+
+        Ok(key)
+    }
+
+    pub async fn run(&mut self) -> Result<(), anyhow::Error> {
+        let key = Self::load_or_create_key()?;
 
         let config = Config {
             inactivity_timeout: Some(std::time::Duration::from_secs(3600)),
             auth_rejection_time: std::time::Duration::from_secs(3),
             auth_rejection_time_initial: Some(std::time::Duration::from_secs(0)),
-            keys: vec![russh::keys::PrivateKey::random(&mut OsRng, russh::keys::Algorithm::Ed25519).unwrap()],
+            keys: vec![key],
             nodelay: true,
             ..Default::default()
         };
@@ -126,7 +135,7 @@ impl AppServer {
     }
 }
 
-impl Server for AppServer {
+impl Server for AnathemaSSHServer {
     type Handler = Self;
     fn new_client(&mut self, _: Option<std::net::SocketAddr>) -> Self {
         let s = self.clone();
@@ -135,7 +144,7 @@ impl Server for AppServer {
     }
 }
 
-impl Handler for AppServer {
+impl Handler for AnathemaSSHServer {
     type Error = anyhow::Error;
 
     async fn channel_open_session(
@@ -145,18 +154,44 @@ impl Handler for AppServer {
     ) -> Result<bool, Self::Error> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
-        let backend = CrosstermBackend::new(terminal_handle);
+        let mut backend = TuiBackend::builder_with_output(terminal_handle)
+            .enable_alt_screen()
+            .enable_raw_mode()
+            .hide_cursor()
+            .finish()?;
 
-        // the correct viewport area will be set when the client request a pty
-        let options = TerminalOptions {
-            viewport: Viewport::Fixed(Rect::default()),
-        };
-
-        let terminal = Terminal::with_options(backend, options)?;
-        let app = App::new();
+        backend.finalize();
 
         let mut clients = self.clients.lock().await;
-        clients.insert(self.id, (terminal, app));
+        clients.insert(self.id, Arc::new(Mutex::new(backend)));
+        println!("New SSH client connected with ID: {}", self.id);
+        drop(clients); // Release lock early
+
+        // Run the app function in a separate thread
+        let app_runner = self.app_runner.clone();
+        let clients_arc = self.clients.clone();
+        let client_id = self.id;
+
+        tokio::spawn(async move {
+            // Wait a bit to ensure the backend is set up
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+            // Get the backend from the clients map and remove it for exclusive access
+            let mut clients = clients_arc.lock().await;
+            if let Some(backend_arc) = clients.remove(&client_id) {
+                drop(clients); // Release lock before running app
+
+                // Extract the backend from the Arc<Mutex<>>
+                let backend = Arc::try_unwrap(backend_arc)
+                    .map_err(|_| "Failed to unwrap Arc")
+                    .unwrap()
+                    .into_inner();
+
+                if let Err(e) = (app_runner)(backend) {
+                    eprintln!("App runner failed: {}", e);
+                }
+            }
+        });
 
         Ok(true)
     }
@@ -166,21 +201,12 @@ impl Handler for AppServer {
     }
 
     async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
-        match data {
-            // Pressing 'q' closes the connection.
-            b"q" => {
-                self.clients.lock().await.remove(&self.id);
-                session.close(channel)?;
-            }
-            // Pressing 'c' resets the counter for the app.
-            // Only the client with the id sees the counter reset.
-            b"c" => {
-                let mut clients = self.clients.lock().await;
-                let (_, app) = clients.get_mut(&self.id).unwrap();
-                app.counter = 0;
-            }
-            _ => {}
-        }
+        let mut clients = self.clients.lock().await;
+        let backend_arc = clients.get_mut(&self.id).unwrap();
+        let mut backend = backend_arc.lock().await;
+
+        backend.output().sink.extend_from_slice(data);
+        let _ = backend.output().flush();
 
         Ok(())
     }
@@ -195,16 +221,12 @@ impl Handler for AppServer {
         _: u32,
         _: &mut Session,
     ) -> Result<(), Self::Error> {
-        let rect = Rect {
-            x: 0,
-            y: 0,
-            width: col_width as u16,
-            height: row_height as u16,
-        };
+        let size = Size::new(col_width as u16, row_height as u16);
 
         let mut clients = self.clients.lock().await;
-        let (terminal, _) = clients.get_mut(&self.id).unwrap();
-        terminal.resize(rect)?;
+        let backend_arc = clients.get_mut(&self.id).unwrap();
+        let mut backend = backend_arc.lock().await;
+        backend.resize(size, &mut GlyphMap::empty());
 
         Ok(())
     }
@@ -225,16 +247,13 @@ impl Handler for AppServer {
         _: &[(Pty, u32)],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let rect = Rect {
-            x: 0,
-            y: 0,
-            width: col_width as u16,
-            height: row_height as u16,
-        };
+        let size = Size::new(col_width as u16, row_height as u16);
 
         let mut clients = self.clients.lock().await;
-        let (terminal, _) = clients.get_mut(&self.id).unwrap();
-        terminal.resize(rect)?;
+        println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
+        let backend_arc = clients.get_mut(&self.id).unwrap();
+        let mut backend = backend_arc.lock().await;
+        backend.resize(size, &mut GlyphMap::empty());
 
         session.channel_success(channel)?;
 
@@ -242,7 +261,7 @@ impl Handler for AppServer {
     }
 }
 
-impl Drop for AppServer {
+impl Drop for AnathemaSSHServer {
     fn drop(&mut self) {
         let id = self.id;
         let clients = self.clients.clone();
@@ -251,10 +270,4 @@ impl Drop for AppServer {
             clients.remove(&id);
         });
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let mut server = AppServer::new();
-    server.run().await.expect("Failed running server");
 }

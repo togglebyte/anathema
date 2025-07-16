@@ -2,3 +2,6 @@ target/
 Cargo.lock
 .gdb_history
 .idea
+
+# SSH server keys
+.ssh_keys/

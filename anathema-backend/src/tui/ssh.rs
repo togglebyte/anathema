@@ -1,15 +1,82 @@
-use crossterm::execute;
+use std::io::Write;
+use std::time::Duration;
+
+use anathema_geometry::Size;
+use anathema_value_resolver::AttributeStorage;
+use anathema_widgets::{GlyphMap, PaintChildren, components::events::Event};
+
+use crate::{
+    Backend,
+    tui::{Screen, events::Events},
+};
+
+/// Custom SSH-based backend that writes to SSH terminal instead of stdout
+pub struct SSHBackend<W: Write> {
+    /// Handle to the SSH terminal for writing output
+    pub output: W,
+    screen: Screen,
+    events: Events,
+    size: Size,
+}
+
+impl<W: Write> SSHBackend<W> {
+    /// Create a new SSH backend.
+    pub fn new(terminal_handle: W, size: Size) -> Self {
+        Self {
+            terminal_handle,
+            screen: Screen::new(size),
+            events: Events,
+            size,
+        }
+    }
+}
+
+impl<W: Write> Backend for SSHBackend<W> {
+    fn size(&self) -> Size {
+        self.size
+    }
+
+    fn next_event(&mut self, timeout: Duration) -> Option<Event> {
+        self.events.poll(timeout)
+    }
+
+    fn resize(&mut self, new_size: Size, _glyph_map: &mut GlyphMap) {
+        self.size = new_size;
+        self.screen.resize(new_size);
+    }
+
+    fn paint<'bp>(
+        &mut self,
+        glyph_map: &mut GlyphMap,
+        widgets: PaintChildren<'_, 'bp>,
+        attribute_storage: &AttributeStorage<'bp>,
+    ) {
+        anathema_widgets::paint::paint(&mut self.screen, glyph_map, widgets, attribute_storage);
+    }
+
+    fn render(&mut self, glyph_map: &mut GlyphMap) {
+        let _ = self.screen.render(&mut self.terminal_handle, glyph_map);
+    }
+
+    fn clear(&mut self) {
+        self.screen.erase();
+    }
+
+    fn finalize(&mut self) {
+        // SSH connections don't need special finalization like raw mode
+    }
+}
 
 /// Backend builder for a tui backend.
 pub struct SSHBackendBuilder {
-    output: Stdout,
+    output: impl std::io::Write,
     hide_cursor: bool,
     enable_raw_mode: bool,
     enable_alt_screen: bool,
     enable_mouse: bool,
 }
 
-impl SSHBackendBuilder {
+impl TuiBackendBuilder {
     /// Enable an alternative screen.
     /// When using this with stdout it means the output will not persist
     /// once the program exits.
@@ -61,116 +128,5 @@ impl SSHBackendBuilder {
         };
 
         Ok(backend)
-    }
-}
-
-/// Terminal backend
-pub struct SSHBackend {
-    screen: Screen,
-    output: Stdout,
-    events: Events,
-
-    // Settings
-    hide_cursor: bool,
-    enable_raw_mode: bool,
-    enable_alt_screen: bool,
-    enable_mouse: bool,
-}
-
-impl SSHBackend {
-    /// Create a new instance of the tui backend.
-    pub fn builder() -> SSHBackendBuilder {
-        SSHBackendBuilder {
-            output: std::io::stdout(),
-            hide_cursor: false,
-            enable_raw_mode: false,
-            enable_alt_screen: false,
-            enable_mouse: false,
-        }
-    }
-
-    /// Convenience function this is the same as calling
-    /// ```no_run
-    /// # use anathema_backend::tui::TuiBackend;
-    /// # use anathema_backend::Backend;
-    /// let mut backend = TuiBackend::builder()
-    ///     .enable_alt_screen()
-    ///     .enable_raw_mode()
-    ///     .hide_cursor()
-    ///     .finish()
-    ///     .unwrap();
-    /// backend.finalize();
-    /// ```
-    pub fn full_screen() -> Self {
-        let mut inst = Self::builder()
-            .enable_alt_screen()
-            .enable_raw_mode()
-            .hide_cursor()
-            .finish()
-            .unwrap();
-        inst.finalize();
-        inst
-    }
-
-    /// Disable raw mode.
-    pub fn disable_raw_mode(self) -> Self {
-        let _ = Screen::disable_raw_mode();
-        self
-    }
-}
-
-impl Backend for TuiBackend {
-    fn size(&self) -> Size {
-        self.screen.size()
-    }
-
-    fn next_event(&mut self, timeout: Duration) -> Option<Event> {
-        self.events.poll(timeout)
-    }
-
-    fn resize(&mut self, new_size: Size, _: &mut GlyphMap) {
-        self.screen.resize(new_size);
-    }
-
-    fn paint<'bp>(
-        &mut self,
-        glyph_map: &mut GlyphMap,
-        widgets: PaintChildren<'_, 'bp>,
-        attribute_storage: &AttributeStorage<'bp>,
-    ) {
-        anathema_widgets::paint::paint(&mut self.screen, glyph_map, widgets, attribute_storage);
-    }
-
-    fn render(&mut self, glyph_map: &mut GlyphMap) {
-        let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
-        let _ = self.screen.render(&mut self.output, glyph_map);
-        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
-    }
-
-    fn clear(&mut self) {
-        self.screen.erase();
-    }
-
-    fn finalize(&mut self) {
-        if self.enable_alt_screen {
-            let _ = execute!(&mut self.output, SavePosition);
-            let _ = Screen::enter_alt_screen(&mut self.output);
-        }
-
-        if self.hide_cursor {
-            // This is to fix an issue with Windows cmd.exe
-            let _ = Screen::show_cursor(&mut self.output);
-            let _ = Screen::hide_cursor(&mut self.output);
-        }
-
-        if self.enable_raw_mode {
-            let _ = Screen::enable_raw_mode();
-        }
-
-        if self.enable_mouse {
-            let _ = Screen::enable_mouse(&mut self.output);
-        }
-
-        let _ = self.output.flush();
     }
 }
