@@ -259,8 +259,12 @@ impl Handler for AnathemaSSHServer {
             // Run the app in a blocking task to not block the async runtime
             match tokio::task::spawn_blocking(move || {
                 let mut backend = backend_clone.blocking_lock();
+                eprintln!("Backend clone LOCK acquired");
                 let mut app_runner = app_runner.blocking_lock();
-                (app_runner)(&mut backend)
+                eprintln!("App Runner clone LOCK acquired");
+                let r = (app_runner)(&mut backend);
+                eprintln!("App runner task completed for client {}", client_id);
+                r
             })
             .await
             {
@@ -310,7 +314,10 @@ impl Handler for AnathemaSSHServer {
         let size = Size::new(col_width as u16, row_height as u16);
 
         if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
+            eprintln!("Client ID: {} requested window resize to: {:?}", self.id, size);
             let mut backend = backend_arc.lock().await;
+
+            eprintln!("Backend clone LOCK acquired for client {}", self.id);
             backend.resize(size, &mut GlyphMap::empty());
         }
 
@@ -335,9 +342,10 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<(), Self::Error> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
         if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
+            println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
             let mut backend = backend_arc.lock().await;
+            eprintln!("Backend clone LOCK acquired for client {}", self.id);
             backend.resize(size, &mut GlyphMap::empty());
         }
 
