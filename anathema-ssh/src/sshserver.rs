@@ -6,8 +6,8 @@ use std::sync::Arc;
 use anathema_backend::Backend;
 use anathema_geometry::Size;
 use anathema_widgets::GlyphMap;
-use crossterm::QueueableCommand;
 use crossterm::event::EnableMouseCapture;
+use crossterm::{QueueableCommand, cursor};
 use rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
 use russh::{Channel, ChannelId, Pty};
@@ -150,6 +150,7 @@ impl Handler for AnathemaSSHServer {
 
         self.clients
             .insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
+
         println!("New SSH client connected with ID: {}", self.id);
 
         let app_runner_factory = self.app_runner_factory.clone();
@@ -159,13 +160,13 @@ impl Handler for AnathemaSSHServer {
         tokio::spawn(async move {
             // Wait a bit to ensure the SSH session is fully established
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
             let backend_clone = backend_arc.clone();
 
             match tokio::task::spawn_blocking(move || {
                 let mut backend = backend_clone.blocking_lock();
                 let mut app_runner = (app_runner_factory)();
-                let r = (app_runner)(&mut backend);
-                r
+                (app_runner)(&mut backend)
             })
             .await
             {
@@ -237,13 +238,16 @@ impl Handler for AnathemaSSHServer {
 
         session.channel_success(channel)?;
 
-        if self.mouse_enabled {
-            let mut mouse_enable_buffer = Vec::new();
-            mouse_enable_buffer.queue(EnableMouseCapture)?;
+        let mut buf = Vec::new();
 
-            let data = CryptoVec::from(mouse_enable_buffer);
-            session.data(channel, data)?;
+        if self.mouse_enabled {
+            buf.queue(EnableMouseCapture)?;
         }
+
+        buf.queue(cursor::Hide)?;
+
+        let data = CryptoVec::from(buf);
+        session.data(channel, data)?;
 
         Ok(())
     }

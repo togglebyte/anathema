@@ -17,7 +17,10 @@ async fn main() -> Result<(), anyhow::Error> {
                         "main",
                         "examples/templates/ssh/ssh.aml",
                         App,
-                        AppState { number: 0.into() },
+                        AppState {
+                            number: 0.into(),
+                            events: 0.into(),
+                        },
                     )
                     .unwrap();
                 builder
@@ -42,6 +45,7 @@ struct App;
 #[derive(State)]
 struct AppState {
     number: Value<i32>,
+    events: Value<i32>,
 }
 
 impl Component for App {
@@ -60,7 +64,17 @@ impl Component for App {
         *state.number.to_mut() += 1;
     }
 
+    fn on_key(
+        &mut self,
+        _: anathema::component::KeyEvent,
+        state: &mut Self::State,
+        _: Children<'_, '_>,
+        _: Context<'_, '_, Self::State>,
+    ) {
+        *state.events.to_mut() += 1;
+    }
+
     fn accept_focus(&self) -> bool {
-        false
+        true
     }
 }

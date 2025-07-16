@@ -472,7 +472,6 @@ impl<'rt, 'bp, G: GlobalEventHandler> Frame<'rt, 'bp, G> {
 
     fn poll_events<B: Backend>(&mut self, remaining: Duration, fps_now: Instant, backend: &mut B) {
         while let Some(event) = backend.next_event(remaining) {
-            eprintln!("Polling event: {:?}", event);
             if let Event::Resize(size) = event {
                 self.layout_ctx.viewport.resize(size);
                 self.needs_layout = true;

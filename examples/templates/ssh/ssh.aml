@@ -1,8 +1,12 @@
 align [alignment: "centre"]
     border
         vstack
-            text [foreground: "red", italic: true] "You"
-            text [foreground: "green"] "are"
-            text [foreground: "yellow", bold: true] "great!"
-            text [foreground: "blue", bold: true] state.number
+            hstack
+                text [foreground: "yellow"] "Ticks:"
+                text [foreground: "yellow", bold: true] state.number
+            hstack
+                text [foreground: "red"] "Events:"
+                text [foreground: "red", bold: true] state.events
+
+        
 

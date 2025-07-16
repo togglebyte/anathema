@@ -15,12 +15,9 @@ impl Events {
     /// If no event is available within the duration
     /// the function will return `None`.
     pub fn poll(&self, timeout: Duration) -> Option<Event> {
-        eprintln!("Event poll...");
         match crossterm::event::poll(timeout).ok()? {
             true => {
                 let event = read().ok()?;
-
-                eprintln!("Event poll result: {:?}", event);
                 let event = match event {
                     CTEvent::Paste(_) => Event::Noop,
                     CTEvent::FocusGained => Event::Focus,
@@ -40,6 +37,11 @@ impl Events {
 fn key_code_to_key_code(from: CTKeyEvent) -> KeyEvent {
     KeyEvent {
         ctrl: from.modifiers.contains(KeyModifiers::CONTROL),
+        shift: from.modifiers.contains(KeyModifiers::SHIFT),
+        alt: from.modifiers.contains(KeyModifiers::ALT),
+        super_key: from.modifiers.contains(KeyModifiers::SUPER),
+        hyper: from.modifiers.contains(KeyModifiers::HYPER),
+        meta: from.modifiers.contains(KeyModifiers::META),
         code: match from.code {
             CTKeyCode::Backspace => KeyCode::Backspace,
             CTKeyCode::Enter => KeyCode::Enter,

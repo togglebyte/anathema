@@ -1,6 +1,9 @@
 use anathema_widgets::components::events::Event;
 use russh::{ChannelId, server::Handle};
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+
+use crate::eventmapper;
 
 #[derive(Clone)]
 pub struct TerminalHandle {
@@ -8,7 +11,7 @@ pub struct TerminalHandle {
     // The sink collects the data which is finally sent to sender.
     sink: Vec<u8>,
     // Event queue for processing input from SSH client
-    events: std::collections::VecDeque<Event>,
+    events: Arc<Mutex<std::collections::VecDeque<Event>>>,
 }
 
 impl TerminalHandle {
@@ -27,86 +30,31 @@ impl TerminalHandle {
         Self {
             sender,
             sink: Vec::new(),
-            events: std::collections::VecDeque::new(),
+            events: Arc::new(Mutex::new(std::collections::VecDeque::new())),
         }
     }
 
     pub fn push_input(&mut self, data: &[u8]) {
-        eprintln!(
-            "TerminalHandle::push_input called with {} bytes: {:?}",
-            data.len(),
-            data
-        );
         // Convert raw input bytes to Anathema events
-        for &byte in data {
-            match byte {
-                b'\x1b' => {
-                    // Escape sequence - for now, treat as escape key
-                    eprintln!("Processing escape key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Esc,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b'\r' | b'\n' => {
-                    // Enter key
-                    eprintln!("Processing enter key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Enter,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b'\x7f' => {
-                    // Backspace
-                    eprintln!("Processing backspace key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Backspace,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b'\t' => {
-                    // Tab
-                    eprintln!("Processing tab key");
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Tab,
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                b' '..=b'~' => {
-                    // Printable ASCII characters
-                    //eprintln!("Processing character: '{}'", byte as char);
-                    self.events
-                        .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
-                            code: anathema_widgets::components::events::KeyCode::Char(byte as char),
-                            ctrl: false,
-                            state: anathema_widgets::components::events::KeyState::Press,
-                        }));
-                }
-                _ => {
-                    // For other control characters, we can add more handling as needed
-                    // For now, ignore or handle as needed
-                    eprintln!("Ignoring unknown byte: 0x{:02x}", byte);
-                }
+        let mut events = self.events.lock().unwrap();
+
+        if let Ok(Some(e)) = terminput::Event::parse_from(data) {
+            if let Some(event) = eventmapper::from_event(e) {
+                events.push_back(event);
+            } else {
+                eprintln!("Unsupported event type in mapper: {}", String::from_utf8_lossy(data));
             }
+        } else {
+            eprintln!(
+                "Failed to parse input data as terminal event: {}",
+                String::from_utf8_lossy(data)
+            );
         }
-        eprintln!("TerminalHandle now has {} events queued", self.events.len());
     }
 
     pub fn pop_event(&mut self) -> Option<Event> {
-        let event = self.events.pop_front();
-        if let Some(ref event) = event {
-            eprintln!("TerminalHandle::pop_event returning: {:?}", event);
-        } else {
-            // eprintln!("TerminalHandle::pop_event returning None (queue empty)");
-        }
+        let mut events = self.events.lock().unwrap();
+        let event = events.pop_front();
         event
     }
 }
