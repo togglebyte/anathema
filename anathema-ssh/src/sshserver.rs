@@ -146,7 +146,7 @@ impl std::io::Write for TerminalHandle {
 
 #[derive(Clone)]
 pub struct AnathemaSSHServer {
-    clients: Arc<Mutex<HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>>>,
+    clients: HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>,
     id: usize,
     app_runner: Arc<Mutex<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync>>,
 }
@@ -154,7 +154,7 @@ pub struct AnathemaSSHServer {
 impl AnathemaSSHServer {
     pub fn new(app_runner: impl FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync + 'static) -> Self {
         Self {
-            clients: Arc::new(Mutex::new(HashMap::new())),
+            clients: HashMap::new(),
             id: 0,
             app_runner: Arc::new(Mutex::new(app_runner)),
         }
@@ -243,42 +243,32 @@ impl Handler for AnathemaSSHServer {
 
         let backend = SSHBackend::new(terminal_handle.clone())?;
 
-        let mut clients = self.clients.lock().await;
-        clients.insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
+        self.clients
+            .insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
         println!("New SSH client connected with ID: {}", self.id);
-        drop(clients); // Release lock early
 
-        // Don't spawn the app task here - instead, spawn it after a small delay
-        // to ensure the SSH session is fully established
         let app_runner = self.app_runner.clone();
-        let clients_arc = self.clients.clone();
         let client_id = self.id;
+        let backend_arc = self.clients.get(&client_id).unwrap().0.clone();
 
         tokio::spawn(async move {
             // Wait a bit to ensure the SSH session is fully established
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let backend_clone = backend_arc.clone();
 
-            // Get the backend from the clients map.
-            let clients = clients_arc.lock().await;
-            if let Some((backend_arc, _)) = clients.get(&client_id) {
-                let backend_clone = backend_arc.clone();
-                drop(clients); // Release lock before running app
-
-                // Run the app in a blocking task to not block the async runtime
-                match tokio::task::spawn_blocking(move || {
-                    let mut backend = backend_clone.blocking_lock();
-                    let mut app_runner = app_runner.blocking_lock();
-                    (app_runner)(&mut backend)
-                })
-                .await
-                {
-                    Ok(Ok(())) => { /* Success */ }
-                    Ok(Err(e)) => eprintln!("App runner failed: {}", e),
-                    Err(e) => eprintln!("App runner task failed: {}", e),
-                }
+            // Run the app in a blocking task to not block the async runtime
+            match tokio::task::spawn_blocking(move || {
+                let mut backend = backend_clone.blocking_lock();
+                let mut app_runner = app_runner.blocking_lock();
+                (app_runner)(&mut backend)
+            })
+            .await
+            {
+                Ok(Ok(())) => { /* Success */ }
+                Ok(Err(e)) => eprintln!("App runner failed: {}", e),
+                Err(e) => eprintln!("App runner task failed: {}", e),
             }
         });
-
         Ok(true)
     }
 
@@ -292,9 +282,7 @@ impl Handler for AnathemaSSHServer {
             data.len(),
             self.id
         );
-        let mut clients = self.clients.lock().await;
-        eprintln!("Client LOCK obtained");
-        if let Some((_, terminal_handle)) = clients.get_mut(&self.id) {
+        if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
             eprintln!("terminal_handle found");
             //let mut backend = backend_arc.lock().await;
             terminal_handle.push_input(data);
@@ -321,8 +309,7 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<(), Self::Error> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        let mut clients = self.clients.lock().await;
-        if let Some((backend_arc, _)) = clients.get_mut(&self.id) {
+        if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
             let mut backend = backend_arc.lock().await;
             backend.resize(size, &mut GlyphMap::empty());
         }
@@ -348,9 +335,8 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<(), Self::Error> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        let mut clients = self.clients.lock().await;
         println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
-        if let Some((backend_arc, _)) = clients.get_mut(&self.id) {
+        if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
             let mut backend = backend_arc.lock().await;
             backend.resize(size, &mut GlyphMap::empty());
         }
@@ -364,10 +350,6 @@ impl Handler for AnathemaSSHServer {
 impl Drop for AnathemaSSHServer {
     fn drop(&mut self) {
         let id = self.id;
-        let clients = self.clients.clone();
-        tokio::spawn(async move {
-            let mut clients = clients.lock().await;
-            clients.remove(&id);
-        });
+        self.clients.remove(&id);
     }
 }
