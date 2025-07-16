@@ -129,15 +129,15 @@ impl std::io::Write for TerminalHandle {
 pub struct AnathemaSSHServer {
     clients: Arc<Mutex<HashMap<usize, Arc<Mutex<SSHBackend>>>>>,
     id: usize,
-    app_runner: Arc<dyn Fn(SSHBackend) -> anyhow::Result<()> + Send + Sync>,
+    app_runner: Arc<Mutex<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync>>,
 }
 
 impl AnathemaSSHServer {
-    pub fn new(app_runner: impl Fn(SSHBackend) -> anyhow::Result<()> + Send + Sync + 'static) -> Self {
+    pub fn new(app_runner: impl FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync + 'static) -> Self {
         Self {
             clients: Arc::new(Mutex::new(HashMap::new())),
             id: 0,
-            app_runner: Arc::new(app_runner),
+            app_runner: Arc::new(Mutex::new(app_runner)),
         }
     }
 
@@ -239,19 +239,20 @@ impl Handler for AnathemaSSHServer {
             // Wait a bit to ensure the SSH session is fully established
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-            // Get the backend from the clients map and remove it for exclusive access
-            let mut clients = clients_arc.lock().await;
-            if let Some(backend_arc) = clients.remove(&client_id) {
+            // Get the backend from the clients map.
+            let clients = clients_arc.lock().await;
+            if let Some(backend_arc) = clients.get(&client_id) {
+                let backend_clone = backend_arc.clone();
                 drop(clients); // Release lock before running app
 
-                // Extract the backend from the Arc<Mutex<>>
-                let backend = Arc::try_unwrap(backend_arc)
-                    .map_err(|_| "Failed to unwrap Arc")
-                    .unwrap()
-                    .into_inner();
-
                 // Run the app in a blocking task to not block the async runtime
-                match tokio::task::spawn_blocking(move || (app_runner)(backend)).await {
+                match tokio::task::spawn_blocking(move || {
+                    let mut backend = backend_clone.blocking_lock();
+                    let mut app_runner = app_runner.blocking_lock();
+                    (app_runner)(&mut backend)
+                })
+                .await
+                {
                     Ok(Ok(())) => { /* Success */ }
                     Ok(Err(e)) => eprintln!("App runner failed: {}", e),
                     Err(e) => eprintln!("App runner task failed: {}", e),
@@ -270,6 +271,7 @@ impl Handler for AnathemaSSHServer {
         let mut clients = self.clients.lock().await;
         if let Some(backend_arc) = clients.get_mut(&self.id) {
             let mut backend = backend_arc.lock().await;
+            eprintln!("Received {} bytes from client {}", data.len(), self.id);
             backend.output_mut().push_input(data);
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);
@@ -290,9 +292,10 @@ impl Handler for AnathemaSSHServer {
         let size = Size::new(col_width as u16, row_height as u16);
 
         let mut clients = self.clients.lock().await;
-        let backend_arc = clients.get_mut(&self.id).unwrap();
-        let mut backend = backend_arc.lock().await;
-        backend.resize(size, &mut GlyphMap::empty());
+        if let Some(backend_arc) = clients.get_mut(&self.id) {
+            let mut backend = backend_arc.lock().await;
+            backend.resize(size, &mut GlyphMap::empty());
+        }
 
         Ok(())
     }
@@ -317,9 +320,10 @@ impl Handler for AnathemaSSHServer {
 
         let mut clients = self.clients.lock().await;
         println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
-        let backend_arc = clients.get_mut(&self.id).unwrap();
-        let mut backend = backend_arc.lock().await;
-        backend.resize(size, &mut GlyphMap::empty());
+        if let Some(backend_arc) = clients.get_mut(&self.id) {
+            let mut backend = backend_arc.lock().await;
+            backend.resize(size, &mut GlyphMap::empty());
+        }
 
         session.channel_success(channel)?;
 
