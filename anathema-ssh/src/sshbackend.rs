@@ -17,6 +17,7 @@ impl SSHBackend {
         let tui_backend = TuiBackend::builder_with_output(terminal_handle)
             .enable_alt_screen()
             .enable_raw_mode()
+            .enable_mouse()
             .hide_cursor()
             .finish()?;
 
