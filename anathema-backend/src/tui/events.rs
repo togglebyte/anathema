@@ -15,10 +15,12 @@ impl Events {
     /// If no event is available within the duration
     /// the function will return `None`.
     pub fn poll(&self, timeout: Duration) -> Option<Event> {
+        eprintln!("Event poll...");
         match crossterm::event::poll(timeout).ok()? {
             true => {
                 let event = read().ok()?;
 
+                eprintln!("Event poll result: {:?}", event);
                 let event = match event {
                     CTEvent::Paste(_) => Event::Noop,
                     CTEvent::FocusGained => Event::Focus,

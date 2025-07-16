@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anathema_backend::Backend;
+use anathema_backend::tui::TuiBackend;
 use anathema_geometry::Size;
 use anathema_widgets::GlyphMap;
 use anathema_widgets::components::events::Event;
@@ -13,8 +14,6 @@ use russh::{Channel, ChannelId, Pty};
 use russh::{CryptoVec, server::*};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
-
-use crate::sshbackend::SSHBackend;
 
 #[derive(Clone)]
 pub struct TerminalHandle {
@@ -146,16 +145,20 @@ impl std::io::Write for TerminalHandle {
 
 #[derive(Clone)]
 pub struct AnathemaSSHServer {
-    clients: HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>,
+    clients: HashMap<usize, (Arc<Mutex<TuiBackend<TerminalHandle>>>, TerminalHandle)>,
     id: usize,
-    app_runner_factory:
-        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync>,
+    app_runner_factory: Arc<
+        dyn Fn() -> Box<dyn FnMut(&mut TuiBackend<TerminalHandle>) -> anyhow::Result<()> + Send + Sync> + Send + Sync,
+    >,
 }
 
 impl AnathemaSSHServer {
     pub fn new<F>(app_runner: F) -> Self
     where
-        F: Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync + 'static,
+        F: Fn() -> Box<dyn FnMut(&mut TuiBackend<TerminalHandle>) -> anyhow::Result<()> + Send + Sync>
+            + Send
+            + Sync
+            + 'static,
     {
         Self {
             clients: HashMap::new(),
@@ -245,7 +248,12 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<bool, Self::Error> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
-        let backend = SSHBackend::new(terminal_handle.clone())?;
+        let backend = TuiBackend::builder_with_output(terminal_handle.clone())
+            .enable_alt_screen()
+            .enable_raw_mode()
+            .enable_mouse()
+            .hide_cursor()
+            .finish()?;
 
         self.clients
             .insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
