@@ -52,6 +52,11 @@ impl TerminalHandle {
         }
     }
 
+    pub fn push_event(&mut self, event: Event) {
+        let mut events = self.events.lock().unwrap();
+        events.push_back(event);
+    }
+
     pub fn pop_event(&mut self) -> Option<Event> {
         let mut events = self.events.lock().unwrap();
         let event = events.pop_front();

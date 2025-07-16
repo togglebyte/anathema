@@ -212,9 +212,8 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<(), Self::Error> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
-            let mut backend = backend_arc.lock().await;
-            backend.resize(size, &mut GlyphMap::empty());
+        if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
+            terminal_handle.push_event(anathema_widgets::components::events::Event::Resize(size));
         }
 
         Ok(())
@@ -238,12 +237,9 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<(), Self::Error> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        if let Some((backend_arc, _)) = self.clients.get_mut(&self.id) {
-            let mut backend = backend_arc.lock().await;
-            backend.resize(size, &mut GlyphMap::empty());
+        if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
+            terminal_handle.push_event(anathema_widgets::components::events::Event::Resize(size));
         }
-
-        session.channel_success(channel)?;
 
         let mut buf = Vec::new();
 
@@ -256,6 +252,7 @@ impl Handler for AnathemaSSHServer {
         let data = CryptoVec::from(buf);
         session.data(channel, data)?;
 
+        session.channel_success(channel)?;
         Ok(())
     }
 }
