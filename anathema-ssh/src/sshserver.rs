@@ -45,11 +45,17 @@ impl TerminalHandle {
     }
 
     fn push_input(&mut self, data: &[u8]) {
+        eprintln!(
+            "TerminalHandle::push_input called with {} bytes: {:?}",
+            data.len(),
+            data
+        );
         // Convert raw input bytes to Anathema events
         for &byte in data {
             match byte {
                 b'\x1b' => {
                     // Escape sequence - for now, treat as escape key
+                    eprintln!("Processing escape key");
                     self.events
                         .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
                             code: anathema_widgets::components::events::KeyCode::Esc,
@@ -59,6 +65,7 @@ impl TerminalHandle {
                 }
                 b'\r' | b'\n' => {
                     // Enter key
+                    eprintln!("Processing enter key");
                     self.events
                         .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
                             code: anathema_widgets::components::events::KeyCode::Enter,
@@ -68,6 +75,7 @@ impl TerminalHandle {
                 }
                 b'\x7f' => {
                     // Backspace
+                    eprintln!("Processing backspace key");
                     self.events
                         .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
                             code: anathema_widgets::components::events::KeyCode::Backspace,
@@ -77,6 +85,7 @@ impl TerminalHandle {
                 }
                 b'\t' => {
                     // Tab
+                    eprintln!("Processing tab key");
                     self.events
                         .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
                             code: anathema_widgets::components::events::KeyCode::Tab,
@@ -86,6 +95,7 @@ impl TerminalHandle {
                 }
                 b' '..=b'~' => {
                     // Printable ASCII characters
+                    eprintln!("Processing character: '{}'", byte as char);
                     self.events
                         .push_back(Event::Key(anathema_widgets::components::events::KeyEvent {
                             code: anathema_widgets::components::events::KeyCode::Char(byte as char),
@@ -96,13 +106,21 @@ impl TerminalHandle {
                 _ => {
                     // For other control characters, we can add more handling as needed
                     // For now, ignore or handle as needed
+                    eprintln!("Ignoring unknown byte: 0x{:02x}", byte);
                 }
             }
         }
+        eprintln!("TerminalHandle now has {} events queued", self.events.len());
     }
 
     pub fn pop_event(&mut self) -> Option<Event> {
-        self.events.pop_front()
+        let event = self.events.pop_front();
+        if let Some(ref event) = event {
+            eprintln!("TerminalHandle::pop_event returning: {:?}", event);
+        } else {
+            // eprintln!("TerminalHandle::pop_event returning None (queue empty)");
+        }
+        event
     }
 }
 
@@ -268,10 +286,15 @@ impl Handler for AnathemaSSHServer {
     }
 
     async fn data(&mut self, _channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
+        eprintln!(
+            "SSH data method called with {} bytes from client {}",
+            data.len(),
+            self.id
+        );
         let mut clients = self.clients.lock().await;
         if let Some(backend_arc) = clients.get_mut(&self.id) {
             let mut backend = backend_arc.lock().await;
-            eprintln!("Received {} bytes from client {}", data.len(), self.id);
+            eprintln!("Received {} bytes from client {}: {:?}", data.len(), self.id, data);
             backend.output_mut().push_input(data);
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);

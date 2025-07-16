@@ -1,17 +1,23 @@
-use std::fs::read_to_string;
-
+use anathema::component::{Children, Component, Context};
 use anathema::runtime::Runtime;
-use anathema::templates::{Document, ToSourceKind};
+use anathema::templates::Document;
 use anathema_ssh::sshserver::AnathemaSSHServer;
+use anathema_state::{State, Value};
 use anyhow;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let mut server = AnathemaSSHServer::new(move |backend| {
-        let template = read_to_string("examples/templates/basic/basic.aml").unwrap();
-        let doc = Document::new("@index");
+        let doc = Document::new("@main");
         let mut builder = Runtime::builder(doc, backend);
-        builder.template("index", template.to_template()).unwrap();
+        builder
+            .component(
+                "main",
+                "examples/templates/ssh/ssh.aml",
+                App,
+                AppState { number: 0.into() },
+            )
+            .unwrap();
         builder
             .finish(backend, |runtime, backend| {
                 println!("RUNTIME RUN...");
@@ -24,4 +30,32 @@ async fn main() -> Result<(), anyhow::Error> {
     server.run().await?;
     println!("SSH server stopped.");
     Ok(())
+}
+
+struct App;
+
+#[derive(State)]
+struct AppState {
+    number: Value<i32>,
+}
+
+impl Component for App {
+    type Message = ();
+    type State = AppState;
+
+    const TICKS: bool = true;
+
+    fn on_tick(
+        &mut self,
+        state: &mut Self::State,
+        _: Children<'_, '_>,
+        _: Context<'_, '_, Self::State>,
+        _: std::time::Duration,
+    ) {
+        *state.number.to_mut() += 1;
+    }
+
+    fn accept_focus(&self) -> bool {
+        false
+    }
 }
