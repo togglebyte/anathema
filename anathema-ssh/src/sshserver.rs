@@ -9,8 +9,8 @@ use anathema_widgets::GlyphMap;
 use anathema_widgets::components::events::Event;
 use rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
-use russh::server::*;
 use russh::{Channel, ChannelId, Pty};
+use russh::{CryptoVec, server::*};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
@@ -285,20 +285,27 @@ impl Handler for AnathemaSSHServer {
         Ok(Auth::Accept)
     }
 
-    async fn data(&mut self, _channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
+    async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
         eprintln!(
             "SSH data method called with {} bytes from client {}",
             data.len(),
             self.id
         );
         let mut clients = self.clients.lock().await;
+        eprintln!("Client LOCK obtained");
         if let Some(backend_arc) = clients.get_mut(&self.id) {
+            eprintln!("Backend ARC found");
             let mut backend = backend_arc.lock().await;
+
+            eprintln!("Backend ARC lock obtained");
             eprintln!("Received {} bytes from client {}: {:?}", data.len(), self.id, data);
             backend.output_mut().push_input(data);
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);
         }
+
+        let data = CryptoVec::from(format!("Got data: {}\r\n", String::from_utf8_lossy(data)));
+        session.data(channel, data)?;
         Ok(())
     }
 
