@@ -10,7 +10,7 @@ use crossterm::event::EnableMouseCapture;
 use crossterm::{QueueableCommand, cursor};
 use rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
-use russh::{Channel, ChannelId, Pty};
+use russh::{Channel, ChannelId, Disconnect, Pty};
 use russh::{CryptoVec, server::*};
 use tokio::sync::Mutex;
 
@@ -182,8 +182,15 @@ impl Handler for AnathemaSSHServer {
         Ok(Auth::Accept)
     }
 
-    async fn data(&mut self, _channel: ChannelId, data: &[u8], _session: &mut Session) -> Result<(), Self::Error> {
-        eprintln!("Received {} bytes from client {}", data.len(), self.id);
+    async fn data(&mut self, _channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
+        if data.is_empty() {
+            return Ok(());
+        }
+        if data.len() == 1 {
+            if data[0] == 3 {
+                session.disconnect(Disconnect::ByApplication, "Ctrl-C", "en-US")?;
+            }
+        }
         if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
             terminal_handle.push_input(data);
         } else {
