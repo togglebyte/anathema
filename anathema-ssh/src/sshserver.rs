@@ -16,6 +16,7 @@ use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 use crate::sshbackend::SSHBackend;
 
+#[derive(Clone)]
 pub struct TerminalHandle {
     sender: UnboundedSender<Vec<u8>>,
     // The sink collects the data which is finally sent to sender.
@@ -145,7 +146,7 @@ impl std::io::Write for TerminalHandle {
 
 #[derive(Clone)]
 pub struct AnathemaSSHServer {
-    clients: Arc<Mutex<HashMap<usize, Arc<Mutex<SSHBackend>>>>>,
+    clients: Arc<Mutex<HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>>>,
     id: usize,
     app_runner: Arc<Mutex<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync>>,
 }
@@ -240,10 +241,10 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<bool, Self::Error> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
-        let backend = SSHBackend::new(terminal_handle)?;
+        let backend = SSHBackend::new(terminal_handle.clone())?;
 
         let mut clients = self.clients.lock().await;
-        clients.insert(self.id, Arc::new(Mutex::new(backend)));
+        clients.insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
         println!("New SSH client connected with ID: {}", self.id);
         drop(clients); // Release lock early
 
@@ -259,7 +260,7 @@ impl Handler for AnathemaSSHServer {
 
             // Get the backend from the clients map.
             let clients = clients_arc.lock().await;
-            if let Some(backend_arc) = clients.get(&client_id) {
+            if let Some((backend_arc, _)) = clients.get(&client_id) {
                 let backend_clone = backend_arc.clone();
                 drop(clients); // Release lock before running app
 
@@ -293,13 +294,12 @@ impl Handler for AnathemaSSHServer {
         );
         let mut clients = self.clients.lock().await;
         eprintln!("Client LOCK obtained");
-        if let Some(backend_arc) = clients.get_mut(&self.id) {
-            eprintln!("Backend ARC found");
-            let mut backend = backend_arc.lock().await;
-
-            eprintln!("Backend ARC lock obtained");
+        if let Some((_, terminal_handle)) = clients.get_mut(&self.id) {
+            eprintln!("terminal_handle found");
+            //let mut backend = backend_arc.lock().await;
+            terminal_handle.push_input(data);
             eprintln!("Received {} bytes from client {}: {:?}", data.len(), self.id, data);
-            backend.output_mut().push_input(data);
+            //backend.output_mut().push_input(data);
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);
         }
@@ -322,7 +322,7 @@ impl Handler for AnathemaSSHServer {
         let size = Size::new(col_width as u16, row_height as u16);
 
         let mut clients = self.clients.lock().await;
-        if let Some(backend_arc) = clients.get_mut(&self.id) {
+        if let Some((backend_arc, _)) = clients.get_mut(&self.id) {
             let mut backend = backend_arc.lock().await;
             backend.resize(size, &mut GlyphMap::empty());
         }
@@ -350,7 +350,7 @@ impl Handler for AnathemaSSHServer {
 
         let mut clients = self.clients.lock().await;
         println!("Client ID: {} requested PTY with size: {:?}", self.id, size);
-        if let Some(backend_arc) = clients.get_mut(&self.id) {
+        if let Some((backend_arc, _)) = clients.get_mut(&self.id) {
             let mut backend = backend_arc.lock().await;
             backend.resize(size, &mut GlyphMap::empty());
         }
