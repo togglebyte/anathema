@@ -13,6 +13,7 @@ anathema-backend = { workspace = true }
 anathema-runtime = { workspace = true }
 anathema-geometry = { workspace = true }
 anathema-widgets = { workspace = true }
+anathema-value-resolver = { workspace = true }
 async-trait = "0.1.88"
 futures = "0.3"
 russh = "0.53.0"
