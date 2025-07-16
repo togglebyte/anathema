@@ -7,23 +7,25 @@ use anyhow;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let mut server = AnathemaSSHServer::new(move |backend| {
-        let doc = Document::new("@main");
-        let mut builder = Runtime::builder(doc, backend);
-        builder
-            .component(
-                "main",
-                "examples/templates/ssh/ssh.aml",
-                App,
-                AppState { number: 0.into() },
-            )
-            .unwrap();
-        builder
-            .finish(backend, |runtime, backend| {
-                println!("RUNTIME RUN...");
-                runtime.run(backend)
-            })
-            .map_err(|e| anyhow::anyhow!("Runtime error: {}", e))
+    let mut server = AnathemaSSHServer::new(|| {
+        Box::new(move |backend| {
+            let doc = Document::new("@main");
+            let mut builder = Runtime::builder(doc, backend);
+            builder
+                .component(
+                    "main",
+                    "examples/templates/ssh/ssh.aml",
+                    App,
+                    AppState { number: 0.into() },
+                )
+                .unwrap();
+            builder
+                .finish(backend, |runtime, backend| {
+                    println!("RUNTIME RUN...");
+                    runtime.run(backend)
+                })
+                .map_err(|e| anyhow::anyhow!("Runtime error: {}", e))
+        })
     });
 
     println!("Starting SSH server...");

@@ -148,15 +148,19 @@ impl std::io::Write for TerminalHandle {
 pub struct AnathemaSSHServer {
     clients: HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>,
     id: usize,
-    app_runner: Arc<Mutex<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync>>,
+    app_runner_factory:
+        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync>,
 }
 
 impl AnathemaSSHServer {
-    pub fn new(app_runner: impl FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync + 'static) -> Self {
+    pub fn new<F>(app_runner: F) -> Self
+    where
+        F: Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync + 'static,
+    {
         Self {
             clients: HashMap::new(),
             id: 0,
-            app_runner: Arc::new(Mutex::new(app_runner)),
+            app_runner_factory: Arc::new(app_runner),
         }
     }
 
@@ -247,7 +251,7 @@ impl Handler for AnathemaSSHServer {
             .insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
         println!("New SSH client connected with ID: {}", self.id);
 
-        let app_runner = self.app_runner.clone();
+        let app_runner_factory = self.app_runner_factory.clone();
         let client_id = self.id;
         let backend_arc = self.clients.get(&client_id).unwrap().0.clone();
 
@@ -260,8 +264,8 @@ impl Handler for AnathemaSSHServer {
             match tokio::task::spawn_blocking(move || {
                 let mut backend = backend_clone.blocking_lock();
                 eprintln!("Backend clone LOCK acquired");
-                let mut app_runner = app_runner.blocking_lock();
-                eprintln!("App Runner clone LOCK acquired");
+                let mut app_runner = (app_runner_factory)();
+                eprintln!("App Runner created for client {}", client_id);
                 let r = (app_runner)(&mut backend);
                 eprintln!("App runner task completed for client {}", client_id);
                 r
