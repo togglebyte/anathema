@@ -3,10 +3,9 @@ use anathema::runtime::Runtime;
 use anathema::templates::Document;
 use anathema_ssh::sshserver::AnathemaSSHServer;
 use anathema_state::{State, Value};
-use anyhow;
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> Result<(), Error> {
     let mut server = AnathemaSSHServer::builder()
         .runtime_factory(|| {
             Box::new(move |backend| {

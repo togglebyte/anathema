@@ -13,6 +13,8 @@ use russh::{Channel, ChannelId, Disconnect, Pty};
 use russh::{CryptoVec, server::*};
 use tokio::sync::Mutex;
 
+use crate::error::Error;
+use crate::error::Result;
 use crate::sshbackend::SSHBackend;
 use crate::terminalhandle::TerminalHandle;
 
@@ -52,6 +54,7 @@ impl AnathemaSSHServerBuilder {
         self
     }
 
+    /// Build the SSH server with the provided configuration.
     pub fn build(self) -> AnathemaSSHServer {
         if self.app_runner_factory.is_none() {
             panic!("AnathemaSSHServerBuilder requires an app runner factory to be set");
@@ -94,7 +97,7 @@ impl AnathemaSSHServer {
     }
 
     /// Load or create a persistent SSH key
-    fn load_or_create_key(&mut self) -> Result<russh::keys::PrivateKey, std::io::Error> {
+    fn load_or_create_key(&mut self) -> Result<russh::keys::PrivateKey> {
         let key_dir = Path::new(&self.ssh_key_folder);
         let key_file = key_dir.join("ssh_host_ed25519_key");
 
@@ -138,7 +141,7 @@ impl AnathemaSSHServer {
         Ok(key)
     }
 
-    pub async fn run(&mut self) -> Result<(), anyhow::Error> {
+    pub async fn run(&mut self) -> Result<()> {
         let key = self.load_or_create_key()?;
 
         let config = Config {
@@ -165,12 +168,10 @@ impl Server for AnathemaSSHServer {
 }
 
 impl Handler for AnathemaSSHServer {
+    type Error = Error;
+
     /// Handle a new SSH client connection
-    async fn channel_open_session(
-        &mut self,
-        channel: Channel<Msg>,
-        session: &mut Session,
-    ) -> std::core::Result<bool, Self::Error> {
+    async fn channel_open_session(&mut self, channel: Channel<Msg>, session: &mut Session) -> Result<bool> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
         let backend = SSHBackend::new(terminal_handle.clone())?;
@@ -211,12 +212,12 @@ impl Handler for AnathemaSSHServer {
 
     /// Accept all authentication attempts with public key
     /// TODO: Pass the public key to the app runtime to be used in the application
-    async fn auth_publickey(&mut self, _: &str, _: &PublicKey) -> Result<Auth, Self::Error> {
+    async fn auth_publickey(&mut self, _: &str, _: &PublicKey) -> Result<Auth> {
         Ok(Auth::Accept)
     }
 
     /// Handle raw input data from the client.
-    async fn data(&mut self, _channel: ChannelId, data: &[u8], session: &mut Session) -> Result<(), Self::Error> {
+    async fn data(&mut self, _channel: ChannelId, data: &[u8], session: &mut Session) -> Result<()> {
         if data.is_empty() {
             return Ok(());
         }
@@ -243,7 +244,7 @@ impl Handler for AnathemaSSHServer {
         _: u32,
         _: u32,
         _: &mut Session,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<()> {
         let size = Size::new(col_width as u16, row_height as u16);
 
         if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
@@ -264,7 +265,7 @@ impl Handler for AnathemaSSHServer {
         _: u32,
         _: &[(Pty, u32)],
         session: &mut Session,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<()> {
         let size = Size::new(col_width as u16, row_height as u16);
 
         if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {

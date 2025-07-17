@@ -28,7 +28,6 @@ anathema-ssh = { workspace = true }
 [dev-dependencies]
 # anathema-debug = { path = "anathema-debug" }
 anathema-testutils = { path = "anathema-testutils" }
-anyhow = "1.0"
 tokio = { workspace = true }
 
 [features]
