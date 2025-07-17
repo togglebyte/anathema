@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 mod eventmapper;
 mod sshbackend;
 pub mod sshserver;

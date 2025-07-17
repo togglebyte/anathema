@@ -1,6 +1,7 @@
 use anathema::component::{Children, Component, Context};
 use anathema::runtime::Runtime;
 use anathema::templates::Document;
+use anathema_ssh::error::Error;
 use anathema_ssh::sshserver::AnathemaSSHServer;
 use anathema_state::{State, Value};
 
