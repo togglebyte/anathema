@@ -13,7 +13,7 @@ pub struct SSHBackend {
 }
 
 impl SSHBackend {
-    pub fn new(terminal_handle: TerminalHandle) -> anyhow::Result<Self> {
+    pub fn new(terminal_handle: TerminalHandle) -> Result<Self, std::io::Error> {
         let tui_backend = TuiBackend::builder_with_output(terminal_handle).finish()?;
 
         Ok(Self { tui_backend })

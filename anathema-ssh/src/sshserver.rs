@@ -17,8 +17,9 @@ use crate::sshbackend::SSHBackend;
 use crate::terminalhandle::TerminalHandle;
 
 pub struct AnathemaSSHServerBuilder {
-    app_runner_factory:
-        Option<Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync>>,
+    app_runner_factory: Option<
+        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync> + Send + Sync>,
+    >,
     mouse_enabled: bool,
     ssh_key_folder: Option<PathBuf>,
 }
@@ -29,7 +30,10 @@ impl AnathemaSSHServerBuilder {
     /// The factory should return a closure that takes a mutable reference to `SSHBackend`.
     pub fn runtime_factory<F>(mut self, app_runner: F) -> Self
     where
-        F: Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync + 'static,
+        F: Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync>
+            + Send
+            + Sync
+            + 'static,
     {
         self.app_runner_factory = Some(Arc::new(app_runner));
         self
@@ -71,7 +75,7 @@ pub struct AnathemaSSHServer {
     /// Factory for creating new application instances
     /// This allows the server to spawn new applications for each client connection
     app_runner_factory:
-        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anyhow::Result<()> + Send + Sync> + Send + Sync>,
+        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync> + Send + Sync>,
 
     /// Whether mouse support is enabled
     mouse_enabled: bool,
@@ -90,7 +94,7 @@ impl AnathemaSSHServer {
     }
 
     /// Load or create a persistent SSH key
-    fn load_or_create_key(&mut self) -> Result<russh::keys::PrivateKey, anyhow::Error> {
+    fn load_or_create_key(&mut self) -> Result<russh::keys::PrivateKey, std::io::Error> {
         let key_dir = Path::new(&self.ssh_key_folder);
         let key_file = key_dir.join("ssh_host_ed25519_key");
 
@@ -161,14 +165,12 @@ impl Server for AnathemaSSHServer {
 }
 
 impl Handler for AnathemaSSHServer {
-    type Error = anyhow::Error;
-
     /// Handle a new SSH client connection
     async fn channel_open_session(
         &mut self,
         channel: Channel<Msg>,
         session: &mut Session,
-    ) -> Result<bool, Self::Error> {
+    ) -> std::core::Result<bool, Self::Error> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
 
         let backend = SSHBackend::new(terminal_handle.clone())?;

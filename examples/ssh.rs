@@ -23,12 +23,10 @@ async fn main() -> Result<(), anyhow::Error> {
                         },
                     )
                     .unwrap();
-                builder
-                    .finish(backend, |runtime, backend| {
-                        println!("RUNTIME RUN...");
-                        runtime.run(backend)
-                    })
-                    .map_err(|e| anyhow::anyhow!("Runtime error: {}", e))
+                builder.finish(backend, |runtime, backend| {
+                    println!("RUNTIME RUN...");
+                    runtime.run(backend)
+                })
             })
         })
         .enable_mouse()
