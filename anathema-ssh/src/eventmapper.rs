@@ -12,6 +12,7 @@ pub fn from_event(value: Terminput_Event) -> Option<anathema_widgets::components
         Terminput_Event::Mouse(mouse_event) => from_mouse_event(mouse_event),
         Terminput_Event::FocusGained => Some(anathema_widgets::components::events::Event::Focus),
         Terminput_Event::FocusLost => Some(anathema_widgets::components::events::Event::Blur),
+        // TODO: Support paste events at some point
         //Terminput_Event::Paste(p) => Some(anathema_widgets::components::events::Event::Paste(p)),
         Terminput_Event::Resize { rows, cols } => Some(anathema_widgets::components::events::Event::Resize(Size {
             width: cols as u16,

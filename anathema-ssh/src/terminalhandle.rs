@@ -8,7 +8,7 @@ use crate::eventmapper;
 #[derive(Clone)]
 pub struct TerminalHandle {
     sender: UnboundedSender<Vec<u8>>,
-    // The sink collects the data which is finally sent to sender.
+    // The sink collects the data from the application to be sent to the client.
     sink: Vec<u8>,
     // Event queue for processing input from SSH client
     events: Arc<Mutex<std::collections::VecDeque<Event>>>,
@@ -19,7 +19,6 @@ impl TerminalHandle {
         let (sender, mut receiver) = unbounded_channel::<Vec<u8>>();
         tokio::spawn(async move {
             while let Some(data) = receiver.recv().await {
-                // println!("Sending {} bytes to SSH client", data.len());
                 let result = handle.data(channel_id, data.into()).await;
                 if result.is_err() {
                     eprintln!("Failed to send data: {:?}", result);
@@ -34,6 +33,7 @@ impl TerminalHandle {
         }
     }
 
+    /// Push raw input bytes to the terminal handle.
     pub fn push_input(&mut self, data: &[u8]) {
         // Convert raw input bytes to Anathema events
         let mut events = self.events.lock().unwrap();
@@ -42,13 +42,10 @@ impl TerminalHandle {
             if let Some(event) = eventmapper::from_event(e) {
                 events.push_back(event);
             } else {
-                eprintln!("Unsupported event type in mapper: {}", String::from_utf8_lossy(data));
+                eprintln!("Unsupported event type in mapper: {:02x?}", data);
             }
         } else {
-            eprintln!(
-                "Failed to parse input data as terminal event: {}",
-                String::from_utf8_lossy(data)
-            );
+            eprintln!("Failed to parse input data as terminal event: {:02x?}", data);
         }
     }
 
