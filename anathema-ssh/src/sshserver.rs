@@ -5,11 +5,11 @@ use std::sync::Arc;
 
 use anathema_geometry::Size;
 use anathema_widgets::components::events::Event;
-use crossterm::event::EnableMouseCapture;
-use crossterm::{QueueableCommand, cursor};
+use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
+use crossterm::{QueueableCommand, cursor, terminal};
 use rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
-use russh::{Channel, ChannelId, Disconnect, Pty};
+use russh::{Channel, ChannelId, Pty};
 use russh::{CryptoVec, server::*};
 use tokio::sync::Mutex;
 
@@ -210,13 +210,25 @@ impl Handler for AnathemaSSHServer {
     }
 
     /// Handle raw input data from the client.
-    async fn data(&mut self, _channel: ChannelId, data: &[u8], session: &mut Session) -> Result<()> {
+    async fn data(&mut self, channel: ChannelId, data: &[u8], session: &mut Session) -> Result<()> {
         if data.is_empty() {
             return Ok(());
         }
         if data.len() == 1 {
             if data[0] == 3 {
-                session.disconnect(Disconnect::ByApplication, "Ctrl-C", "en")?;
+                let mut buf = Vec::new();
+
+                if self.mouse_enabled {
+                    buf.queue(DisableMouseCapture)?;
+                }
+
+                buf.queue(cursor::Show)?;
+                buf.queue(terminal::LeaveAlternateScreen)?;
+
+                let data = CryptoVec::from(buf);
+                session.data(channel, data)?;
+                session.flush()?;
+                session.close(channel)?;
             }
         }
         if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
@@ -224,6 +236,12 @@ impl Handler for AnathemaSSHServer {
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);
         }
+
+        Ok(())
+    }
+
+    async fn channel_close(&mut self, _channel: ChannelId, _session: &mut Session) -> Result<()> {
+        self.clients.remove(&self.id);
 
         Ok(())
     }
@@ -272,6 +290,7 @@ impl Handler for AnathemaSSHServer {
         }
 
         buf.queue(cursor::Hide)?;
+        buf.queue(terminal::EnterAlternateScreen)?;
 
         let data = CryptoVec::from(buf);
         session.data(channel, data)?;
