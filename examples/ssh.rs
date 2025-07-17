@@ -22,10 +22,7 @@ async fn main() -> Result<(), Error> {
                     },
                 )
                 .unwrap();
-            builder.finish(backend, |runtime, backend| {
-                println!("RUNTIME RUN...");
-                runtime.run(backend)
-            })
+            builder.finish(backend, |runtime, backend| runtime.run(backend))
         })
         .enable_mouse()
         .build();
