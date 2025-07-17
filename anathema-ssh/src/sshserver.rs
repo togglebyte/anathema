@@ -19,9 +19,7 @@ use crate::sshbackend::SSHBackend;
 use crate::terminalhandle::TerminalHandle;
 
 pub struct AnathemaSSHServerBuilder {
-    app_runner_factory: Option<
-        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync> + Send + Sync>,
-    >,
+    app_runner_factory: Option<Arc<dyn Fn(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync>>,
     mouse_enabled: bool,
     ssh_key_folder: Option<PathBuf>,
 }
@@ -32,10 +30,7 @@ impl AnathemaSSHServerBuilder {
     /// The factory should return a closure that takes a mutable reference to `SSHBackend`.
     pub fn runtime_factory<F>(mut self, app_runner: F) -> Self
     where
-        F: Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync>
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync + 'static,
     {
         self.app_runner_factory = Some(Arc::new(app_runner));
         self
@@ -77,8 +72,7 @@ pub struct AnathemaSSHServer {
     id: usize,
     /// Factory for creating new application instances
     /// This allows the server to spawn new applications for each client connection
-    app_runner_factory:
-        Arc<dyn Fn() -> Box<dyn FnMut(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync> + Send + Sync>,
+    app_runner_factory: Arc<dyn Fn(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync>,
 
     /// Whether mouse support is enabled
     mouse_enabled: bool,
@@ -194,8 +188,7 @@ impl Handler for AnathemaSSHServer {
 
                 match tokio::task::spawn_blocking(move || {
                     let mut backend = backend_clone.blocking_lock();
-                    let mut app_runner = (app_runner_factory)();
-                    (app_runner)(&mut backend)
+                    (app_runner_factory)(&mut backend)
                 })
                 .await
                 {

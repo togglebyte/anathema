@@ -8,25 +8,23 @@ use anathema_state::{State, Value};
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let mut server = AnathemaSSHServer::builder()
-        .runtime_factory(|| {
-            Box::new(move |backend| {
-                let doc = Document::new("@main");
-                let mut builder = Runtime::builder(doc, backend);
-                builder
-                    .component(
-                        "main",
-                        "examples/templates/ssh/ssh.aml",
-                        App,
-                        AppState {
-                            number: 0.into(),
-                            events: 0.into(),
-                        },
-                    )
-                    .unwrap();
-                builder.finish(backend, |runtime, backend| {
-                    println!("RUNTIME RUN...");
-                    runtime.run(backend)
-                })
+        .runtime_factory(|backend| {
+            let doc = Document::new("@main");
+            let mut builder = Runtime::builder(doc, backend);
+            builder
+                .component(
+                    "main",
+                    "examples/templates/ssh/ssh.aml",
+                    App,
+                    AppState {
+                        number: 0.into(),
+                        events: 0.into(),
+                    },
+                )
+                .unwrap();
+            builder.finish(backend, |runtime, backend| {
+                println!("RUNTIME RUN...");
+                runtime.run(backend)
             })
         })
         .enable_mouse()
