@@ -23,15 +23,18 @@ anathema-store = { workspace = true }
 anathema-templates = { workspace = true }
 anathema-value-resolver = { workspace = true }
 anathema-widgets = { workspace = true }
+anathema-ssh = { workspace = true }
 
 [dev-dependencies]
 # anathema-debug = { path = "anathema-debug" }
 anathema-testutils = { path = "anathema-testutils" }
+tokio = { workspace = true }
 
 [features]
 default = []
 profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile"]
 serde = ["anathema-state/serde", "anathema-store/serde"]
+ssh = ["anathema-ssh/ssh"]
 # filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
 [lints]
@@ -43,10 +46,11 @@ version = "0.2.9"
 
 [workspace.dependencies]
 bitflags = "2.4.1"
-crossterm = "0.28.1"
+crossterm = { version = "0.28.1", features = ["use-dev-tty"] }
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "io-util"] }
 anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.9" }
 anathema-backend = { path = "./anathema-backend", version = "0.2.9" }
 anathema-runtime = { path = "./anathema-runtime", version = "0.2.9" }
@@ -57,6 +61,7 @@ anathema-templates = { path = "./anathema-templates", version = "0.2.9" }
 anathema-widgets = { path = "./anathema-widgets", version = "0.2.9" }
 anathema-geometry = { path = "./anathema-geometry", version = "0.2.9" }
 anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.9" }
+anathema-ssh = { path = "./anathema-ssh", version = "0.2.9" }
 
 [workspace]
 members = [
@@ -70,6 +75,7 @@ members = [
     "anathema-templates", 
     "anathema-widgets", 
     "anathema-value-resolver",
+    "anathema-ssh",
 ]
 
 [workspace.lints.rust]

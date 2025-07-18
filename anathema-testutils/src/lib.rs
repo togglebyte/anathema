@@ -40,6 +40,11 @@ pub fn character(c: char) -> KeyEvent {
     KeyEvent {
         code: KeyCode::Char(c),
         ctrl: false,
+        shift: false,
+        alt: false,
+        super_key: false,
+        hyper: false,
+        meta: false,
         state: KeyState::Press,
     }
 }
@@ -48,6 +53,11 @@ pub fn tab() -> KeyEvent {
     KeyEvent {
         code: KeyCode::Tab,
         ctrl: false,
+        shift: false,
+        alt: false,
+        super_key: false,
+        hyper: false,
+        meta: false,
         state: KeyState::Press,
     }
 }
