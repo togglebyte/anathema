@@ -28,6 +28,7 @@ impl TerminalHandle {
                 let result = handle.data(channel_id, data.into()).await;
                 if result.is_err() {
                     eprintln!("Failed to send data: {:?}", result);
+                    return;
                 }
             }
             println!("SSH data sender task ended");
