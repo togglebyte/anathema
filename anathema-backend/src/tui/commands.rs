@@ -41,6 +41,9 @@ pub struct ResetTerminalBackground();
 
 impl Command for ResetTerminalBackground {
     fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        // Some terminals require a ; at the end of the command
+        // to reset the background color, while some do not work with it.
+        let _ = write!(f, "\x1b]111\x07");
         write!(f, "\x1b]111;\x07")
     }
 
