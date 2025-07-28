@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -11,15 +10,16 @@ use rand_core::OsRng;
 use russh::keys::ssh_key::{self, PublicKey};
 use russh::{Channel, ChannelId, Pty};
 use russh::{CryptoVec, server::*};
-use tokio::sync::Mutex;
 
 use crate::error::Error;
 use crate::error::Result;
 use crate::sshbackend::SSHBackend;
 use crate::terminalhandle::TerminalHandle;
 
+type RuntimeFactory = Arc<dyn Fn(&mut SSHBackend, Option<PublicKey>) -> anathema_runtime::Result<()> + Send + Sync>;
+
 pub struct AnathemaSSHServerBuilder {
-    app_runner_factory: Option<Arc<dyn Fn(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync>>,
+    runtime_factory: Option<RuntimeFactory>,
     mouse_enabled: bool,
     ssh_key_folder: Option<PathBuf>,
 }
@@ -30,9 +30,9 @@ impl AnathemaSSHServerBuilder {
     /// The factory should return a closure that takes a mutable reference to `SSHBackend`.
     pub fn runtime_factory<F>(mut self, app_runner: F) -> Self
     where
-        F: Fn(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync + 'static,
+        F: Fn(&mut SSHBackend, Option<PublicKey>) -> anathema_runtime::Result<()> + Send + Sync + 'static,
     {
-        self.app_runner_factory = Some(Arc::new(app_runner));
+        self.runtime_factory = Some(Arc::new(app_runner));
         self
     }
 
@@ -51,29 +51,24 @@ impl AnathemaSSHServerBuilder {
 
     /// Build the SSH server with the provided configuration.
     pub fn build(self) -> AnathemaSSHServer {
-        if self.app_runner_factory.is_none() {
+        if self.runtime_factory.is_none() {
             panic!("AnathemaSSHServerBuilder requires an app runner factory to be set");
         }
         AnathemaSSHServer {
-            clients: HashMap::new(),
-            id: 0,
-            app_runner_factory: self.app_runner_factory.unwrap(),
+            next_id: 0,
+            runtime_factory: self.runtime_factory.unwrap(),
             mouse_enabled: self.mouse_enabled,
             ssh_key_folder: self.ssh_key_folder.unwrap_or_else(|| PathBuf::from(".ssh_keys")),
         }
     }
 }
 
-#[derive(Clone)]
 pub struct AnathemaSSHServer {
-    /// Map of connected SSH clients
-    clients: HashMap<usize, (Arc<Mutex<SSHBackend>>, TerminalHandle)>,
     /// Unique identifier for the next client
-    id: usize,
+    next_id: usize,
     /// Factory for creating new application instances
     /// This allows the server to spawn new applications for each client connection
-    app_runner_factory: Arc<dyn Fn(&mut SSHBackend) -> anathema_runtime::Result<()> + Send + Sync>,
-
+    runtime_factory: RuntimeFactory,
     /// Whether mouse support is enabled
     mouse_enabled: bool,
     /// Folder to store SSH keys
@@ -85,7 +80,7 @@ impl AnathemaSSHServer {
     pub fn builder() -> AnathemaSSHServerBuilder {
         AnathemaSSHServerBuilder {
             mouse_enabled: false,
-            app_runner_factory: None,
+            runtime_factory: None,
             ssh_key_folder: None,
         }
     }
@@ -153,15 +148,33 @@ impl AnathemaSSHServer {
 }
 
 impl Server for AnathemaSSHServer {
-    type Handler = Self;
-    fn new_client(&mut self, _: Option<std::net::SocketAddr>) -> Self {
-        let s = self.clone();
-        self.id += 1;
-        s
+    type Handler = ClientHandler;
+    fn new_client(&mut self, _: Option<std::net::SocketAddr>) -> Self::Handler {
+        self.next_id += 1;
+        ClientHandler {
+            public_key: None,
+            id: self.next_id,
+            runtime_factory: self.runtime_factory.clone(),
+            terminal_handle: None,
+            mouse_enabled: self.mouse_enabled,
+        }
     }
 }
 
-impl Handler for AnathemaSSHServer {
+pub struct ClientHandler {
+    /// Terminal handle for the client, used to send events and input
+    terminal_handle: Option<TerminalHandle>,
+    /// Unique identifier for this client
+    id: usize,
+    /// Factory for creating new application instances
+    runtime_factory: RuntimeFactory,
+    /// Whether mouse support is enabled
+    mouse_enabled: bool,
+    /// Public key of the client, if authenticated
+    public_key: Option<PublicKey>,
+}
+
+impl Handler for ClientHandler {
     type Error = Error;
 
     /// Handle a new SSH client connection
@@ -170,17 +183,15 @@ impl Handler for AnathemaSSHServer {
 
         let backend = SSHBackend::new(terminal_handle.clone())?;
 
-        self.clients
-            .insert(self.id, (Arc::new(Mutex::new(backend)), terminal_handle));
+        let backend_arc = Arc::new(tokio::sync::Mutex::new(backend));
 
-        println!("New SSH client connected with ID: {}", self.id);
+        let runtime_factory = self.runtime_factory.clone();
 
-        let app_runner_factory = self.app_runner_factory.clone();
-        let client_id = self.id;
-
-        if let Some((backend_arc, _)) = self.clients.get(&client_id) {
+        let public_key = self.public_key.clone();
+        tokio::spawn({
             let backend_arc = backend_arc.clone();
-            tokio::spawn(async move {
+            let runtime_factory = runtime_factory.clone();
+            async move {
                 // Wait a bit to ensure the SSH session with pty is fully established
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
@@ -188,24 +199,21 @@ impl Handler for AnathemaSSHServer {
 
                 match tokio::task::spawn_blocking(move || {
                     let mut backend = backend_clone.blocking_lock();
-                    (app_runner_factory)(&mut backend)
+                    (runtime_factory)(&mut backend, public_key)
                 })
                 .await
                 {
                     Err(e) => eprintln!("App runner task failed: {}", e),
                     _ => {}
                 }
-            });
-        } else {
-            eprintln!("Failed to find backend for client ID: {}", self.id);
-        }
+            }
+        });
 
         Ok(true)
     }
 
-    /// Accept all authentication attempts with public key
-    /// TODO: Pass the public key to the app runtime to be used in the application
-    async fn auth_publickey(&mut self, _: &str, _: &PublicKey) -> Result<Auth> {
+    async fn auth_publickey(&mut self, _: &str, public_key: &PublicKey) -> Result<Auth> {
+        self.public_key = Some(public_key.clone());
         Ok(Auth::Accept)
     }
 
@@ -231,7 +239,7 @@ impl Handler for AnathemaSSHServer {
                 session.close(channel)?;
             }
         }
-        if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
+        if let Some(terminal_handle) = self.terminal_handle.as_mut() {
             terminal_handle.push_input(data);
         } else {
             eprintln!("Backend not found for client {}, input lost", self.id);
@@ -241,8 +249,6 @@ impl Handler for AnathemaSSHServer {
     }
 
     async fn channel_close(&mut self, _channel: ChannelId, _session: &mut Session) -> Result<()> {
-        self.clients.remove(&self.id);
-
         Ok(())
     }
 
@@ -258,7 +264,7 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<()> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
+        if let Some(terminal_handle) = self.terminal_handle.as_mut() {
             terminal_handle.push_event(Event::Resize(size));
         }
 
@@ -279,7 +285,7 @@ impl Handler for AnathemaSSHServer {
     ) -> Result<()> {
         let size = Size::new(col_width as u16, row_height as u16);
 
-        if let Some((_, terminal_handle)) = self.clients.get_mut(&self.id) {
+        if let Some(terminal_handle) = self.terminal_handle.as_mut() {
             terminal_handle.push_event(Event::Resize(size));
         }
 

@@ -8,7 +8,7 @@ use anathema_state::{State, Value};
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let mut server = AnathemaSSHServer::builder()
-        .runtime_factory(|backend| {
+        .runtime_factory(|backend, _public_key| {
             let doc = Document::new("@main");
             let mut builder = Runtime::builder(doc, backend);
             builder
