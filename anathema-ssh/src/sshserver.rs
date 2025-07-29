@@ -7,7 +7,8 @@ use anathema_widgets::components::events::Event;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::{QueueableCommand, cursor, terminal};
 use rand_core::OsRng;
-use russh::keys::ssh_key::{self, PublicKey};
+use russh::keys::PublicKey;
+use russh::keys::ssh_key::{self};
 use russh::{Channel, ChannelId, Pty};
 use russh::{CryptoVec, server::*};
 
@@ -16,7 +17,7 @@ use crate::error::Result;
 use crate::sshbackend::SSHBackend;
 use crate::terminalhandle::TerminalHandle;
 
-type RuntimeFactory = Arc<dyn Fn(&mut SSHBackend, Option<PublicKey>) -> anathema_runtime::Result<()> + Send + Sync>;
+type RuntimeFactory = Arc<dyn Fn(&mut SSHBackend, Option<String>) -> anathema_runtime::Result<()> + Send + Sync>;
 
 pub struct AnathemaSSHServerBuilder {
     runtime_factory: Option<RuntimeFactory>,
@@ -30,7 +31,7 @@ impl AnathemaSSHServerBuilder {
     /// The factory should return a closure that takes a mutable reference to `SSHBackend`.
     pub fn runtime_factory<F>(mut self, app_runner: F) -> Self
     where
-        F: Fn(&mut SSHBackend, Option<PublicKey>) -> anathema_runtime::Result<()> + Send + Sync + 'static,
+        F: Fn(&mut SSHBackend, Option<String>) -> anathema_runtime::Result<()> + Send + Sync + 'static,
     {
         self.runtime_factory = Some(Arc::new(app_runner));
         self
@@ -171,7 +172,7 @@ pub struct ClientHandler {
     /// Whether mouse support is enabled
     mouse_enabled: bool,
     /// Public key of the client, if authenticated
-    public_key: Option<PublicKey>,
+    public_key: Option<String>,
 }
 
 impl Handler for ClientHandler {
@@ -180,6 +181,8 @@ impl Handler for ClientHandler {
     /// Handle a new SSH client connection
     async fn channel_open_session(&mut self, channel: Channel<Msg>, session: &mut Session) -> Result<bool> {
         let terminal_handle = TerminalHandle::start(session.handle(), channel.id()).await;
+
+        self.terminal_handle = Some(terminal_handle.clone());
 
         let backend = SSHBackend::new(terminal_handle.clone())?;
 
@@ -213,7 +216,7 @@ impl Handler for ClientHandler {
     }
 
     async fn auth_publickey(&mut self, _: &str, public_key: &PublicKey) -> Result<Auth> {
-        self.public_key = Some(public_key.clone());
+        self.public_key = Some(public_key.to_string());
         Ok(Auth::Accept)
     }
 
