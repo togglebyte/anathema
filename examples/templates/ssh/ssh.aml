@@ -1,0 +1,12 @@
+align [alignment: "centre"]
+    border
+        vstack
+            hstack
+                text [foreground: "yellow"] "Ticks:"
+                text [foreground: "yellow", bold: true] state.number
+            hstack
+                text [foreground: "red"] "Events:"
+                text [foreground: "red", bold: true] state.events
+
+        
+

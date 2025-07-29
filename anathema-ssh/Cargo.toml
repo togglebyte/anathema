@@ -1,0 +1,31 @@
+[package]
+name = "anathema-ssh"
+license = "MIT"
+description = "Anathema SSH Wrapper"
+version.workspace = true
+edition.workspace = true
+documentation = "https://togglebyte.github.io/anathema-guide/"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
+
+[dependencies]
+anathema-backend = { workspace = true }
+anathema-runtime = { workspace = true }
+anathema-geometry = { workspace = true }
+anathema-widgets = { workspace = true }
+anathema-value-resolver = { workspace = true }
+async-trait = "0.1.88"
+crossterm = { workspace = true }
+futures = "0.3"
+russh = "0.53.0"
+ssh-key = "0.6.7"
+tokio = { version = "1.46.1", features = ["sync", "rt-multi-thread", "macros"] }
+rand_core = { version = "0.6.4", features = ["getrandom", "std"] }
+terminput = "0.5.3"
+
+[features]
+default = []
+ssh = []
+
+[lints]
+workspace = true

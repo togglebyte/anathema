@@ -8,7 +8,12 @@ pub enum KeyState {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct KeyEvent {
     pub code: KeyCode,
+    pub shift: bool,
     pub ctrl: bool,
+    pub alt: bool,
+    pub super_key: bool,
+    pub hyper: bool,
+    pub meta: bool,
     pub state: KeyState,
 }
 

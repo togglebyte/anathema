@@ -6,6 +6,7 @@ pub use {
     anathema_default_widgets as default_widgets, // default widgets
     anathema_geometry as geometry,               // geometry
     anathema_runtime as runtime,                 // runtime
+    anathema_ssh as ssh,                         // ssh
     anathema_state as state,                     // state
     anathema_state_derive as derive,             // derive
     anathema_store as store,                     // store
