@@ -3,23 +3,27 @@ use std::ops::{Deref, DerefMut};
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::smallmap::SmallMap;
-use anathema_templates::Expression;
+use anathema_store::slab::Composite;
+use anathema_templates::expressions::ExpressionId;
 
 use crate::attributes::ValueKey;
-use crate::expression::{ResolvedState, ValueExpr, ValueResolutionContext, resolve_value};
+use crate::expression::{ResolvedState, ResolvedExpr, ValueResolutionContext, resolve_value};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
+// pub type ValueMap = Composite<Value, Key>;
+
 pub type Values<'bp> = SmallMap<ValueKey<'bp>, Value<'bp>>;
 
-pub fn resolve<'bp>(expr: &'bp Expression, ctx: &ResolverCtx<'_, 'bp>, sub: impl Into<Subscriber>) -> Value<'bp> {
+pub fn resolve<'bp>(expr_id: ExpressionId, ctx: &ResolverCtx<'_, 'bp>, sub: impl Into<Subscriber>) -> Value<'bp> {
+    let expr = ctx.expressions.get(expr_id);
     let resolver = Resolver::new(ctx);
     let value_expr = resolver.resolve(expr);
     Value::resolve(value_expr, sub.into(), ctx.attribute_storage)
 }
 
 pub fn resolve_collection<'bp>(
-    expr: &'bp Expression,
+    expr: ExpressionId,
     ctx: &ResolverCtx<'_, 'bp>,
     sub: impl Into<Subscriber>,
 ) -> Collection<'bp> {
@@ -64,7 +68,7 @@ impl<'bp> Collection<'bp> {
 /// This should be evaluated fully for the `ValueKind`
 #[derive(Debug)]
 pub struct Value<'bp> {
-    pub(crate) expr: ValueExpr<'bp>,
+    pub(crate) expr: ResolvedExpr<'bp>,
     pub(crate) sub: Subscriber,
     pub(crate) kind: ValueKind<'bp>,
     pub(crate) resolved: ResolvedState,
@@ -74,7 +78,7 @@ pub struct Value<'bp> {
 impl<'bp> Value<'bp> {
     pub(crate) fn static_val(value: impl Into<ValueKind<'bp>>) -> Self {
         Self {
-            expr: ValueExpr::Null,
+            expr: ResolvedExpr::Null,
             kind: value.into(),
             sub: anathema_state::Subscriber::MAX,
             resolved: ResolvedState::Resolved,
@@ -82,7 +86,7 @@ impl<'bp> Value<'bp> {
         }
     }
 
-    pub fn resolve(expr: ValueExpr<'bp>, sub: Subscriber, attribute_storage: &AttributeStorage<'bp>) -> Self {
+    pub fn resolve(expr: ResolvedExpr<'bp>, sub: Subscriber, attribute_storage: &AttributeStorage<'bp>) -> Self {
         let mut ctx = ValueResolutionContext::new(attribute_storage, sub, ResolvedState::Unresolved);
         let kind = resolve_value(&expr, &mut ctx);
 
@@ -567,7 +571,7 @@ impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{Hex, Map, Maybe, States};
-    use anathema_templates::Variables;
+    use anathema_templates::VariableStorage;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
@@ -594,7 +598,7 @@ pub(crate) mod test {
         let expr = index(list([1, 2, 3]), add(ident("index"), num(1)));
 
         let mut states = States::new();
-        let mut globals = Variables::new();
+        let mut globals = VariableStorage::new();
         globals.define_global("index", 0).unwrap();
 
         setup(&mut states, globals, |test| {
@@ -902,7 +906,7 @@ pub(crate) mod test {
     fn str_resolve() {
         // state[empty|full]
         let mut states = States::new();
-        let mut globals = Variables::new();
+        let mut globals = VariableStorage::new();
         globals.define_global("full", "string").unwrap();
         setup(&mut states, globals, |test| {
             let expr = index(ident("state"), either(ident("empty"), ident("full")));
@@ -939,13 +943,13 @@ pub(crate) mod test {
         let mut states = States::new();
         let expr = either(index(ident("state"), strlit("num")), num(2));
 
-        setup(&mut states, Variables::new(), |test| {
+        setup(&mut states, VariableStorage::new(), |test| {
             test.with_state(|state| state.num.set(0));
             let value = test.eval(&expr);
             assert_eq!(2, value.as_int().unwrap());
         });
 
-        setup(&mut states, Variables::new(), |test| {
+        setup(&mut states, VariableStorage::new(), |test| {
             test.with_state(|state| state.num.set(1));
             let value = test.eval(&expr);
             assert_eq!(1, value.as_int().unwrap());
@@ -955,7 +959,7 @@ pub(crate) mod test {
     #[test]
     fn test_either() {
         let mut states = States::new();
-        let mut globals = Variables::new();
+        let mut globals = VariableStorage::new();
         globals.define_global("missing", 111).unwrap();
         setup(&mut states, globals, |test| {
             let expr = either(ident("missings"), num(2));

@@ -4,7 +4,7 @@ use anathema_store::slab::{Gen, SecondaryMap};
 use anathema_store::smallmap::SmallIndex;
 
 use crate::ValueKind;
-use crate::expression::ValueExpr;
+use crate::expression::ResolvedExpr;
 use crate::value::{Value, Values};
 
 type WidgetId = anathema_store::slab::Key;
@@ -253,7 +253,7 @@ impl<'bp> Attributes<'bp> {
         })
     }
 
-    pub(super) fn get_value_expr(&self, key: &str) -> Option<ValueExpr<'bp>> {
+    pub(super) fn get_value_expr(&self, key: &str) -> Option<ResolvedExpr<'bp>> {
         let value = self.attribs.get(key)?;
         Some(value.expr.clone())
     }

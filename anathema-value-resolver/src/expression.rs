@@ -14,7 +14,7 @@ macro_rules! or_null {
     ($val:expr) => {
         match $val {
             Some(val) => val,
-            None => return ValueExpr::Null,
+            None => return ResolvedExpr::Null,
         }
     };
 }
@@ -96,7 +96,7 @@ pub enum Kind<T> {
 }
 
 #[derive(Debug, Clone)]
-pub enum ValueExpr<'bp> {
+pub enum ResolvedExpr<'bp> {
     Bool(Kind<bool>),
     Char(Kind<char>),
     Int(Kind<i64>),
@@ -124,13 +124,13 @@ pub enum ValueExpr<'bp> {
 
     Call {
         fun_ptr: &'bp Function,
-        args: Box<[ValueExpr<'bp>]>,
+        args: Box<[ResolvedExpr<'bp>]>,
     },
 
     Null,
 }
 
-impl<'bp> From<Primitive> for ValueExpr<'bp> {
+impl<'bp> From<Primitive> for ResolvedExpr<'bp> {
     fn from(value: Primitive) -> Self {
         match value {
             Primitive::Bool(b) => Self::Bool(Kind::Static(b)),
@@ -142,7 +142,7 @@ impl<'bp> From<Primitive> for ValueExpr<'bp> {
     }
 }
 
-impl<'bp> From<PendingValue> for ValueExpr<'bp> {
+impl<'bp> From<PendingValue> for ResolvedExpr<'bp> {
     fn from(value: PendingValue) -> Self {
         match value.type_info() {
             Type::Int => Self::Int(Kind::Dyn(value)),
@@ -165,15 +165,15 @@ impl<'bp> From<PendingValue> for ValueExpr<'bp> {
 
 // Resolve an expression to a value kind, this is the final value in the chain
 pub(crate) fn resolve_value<'a, 'bp>(
-    value_expr: &ValueExpr<'bp>,
+    value_expr: &ResolvedExpr<'bp>,
     ctx: &mut ValueResolutionContext<'a, 'bp>,
 ) -> ValueKind<'bp> {
     match value_expr {
         // -----------------------------------------------------------------------------
         //   - Primitives -
         // -----------------------------------------------------------------------------
-        ValueExpr::Bool(Kind::Static(b)) => ValueKind::Bool(*b),
-        ValueExpr::Bool(Kind::Dyn(pending)) => {
+        ResolvedExpr::Bool(Kind::Static(b)) => ValueKind::Bool(*b),
+        ResolvedExpr::Bool(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_bool() {
@@ -181,8 +181,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
                 None => ValueKind::Null,
             }
         }
-        ValueExpr::Char(Kind::Static(c)) => ValueKind::Char(*c),
-        ValueExpr::Char(Kind::Dyn(pending)) => {
+        ResolvedExpr::Char(Kind::Static(c)) => ValueKind::Char(*c),
+        ResolvedExpr::Char(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_char() {
@@ -190,8 +190,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
                 None => ValueKind::Null,
             }
         }
-        ValueExpr::Int(Kind::Static(i)) => ValueKind::Int(*i),
-        ValueExpr::Int(Kind::Dyn(pending)) => {
+        ResolvedExpr::Int(Kind::Static(i)) => ValueKind::Int(*i),
+        ResolvedExpr::Int(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_int() {
@@ -199,8 +199,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
                 None => ValueKind::Null,
             }
         }
-        ValueExpr::Float(Kind::Static(f)) => ValueKind::Float(*f),
-        ValueExpr::Float(Kind::Dyn(pending)) => {
+        ResolvedExpr::Float(Kind::Static(f)) => ValueKind::Float(*f),
+        ResolvedExpr::Float(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_float() {
@@ -208,8 +208,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
                 None => ValueKind::Null,
             }
         }
-        ValueExpr::Hex(Kind::Static(h)) => ValueKind::Hex(*h),
-        ValueExpr::Hex(Kind::Dyn(pending)) => {
+        ResolvedExpr::Hex(Kind::Static(h)) => ValueKind::Hex(*h),
+        ResolvedExpr::Hex(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_hex() {
@@ -217,8 +217,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
                 None => ValueKind::Null,
             }
         }
-        ValueExpr::Color(Kind::Static(h)) => ValueKind::Color(*h),
-        ValueExpr::Color(Kind::Dyn(pending)) => {
+        ResolvedExpr::Color(Kind::Static(h)) => ValueKind::Color(*h),
+        ResolvedExpr::Color(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_color() {
@@ -226,8 +226,8 @@ pub(crate) fn resolve_value<'a, 'bp>(
                 None => ValueKind::Null,
             }
         }
-        ValueExpr::Str(Kind::Static(s)) => ValueKind::Str(Cow::Borrowed(s)),
-        ValueExpr::Str(Kind::Dyn(pending)) => {
+        ResolvedExpr::Str(Kind::Static(s)) => ValueKind::Str(Cow::Borrowed(s)),
+        ResolvedExpr::Str(Kind::Dyn(pending)) => {
             ctx.maybe_subscribe(pending);
             let Some(state) = pending.as_state() else { return ValueKind::Null };
             match state.as_str() {
@@ -239,16 +239,16 @@ pub(crate) fn resolve_value<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Operations and conditionals -
         // -----------------------------------------------------------------------------
-        ValueExpr::Not(value_expr) => {
+        ResolvedExpr::Not(value_expr) => {
             let value = resolve_value(value_expr, ctx);
             ValueKind::Bool(!value.truthiness())
         }
-        ValueExpr::Negative(value_expr) => match resolve_value(value_expr, ctx) {
+        ResolvedExpr::Negative(value_expr) => match resolve_value(value_expr, ctx) {
             ValueKind::Int(n) => ValueKind::Int(-n),
             ValueKind::Float(n) => ValueKind::Float(-n),
             _ => ValueKind::Null,
         },
-        ValueExpr::Equality(lhs, rhs, equality) => {
+        ResolvedExpr::Equality(lhs, rhs, equality) => {
             let lhs = resolve_value(lhs, ctx);
             let rhs = resolve_value(rhs, ctx);
             let b = match equality {
@@ -261,7 +261,7 @@ pub(crate) fn resolve_value<'a, 'bp>(
             };
             ValueKind::Bool(b)
         }
-        ValueExpr::LogicalOp(lhs, rhs, logical_op) => {
+        ResolvedExpr::LogicalOp(lhs, rhs, logical_op) => {
             let ValueKind::Bool(lhs) = resolve_value(lhs, ctx) else { return ValueKind::Null };
             let ValueKind::Bool(rhs) = resolve_value(rhs, ctx) else { return ValueKind::Null };
             let b = match logical_op {
@@ -270,21 +270,21 @@ pub(crate) fn resolve_value<'a, 'bp>(
             };
             ValueKind::Bool(b)
         }
-        ValueExpr::Op(lhs, rhs, op) => match (resolve_value(lhs, ctx), resolve_value(rhs, ctx)) {
+        ResolvedExpr::Op(lhs, rhs, op) => match (resolve_value(lhs, ctx), resolve_value(rhs, ctx)) {
             (ValueKind::Int(lhs), ValueKind::Int(rhs)) => ValueKind::Int(int_op(lhs, rhs, *op)),
             (ValueKind::Int(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs as f64, rhs, *op)),
             (ValueKind::Float(lhs), ValueKind::Int(rhs)) => ValueKind::Float(float_op(lhs, rhs as f64, *op)),
             (ValueKind::Float(lhs), ValueKind::Float(rhs)) => ValueKind::Float(float_op(lhs, rhs, *op)),
             _ => ValueKind::Null,
         },
-        ValueExpr::Either(first, second) => {
+        ResolvedExpr::Either(first, second) => {
             let value = resolve_value(first, ctx);
             if value.truthiness() {
                 return value;
             }
             resolve_value(second, ctx)
         }
-        ValueExpr::Range(from, to) => {
+        ResolvedExpr::Range(from, to) => {
             let from = match resolve_int(from, ctx) {
                 Some(i) => i,
                 None => return ValueKind::Null,
@@ -300,27 +300,27 @@ pub(crate) fn resolve_value<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Maps, lists and maybe -
         // -----------------------------------------------------------------------------
-        ValueExpr::Map(_) => ValueKind::Map,
-        ValueExpr::DynMap(map) => ValueKind::DynMap(*map),
-        ValueExpr::Attributes(_) => ValueKind::Attributes,
-        ValueExpr::DynList(value) => {
+        ResolvedExpr::Map(_) => ValueKind::Map,
+        ResolvedExpr::DynMap(map) => ValueKind::DynMap(*map),
+        ResolvedExpr::Attributes(_) => ValueKind::Attributes,
+        ResolvedExpr::DynList(value) => {
             ctx.maybe_subscribe(value);
             ValueKind::DynList(*value)
         }
-        ValueExpr::List(l) => {
+        ResolvedExpr::List(l) => {
             let values = l.iter().map(|v| resolve_value(v, ctx)).collect();
             ValueKind::List(values)
         }
-        ValueExpr::Index(src, index) => {
+        ResolvedExpr::Index(src, index) => {
             let expr = resolve_index(src, index, ctx);
             resolve_value(&expr, ctx)
         }
-        ValueExpr::Composite(comp) => ValueKind::Composite(*comp),
+        ResolvedExpr::Composite(comp) => ValueKind::Composite(*comp),
 
         // -----------------------------------------------------------------------------
         //   - Call -
         // -----------------------------------------------------------------------------
-        ValueExpr::Call { fun_ptr, args } => {
+        ResolvedExpr::Call { fun_ptr, args } => {
             let args = args.iter().map(|arg| resolve_value(arg, ctx)).collect::<Box<_>>();
             fun_ptr.invoke(&args)
         }
@@ -328,22 +328,22 @@ pub(crate) fn resolve_value<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Null -
         // -----------------------------------------------------------------------------
-        ValueExpr::Null => ValueKind::Null,
+        ResolvedExpr::Null => ValueKind::Null,
     }
 }
 
-fn resolve_pending<'bp>(val: PendingValue, ctx: &mut ValueResolutionContext<'_, 'bp>) -> ValueExpr<'static> {
+fn resolve_pending<'bp>(val: PendingValue, ctx: &mut ValueResolutionContext<'_, 'bp>) -> ResolvedExpr<'static> {
     match val.type_info() {
-        Type::Int => ValueExpr::Int(Kind::Dyn(val)),
-        Type::Float => ValueExpr::Float(Kind::Dyn(val)),
-        Type::Char => ValueExpr::Char(Kind::Dyn(val)),
-        Type::String => ValueExpr::Str(Kind::Dyn(val)),
-        Type::Bool => ValueExpr::Bool(Kind::Dyn(val)),
-        Type::Hex => ValueExpr::Hex(Kind::Dyn(val)),
-        Type::Color => ValueExpr::Color(Kind::Dyn(val)),
-        Type::Map | Type::Composite => ValueExpr::DynMap(val),
-        Type::List => ValueExpr::DynList(val),
-        Type::Unit => ValueExpr::Null,
+        Type::Int => ResolvedExpr::Int(Kind::Dyn(val)),
+        Type::Float => ResolvedExpr::Float(Kind::Dyn(val)),
+        Type::Char => ResolvedExpr::Char(Kind::Dyn(val)),
+        Type::String => ResolvedExpr::Str(Kind::Dyn(val)),
+        Type::Bool => ResolvedExpr::Bool(Kind::Dyn(val)),
+        Type::Hex => ResolvedExpr::Hex(Kind::Dyn(val)),
+        Type::Color => ResolvedExpr::Color(Kind::Dyn(val)),
+        Type::Map | Type::Composite => ResolvedExpr::DynMap(val),
+        Type::List => ResolvedExpr::DynList(val),
+        Type::Unit => ResolvedExpr::Null,
         Type::Maybe => {
             let state = or_null!(val.as_state());
             let maybe = or_null!(state.as_maybe());
@@ -355,7 +355,7 @@ fn resolve_pending<'bp>(val: PendingValue, ctx: &mut ValueResolutionContext<'_, 
                 }
                 None => {
                     ctx.maybe_subscribe(&val);
-                    return ValueExpr::Null;
+                    return ResolvedExpr::Null;
                 }
             };
             resolve_pending(inner, ctx)
@@ -364,16 +364,16 @@ fn resolve_pending<'bp>(val: PendingValue, ctx: &mut ValueResolutionContext<'_, 
 }
 
 fn resolve_index<'bp>(
-    src: &ValueExpr<'bp>,
-    index: &ValueExpr<'bp>,
+    src: &ResolvedExpr<'bp>,
+    index: &ResolvedExpr<'bp>,
     ctx: &mut ValueResolutionContext<'_, 'bp>,
-) -> ValueExpr<'bp> {
+) -> ResolvedExpr<'bp> {
     match src {
-        ValueExpr::DynMap(value) | ValueExpr::Composite(value) => {
+        ResolvedExpr::DynMap(value) | ResolvedExpr::Composite(value) => {
             let state = or_null!(value.as_state());
             let map = match state.as_any_map() {
                 Some(map) => map,
-                None => return ValueExpr::Null,
+                None => return ResolvedExpr::Null,
             };
 
             let key = or_null!(resolve_str(index, ctx));
@@ -388,18 +388,18 @@ fn resolve_index<'bp>(
                 }
                 None => {
                     ctx.partially_resolved(value);
-                    return ValueExpr::Null;
+                    return ResolvedExpr::Null;
                 }
             };
 
             ctx.resolved(&val);
             resolve_pending(val, ctx)
         }
-        ValueExpr::DynList(value) => {
+        ResolvedExpr::DynList(value) => {
             let state = or_null!(value.as_state());
             let list = match state.as_any_list() {
                 Some(list) => list,
-                None => return ValueExpr::Null,
+                None => return ResolvedExpr::Null,
             };
 
             let index = or_null!(resolve_int(index, ctx));
@@ -418,42 +418,42 @@ fn resolve_index<'bp>(
                 }
                 None => {
                     ctx.partially_resolved(value);
-                    return ValueExpr::Null;
+                    return ResolvedExpr::Null;
                 }
             };
             resolve_pending(val, ctx)
         }
-        ValueExpr::Attributes(widget_id) => {
+        ResolvedExpr::Attributes(widget_id) => {
             let key = or_null!(resolve_str(index, ctx));
             let attributes = ctx.attribute_storage.get(*widget_id);
             or_null!(attributes.get_value_expr(&key))
         }
-        ValueExpr::List(list) => {
+        ResolvedExpr::List(list) => {
             let index = or_null!(resolve_int(index, ctx));
             match list.get(index).cloned() {
                 Some(val) => val,
-                None => ValueExpr::Null,
+                None => ResolvedExpr::Null,
             }
         }
-        ValueExpr::Map(hash_map) => {
+        ResolvedExpr::Map(hash_map) => {
             let key = or_null!(resolve_str(index, ctx));
             or_null!(hash_map.get(&*key).cloned())
         }
-        ValueExpr::Index(inner_src, inner_index) => {
+        ResolvedExpr::Index(inner_src, inner_index) => {
             let src = resolve_index(inner_src, inner_index, ctx);
             resolve_index(&src, index, ctx)
         }
-        ValueExpr::Either(first, second) => {
+        ResolvedExpr::Either(first, second) => {
             let src = match resolve_expr(first, ctx) {
-                None | Some(ValueExpr::Null) => match resolve_expr(second, ctx) {
-                    None | Some(ValueExpr::Null) => return ValueExpr::Null,
+                None | Some(ResolvedExpr::Null) => match resolve_expr(second, ctx) {
+                    None | Some(ResolvedExpr::Null) => return ResolvedExpr::Null,
                     Some(e) => e,
                 },
                 Some(e) => e,
             };
             resolve_index(&src, index, ctx)
         }
-        ValueExpr::Null => ValueExpr::Null,
+        ResolvedExpr::Null => ResolvedExpr::Null,
         // TODO: see unreachable message
         val => unreachable!(
             "resolving index: this should return null eventually: {val:?} (you probably did something like x.y on a string)"
@@ -461,25 +461,25 @@ fn resolve_index<'bp>(
     }
 }
 
-fn resolve_expr<'bp>(expr: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<ValueExpr<'bp>> {
+fn resolve_expr<'bp>(expr: &ResolvedExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<ResolvedExpr<'bp>> {
     match expr {
-        ValueExpr::Either(first, second) => match resolve_expr(first, ctx) {
-            None | Some(ValueExpr::Null) => resolve_expr(second, ctx),
+        ResolvedExpr::Either(first, second) => match resolve_expr(first, ctx) {
+            None | Some(ResolvedExpr::Null) => resolve_expr(second, ctx),
             expr => expr,
         },
-        ValueExpr::Index(src, index) => Some(resolve_index(src, index, ctx)),
+        ResolvedExpr::Index(src, index) => Some(resolve_index(src, index, ctx)),
         _ => None,
     }
 }
 
-fn resolve_str<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Cow<'bp, str>> {
+fn resolve_str<'bp>(index: &ResolvedExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<Cow<'bp, str>> {
     match resolve_value(index, ctx) {
         ValueKind::Str(s) => Some(s),
         _ => None,
     }
 }
 
-fn resolve_int<'bp>(index: &ValueExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<usize> {
+fn resolve_int<'bp>(index: &ResolvedExpr<'bp>, ctx: &mut ValueResolutionContext<'_, 'bp>) -> Option<usize> {
     let value = resolve_value(index, ctx);
     match value {
         ValueKind::Int(index) => Some(index as usize),

@@ -4,14 +4,14 @@ use std::sync::OnceLock;
 use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::error::ErrorKind;
-use crate::expressions::Expression;
+use crate::expressions::{Expression, ExpressionId, Expressions};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum Global {
     // The global value was set from the runtime
-    Runtime(Expression),
+    Runtime(ExpressionId),
     // The global value originates from a template
-    Template(Expression),
+    Template(ExpressionId),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -26,8 +26,8 @@ impl Globals {
         self.0.contains_key(ident)
     }
 
-    pub fn get(&self, ident: &str) -> Option<&Expression> {
-        match self.0.get(ident)? {
+    pub fn get(&self, ident: &str) -> Option<ExpressionId> {
+        match self.0.get(ident).copied()? {
             Global::Runtime(expression) | Global::Template(expression) => Some(expression),
         }
     }
@@ -76,15 +76,15 @@ impl SlabIndex for VarId {
 pub enum Variable {
     /// A variable is defined but the value will be available at runtime, e.g `for-loops` and
     /// `with`
-    Definition(Expression),
+    Definition(ExpressionId),
     /// A value is declared, either as a local value or a global value
-    Declaration(Expression),
+    Declaration(ExpressionId),
 }
 
 impl Variable {
-    fn as_expression(&self) -> &Expression {
+    fn as_expression(&self) -> ExpressionId {
         match self {
-            Variable::Definition(expr) | Variable::Declaration(expr) => expr,
+            Variable::Definition(expr) | Variable::Declaration(expr) => *expr,
         }
     }
 }
@@ -242,7 +242,7 @@ impl Declarations {
 /// Variable access, declaration and assignment
 /// during the compilation step.
 #[derive(Debug)]
-pub struct Variables {
+pub struct VariableStorage {
     globals: Globals,
     root: RootScope,
     current: ScopeId,
@@ -251,13 +251,13 @@ pub struct Variables {
     declarations: Declarations,
 }
 
-impl Default for Variables {
+impl Default for VariableStorage {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Variables {
+impl VariableStorage {
     pub fn new() -> Self {
         let root = RootScope::default();
         Self {
@@ -292,28 +292,33 @@ impl Variables {
         self.globals.clear_template_globals();
     }
 
-    pub fn register_global(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> Result<(), ErrorKind> {
-        let expression = value.into();
-        let global = Global::Runtime(expression);
+    pub fn register_global(
+        &mut self,
+        ident: impl Into<String>,
+        value: impl Into<Expression>,
+        expressions: &mut Expressions,
+    ) -> Result<(), ErrorKind> {
+        let id = expressions.insert(value.into());
+        let global = Global::Runtime(id);
         self.set_global(ident, global)
     }
 
-    pub fn define_global(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> Result<(), ErrorKind> {
+    pub fn define_global(&mut self, ident: impl Into<String>, value: ExpressionId) -> Result<(), ErrorKind> {
         let expression = value.into();
         let global = Global::Template(expression);
         self.set_global(ident, global)
     }
 
-    pub fn define_local(&mut self, ident: impl Into<String>, value: impl Into<Expression>) -> VarId {
-        let value = value.into();
+    pub fn define_local(&mut self, ident: impl Into<String>, value: ExpressionId) -> VarId {
         let scope_id = self.current.clone();
         let var_id = self.store.insert(Variable::Declaration(value));
         self.declare_at(ident, var_id, scope_id)
     }
 
-    pub fn declare_local(&mut self, ident: impl Into<String>) -> VarId {
+    pub fn declare_local(&mut self, ident: impl Into<String>, expressions: &mut Expressions) -> VarId {
         let ident = ident.into();
-        let value = Variable::Definition(Expression::Ident(ident.clone()));
+        let id = expressions.insert(Expression::Ident(ident.clone()));
+        let value = Variable::Definition(id);
         let var_id = self.store.insert(value);
         let scope_id = self.current.clone();
         self.declare_at(ident, var_id, scope_id)
@@ -355,18 +360,18 @@ impl Variables {
     }
 
     /// Load a variable from the store
-    pub fn load(&self, var: VarId) -> Option<&Expression> {
+    pub fn load(&self, var: VarId) -> Option<ExpressionId> {
         self.store.get(var).map(Variable::as_expression)
     }
 
     // Fetch and load a value from its ident
     #[cfg(test)]
-    fn fetch_load(&self, ident: &str) -> Option<&Expression> {
+    fn fetch_load(&self, ident: &str) -> Option<ExpressionId> {
         let id = self.declarations.get(ident, &self.current, self.boundary())?;
         self.load(id)
     }
 
-    pub fn global_lookup(&self, ident: &str) -> Option<&Expression> {
+    pub fn global_lookup(&self, ident: &str) -> Option<ExpressionId> {
         self.globals.get(ident)
     }
 
@@ -375,8 +380,8 @@ impl Variables {
     }
 }
 
-impl From<Variables> for HashMap<String, Variable> {
-    fn from(mut vars: Variables) -> Self {
+impl From<VariableStorage> for HashMap<String, Variable> {
+    fn from(mut vars: VariableStorage) -> Self {
         let mut hm = HashMap::new();
 
         for (key, mut ids) in vars.declarations.0.into_iter() {
@@ -394,7 +399,6 @@ impl From<Variables> for HashMap<String, Variable> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::expressions::num;
 
     impl From<usize> for VarId {
         fn from(value: usize) -> Self {
@@ -433,37 +437,41 @@ mod test {
 
     #[test]
     fn variable_declaration() {
-        let mut vars = Variables::new();
-        let expected = Expression::from(123i64);
+        let mut vars = VariableStorage::new();
+        let mut expressions = Expressions::empty();
 
-        vars.define_local("var", expected.clone());
+        let expected = expressions.insert(Expression::from(123i64));
+        vars.define_local("var", expected);
         let id = vars.fetch("var").unwrap();
         let value = vars.load(id).unwrap();
 
-        assert_eq!(&expected, value);
+        assert_eq!(expected, value);
     }
 
     #[test]
     fn shadow_value() {
+        let mut vars = VariableStorage::new();
+        let mut expressions = Expressions::empty();
         let ident = "var";
-        let mut vars = Variables::new();
-        let value_a = Expression::from("1");
-        let value_b = Expression::from("2");
+        let value_a = expressions.insert(Expression::from("1"));
+        let value_b = expressions.insert(Expression::from("2"));
 
         let first_value_ref = vars.define_local(ident, value_a.clone());
         let second_value_ref = vars.define_local(ident, value_b.clone());
-        assert_eq!(&value_a, vars.load(first_value_ref).unwrap());
-        assert_eq!(&value_b, vars.load(second_value_ref).unwrap());
+        assert_eq!(value_a, vars.load(first_value_ref).unwrap());
+        assert_eq!(value_b, vars.load(second_value_ref).unwrap());
     }
 
     #[test]
     fn scoping_variables_inaccessible_sibling() {
         // Declare a variable in a sibling and fail to access that value
-        let mut vars = Variables::new();
+        let mut vars = VariableStorage::new();
+        let mut expressions = Expressions::empty();
+        let inaccessible = expressions.insert("inaccessible".into());
         let ident = "var";
 
         vars.push();
-        vars.define_local(ident, "inaccessible");
+        vars.define_local(ident, inaccessible);
         assert!(vars.fetch(ident).is_some());
         vars.pop();
 
@@ -513,26 +521,30 @@ mod test {
 
     #[test]
     fn get_inside_boundary() {
-        let mut vars = Variables::new();
+        let mut vars = VariableStorage::new();
+        let mut expressions = Expressions::empty();
+        let one = expressions.insert(1.into());
+        let two = expressions.insert(2.into());
+        let three = expressions.insert(3.into());
 
         // Define a variable in the root scope
-        _ = vars.define_local("var", 1);
+        _ = vars.define_local("var", one);
 
         // Create a new unique scope and boundary.
         // * `var` should be inaccessible from within the new scope boundary
         // * `outer_var` should be inaccessible to the root scope
         vars.push_scope_boundary();
         assert!(vars.fetch("var").is_none());
-        _ = vars.define_local("var", 2);
-        _ = vars.define_local("other_var", 3);
-        assert_eq!(vars.fetch_load("var").unwrap(), &*num(2));
+        _ = vars.define_local("var", two);
+        _ = vars.define_local("other_var", three);
+        assert_eq!(vars.fetch_load("var").unwrap(), two);
         vars.push();
-        assert_eq!(vars.fetch_load("other_var").unwrap(), &*num(3));
+        assert_eq!(vars.fetch_load("other_var").unwrap(), three);
         vars.pop();
 
         // Return to root scope
         vars.pop_scope_boundary();
-        assert_eq!(vars.fetch_load("var").unwrap(), &*num(1));
+        assert_eq!(vars.fetch_load("var").unwrap(), one);
         assert!(vars.fetch("other_var").is_none());
     }
 }

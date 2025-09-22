@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use anathema_backend::Backend;
 use anathema_default_widgets::register_default_widgets;
 use anathema_geometry::Size;
-use anathema_templates::{Document, Expression, ToSourceKind, Variables};
+use anathema_templates::{Document, Expression, ToSourceKind, VariableStorage};
 use anathema_value_resolver::{Function, FunctionTable};
 use anathema_widgets::components::deferred::DeferredComponents;
 use anathema_widgets::components::events::Event;
@@ -28,7 +28,7 @@ pub struct Builder<G> {
     global_event_handler: G,
     hot_reload: bool,
     function_table: FunctionTable,
-    variables: Variables,
+    variables: VariableStorage,
 }
 
 impl<G: GlobalEventHandler> Builder<G> {
@@ -55,7 +55,7 @@ impl<G: GlobalEventHandler> Builder<G> {
             global_event_handler,
             hot_reload: true,
             function_table: FunctionTable::new(),
-            variables: Variables::new(),
+            variables: VariableStorage::new(),
         }
     }
 
@@ -166,12 +166,13 @@ impl<G: GlobalEventHandler> Builder<G> {
             global_event_handler,
             hot_reload: self.hot_reload,
             function_table: self.function_table,
-            variables: Variables::new(),
+            variables: VariableStorage::new(),
         }
     }
 
     pub fn register_global(&mut self, key: impl Into<String>, value: impl Into<Expression>) -> Result<()> {
-        self.variables.define_global(key, value).map_err(|e| e.to_error(None))?;
+        let id = self.document.expressions.insert(value.into());
+        self.variables.define_global(key, id).map_err(|e| e.to_error(None))?;
         Ok(())
     }
 

@@ -5,7 +5,7 @@ use super::const_eval::const_eval;
 use super::{Context, Statement, Statements};
 use crate::blueprints::{Blueprint, Component, ControlFlow, Else, For, Single, With};
 use crate::error::{ErrorKind, Result};
-use crate::expressions::{Equality, Expression};
+use crate::expressions::{Equality, Expression, ExpressionId};
 use crate::{ComponentBlueprintId, Primitive};
 
 pub(crate) struct Scope {
@@ -52,7 +52,9 @@ impl Scope {
                     is_global,
                 } => {
                     let Some(value) = const_eval(value, ctx) else { continue };
+                    let value = ctx.expressions.insert(value);
                     let binding = ctx.strings.get_unchecked(binding);
+                    // TODO: have a list of keywords here that we fail on
                     if binding == "state" {
                         return Err(
                             ErrorKind::InvalidStatement(format!("{binding} is a reserved identifier"))
@@ -91,11 +93,49 @@ impl Scope {
     fn eval_node(&mut self, ident: StringId, ctx: &mut Context<'_>) -> Result<Blueprint> {
         let ident = ctx.strings.get_unchecked(ident);
         let attributes = self.eval_attributes(ctx)?;
-        let value = self.statements.take_value().and_then(|v| const_eval(v, ctx));
+        let value = self
+            .statements
+            .take_value()
+            .and_then(|v| const_eval(v, ctx))
+            .map(|expr| ctx.expressions.insert(expr));
 
         ctx.variables.push();
         let children = self.consume_scope(ctx)?;
         ctx.variables.pop();
+
+        // node state.value
+        // -> resolve state.value
+        // -> store result in values -> ValueId
+        // -> assign value id as the value for the resolved node
+
+        // values depends on dyn state
+        // nodes depends on values
+
+        // dyn state {
+        //     1: value: ?? (id: 1)
+        //     2: other_value: ?? (id: 2)
+        // }
+
+        // values [
+        //     0: expr 1, -> depends on dyn state 1
+        //     1: expr 3, -> depends on dyn state 1 and 2
+        //     2: expr 1, -> depends on dyn state 1
+        // ]
+
+        // resolved_expressions [
+        //     1: State.value,
+        //     2: State.other_value,
+        //     3: expr 1, expr 2, +
+        // ]
+
+        // vstack
+        //     text state.value -> value 0
+        //     text state.value + state.other_value -> value 1
+        //     border
+        //         text state.value -> (expr 1, scope 2, boundary 1),
+        //     text state.value
+        //     text state.value
+        //     text state.value
 
         let node = Blueprint::Single(Single {
             ident,
@@ -109,21 +149,24 @@ impl Scope {
 
     fn eval_for(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Option<Blueprint>> {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
+        let expr_id = ctx.expressions.insert(data);
+
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
-        ctx.variables.declare_local(binding.clone());
+        ctx.variables.declare_local(binding.clone(), ctx.expressions);
         let body = self.consume_scope(ctx)?;
-        let node = Blueprint::For(For { binding, data, body });
+        let node = Blueprint::For(For { binding, data: expr_id, body });
         Ok(Some(node))
     }
 
     fn eval_with(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Option<Blueprint>> {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
+        let expr_id = ctx.expressions.insert(data);
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
-        ctx.variables.declare_local(binding.clone());
+        ctx.variables.declare_local(binding.clone(), ctx.expressions);
         let body = self.consume_scope(ctx)?;
-        let node = Blueprint::With(With { binding, data, body });
+        let node = Blueprint::With(With { binding, data: expr_id, body });
         Ok(Some(node))
     }
 
@@ -132,13 +175,14 @@ impl Scope {
         scope.eval(ctx)
     }
 
-    fn eval_attributes(&mut self, ctx: &mut Context<'_>) -> Result<SmallMap<String, Expression>> {
+    fn eval_attributes(&mut self, ctx: &mut Context<'_>) -> Result<SmallMap<String, ExpressionId>> {
         let mut hm = SmallMap::empty();
 
         for (key, value) in self.statements.take_attributes() {
             let Some(value) = const_eval(value, ctx) else { continue };
+            let expr_id = ctx.expressions.insert(value);
             let key = ctx.strings.get_unchecked(key);
-            hm.set(key, value);
+            hm.set(key, expr_id);
         }
 
         Ok(hm)
@@ -147,16 +191,19 @@ impl Scope {
     fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
         // Const eval fail = static false
         let cond = const_eval(cond, ctx).unwrap_or(Expression::Primitive(Primitive::Bool(false)));
+        let expr_id = ctx.expressions.insert(cond);
         let body = self.consume_scope(ctx)?;
         if body.is_empty() {
             return Err(ErrorKind::EmptyBody.to_error(ctx.template.path()));
         }
 
-        let mut elses = vec![Else { cond: Some(cond), body }];
+        let mut elses = vec![Else { cond: Some(expr_id), body }];
 
         while let Some(cond) = self.statements.next_else() {
             let body = self.consume_scope(ctx)?;
-            let cond = cond.and_then(|v| const_eval(v, ctx));
+            let cond = cond
+                .and_then(|v| const_eval(v, ctx))
+                .map(|expr| ctx.expressions.insert(expr));
 
             if body.is_empty() {
                 return Err(ErrorKind::EmptyBody.to_error(ctx.template.path()));
@@ -179,6 +226,7 @@ impl Scope {
                 Some(ref switch) => Expression::Equality(switch.clone().into(), case.into(), Equality::Eq),
                 None => Expression::Primitive(Primitive::Bool(false)),
             };
+            let expr_id = ctx.expressions.insert(cond);
 
             let body = match body.is_next_scope() {
                 true => body.take_scope(),
@@ -186,7 +234,7 @@ impl Scope {
             };
             let body = Scope::new(body).eval(ctx)?;
 
-            elses.push(Else { cond: Some(cond), body });
+            elses.push(Else { cond: Some(expr_id), body });
         }
 
         if body.next_default() {
@@ -261,13 +309,13 @@ impl Scope {
 mod test {
     use super::*;
     use crate::document::Document;
-    use crate::{ToSourceKind, Variables, single};
+    use crate::{single, ToSourceKind, VariableStorage};
 
     #[test]
     fn eval_node() {
         let mut doc = Document::new("node");
-        let bp = doc.compile(&mut Variables::new()).unwrap();
-        assert_eq!(bp, single!("node"));
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
+        assert_eq!(blueprint, single!("node"));
     }
 
     #[test]
@@ -277,7 +325,7 @@ mod test {
             b
         ";
         let mut doc = Document::new(src);
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         assert_eq!(blueprint, single!(children @ "a", vec![single!("b")]));
     }
 
@@ -289,7 +337,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::Single(Single { value: Some(_), .. })));
     }
 
@@ -298,7 +346,7 @@ mod test {
         let src = "let state = 1";
 
         let mut doc = Document::new(src);
-        let response = doc.compile(&mut Variables::new());
+        let response = doc.compile(&mut VariableStorage::new());
         assert_eq!(
             response.err().unwrap().to_string(),
             "invalid statement: state is a reserved identifier"
@@ -313,7 +361,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        let response = doc.compile(&mut Variables::new());
+        let response = doc.compile(&mut VariableStorage::new());
         assert_eq!(
             response.err().unwrap().to_string(),
             "invalid statement: state is a reserved identifier"
@@ -327,7 +375,7 @@ mod test {
                 node
         ";
         let mut doc = Document::new(src);
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::For(For { .. })));
     }
 
@@ -341,7 +389,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         let Blueprint::ControlFlow(controlflow) = blueprint else { panic!() };
         assert!(matches!(controlflow.elses[0], Else { .. }));
         assert!(!controlflow.elses.is_empty());
@@ -356,7 +404,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         let Blueprint::ControlFlow(controlflow) = blueprint else { panic!() };
         assert!(matches!(controlflow.elses[0], Else { .. }));
         assert!(!controlflow.elses.is_empty());
@@ -374,7 +422,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         let Blueprint::ControlFlow(controlflow) = blueprint else { panic!() };
         assert!(matches!(controlflow.elses[0], Else { .. }));
         assert!(!controlflow.elses.is_empty());
@@ -387,7 +435,7 @@ mod test {
 
         let mut doc = Document::new(src);
         doc.add_component("comp", comp_src.to_template()).unwrap();
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
 
@@ -412,7 +460,7 @@ mod test {
 
         let mut doc = Document::new(src);
         doc.add_component("comp", comp_src.to_template()).unwrap();
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
 
@@ -426,7 +474,7 @@ mod test {
 
         let mut doc = Document::new(src);
         doc.add_component("comp", "node a".to_template()).unwrap();
-        let _ = doc.compile(&mut Variables::new()).unwrap();
+        let _ = doc.compile(&mut VariableStorage::new()).unwrap();
     }
 
     #[test]
@@ -437,7 +485,7 @@ mod test {
 
         let mut doc = Document::new(src);
         doc.add_component("comp", "node a".to_template()).unwrap();
-        let _ = doc.compile(&mut Variables::new()).unwrap();
+        let _ = doc.compile(&mut VariableStorage::new()).unwrap();
     }
 
     #[test]
@@ -449,7 +497,24 @@ mod test {
 
         let mut doc = Document::new(src);
         doc.add_component("comp", "node a".to_template()).unwrap();
-        let blueprint = doc.compile(&mut Variables::new()).unwrap();
+        let blueprint = doc.compile(&mut VariableStorage::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::With(With { .. })));
+    }
+
+    #[test]
+    fn variable_scopes_panics_on_purpose() {
+        let src = "
+            node
+                if false
+                    node x
+            ";
+
+        let mut variables = VariableStorage::new();
+        let mut doc = Document::new(src);
+        doc.add_component("comp", "node a".to_template()).unwrap();
+        let blueprint = doc.compile(&mut variables).unwrap();
+        // println!("{variables:#?}");
+        eprintln!("--------");
+        panic!("{blueprint:#?}");
     }
 }

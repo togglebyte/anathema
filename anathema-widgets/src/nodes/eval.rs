@@ -48,22 +48,23 @@ impl Evaluator for SingleEval {
         // -----------------------------------------------------------------------------
         let mut attributes = Attributes::empty();
 
-        if let Some(expr) = single.value.as_ref() {
+        if let Some(expr_id) = single.value.as_ref() {
             let ctx = ResolverCtx::new(
                 ctx.globals,
                 scope,
                 ctx.states,
                 ctx.attribute_storage,
                 ctx.function_table,
+                ctx.expressions,
             );
 
             let value = attributes.insert_with(ValueKey::Value, |value_index| {
-                resolve(expr, &ctx, (widget_id, value_index))
+                resolve(*expr_id, &ctx, (widget_id, value_index))
             });
             attributes.value = Some(value);
         }
 
-        for (key, expr) in single.attributes.iter() {
+        for (key, expr_id) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let ctx = ResolverCtx::new(
                     ctx.globals,
@@ -71,8 +72,9 @@ impl Evaluator for SingleEval {
                     ctx.states,
                     ctx.attribute_storage,
                     ctx.function_table,
+                    ctx.expressions,
                 );
-                resolve(expr, &ctx, (widget_id, value_index))
+                resolve(*expr_id, &ctx, (widget_id, value_index))
             });
         }
 
@@ -130,8 +132,9 @@ impl Evaluator for ForLoopEval {
             ctx.states,
             ctx.attribute_storage,
             ctx.function_table,
+            ctx.expressions,
         );
-        let collection = resolve_collection(&for_loop.data, &resolver_ctx, value_id);
+        let collection = resolve_collection(for_loop.data, &resolver_ctx, value_id);
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
@@ -171,8 +174,9 @@ impl Evaluator for WithEval {
             ctx.states,
             ctx.attribute_storage,
             ctx.function_table,
+            ctx.expressions,
         );
-        let data = resolve(&with.data, &resolver_ctx, value_id);
+        let data = resolve(with.data, &resolver_ctx, value_id);
 
         let with = super::with::With {
             binding: &with.binding,
@@ -218,12 +222,12 @@ impl Evaluator for ControlFlowEval {
                         ctx.states,
                         ctx.attribute_storage,
                         ctx.function_table,
+                        ctx.expressions,
                     );
 
                     controlflow::Else {
                         cond: e
                             .cond
-                            .as_ref()
                             .map(|cond| resolve(cond, &ctx, (widget_id, SmallIndex::from_usize(i)))),
                         body: &e.body,
                         show: false,
@@ -257,7 +261,7 @@ impl Evaluator for ComponentEval {
 
         let mut attributes = Attributes::empty();
 
-        for (key, expr) in input.attributes.iter() {
+        for (key, expr_id) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
                 let ctx = ResolverCtx::new(
                     ctx.globals,
@@ -265,8 +269,9 @@ impl Evaluator for ComponentEval {
                     ctx.states,
                     ctx.attribute_storage,
                     ctx.function_table,
+                    ctx.expressions,
                 );
-                resolve(expr, &ctx, (widget_id, value_index))
+                resolve(*expr_id, &ctx, (widget_id, value_index))
             });
         }
 

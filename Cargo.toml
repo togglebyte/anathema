@@ -23,6 +23,7 @@ anathema-state-derive = { workspace = true }
 anathema-store = { workspace = true }
 anathema-templates = { workspace = true }
 anathema-value-resolver = { workspace = true }
+anathema-value-resolver2 = { workspace = true }
 anathema-widgets = { workspace = true }
 
 [dev-dependencies]
@@ -31,7 +32,13 @@ anathema-testutils = { path = "anathema-testutils" }
 
 [features]
 default = []
-profile = ["anathema-runtime/profile", "anathema-widgets/profile", "anathema-backend/profile", "anathema-value-resolver/profile"]
+profile = [
+    "anathema-runtime/profile", 
+    "anathema-widgets/profile", 
+    "anathema-backend/profile",
+    "anathema-value-resolver/profile",
+    "anathema-value-resolver2/profile"
+]
 serde = ["anathema-state/serde", "anathema-store/serde"]
 # filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
@@ -58,6 +65,7 @@ anathema-templates = { path = "./anathema-templates", version = "0.2.12-beta" }
 anathema-widgets = { path = "./anathema-widgets", version = "0.2.12-beta" }
 anathema-geometry = { path = "./anathema-geometry", version = "0.2.12-beta" }
 anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.12-beta" }
+anathema-value-resolver2 = { path = "./anathema-value-resolver2", version = "0.2.12-beta" }
 
 [workspace]
 members = [
@@ -71,6 +79,7 @@ members = [
     "anathema-templates", 
     "anathema-widgets", 
     "anathema-value-resolver",
+    "anathema-value-resolver2",
 ]
 
 [workspace.lints.rust]

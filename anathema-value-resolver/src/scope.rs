@@ -1,7 +1,7 @@
 use anathema_state::{PendingValue, StateId};
 use anathema_store::slab::Key;
 
-use crate::expression::{Kind, ValueExpr};
+use crate::expression::{Kind, ResolvedExpr};
 use crate::{Collection, Value, ValueKind};
 
 #[derive(Debug)]
@@ -96,17 +96,17 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
         }
     }
 
-    pub(crate) fn lookup(&self, key: &str) -> Option<ValueExpr<'bp>> {
+    pub(crate) fn lookup(&self, key: &str) -> Option<ResolvedExpr<'bp>> {
         match self.value {
             Entry::WithValue(ident, val) if ident == key => Some(val.expr.clone()),
-            Entry::Index(_, _, loop_index) if key == "loop" => Some(ValueExpr::Int(Kind::Dyn(loop_index))),
+            Entry::Index(_, _, loop_index) if key == "loop" => Some(ResolvedExpr::Int(Kind::Dyn(loop_index))),
             Entry::Index(binding, index, _) if key == binding => {
                 match self.parent.expect("the parent can only be a collection").value {
                     Entry::Collection(collection) => match &collection.0.kind {
                         ValueKind::List(_) => {
-                            let value_expr = ValueExpr::Index(
+                            let value_expr = ResolvedExpr::Index(
                                 collection.0.expr.clone().into(),
-                                ValueExpr::Int(Kind::Static(index as i64)).into(),
+                                ResolvedExpr::Int(Kind::Static(index as i64)).into(),
                             );
                             Some(value_expr)
                         }
@@ -118,7 +118,7 @@ impl<'parent, 'bp> Scope<'parent, 'bp> {
                         }
                         &ValueKind::Range(from, to) => (from..to)
                             .skip(index)
-                            .map(|num| ValueExpr::Int(Kind::Static(num as i64)))
+                            .map(|num| ResolvedExpr::Int(Kind::Static(num as i64)))
                             .next(),
                         _ => unreachable!("none of the other values can be a collection"),
                     },

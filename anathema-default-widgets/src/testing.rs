@@ -3,7 +3,7 @@ use anathema_backend::{Backend, WidgetCycle};
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States, Value};
 use anathema_templates::blueprints::Blueprint;
-use anathema_templates::{Document, ToSourceKind, Variables};
+use anathema_templates::{Document, ToSourceKind, VariableStorage};
 use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable, Scope};
 use anathema_widgets::components::ComponentRegistry;
 use anathema_widgets::components::events::Event;
@@ -131,7 +131,7 @@ pub struct TestRunner {
     factory: Factory,
     backend: TestBackend,
     blueprint: Blueprint,
-    variables: Variables,
+    variables: VariableStorage,
     components: Components,
     function_table: FunctionTable,
 }
@@ -193,7 +193,7 @@ pub struct TestInstance<'bp> {
     attribute_storage: AttributeStorage<'bp>,
     floating_widgets: FloatingWidgets,
     states: &'bp mut States,
-    variables: &'bp Variables,
+    variables: &'bp VariableStorage,
     backend: &'bp mut TestBackend,
     viewport: Viewport,
     factory: &'bp Factory,
@@ -209,7 +209,7 @@ impl<'bp> TestInstance<'bp> {
         blueprint: &'bp Blueprint,
         states: &'bp mut States,
         backend: &'bp mut TestBackend,
-        variables: &'bp Variables,
+        variables: &'bp VariableStorage,
         factory: &'bp Factory,
         component_registry: &'bp mut ComponentRegistry,
         components: &'bp mut Components,

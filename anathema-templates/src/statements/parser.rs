@@ -42,12 +42,12 @@ pub(crate) struct Parser<'src, 'strings, 'components> {
     done: bool,
 }
 
-impl<'src, 'strings, 'view> Parser<'src, 'strings, 'view> {
+impl<'src, 'strings, 'components> Parser<'src, 'strings, 'components> {
     pub(crate) fn new(
         mut tokens: Tokens,
         strings: &'strings mut Strings,
         src: &'src TemplateSource,
-        components: &'view mut ComponentTemplates,
+        components: &'components mut ComponentTemplates,
     ) -> Self {
         tokens.consume_newlines();
         let base_indent = match tokens.peek() {

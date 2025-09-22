@@ -10,6 +10,49 @@ pub(crate) mod eval;
 pub(crate) mod parser;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+pub struct ExpressionId(u32);
+
+#[derive(Debug)]
+pub struct Expressions {
+    inner: Vec<Expression>,
+}
+
+impl Expressions {
+    /// Get a reference to an expression
+    ///
+    /// # Panics
+    ///
+    /// Panics if the expression id is greater than the length of expressions.
+    /// This should never happen as the ids are assigned to blueprints using them.
+    ///
+    /// Only time this could happen is if the expression id is created outside of the tempalte
+    /// generation.
+    pub fn get(&self, id: ExpressionId) -> &Expression {
+        &self.inner[id.0 as usize]
+    }
+
+    /// Insert an expression and return the id to the newly inserted expression
+    pub fn insert(&mut self, expression: Expression) -> ExpressionId {
+        let id = ExpressionId(self.inner.len() as u32);
+        match self.inner.iter().position(|e| expression.eq(e)) {
+            Some(id) => ExpressionId(id as u32),
+            None => {
+                self.inner.push(expression);
+                id
+            }
+        }
+    }
+
+    pub(crate) fn empty() -> Self {
+        Self { inner: vec![] }
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.inner.clear()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Op {
     Add,
     Sub,

@@ -1,12 +1,12 @@
 use anathema_store::smallmap::SmallMap;
 
-use crate::ComponentBlueprintId;
 use crate::blueprints::Blueprint;
 use crate::components::{AssocEventMapping, ComponentTemplates, TemplateSource};
 use crate::error::Result;
-use crate::expressions::Expression;
+use crate::expressions::{Expression, Expressions};
 use crate::strings::{StringId, Strings};
-use crate::variables::{VarId, Variables};
+use crate::variables::{VarId, VariableStorage};
+use crate::ComponentBlueprintId;
 
 mod const_eval;
 pub(crate) mod eval;
@@ -14,9 +14,10 @@ pub(super) mod parser;
 
 pub(crate) struct Context<'vars> {
     pub(crate) template: &'vars TemplateSource,
-    pub(crate) variables: &'vars mut Variables,
+    pub(crate) variables: &'vars mut VariableStorage,
     pub(crate) components: &'vars mut ComponentTemplates,
     pub(crate) strings: &'vars mut Strings,
+    pub(crate) expressions: &'vars mut Expressions,
     pub(crate) slots: SmallMap<StringId, Vec<Blueprint>>,
     pub(crate) current_component_parent: Option<ComponentBlueprintId>,
 }
@@ -24,9 +25,10 @@ pub(crate) struct Context<'vars> {
 impl<'vars> Context<'vars> {
     pub fn new(
         template: &'vars TemplateSource,
-        variables: &'vars mut Variables,
+        variables: &'vars mut VariableStorage,
         components: &'vars mut ComponentTemplates,
         strings: &'vars mut Strings,
+        expressions: &'vars mut Expressions,
         slots: SmallMap<StringId, Vec<Blueprint>>,
         current_component_parent: Option<ComponentBlueprintId>,
     ) -> Self {
@@ -35,6 +37,7 @@ impl<'vars> Context<'vars> {
             variables,
             components,
             strings,
+            expressions,
             slots,
             current_component_parent,
         }
@@ -55,7 +58,8 @@ impl Context<'_> {
         component_id: ComponentBlueprintId,
         slots: SmallMap<StringId, Vec<Blueprint>>,
     ) -> Result<Vec<Blueprint>> {
-        self.components.load(component_id, self.variables, slots, self.strings)
+        self.components
+            .load(component_id, self.variables, slots, self.strings, self.expressions)
     }
 }
 
@@ -94,32 +98,36 @@ pub(crate) enum Statement {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct Statements(Vec<Statement>);
+pub(crate) struct Statements {
+    inner: Vec<Statement>,
+}
 
 impl From<Vec<Statement>> for Statements {
-    fn from(value: Vec<Statement>) -> Self {
-        Self(value)
+    fn from(statements: Vec<Statement>) -> Self {
+        Self { inner: statements }
     }
 }
 
 impl FromIterator<Statement> for Statements {
     fn from_iter<T: IntoIterator<Item = Statement>>(iter: T) -> Self {
-        Self(iter.into_iter().collect())
+        Self {
+            inner: iter.into_iter().collect(),
+        }
     }
 }
 
 impl Statements {
     fn next(&mut self) -> Option<Statement> {
         match self.is_empty() {
-            false => Some(self.0.remove(0)),
+            false => Some(self.inner.remove(0)),
             true => None,
         }
     }
 
     fn take_value(&mut self) -> Option<Expression> {
-        match matches!(&self.0.first(), Some(Statement::LoadValue(_))) {
-            true => match self.0.remove(0) {
-                Statement::LoadValue(expr) => Some(expr),
+        match matches!(&self.inner.first(), Some(Statement::LoadValue(_))) {
+            true => match self.inner.remove(0) {
+                Statement::LoadValue(expr_id) => Some(expr_id),
                 _ => unreachable!(),
             },
             false => None,
@@ -128,8 +136,8 @@ impl Statements {
 
     fn take_attributes(&mut self) -> Vec<(StringId, Expression)> {
         let mut v = vec![];
-        while matches!(&self.0.first(), Some(Statement::LoadAttribute { .. })) {
-            match self.0.remove(0) {
+        while matches!(&self.inner.first(), Some(Statement::LoadAttribute { .. })) {
+            match self.inner.remove(0) {
                 Statement::LoadAttribute { key, value } => v.push((key, value)),
                 _ => unreachable!(),
             }
@@ -139,8 +147,8 @@ impl Statements {
 
     fn take_assoc_functions(&mut self) -> Vec<AssocEventMapping> {
         let mut v = vec![];
-        while matches!(&self.0.first(), Some(Statement::AssociatedFunction { .. })) {
-            match self.0.remove(0) {
+        while matches!(&self.inner.first(), Some(Statement::AssociatedFunction { .. })) {
+            match self.inner.remove(0) {
                 Statement::AssociatedFunction(map) => v.push(map),
                 _ => unreachable!(),
             }
@@ -153,19 +161,19 @@ impl Statements {
             return vec![].into();
         }
 
-        if self.0[0] != Statement::ScopeStart {
+        if self.inner[0] != Statement::ScopeStart {
             return vec![].into();
         }
 
         let mut level = 0;
 
-        for i in 0..self.0.len() {
-            match &self.0[i] {
+        for i in 0..self.inner.len() {
+            match &self.inner[i] {
                 Statement::ScopeStart => level += 1,
                 Statement::ScopeEnd if level - 1 == 0 => {
-                    let mut scope = self.0.split_off(i);
+                    let mut scope = self.inner.split_off(i);
                     scope.remove(0); // remove the scope start
-                    std::mem::swap(&mut scope, &mut self.0);
+                    std::mem::swap(&mut scope, &mut self.inner);
                     scope.remove(0); // remove the scope end
                     return scope.into();
                 }
@@ -184,20 +192,20 @@ impl Statements {
 
         let mut statements = vec![];
 
-        while !self.0.is_empty() {
-            match self.0[0] {
+        while !self.inner.is_empty() {
+            match self.inner[0] {
                 Statement::Case(_) | Statement::Default | Statement::Eof => break,
                 _ => {}
             }
-            statements.push(self.0.remove(0));
+            statements.push(self.inner.remove(0));
         }
 
         statements.into()
     }
 
     fn next_else(&mut self) -> Option<Option<Expression>> {
-        match matches!(self.0.first(), Some(Statement::Else(_))) {
-            true => match self.0.remove(0) {
+        match matches!(self.inner.first(), Some(Statement::Else(_))) {
+            true => match self.inner.remove(0) {
                 Statement::Else(cond) => Some(cond),
                 _ => unreachable!(),
             },
@@ -206,8 +214,8 @@ impl Statements {
     }
 
     fn next_case(&mut self) -> Option<Expression> {
-        match matches!(self.0.first(), Some(Statement::Case(_))) {
-            true => match self.0.remove(0) {
+        match matches!(self.inner.first(), Some(Statement::Case(_))) {
+            true => match self.inner.remove(0) {
                 Statement::Case(cond) => Some(cond),
                 _ => unreachable!(),
             },
@@ -216,9 +224,9 @@ impl Statements {
     }
 
     fn next_default(&mut self) -> bool {
-        match matches!(self.0.first(), Some(Statement::Default)) {
+        match matches!(self.inner.first(), Some(Statement::Default)) {
             true => {
-                _ = self.0.remove(0);
+                _ = self.inner.remove(0);
                 true
             }
             false => false,
@@ -226,8 +234,8 @@ impl Statements {
     }
 
     fn next_slot(&mut self) -> Option<StringId> {
-        match matches!(self.0.first(), Some(Statement::ComponentSlot(_))) {
-            true => match self.0.remove(0) {
+        match matches!(self.inner.first(), Some(Statement::ComponentSlot(_))) {
+            true => match self.inner.remove(0) {
                 Statement::ComponentSlot(slot_id) => Some(slot_id),
                 _ => unreachable!(),
             },
@@ -236,15 +244,15 @@ impl Statements {
     }
 
     fn is_next_slot(&mut self) -> bool {
-        matches!(self.0.first(), Some(Statement::ComponentSlot(_)))
+        matches!(self.inner.first(), Some(Statement::ComponentSlot(_)))
     }
 
     fn is_next_scope(&mut self) -> bool {
-        matches!(self.0.first(), Some(Statement::ScopeStart))
+        matches!(self.inner.first(), Some(Statement::ScopeStart))
     }
 
     fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.inner.is_empty()
     }
 }
 
@@ -254,8 +262,9 @@ fn with_context<F>(mut f: F)
 where
     F: FnMut(Context<'_>),
 {
-    let mut globals = Variables::new();
+    let mut globals = VariableStorage::new();
     let mut strings = Strings::new();
+    let mut expressions = Expressions::empty();
     let mut components = ComponentTemplates::new();
     let template_source = TemplateSource::Static("");
 
@@ -263,6 +272,7 @@ where
         template: &template_source,
         variables: &mut globals,
         strings: &mut strings,
+        expressions: &mut expressions,
         components: &mut components,
         slots: SmallMap::empty(),
         current_component_parent: None,

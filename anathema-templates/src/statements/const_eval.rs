@@ -35,7 +35,7 @@ fn eval_path(expr: Expression, ctx: &Context<'_>) -> Option<Expression> {
 }
 
 // Returning `None` here means we evaluated a const expression but the expression didn't exist,
-// e.g indexing outside of a list of primitives.
+// e.g indexing outside of a list of primitives or refering to state value / attributes.
 pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Option<Expression> {
     use {Expression as E, Primitive as P};
 
@@ -54,11 +54,11 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
             Some(expr) => E::Either(expr.into(), ce!(second)),
             None => return None,
         },
-        E::Not(expr) => E::Not(ce!(*expr)),
-        E::Negative(expr) => E::Negative(ce!(*expr)),
-        E::Equality(lhs, rhs, eq) => E::Equality(ce!(*lhs), ce!(*rhs), eq),
-        E::LogicalOp(lhs, rhs, op) => E::LogicalOp(ce!(*lhs), ce!(*rhs), op),
-        E::Range(from, to) => E::Range(ce!(*from), ce!(*to)),
+        E::Not(expr) => E::Not(ce!(expr)),
+        E::Negative(expr) => E::Negative(ce!(expr)),
+        E::Equality(lhs, rhs, eq) => E::Equality(ce!(lhs), ce!(rhs), eq),
+        E::LogicalOp(lhs, rhs, op) => E::LogicalOp(ce!(lhs), ce!(rhs), op),
+        E::Range(from, to) => E::Range(ce!(from), ce!(to)),
 
         E::Ident(_) | E::Index(..) => eval_path(expr, ctx)?,
         E::Variable(_) => unreachable!("const eval is not recursive so this can never happen"),
@@ -76,7 +76,7 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
             let hm = HashMap::from_iter(map.into_iter().flat_map(|(k, v)| Some((k, ce!(v)))));
             E::Map(hm)
         }
-        E::Op(lhs, rhs, op) => match (ce!(*lhs), ce!(*rhs)) {
+        E::Op(lhs, rhs, op) => match (ce!(lhs), ce!(rhs)) {
             (E::Primitive(P::Int(lhs)), E::Primitive(P::Int(rhs))) => {
                 let val = match op {
                     Op::Add => lhs + rhs,

@@ -1,7 +1,8 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_state::{State, StateId, States};
 use anathema_store::tree::TreeView;
-use anathema_templates::{ComponentBlueprintId, Variables};
+use anathema_templates::expressions::Expressions;
+use anathema_templates::{ComponentBlueprintId, VariableStorage};
 use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable};
 use display::DISPLAY;
 
@@ -19,7 +20,7 @@ pub mod text;
 
 pub struct LayoutCtx<'frame, 'bp> {
     pub states: &'frame mut States,
-    pub(super) globals: &'bp Variables,
+    pub(super) globals: &'bp VariableStorage,
     factory: &'frame Factory,
     pub attribute_storage: &'frame mut AttributeStorage<'bp>,
     pub components: &'frame mut Components,
@@ -32,11 +33,12 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub new_components: Vec<(WidgetId, StateId)>,
     pub stop_runtime: bool,
     pub(super) function_table: &'bp FunctionTable,
+    pub(super) expressions: &'bp Expressions,
 }
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
     pub fn new(
-        globals: &'bp Variables,
+        globals: &'bp VariableStorage,
         factory: &'frame Factory,
         states: &'frame mut States,
         attribute_storage: &'frame mut AttributeStorage<'bp>,
@@ -46,6 +48,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
         glyph_map: &'frame mut GlyphMap,
         viewport: &'frame mut Viewport,
         function_table: &'bp FunctionTable,
+        expressions: &'bp Expressions,
     ) -> Self {
         Self {
             states,
@@ -60,6 +63,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             new_components: vec![],
             stop_runtime: false,
             function_table,
+            expressions,
         }
     }
 
@@ -84,6 +88,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             parent_widget: parent_element,
             new_components: &mut self.new_components,
             function_table: self.function_table,
+            expressions: self.expressions,
         }
     }
 
@@ -115,9 +120,10 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) states: &'frame mut States,
     component_registry: &'frame mut ComponentRegistry,
     pub(super) components: &'frame mut Components,
-    pub(super) globals: &'bp Variables,
+    pub(super) globals: &'bp VariableStorage,
     pub(super) factory: &'frame Factory,
     pub(super) function_table: &'bp FunctionTable,
+    pub(super) expressions: &'bp Expressions,
     pub(super) parent_component: Option<WidgetId>,
     pub(super) parent_widget: Option<WidgetId>,
 }

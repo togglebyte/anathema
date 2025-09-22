@@ -1,6 +1,6 @@
 use anathema_state::{AnyMap, List, Map, Maybe, State, StateId, States, Subscriber, Value};
 use anathema_store::slab::Key;
-use anathema_templates::{Expression, Variables};
+use anathema_templates::{Expression, VariableStorage};
 
 use super::*;
 use crate::context::ResolverCtx;
@@ -61,14 +61,14 @@ impl AnyMap for TestState {
 }
 
 pub(crate) struct TestCase<'a, 'bp> {
-    variables: &'static Variables,
+    variables: &'static VariableStorage,
     states: &'a mut States,
     pub attributes: AttributeStorage<'bp>,
     function_table: &'static FunctionTable,
 }
 
 impl<'a, 'bp> TestCase<'a, 'bp> {
-    pub fn new(states: &'a mut States, variables: Variables) -> Self {
+    pub fn new(states: &'a mut States, variables: VariableStorage) -> Self {
         let mut attributes = AttributeStorage::empty();
         attributes.insert(Key::ZERO, Attributes::empty());
 
@@ -111,7 +111,7 @@ impl<'a, 'bp> TestCase<'a, 'bp> {
     }
 }
 
-pub(crate) fn setup<'bp, F>(states: &mut States, variables: Variables, mut f: F)
+pub(crate) fn setup<'bp, F>(states: &mut States, variables: VariableStorage, mut f: F)
 where
     F: FnMut(&mut TestCase<'_, 'bp>),
 {

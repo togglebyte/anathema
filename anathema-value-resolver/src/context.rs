@@ -1,5 +1,6 @@
 use anathema_state::States;
-use anathema_templates::Variables;
+use anathema_templates::expressions::Expressions;
+use anathema_templates::VariableStorage;
 
 use crate::AttributeStorage;
 use crate::functions::{Function, FunctionTable};
@@ -7,19 +8,21 @@ use crate::scope::Scope;
 
 pub struct ResolverCtx<'frame, 'bp> {
     pub(crate) scope: &'frame Scope<'frame, 'bp>,
-    pub(crate) variables: &'bp Variables,
+    pub(crate) variables: &'bp VariableStorage,
     pub(crate) states: &'frame States,
     pub(crate) attribute_storage: &'frame AttributeStorage<'bp>,
     pub(crate) function_table: &'bp FunctionTable,
+    pub(crate) expressions: &'bp Expressions,
 }
 
 impl<'frame, 'bp> ResolverCtx<'frame, 'bp> {
     pub fn new(
-        variables: &'bp Variables,
+        variables: &'bp VariableStorage,
         scope: &'frame Scope<'frame, 'bp>,
         states: &'frame States,
         attribute_storage: &'frame AttributeStorage<'bp>,
         function_table: &'bp FunctionTable,
+        expressions: &'bp Expressions,
     ) -> Self {
         Self {
             scope,
@@ -27,6 +30,7 @@ impl<'frame, 'bp> ResolverCtx<'frame, 'bp> {
             states,
             attribute_storage,
             function_table,
+            expressions,
         }
     }
 

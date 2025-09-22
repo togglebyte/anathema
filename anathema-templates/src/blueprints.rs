@@ -2,27 +2,28 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
 use crate::components::AssocEventMapping;
-use crate::{ComponentBlueprintId, Expression};
+use crate::expressions::ExpressionId;
+use crate::ComponentBlueprintId;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {
     pub ident: String,
     pub children: Vec<Blueprint>,
-    pub attributes: SmallMap<String, Expression>,
-    pub value: Option<Expression>,
+    pub attributes: SmallMap<String, ExpressionId>,
+    pub value: Option<ExpressionId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct For {
     pub binding: String,
-    pub data: Expression,
+    pub data: ExpressionId,
     pub body: Vec<Blueprint>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct With {
     pub binding: String,
-    pub data: Expression,
+    pub data: ExpressionId,
     pub body: Vec<Blueprint>,
 }
 
@@ -34,7 +35,7 @@ pub struct ControlFlow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Else {
-    pub cond: Option<Expression>,
+    pub cond: Option<ExpressionId>,
     pub body: Vec<Blueprint>,
 }
 
@@ -44,7 +45,7 @@ pub struct Component {
     pub name_id: StringId,
     pub id: ComponentBlueprintId,
     pub body: Vec<Blueprint>,
-    pub attributes: SmallMap<String, Expression>,
+    pub attributes: SmallMap<String, ExpressionId>,
     pub assoc_functions: Vec<AssocEventMapping>,
     /// The parent component in the blueprint
     pub parent: Option<ComponentBlueprintId>,
