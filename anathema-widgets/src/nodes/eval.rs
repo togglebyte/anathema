@@ -49,32 +49,33 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty();
 
         if let Some(expr_id) = single.value.as_ref() {
-            let ctx = ResolverCtx::new(
+            let mut ctx = ResolverCtx::new(
                 ctx.globals,
                 scope,
                 ctx.states,
                 ctx.attribute_storage,
                 ctx.function_table,
                 ctx.expressions,
+                ctx.resolved_expressions,
             );
 
-            let value = attributes.insert_with(ValueKey::Value, |value_index| {
-                resolve(*expr_id, &ctx, (widget_id, value_index))
+            _ = attributes.insert_with(ValueKey::Value, |value_index| {
+                resolve(*expr_id, &mut ctx, widget_id, value_index)
             });
-            attributes.value = Some(value);
         }
 
         for (key, expr_id) in single.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                let ctx = ResolverCtx::new(
+                let mut ctx = ResolverCtx::new(
                     ctx.globals,
                     scope,
                     ctx.states,
                     ctx.attribute_storage,
                     ctx.function_table,
                     ctx.expressions,
+                    ctx.resolved_expressions,
                 );
-                resolve(*expr_id, &ctx, (widget_id, value_index))
+                resolve(*expr_id, &mut ctx, widget_id, value_index)
             });
         }
 
@@ -124,17 +125,17 @@ impl Evaluator for ForLoopEval {
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
-        let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
-        let resolver_ctx = ResolverCtx::new(
+        let mut resolver_ctx = ResolverCtx::new(
             ctx.globals,
             scope,
             ctx.states,
             ctx.attribute_storage,
             ctx.function_table,
             ctx.expressions,
+            ctx.resolved_expressions,
         );
-        let collection = resolve_collection(for_loop.data, &resolver_ctx, value_id);
+        let collection = resolve_collection(for_loop.data, &mut resolver_ctx, transaction.node_id(), SmallIndex::ZERO);
 
         let for_loop = super::loops::For {
             binding: &for_loop.binding,
@@ -166,17 +167,17 @@ impl Evaluator for WithEval {
         tree: &mut WidgetTreeView<'_, 'bp>,
     ) -> Result<()> {
         let transaction = tree.insert(parent);
-        let value_id = Subscriber::from((transaction.node_id(), SmallIndex::ZERO));
 
-        let resolver_ctx = ResolverCtx::new(
+        let mut resolver_ctx = ResolverCtx::new(
             ctx.globals,
             scope,
             ctx.states,
             ctx.attribute_storage,
             ctx.function_table,
             ctx.expressions,
+            ctx.resolved_expressions,
         );
-        let data = resolve(with.data, &resolver_ctx, value_id);
+        let data = resolve(with.data, &mut resolver_ctx, transaction.node_id(), SmallIndex::ZERO);
 
         let with = super::with::With {
             binding: &with.binding,
@@ -216,19 +217,20 @@ impl Evaluator for ControlFlowEval {
                 .iter()
                 .enumerate()
                 .map(|(i, e)| {
-                    let ctx = ResolverCtx::new(
+                    let mut ctx = ResolverCtx::new(
                         ctx.globals,
                         scope,
                         ctx.states,
                         ctx.attribute_storage,
                         ctx.function_table,
                         ctx.expressions,
+                        ctx.resolved_expressions,
                     );
 
                     controlflow::Else {
                         cond: e
                             .cond
-                            .map(|cond| resolve(cond, &ctx, (widget_id, SmallIndex::from_usize(i)))),
+                            .map(|cond| resolve(cond, &mut ctx, widget_id, SmallIndex::from_usize(i))),
                         body: &e.body,
                         show: false,
                     }
@@ -263,15 +265,16 @@ impl Evaluator for ComponentEval {
 
         for (key, expr_id) in input.attributes.iter() {
             attributes.insert_with(ValueKey::Attribute(key), |value_index| {
-                let ctx = ResolverCtx::new(
+                let mut ctx = ResolverCtx::new(
                     ctx.globals,
                     scope,
                     ctx.states,
                     ctx.attribute_storage,
                     ctx.function_table,
                     ctx.expressions,
+                    ctx.resolved_expressions,
                 );
-                resolve(*expr_id, &ctx, (widget_id, value_index))
+                resolve(*expr_id, &mut ctx, widget_id, value_index)
             });
         }
 

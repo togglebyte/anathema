@@ -96,7 +96,7 @@ impl Variable {
 pub struct ScopeId(Box<[u16]>);
 
 impl ScopeId {
-    fn root() -> &'static Self {
+    pub(crate) fn root() -> &'static Self {
         static ROOT: OnceLock<ScopeId> = OnceLock::new();
         ROOT.get_or_init(|| ScopeId(Box::new([])))
     }
@@ -298,7 +298,7 @@ impl VariableStorage {
         value: impl Into<Expression>,
         expressions: &mut Expressions,
     ) -> Result<(), ErrorKind> {
-        let id = expressions.insert(value.into());
+        let id = expressions.insert(value.into(), ScopeId::root().clone());
         let global = Global::Runtime(id);
         self.set_global(ident, global)
     }
@@ -316,17 +316,17 @@ impl VariableStorage {
     }
 
     pub fn declare_local(&mut self, ident: impl Into<String>, expressions: &mut Expressions) -> VarId {
+        let scope_id = self.current.clone();
         let ident = ident.into();
-        let id = expressions.insert(Expression::Ident(ident.clone()));
+        let id = expressions.insert(Expression::Ident(ident.clone()), scope_id.clone());
         let value = Variable::Definition(id);
         let var_id = self.store.insert(value);
-        let scope_id = self.current.clone();
         self.declare_at(ident, var_id, scope_id)
     }
 
     /// Fetch a value starting from the current path.
     pub fn fetch(&self, ident: &str) -> Option<VarId> {
-        self.declarations.get(ident, &self.current, self.boundary())
+        self.declarations.get(ident, &self.current, self.boundary_ref())
     }
 
     /// Create a new scope and set that scope as a boundary.
@@ -367,7 +367,7 @@ impl VariableStorage {
     // Fetch and load a value from its ident
     #[cfg(test)]
     fn fetch_load(&self, ident: &str) -> Option<ExpressionId> {
-        let id = self.declarations.get(ident, &self.current, self.boundary())?;
+        let id = self.declarations.get(ident, &self.current, self.boundary_ref())?;
         self.load(id)
     }
 
@@ -375,8 +375,12 @@ impl VariableStorage {
         self.globals.get(ident)
     }
 
-    fn boundary(&self) -> &ScopeId {
+    fn boundary_ref(&self) -> &ScopeId {
         self.boundary.last().unwrap_or(ScopeId::root())
+    }
+
+    pub(crate) fn boundary(&self) -> ScopeId {
+        self.boundary.last().unwrap_or(ScopeId::root()).clone()
     }
 }
 
@@ -440,7 +444,7 @@ mod test {
         let mut vars = VariableStorage::new();
         let mut expressions = Expressions::empty();
 
-        let expected = expressions.insert(Expression::from(123i64));
+        let expected = expressions.insert_at_root(Expression::from(123i64));
         vars.define_local("var", expected);
         let id = vars.fetch("var").unwrap();
         let value = vars.load(id).unwrap();
@@ -453,8 +457,8 @@ mod test {
         let mut vars = VariableStorage::new();
         let mut expressions = Expressions::empty();
         let ident = "var";
-        let value_a = expressions.insert(Expression::from("1"));
-        let value_b = expressions.insert(Expression::from("2"));
+        let value_a = expressions.insert_at_root(Expression::from("1"));
+        let value_b = expressions.insert_at_root(Expression::from("2"));
 
         let first_value_ref = vars.define_local(ident, value_a.clone());
         let second_value_ref = vars.define_local(ident, value_b.clone());
@@ -467,7 +471,7 @@ mod test {
         // Declare a variable in a sibling and fail to access that value
         let mut vars = VariableStorage::new();
         let mut expressions = Expressions::empty();
-        let inaccessible = expressions.insert("inaccessible".into());
+        let inaccessible = expressions.insert_at_root("inaccessible".into());
         let ident = "var";
 
         vars.push();
@@ -523,9 +527,9 @@ mod test {
     fn get_inside_boundary() {
         let mut vars = VariableStorage::new();
         let mut expressions = Expressions::empty();
-        let one = expressions.insert(1.into());
-        let two = expressions.insert(2.into());
-        let three = expressions.insert(3.into());
+        let one = expressions.insert_at_root(1.into());
+        let two = expressions.insert_at_root(2.into());
+        let three = expressions.insert_at_root(3.into());
 
         // Define a variable in the root scope
         _ = vars.define_local("var", one);

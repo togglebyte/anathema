@@ -52,7 +52,7 @@ impl Scope {
                     is_global,
                 } => {
                     let Some(value) = const_eval(value, ctx) else { continue };
-                    let value = ctx.expressions.insert(value);
+                    let value = ctx.expressions.insert(value, ctx.variables.boundary());
                     let binding = ctx.strings.get_unchecked(binding);
                     // TODO: have a list of keywords here that we fail on
                     if binding == "state" {
@@ -97,7 +97,7 @@ impl Scope {
             .statements
             .take_value()
             .and_then(|v| const_eval(v, ctx))
-            .map(|expr| ctx.expressions.insert(expr));
+            .map(|expr| ctx.expressions.insert(expr, ctx.variables.boundary()));
 
         ctx.variables.push();
         let children = self.consume_scope(ctx)?;
@@ -149,7 +149,7 @@ impl Scope {
 
     fn eval_for(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Option<Blueprint>> {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
-        let expr_id = ctx.expressions.insert(data);
+        let expr_id = ctx.expressions.insert(data, ctx.variables.boundary());
 
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
@@ -161,7 +161,7 @@ impl Scope {
 
     fn eval_with(&mut self, binding: StringId, data: Expression, ctx: &mut Context<'_>) -> Result<Option<Blueprint>> {
         let Some(data) = const_eval(data, ctx) else { return Ok(None) };
-        let expr_id = ctx.expressions.insert(data);
+        let expr_id = ctx.expressions.insert(data, ctx.variables.boundary());
         let binding = ctx.strings.get_unchecked(binding);
         // add binding to globals so nothing can resolve past the binding outside of the loop
         ctx.variables.declare_local(binding.clone(), ctx.expressions);
@@ -180,7 +180,7 @@ impl Scope {
 
         for (key, value) in self.statements.take_attributes() {
             let Some(value) = const_eval(value, ctx) else { continue };
-            let expr_id = ctx.expressions.insert(value);
+            let expr_id = ctx.expressions.insert(value, ctx.variables.boundary());
             let key = ctx.strings.get_unchecked(key);
             hm.set(key, expr_id);
         }
@@ -191,7 +191,7 @@ impl Scope {
     fn eval_if(&mut self, cond: Expression, ctx: &mut Context<'_>) -> Result<Blueprint> {
         // Const eval fail = static false
         let cond = const_eval(cond, ctx).unwrap_or(Expression::Primitive(Primitive::Bool(false)));
-        let expr_id = ctx.expressions.insert(cond);
+        let expr_id = ctx.expressions.insert(cond, ctx.variables.boundary());
         let body = self.consume_scope(ctx)?;
         if body.is_empty() {
             return Err(ErrorKind::EmptyBody.to_error(ctx.template.path()));
@@ -203,7 +203,7 @@ impl Scope {
             let body = self.consume_scope(ctx)?;
             let cond = cond
                 .and_then(|v| const_eval(v, ctx))
-                .map(|expr| ctx.expressions.insert(expr));
+                .map(|expr| ctx.expressions.insert(expr, ctx.variables.boundary()));
 
             if body.is_empty() {
                 return Err(ErrorKind::EmptyBody.to_error(ctx.template.path()));
@@ -226,7 +226,7 @@ impl Scope {
                 Some(ref switch) => Expression::Equality(switch.clone().into(), case.into(), Equality::Eq),
                 None => Expression::Primitive(Primitive::Bool(false)),
             };
-            let expr_id = ctx.expressions.insert(cond);
+            let expr_id = ctx.expressions.insert(cond, ctx.variables.boundary());
 
             let body = match body.is_next_scope() {
                 true => body.take_scope(),
@@ -504,14 +504,14 @@ mod test {
     #[test]
     fn variable_scopes_panics_on_purpose() {
         let src = "
-            node
-                if false
-                    node x
+            parent
+                node state
+                @comp
             ";
 
         let mut variables = VariableStorage::new();
         let mut doc = Document::new(src);
-        doc.add_component("comp", "node a".to_template()).unwrap();
+        doc.add_component("comp", "findme state".to_template()).unwrap();
         let blueprint = doc.compile(&mut variables).unwrap();
         // println!("{variables:#?}");
         eprintln!("--------");

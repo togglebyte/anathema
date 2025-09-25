@@ -2,6 +2,7 @@ use anathema_state::States;
 use anathema_templates::expressions::Expressions;
 use anathema_templates::VariableStorage;
 
+use crate::expression::ResolvedExpressions;
 use crate::AttributeStorage;
 use crate::functions::{Function, FunctionTable};
 use crate::scope::Scope;
@@ -13,6 +14,7 @@ pub struct ResolverCtx<'frame, 'bp> {
     pub(crate) attribute_storage: &'frame AttributeStorage<'bp>,
     pub(crate) function_table: &'bp FunctionTable,
     pub(crate) expressions: &'bp Expressions,
+    pub(crate) resolved_expressions: &'frame mut ResolvedExpressions<'bp>,
 }
 
 impl<'frame, 'bp> ResolverCtx<'frame, 'bp> {
@@ -23,6 +25,7 @@ impl<'frame, 'bp> ResolverCtx<'frame, 'bp> {
         attribute_storage: &'frame AttributeStorage<'bp>,
         function_table: &'bp FunctionTable,
         expressions: &'bp Expressions,
+        resolved_expressions: &'frame mut ResolvedExpressions<'bp>,
     ) -> Self {
         Self {
             scope,
@@ -31,6 +34,7 @@ impl<'frame, 'bp> ResolverCtx<'frame, 'bp> {
             attribute_storage,
             function_table,
             expressions,
+            resolved_expressions,
         }
     }
 

@@ -428,7 +428,7 @@ impl Widget for Border {
         id: WidgetId,
         ctx: &mut LayoutCtx<'_, 'bp>,
     ) -> Result<Size> {
-        let attributes = ctx.attribute_storage.get_mut(id);
+        let attributes = ctx.attribute_storage.get(id);
 
         self.sides = attributes.get_as::<Sides>("sides").unwrap_or_default();
 

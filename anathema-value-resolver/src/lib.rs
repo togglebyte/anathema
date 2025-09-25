@@ -3,6 +3,7 @@ pub use crate::context::ResolverCtx;
 pub use crate::functions::{Error, Function, FunctionTable};
 pub use crate::scope::Scope;
 pub use crate::value::{Collection, Value, ValueKind, resolve, resolve_collection};
+pub use crate::expression::ResolvedExpressions;
 
 mod attributes;
 mod context;
@@ -10,6 +11,7 @@ mod expression;
 mod functions;
 mod immediate;
 mod scope;
+mod scope2;
 mod value;
 
 #[cfg(test)]

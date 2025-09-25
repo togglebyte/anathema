@@ -3,7 +3,7 @@ use anathema_state::{State, StateId, States};
 use anathema_store::tree::TreeView;
 use anathema_templates::expressions::Expressions;
 use anathema_templates::{ComponentBlueprintId, VariableStorage};
-use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable};
+use anathema_value_resolver::{AttributeStorage, Attributes, FunctionTable, ResolvedExpressions};
 use display::DISPLAY;
 
 pub use self::constraints::Constraints;
@@ -34,6 +34,7 @@ pub struct LayoutCtx<'frame, 'bp> {
     pub stop_runtime: bool,
     pub(super) function_table: &'bp FunctionTable,
     pub(super) expressions: &'bp Expressions,
+    resolved_expressions: ResolvedExpressions<'bp>,
 }
 
 impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
@@ -64,6 +65,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             stop_runtime: false,
             function_table,
             expressions,
+            resolved_expressions: ResolvedExpressions::empty(),
         }
     }
 
@@ -89,6 +91,7 @@ impl<'frame, 'bp> LayoutCtx<'frame, 'bp> {
             new_components: &mut self.new_components,
             function_table: self.function_table,
             expressions: self.expressions,
+            resolved_expressions: &mut self.resolved_expressions,
         }
     }
 
@@ -124,6 +127,7 @@ pub struct EvalCtx<'frame, 'bp> {
     pub(super) factory: &'frame Factory,
     pub(super) function_table: &'bp FunctionTable,
     pub(super) expressions: &'bp Expressions,
+    pub(super) resolved_expressions: &'frame mut ResolvedExpressions<'bp>,
     pub(super) parent_component: Option<WidgetId>,
     pub(super) parent_widget: Option<WidgetId>,
 }

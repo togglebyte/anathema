@@ -2,32 +2,40 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
-use anathema_store::smallmap::SmallMap;
-use anathema_store::slab::Composite;
+use anathema_store::slab::{Composite, Key};
+use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::expressions::ExpressionId;
 
 use crate::attributes::ValueKey;
-use crate::expression::{ResolvedState, ResolvedExpr, ValueResolutionContext, resolve_value};
+use crate::expression::{resolve_value, ResolvedExpr, ResolvedState, ValueResolutionContext};
 use crate::immediate::Resolver;
 use crate::{AttributeStorage, ResolverCtx};
 
-// pub type ValueMap = Composite<Value, Key>;
+pub type ValueId = Key;
 
-pub type Values<'bp> = SmallMap<ValueKey<'bp>, Value<'bp>>;
-
-pub fn resolve<'bp>(expr_id: ExpressionId, ctx: &ResolverCtx<'_, 'bp>, sub: impl Into<Subscriber>) -> Value<'bp> {
+pub fn resolve<'bp>(
+    expr_id: ExpressionId,
+    ctx: &mut ResolverCtx<'_, 'bp>,
+    widget_id: Key,
+    value_index: SmallIndex,
+) -> Value<'bp> {
     let expr = ctx.expressions.get(expr_id);
     let resolver = Resolver::new(ctx);
     let value_expr = resolver.resolve(expr);
-    Value::resolve(value_expr, sub.into(), ctx.attribute_storage)
+    // let value = evaluate(&value_expr);
+    let value_id = ctx.resolved_expressions.insert(value_expr);
+    ctx.resolved_expressions.associate(value_id, widget_id);
+    let sub = (value_id, value_index).into();
+    Value::resolve(&ctx.resolved_expressions[value_id], sub, ctx.attribute_storage)
 }
 
 pub fn resolve_collection<'bp>(
     expr: ExpressionId,
-    ctx: &ResolverCtx<'_, 'bp>,
-    sub: impl Into<Subscriber>,
+    ctx: &mut ResolverCtx<'_, 'bp>,
+    widget_id: Key,
+    value_index: SmallIndex,
 ) -> Collection<'bp> {
-    let value = resolve(expr, ctx, sub);
+    let value = resolve(expr, ctx, widget_id, value_index);
     Collection(value)
 }
 
@@ -68,10 +76,12 @@ impl<'bp> Collection<'bp> {
 /// This should be evaluated fully for the `ValueKind`
 #[derive(Debug)]
 pub struct Value<'bp> {
-    pub(crate) expr: ResolvedExpr<'bp>,
-    pub(crate) sub: Subscriber,
     pub(crate) kind: ValueKind<'bp>,
     pub(crate) resolved: ResolvedState,
+
+    // TODO: get rid of these fields once it has been moved into `ResolvedExpressions<'_>`
+    pub(crate) expr: ResolvedExpr<'bp>,
+    pub(crate) sub: Subscriber,
     sub_keys: SubTo,
 }
 
@@ -86,7 +96,7 @@ impl<'bp> Value<'bp> {
         }
     }
 
-    pub fn resolve(expr: ResolvedExpr<'bp>, sub: Subscriber, attribute_storage: &AttributeStorage<'bp>) -> Self {
+    fn resolve(expr: &ResolvedExpr<'bp>, sub: Subscriber, attribute_storage: &AttributeStorage<'bp>) -> Self {
         let mut ctx = ValueResolutionContext::new(attribute_storage, sub, ResolvedState::Unresolved);
         let kind = resolve_value(&expr, &mut ctx);
 
@@ -94,7 +104,7 @@ impl<'bp> Value<'bp> {
         // This is a special edge case where the map or state is used
         // as a final value `Option<ValueKind>`.
         //
-        // This would only hold value in an if-statement:
+        // This would only hold a meaningful value in an if-statement:
         // ```
         // if state.opt_map
         //     text "show this if there is a map"
@@ -106,6 +116,7 @@ impl<'bp> Value<'bp> {
             _ => {}
         }
 
+        let expr = panic!();
         ctx.done();
         Self {
             expr,
@@ -571,14 +582,14 @@ impl<'a, 'bp> TryFrom<&'a ValueKind<'bp>> for &'a str {
 #[cfg(test)]
 pub(crate) mod test {
     use anathema_state::{Hex, Map, Maybe, States};
-    use anathema_templates::VariableStorage;
     use anathema_templates::expressions::{
         add, and, boolean, chr, div, either, eq, float, greater_than, greater_than_equal, hex, ident, index, less_than,
         less_than_equal, list, map, modulo, mul, neg, not, num, or, strlit, sub, text_segments,
     };
+    use anathema_templates::VariableStorage;
 
-    use crate::ValueKind;
     use crate::testing::setup;
+    use crate::ValueKind;
 
     #[test]
     fn attribute_lookup() {

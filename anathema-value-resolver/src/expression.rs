@@ -1,14 +1,15 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::ops::Index;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
-use anathema_store::slab::Key;
+use anathema_store::slab::{GenSlab, Key, SecondaryMap};
+use anathema_templates::expressions::{Equality, ExpressionId, LogicalOp, Op};
 use anathema_templates::Primitive;
-use anathema_templates::expressions::{Equality, LogicalOp, Op};
 
-use crate::AttributeStorage;
 use crate::functions::Function;
-use crate::value::ValueKind;
+use crate::value::{ValueId, ValueKind};
+use crate::AttributeStorage;
 
 macro_rules! or_null {
     ($val:expr) => {
@@ -89,12 +90,62 @@ impl<'a, 'bp> ValueResolutionContext<'a, 'bp> {
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Resolved expressions -
+// -----------------------------------------------------------------------------
+pub struct ResolvedExpressions<'bp> {
+    // Resolved expressions
+    inner: GenSlab<ResolvedExpr<'bp>>,
+
+    value_to_widgets: SecondaryMap<ValueId, ValueId>,
+
+    // Reverse lookup of values
+    widgets_to_values: SecondaryMap<ValueId, ValueId>,
+}
+
+impl<'bp> ResolvedExpressions<'bp> {
+    pub fn empty() -> Self {
+        Self {
+            inner: GenSlab::empty(),
+            value_to_widgets: SecondaryMap::empty(),
+            widgets_to_values: SecondaryMap::empty(),
+        }
+    }
+
+    pub fn insert(&mut self, expr: ResolvedExpr<'bp>) -> ValueId {
+        self.inner.insert(expr)
+    }
+
+    pub fn next_id(&self) -> ValueId {
+        self.inner.next_id()
+    }
+
+    pub fn associate(&mut self, value_id: ValueId, widget_id: ValueId) {
+        self.value_to_widgets.insert(value_id, widget_id);
+        self.widgets_to_values.insert(widget_id, value_id);
+    }
+
+    pub fn remove_value(&mut self, value_id: ValueId) {
+    }
+}
+
+impl<'bp> Index<ValueId> for ResolvedExpressions<'bp> {
+    type Output = ResolvedExpr<'bp>;
+
+    fn index(&self, index: ValueId) -> &Self::Output {
+        &self.inner[index]
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Kind<T> {
     Static(T),
     Dyn(PendingValue),
 }
 
+// -----------------------------------------------------------------------------
+//   - Resolved expression -
+// -----------------------------------------------------------------------------
 #[derive(Debug, Clone)]
 pub enum ResolvedExpr<'bp> {
     Bool(Kind<bool>),
@@ -523,7 +574,7 @@ fn float_op(lhs: f64, rhs: f64, op: Op) -> f64 {
 
 #[cfg(test)]
 mod test {
-    use anathema_state::{Changes, Map, Maybe, States, drain_changes};
+    use anathema_state::{drain_changes, Changes, Map, Maybe, States};
     use anathema_templates::expressions::{ident, index, num, strlit};
 
     use crate::testing::setup;

@@ -8,7 +8,7 @@ use anathema_state::{clear_all_changes, clear_all_subs, drain_changes, Changes, 
 use anathema_store::tree::root_node;
 use anathema_templates::blueprints::Blueprint;
 use anathema_templates::{Document, Expression, VariableStorage};
-use anathema_value_resolver::{AttributeStorage, FunctionTable, Scope};
+use anathema_value_resolver::{AttributeStorage, FunctionTable, ResolvedExpressions, Scope};
 use anathema_widgets::components::deferred::{CommandKind, DeferredComponents};
 use anathema_widgets::components::events::{Event, EventType};
 use anathema_widgets::components::{
@@ -66,7 +66,7 @@ impl Runtime<()> {
     }
 
     pub fn register_global(&mut self, key: impl Into<String>, value: impl Into<Expression>) -> Result<()> {
-        let id = self.document.expressions.insert(value.into());
+        let id = self.document.expressions.insert_at_root(value.into());
         self.variables.define_global(key, id).map_err(|e| e.to_error(None))?;
         Ok(())
     }

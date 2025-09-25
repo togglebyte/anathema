@@ -1,17 +1,16 @@
 use std::borrow::Borrow;
 
 use anathema_store::slab::{Gen, SecondaryMap};
-use anathema_store::smallmap::SmallIndex;
+use anathema_store::smallmap::{SmallIndex, SmallMap};
 
-use crate::ValueKind;
 use crate::expression::ResolvedExpr;
-use crate::value::{Value, Values};
+use crate::value::Value;
+use crate::ValueKind;
 
 type WidgetId = anathema_store::slab::Key;
 
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ValueKey<'bp> {
-    #[default]
     Value,
     Attribute(&'bp str),
 }
@@ -91,8 +90,7 @@ impl<'bp> AttributeStorage<'bp> {
 
 #[derive(Debug)]
 pub struct Attributes<'bp> {
-    pub(crate) attribs: Values<'bp>,
-    pub value: Option<SmallIndex>,
+    inner: SmallMap<ValueKey<'bp>, Value<'bp>>,
 }
 
 // TODO
@@ -105,8 +103,7 @@ impl<'bp> Attributes<'bp> {
     /// Create an empty set of attributes
     pub fn empty() -> Self {
         Self {
-            attribs: Values::empty(),
-            value: None,
+            inner: SmallMap::empty(),
         }
     }
 
@@ -121,7 +118,7 @@ impl<'bp> Attributes<'bp> {
     pub fn set(&mut self, key: &'bp str, value: impl Into<ValueKind<'bp>>) {
         let key = ValueKey::Attribute(key);
         let value = Value::static_val(value);
-        self.attribs.set(key, value);
+        self.inner.set(key, value);
     }
 
     /// Set an attribute value.
@@ -133,21 +130,9 @@ impl<'bp> Attributes<'bp> {
     /// attributes.value_as::<&str>().unwrap();
     /// ```
     pub fn set_value(&mut self, value: impl Into<ValueKind<'bp>>) {
+        let key = ValueKey::Value;
         let value = Value::static_val(value);
-
-        match self.value {
-            Some(index) => match self.attribs.get_mut_with_index(index) {
-                Some(current) => *current = value,
-                None => {
-                    let index = self.attribs.insert_with(ValueKey::Value, |_| value);
-                    self.value = Some(index);
-                }
-            },
-            None => {
-                let index = self.attribs.insert_with(ValueKey::Value, |_| value);
-                self.value = Some(index);
-            }
-        }
+        self.inner.set(key, value);
     }
 
     // This is only used for inserting values during widget creation where values originate from
@@ -157,20 +142,19 @@ impl<'bp> Attributes<'bp> {
     where
         F: FnMut(SmallIndex) -> Value<'bp>,
     {
-        self.attribs.insert_with(key, f)
+        self.inner.insert_with(key, f)
     }
 
     /// Remove a value from attributes
     pub fn remove(&mut self, key: &'bp str) -> Option<Value<'bp>> {
         let key = ValueKey::Attribute(key);
-        self.attribs.remove(&key)
+        self.inner.remove(&key)
     }
 
     /// Get the `Value` out of attributes.
     /// This is always the first item
     pub fn value(&self) -> Option<&ValueKind<'bp>> {
-        let idx = self.value?;
-        self.attribs.get_with_index(idx).map(|val| &val.kind)
+        self.inner.get(&ValueKey::Value).map(|val| &val.kind)
     }
 
     /// Get a value as a specific type
@@ -178,14 +162,13 @@ impl<'bp> Attributes<'bp> {
     where
         T: TryFrom<&'a ValueKind<'bp>>,
     {
-        let idx = self.value?;
-        self.attribs
-            .get_with_index(idx)
+        self.inner
+            .get(&ValueKey::Value)
             .and_then(|val| (&val.kind).try_into().ok())
     }
 
     pub fn get(&self, key: &str) -> Option<&ValueKind<'bp>> {
-        self.attribs.get(key).map(|val| &val.kind)
+        self.inner.get(key).map(|val| &val.kind)
     }
 
     /// Get a value as a given type.
@@ -204,7 +187,7 @@ impl<'bp> Attributes<'bp> {
     where
         T: TryFrom<&'a ValueKind<'bp>>,
     {
-        self.attribs.get(key).and_then(|val| (&val.kind).try_into().ok())
+        self.inner.get(key).and_then(|val| (&val.kind).try_into().ok())
     }
 
     /// Iterate over values of a given type
@@ -223,7 +206,7 @@ impl<'bp> Attributes<'bp> {
     where
         T: TryFrom<&'a ValueKind<'bp>>,
     {
-        self.attribs
+        self.inner
             .get(key)
             .and_then(|val| match &val.kind {
                 ValueKind::List(value_kinds) => {
@@ -241,20 +224,20 @@ impl<'bp> Attributes<'bp> {
     /// This should only be used internally by the widgets
     /// when updating a value.
     pub fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp>> {
-        self.attribs.get_mut_with_index(index)
+        self.inner.get_mut_with_index(index)
     }
 
     /// Iterate over attributes.
     /// This will skip the value
     pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &ValueKind<'bp>)> {
-        self.attribs.iter().filter_map(|(key, val)| match key {
+        self.inner.iter().filter_map(|(key, val)| match key {
             ValueKey::Value => None,
             ValueKey::Attribute(_) => Some((key, &val.kind)),
         })
     }
 
     pub(super) fn get_value_expr(&self, key: &str) -> Option<ResolvedExpr<'bp>> {
-        let value = self.attribs.get(key)?;
+        let value = self.inner.get(key)?;
         Some(value.expr.clone())
     }
 }

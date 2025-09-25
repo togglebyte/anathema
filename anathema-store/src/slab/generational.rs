@@ -460,6 +460,20 @@ where
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Index -
+// -----------------------------------------------------------------------------
+impl<T> std::ops::Index<Key> for GenSlab<T> {
+    type Output = T;
+
+    fn index(&self, index: Key) -> &Self::Output {
+        match self.get(index) {
+            Some(val) => val,
+            None => panic!("invalid index or generation"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

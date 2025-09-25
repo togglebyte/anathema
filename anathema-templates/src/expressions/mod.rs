@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use anathema_state::Hex;
+use anathema_store::slab::Index;
 
 use crate::primitives::Primitive;
-use crate::variables::VarId;
+use crate::variables::{ScopeId, VarId};
 
 pub(crate) mod eval;
 pub(crate) mod parser;
@@ -12,9 +13,15 @@ pub(crate) mod parser;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct ExpressionId(u32);
 
+impl From<ExpressionId> for Index {
+    fn from(value: ExpressionId) -> Self {
+        value.0.into()
+    }
+}
+
 #[derive(Debug)]
 pub struct Expressions {
-    inner: Vec<Expression>,
+    inner: Vec<(Expression, ScopeId)>,
 }
 
 impl Expressions {
@@ -28,16 +35,21 @@ impl Expressions {
     /// Only time this could happen is if the expression id is created outside of the tempalte
     /// generation.
     pub fn get(&self, id: ExpressionId) -> &Expression {
-        &self.inner[id.0 as usize]
+        &self.inner[id.0 as usize].0
+    }
+
+    /// Insert an expression in the root scope
+    pub fn insert_at_root(&mut self, expression: Expression) -> ExpressionId {
+        self.insert(expression, ScopeId::root().clone())
     }
 
     /// Insert an expression and return the id to the newly inserted expression
-    pub fn insert(&mut self, expression: Expression) -> ExpressionId {
+    pub fn insert(&mut self, expression: Expression, boundary: ScopeId) -> ExpressionId {
         let id = ExpressionId(self.inner.len() as u32);
-        match self.inner.iter().position(|e| expression.eq(e)) {
+        match self.inner.iter().position(|(e, scope)| expression.eq(e) && boundary.eq(scope)) {
             Some(id) => ExpressionId(id as u32),
             None => {
-                self.inner.push(expression);
+                self.inner.push((expression, boundary));
                 id
             }
         }
@@ -49,6 +61,14 @@ impl Expressions {
 
     pub(crate) fn clear(&mut self) {
         self.inner.clear()
+    }
+}
+
+impl std::ops::Index<ExpressionId> for Expressions {
+    type Output = Expression;
+
+    fn index(&self, index: ExpressionId) -> &Self::Output {
+        &self.inner[index.0 as usize].0
     }
 }
 
