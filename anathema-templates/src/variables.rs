@@ -220,10 +220,10 @@ impl Declarations {
         Self(HashMap::new())
     }
 
-    fn add(&mut self, ident: impl Into<String>, id: impl Into<ScopeId>, value_id: impl Into<VarId>) {
+    fn add(&mut self, ident: impl Into<String>, scope_id: impl Into<ScopeId>, value_id: impl Into<VarId>) {
         let value_id = value_id.into();
         let ids = self.0.entry(ident.into()).or_default();
-        ids.push((id.into(), value_id));
+        ids.push((scope_id.into(), value_id));
     }
 
     // Get the scope id that is closest to the argument

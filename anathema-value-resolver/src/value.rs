@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
-use anathema_store::slab::{Composite, Key};
+use anathema_store::slab::{Composite, GenSlab, Key, Slab};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 use anathema_templates::expressions::ExpressionId;
 
@@ -69,6 +69,20 @@ impl<'bp> Collection<'bp> {
             | ValueKind::Attributes
             | ValueKind::Null => 0,
         }
+    }
+}
+
+pub struct Values<'bp> {
+    inner: GenSlab<Value<'bp>>, 
+}
+
+impl<'bp> Values<'bp> {
+    fn insert(&mut self, value: Value<'bp>) -> ValueId {
+        self.inner.insert(value)
+    }
+
+    fn remove(&mut self, id: ValueId) {
+        _ = self.inner.remove(id);
     }
 }
 
