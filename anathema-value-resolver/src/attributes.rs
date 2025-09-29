@@ -220,13 +220,6 @@ impl<'bp> Attributes<'bp> {
             .flatten()
     }
 
-    #[doc(hidden)]
-    /// This should only be used internally by the widgets
-    /// when updating a value.
-    pub fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp>> {
-        self.inner.get_mut_with_index(index)
-    }
-
     /// Iterate over attributes.
     /// This will skip the value
     pub fn iter(&self) -> impl Iterator<Item = (&ValueKey<'_>, &ValueKind<'bp>)> {
@@ -234,6 +227,13 @@ impl<'bp> Attributes<'bp> {
             ValueKey::Value => None,
             ValueKey::Attribute(_) => Some((key, &val.kind)),
         })
+    }
+
+    #[doc(hidden)]
+    /// This should only be used internally by the widgets
+    /// when updating a value.
+    pub fn get_mut_with_index(&mut self, index: SmallIndex) -> Option<&mut Value<'bp>> {
+        self.inner.get_mut_with_index(index)
     }
 
     pub(super) fn get_value_expr(&self, key: &str) -> Option<ResolvedExpr<'bp>> {

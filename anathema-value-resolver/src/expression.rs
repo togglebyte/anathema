@@ -1,6 +1,8 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::Index;
+use std::rc::Rc;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
@@ -93,39 +95,56 @@ impl<'a, 'bp> ValueResolutionContext<'a, 'bp> {
 // -----------------------------------------------------------------------------
 //   - Resolved expressions -
 // -----------------------------------------------------------------------------
+struct Entry<'bp> {
+    expr: ResolvedExpr<'bp>,
+    value: ValueKind<'bp>,
+}
+
+impl<'bp> Entry<'bp> {
+    fn new(expr: ResolvedExpr<'bp>, value: ValueKind<'bp>) -> Self {
+        Self {
+            expr,
+            value
+        }
+    }
+}
+
 pub struct ResolvedExpressions<'bp> {
-    // Resolved expressions
-    inner: GenSlab<ResolvedExpr<'bp>>,
-
-    value_to_widgets: SecondaryMap<ValueId, ValueId>,
-
-    // Reverse lookup of values
-    widgets_to_values: SecondaryMap<ValueId, ValueId>,
+    inner: GenSlab<Entry<'bp>>,
+    in_transit: bool,
 }
 
 impl<'bp> ResolvedExpressions<'bp> {
     pub fn empty() -> Self {
         Self {
             inner: GenSlab::empty(),
-            value_to_widgets: SecondaryMap::empty(),
-            widgets_to_values: SecondaryMap::empty(),
+            in_transit: false,
         }
     }
 
-    pub fn insert(&mut self, expr: ResolvedExpr<'bp>) -> ValueId {
-        self.inner.insert(expr)
-    }
-
-    pub fn next_id(&self) -> ValueId {
+    pub fn reserve(&mut self) -> Key {
+        assert!(!self.in_transit);
+        self.in_transit = true;
         self.inner.next_id()
     }
 
-    pub fn associate(&mut self, value_id: ValueId, widget_id: ValueId) {
-        self.value_to_widgets.insert(value_id, widget_id);
-        self.widgets_to_values.insert(widget_id, value_id);
+    pub fn commit(&mut self, key: Key, expr: ResolvedExpr<'bp>, value: ValueKind<'bp>) -> ValueKind<'bp> {
+        assert!(self.in_transit);
+        self.in_transit = false;
+        let entry = Entry::new(expr, value.clone());
+        assert_eq!(self.inner.insert(entry), key);
+
+        value
     }
 
-    pub fn remove_value(&mut self, value_id: ValueId) {
+    pub fn remove(&mut self, key: Key) {
+        let Some(entry) = self.inner.get(key) else { return };
+        // If the strong count is one it means the value is no longer used 
+        // by any widget, and can be removed.
+        // if Rc::strong_count(&entry.value) == 1 {
+        //     self.inner.remove(key);
+        // }
+        panic!();
     }
 }
 
@@ -133,7 +152,7 @@ impl<'bp> Index<ValueId> for ResolvedExpressions<'bp> {
     type Output = ResolvedExpr<'bp>;
 
     fn index(&self, index: ValueId) -> &Self::Output {
-        &self.inner[index]
+        &self.inner[index].expr
     }
 }
 

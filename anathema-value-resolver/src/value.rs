@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
 use anathema_state::{Color, Hex, PendingValue, SubTo, Subscriber, Type};
 use anathema_store::slab::{Composite, GenSlab, Key, Slab};
@@ -20,13 +22,42 @@ pub fn resolve<'bp>(
     value_index: SmallIndex,
 ) -> Value<'bp> {
     let expr = ctx.expressions.get(expr_id);
+    let value_id = ctx.resolved_expressions.reserve();
+    let sub = (value_id, value_index).into();
+
     let resolver = Resolver::new(ctx);
     let value_expr = resolver.resolve(expr);
-    // let value = evaluate(&value_expr);
-    let value_id = ctx.resolved_expressions.insert(value_expr);
-    ctx.resolved_expressions.associate(value_id, widget_id);
-    let sub = (value_id, value_index).into();
+    let value = evaluate(&value_expr, sub, ctx.attribute_storage);
+    let value = ctx.resolved_expressions.commit(value_id, value_expr, value);
     Value::resolve(&ctx.resolved_expressions[value_id], sub, ctx.attribute_storage)
+}
+
+fn evaluate<'bp>(
+    expr: &ResolvedExpr<'bp>,
+    sub: Subscriber,
+    attribute_storage: &AttributeStorage<'bp>,
+) -> ValueKind<'bp> {
+    let mut ctx = ValueResolutionContext::new(attribute_storage, sub, ResolvedState::Unresolved);
+    let kind = resolve_value(&expr, &mut ctx);
+
+    // NOTE
+    // This is a special edge case where the map or state is used
+    // as a final value `Option<ValueKind>`.
+    //
+    // This would only hold a meaningful value in an if-statement:
+    // ```
+    // if state.opt_map
+    //     text "show this if there is a map"
+    // ```
+    match kind {
+        ValueKind::DynMap(pending) | ValueKind::Composite(pending) => {
+            ctx.force_sub(&pending);
+        }
+        _ => {}
+    }
+
+    ctx.done();
+    kind
 }
 
 pub fn resolve_collection<'bp>(
@@ -73,7 +104,7 @@ impl<'bp> Collection<'bp> {
 }
 
 pub struct Values<'bp> {
-    inner: GenSlab<Value<'bp>>, 
+    inner: GenSlab<Value<'bp>>,
 }
 
 impl<'bp> Values<'bp> {
@@ -130,10 +161,9 @@ impl<'bp> Value<'bp> {
             _ => {}
         }
 
-        let expr = panic!();
         ctx.done();
         Self {
-            expr,
+            expr: expr.clone(),
             sub,
             kind,
             resolved: ctx.resolved_state,

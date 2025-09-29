@@ -14,5 +14,7 @@ mod scope;
 mod scope2;
 mod value;
 
+mod experimentation;
+
 #[cfg(test)]
 pub(crate) mod testing;

@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod cell;
 pub mod indexmap;
 pub mod regionlist;
 pub mod slab;
