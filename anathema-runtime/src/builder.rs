@@ -141,7 +141,7 @@ impl<G: GlobalEventHandler> Builder<G> {
     ) -> Result<()>
     where
         FC: 'static + Fn() -> C,
-        FS: 'static + FnMut() -> C::State,
+        FS: 'static + Fn() -> C::State,
         C: Component + 'static,
     {
         let id = self.document.add_component(ident, template.to_source_kind())?;
