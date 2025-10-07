@@ -1,0 +1,16 @@
+[package]
+name = "anathema-templates"
+license = "MIT"
+description = "Anathema template parser (aml)"
+version.workspace = true
+edition.workspace = true
+documentation = "https://togglebyte.github.io/anathema-guide/"
+homepage = "https://github.com/togglebyte/anathema"
+repository = "https://github.com/togglebyte/anathema"
+
+[dependencies]
+anathema-state = { workspace = true }
+anathema-store = { workspace = true }
+
+[lints]
+workspace = true

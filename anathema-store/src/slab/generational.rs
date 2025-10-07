@@ -474,6 +474,15 @@ impl<T> std::ops::Index<Key> for GenSlab<T> {
     }
 }
 
+impl<T> std::ops::IndexMut<Key> for GenSlab<T> {
+    fn index_mut(&mut self, index: Key) -> &mut Self::Output {
+        match self.get_mut(index) {
+            Some(val) => val,
+            None => panic!("invalid index or generation"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

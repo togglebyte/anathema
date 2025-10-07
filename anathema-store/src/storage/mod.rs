@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use crate::slab::{Slab, SlabIndex, Ticket};
 
 pub mod strings;
@@ -52,14 +54,6 @@ where
         }
     }
 
-    pub fn checkout(&mut self, index: I) -> Ticket<I, (K, V)> {
-        self.0.checkout(index)
-    }
-
-    pub fn restore(&mut self, ticket: Ticket<I, (K, V)>) {
-        self.0.restore(ticket)
-    }
-
     /// Get a reference by index
     pub fn get(&self, index: I) -> Option<&(K, V)> {
         self.0.get(index)
@@ -96,5 +90,13 @@ where
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (K, V)> {
         self.0.iter_values_mut()
+    }
+}
+
+impl<I: SlabIndex, U, T> Index<I> for Storage<I, U, T> {
+    type Output = (U, T);
+
+    fn index(&self, index: I) -> &Self::Output {
+        &self.0[index]
     }
 }

@@ -1,0 +1,12 @@
+[package]
+name = "anathema-ui"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+anathema-state = { workspace = true }
+anathema-store = { workspace = true }
+anathema-geometry = { workspace = true }
+
+[lints]
+workspace = true

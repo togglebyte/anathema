@@ -1,6 +1,6 @@
 use crate::{Pos, Size};
 
-/// A region in global space
+/// A normalized region in global space
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Region {
     /// The starting position of the region
@@ -15,6 +15,7 @@ impl Region {
 
     /// Create a new instance of a region.
     pub const fn new(from: Pos, to: Pos) -> Self {
+        assert!(from.x <= to.x && from.y <= to.y, "region is non-normalized");
         Self { from, to }
     }
 
@@ -29,6 +30,32 @@ impl Region {
         }
 
         true
+    }
+
+    /// Get the size of the region
+    pub const fn size(&self) -> Size {
+        Size::new(
+            (self.to.x - self.from.x) as u16,
+            (self.to.y - self.from.y) as u16,
+        )
+    }
+
+    /// Get the position of the region.
+    /// This is equal to the top left corner of the region
+    pub const fn pos(&self) -> Pos {
+        self.from
+    }
+
+    /// Move the region to a new position
+    pub fn set_pos(&mut self, pos: Pos) {
+        self.from += pos;
+        self.to += pos;
+    }
+
+    /// Resize the region
+    pub fn resize(&mut self, size: Size) {
+        self.to.x = self.from.x + size.width as i32;
+        self.to.y = self.from.y + size.height as i32;
     }
 
     /// Create a new region by intersecting two regions

@@ -1,7 +1,0 @@
-align [alignment: "centre"]
-    border
-        column
-            text "Simple counter app"
-            @button (click->increment) [caption: "Increment", id: 1]
-            text state.number
-            @button (click->decrement) [caption: "Decrement", id: 2]

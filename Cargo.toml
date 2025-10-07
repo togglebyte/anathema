@@ -14,31 +14,18 @@ publish = true
 rust-version = "1.88"
 
 [dependencies]
-anathema-backend = { workspace = true }
-anathema-default-widgets = { workspace = true }
+anathema-core = { workspace = true }
 anathema-geometry = { workspace = true }
-anathema-runtime = { workspace = true }
 anathema-state = { workspace = true }
 anathema-state-derive = { workspace = true }
 anathema-store = { workspace = true }
-anathema-templates = { workspace = true }
-anathema-value-resolver = { workspace = true }
+anathema-strings = { workspace = true }
 anathema-widgets = { workspace = true }
-
-[dev-dependencies]
-# anathema-debug = { path = "anathema-debug" }
-anathema-testutils = { path = "anathema-testutils" }
 
 [features]
 default = []
-profile = [
-    "anathema-runtime/profile", 
-    "anathema-widgets/profile", 
-    "anathema-backend/profile",
-    "anathema-value-resolver/profile",
-]
+profile = []
 serde = ["anathema-state/serde", "anathema-store/serde"]
-# filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
 [lints]
 workspace = true
@@ -53,29 +40,23 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
-anathema-default-widgets = { path = "./anathema-default-widgets", version = "0.2.12-beta" }
-anathema-backend = { path = "./anathema-backend", version = "0.2.12-beta" }
-anathema-runtime = { path = "./anathema-runtime", version = "0.2.12-beta" }
+anathema-core = { path = "./anathema-core", version = "0.2.12-beta" }
+anathema-geometry = { path = "./anathema-geometry", version = "0.2.12-beta" }
 anathema-state = { path = "./anathema-state", version = "0.2.12-beta" }
 anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.12-beta" }
 anathema-store = { path = "./anathema-store", version = "0.2.12-beta" }
-anathema-templates = { path = "./anathema-templates", version = "0.2.12-beta" }
+anathema-strings = { path = "./anathema-strings", version = "0.2.12-beta" }
 anathema-widgets = { path = "./anathema-widgets", version = "0.2.12-beta" }
-anathema-geometry = { path = "./anathema-geometry", version = "0.2.12-beta" }
-anathema-value-resolver = { path = "./anathema-value-resolver", version = "0.2.12-beta" }
 
 [workspace]
 members = [
-    "anathema-backend", 
-    "anathema-runtime", 
-    "anathema-default-widgets", 
+    "anathema-core", 
     "anathema-geometry", 
     "anathema-state",
     "anathema-state-derive",
     "anathema-store",
-    "anathema-templates", 
+    "anathema-strings", 
     "anathema-widgets", 
-    "anathema-value-resolver",
 ]
 
 [workspace.lints.rust]

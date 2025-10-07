@@ -324,16 +324,6 @@ impl States {
         self.inner.get_mut(state_id.into())
     }
 
-    pub fn with_mut<F, U>(&mut self, index: impl Into<StateId>, f: F) -> U
-    where
-        F: FnOnce(&mut dyn State, &mut Self) -> U,
-    {
-        let mut ticket = self.inner.checkout(index.into());
-        let ret = f(&mut *ticket.to_mut(), self);
-        self.inner.restore(ticket);
-        ret
-    }
-
     /// Remove and return a given state.
     ///
     /// # Panics

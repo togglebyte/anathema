@@ -1,11 +1,12 @@
 [package]
-name = "anathema-widgets"
+name = "anathema-core"
 edition.workspace = true
 version.workspace = true
 
 [dependencies]
-anathema-core = { path = "../anathema-core", version = "0.2.12-beta" }
+anathema-store = { path = "../anathema-store", version = "0.2.12-beta" }
 anathema-geometry = { path = "../anathema-geometry", version = "0.2.12-beta" }
+anathema-state = { path = "../anathema-state", version = "0.2.12-beta" }
 
 [lints]
 workspace = true

@@ -72,6 +72,32 @@ where
     }
 }
 
+impl<K, V> std::ops::Index<K> for SecondaryMap<K, V>
+where
+    K: Into<Index>,
+{
+    type Output = V;
+
+    fn index(&self, index: K) -> &Self::Output {
+        match self.get(index) {
+            Some(val) => val,
+            None => panic!("invalid key"),
+        }
+    }
+}
+
+impl<K, V> std::ops::IndexMut<K> for SecondaryMap<K, V>
+where
+    K: Into<Index>,
+{
+    fn index_mut(&mut self, index: K) -> &mut Self::Output {
+        match self.get_mut(index) {
+            Some(val) => val,
+            None => panic!("invalid key"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
