@@ -38,6 +38,7 @@ profile = [
     "anathema-value-resolver/profile",
 ]
 serde = ["anathema-state/serde", "anathema-store/serde"]
+osc = ["anathema-backend/osc"]
 # filelog = ["anathema-debug/filelog", "anathema-widgets/filelog", "anathema-runtime/filelog"]
 
 [lints]
