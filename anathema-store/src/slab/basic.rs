@@ -1,7 +1,5 @@
 use std::ops::{Index, IndexMut};
 
-use super::Ticket;
-
 /// Implement this for anything that can be an index of a slab
 pub trait SlabIndex: Copy + PartialEq {
     /// The max value of the key
@@ -98,8 +96,7 @@ impl<I, T> Entry<I, T> {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Slab<I, T> {
     next_id: Option<I>,
-    /// TODO: Don't make this public
-    pub inner: Vec<Entry<I, T>>,
+    inner: Vec<Entry<I, T>>,
 }
 
 impl<I, T> Slab<I, T>
@@ -440,7 +437,6 @@ where
                     }
                 }
                 Entry::Occupied(value) => writeln!(&mut s, "{idx}: {value:?}"),
-                Entry::CheckedOut(_) => writeln!(&mut s, "entry is checked out"),
             };
         }
 

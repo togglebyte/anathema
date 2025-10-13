@@ -1,4 +1,4 @@
-use anathema_core::elements::RegisteredElements;
+use anathema_core::runtime::elements::RegisteredElements;
 pub use border::{border, Border};
 
 mod border;

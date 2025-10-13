@@ -1,9 +1,9 @@
 use anathema_geometry::{Pos, Size};
 
-use crate::elements::Element;
 use crate::layout::Layout;
-use crate::nodes::{Children, InsertNode};
+use crate::runtime::elements::{Children, Element, InsertNode};
 
+#[derive(Debug, Default)]
 pub struct TestElement(String);
 
 impl Element for TestElement {
@@ -34,5 +34,5 @@ impl Element for TestElement {
 
 pub(crate) fn test_el(value: impl Into<String>) -> InsertNode {
     let el = TestElement(value.into());
-    InsertNode::new(el)
+    InsertNode::from(el)
 }

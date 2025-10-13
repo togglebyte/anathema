@@ -2,14 +2,15 @@ use std::collections::HashMap;
 
 use anathema_geometry::{Pos, Size};
 
+pub use self::tree::Children;
+pub(crate) use self::tree::{ElementId, InsertNode, Elements};
 use crate::attributes::Attributes;
 use crate::layout::Layout;
-use crate::nodes::{Children, Nodes};
 
 mod eval;
+mod tree;
 
 type ElementFactory = Box<dyn Fn(&Attributes) -> Box<dyn Element>>;
-
 
 /// All registered element types
 pub struct RegisteredElements {
@@ -17,6 +18,12 @@ pub struct RegisteredElements {
 }
 
 impl RegisteredElements {
+    pub fn empty() -> Self {
+        Self {
+            registry: HashMap::new(),        
+        }
+    }
+
     pub fn register_default<T: Element + Default>(&mut self, ident: impl Into<Box<str>>) {
         self.registry
             .insert(ident.into(), Box::new(|_attr| Box::<T>::default()));

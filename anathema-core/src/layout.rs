@@ -1,30 +1,33 @@
 use anathema_geometry::{Pos, Region, Size};
 use anathema_store::slab::SecondaryMap;
 
-use crate::nodes::NodeId;
+use crate::runtime::elements::ElementId;
 
 #[derive(Debug)]
 pub struct Layout {
-    regions: SecondaryMap<NodeId, Region>,
+    regions: SecondaryMap<ElementId, Region>,
 }
 
 impl Layout {
     pub fn empty() -> Self {
         Self {
-            regions: SecondaryMap::empty(),        
+            regions: SecondaryMap::empty(),
         }
     }
 
-    pub(crate) fn set_size(&mut self, node_id: NodeId, size: Size) {
-        self.regions[node_id].resize(size);
+    pub(crate) fn set_size(&mut self, id: ElementId, size: Size) {
+        self.regions[id].resize(size);
     }
 
-    pub(crate) fn set_pos(&mut self, node_id: NodeId, pos: Pos) {
-        self.regions[node_id].set_pos(pos);
+    pub(crate) fn set_pos(&mut self, id: ElementId, pos: Pos) {
+        self.regions[id].set_pos(pos);
     }
 
-    pub(crate) fn insert(&mut self, id: NodeId) {
+    pub(crate) fn insert(&mut self, id: ElementId) {
         self.regions.insert(id, Region::ZERO);
     }
-}
 
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Region> {
+        self.regions.iter()
+    }
+}

@@ -63,13 +63,13 @@ impl<T> OwnedEntry<T> {
 //   - Storage -
 // -----------------------------------------------------------------------------
 pub struct Owned<T> {
-    inner: RefCell<crate::slab::GenSlab<OwnedEntry<T>>>,
+    inner: RefCell<crate::slab::GenSlab<crate::slab::Key, OwnedEntry<T>>>,
 }
 
 impl<T> Owned<T> {
     pub const fn empty() -> Self {
         Self {
-            inner: RefCell::new(crate::slab::GenSlab::empty_aux()),
+            inner: RefCell::new(crate::slab::GenSlab::empty()),
         }
     }
 

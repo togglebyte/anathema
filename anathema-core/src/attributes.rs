@@ -1,11 +1,11 @@
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
-use crate::nodes::NodeId;
+use crate::runtime::elements::ElementId;
 
 #[derive(Debug)]
 pub struct AllAttributes {
-    attributes: SecondaryMap<NodeId, Attributes>,
+    attributes: SecondaryMap<ElementId, Attributes>,
 }
 impl AllAttributes {
     pub(crate) fn empty() -> Self {
@@ -14,7 +14,7 @@ impl AllAttributes {
         }
     }
 
-    pub(crate) fn insert(&mut self, id: NodeId) {
+    pub(crate) fn insert(&mut self, id: ElementId) {
         self.attributes.insert(id, Attributes::empty());
     }
 }

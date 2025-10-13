@@ -1,6 +1,5 @@
-use anathema_core::elements::Element;
 use anathema_core::layout::Layout;
-use anathema_core::nodes::{Children, InsertNode};
+use anathema_core::runtime::elements::{Children, Element};
 use anathema_geometry::{Pos, Size};
 
 #[derive(Debug, Default)]
@@ -19,8 +18,12 @@ impl Element for Border {
     fn paint(&mut self) {
         todo!()
     }
+
+    fn describe(&self) -> &str {
+        "border"
+    }
 }
 
-pub fn border() -> InsertNode {
-    Border.into()
+pub fn border() -> Box<dyn Element> {
+    Box::new(Border)
 }

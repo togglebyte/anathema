@@ -22,12 +22,14 @@ impl OwnedValue {
 
 // Write a new value into the `OWNED` store and associate
 // a subscriber key with the value.
+#[deprecated(note = "this should not be used anymore, as the values are either single thread or multi thread")]
 pub(crate) fn new_value(value: Box<dyn State>, value_type: Type) -> ValueKey {
-    let value = OwnedValue::new(value);
-    let mut owned_key = OWNED.with(|owned| owned.push(value));
-    owned_key.set_aux(value_type as u16);
-    let sub_key = SUBSCRIBERS.with_borrow_mut(|subscribers| subscribers.push_empty());
-    ValueKey(owned_key, sub_key)
+    panic!();
+    // let value = OwnedValue::new(value);
+    // let mut owned_key = OWNED.with(|owned| owned.push(value));
+    // owned_key.set_aux(value_type as u16);
+    // let sub_key = SUBSCRIBERS.with_borrow_mut(|subscribers| subscribers.push_empty());
+    // ValueKey(owned_key, sub_key)
 }
 
 pub(crate) fn with_owned<F, T>(key: OwnedKey, f: F) -> T

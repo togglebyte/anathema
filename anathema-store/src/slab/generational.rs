@@ -1,7 +1,42 @@
 use std::fmt::{self, Debug, Display};
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 use super::{Index, Ticket};
+
+/// Create a newtype that wraps a `Key`.
+/// This implements the following traits:
+/// * Debug
+/// * PartialEq
+/// * Copy
+/// * Clone
+/// * From<Key>
+#[macro_export]
+macro_rules! key {
+    ($name:ident) => {
+        #[derive(Debug, PartialEq, Copy, Clone)]
+        pub struct $name(anathema_store::slab::Key);
+        impl anathema_store::slab::SlabKey for $name { }
+
+        impl From<anathema_store::slab::Key> for $name {
+            fn from(key: anathema_store::slab::Key) -> Self {
+                Self(key)
+            }
+        }
+
+        impl From<$name> for anathema_store::slab::Key {
+            fn from(key: $name) -> Self {
+                key.0
+            }
+        }
+
+        impl From<$name> for anathema_store::slab::Index {
+            fn from(key: $name) -> Self {
+                key.0.into()
+            }
+        }
+    }
+}
 
 /// A generation associated with a key.
 /// The generation is used to ensure that the same key can be reused without retaining
@@ -47,14 +82,11 @@ impl Display for Gen {
 /// This is used to attach additional data to the key.
 #[derive(Hash, Copy, Clone, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Key(u64);
+pub struct Key(u32);
 
 impl Key {
-    const AUX_BITS: usize = 16;
-    const AUX_OFFSET: usize = Self::INDEX_BITS + Self::GEN_BITS;
-    const GEN_BITS: usize = 16;
-    const INDEX_BITS: usize = 32;
-    const INDEX_OFFSET: usize = Self::AUX_BITS + Self::GEN_BITS;
+    const GEN_BITS: usize = 10;
+    const INDEX_BITS: usize = 22;
     /// Max, with the generation set to zero
     pub const MAX: Self = Self::new(u32::MAX, 0);
     /// One (generation is set to zero)
@@ -64,20 +96,9 @@ impl Key {
 
     /// Create a new instance of a key
     pub const fn new(index: u32, generation: u16) -> Self {
-        let index = (index as u64) << Self::INDEX_OFFSET >> Self::INDEX_OFFSET;
-        let generation = (generation as u64) << Self::INDEX_BITS;
+        let index = index << Self::GEN_BITS >> Self::GEN_BITS;
+        let generation = (generation as u32) << Self::INDEX_BITS;
         Self(index | generation)
-    }
-
-    /// Set the upper auxiliary value
-    pub fn set_aux(&mut self, aux: u16) {
-        let aux = (aux as u64) << (Self::INDEX_BITS + Self::GEN_BITS);
-        self.0 = self.0 << Self::GEN_BITS >> Self::GEN_BITS | aux;
-    }
-
-    /// Get the auxiliary value
-    pub fn aux(&self) -> u16 {
-        (self.0 >> Self::AUX_OFFSET) as u16
     }
 
     pub(super) fn bump(mut self) -> Self {
@@ -87,18 +108,13 @@ impl Key {
     }
 
     pub(super) fn set_gen(&mut self, new_gen: u16) {
-        let generation = (new_gen as u64) << Self::INDEX_BITS;
-        self.0 = (self.0 << Self::INDEX_OFFSET >> Self::INDEX_OFFSET) | generation;
+        let generation = (new_gen as u32) << Self::INDEX_BITS;
+        self.0 = self.index() as u32 | generation
     }
 
     /// The index
     pub const fn index(&self) -> usize {
-        (self.0 << Self::INDEX_OFFSET >> Self::INDEX_OFFSET) as usize
-    }
-
-    /// This gets the index of the key, this is used for debugging only
-    pub const fn debug_index(&self) -> usize {
-        self.index()
+        (self.0 << Self::GEN_BITS >> Self::GEN_BITS) as usize
     }
 
     /// Get the key generation
@@ -130,6 +146,11 @@ impl From<Key> for Index {
         value.index().into()
     }
 }
+
+/// Implement this trait for any type acting like a key
+pub trait SlabKey: Into<Key> + From<Key> {}
+
+impl SlabKey for Key {}
 
 // -----------------------------------------------------------------------------
 //   - Entry -
@@ -175,27 +196,22 @@ impl<T: Debug> Debug for Entry<T> {
 /// If another value is inserted at the same index it will have a new generation.
 /// This prevents stale indices pointing to incorrect values.
 #[derive(Debug)]
-pub struct GenSlab<T> {
+pub struct GenSlab<K, T> {
     next_id: Option<Key>,
     inner: Vec<Entry<T>>,
+    _key: PhantomData<K>,
 }
 
-impl<T> GenSlab<T> {
+impl<K, T> GenSlab<K, T>
+where
+    K: SlabKey,
+{
     /// Create an empty slab
     pub const fn empty() -> Self {
         Self {
             next_id: None,
             inner: vec![],
-        }
-    }
-}
-
-impl<T> GenSlab<T> {
-    /// Create an empty slab
-    pub const fn empty_aux() -> Self {
-        Self {
-            next_id: None,
-            inner: vec![],
+            _key: PhantomData,
         }
     }
 
@@ -205,18 +221,20 @@ impl<T> GenSlab<T> {
         Self {
             next_id: None,
             inner: Vec::with_capacity(cap),
+            _key: PhantomData,
         }
     }
 
     /// Try to replace an existing value if it exists, with a new one.
     /// This will bump the generation.
-    pub fn try_replace(&mut self, key: Key, mut new_value: T) -> Option<(Key, T)> {
+    pub fn try_replace(&mut self, key: K, mut new_value: T) -> Option<(K, T)> {
+        let key = key.into();
         match &mut self.inner.get_mut(key.index())? {
             Entry::Occupied(val, generation) if key.generation() == *generation => {
                 key.bump();
                 *generation = key.generation();
                 std::mem::swap(&mut new_value, val);
-                Some((key, new_value))
+                Some((key.into(), new_value))
             }
             _ => None,
         }
@@ -228,13 +246,14 @@ impl<T> GenSlab<T> {
     /// # Panics
     ///
     /// Panics if the entry does not exist
-    pub fn replace(&mut self, key: Key, mut new_value: T) -> (Key, T) {
+    pub fn replace(&mut self, key: K, mut new_value: T) -> (K, T) {
+        let key = key.into();
         match &mut self.inner[key.index()] {
             Entry::Occupied(val, generation) if key.generation() == *generation => {
                 key.bump();
                 *generation = key.generation();
                 std::mem::swap(&mut new_value, val);
-                (key, new_value)
+                (key.into(), new_value)
             }
             Entry::Occupied(..) => panic!("entry refers to a different value"),
             Entry::CheckedOut(_) => panic!("entry is checked out"),
@@ -243,7 +262,7 @@ impl<T> GenSlab<T> {
     }
 
     /// Closure over a mutable reference to T
-    pub fn with_mut<F, U>(&mut self, key: Key, f: F) -> U
+    pub fn with_mut<F, U>(&mut self, key: K, f: F) -> U
     where
         F: FnOnce(&mut T, &mut Self) -> U,
     {
@@ -253,8 +272,9 @@ impl<T> GenSlab<T> {
         ret
     }
 
-    pub(crate) fn checkout(&mut self, key: Key) -> Ticket<Key, T> {
-        let mut entry = Entry::CheckedOut(key);
+    pub(crate) fn checkout(&mut self, key: K) -> Ticket<Key, T> {
+        let key = key.into();
+        let mut entry = Entry::CheckedOut(key.into());
         std::mem::swap(&mut entry, &mut self.inner[key.index()]);
 
         match entry {
@@ -285,10 +305,10 @@ impl<T> GenSlab<T> {
     /// There is no guarantee that this value will be the same
     /// value produced when doing an insert if another insert has happened
     /// since this value was returned.
-    pub fn next_id(&self) -> Key {
+    pub fn next_id(&self) -> K {
         match self.next_id {
-            Some(id) => id,
-            None => Key::new(self.inner.len() as u32, 0),
+            Some(id) => id.into(),
+            None => Key::new(self.inner.len() as u32, 0).into(),
         }
     }
 
@@ -298,7 +318,7 @@ impl<T> GenSlab<T> {
     // Write the vacant entry's `next_id` into self.next_id, and
     // finally replace the vacant entry with the occupied value
     /// Insert a value into the slab
-    pub fn insert(&mut self, value: T) -> Key {
+    pub fn insert(&mut self, value: T) -> K {
         match self.next_id.take() {
             Some(key) => {
                 let entry = &mut self.inner[key.index()];
@@ -310,19 +330,20 @@ impl<T> GenSlab<T> {
                 self.next_id = new_next_id.take();
                 entry.swap(value, key.generation());
 
-                key
+                key.into()
             }
             None => {
                 let index = Key::new(self.inner.len() as u32, 0);
                 self.inner.push(Entry::occupied(value, index.generation()));
-                index
+                index.into()
             }
         }
     }
 
     /// Remove a value from the slab, as long as the index and generation matches
     #[must_use]
-    pub fn remove(&mut self, mut key: Key) -> Option<T> {
+    pub fn remove(&mut self, mut key: K) -> Option<T> {
+        let mut key = key.into();
         let mut entry = Entry::Vacant(self.next_id.take());
         // Increment the generation
         std::mem::swap(&mut self.inner[key.index()], &mut entry);
@@ -339,7 +360,8 @@ impl<T> GenSlab<T> {
     }
 
     /// Try to remove a value from the slab, where the index and generation matches
-    pub fn try_remove(&mut self, key: Key) -> Option<T> {
+    pub fn try_remove(&mut self, key: K) -> Option<T> {
+        let key = key.into();
         if self.inner.len() <= key.index() {
             return None;
         }
@@ -359,7 +381,8 @@ impl<T> GenSlab<T> {
     }
 
     /// Get a reference to a value in the slab
-    pub fn get(&self, key: Key) -> Option<&T> {
+    pub fn get(&self, key: K) -> Option<&T> {
+        let key = key.into();
         match self.inner.get(key.index())? {
             Entry::Occupied(val, generation) if key.generation() == *generation => Some(val),
             _ => None,
@@ -367,18 +390,12 @@ impl<T> GenSlab<T> {
     }
 
     /// Get a mutable reference to a value in the slab
-    pub fn get_mut(&mut self, key: Key) -> Option<&mut T> {
+    pub fn get_mut(&mut self, key: K) -> Option<&mut T> {
+        let key = key.into();
         match self.inner.get_mut(key.index())? {
             Entry::Occupied(val, generation) if key.generation() == *generation => Some(val),
             _ => None,
         }
-    }
-
-    /// Remove this function
-    //TODO: remove this
-    #[deprecated]
-    pub fn count_all_entries(&self) -> usize {
-        self.inner.len()
     }
 
     /// Be aware that this will only ever be as performant as
@@ -415,17 +432,18 @@ impl<T> GenSlab<T> {
     }
 
     /// Iterate over the keys and elements
-    pub fn iter_keys(&self) -> impl Iterator<Item = (Key, &T)> + '_ {
+    pub fn iter_keys(&self) -> impl Iterator<Item = (K, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val, generation) => Some(((i, *generation).into(), val)),
+            Entry::Occupied(val, generation) => Some((Key::from((i, *generation)).into(), val)),
             Entry::Vacant(_) | Entry::CheckedOut(_) => None,
         })
     }
 }
 
-impl<T> GenSlab<T>
+impl<K, T> GenSlab<K, T>
 where
     T: std::fmt::Debug,
+    K: SlabKey,
 {
     #[doc(hidden)]
     pub fn dump_state(&self) -> String {
@@ -463,10 +481,13 @@ where
 // -----------------------------------------------------------------------------
 //   - Index -
 // -----------------------------------------------------------------------------
-impl<T> std::ops::Index<Key> for GenSlab<T> {
+impl<K, T> std::ops::Index<K> for GenSlab<K, T>
+where
+    K: SlabKey,
+{
     type Output = T;
 
-    fn index(&self, index: Key) -> &Self::Output {
+    fn index(&self, index: K) -> &Self::Output {
         match self.get(index) {
             Some(val) => val,
             None => panic!("invalid index or generation"),
@@ -474,8 +495,11 @@ impl<T> std::ops::Index<Key> for GenSlab<T> {
     }
 }
 
-impl<T> std::ops::IndexMut<Key> for GenSlab<T> {
-    fn index_mut(&mut self, index: Key) -> &mut Self::Output {
+impl<K, T> std::ops::IndexMut<K> for GenSlab<K, T>
+where
+    K: SlabKey,
+{
+    fn index_mut(&mut self, index: K) -> &mut Self::Output {
         match self.get_mut(index) {
             Some(val) => val,
             None => panic!("invalid index or generation"),
@@ -574,16 +598,5 @@ mod test {
         let key = Key::new(index, generation);
         assert_eq!(key.index(), index as usize);
         assert_eq!(key.generation(), Gen(generation));
-    }
-
-    #[test]
-    fn write_aux_store() {
-        let index = 123;
-        let generation = 456u16;
-        let mut key = Key::new(index, generation);
-        key.set_aux(42);
-        assert_eq!(key.index(), index as usize);
-        assert_eq!(key.generation(), Gen(generation));
-        assert_eq!(key.aux(), 42);
     }
 }

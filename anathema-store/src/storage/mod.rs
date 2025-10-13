@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use crate::slab::{Slab, SlabIndex, Ticket};
+use crate::slab::{Slab, SlabIndex};
 
 pub mod strings;
 

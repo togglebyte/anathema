@@ -540,6 +540,7 @@ impl PendingValue {
     }
 }
 
+#[deprecated(note = "type info is no longer encoded into the keys")]
 #[derive(Debug, Copy, Clone)]
 #[repr(u16)]
 pub enum Type {

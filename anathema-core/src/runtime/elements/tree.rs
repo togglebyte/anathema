@@ -2,29 +2,28 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::ops::{Index, IndexMut};
 
 use anathema_geometry::Size;
+use anathema_store::key;
 use anathema_store::slab::{GenSlab, Key, SlabIndex};
 
+use super::Element;
 use crate::attributes::AllAttributes;
-use crate::elements::Element;
 use crate::layout::Layout;
 
-// #[derive(Debug, Copy, Clone, PartialEq)]
-// pub struct NodeId(Key);
-pub type NodeId = Key;
+key!(ElementId);
 
 #[derive(Debug)]
-pub struct Nodes {
-    nodes: GenSlab<Node>,
+pub struct Elements {
+    nodes: GenSlab<ElementId, Node>,
 }
 
-impl Nodes {
+impl Elements {
     pub(crate) fn empty() -> Self {
         Self {
             nodes: GenSlab::empty(),
         }
     }
 
-    pub(super) fn node(&self, id: NodeId) -> NodeRef<'_> {
+    pub(crate) fn node(&self, id: ElementId) -> NodeRef<'_> {
         let node = &self.nodes[id];
 
         let children = Children {
@@ -33,23 +32,25 @@ impl Nodes {
             index: 0,
         };
 
-        NodeRef {
-            id,
-            element: node.element.borrow_mut(),
-            children,
-        }
+        panic!()
+
+        // NodeRef {
+        //     id,
+        //     element: node.element.borrow_mut(),
+        //     children,
+        // }
     }
 
     pub(crate) fn apply_insert(
         &mut self,
         insert: InsertNode,
-        parent: Option<NodeId>,
+        parent: Option<ElementId>,
         layout: &mut Layout,
         all_attributes: &mut AllAttributes,
-    ) -> NodeId {
+    ) -> ElementId {
         let node = Node {
             parent,
-            element: RefCell::new(insert.element),
+            element: panic!(),//RefCell::new(insert.element),
             children: vec![],
         };
 
@@ -66,23 +67,23 @@ impl Nodes {
     }
 }
 
-impl Index<NodeId> for Nodes {
+impl Index<ElementId> for Elements {
     type Output = Node;
 
-    fn index(&self, index: NodeId) -> &Self::Output {
+    fn index(&self, index: ElementId) -> &Self::Output {
         &self.nodes[index]
     }
 }
 
-impl IndexMut<NodeId> for Nodes {
-    fn index_mut(&mut self, index: NodeId) -> &mut Self::Output {
+impl IndexMut<ElementId> for Elements {
+    fn index_mut(&mut self, index: ElementId) -> &mut Self::Output {
         &mut self.nodes[index]
     }
 }
 
 pub struct Children<'a> {
-    node_ids: &'a [NodeId],
-    nodes: &'a GenSlab<Node>,
+    node_ids: &'a [ElementId],
+    nodes: &'a GenSlab<ElementId, Node>,
     index: usize,
 }
 
@@ -97,7 +98,7 @@ impl<'a> Iterator for Children<'a> {
         let id = self.node_ids[self.index];
         self.index += 1;
         let node = &self.nodes[id];
-        let element = node.element.borrow_mut();
+        let element = panic!(); //node.element.borrow_mut();
         let children = Children {
             node_ids: &node.children,
             nodes: self.nodes,
@@ -108,7 +109,7 @@ impl<'a> Iterator for Children<'a> {
 }
 
 pub struct NodeRef<'a> {
-    id: NodeId,
+    id: ElementId,
     element: RefMut<'a, Box<dyn Element>>,
     children: Children<'a>,
 }
@@ -123,9 +124,9 @@ impl<'a> NodeRef<'a> {
 
 #[derive(Debug)]
 pub struct Node {
-    pub parent: Option<NodeId>,
-    pub children: Vec<NodeId>,
-    pub element: RefCell<Box<dyn Element>>,
+    pub parent: Option<ElementId>,
+    pub children: Vec<ElementId>,
+    pub element: ElementId,
 }
 
 /// An opaque node used to setup nodes for insertion into the tree.
@@ -135,9 +136,9 @@ pub struct InsertNode {
 }
 
 impl InsertNode {
-    pub fn new(el: impl Element) -> Self {
+    pub fn new(el: Box<dyn Element>) -> Self {
         Self {
-            element: Box::new(el),
+            element: el,
             children: vec![],
         }
     }
@@ -150,6 +151,6 @@ impl InsertNode {
 
 impl<T: Element> From<T> for InsertNode {
     fn from(value: T) -> Self {
-        Self::new(value)
+        Self::new(Box::new(value))
     }
 }

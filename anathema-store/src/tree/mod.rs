@@ -10,7 +10,7 @@ mod nodepath;
 mod transactions;
 mod view;
 
-pub type TreeValues<T> = GenSlab<(Box<[u16]>, T)>;
+pub type TreeValues<T> = GenSlab<ValueId, (Box<[u16]>, T)>;
 
 #[derive(Debug)]
 pub struct RemovedValues {
@@ -141,7 +141,7 @@ impl Nodes {
     }
 
     // Clear nodes and remove associated values
-    fn clear<T, F>(&mut self, values: &mut GenSlab<(Box<[u16]>, T)>, removed_values: &mut RemovedValues, f: &mut F)
+    fn clear<T, F>(&mut self, values: &mut GenSlab<ValueId, (Box<[u16]>, T)>, removed_values: &mut RemovedValues, f: &mut F)
     where
         F: FnMut(T),
     {

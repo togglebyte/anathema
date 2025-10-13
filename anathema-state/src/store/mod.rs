@@ -39,23 +39,25 @@ impl ValueKey {
         self.1
     }
 
+    #[deprecated(note = "type info is no longer stored on the key")]
     pub fn type_info(&self) -> Type {
-        let type_info = self.0.aux();
-        match type_info {
-            1 => Type::Int,
-            2 => Type::Float,
-            3 => Type::Char,
-            4 => Type::String,
-            5 => Type::Bool,
-            6 => Type::Hex,
-            7 => Type::Map,
-            8 => Type::List,
-            9 => Type::Composite,
-            10 => Type::Unit,
-            11 => Type::Color,
-            12 => Type::Maybe,
-            _ => unreachable!("corrupt type information"),
-        }
+        panic!()
+        // let type_info = self.0.aux();
+        // match type_info {
+        //     1 => Type::Int,
+        //     2 => Type::Float,
+        //     3 => Type::Char,
+        //     4 => Type::String,
+        //     5 => Type::Bool,
+        //     6 => Type::Hex,
+        //     7 => Type::Map,
+        //     8 => Type::List,
+        //     9 => Type::Composite,
+        //     10 => Type::Unit,
+        //     11 => Type::Color,
+        //     12 => Type::Maybe,
+        //     _ => unreachable!("corrupt type information"),
+        // }
     }
 }
 
