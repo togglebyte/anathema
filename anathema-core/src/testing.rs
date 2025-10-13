@@ -1,13 +1,14 @@
 use anathema_geometry::{Pos, Size};
 
 use crate::layout::Layout;
-use crate::runtime::elements::{Children, Element, InsertNode};
+use crate::runtime::widgets::iter::Children;
+use crate::runtime::widgets::Widget;
 
 #[derive(Debug, Default)]
-pub struct TestElement(String);
+pub struct TestWidget(String);
 
-impl Element for TestElement {
-    fn layout(&mut self, children: Children<'_>, layout: &mut Layout) -> Size {
+impl Widget for TestWidget {
+    fn layout(&mut self, children: Children<'_, '_>, layout: &mut Layout) -> Size {
         let mut size = Size::new(self.0.len() as u16, 1);
 
         for mut child in children {
@@ -28,11 +29,14 @@ impl Element for TestElement {
     }
 
     fn describe(&self) -> &str {
+        if self.0.is_empty() {
+            return "<test>";
+        }
         &self.0
     }
 }
 
-pub(crate) fn test_el(value: impl Into<String>) -> InsertNode {
-    let el = TestElement(value.into());
-    InsertNode::from(el)
-}
+// pub(crate) fn test_widget(value: impl Into<String>) -> InsertNode {
+//     let el = TestWidget(value.into());
+//     InsertNode::from(el)
+// }

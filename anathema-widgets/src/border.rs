@@ -1,12 +1,13 @@
 use anathema_core::layout::Layout;
-use anathema_core::runtime::elements::{Children, Element};
+use anathema_core::runtime::widgets::iter::Children;
+use anathema_core::runtime::widgets::Widget;
 use anathema_geometry::{Pos, Size};
 
 #[derive(Debug, Default)]
 pub struct Border;
 
-impl Element for Border {
-    fn layout(&mut self, mut children: Children<'_>, layout: &mut Layout) -> Size {
+impl Widget for Border {
+    fn layout(&mut self, mut children: Children<'_, '_>, layout: &mut Layout) -> Size {
         let mut size = children.next().map(|child| child.layout(layout)).unwrap_or(Size::ZERO);
         size
     }
@@ -24,6 +25,6 @@ impl Element for Border {
     }
 }
 
-pub fn border() -> Box<dyn Element> {
+pub fn border() -> Box<dyn Widget> {
     Box::new(Border)
 }

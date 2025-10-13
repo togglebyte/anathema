@@ -1,19 +1,18 @@
 use std::cell::RefCell;
 
 use crate::attributes::AllAttributes;
-use crate::runtime::elements::{Element, ElementId, Elements, InsertNode};
+use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::layout::Layout;
-use crate::runtime::statements::Statements;
 
 #[derive(Debug)]
 pub struct Document<'a, 'bp> {
-    statements: &'a mut Statements<'bp>,
+    elements: &'a mut Elements<'bp>,
     layout: &'a mut Layout,
     attributes: &'a mut AllAttributes,
 }
 
 impl<'a, 'bp> Document<'a, 'bp> {
-    pub fn insert(&mut self, insert: InsertNode, parent: Option<ElementId>) -> ElementId {
+    pub fn insert(&mut self, insert: (), parent: Option<ElementId>) -> ElementId {
         panic!()
         // let node_id = self.elements.apply_insert(insert, parent, self.layout, self.attributes);
         // let node = self.elements.node(node_id);
@@ -26,9 +25,9 @@ impl<'a, 'bp> Document<'a, 'bp> {
         // node_id
     }
 
-    pub(crate) fn new(statements: &'a mut Statements<'bp>, layout: &'a mut Layout, attributes: &'a mut AllAttributes) -> Self {
+    pub(crate) fn new(elements: &'a mut Elements<'bp>, layout: &'a mut Layout, attributes: &'a mut AllAttributes) -> Self {
         Self {
-            statements,
+            elements,
             layout,
             attributes,
         }

@@ -1,17 +1,17 @@
+use anathema_store::key;
 use anathema_store::slab::{Key, SecondaryMap};
 
 use crate::runtime::elements::ElementId;
-use crate::runtime::statements::StatementId;
 
-type ScopeId = Key;
+key!(ScopeId);
 
 struct ScopeNode {
     //
-    parent: Option<ScopeId>,
+    parent: Option<ElementId>,
 }
 
 pub struct Scope {
-    scopes: SecondaryMap<StatementId, ScopeNode>,
+    scopes: SecondaryMap<ElementId, ScopeNode>,
 }
 
 impl Scope {

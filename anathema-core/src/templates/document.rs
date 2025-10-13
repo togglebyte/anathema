@@ -16,7 +16,7 @@ use super::{ComponentBlueprintId, Lexer, Variables};
 
 /// A document containing templates and components
 /// ```
-/// # use anathema::templates::Document;
+/// # use anathema_core::templates::Document;
 /// let mut doc = Document::new("text 'I am a widget'");
 /// ```
 pub struct Document {

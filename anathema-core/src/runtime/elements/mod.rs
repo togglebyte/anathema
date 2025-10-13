@@ -1,56 +1,109 @@
-use std::collections::HashMap;
+use std::cell::{Ref, RefCell, RefMut};
+use std::ops::Index;
 
-use anathema_geometry::{Pos, Size};
+use anathema_store::key;
+use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
-pub use self::tree::Children;
-pub(crate) use self::tree::{ElementId, InsertNode, Elements};
-use crate::attributes::Attributes;
-use crate::layout::Layout;
+use crate::runtime::widgets::{Node as WidgetNode, Widget, Widgets};
+use crate::templates::{Blueprint, ExpressionId};
 
-mod eval;
-mod tree;
+pub mod iter;
 
-type ElementFactory = Box<dyn Fn(&Attributes) -> Box<dyn Element>>;
+key!(ElementId);
 
-/// All registered element types
-pub struct RegisteredElements {
-    registry: HashMap<Box<str>, ElementFactory>,
+#[derive(Debug)]
+pub struct Node<'bp> {
+    parent: Option<ElementId>,
+    pub(super) children: Vec<ElementId>,
+    pub(super) element: Element<'bp>,
 }
 
-impl RegisteredElements {
+#[derive(Debug)]
+pub enum Element<'bp> {
+    For {
+        binding: &'bp str,
+        // collection: Collection<'bp>,
+    },
+    Widget(RefCell<Box<dyn Widget>>),
+}
+
+#[derive(Debug)]
+pub struct Elements<'bp> {
+    elements: GenSlab<ElementId, Node<'bp>>,
+    removed_widgets: Vec<ElementId>,
+}
+
+impl<'bp> Elements<'bp> {
     pub fn empty() -> Self {
         Self {
-            registry: HashMap::new(),        
+            elements: GenSlab::empty(),
+            removed_widgets: vec![],
         }
     }
 
-    pub fn register_default<T: Element + Default>(&mut self, ident: impl Into<Box<str>>) {
-        self.registry
-            .insert(ident.into(), Box::new(|_attr| Box::<T>::default()));
+    pub fn insert(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
+        let node = Node {
+            parent,
+            element,
+            children: vec![],
+        };
+
+        let id = self.elements.insert(node);
+
+        if let Some(parent) = parent {
+            self.elements[parent].children.push(id);
+        }
+
+        id
     }
 
-    pub fn make(&self, ident: &str, attributes: &Attributes) -> Result<Box<dyn Element>, ()> {
-        let Some(factory) = self.registry.get(ident) else { return Err(()) };
-        let element = factory(attributes);
-        Ok(element)
+    pub fn remove(&mut self, id: ElementId) {
+        let Some(node) = self.elements.remove(id) else { return };
+
+        if let Some(parent) = node.parent {
+            self.elements[parent].children.retain(|node| parent.ne(node));
+        }
+
+        if let Element::Widget(_) = node.element {
+            self.removed_widgets.push(id);
+        }
     }
 }
 
-/// An element ...
-pub trait Element: 'static {
-    fn layout(&mut self, children: Children<'_>, layout: &mut Layout) -> Size;
+impl<'bp> Index<ElementId> for Elements<'bp> {
+    type Output = Node<'bp>;
 
-    fn position(&mut self) -> Pos;
-
-    fn paint(&mut self);
-
-    fn describe(&self) -> &str {
-        "<dyn Element>"
+    fn index(&self, index: ElementId) -> &Self::Output {
+        &self.elements[index]
     }
 }
 
-impl std::fmt::Debug for dyn Element {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.describe())
+fn widget_tree<'bp>(elements: &Elements<'bp>) -> Widgets {
+    let mut widgets = Widgets::empty();
+
+    fn add_child<'bp>(id: ElementId, elements: &Elements<'bp>, children: &mut Vec<ElementId>) {
+        let node = &elements[id];
+        match &node.element {
+            Element::For { .. } => {
+                for child in &node.children {
+                    add_child(id, elements, children);
+                }
+            }
+            Element::Widget(_) => children.push(id),
+        }
     }
+
+    for (id, node) in elements.elements.iter_keys() {
+        match &node.element {
+            Element::Widget(widget) => {
+                let mut children = vec![];
+                add_child(id, elements, &mut children);
+                let node = WidgetNode::new(id, children);
+                widgets.widgets.insert(id, node);
+            }
+            _ => continue,
+        }
+    }
+
+    widgets
 }
