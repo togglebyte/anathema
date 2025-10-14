@@ -1,10 +1,12 @@
 use std::cell::RefCell;
 
 use self::scope::Scope;
+use super::error::Result;
 use crate::attributes::{AllAttributes, Attributes};
+use crate::runtime::components::Components;
 use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::runtime::widgets::RegisteredWidgets;
-use crate::templates::{Blueprint, ExpressionId, For, Single};
+use crate::templates::{Blueprint, Component, ExpressionId, For, Single};
 use crate::ui::Document;
 
 mod scope;
@@ -12,6 +14,7 @@ mod scope;
 struct EvalCtx<'a, 'bp> {
     elements: &'a mut Elements<'bp>,
     attributes: &'a mut AllAttributes,
+    components: &'a mut Components,
 }
 
 impl<'a, 'bp> EvalCtx<'a, 'bp> {
@@ -19,8 +22,12 @@ impl<'a, 'bp> EvalCtx<'a, 'bp> {
         self.elements.insert(element, parent)
     }
 
-    fn new(elements: &'a mut Elements<'bp>, attributes: &'a mut AllAttributes) -> Self {
-        Self { elements, attributes }
+    fn new(elements: &'a mut Elements<'bp>, attributes: &'a mut AllAttributes, components: &'a mut Components) -> Self {
+        Self {
+            elements,
+            attributes,
+            components,
+        }
     }
 }
 
@@ -32,24 +39,24 @@ trait Evaluator {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope,
+        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
-    ) -> Result<(), ()>;
+    ) -> Result<()>;
 }
 
 pub fn eval<'a, 'bp>(
     blueprint: &'bp Blueprint,
     ctx: &mut EvalCtx<'a, 'bp>,
     factory: &RegisteredWidgets,
-    scope: &mut Scope,
+    scope: &mut Scope<'bp>,
     parent: Option<ElementId>,
-) -> Result<(), ()> {
+) -> Result<()> {
     match blueprint {
         Blueprint::Single(stmt) => SingleEval.eval(stmt, ctx, factory, scope, parent),
         Blueprint::For(stmt) => ForEval.eval(stmt, ctx, factory, scope, parent),
         Blueprint::With(with) => todo!(),
         Blueprint::ControlFlow(control_flow) => todo!(),
-        Blueprint::Component(component) => todo!(),
+        Blueprint::Component(stmt) => ComponentEval.eval(stmt, ctx, factory, scope, parent),
         Blueprint::Slot(blueprints) => todo!(),
     }
 }
@@ -64,9 +71,9 @@ impl Evaluator for SingleEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope,
+        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
-    ) -> Result<(), ()> {
+    ) -> Result<()> {
         for (key, expr) in input.attributes.iter() {}
 
         let attributes = Attributes::empty();
@@ -96,9 +103,9 @@ impl Evaluator for ForEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope,
+        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
-    ) -> Result<(), ()> {
+    ) -> Result<()> {
         // Resolve collection
         // resolve(forloop.data);
         let collection = [1];
@@ -120,12 +127,35 @@ impl Evaluator for ForEval {
     }
 }
 
+struct ComponentEval;
+
+impl Evaluator for ComponentEval {
+    type Input<'bp> = &'bp Component;
+
+    fn eval<'a, 'bp>(
+        &mut self,
+        input: Self::Input<'bp>,
+        ctx: &mut EvalCtx<'a, 'bp>,
+        factory: &RegisteredWidgets,
+        scope: &mut Scope<'bp>,
+        parent: Option<ElementId>,
+    ) -> Result<()> {
+        for (key, expr) in input.attributes.iter() {}
+
+        let attributes = Attributes::empty();
+
+        // scope.push_state(state_id);
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::attributes::AllAttributes;
     use crate::layout::Layout;
-    use crate::testing::TestElement;
+    use crate::testing::TestWidget;
 
     #[test]
     fn forloop() {
@@ -137,17 +167,18 @@ mod test {
         );
         let blueprint = doc.compile(&mut crate::templates::Variables::new()).unwrap();
 
-        let mut statements = Statements::empty();
+        let mut elements = Elements::empty();
         let mut attributes = AllAttributes::empty();
+        let mut components = Components::empty();
 
-        let mut eval_tree = EvalCtx::new(&mut statements, &mut attributes);
+        let mut eval_tree = EvalCtx::new(&mut elements, &mut attributes, &mut components);
 
-        let mut factory = RegisteredElements::empty();
-        factory.register_default::<TestElement>("node");
+        let mut factory = RegisteredWidgets::empty();
+        factory.register_default::<TestWidget>("node");
         let mut scope = Scope::empty();
 
         eval(&blueprint, &mut eval_tree, &factory, &mut scope, None);
 
-        panic!("{statements:#?}");
+        panic!("{elements:#?}");
     }
 }

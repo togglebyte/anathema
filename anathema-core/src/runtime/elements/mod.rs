@@ -13,7 +13,7 @@ key!(ElementId);
 
 #[derive(Debug)]
 pub struct Node<'bp> {
-    parent: Option<ElementId>,
+    pub(super) parent: Option<ElementId>,
     pub(super) children: Vec<ElementId>,
     pub(super) element: Element<'bp>,
 }
