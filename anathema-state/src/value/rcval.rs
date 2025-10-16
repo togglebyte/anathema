@@ -40,7 +40,11 @@ impl Clone for Subs {
 
 impl Subs {
     pub(crate) fn changed(&mut self, change: Change) {
-        self.0.borrow_mut().iter().copied().for_each(|key| changed(key, Change::Changed));
+        self.0
+            .borrow_mut()
+            .iter()
+            .copied()
+            .for_each(|key| changed(key, change));
     }
 
     fn empty() -> Subs {
@@ -92,14 +96,15 @@ where
     pub fn anon(&self) -> AnonValue {
         let weak = Rc::downgrade(&self.inner);
         AnonValue {
-            inner: weak,
+            inner: self.inner.clone(), //weak,
             subs: self.subs.clone(),
         }
     }
 
     /// Replace the underlying value
-    pub(crate) fn set(&self, empty: T) {
+    pub(crate) fn set(&mut self, empty: T) {
         _ = self.inner.replace(empty);
+        self.subs.changed(Change::Changed);
     }
 
     /// Mutable access to the underlying value.
@@ -118,14 +123,11 @@ where
     }
 
     pub(crate) fn untracked_mut(&mut self) -> (&mut Subs, UntrackedMut<'_, T>) {
-        (
-            &mut self.subs,
-            UntrackedMut(self.inner.borrow_mut())
-        )
+        (&mut self.subs, UntrackedMut(self.inner.borrow_mut()))
     }
 
     pub(crate) fn changed(&mut self, change: Change) {
-        self.subs.changed(Change::Changed);
+        self.subs.changed(change);
     }
 }
 
@@ -206,23 +208,21 @@ impl<T> DerefMut for UntrackedMut<'_, T> {
 /// This is why `load<T>()` returns an option.
 /// ```
 /// # use anathema_state::*;
-/// # let key_1 = Subscriber::ZERO;
-/// # let key_2 = Subscriber::MAX;
 /// let value = Value::new(123u32);
-/// let v1 = value.value_ref(key_1);
-/// let v2 = value.value_ref(key_2);
+/// let v1 = value.anon();
+/// let v2 = value.anon();
 ///
 /// assert_eq!(*v1.value::<u32>().unwrap(), 123);
 /// ```
 #[derive(Debug, Clone)]
 pub struct AnonValue {
-    inner: Weak<RefCell<dyn State>>,
+    inner: Rc<RefCell<dyn State>>,
     subs: Subs,
 }
 
 impl PartialEq for AnonValue {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.ptr_eq(&other.inner) && self.subs == other.subs
+        Rc::ptr_eq(&self.inner, &other.inner) && self.subs == other.subs
     }
 }
 
@@ -233,5 +233,14 @@ impl AnonValue {
 
     pub(crate) fn unsub(&self, key: Key) {
         self.subs.unsubscribe(key);
+    }
+
+    pub fn as_state(&self) -> Ref<'_, dyn State> {
+        self.inner.borrow()
+    }
+
+    pub fn value<T: 'static>(&self) -> Option<Ref<'_, T>> {
+        let val = self.inner.borrow() as Ref<'_, dyn std::any::Any>;
+        Ref::filter_map(val, |x| x.downcast_ref::<T>()).ok()
     }
 }

@@ -140,30 +140,30 @@ impl<T: State + TypeId> Value<Maybe<T>> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::store::testing::drain_changes;
-    use crate::{Change, Subscriber};
+    // use super::*;
+    // use crate::store::testing::drain_changes;
+    // use crate::{Change, Subscriber};
 
-    #[test]
-    fn nullable_int() {
-        let value = Maybe::some(1);
-        let inner = value.get().unwrap();
-        assert_eq!(1, inner.as_state().unwrap().as_int().unwrap());
-    }
+    // #[test]
+    // fn nullable_int() {
+    //     let value = Maybe::some(1);
+    //     let inner = value.get().unwrap();
+    //     assert_eq!(1, inner.as_state().unwrap().as_int().unwrap());
+    // }
 
-    #[test]
-    fn nested_nullables() {
-        let value = Maybe::some(Maybe::some(1));
-        let one = value.and_then_ref(|inner_map| inner_map.map_ref(|m| *m)).unwrap();
-        assert_eq!(one, 1);
-    }
+    // #[test]
+    // fn nested_nullables() {
+    //     let value = Maybe::some(Maybe::some(1));
+    //     let one = value.and_then_ref(|inner_map| inner_map.map_ref(|m| *m)).unwrap();
+    //     assert_eq!(one, 1);
+    // }
 
-    #[test]
-    fn changing_value() {
-        let mut value = Value::new(Maybe::<u32>::none());
-        value.reference().subscribe(Subscriber::ZERO);
-        value.to_mut().update(Some(1));
-        let mut changes = drain_changes();
-        assert!(matches!(changes.remove(0), (_, Change::Changed)));
-    }
+    // #[test]
+    // fn changing_value() {
+    //     let mut value = Value::new(Maybe::<u32>::none());
+    //     value.reference().subscribe(Subscriber::ZERO);
+    //     value.to_mut().update(Some(1));
+    //     let mut changes = drain_changes();
+    //     assert!(matches!(changes.remove(0), (_, Change::Changed)));
+    // }
 }

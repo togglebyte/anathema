@@ -277,9 +277,17 @@ where
 #[cfg(test)]
 mod test {
 
+    use anathema_store::slab::Key;
+
+    use crate::value::changes::Changes;
+
     use super::*;
-    use crate::store::testing::drain_changes;
-    use crate::Subscriber;
+
+    fn changes() -> Vec<(Key, Change)> {
+        let mut changes = Changes::empty();
+        crate::value::drain_changes(&mut changes);
+        changes.into()
+    }
 
     #[test]
     fn insert() {
@@ -299,10 +307,10 @@ mod test {
     #[test]
     fn notify_insert() {
         let mut list = Value::new(List::<u32>::empty());
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
         list.push_back(1);
 
-        let (_, change) = drain_changes().remove(0);
+        let (_, change) = changes().remove(0);
         assert!(matches!(change, Change::Inserted(_)));
     }
 
@@ -310,10 +318,10 @@ mod test {
     fn notify_remove() {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(1);
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
         list.remove(0);
 
-        let change = drain_changes().remove(0);
+        let change = changes().remove(0);
         assert!(matches!(change, (_, Change::Removed(_))));
     }
 
@@ -322,10 +330,10 @@ mod test {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(1);
         list.push_back(2);
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
         let front = list.pop_front();
 
-        let change = drain_changes().remove(0);
+        let change = changes().remove(0);
         assert!(matches!(change, (_, Change::Removed(0))));
         assert_eq!(*front.unwrap().to_ref(), 1);
     }
@@ -333,10 +341,10 @@ mod test {
     #[test]
     fn notify_clear() {
         let mut list = Value::new(List::<u32>::empty());
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
         list.clear();
 
-        let change = drain_changes().remove(0);
+        let change = changes().remove(0);
         assert!(matches!(change, (_, Change::Changed)));
     }
 
@@ -347,13 +355,13 @@ mod test {
         list.push_back(2);
         list.push_back(3);
 
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
 
         list.retain(|val| *val.to_ref() == 1);
 
-        let mut changes = drain_changes();
-        assert!(matches!(changes.remove(0), (_, Change::Removed(2))));
+        let mut changes = changes();
         assert!(matches!(changes.remove(0), (_, Change::Removed(1))));
+        assert!(matches!(changes.remove(0), (_, Change::Removed(2))));
     }
 
     #[test]
@@ -364,13 +372,13 @@ mod test {
         list.push_back(3);
         list.push_back(4);
 
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
 
         let result = list.extract_if(|val| *val.to_ref() % 2 == 0);
 
-        let mut changes = drain_changes();
-        assert!(matches!(changes.remove(0), (_, Change::Removed(2))));
+        let mut changes = changes();
         assert!(matches!(changes.remove(0), (_, Change::Removed(1))));
+        assert!(matches!(changes.remove(0), (_, Change::Removed(2))));
 
         assert_eq!(*result[0].to_ref(), 2);
         assert_eq!(*result[1].to_ref(), 4);
@@ -381,23 +389,21 @@ mod test {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(0);
         list.push_back(1);
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
         list.pop_back();
 
-        let change = drain_changes().remove(0);
+        let change = changes().remove(0);
         assert!(matches!(change, (_, Change::Removed(1))));
     }
 
     #[test]
     fn pop_empty_list() {
         let mut list = Value::new(List::<u32>::empty());
-        list.reference().subscribe(Subscriber::ZERO);
+        list.anon().subscribe(Key::ZERO);
         list.pop_back();
-        let changes = drain_changes();
-        assert!(changes.is_empty());
+        assert!(changes().is_empty());
 
         list.pop_front();
-        let changes = drain_changes();
-        assert!(changes.is_empty());
+        assert!(changes().is_empty());
     }
 }

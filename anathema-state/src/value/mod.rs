@@ -16,9 +16,9 @@ mod arcval;
 mod rcval;
 
 #[cfg(feature = "multithread")]
-pub use arcval::{Value, AnonValue, ValueRef, ValueMut};
+pub use arcval::{Value, AnonValue, ValueRef, ValueMut, drain_changes};
 #[cfg(not(feature = "multithread"))]
-pub use rcval::{Value, AnonValue, ValueRef, ValueMut};
+pub use rcval::{Value, AnonValue, ValueRef, ValueMut, drain_changes};
 
 mod changes;
 mod list;
@@ -471,7 +471,6 @@ impl<T: State> From<T> for Value<T> {
 //     }
 // }
 
-#[deprecated(note = "type info is no longer encoded into the keys")]
 #[derive(Debug, Copy, Clone)]
 #[repr(u16)]
 pub enum Type {
@@ -491,10 +490,9 @@ pub enum Type {
 
 #[cfg(test)]
 mod test {
-    use anathema_store::stack::Stack;
+    use anathema_store::{slab::Key, stack::Stack};
 
     use super::*;
-    use crate::drain_watchers;
 
     #[test]
     fn new_value() {
@@ -527,12 +525,12 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "value is currently shared: Key <0:0>")]
+    #[should_panic(expected = "RefCell already borrowed")]
     fn mutable_shared_panic() {
         // This should panic because of mutable access
         // is held while also having a value reference.
         let mut value = Value::new(String::new());
-        let s1 = value.value_ref(Subscriber::ZERO);
+        let s1 = value.anon();
         let _r1 = s1.value::<String>();
         let _m1 = value.to_mut();
     }
@@ -540,74 +538,14 @@ mod test {
     #[test]
     fn value_ref_to_shared_state() {
         let value = Value::new(1);
-        let r1 = value.reference();
-        let r2 = value.reference();
+        let r1 = value.anon();
+        let r2 = value.anon();
 
-        let s1 = r1.as_state().unwrap();
-        let s2 = r2.as_state().unwrap();
+        let s1 = r1.as_state();
+        let s2 = r2.as_state();
 
         let val = s1.as_int().unwrap() + s2.as_int().unwrap();
 
         assert_eq!(val, 2);
-    }
-
-    #[test]
-    fn monitor_change() {
-        let mut value = Value::new(1);
-        assert!(!value.to_mut().is_monitored());
-
-        value.reference().monitor(Watcher::new(0));
-        assert!(value.to_mut().is_monitored());
-
-        // Modify value
-        *value.to_mut() = 2;
-
-        let mut stack = Stack::empty();
-        drain_watchers(&mut stack);
-        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
-    }
-
-    #[test]
-    fn monitor_drop() {
-        let value = Value::new(1);
-        value.reference().monitor(Watcher::new(0));
-        drop(value);
-
-        let mut stack = Stack::empty();
-        drain_watchers(&mut stack);
-        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
-    }
-
-    #[test]
-    fn monitor_only_once() {
-        let mut stack = Stack::empty();
-
-        let mut value = Value::new(1);
-        value.reference().monitor(Watcher::new(0));
-        *value.to_mut() = 2;
-
-        // First monitor
-        drain_watchers(&mut stack);
-        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
-
-        // Second change but there was no re-attached monitor
-        drop(value);
-
-        // ... so the stack is now empty
-        drain_watchers(&mut stack);
-        assert!(stack.pop().is_none());
-    }
-
-    #[test]
-    fn monitor_pending() {
-        let mut stack = Stack::empty();
-
-        let value = Value::new(1);
-        let pending = value.reference();
-        pending.monitor(Watcher::new(0));
-        drop(value);
-
-        drain_watchers(&mut stack);
-        assert_eq!(stack.pop().unwrap(), Watcher::new(0));
     }
 }
