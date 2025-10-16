@@ -214,6 +214,12 @@ impl<T> Default for Stack<T> {
     }
 }
 
+impl<T> From<Stack<T>> for Vec<T> {
+    fn from(value: Stack<T>) -> Self {
+        value.inner.into_iter().filter_map(Entry::into_value).collect()
+    }
+}
+
 /// A draining iterator over the stack.
 /// Any values that wasn't consumed will be dropped
 /// along with the iterator.

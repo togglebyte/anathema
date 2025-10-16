@@ -34,23 +34,6 @@ impl SlabIndex for SmallIndex {
     }
 }
 
-// impl From<u8> for SmallIndex {
-//     fn from(value: u8) -> Self {
-//         Self(value)
-//     }
-// }
-// impl From<usize> for SmallIndex {
-//     fn from(value: usize) -> Self {
-//         Self(value as u8)
-//     }
-// }
-
-// impl From<SmallIndex> for usize {
-//     fn from(value: SmallIndex) -> Self {
-//         value.0 as usize
-//     }
-// }
-
 /// A small map used to store a small amount of values.
 ///
 /// The `SmallMap` can store up to 256 values.
