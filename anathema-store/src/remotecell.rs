@@ -6,10 +6,12 @@ use std::rc::Rc;
 /// It's important that a `RemoteCell` is never available while its corresponding `RemoteHandle`
 /// is, as that could lead to UB.
 ///
+/// NOTE: This is designed to be used with Anathema attributes (and the value types in there), and nothing else.
+///
 /// # SAFETY:
 ///
-/// This is not even remotely safe if this is used together.
-/// The remote cell can **not** ever be used at the same time as the remote handle.
+/// This is not even remotely safe.
+/// The remote cell can **not ever** be used at the same time as the remote handle.
 pub struct RemoteCell<T> {
     value: Rc<UnsafeCell<T>>,
 }

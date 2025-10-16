@@ -342,7 +342,7 @@ where
 
     /// Remove a value from the slab, as long as the index and generation matches
     #[must_use]
-    pub fn remove(&mut self, mut key: K) -> Option<T> {
+    pub fn remove(&mut self, key: K) -> Option<T> {
         let mut key = key.into();
         let mut entry = Entry::Vacant(self.next_id.take());
         // Increment the generation

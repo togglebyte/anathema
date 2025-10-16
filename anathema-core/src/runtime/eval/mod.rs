@@ -10,6 +10,7 @@ use crate::templates::{Blueprint, Component, ExpressionId, For, Single};
 use crate::ui::Document;
 
 mod scope;
+mod values;
 
 struct EvalCtx<'a, 'bp> {
     elements: &'a mut Elements<'bp>,

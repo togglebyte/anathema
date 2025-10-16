@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use super::{Shared, Type, Unique, Value};
+use super::{AnonValue, Value};
 use crate::states::AnyMap;
-use crate::store::values::{get_unique, try_make_shared};
-use crate::{PendingValue, State};
+use crate::value::{Type, ValueMut};
+use crate::{State, ValueRef};
 
 #[derive(Debug)]
 pub struct Map<T> {
@@ -60,34 +60,11 @@ impl<T: State> Value<Map<T>> {
         let map = Map { inner: HashMap::new() };
         Value::new(map)
     }
-
-    pub fn get(&self, key: impl AsRef<str>) -> Option<Shared<'_, T>> {
-        let map = &*self.to_ref();
-        let value = map.get(key.as_ref())?;
-        let key = value.key;
-
-        let (key, value) = try_make_shared(key.owned())?;
-        let shared = Shared::new(key, value);
-        Some(shared)
-    }
-
-    pub fn get_mut<'a>(&'a mut self, key: impl AsRef<str>) -> Option<Unique<'a, T>> {
-        let map = &*self.to_ref();
-        let value = map.get(key.as_ref())?;
-
-        let key = value.key;
-        let value = Unique {
-            value: Some(get_unique(key.owned())),
-            key,
-            _p: std::marker::PhantomData,
-        };
-        Some(value)
-    }
 }
 
 impl<T: State> AnyMap for Map<T> {
-    fn lookup(&self, key: &str) -> Option<PendingValue> {
-        self.get(key).map(|val| val.reference())
+    fn lookup(&self, key: &str) -> Option<AnonValue> {
+        self.get(key).map(|val| val.anon())
     }
 
     fn is_empty(&self) -> bool {

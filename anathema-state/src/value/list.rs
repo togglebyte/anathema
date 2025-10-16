@@ -4,11 +4,8 @@
 use std::collections::VecDeque;
 use std::ops::DerefMut;
 
-use super::{Shared, Type, Unique, Value};
-use crate::states::{AnyList, State};
-use crate::store::changed;
-use crate::store::values::{get_unique, try_make_shared};
-use crate::{Change, PendingValue};
+use super::{AnonValue, Value};
+use crate::{states::{AnyList, State}, value::{changes::Change, rcval::{changed, Subs}, Type, ValueMut}, ValueRef};
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -62,17 +59,15 @@ impl<T: State> Value<List<T>> {
     // to the underlying list.
     fn with_mut<F, U>(&mut self, f: F) -> U
     where
-        F: FnOnce(&mut List<T>) -> U,
+        F: FnOnce(&mut Subs, &mut List<T>) -> U,
     {
-        let mut inner = get_unique(self.key.owned());
+        let (subs, mut inner) = self.untracked_mut();
 
-        let list: &mut dyn State = inner.val.deref_mut();
+        let list: &mut dyn State = inner.deref_mut();
         let list: &mut dyn std::any::Any = list;
         let list: &mut List<T> = list.downcast_mut().expect("the type should never change");
 
-        let ret_val = f(list);
-
-        crate::store::values::return_owned(self.key.owned(), inner);
+        let ret_val = f(subs, list);
 
         ret_val
     }
@@ -93,13 +88,12 @@ impl<T: State> Value<List<T>> {
     where
         F: FnMut(&Value<T>) -> bool,
     {
-        let key = self.key;
         let mut index = 0;
-        self.with_mut(|list| {
+        self.with_mut(|subs, list| {
             list.inner.retain(|value| {
                 let retain = f(value);
                 if !retain {
-                    changed(key, Change::Removed(index));
+                    subs.changed(Change::Removed(index));
                 }
                 index += 1;
                 retain
@@ -114,8 +108,7 @@ impl<T: State> Value<List<T>> {
     where
         F: FnMut(&Value<T>) -> bool,
     {
-        let key = self.key;
-        self.with_mut(|List { inner: list, .. }| {
+        self.with_mut(|subs, List { inner: list, .. }| {
             let mut extraction = vec![];
 
             let mut del = 0;
@@ -125,38 +118,13 @@ impl<T: State> Value<List<T>> {
                 if f(&list[index]) {
                     let value = list.remove(index).expect("value is present");
                     extraction.push(value);
-                    changed(key, Change::Removed(index as u32));
+                    subs.changed(Change::Removed(index as u32));
                     del += 1;
                 }
             }
 
             extraction
         })
-    }
-
-    /// Get a reference to a value
-    pub fn get<'a>(&'a self, index: usize) -> Option<Shared<'a, T>> {
-        let list = &*self.to_ref();
-        let value = list.get(index)?;
-        let key = value.key;
-
-        let (key, value) = try_make_shared(key.owned())?;
-        let shared = Shared::new(key, value);
-        Some(shared)
-    }
-
-    /// Get a mutable reference to a value
-    pub fn get_mut<'a>(&'a mut self, index: usize) -> Option<Unique<'a, T>> {
-        let list = &*self.to_ref();
-        let value = list.get(index)?;
-
-        let key = value.key;
-        let value = Unique {
-            value: Some(get_unique(key.owned())),
-            key,
-            _p: std::marker::PhantomData,
-        };
-        Some(value)
     }
 
     /// Push a value to the list
@@ -168,20 +136,20 @@ impl<T: State> Value<List<T>> {
     pub fn push_back(&mut self, value: T) {
         let value = Value::new(value);
 
-        let index = self.with_mut(|list| {
+        let index = self.with_mut(|_, list| {
             let index = list.len();
             list.inner.push_back(value);
             index as u32
         });
 
-        changed(self.key, Change::Inserted(index));
+        self.changed(Change::Inserted(index));
     }
 
     /// Push a value to the front of the list
     pub fn push_front(&mut self, value: impl Into<Value<T>>) {
         let value = value.into();
-        self.with_mut(|list| list.inner.push_front(value));
-        changed(self.key, Change::Inserted(0));
+        self.with_mut(|_, list| list.inner.push_front(value));
+        self.changed(Change::Inserted(0));
     }
 
     /// Insert a value at a given index.
@@ -191,33 +159,33 @@ impl<T: State> Value<List<T>> {
     /// Will panic if the index is out of bounds
     pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
         let value = value.into();
-        self.with_mut(|list| list.inner.insert(index, value));
-        changed(self.key, Change::Inserted(index as u32));
+        self.with_mut(|_, list| list.inner.insert(index, value));
+        self.changed(Change::Inserted(index as u32));
     }
 
     /// Remove a value from the list.
     /// If the value isn't in the list `None` is returned.
     pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
-        let value = self.with_mut(|list| list.inner.remove(index));
-        changed(self.key, Change::Removed(index as u32));
+        let value = self.with_mut(|_, list| list.inner.remove(index));
+        self.changed(Change::Removed(index as u32));
         value
     }
 
     /// Pop a value from the front of the list
     pub fn pop_front(&mut self) -> Option<Value<T>> {
-        let value = self.with_mut(|list| list.inner.pop_front());
+        let value = self.with_mut(|_, list| list.inner.pop_front());
         if value.is_some() {
-            changed(self.key, Change::Removed(0));
+            self.changed(Change::Removed(0));
         }
         value
     }
 
     /// Pop a value from the back of the list
     pub fn pop_back(&mut self) -> Option<Value<T>> {
-        let value = self.with_mut(|list| list.inner.pop_back());
+        let value = self.with_mut(|_, list| list.inner.pop_back());
         if value.is_some() {
             let index = self.len();
-            changed(self.key, Change::Removed(index as u32));
+            self.changed(Change::Removed(index as u32));
         }
         value
     }
@@ -233,7 +201,7 @@ impl<T: State> Value<List<T>> {
     where
         F: FnMut(&mut T),
     {
-        self.with_mut(|list| {
+        self.with_mut(|_, list| {
             list.inner.iter_mut().for_each(|val| {
                 f(&mut *val.to_mut());
             })
@@ -243,13 +211,13 @@ impl<T: State> Value<List<T>> {
     /// Merge the list with another list.
     pub fn merge(&mut self, other: &mut Self) {
         while let Some(value) = other.pop_front() {
-            let index = self.with_mut(|list| {
+            let index = self.with_mut(|_, list| {
                 let index = list.len();
                 list.inner.push_back(value);
                 index as u32
             });
 
-            changed(self.key, Change::Inserted(index));
+            self.changed(Change::Inserted(index));
         }
     }
 
@@ -265,8 +233,8 @@ impl<T: State> Value<List<T>> {
 }
 
 impl<T: State> AnyList for List<T> {
-    fn lookup(&self, index: usize) -> Option<PendingValue> {
-        self.get(index).map(|val| val.reference())
+    fn lookup(&self, index: usize) -> Option<AnonValue> {
+        self.get(index).map(|val| val.anon())
     }
 
     fn len(&self) -> usize {
@@ -310,8 +278,8 @@ where
 mod test {
 
     use super::*;
-    use crate::Subscriber;
     use crate::store::testing::drain_changes;
+    use crate::Subscriber;
 
     #[test]
     fn insert() {

@@ -30,7 +30,7 @@ impl<T> Entry<T> {
 
 /// Allocate memory but never free it until the entire `Stack` is dropped.
 /// Items popped from the stack are marked as `Empty` so the memory is reused.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Stack<T> {
     inner: Vec<Entry<T>>,
     len: usize,
@@ -205,6 +205,12 @@ impl<T> FromIterator<T> for Stack<T> {
             len: inner.len(),
             inner,
         }
+    }
+}
+
+impl<T> Default for Stack<T> {
+    fn default() -> Self {
+        Self::empty()
     }
 }
 

@@ -21,6 +21,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --workspace --verbose
+      - name: Run mt tests
+        run: cargo test --workspace --verbose --features multithread
 
   lint:
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-use super::{PendingValue, Value};
+use super::{AnonValue, Value};
 use crate::states::AnyMaybe;
 use crate::{State, TypeId};
 
@@ -107,9 +107,9 @@ impl<T: State + TypeId> State for Maybe<T> {
 }
 
 impl<T: State> AnyMaybe for Maybe<T> {
-    fn get(&self) -> Option<PendingValue> {
+    fn get(&self) -> Option<AnonValue> {
         let value = self.get_ref()?;
-        Some(value.reference())
+        Some(value.anon())
     }
 }
 

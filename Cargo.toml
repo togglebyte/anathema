@@ -25,6 +25,7 @@ anathema-widgets = { workspace = true }
 [features]
 default = []
 profile = []
+multithread = ["anathema-state/multithread"]
 serde = ["anathema-state/serde", "anathema-store/serde"]
 
 [lints]

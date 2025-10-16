@@ -3,7 +3,8 @@ use std::fmt::Debug;
 
 use anathema_store::slab::{Slab, SlabIndex};
 
-use crate::{Color, Hex, PendingValue, Type, Value};
+use crate::value::{AnonValue, Type};
+use crate::{Color, Hex, Value};
 
 pub trait TypeId {
     const TYPE: Type = Type::Composite;
@@ -160,13 +161,13 @@ impl State for Box<dyn State> {
 }
 
 pub trait AnyMap: 'static {
-    fn lookup(&self, key: &str) -> Option<PendingValue>;
+    fn lookup(&self, key: &str) -> Option<AnonValue>;
 
     fn is_empty(&self) -> bool;
 }
 
 pub trait AnyList: 'static {
-    fn lookup(&self, index: usize) -> Option<PendingValue>;
+    fn lookup(&self, index: usize) -> Option<AnonValue>;
 
     fn len(&self) -> usize;
 
@@ -176,14 +177,14 @@ pub trait AnyList: 'static {
 }
 
 impl dyn AnyList {
-    pub fn iter(&self) -> impl Iterator<Item = PendingValue> {
+    pub fn iter(&self) -> impl Iterator<Item = AnonValue> {
         let len = self.len();
         (0..len).filter_map(|i| self.lookup(i))
     }
 }
 
 pub trait AnyMaybe {
-    fn get(&self) -> Option<PendingValue>;
+    fn get(&self) -> Option<AnonValue>;
 }
 
 macro_rules! impl_num_state {
@@ -311,8 +312,8 @@ impl States {
         Self { inner: Slab::empty() }
     }
 
-    pub fn insert(&mut self, state: Box<dyn State>) -> StateId {
-        let state = Value::from_box(state);
+    pub fn insert(&mut self, state: impl State) -> StateId {
+        let state = Value::<Box<dyn State>>::new(Box::new(state));
         self.inner.insert(state)
     }
 

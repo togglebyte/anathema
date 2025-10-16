@@ -7,7 +7,8 @@
 //! number has to be treated as a float
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
-use crate::{State, Type};
+use crate::value::Type;
+use crate::State;
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum Number {
