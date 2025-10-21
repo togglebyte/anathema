@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 
 use anathema_geometry::{Pos, Size};
-use anathema_state::States;
+use anathema_state::{State, StateId, States};
 
 use crate::attributes::{AllAttributes, Attributes};
 use crate::layout::Layout;
-use crate::runtime::components::Components;
+use crate::runtime::components::{Component, ComponentId, Components};
 use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::runtime::eval::scope::Scope;
 use crate::runtime::eval::EvalCtx;
@@ -48,7 +48,14 @@ impl RunBuilder<NoDoc> {
     }
 
     pub fn register_global(&mut self, ident: &str, expression: impl Into<Expression>) {
-        self.variables.register_global(ident, expression, &mut self.inner.expressions).unwrap()
+        self.variables
+            .register_global(ident, expression, &mut self.inner.expressions)
+            .unwrap()
+    }
+
+    pub fn add_component(&mut self, comp: impl Component, state: impl State) -> ComponentId {
+        self.components.temporary_insert(comp, state)
+        // self.states.insert(state)
     }
 
     pub(crate) fn finish(&mut self) -> Instance<'_, '_> {
@@ -59,7 +66,6 @@ impl RunBuilder<NoDoc> {
             &self.inner.expressions,
             &self.functions,
         )
-
     }
 }
 
@@ -82,42 +88,25 @@ impl RunBuilder<Document> {
         panic!()
     }
 
-    pub fn run<F>(&mut self, mut f: F)
-    where
-        F: Fn(&mut EvalCtx<'_, '_>),
-    {
-        let mut instance = Instance::new(
+    pub(crate) fn finish(&mut self) -> Instance<'_, '_> {
+        Instance::new(
             &self.states,
             &mut self.components,
             &self.variables,
             &self.inner.expressions,
             &self.functions,
-        );
-
-        // let mut eval_ctx = EvalCtx::new(
-        //     &mut instance.elements,
-        //     &mut instance.attributes,
-        //     &mut self.components,
-        //     &self.variables,
-        //     &self.inner.expressions,
-        //     &self.functions,
-        //     &mut instance.scope,
-        //     &self.states,
-        // );
-
-        // f(&mut eval_ctx);
+        )
     }
 }
 
 impl<T> RunBuilder<T> {}
 
 pub struct Instance<'frame, 'bp> {
-    scope: Scope<'bp>,
+    pub scope: Scope<'bp>,
     attributes: AllAttributes<'bp>,
     elements: Elements<'bp>,
 
     components: &'frame mut Components,
-    states: &'frame States,
     variables: &'frame Variables,
     expressions: &'bp Expressions,
     functions: &'bp FunctionTable,
@@ -136,7 +125,6 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             attributes: AllAttributes::empty(),
             elements: Elements::empty(),
 
-            states,
             components,
             variables,
             expressions,
@@ -156,7 +144,6 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             &self.expressions,
             &self.functions,
             &mut self.scope,
-            &self.states,
         );
 
         f(&mut eval_ctx);
@@ -164,6 +151,13 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
 
     pub fn add_widget(&mut self, widget: impl Widget, parent: Option<ElementId>) -> ElementId {
         let el = Element::Widget(RefCell::new(Box::new(widget)));
+        let id = self.elements.insert(el, parent);
+        self.attributes.insert(id, Attributes::empty());
+        id
+    }
+
+    pub(crate) fn add_component(&mut self, comp_id: ComponentId, parent: Option<ElementId>) -> ElementId {
+        let el = Element::Component(comp_id);
         let id = self.elements.insert(el, parent);
         self.attributes.insert(id, Attributes::empty());
         id
@@ -217,7 +211,6 @@ where
     let mut variables = Variables::new();
     let mut functions = FunctionTable::new();
     let mut scope = Scope::empty();
-    let mut states = States::new();
 
     let eval_ctx = EvalCtx::new(
         &mut elements,
@@ -227,7 +220,6 @@ where
         &expressions,
         &functions,
         &mut scope,
-        &states,
     );
 
     f(eval_ctx);

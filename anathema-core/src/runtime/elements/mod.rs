@@ -4,6 +4,7 @@ use std::ops::Index;
 use anathema_store::key;
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
+use crate::runtime::components::ComponentId;
 use crate::runtime::widgets::{Node as WidgetNode, Widget, Widgets};
 use crate::templates::{Blueprint, ExpressionId};
 
@@ -25,6 +26,7 @@ pub enum Element<'bp> {
         // collection: Collection<'bp>,
     },
     Widget(RefCell<Box<dyn Widget>>),
+    Component(ComponentId),
 }
 
 #[derive(Debug)]
@@ -84,7 +86,7 @@ fn widget_tree<'bp>(elements: &Elements<'bp>) -> Widgets {
     fn add_child<'bp>(id: ElementId, elements: &Elements<'bp>, children: &mut Vec<ElementId>) {
         let node = &elements[id];
         match &node.element {
-            Element::For { .. } => {
+            Element::For { .. } | Element::Component(_) => {
                 for child in &node.children {
                     add_child(id, elements, children);
                 }

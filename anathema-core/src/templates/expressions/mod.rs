@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use anathema_state::Hex;
+use anathema_state::{Color, Hex};
 use anathema_store::slab::Index;
 
 use super::primitives::Primitive;

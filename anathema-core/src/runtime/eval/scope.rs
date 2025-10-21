@@ -2,6 +2,7 @@ use anathema_state::StateId;
 use anathema_store::key;
 use anathema_store::slab::{Key, SecondaryMap};
 
+use crate::runtime::components::ComponentId;
 use crate::runtime::elements::{ElementId, Elements};
 
 #[derive(Debug, Copy, Clone)]
@@ -13,22 +14,36 @@ pub(super) enum ScopeKey<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum Entry<'bp> {
-    State(StateId),
+    // TODO: gross, this is supposed to be a component id
+    State(ComponentId),
+
     Attributes(Key),
     Value { key: &'bp str, value: () },
 }
 
 impl PartialEq<Entry<'_>> for ScopeKey<'_> {
     fn eq(&self, other: &Entry<'_>) -> bool {
-        todo!()
+        match (self, other) {
+            (ScopeKey::Attributes, Entry::Attributes(_)) => true,
+            (ScopeKey::Attributes, _) => false,
+
+            (ScopeKey::State, Entry::State(_)) => true,
+            (ScopeKey::State, _) => false,
+
+            (ScopeKey::Key(lhs), Entry::Value { key: rhs, .. }) => lhs == rhs,
+            (_, _) => false,
+        }
     }
 }
 
-struct ScopeNode<'bp>(Vec<Entry<'bp>>);
+struct ScopeNode<'bp> {
+    entries: Vec<Entry<'bp>>,
+    boundary: bool,
+}
 
 impl<'bp> ScopeNode<'bp> {
     fn get(&self, key: ScopeKey<'_>) -> Option<&Entry<'bp>> {
-        self.0.iter().find(|entry| key.eq(entry))
+        self.entries.iter().find(|entry| key.eq(entry))
     }
 }
 
@@ -54,10 +69,8 @@ impl<'bp> Scope<'bp> {
                     // If the scope node contains the key then fetch the value
                     match node.get(key).copied() {
                         val @ Some(_) => break val,
-                        None => {
-                            //     * and is NOT a boundary, then look in the parent
-                            //     * and IS a boundary, then return None
-                        }
+                        None if node.boundary => break None,
+                        None => id = elements[id].parent?,
                     }
                 }
                 None => {
@@ -68,14 +81,17 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub(crate) fn push_component(&mut self, element: ElementId, state: StateId) {
+    pub(crate) fn push_component(&mut self, element: ElementId, component: ComponentId) {
         match self.scopes.get_mut(element) {
             Some(node) => node
-                .0
-                .extend_from_slice(&[Entry::State(state), Entry::Attributes(element.into())]),
+                .entries
+                .extend_from_slice(&[Entry::State(component), Entry::Attributes(element.into())]),
             None => self.scopes.insert(
                 element,
-                ScopeNode(vec![Entry::State(state), Entry::Attributes(element.into())]),
+                ScopeNode {
+                    entries: vec![Entry::State(component), Entry::Attributes(element.into())],
+                    boundary: true,
+                },
             ),
         }
     }

@@ -26,7 +26,6 @@ pub struct EvalCtx<'a, 'bp> {
     pub(crate) expressions: &'bp Expressions,
     pub(crate) functions: &'bp FunctionTable,
     pub(crate) scope: &'a mut Scope<'bp>,
-    pub(crate) states: &'a States,
 }
 
 impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
@@ -46,7 +45,6 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         expressions: &'bp Expressions,
         functions: &'bp FunctionTable,
         scope: &'frame mut Scope<'bp>,
-        states: &'frame States,
     ) -> Self {
         Self {
             elements,
@@ -56,7 +54,6 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
             expressions,
             functions,
             scope,
-            states,
         }
     }
 
