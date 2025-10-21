@@ -74,26 +74,26 @@ where
 
 impl<K, V> std::ops::Index<K> for SecondaryMap<K, V>
 where
-    K: Into<Index>,
+    K: Into<Index> + Copy,
 {
     type Output = V;
 
     fn index(&self, index: K) -> &Self::Output {
         match self.get(index) {
             Some(val) => val,
-            None => panic!("invalid key"),
+            None => panic!("invalid key: {:?}", index.into()),
         }
     }
 }
 
 impl<K, V> std::ops::IndexMut<K> for SecondaryMap<K, V>
 where
-    K: Into<Index>,
+    K: Into<Index> + Copy,
 {
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
         match self.get_mut(index) {
             Some(val) => val,
-            None => panic!("invalid key"),
+            None => panic!("invalid key: {:?}", index.into()),
         }
     }
 }

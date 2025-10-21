@@ -2,32 +2,38 @@ use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
 use crate::runtime::elements::ElementId;
+use crate::runtime::eval::values::TemplateValue;
 
 #[derive(Debug)]
-pub struct AllAttributes {
-    attributes: SecondaryMap<ElementId, Attributes>,
+pub struct AllAttributes<'bp> {
+    attributes: SecondaryMap<ElementId, Attributes<'bp>>,
 }
-impl AllAttributes {
+
+impl<'bp> AllAttributes<'bp> {
     pub(crate) fn empty() -> Self {
         Self {
             attributes: SecondaryMap::empty(),
         }
     }
 
-    pub(crate) fn insert(&mut self, id: ElementId) {
-        self.attributes.insert(id, Attributes::empty());
+    pub(crate) fn insert(&mut self, id: ElementId, attributes: Attributes<'bp>) {
+        self.attributes.insert(id, attributes);
     }
 }
 
 #[derive(Debug)]
-pub struct Attributes {
-    inner: SmallMap<SmallIndex, ()>,
+pub struct Attributes<'bp> {
+    inner: SmallMap<SmallIndex, TemplateValue<'bp>>,
 }
 
-impl Attributes {
+impl<'bp> Attributes<'bp> {
     pub(crate) fn empty() -> Self {
         Self {
             inner: SmallMap::empty(),
         }
+    }
+
+    pub(crate) fn get(&self, s: &str) -> TemplateValue<'bp> {
+        todo!()
     }
 }

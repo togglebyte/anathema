@@ -1,3 +1,6 @@
+#[allow(unused_extern_crates)]
+extern crate anathema_state as anathema;
+
 pub mod attributes;
 pub mod frontend;
 pub mod layout;

@@ -8,7 +8,7 @@ use crate::layout::Layout;
 use crate::runtime::widgets::iter::Children;
 use crate::runtime::elements::ElementId;
 
-type WidgetFactory = Box<dyn Fn(&Attributes) -> Box<dyn Widget>>;
+type WidgetFactory = Box<dyn Fn(&Attributes<'_>) -> Box<dyn Widget>>;
 
 pub mod iter;
 
@@ -29,7 +29,7 @@ impl RegisteredWidgets {
             .insert(ident.into(), Box::new(|_attr| Box::<T>::default()));
     }
 
-    pub fn make(&self, ident: &str, attributes: &Attributes) -> Result<Box<dyn Widget>, ()> {
+    pub fn make(&self, ident: &str, attributes: &Attributes<'_>) -> Result<Box<dyn Widget>, ()> {
         let Some(factory) = self.registry.get(ident) else { return Err(()) };
         let element = factory(attributes);
         Ok(element)

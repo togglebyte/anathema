@@ -530,7 +530,7 @@ mod test {
         // This should panic because of mutable access
         // is held while also having a value reference.
         let mut value = Value::new(String::new());
-        let s1 = value.anon();
+        let s1 = value.reference();
         let _r1 = s1.value::<String>();
         let _m1 = value.to_mut();
     }
@@ -538,8 +538,8 @@ mod test {
     #[test]
     fn value_ref_to_shared_state() {
         let value = Value::new(1);
-        let r1 = value.anon();
-        let r2 = value.anon();
+        let r1 = value.reference();
+        let r2 = value.reference();
 
         let s1 = r1.as_state();
         let s2 = r2.as_state();

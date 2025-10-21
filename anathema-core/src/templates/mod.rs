@@ -12,7 +12,7 @@ mod blueprints;
 mod components;
 mod document;
 mod error;
-mod expressions;
+pub(crate) mod expressions;
 mod lexer;
 mod primitives;
 mod statements;

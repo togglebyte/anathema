@@ -19,6 +19,7 @@ enum Entry {
     Prototype(FnComp, FnState),
 }
 
+#[derive(Debug, Default)]
 pub struct Components {
 }
 

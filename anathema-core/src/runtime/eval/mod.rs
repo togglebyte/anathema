@@ -1,34 +1,71 @@
 use std::cell::RefCell;
 
+use anathema_state::States;
+
 use self::scope::Scope;
 use super::error::Result;
 use crate::attributes::{AllAttributes, Attributes};
 use crate::runtime::components::Components;
 use crate::runtime::elements::{Element, ElementId, Elements};
+use crate::runtime::functions::{Function, FunctionTable};
 use crate::runtime::widgets::RegisteredWidgets;
-use crate::templates::{Blueprint, Component, ExpressionId, For, Single};
+use crate::templates::expressions::Expressions;
+use crate::templates::{Blueprint, Component, ExpressionId, For, Single, Variables};
 use crate::ui::Document;
 
-mod scope;
-mod values;
+mod expression;
+pub(crate) mod scope;
+mod testing;
+pub(crate) mod values;
 
-struct EvalCtx<'a, 'bp> {
-    elements: &'a mut Elements<'bp>,
-    attributes: &'a mut AllAttributes,
-    components: &'a mut Components,
+pub struct EvalCtx<'a, 'bp> {
+    pub(crate) elements: &'a mut Elements<'bp>,
+    pub(crate) attributes: &'a mut AllAttributes<'bp>,
+    pub(crate) components: &'a mut Components,
+    pub(crate) variables: &'a Variables,
+    pub(crate) expressions: &'bp Expressions,
+    pub(crate) functions: &'bp FunctionTable,
+    pub(crate) scope: &'a mut Scope<'bp>,
+    pub(crate) states: &'a States,
 }
 
-impl<'a, 'bp> EvalCtx<'a, 'bp> {
-    fn insert(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
+impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
+    fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
         self.elements.insert(element, parent)
     }
 
-    fn new(elements: &'a mut Elements<'bp>, attributes: &'a mut AllAttributes, components: &'a mut Components) -> Self {
+    fn insert_attributes(&mut self, id: ElementId, attributes: Attributes<'bp>) {
+        self.attributes.insert(id, attributes);
+    }
+
+    pub(crate) fn new(
+        elements: &'frame mut Elements<'bp>,
+        attributes: &'frame mut AllAttributes<'bp>,
+        components: &'frame mut Components,
+        variables: &'frame Variables,
+        expressions: &'bp Expressions,
+        functions: &'bp FunctionTable,
+        scope: &'frame mut Scope<'bp>,
+        states: &'frame States,
+    ) -> Self {
         Self {
             elements,
             attributes,
             components,
+            variables,
+            expressions,
+            functions,
+            scope,
+            states,
         }
+    }
+
+    fn lookup_function(&self, fun: &str) -> Option<&'bp Function> {
+        self.functions.lookup(fun)
+    }
+
+    fn get_attributes(&self, el: ElementId) -> &Attributes<'bp> {
+        todo!()
     }
 }
 
@@ -40,7 +77,6 @@ trait Evaluator {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
     ) -> Result<()>;
 }
@@ -49,15 +85,14 @@ pub fn eval<'a, 'bp>(
     blueprint: &'bp Blueprint,
     ctx: &mut EvalCtx<'a, 'bp>,
     factory: &RegisteredWidgets,
-    scope: &mut Scope<'bp>,
     parent: Option<ElementId>,
 ) -> Result<()> {
     match blueprint {
-        Blueprint::Single(stmt) => SingleEval.eval(stmt, ctx, factory, scope, parent),
-        Blueprint::For(stmt) => ForEval.eval(stmt, ctx, factory, scope, parent),
+        Blueprint::Single(stmt) => SingleEval.eval(stmt, ctx, factory, parent),
+        Blueprint::For(stmt) => ForEval.eval(stmt, ctx, factory, parent),
         Blueprint::With(with) => todo!(),
         Blueprint::ControlFlow(control_flow) => todo!(),
-        Blueprint::Component(stmt) => ComponentEval.eval(stmt, ctx, factory, scope, parent),
+        Blueprint::Component(stmt) => ComponentEval.eval(stmt, ctx, factory, parent),
         Blueprint::Slot(blueprints) => todo!(),
     }
 }
@@ -72,22 +107,22 @@ impl Evaluator for SingleEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
     ) -> Result<()> {
         for (key, expr) in input.attributes.iter() {}
 
         let attributes = Attributes::empty();
 
-        let stmt = match factory.make(&input.ident, &attributes) {
+        let el = match factory.make(&input.ident, &attributes) {
             Ok(el) => Element::Widget(RefCell::new(el)),
             Err(e) => panic!(), //return Err(ctx.error(e)),
         };
 
-        let parent = ctx.insert(stmt, parent);
+        let parent = ctx.insert_element(el, parent);
+        ctx.insert_attributes(parent, attributes);
 
         for child in &input.children {
-            eval(child, ctx, factory, scope, Some(parent));
+            eval(child, ctx, factory, Some(parent));
         }
 
         Ok(())
@@ -104,7 +139,6 @@ impl Evaluator for ForEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
     ) -> Result<()> {
         // Resolve collection
@@ -115,12 +149,12 @@ impl Evaluator for ForEval {
             binding: &input.binding,
         };
 
-        let parent = ctx.insert(el, parent);
+        let parent = ctx.insert_element(el, parent);
 
         for val in collection {
             // scope.scope(forloop.binding, val);
             for child in &input.body {
-                eval(child, ctx, factory, scope, Some(parent));
+                eval(child, ctx, factory, Some(parent));
             }
         }
 
@@ -138,7 +172,6 @@ impl Evaluator for ComponentEval {
         input: Self::Input<'bp>,
         ctx: &mut EvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        scope: &mut Scope<'bp>,
         parent: Option<ElementId>,
     ) -> Result<()> {
         for (key, expr) in input.attributes.iter() {}
@@ -156,30 +189,16 @@ mod test {
     use super::*;
     use crate::attributes::AllAttributes;
     use crate::layout::Layout;
-    use crate::testing::TestWidget;
+    use crate::testing::{with_blueprint, TestWidget};
 
     #[test]
     fn forloop() {
-        let mut doc = crate::templates::Document::new(
-            "
+        let tpl = "
             for x in y
                 node x
-        ",
-        );
-        let blueprint = doc.compile(&mut crate::templates::Variables::new()).unwrap();
-
-        let mut elements = Elements::empty();
-        let mut attributes = AllAttributes::empty();
-        let mut components = Components::empty();
-
-        let mut eval_tree = EvalCtx::new(&mut elements, &mut attributes, &mut components);
-
-        let mut factory = RegisteredWidgets::empty();
-        factory.register_default::<TestWidget>("node");
-        let mut scope = Scope::empty();
-
-        eval(&blueprint, &mut eval_tree, &factory, &mut scope, None);
-
-        panic!("{elements:#?}");
+        ";
+        with_blueprint(tpl, |ctx, _bp| {
+            panic!("{:#?}", ctx.elements);
+        });
     }
 }

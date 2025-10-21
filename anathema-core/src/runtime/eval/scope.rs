@@ -5,26 +5,34 @@ use anathema_store::slab::{Key, SecondaryMap};
 use crate::runtime::elements::{ElementId, Elements};
 
 #[derive(Debug, Copy, Clone)]
-enum Entry {
+pub(super) enum ScopeKey<'a> {
+    Attributes,
+    State,
+    Key(&'a str),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum Entry<'bp> {
     State(StateId),
+    Attributes(Key),
+    Value { key: &'bp str, value: () },
 }
 
-enum ScopeNode<'bp> {
-    One(&'bp str, Entry),
-    Many(Vec<(&'bp str, Entry)>),
-}
-
-impl<'bp> ScopeNode<'bp> {
-    fn get(&self, key: &str) -> Option<&Entry> {
-        match self {
-            ScopeNode::One(k, entry) if key == *k => Some(entry),
-            ScopeNode::One(..) => None,
-            ScopeNode::Many(values) => values.iter().find(|(k, _)| key == *k).map(|(_, val)| val)
-        }
+impl PartialEq<Entry<'_>> for ScopeKey<'_> {
+    fn eq(&self, other: &Entry<'_>) -> bool {
+        todo!()
     }
 }
 
-pub struct Scope<'bp> {
+struct ScopeNode<'bp>(Vec<Entry<'bp>>);
+
+impl<'bp> ScopeNode<'bp> {
+    fn get(&self, key: ScopeKey<'_>) -> Option<&Entry<'bp>> {
+        self.0.iter().find(|entry| key.eq(entry))
+    }
+}
+
+pub(crate) struct Scope<'bp> {
     scopes: SecondaryMap<ElementId, ScopeNode<'bp>>,
 }
 
@@ -35,14 +43,23 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub fn lookup(&self, key: &str, mut id: ElementId, elements: &Elements<'bp>) -> Option<&Entry> {
+    pub fn lookup(&self, key: ScopeKey<'_>, mut id: ElementId, elements: &Elements<'bp>) -> Option<Entry<'bp>> {
         // Try to get until we reach a scope boundary
 
-        panic!("if the value is a state but its not the key then that's the boundary");
+        // panic!("if the value is a state but its not the key then that's the boundary");
 
         loop {
-            match self.scopes[id].get(key) {
-                val @ Some(_) => break val,
+            match self.scopes.get(id) {
+                Some(node) => {
+                    // If the scope node contains the key then fetch the value
+                    match node.get(key).copied() {
+                        val @ Some(_) => break val,
+                        None => {
+                            //     * and is NOT a boundary, then look in the parent
+                            //     * and IS a boundary, then return None
+                        }
+                    }
+                }
                 None => {
                     // and we are NOT on a scope boundary
                     id = elements[id].parent?;
@@ -51,11 +68,15 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub(crate) fn push_state(&mut self, element: ElementId, state_id: StateId) {
+    pub(crate) fn push_component(&mut self, element: ElementId, state: StateId) {
         match self.scopes.get_mut(element) {
-            Some(ScopeNode::One(k, v)) => todo!(),
-            Some(ScopeNode::Many(entries)) => entries.push(("state", Entry::State(state_id))),
-            None => self.scopes.insert(element, ScopeNode::One("state", Entry::State(state_id))),
+            Some(node) => node
+                .0
+                .extend_from_slice(&[Entry::State(state), Entry::Attributes(element.into())]),
+            None => self.scopes.insert(
+                element,
+                ScopeNode(vec![Entry::State(state), Entry::Attributes(element.into())]),
+            ),
         }
     }
 }

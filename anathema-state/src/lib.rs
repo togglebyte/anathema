@@ -6,7 +6,7 @@ use anathema_store::slab::Key;
 pub use crate::colors::{Color, FromColor};
 pub use crate::numbers::Number;
 pub use crate::states::{AnyList, AnyMap, State, StateId, States, TypeId};
-pub use crate::value::{List, Map, Maybe, Nullable, Value, AnonValue, ValueRef};
+pub use crate::value::{AnonValue, List, Map, Maybe, Nullable, Type, Value, ValueRef};
 
 mod colors;
 mod numbers;

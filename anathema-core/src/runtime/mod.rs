@@ -1,5 +1,9 @@
+pub use widgets::iter::Children;
+pub use widgets::{RegisteredWidgets, Widget};
+
 pub mod components;
-pub mod elements;
+pub(crate) mod elements;
 mod error;
-pub mod eval;
-pub mod widgets;
+pub(crate) mod eval;
+pub(crate) mod functions;
+pub(crate) mod widgets;

@@ -93,10 +93,19 @@ impl<I, T> Entry<I, T> {
 //   - Slab -
 // -----------------------------------------------------------------------------
 /// A basic slab
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Slab<I, T> {
     next_id: Option<I>,
     inner: Vec<Entry<I, T>>,
+}
+
+impl<I, T> Default for Slab<I, T> {
+    fn default() -> Self {
+        Self {
+            next_id: None,
+            inner: vec![],
+        }
+    }
 }
 
 impl<I, T> Slab<I, T>

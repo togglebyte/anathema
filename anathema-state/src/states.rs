@@ -302,7 +302,7 @@ impl_num_state!(isize);
 impl_float_state!(f32);
 impl_float_state!(f64);
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct States {
     inner: Slab<StateId, Value<Box<dyn State>>>,
 }

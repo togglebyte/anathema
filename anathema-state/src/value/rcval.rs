@@ -6,6 +6,7 @@ use std::rc::{Rc, Weak};
 use anathema_store::slab::Key;
 
 use crate::value::changes::{Change, Changes};
+use crate::value::Type;
 use crate::State;
 
 type RcRefCell<T> = Rc<RefCell<T>>;
@@ -93,7 +94,7 @@ where
     }
 
     /// Get an anonymous value
-    pub fn anon(&self) -> AnonValue {
+    pub fn reference(&self) -> AnonValue {
         let weak = Rc::downgrade(&self.inner);
         AnonValue {
             inner: self.inner.clone(), //weak,
@@ -227,12 +228,12 @@ impl PartialEq for AnonValue {
 }
 
 impl AnonValue {
-    pub(crate) fn subscribe(&self, key: Key) {
-        self.subs.subscribe(key);
+    pub fn subscribe(&self, key: impl Into<Key>) {
+        self.subs.subscribe(key.into());
     }
 
-    pub(crate) fn unsub(&self, key: Key) {
-        self.subs.unsubscribe(key);
+    pub fn unsubscribe(&self, key: impl Into<Key>) {
+        self.subs.unsubscribe(key.into());
     }
 
     pub fn as_state(&self) -> Ref<'_, dyn State> {
@@ -242,5 +243,9 @@ impl AnonValue {
     pub fn value<T: 'static>(&self) -> Option<Ref<'_, T>> {
         let val = self.inner.borrow() as Ref<'_, dyn std::any::Any>;
         Ref::filter_map(val, |x| x.downcast_ref::<T>()).ok()
+    }
+
+    pub fn type_info(&self) -> Type {
+        self.as_state().type_info()
     }
 }

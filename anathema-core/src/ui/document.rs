@@ -8,7 +8,7 @@ use crate::layout::Layout;
 pub struct Document<'a, 'bp> {
     elements: &'a mut Elements<'bp>,
     layout: &'a mut Layout,
-    attributes: &'a mut AllAttributes,
+    attributes: &'a mut AllAttributes<'bp>,
 }
 
 impl<'a, 'bp> Document<'a, 'bp> {
@@ -25,7 +25,7 @@ impl<'a, 'bp> Document<'a, 'bp> {
         // node_id
     }
 
-    pub(crate) fn new(elements: &'a mut Elements<'bp>, layout: &'a mut Layout, attributes: &'a mut AllAttributes) -> Self {
+    pub(crate) fn new(elements: &'a mut Elements<'bp>, layout: &'a mut Layout, attributes: &'a mut AllAttributes<'bp>) -> Self {
         Self {
             elements,
             layout,

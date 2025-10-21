@@ -234,7 +234,7 @@ impl<T: State> Value<List<T>> {
 
 impl<T: State> AnyList for List<T> {
     fn lookup(&self, index: usize) -> Option<AnonValue> {
-        self.get(index).map(|val| val.anon())
+        self.get(index).map(|val| val.reference())
     }
 
     fn len(&self) -> usize {
@@ -307,7 +307,7 @@ mod test {
     #[test]
     fn notify_insert() {
         let mut list = Value::new(List::<u32>::empty());
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
         list.push_back(1);
 
         let (_, change) = changes().remove(0);
@@ -318,7 +318,7 @@ mod test {
     fn notify_remove() {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(1);
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
         list.remove(0);
 
         let change = changes().remove(0);
@@ -330,7 +330,7 @@ mod test {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(1);
         list.push_back(2);
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
         let front = list.pop_front();
 
         let change = changes().remove(0);
@@ -341,7 +341,7 @@ mod test {
     #[test]
     fn notify_clear() {
         let mut list = Value::new(List::<u32>::empty());
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
         list.clear();
 
         let change = changes().remove(0);
@@ -355,7 +355,7 @@ mod test {
         list.push_back(2);
         list.push_back(3);
 
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
 
         list.retain(|val| *val.to_ref() == 1);
 
@@ -372,7 +372,7 @@ mod test {
         list.push_back(3);
         list.push_back(4);
 
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
 
         let result = list.extract_if(|val| *val.to_ref() % 2 == 0);
 
@@ -389,7 +389,7 @@ mod test {
         let mut list = Value::new(List::<u32>::empty());
         list.push_back(0);
         list.push_back(1);
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
         list.pop_back();
 
         let change = changes().remove(0);
@@ -399,7 +399,7 @@ mod test {
     #[test]
     fn pop_empty_list() {
         let mut list = Value::new(List::<u32>::empty());
-        list.anon().subscribe(Key::ZERO);
+        list.reference().subscribe(Key::ZERO);
         list.pop_back();
         assert!(changes().is_empty());
 

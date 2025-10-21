@@ -64,7 +64,7 @@ impl<T: State> Value<Map<T>> {
 
 impl<T: State> AnyMap for Map<T> {
     fn lookup(&self, key: &str) -> Option<AnonValue> {
-        self.get(key).map(|val| val.anon())
+        self.get(key).map(|val| val.reference())
     }
 
     fn is_empty(&self) -> bool {

@@ -66,6 +66,11 @@ impl Expressions {
     pub(crate) fn clear(&mut self) {
         self.inner.clear()
     }
+
+    #[cfg(test)]
+    pub(crate) fn iter(&self) -> std::slice::Iter<'_, (Expression, ScopeId)> {
+        self.inner.iter()
+    }
 }
 
 impl std::ops::Index<ExpressionId> for Expressions {

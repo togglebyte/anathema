@@ -1,6 +1,5 @@
 use anathema_core::layout::Layout;
-use anathema_core::runtime::widgets::iter::Children;
-use anathema_core::runtime::widgets::Widget;
+use anathema_core::runtime::{Children, Widget};
 use anathema_geometry::{Pos, Size};
 
 #[derive(Debug, Default)]

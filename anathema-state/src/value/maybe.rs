@@ -109,7 +109,7 @@ impl<T: State + TypeId> State for Maybe<T> {
 impl<T: State> AnyMaybe for Maybe<T> {
     fn get(&self) -> Option<AnonValue> {
         let value = self.get_ref()?;
-        Some(value.anon())
+        Some(value.reference())
     }
 }
 

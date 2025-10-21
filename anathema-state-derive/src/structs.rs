@@ -76,7 +76,7 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
         }
 
         impl ::anathema::state::AnyList for #name {
-            fn lookup(&self, index: usize) -> Option<::anathema::state::PendingValue> {
+            fn lookup(&self, index: usize) -> Option<::anathema::state::AnonValue> {
                 match index {
                     #( #iter, )*
                     _ => None
@@ -128,7 +128,7 @@ fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::Tok
         }
 
         impl ::anathema::state::AnyMap for #name {
-            fn lookup(&self, key: &str) -> Option<::anathema::state::PendingValue> {
+            fn lookup(&self, key: &str) -> Option<::anathema::state::AnonValue> {
                 match key {
                     #(
                         #field_names => {
