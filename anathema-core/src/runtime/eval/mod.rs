@@ -15,7 +15,6 @@ use crate::ui::Document;
 
 mod expression;
 pub(crate) mod scope;
-mod testing;
 pub(crate) mod values;
 
 pub struct EvalCtx<'a, 'bp> {

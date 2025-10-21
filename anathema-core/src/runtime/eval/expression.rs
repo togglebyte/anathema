@@ -61,6 +61,27 @@ pub(crate) enum RuntimeExpression<'bp> {
     Null,
 }
 
+impl RuntimeExpression<'_> {
+    fn as_usize(&self) -> Option<usize> {
+        match self {
+            RuntimeExpression::Int(Kind::Static(int)) => Some(*int as usize),
+            RuntimeExpression::Int(Kind::Dyn(int, _)) => int.as_state().as_int().map(|i| i as usize),
+            _ => None,
+        }
+    }
+
+    fn with_str<F, T>(&self, f: F) -> Option<T>
+    where
+        F: Fn(&str) -> T,
+    {
+        match self {
+            &RuntimeExpression::Str(Kind::Static(s)) => Some(f(s)),
+            RuntimeExpression::Str(Kind::Dyn(s, _)) => s.as_state().as_str().map(f),
+            _ => None,
+        }
+    }
+}
+
 impl<'bp> From<Primitive> for RuntimeExpression<'bp> {
     fn from(value: Primitive) -> Self {
         match value {
@@ -278,17 +299,18 @@ fn lazy_eval<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Maps, lists and range -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::DynMap(anon_value, _) => todo!(),
-        RuntimeExpression::DynList(anon_value, _) => todo!(),
-        RuntimeExpression::Composite(anon_value, _) => todo!(),
-        RuntimeExpression::List(_) | RuntimeExpression::Map(_) => LazyExpression::Expression(expr),
+        RuntimeExpression::DynMap(_, _)
+        | RuntimeExpression::DynList(_, _)
+        | RuntimeExpression::Composite(_, _)
+        | RuntimeExpression::List(_)
+        | RuntimeExpression::Map(_) => LazyExpression::Expression(expr),
         RuntimeExpression::Range(runtime_expression, runtime_expression1) => todo!(),
         RuntimeExpression::Attributes(key) => todo!(),
 
         // -----------------------------------------------------------------------------
         //   - Index -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::Index(src, index) => resolve_index(src, index, element, ctx),
+        RuntimeExpression::Index(src, index) => eval_index(src, index, element, ctx),
 
         // -----------------------------------------------------------------------------
         //   - Ops -
@@ -311,7 +333,7 @@ fn lazy_eval<'a, 'bp>(
         // -----------------------------------------------------------------------------
         //   - Null -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::Null => todo!(),
+        RuntimeExpression::Null => TemplateValue::Null.into(),
     }
 }
 
@@ -395,123 +417,48 @@ macro_rules! or_null {
     };
 }
 
-enum Either<'bp> {
-    Done(TemplateValue<'bp>),
-    Continue,
-}
-
-impl<'bp> From<TemplateValue<'bp>> for Either<'bp> {
-    fn from(e: TemplateValue<'bp>) -> Self {
-        Either::Done(e)
-    }
-}
-
-fn resolve_index<'a, 'bp>(
-    src: &'a RuntimeExpression<'bp>,
+fn eval_index<'a, 'bp>(
+    container: &'a RuntimeExpression<'bp>,
     index: &'a RuntimeExpression<'bp>,
     element: ElementId,
     ctx: &EvalCtx<'_, 'bp>,
 ) -> LazyExpression<'a, 'bp> {
-    match src {
+    match container {
         RuntimeExpression::DynMap(map, _) | RuntimeExpression::Composite(map, _) => {
             let state = map.as_state();
             let map = or_null!(state.as_any_map());
-            let value = match index {
-                RuntimeExpression::Str(kind) => match kind {
-                    &Kind::Static(s) => map.lookup(s),
-                    Kind::Dyn(anon_value, _) => {
-                        let s = anon_value.as_state();
-                        let s = or_null!(s.as_str());
-                        map.lookup(s)
-                    }
-                },
-                _ => return TemplateValue::Null.into(),
-            };
-            anon_to_template_value(or_null!(value), element).into()
+            let value = or_null!(index.with_str(|key| map.lookup(key)).flatten());
+            anon_to_template_value(value, element).into()
         }
         RuntimeExpression::DynList(list, _) => {
             let state = list.as_state();
             let list = or_null!(state.as_any_list());
-            let value = match index {
-                RuntimeExpression::Int(kind) => match kind {
-                    &Kind::Static(i) => list.lookup(i as usize),
-                    Kind::Dyn(anon_value, _) => {
-                        let i = or_null!(anon_value.as_state().as_int());
-                        list.lookup(i as usize)
-                    }
-                },
-                _ => return TemplateValue::Null.into(),
-            };
-            anon_to_template_value(or_null!(value), element).into()
+            let index = or_null!(index.as_usize());
+            let value = or_null!(list.lookup(index));
+            anon_to_template_value(value, element).into()
         }
         RuntimeExpression::List(list) => {
-            let value = match index {
-                RuntimeExpression::Int(kind) => match kind {
-                    &Kind::Static(i) => list.get(i as usize),
-                    Kind::Dyn(anon_value, _) => {
-                        let i = or_null!(anon_value.as_state().as_int());
-                        list.get(i as usize)
-                    }
-                },
-                _ => return TemplateValue::Null.into(),
-            };
-            match value {
-                Some(val) => lazy_eval(val, element, ctx),
-                None => TemplateValue::Null.into(),
-            }
+            let index = or_null!(index.as_usize());
+            let expr = or_null!(list.get(index));
+            lazy_eval(expr, element, ctx)
         }
         RuntimeExpression::Map(map) => {
-            let value = match index {
-                RuntimeExpression::Str(kind) => match kind {
-                    &Kind::Static(s) => map.get(s),
-                    Kind::Dyn(anon_value, _) => {
-                        let s = anon_value.as_state();
-                        let s = or_null!(s.as_str());
-                        map.get(s)
-                    }
-                },
-                _ => return TemplateValue::Null.into(),
-            };
-            match value {
-                Some(val) => lazy_eval(val, element, ctx),
-                None => TemplateValue::Null.into(),
-            }
+            let expr = or_null!(index.with_str(|key| map.get(key)).flatten());
+            lazy_eval(expr, element, ctx)
         }
-        RuntimeExpression::Index(container, inner_index) => {
-            let inner_container = lazy_eval(container, element, ctx);
-            let idx = lazy_eval(inner_index, element, ctx);
-
-            let container = match inner_container {
-                LazyExpression::Expression(RuntimeExpression::Map(map)) => match idx {
-                    LazyExpression::Value(TemplateValue::Str(key)) => {
-                        let value = or_null!(map.get(&*key));
-                        LazyExpression::Expression(value)
-                    }
-                    _ => TemplateValue::Null.into(),
-                },
-                LazyExpression::Value(TemplateValue::DynMap(map)) => match idx {
-                    LazyExpression::Value(TemplateValue::Str(key)) => todo!(),
-                    _ => TemplateValue::Null.into(),
-                },
-
-                _ => TemplateValue::Null.into(),
-            };
-
+        RuntimeExpression::Index(inner_container, inner_index) => {
+            let container = eval_index(inner_container, inner_index, element, ctx);
             match container {
-                LazyExpression::Expression(container) => resolve_index(container, index, element, ctx),
-                LazyExpression::Value(template_value) => todo!(),
+                LazyExpression::Expression(container) => eval_index(container, index, element, ctx),
+                LazyExpression::Value(TemplateValue::DynMap(map)) => {
+                    let value = index
+                        .with_str(|key| map.as_state().as_any_map().expect("type checked").lookup(key))
+                        .flatten();
+                    anon_to_template_value(or_null!(value), element).into()
+                }
+                LazyExpression::Value(TemplateValue::DynList(list)) => todo!("{list:?}"),
+                LazyExpression::Value(_) => TemplateValue::Null.into(),
             }
-
-            // match resolve_index(inner_src, inner_index, element, ctx) {
-            //     TemplateValue::Map => todo!(),
-            //     TemplateValue::Attributes => todo!(),
-            //     TemplateValue::List(template_values) => todo!(),
-            //     TemplateValue::DynList(anon_value) => todo!(),
-            //     TemplateValue::DynMap(anon_value) => todo!(),
-            //     TemplateValue::Composite(anon_value) => todo!(),
-            //     TemplateValue::Range(_, _) => todo!(),
-            //     _ => TemplateValue::Null
-            // }
         }
         RuntimeExpression::Range(from, to) => todo!(),
         RuntimeExpression::Attributes(el) => {
@@ -561,7 +508,6 @@ mod test {
     use anathema::{List, Map, State, Value};
 
     use super::*;
-    use crate::runtime::eval::testing::with_expr;
     use crate::runtime::eval::values;
     use crate::templates::expressions;
     use crate::testing::{with_blueprint, RunBuilder, TestWidget};
@@ -570,6 +516,7 @@ mod test {
     pub struct TestState {
         list: Value<List<u32>>,
         map: Value<Map<u32>>,
+        map_o_maps: Value<Map<Map<u32>>>,
         index: Value<usize>,
     }
 
@@ -580,28 +527,35 @@ mod test {
         type State = TestState;
     }
 
+    // fn assert_expr<'a>(expr: impl Into<Expression>, expected: impl Into<TemplateValue<'a>>) {
+    //     let expr = expr.into();
+    //     let expected = expected.into();
+
+    //     let mut test = RunBuilder::new();
+
+    //     let expr = test.insert_expression(expr);
+    //     let mut inst = test.finish();
+    //     let el = inst.add_widget(TestWidget("hello".to_string()), None);
+
+    //     inst.run(|ctx| {
+    //         let expr = ctx.expressions.get(expr);
+    //         let rt = eval_expr(expr, el, ctx);
+    //         let output = eval_runtime_expr(&rt, el, ctx);
+    //         assert_eq!(output, expected);
+    //     });
+    // }
+
     fn assert_expr<'a>(expr: impl Into<Expression>, expected: impl Into<TemplateValue<'a>>) {
-        let expr = expr.into();
         let expected = expected.into();
-
-        let mut test = RunBuilder::new();
-
-        let expr = test.insert_expression(expr);
-        let mut inst = test.finish();
-        let el = inst.add_widget(TestWidget("hello".to_string()), None);
-
-        inst.run(|ctx| {
-            let expr = ctx.expressions.get(expr);
-            let rt = eval_expr(expr, el, ctx);
-            let output = eval_runtime_expr(&rt, el, ctx);
-            assert_eq!(output, expected);
-        });
+        with_val(expr, |value| assert_eq!(value, expected));
     }
 
-    fn asser_eval_with_state<'a>(expr: impl Into<Expression>, expected: impl Into<TemplateValue<'a>>) {
+    fn with_val<F>(expr: impl Into<Expression>, f: F)
+    where
+        F: Fn(TemplateValue<'_>),
+    {
         use expressions::{ident, index, num, strlit};
         let expr = expr.into();
-        let expected = expected.into();
 
         // -----------------------------------------------------------------------------
         //   - State -
@@ -609,10 +563,15 @@ mod test {
         let mut state = TestState {
             list: List::from_iter(1..5).into(),
             map: Map::empty().into(),
+            map_o_maps: Map::empty().into(),
             index: 2.into(),
         };
         state.map.to_mut().insert("a", 1);
         state.map.to_mut().insert("b", 2);
+
+        let mut a = Map::empty();
+        a.insert("val", 1);
+        state.map_o_maps.to_mut().insert("a", a);
 
         // let expr = index(ident("state"), strlit("index"));
 
@@ -648,14 +607,14 @@ mod test {
             let expr = ctx.expressions.get(expr);
             let rt = eval_expr(expr, el, ctx);
             let val = eval_runtime_expr(&rt, el, ctx);
-            assert_eq!(val, expected);
+            f(val);
         });
     }
 
     #[test]
     fn state_index_lookup() {
         use expressions::{ident, index, strlit};
-        asser_eval_with_state(index(ident("state"), strlit("index")), values::num(2));
+        assert_expr(index(ident("state"), strlit("index")), values::num(2));
     }
 
     #[test]
@@ -665,13 +624,13 @@ mod test {
         let expr = index(
             index(
                 //
-                ident("a"),
+                ident("map"),
                 strlit("b"),
             ),
             //
             strlit("c"),
         );
-        asser_eval_with_state(expr, values::num(123));
+        assert_expr(expr, values::num(123));
     }
 
     #[test]
@@ -718,6 +677,41 @@ mod test {
 
     #[test]
     fn dyn_list() {
-        // assert_expr(expressions::ident("list"), expected);
+        use expressions::{ident, index, strlit};
+
+        with_val(index(ident("state"), strlit("list")), |value| {
+            assert!(matches!(value, TemplateValue::DynList(_)));
+        });
+    }
+
+    #[test]
+    fn dyn_map() {
+        use expressions::{ident, index, strlit};
+
+        with_val(index(ident("state"), strlit("map")), |value| {
+            assert!(matches!(value, TemplateValue::DynMap(_)));
+        });
+    }
+
+    #[test]
+    fn dyn_nested_map() {
+        use expressions::{ident, index, strlit};
+
+        let expr = index(
+            index(
+                index(
+                    //
+                    ident("state"),
+                    strlit("map_o_maps"),
+                ),
+                strlit("a"),
+            ),
+            strlit("val"),
+        );
+
+        assert_expr(expr, values::num(1));
+        // with_val(expr, |value| {
+        //     assert_eq!(matches!(value, TemplateValue::Int(1)));
+        // });
     }
 }
