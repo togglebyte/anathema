@@ -125,7 +125,7 @@ impl Key {
 
 impl Debug for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Key <{}:{}>", self.index(), self.generation().0)
+        write!(f, "<{}:{}>", self.index(), self.generation().0)
     }
 }
 
@@ -513,7 +513,7 @@ mod test {
 
     #[test]
     fn push() {
-        let mut slab = GenSlab::empty();
+        let mut slab = GenSlab::<Key, _>::empty();
         let index = slab.insert(123);
         let val = slab.remove(index).unwrap();
         assert_eq!(val, 123);
@@ -521,7 +521,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut slab = GenSlab::empty();
+        let mut slab = GenSlab::<Key, _>::empty();
         let key_1 = slab.insert(1u32);
         let _ = slab.remove(key_1);
         let key_2 = slab.insert(2);
@@ -531,7 +531,7 @@ mod test {
 
     #[test]
     fn replace() {
-        let mut slab = GenSlab::empty();
+        let mut slab = GenSlab::<Key, _>::empty();
         let key_1 = slab.insert("hello world");
         let (key_1, _) = slab.replace(key_1, "updated");
         let s = slab.remove(key_1).unwrap();
@@ -540,7 +540,7 @@ mod test {
 
     #[test]
     fn get_and_get_mut() {
-        let mut slab = GenSlab::empty();
+        let mut slab = GenSlab::<Key, _>::empty();
         let key = slab.insert(1);
 
         let value = slab.get_mut(key).unwrap();
@@ -552,7 +552,7 @@ mod test {
 
     #[test]
     fn ticket() {
-        let mut slab = GenSlab::empty();
+        let mut slab = GenSlab::<Key, _>::empty();
         let key_1 = slab.insert(1);
         let key_2 = slab.insert(2);
 
@@ -574,7 +574,7 @@ mod test {
     #[test]
     #[should_panic(expected = "value already checked out")]
     fn double_checkout() {
-        let mut slab = GenSlab::empty();
+        let mut slab = GenSlab::<Key, _>::empty();
         let key_1 = slab.insert(1);
         let _t1 = slab.checkout(key_1);
         let _t2 = slab.checkout(key_1);

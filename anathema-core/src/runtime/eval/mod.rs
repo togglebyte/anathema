@@ -7,22 +7,25 @@ use super::error::Result;
 use crate::attributes::{AllAttributes, Attributes};
 use crate::runtime::components::Components;
 use crate::runtime::elements::{Element, ElementId, Elements};
+use crate::runtime::eval::expression::{eval_by_id, RuntimeExpressions};
 use crate::runtime::functions::{Function, FunctionTable};
 use crate::runtime::widgets::RegisteredWidgets;
-use crate::templates::expressions::Expressions;
+use crate::templates::expressions::{self, Expressions};
 use crate::templates::{Blueprint, Component, ExpressionId, For, Single, Variables};
 use crate::ui::Document;
 
-mod expression;
+pub(crate) mod expression;
 pub(crate) mod scope;
 pub(crate) mod values;
 
+#[derive(Debug)]
 pub struct EvalCtx<'a, 'bp> {
     pub(crate) elements: &'a mut Elements<'bp>,
     pub(crate) attributes: &'a mut AllAttributes<'bp>,
     pub(crate) components: &'a mut Components,
     pub(crate) variables: &'a Variables,
     pub(crate) expressions: &'bp Expressions,
+    pub(crate) runtime_expressions: &'a mut RuntimeExpressions<'bp>,
     pub(crate) functions: &'bp FunctionTable,
     pub(crate) scope: &'a mut Scope<'bp>,
 }
@@ -44,6 +47,7 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         expressions: &'bp Expressions,
         functions: &'bp FunctionTable,
         scope: &'frame mut Scope<'bp>,
+        runtime_expressions: &'frame mut RuntimeExpressions<'bp>,
     ) -> Self {
         Self {
             elements,
@@ -53,6 +57,7 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
             expressions,
             functions,
             scope,
+            runtime_expressions,
         }
     }
 
@@ -62,6 +67,10 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
 
     fn get_attributes(&self, el: ElementId) -> &Attributes<'bp> {
         todo!()
+    }
+
+    fn reserve_element_id(&mut self) -> ElementId {
+        self.elements.elements.next_id()
     }
 }
 
@@ -105,9 +114,14 @@ impl Evaluator for SingleEval {
         factory: &RegisteredWidgets,
         parent: Option<ElementId>,
     ) -> Result<()> {
-        for (key, expr) in input.attributes.iter() {}
+        let element_id = ctx.reserve_element_id();
 
-        let attributes = Attributes::empty();
+        let mut attributes = Attributes::empty();
+
+        for (key, expr) in input.attributes.iter() {
+            let rte = eval_by_id(*expr, element_id, ctx);
+            eprintln!("{key}: {rte:?}");
+        }
 
         let el = match factory.make(&input.ident, &attributes) {
             Ok(el) => Element::Widget(RefCell::new(el)),
@@ -115,6 +129,8 @@ impl Evaluator for SingleEval {
         };
 
         let parent = ctx.insert_element(el, parent);
+        assert_eq!(parent, element_id);
+
         ctx.insert_attributes(parent, attributes);
 
         for child in &input.children {
@@ -185,7 +201,20 @@ mod test {
     use super::*;
     use crate::attributes::AllAttributes;
     use crate::layout::Layout;
-    use crate::testing::{with_blueprint, TestWidget};
+    use crate::testing::{RunBuilder, TestWidget};
+
+    #[test]
+    fn eval_single() {
+        let tpl = "
+            let x = [1, 2, 3]
+            node [a: x[0]] x[0]
+                node [lol: x[0]] x[0]
+        ";
+
+        let mut test = RunBuilder::from_src(tpl);
+        let mut inst = test.finish();
+        inst.eval(|ctx| panic!("{:?}", ctx.elements));
+    }
 
     #[test]
     fn forloop() {
@@ -193,8 +222,9 @@ mod test {
             for x in y
                 node x
         ";
-        with_blueprint(tpl, |ctx, _bp| {
-            panic!("{:#?}", ctx.elements);
-        });
+
+        let mut test = RunBuilder::from_src(tpl);
+        let mut inst = test.finish();
+        inst.eval(|ctx| panic!("{:#?}", ctx.elements));
     }
 }

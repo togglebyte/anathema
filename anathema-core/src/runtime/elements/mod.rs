@@ -9,6 +9,7 @@ use crate::runtime::widgets::{Node as WidgetNode, Widget, Widgets};
 use crate::templates::{Blueprint, ExpressionId};
 
 pub mod iter;
+mod debug;
 
 key!(ElementId);
 
@@ -19,7 +20,6 @@ pub struct Node<'bp> {
     pub(super) element: Element<'bp>,
 }
 
-#[derive(Debug)]
 pub enum Element<'bp> {
     For {
         binding: &'bp str,
@@ -29,16 +29,19 @@ pub enum Element<'bp> {
     Component(ComponentId),
 }
 
-#[derive(Debug)]
 pub struct Elements<'bp> {
-    elements: GenSlab<ElementId, Node<'bp>>,
+    root: ElementId,
+    pub(crate) elements: GenSlab<ElementId, Node<'bp>>,
     removed_widgets: Vec<ElementId>,
 }
 
+
 impl<'bp> Elements<'bp> {
     pub fn empty() -> Self {
+        let elements = GenSlab::empty();
         Self {
-            elements: GenSlab::empty(),
+            root: elements.next_id(),
+            elements,
             removed_widgets: vec![],
         }
     }
@@ -80,32 +83,32 @@ impl<'bp> Index<ElementId> for Elements<'bp> {
     }
 }
 
-fn widget_tree<'bp>(elements: &Elements<'bp>) -> Widgets {
-    let mut widgets = Widgets::empty();
+// fn widget_tree<'bp>(elements: &Elements<'bp>) -> Widgets {
+//     let mut widgets = Widgets::empty();
 
-    fn add_child<'bp>(id: ElementId, elements: &Elements<'bp>, children: &mut Vec<ElementId>) {
-        let node = &elements[id];
-        match &node.element {
-            Element::For { .. } | Element::Component(_) => {
-                for child in &node.children {
-                    add_child(id, elements, children);
-                }
-            }
-            Element::Widget(_) => children.push(id),
-        }
-    }
+//     fn add_child<'bp>(id: ElementId, elements: &Elements<'bp>, children: &mut Vec<ElementId>) {
+//         let node = &elements[id];
+//         match &node.element {
+//             Element::For { .. } | Element::Component(_) => {
+//                 for child in &node.children {
+//                     add_child(id, elements, children);
+//                 }
+//             }
+//             Element::Widget(_) => children.push(id),
+//         }
+//     }
 
-    for (id, node) in elements.elements.iter_keys() {
-        match &node.element {
-            Element::Widget(widget) => {
-                let mut children = vec![];
-                add_child(id, elements, &mut children);
-                let node = WidgetNode::new(id, children);
-                widgets.widgets.insert(id, node);
-            }
-            _ => continue,
-        }
-    }
+//     for (id, node) in elements.elements.iter_keys() {
+//         match &node.element {
+//             Element::Widget(widget) => {
+//                 let mut children = vec![];
+//                 add_child(id, elements, &mut children);
+//                 let node = WidgetNode::new(id, children);
+//                 widgets.widgets.insert(id, node);
+//             }
+//             _ => continue,
+//         }
+//     }
 
-    widgets
-}
+//     widgets
+// }

@@ -7,9 +7,9 @@ use super::{Index, Slab};
 ///
 ///
 /// ```
-/// use anathema_store::slab::{GenSlab, SecondaryMap};
+/// use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 ///
-/// let mut names = GenSlab::empty();
+/// let mut names = GenSlab::<Key, _>::empty();
 /// let lilly = names.insert("Lilly");
 ///
 /// let mut favourite_foods = SecondaryMap::empty();

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use anathema_state::{AnonValue, Color, Hex, Type};
-use anathema_store::slab::Key;
+use anathema_store::key;
+use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 use crate::runtime::elements::ElementId;
 use crate::runtime::eval::scope::{Entry, ScopeKey};
@@ -9,10 +10,33 @@ use crate::runtime::eval::values::TemplateValue;
 use crate::runtime::eval::EvalCtx;
 use crate::runtime::functions::Function;
 use crate::templates::expressions::{Equality, LogicalOp, Op};
-use crate::templates::{Expression, Primitive};
+use crate::templates::{Expression, ExpressionId, Primitive};
+
+// key!(RuntimeExpressionId);
+
+#[derive(Debug)]
+pub(crate) struct RuntimeExpressions<'bp> {
+    inner: SecondaryMap<ExpressionId, RuntimeExpression<'bp>>,
+}
+
+impl<'bp> RuntimeExpressions<'bp> {
+    pub fn empty() -> Self {
+        Self {
+            inner: SecondaryMap::empty(),
+        }
+    }
+
+    pub fn get(&self, id: ExpressionId) -> Option<&RuntimeExpression<'bp>> {
+        self.inner.get(id)
+    }
+
+    fn insert(&mut self, id: ExpressionId, expr: RuntimeExpression<'bp>) {
+        self.inner.insert(id, expr)
+    }
+}
 
 #[derive(Debug, Clone)]
-pub enum Kind<T> {
+enum Kind<T> {
     Static(T),
     Dyn(AnonValue, Key),
 }
@@ -114,11 +138,21 @@ impl<'bp> From<(AnonValue, ElementId)> for RuntimeExpression<'bp> {
     }
 }
 
-pub(crate) fn eval_expr<'bp>(
-    expr: &'bp Expression,
-    element: ElementId,
-    ctx: &mut EvalCtx<'_, 'bp>,
-) -> RuntimeExpression<'bp> {
+pub fn eval_by_id<'bp>(id: ExpressionId, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> TemplateValue<'bp> {
+    if let Some(rt_expr) = ctx.runtime_expressions.get(id) {
+        let value = eval_runtime_expr(rt_expr, element, ctx);
+        panic!("awesome sauce");
+        return value;
+    }
+
+    let expr = ctx.expressions.get(id);
+    let expr = eval_expr(expr, element, ctx);
+    let value = eval_runtime_expr(&expr, element, ctx);
+    ctx.runtime_expressions.insert(id, expr);
+    value
+}
+
+fn eval_expr<'bp>(expr: &'bp Expression, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> RuntimeExpression<'bp> {
     match expr {
         &Expression::Primitive(primitive) => primitive.into(),
         &Expression::Variable(var_id) => match ctx.variables.load(var_id).map(|expr_id| ctx.expressions.get(expr_id)) {
@@ -340,7 +374,7 @@ fn lazy_eval<'a, 'bp>(
 // This is the final value and should be resolved to a template value.
 // That means no indices should be resolved at this step, but rather
 // by the lazy_eval.
-pub(crate) fn eval_runtime_expr<'bp>(
+fn eval_runtime_expr<'bp>(
     expr: &RuntimeExpression<'bp>,
     element: ElementId,
     ctx: &EvalCtx<'_, 'bp>,
@@ -451,12 +485,14 @@ fn eval_index<'a, 'bp>(
             match container {
                 LazyExpression::Expression(container) => eval_index(container, index, element, ctx),
                 LazyExpression::Value(TemplateValue::DynMap(map)) => {
-                    let value = index
-                        .with_str(|key| map.as_state().as_any_map().expect("type checked").lookup(key))
-                        .flatten();
+                    let value = index.with_str(|key| map.as_state().as_any_map().expect("type checked").lookup(key));
+                    anon_to_template_value(or_null!(value.flatten()), element).into()
+                }
+                LazyExpression::Value(TemplateValue::DynList(list)) => {
+                    let index = or_null!(index.as_usize());
+                    let value = list.as_state().as_any_list().expect("type checked").lookup(index);
                     anon_to_template_value(or_null!(value), element).into()
                 }
-                LazyExpression::Value(TemplateValue::DynList(list)) => todo!("{list:?}"),
                 LazyExpression::Value(_) => TemplateValue::Null.into(),
             }
         }
@@ -510,11 +546,12 @@ mod test {
     use super::*;
     use crate::runtime::eval::values;
     use crate::templates::expressions;
-    use crate::testing::{with_blueprint, RunBuilder, TestWidget};
+    use crate::testing::{RunBuilder, TestWidget};
 
     #[derive(Debug, State)]
     pub struct TestState {
         list: Value<List<u32>>,
+        list_o_lists: Value<List<List<u32>>>,
         map: Value<Map<u32>>,
         map_o_maps: Value<Map<Map<u32>>>,
         index: Value<usize>,
@@ -526,24 +563,6 @@ mod test {
         type Message = ();
         type State = TestState;
     }
-
-    // fn assert_expr<'a>(expr: impl Into<Expression>, expected: impl Into<TemplateValue<'a>>) {
-    //     let expr = expr.into();
-    //     let expected = expected.into();
-
-    //     let mut test = RunBuilder::new();
-
-    //     let expr = test.insert_expression(expr);
-    //     let mut inst = test.finish();
-    //     let el = inst.add_widget(TestWidget("hello".to_string()), None);
-
-    //     inst.run(|ctx| {
-    //         let expr = ctx.expressions.get(expr);
-    //         let rt = eval_expr(expr, el, ctx);
-    //         let output = eval_runtime_expr(&rt, el, ctx);
-    //         assert_eq!(output, expected);
-    //     });
-    // }
 
     fn assert_expr<'a>(expr: impl Into<Expression>, expected: impl Into<TemplateValue<'a>>) {
         let expected = expected.into();
@@ -564,6 +583,7 @@ mod test {
             list: List::from_iter(1..5).into(),
             map: Map::empty().into(),
             map_o_maps: Map::empty().into(),
+            list_o_lists: List::from_iter((0..5).map(|i| List::from_iter(i..i + 3))).into(),
             index: 2.into(),
         };
         state.map.to_mut().insert("a", 1);
@@ -710,8 +730,24 @@ mod test {
         );
 
         assert_expr(expr, values::num(1));
-        // with_val(expr, |value| {
-        //     assert_eq!(matches!(value, TemplateValue::Int(1)));
-        // });
+    }
+
+    #[test]
+    fn dyn_nested_list() {
+        use expressions::{ident, index, num, strlit};
+
+        let expr = index(
+            index(
+                index(
+                    //
+                    ident("state"),
+                    strlit("list_o_lists"),
+                ),
+                num(1),
+            ),
+            num(2),
+        );
+
+        assert_expr(expr, values::num(3));
     }
 }

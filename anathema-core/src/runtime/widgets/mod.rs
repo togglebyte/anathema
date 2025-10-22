@@ -13,8 +13,15 @@ type WidgetFactory = Box<dyn Fn(&Attributes<'_>) -> Box<dyn Widget>>;
 pub mod iter;
 
 /// All registered element types
+#[derive(Default)]
 pub struct RegisteredWidgets {
     registry: HashMap<Box<str>, WidgetFactory>,
+}
+
+impl std::fmt::Debug for RegisteredWidgets {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_set().entries(self.registry.keys()).finish()
+    }
 }
 
 impl RegisteredWidgets {

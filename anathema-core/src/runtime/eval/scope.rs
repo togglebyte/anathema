@@ -36,6 +36,7 @@ impl PartialEq<Entry<'_>> for ScopeKey<'_> {
     }
 }
 
+#[derive(Debug)]
 struct ScopeNode<'bp> {
     entries: Vec<Entry<'bp>>,
     boundary: bool,
@@ -47,6 +48,7 @@ impl<'bp> ScopeNode<'bp> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Scope<'bp> {
     scopes: SecondaryMap<ElementId, ScopeNode<'bp>>,
 }

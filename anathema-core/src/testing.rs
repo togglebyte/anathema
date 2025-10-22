@@ -7,13 +7,20 @@ use crate::attributes::{AllAttributes, Attributes};
 use crate::layout::Layout;
 use crate::runtime::components::{Component, ComponentId, Components};
 use crate::runtime::elements::{Element, ElementId, Elements};
+use crate::runtime::eval::expression::RuntimeExpressions;
 use crate::runtime::eval::scope::Scope;
-use crate::runtime::eval::EvalCtx;
+use crate::runtime::eval::{eval, EvalCtx};
 use crate::runtime::functions::FunctionTable;
 use crate::runtime::widgets::iter::Children;
 use crate::runtime::widgets::{RegisteredWidgets, Widget};
 use crate::templates::expressions::Expressions;
 use crate::templates::{Blueprint, Document, Expression, ExpressionId, Variables};
+
+fn test_widgets() -> RegisteredWidgets {
+    let mut factory = RegisteredWidgets::empty();
+    factory.register_default::<TestWidget>("node");
+    factory
+}
 
 #[derive(Debug)]
 pub struct NoDoc {
@@ -35,12 +42,14 @@ pub struct RunBuilder<T> {
     components: Components,
     functions: FunctionTable,
     variables: Variables,
-    blueprint: Option<Blueprint>,
+    widget_registry: RegisteredWidgets,
 }
 
 impl RunBuilder<NoDoc> {
     pub fn new() -> Self {
-        Self::default()
+        let mut inst = Self::default();
+        inst.widget_registry = test_widgets();
+        inst
     }
 
     pub fn insert_expression(&mut self, expression: impl Into<Expression>) -> ExpressionId {
@@ -65,27 +74,27 @@ impl RunBuilder<NoDoc> {
             &self.variables,
             &self.inner.expressions,
             &self.functions,
+            None,
+            &self.widget_registry,
         )
     }
 }
 
-impl RunBuilder<Document> {
+impl RunBuilder<(Document, Blueprint)> {
     pub fn from_src(src: &str) -> Self {
         let template = src.to_string();
-        let doc = Document::new(template);
+        let mut variables = Variables::new();
+        let mut doc = Document::new(template);
+        let bp = doc.compile(&mut variables).unwrap();
 
         Self {
-            inner: doc,
+            inner: (doc, bp),
             states: Default::default(),
             components: Default::default(),
             functions: Default::default(),
-            variables: Default::default(),
-            blueprint: Default::default(),
+            variables,
+            widget_registry: test_widgets(),
         }
-    }
-
-    pub fn compile(mut self) -> () {
-        panic!()
     }
 
     pub(crate) fn finish(&mut self) -> Instance<'_, '_> {
@@ -93,8 +102,10 @@ impl RunBuilder<Document> {
             &self.states,
             &mut self.components,
             &self.variables,
-            &self.inner.expressions,
+            &self.inner.0.expressions,
             &self.functions,
+            Some(&self.inner.1),
+            &self.widget_registry,
         )
     }
 }
@@ -105,11 +116,13 @@ pub struct Instance<'frame, 'bp> {
     pub scope: Scope<'bp>,
     attributes: AllAttributes<'bp>,
     elements: Elements<'bp>,
-
     components: &'frame mut Components,
     variables: &'frame Variables,
     expressions: &'bp Expressions,
     functions: &'bp FunctionTable,
+    blueprint: Option<&'bp Blueprint>,
+    widget_registry: &'bp RegisteredWidgets,
+    runtime_expressions: RuntimeExpressions<'bp>,
 }
 
 impl<'frame, 'bp> Instance<'frame, 'bp> {
@@ -119,16 +132,20 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         variables: &'frame Variables,
         expressions: &'bp Expressions,
         functions: &'bp FunctionTable,
+        blueprint: Option<&'bp Blueprint>,
+        widget_registry: &'bp RegisteredWidgets,
     ) -> Self {
         Self {
             scope: Scope::empty(),
             attributes: AllAttributes::empty(),
             elements: Elements::empty(),
-
+            runtime_expressions: RuntimeExpressions::empty(),
             components,
             variables,
             expressions,
             functions,
+            blueprint,
+            widget_registry,
         }
     }
 
@@ -144,6 +161,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             &self.expressions,
             &self.functions,
             &mut self.scope,
+            &mut self.runtime_expressions,
         );
 
         f(&mut eval_ctx);
@@ -161,6 +179,25 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         let id = self.elements.insert(el, parent);
         self.attributes.insert(id, Attributes::empty());
         id
+    }
+
+    pub(crate) fn eval<F>(&mut self, f: F)
+    where
+        F: Fn(&mut EvalCtx<'_, '_>),
+    {
+        let mut eval_ctx = EvalCtx::new(
+            &mut self.elements,
+            &mut self.attributes,
+            &mut self.components,
+            &self.variables,
+            &self.expressions,
+            &self.functions,
+            &mut self.scope,
+            &mut self.runtime_expressions,
+        );
+
+        eval(self.blueprint.unwrap(), &mut eval_ctx, self.widget_registry, None).unwrap();
+        f(&mut eval_ctx);
     }
 }
 
@@ -199,80 +236,3 @@ impl Widget for TestWidget {
         &self.0
     }
 }
-
-pub fn with_ctx<F>(f: F)
-where
-    F: for<'a, 'bp> Fn(EvalCtx<'a, 'bp>),
-{
-    let mut elements = Elements::empty();
-    let mut expressions = Expressions::empty();
-    let mut attributes = AllAttributes::empty();
-    let mut components = Components::empty();
-    let mut variables = Variables::new();
-    let mut functions = FunctionTable::new();
-    let mut scope = Scope::empty();
-
-    let eval_ctx = EvalCtx::new(
-        &mut elements,
-        &mut attributes,
-        &mut components,
-        &variables,
-        &expressions,
-        &functions,
-        &mut scope,
-    );
-
-    f(eval_ctx);
-}
-
-pub fn with_blueprint<F>(src: &str, f: F)
-where
-    F: for<'a, 'bp> Fn(&mut EvalCtx<'a, 'bp>, &'a Blueprint),
-{
-    with_ctx(|mut ctx| {
-        // let mut doc = crate::templates::Document::new(src.to_string());
-
-        // let mut variables = Variables::new();
-        // let blueprint = doc.compile(&mut variables).unwrap();
-
-        // ctx.expressions = &doc.expressions;
-        // ctx.variables = &variables;
-
-        // f(&mut ctx, &blueprint);
-    });
-
-    // let mut factory = RegisteredWidgets::empty();
-    // factory.register_default::<TestWidget>("node");
-
-    // let mut doc = crate::templates::Document::new(src.to_string());
-
-    // let mut elements = Elements::empty();
-    // let mut attributes = AllAttributes::empty();
-    // let mut components = Components::empty();
-    // let mut variables = Variables::new();
-    // let mut functions = FunctionTable::new();
-    // let mut scope = Scope::empty();
-    // let mut states = States::new();
-
-    // let blueprint = doc.compile(&mut variables).unwrap();
-
-    // let mut eval_ctx = EvalCtx::new(
-    //     &mut elements,
-    //     &mut attributes,
-    //     &mut components,
-    //     &variables,
-    //     &doc.expressions,
-    //     &functions,
-    //     &mut scope,
-    //     &states,
-    // );
-
-    // crate::runtime::eval::eval(&blueprint, &mut eval_ctx, &factory, None).unwrap();
-
-    // f(&mut eval_ctx, &blueprint);
-}
-
-// pub(crate) fn test_widget(value: impl Into<String>) -> InsertNode {
-//     let el = TestWidget(value.into());
-//     InsertNode::from(el)
-// }
