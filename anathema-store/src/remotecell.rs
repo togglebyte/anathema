@@ -12,8 +12,17 @@ use std::rc::Rc;
 ///
 /// This is not even remotely safe.
 /// The remote cell can **not ever** be used at the same time as the remote handle.
+///
+/// NOTE: Since the remote cell is clonable it's not safe to ever implement any kind of 
+/// mutable access for the remote cell.
 pub struct RemoteCell<T> {
     value: Rc<UnsafeCell<T>>,
+}
+
+impl<T> Clone for RemoteCell<T> {
+    fn clone(&self) -> Self {
+        Self { value: self.value.clone() }
+    }
 }
 
 impl<T> RemoteCell<T> {
@@ -34,9 +43,11 @@ impl<T> Deref for RemoteCell<T> {
     }
 }
 
-impl<T> DerefMut for RemoteCell<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.value.get() }
+impl<T: std::fmt::Debug> std::fmt::Debug for RemoteCell<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RC<")?;
+        self.deref().fmt(f);
+        write!(f, ">")
     }
 }
 
@@ -45,6 +56,12 @@ impl<T> DerefMut for RemoteCell<T> {
 /// This can never be used at the same time as the corresponding remote cell.
 pub struct RemoteHandle<T> {
     value: Rc<UnsafeCell<T>>,
+}
+
+impl<T> std::fmt::Debug for RemoteHandle<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<remote handle>")
+    }
 }
 
 impl<T> RemoteHandle<T> {
@@ -56,6 +73,12 @@ impl<T> RemoteHandle<T> {
     pub fn set(&mut self, new_value: T) {
         _ = std::mem::replace(unsafe { &mut *self.value.get() }, new_value);
     }
+
+    pub fn value(&self) -> RemoteCell<T> {
+        RemoteCell {
+            value: self.value.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -66,8 +89,7 @@ mod test {
     fn update_cell() {
         let (mut cell, mut handle) = RemoteCell::new("hello".to_string());
 
-        *cell = "world".to_string();
-        assert_eq!(&*cell, "world");
+        assert_eq!(&*cell, "hello");
 
         handle.set("updated".to_string());
         assert_eq!(&*cell, "updated");

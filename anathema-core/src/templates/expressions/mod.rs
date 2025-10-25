@@ -10,7 +10,7 @@ use super::variables::{ScopeId, VarId};
 pub(crate) mod eval;
 pub(crate) mod parser;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExpressionId(u32);
 
 impl From<ExpressionId> for Index {
@@ -18,6 +18,14 @@ impl From<ExpressionId> for Index {
         value.0.into()
     }
 }
+
+impl std::hash::Hash for ExpressionId {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        hasher.write_u32(self.0)
+    }
+}
+
+impl nohash_hasher::IsEnabled for ExpressionId {}
 
 #[derive(Debug)]
 pub struct Expressions {

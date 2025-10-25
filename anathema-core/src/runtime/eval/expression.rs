@@ -2,9 +2,11 @@ use std::collections::HashMap;
 
 use anathema_state::{AnonValue, Color, Hex, Type};
 use anathema_store::key;
+use anathema_store::remotecell::{RemoteCell, RemoteHandle};
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 use crate::runtime::elements::ElementId;
+use crate::runtime::eval::assoc::Associations;
 use crate::runtime::eval::scope::{Entry, ScopeKey};
 use crate::runtime::eval::values::TemplateValue;
 use crate::runtime::eval::EvalCtx;
@@ -12,26 +14,49 @@ use crate::runtime::functions::Function;
 use crate::templates::expressions::{Equality, LogicalOp, Op};
 use crate::templates::{Expression, ExpressionId, Primitive};
 
-// key!(RuntimeExpressionId);
+#[derive(Debug)]
+struct ExprEntry<'bp> {
+    expr: RuntimeExpression<'bp>,
+    handle: RemoteHandle<TemplateValue<'bp>>,
+}
+
+impl<'bp> ExprEntry<'bp> {
+    fn new(expr: RuntimeExpression<'bp>, handle: RemoteHandle<TemplateValue<'bp>>) -> Self {
+        Self { expr, handle }
+    }
+
+    fn value(&self) -> RemoteCell<TemplateValue<'bp>> {
+        self.handle.value()
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct RuntimeExpressions<'bp> {
-    inner: SecondaryMap<ExpressionId, RuntimeExpression<'bp>>,
+    inner: SecondaryMap<ExpressionId, ExprEntry<'bp>>,
+    associations: Associations,
 }
 
 impl<'bp> RuntimeExpressions<'bp> {
     pub fn empty() -> Self {
         Self {
             inner: SecondaryMap::empty(),
+            associations: Associations::new(),
         }
     }
 
-    pub fn get(&self, id: ExpressionId) -> Option<&RuntimeExpression<'bp>> {
-        self.inner.get(id)
+    pub fn get(&self, id: ExpressionId) -> Option<RemoteCell<TemplateValue<'bp>>> {
+        self.inner.get(id).map(|e| e.handle.value())
     }
 
-    fn insert(&mut self, id: ExpressionId, expr: RuntimeExpression<'bp>) {
-        self.inner.insert(id, expr)
+    fn insert(&mut self, id: ExpressionId, expr: RuntimeExpression<'bp>, value: TemplateValue<'bp>) -> RemoteCell<TemplateValue<'bp>> {
+        let (value, handle) = RemoteCell::new(value);
+        let entry = ExprEntry::new(expr, handle);
+        self.inner.insert(id, entry);
+        value
+    }
+
+    fn associate(&mut self, id: ExpressionId, element: ElementId) {
+        self.associations.associate(id, element);
     }
 }
 
@@ -138,18 +163,24 @@ impl<'bp> From<(AnonValue, ElementId)> for RuntimeExpression<'bp> {
     }
 }
 
-pub fn eval_by_id<'bp>(id: ExpressionId, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> TemplateValue<'bp> {
-    if let Some(rt_expr) = ctx.runtime_expressions.get(id) {
-        let value = eval_runtime_expr(rt_expr, element, ctx);
-        panic!("awesome sauce");
+pub fn eval_by_id<'bp>(
+    id: ExpressionId,
+    element: ElementId,
+    ctx: &mut EvalCtx<'_, 'bp>,
+) -> RemoteCell<TemplateValue<'bp>> {
+    // If the expression already exist: associate the element with the expression
+    // and return a remote cell to the already existing value.
+    //
+    // This is to ensure that there is only one value per expression
+    if let Some(value) = ctx.runtime_expressions.get(id) {
+        ctx.runtime_expressions.associate(id, element);
         return value;
     }
 
     let expr = ctx.expressions.get(id);
     let expr = eval_expr(expr, element, ctx);
     let value = eval_runtime_expr(&expr, element, ctx);
-    ctx.runtime_expressions.insert(id, expr);
-    value
+    ctx.runtime_expressions.insert(id, expr, value)
 }
 
 fn eval_expr<'bp>(expr: &'bp Expression, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> RuntimeExpression<'bp> {

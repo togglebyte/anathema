@@ -14,6 +14,7 @@ use crate::templates::expressions::{self, Expressions};
 use crate::templates::{Blueprint, Component, ExpressionId, For, Single, Variables};
 use crate::ui::Document;
 
+mod assoc;
 pub(crate) mod expression;
 pub(crate) mod scope;
 pub(crate) mod values;
@@ -28,17 +29,10 @@ pub struct EvalCtx<'a, 'bp> {
     pub(crate) runtime_expressions: &'a mut RuntimeExpressions<'bp>,
     pub(crate) functions: &'bp FunctionTable,
     pub(crate) scope: &'a mut Scope<'bp>,
+    pub(crate) dirty_elements: &'a mut Vec<ElementId>,
 }
 
 impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
-    fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
-        self.elements.insert(element, parent)
-    }
-
-    fn insert_attributes(&mut self, id: ElementId, attributes: Attributes<'bp>) {
-        self.attributes.insert(id, attributes);
-    }
-
     pub(crate) fn new(
         elements: &'frame mut Elements<'bp>,
         attributes: &'frame mut AllAttributes<'bp>,
@@ -48,6 +42,7 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         functions: &'bp FunctionTable,
         scope: &'frame mut Scope<'bp>,
         runtime_expressions: &'frame mut RuntimeExpressions<'bp>,
+        dirty_elements: &'frame mut Vec<ElementId>,
     ) -> Self {
         Self {
             elements,
@@ -58,7 +53,16 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
             functions,
             scope,
             runtime_expressions,
+            dirty_elements,
         }
+    }
+
+    fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
+        self.elements.insert(element, parent)
+    }
+
+    fn insert_attributes(&mut self, id: ElementId, attributes: Attributes<'bp>) {
+        self.attributes.insert(id, attributes);
     }
 
     fn lookup_function(&self, fun: &str) -> Option<&'bp Function> {

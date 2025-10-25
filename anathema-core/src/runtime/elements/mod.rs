@@ -11,7 +11,15 @@ use crate::templates::{Blueprint, ExpressionId};
 pub mod iter;
 mod debug;
 
-key!(ElementId);
+key!(ElementId, Debug, PartialEq, Copy, Clone, Eq);
+
+impl std::hash::Hash for ElementId {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        hasher.write_u32(self.0.into())
+    }
+}
+
+impl nohash_hasher::IsEnabled for ElementId {}
 
 #[derive(Debug)]
 pub struct Node<'bp> {
@@ -34,7 +42,6 @@ pub struct Elements<'bp> {
     pub(crate) elements: GenSlab<ElementId, Node<'bp>>,
     removed_widgets: Vec<ElementId>,
 }
-
 
 impl<'bp> Elements<'bp> {
     pub fn empty() -> Self {

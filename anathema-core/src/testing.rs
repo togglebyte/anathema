@@ -43,6 +43,7 @@ pub struct RunBuilder<T> {
     functions: FunctionTable,
     variables: Variables,
     widget_registry: RegisteredWidgets,
+    dirty_elements: Vec<ElementId>,
 }
 
 impl RunBuilder<NoDoc> {
@@ -76,6 +77,7 @@ impl RunBuilder<NoDoc> {
             &self.functions,
             None,
             &self.widget_registry,
+            &mut self.dirty_elements,
         )
     }
 }
@@ -94,6 +96,7 @@ impl RunBuilder<(Document, Blueprint)> {
             functions: Default::default(),
             variables,
             widget_registry: test_widgets(),
+            dirty_elements: vec![],
         }
     }
 
@@ -106,6 +109,7 @@ impl RunBuilder<(Document, Blueprint)> {
             &self.functions,
             Some(&self.inner.1),
             &self.widget_registry,
+            &mut self.dirty_elements,
         )
     }
 }
@@ -123,6 +127,7 @@ pub struct Instance<'frame, 'bp> {
     blueprint: Option<&'bp Blueprint>,
     widget_registry: &'bp RegisteredWidgets,
     runtime_expressions: RuntimeExpressions<'bp>,
+    dirty_elements: &'frame mut Vec<ElementId>,
 }
 
 impl<'frame, 'bp> Instance<'frame, 'bp> {
@@ -134,6 +139,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         functions: &'bp FunctionTable,
         blueprint: Option<&'bp Blueprint>,
         widget_registry: &'bp RegisteredWidgets,
+        dirty_elements: &'frame mut Vec<ElementId>,
     ) -> Self {
         Self {
             scope: Scope::empty(),
@@ -146,6 +152,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             functions,
             blueprint,
             widget_registry,
+            dirty_elements,
         }
     }
 
@@ -162,6 +169,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             &self.functions,
             &mut self.scope,
             &mut self.runtime_expressions,
+            &mut self.dirty_elements,
         );
 
         f(&mut eval_ctx);
@@ -194,6 +202,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             &self.functions,
             &mut self.scope,
             &mut self.runtime_expressions,
+            &mut self.dirty_elements,
         );
 
         eval(self.blueprint.unwrap(), &mut eval_ctx, self.widget_registry, None).unwrap();

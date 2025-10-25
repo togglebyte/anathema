@@ -6,15 +6,15 @@ use super::{Index, Ticket};
 
 /// Create a newtype that wraps a `Key`.
 /// This implements the following traits:
-/// * Debug
-/// * PartialEq
-/// * Copy
-/// * Clone
 /// * From<Key>
 #[macro_export]
 macro_rules! key {
-    ($name:ident) => {
-        #[derive(Debug, PartialEq, Copy, Clone)]
+    ($name:ident, $($derive:ident),*) => {
+        #[derive(
+            $(
+                $derive,
+            )*
+        )]
         pub struct $name(anathema_store::slab::Key);
         impl anathema_store::slab::SlabKey for $name { }
 
@@ -80,7 +80,7 @@ impl Display for Gen {
 /// Bits 48..64 is the 16-bit aux storage in the key.
 ///
 /// This is used to attach additional data to the key.
-#[derive(Hash, Copy, Clone, PartialEq, PartialOrd)]
+#[derive(Hash, Copy, Clone, PartialEq, PartialOrd, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Key(u32);
 
@@ -144,6 +144,12 @@ impl From<(usize, Gen)> for Key {
 impl From<Key> for Index {
     fn from(value: Key) -> Self {
         value.index().into()
+    }
+}
+
+impl From<Key> for u32 {
+    fn from(value: Key) -> Self {
+        value.0
     }
 }
 
