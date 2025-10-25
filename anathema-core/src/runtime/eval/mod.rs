@@ -5,7 +5,7 @@ use anathema_store::remotecell::RemoteHandle;
 
 use self::scope::Scope;
 use super::error::Result;
-use crate::attributes::{AllAttributes, Attributes};
+use crate::attributes::{AllAttributes, Attributes, ValueKey};
 use crate::runtime::components::Components;
 use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::runtime::eval::expression::{eval_by_id, RuntimeExpression, RuntimeExpressions};
@@ -136,13 +136,12 @@ impl Evaluator for SingleEval {
 
         for (key, expr) in input.attributes.iter() {
             let value = eval_by_id(*expr, element_id, parent, ctx);
-            attributes.set(key, value);
+            attributes.set_attribute(ValueKey::Attribute(key), value);
         }
 
         if let Some(expr) = &input.value {
             let val = eval_by_id(*expr, element_id, parent, ctx);
-            eprintln!("val: {val:?}");
-            attributes.set(panic!("bring back the value key"), val);
+            attributes.set_attribute(ValueKey::Value, val);
         }
 
         let el = match factory.make(&input.ident, &attributes) {
@@ -299,7 +298,7 @@ mod test {
             // * Look at dirty widgets
             // * Update the values using the remote handle
 
-            panic!("this is some bs: {:#?}", ctx.attributes)
+            // panic!("this is some bs: {:#?}", ctx.attributes)
         });
     }
 
@@ -312,6 +311,6 @@ mod test {
 
         let mut test = RunBuilder::from_src(tpl);
         let mut inst = test.finish();
-        inst.eval(|ctx| panic!("{:#?}", ctx.elements));
+        // inst.eval(|ctx| panic!("{:#?}", ctx.elements));
     }
 }
