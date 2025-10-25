@@ -63,8 +63,6 @@ impl<'bp> Scope<'bp> {
     pub fn lookup(&self, key: ScopeKey<'_>, mut id: ElementId, elements: &Elements<'bp>) -> Option<Entry<'bp>> {
         // Try to get until we reach a scope boundary
 
-        // panic!("if the value is a state but its not the key then that's the boundary");
-
         loop {
             match self.scopes.get(id) {
                 Some(node) => {
@@ -75,10 +73,7 @@ impl<'bp> Scope<'bp> {
                         None => id = elements[id].parent?,
                     }
                 }
-                None => {
-                    // and we are NOT on a scope boundary
-                    id = elements[id].parent?;
-                }
+                None => id = elements[id].parent?,
             }
         }
     }

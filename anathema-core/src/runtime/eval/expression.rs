@@ -48,7 +48,12 @@ impl<'bp> RuntimeExpressions<'bp> {
         self.inner.get(id).map(|e| e.handle.value())
     }
 
-    fn insert(&mut self, id: ExpressionId, expr: RuntimeExpression<'bp>, value: TemplateValue<'bp>) -> RemoteCell<TemplateValue<'bp>> {
+    fn insert(
+        &mut self,
+        id: ExpressionId,
+        expr: RuntimeExpression<'bp>,
+        value: TemplateValue<'bp>,
+    ) -> RemoteCell<TemplateValue<'bp>> {
         let (value, handle) = RemoteCell::new(value);
         let entry = ExprEntry::new(expr, handle);
         self.inner.insert(id, entry);
@@ -143,9 +148,9 @@ impl<'bp> From<Primitive> for RuntimeExpression<'bp> {
     }
 }
 
-impl<'bp> From<(AnonValue, ElementId)> for RuntimeExpression<'bp> {
-    fn from((value, element): (AnonValue, ElementId)) -> Self {
-        let key = element.into();
+impl<'bp> From<(AnonValue, ExpressionId)> for RuntimeExpression<'bp> {
+    fn from((value, expr): (AnonValue, ExpressionId)) -> Self {
+        let key = expr.into();
         match value.type_info() {
             Type::Int => Self::Int(Kind::Dyn(value, key)),
             Type::Float => Self::Float(Kind::Dyn(value, key)),
@@ -178,76 +183,80 @@ pub fn eval_by_id<'bp>(
     }
 
     let expr = ctx.expressions.get(id);
-    let expr = eval_expr(expr, element, ctx);
+    let expr = eval_expr(expr, id, element, ctx);
     let value = eval_runtime_expr(&expr, element, ctx);
     ctx.runtime_expressions.insert(id, expr, value)
 }
 
-fn eval_expr<'bp>(expr: &'bp Expression, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> RuntimeExpression<'bp> {
+fn eval_expr<'bp>(expr: &'bp Expression, expr_id: ExpressionId, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> RuntimeExpression<'bp> {
     match expr {
         &Expression::Primitive(primitive) => primitive.into(),
-        &Expression::Variable(var_id) => match ctx.variables.load(var_id).map(|expr_id| ctx.expressions.get(expr_id)) {
-            Some(expr) => eval_expr(expr, element, ctx),
-            None => RuntimeExpression::Null,
-        },
+        &Expression::Variable(var_id) => ctx
+            .variables
+            .load(var_id)
+            .map(|expr_id| {
+                let expr = ctx.expressions.get(expr_id);
+                eval_expr(expr, expr_id, element, ctx)
+            })
+            .unwrap_or(RuntimeExpression::Null),
         Expression::Str(s) => RuntimeExpression::Str(Kind::Static(s)),
         Expression::List(expressions) | Expression::TextSegments(expressions) => {
-            let list = expressions.iter().map(|e| eval_expr(e, element, ctx)).collect();
+            let list = expressions.iter().map(|e| eval_expr(e, expr_id, element, ctx)).collect();
             RuntimeExpression::List(list)
         }
         Expression::Map(map) => RuntimeExpression::Map(
             map.iter()
-                .map(|(k, e)| (k.as_str(), eval_expr(e, element, ctx)))
+                .map(|(k, e)| (k.as_str(), eval_expr(e, expr_id, element, ctx)))
                 .collect(),
         ),
-        Expression::Not(expression) => RuntimeExpression::Not(Box::new(eval_expr(expression, element, ctx))),
-        Expression::Negative(expression) => RuntimeExpression::Negative(Box::new(eval_expr(expression, element, ctx))),
+        Expression::Not(expression) => RuntimeExpression::Not(Box::new(eval_expr(expression, expr_id, element, ctx))),
+        Expression::Negative(expression) => RuntimeExpression::Negative(Box::new(eval_expr(expression, expr_id, element, ctx))),
         Expression::Equality(lhs, rhs, eq) => RuntimeExpression::Equality(
-            eval_expr(lhs, element, ctx).into(),
-            eval_expr(rhs, element, ctx).into(),
+            eval_expr(lhs, expr_id, element, ctx).into(),
+            eval_expr(rhs, expr_id, element, ctx).into(),
             *eq,
         ),
         Expression::LogicalOp(lhs, rhs, op) => RuntimeExpression::LogicalOp(
-            eval_expr(lhs, element, ctx).into(),
-            eval_expr(rhs, element, ctx).into(),
+            eval_expr(lhs, expr_id, element, ctx).into(),
+            eval_expr(rhs, expr_id, element, ctx).into(),
             *op,
         ),
-        Expression::Ident(ident) => lookup(ident, element, ctx),
+        Expression::Ident(ident) => lookup(ident, expr_id, element, ctx),
         Expression::Index(src, index) => RuntimeExpression::Index(
-            eval_expr(src, element, ctx).into(),
-            eval_expr(index, element, ctx).into(),
+            eval_expr(src, expr_id, element, ctx).into(),
+            eval_expr(index, expr_id, element, ctx).into(),
         ),
         Expression::Op(lhs, rhs, op) => RuntimeExpression::Op(
-            eval_expr(lhs, element, ctx).into(),
-            eval_expr(rhs, element, ctx).into(),
+            eval_expr(lhs, expr_id, element, ctx).into(),
+            eval_expr(rhs, expr_id, element, ctx).into(),
             *op,
         ),
         Expression::Either(first, second) => RuntimeExpression::Either(
-            eval_expr(first, element, ctx).into(),
-            eval_expr(second, element, ctx).into(),
+            eval_expr(first, expr_id, element, ctx).into(),
+            eval_expr(second, expr_id, element, ctx).into(),
         ),
         Expression::Range(start, end) => RuntimeExpression::Range(
-            eval_expr(start, element, ctx).into(),
-            eval_expr(end, element, ctx).into(),
+            eval_expr(start, expr_id, element, ctx).into(),
+            eval_expr(end, expr_id, element, ctx).into(),
         ),
         Expression::Call { fun, args } => {
             match &**fun {
                 // function(args)
                 Expression::Ident(fun) => match ctx.lookup_function(fun) {
                     Some(fun_ptr) => {
-                        let args = args.iter().map(|arg| eval_expr(arg, element, ctx)).collect::<Box<_>>();
+                        let args = args.iter().map(|arg| eval_expr(arg, expr_id, element, ctx)).collect::<Box<_>>();
                         RuntimeExpression::Call { fun_ptr, args }
                     }
                     None => RuntimeExpression::Null,
                 },
                 // some.value.function(args)
                 Expression::Index(lhs, rhs) => {
-                    let first_arg = eval_expr(lhs, element, ctx);
+                    let first_arg = eval_expr(lhs, expr_id, element, ctx);
                     let Expression::Str(fun) = &**rhs else { return RuntimeExpression::Null };
                     match ctx.lookup_function(fun) {
                         Some(fun_ptr) => {
                             let args = std::iter::once(first_arg)
-                                .chain(args.iter().map(|arg| eval_expr(arg, element, ctx)))
+                                .chain(args.iter().map(|arg| eval_expr(arg, expr_id, element, ctx)))
                                 .collect::<Box<_>>();
                             RuntimeExpression::Call { fun_ptr, args }
                         }
@@ -261,7 +270,7 @@ fn eval_expr<'bp>(expr: &'bp Expression, element: ElementId, ctx: &mut EvalCtx<'
 }
 
 // Lookup an ident for an Expression
-fn lookup<'bp>(ident: &str, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> RuntimeExpression<'bp> {
+fn lookup<'bp>(ident: &str, expr_id: ExpressionId, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> RuntimeExpression<'bp> {
     let key = match ident {
         "state" => ScopeKey::State,
         "attributes" => ScopeKey::Attributes,
@@ -272,14 +281,14 @@ fn lookup<'bp>(ident: &str, element: ElementId, ctx: &mut EvalCtx<'_, 'bp>) -> R
         Some(Entry::State(component_id)) => {
             let Some(state) = ctx.components.get_state(component_id) else { return RuntimeExpression::Null };
             let value = state.reference();
-            (value, element).into()
+            (value, expr_id).into()
         }
         Some(Entry::Attributes(component)) => RuntimeExpression::Attributes(component),
         Some(Entry::Value { value, .. }) => panic!("values needs to be scoped"),
         None => {
             let Some(id) = ctx.variables.global_lookup(ident) else { return RuntimeExpression::Null };
             let expr = ctx.expressions.get(id);
-            eval_expr(expr, element, ctx)
+            eval_expr(expr, expr_id, element, ctx)
         }
     }
 }
@@ -638,7 +647,7 @@ mod test {
         let mut test = RunBuilder::new();
         test.register_global("map", map);
 
-        let expr = test.insert_expression(expr);
+        let expr_id = test.insert_expression(expr);
 
         // -----------------------------------------------------------------------------
         //   - Setup component and state -
@@ -655,8 +664,8 @@ mod test {
         inst.scope.push_component(comp_el, comp_id);
 
         inst.run(|ctx| {
-            let expr = ctx.expressions.get(expr);
-            let rt = eval_expr(expr, el, ctx);
+            let expr = ctx.expressions.get(expr_id);
+            let rt = eval_expr(expr, expr_id, el, ctx);
             let val = eval_runtime_expr(&rt, el, ctx);
             f(val);
         });

@@ -141,6 +141,18 @@ impl From<(usize, Gen)> for Key {
     }
 }
 
+impl From<u32> for Key {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<usize> for Key {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
+    }
+}
+
 impl From<Key> for Index {
     fn from(value: Key) -> Self {
         value.index().into()

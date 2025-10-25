@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 use anathema_state::{Color, Hex};
+use anathema_store::key;
 use anathema_store::slab::Index;
 
 use super::primitives::Primitive;
@@ -10,18 +11,11 @@ use super::variables::{ScopeId, VarId};
 pub(crate) mod eval;
 pub(crate) mod parser;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ExpressionId(u32);
-
-impl From<ExpressionId> for Index {
-    fn from(value: ExpressionId) -> Self {
-        value.0.into()
-    }
-}
+key!(ExpressionId, Debug, Clone, Copy, PartialEq, Eq);
 
 impl std::hash::Hash for ExpressionId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        hasher.write_u32(self.0)
+        hasher.write_u32(self.0.into())
     }
 }
 
@@ -47,7 +41,7 @@ impl Expressions {
     /// Only time this could happen is if the expression id is created outside of the tempalte
     /// generation.
     pub fn get(&self, id: ExpressionId) -> &Expression {
-        &self.inner[id.0 as usize].0
+        &self.inner[id.0.index()].0
     }
 
     /// Insert an expression in the root scope
@@ -57,13 +51,13 @@ impl Expressions {
 
     /// Insert an expression and return the id to the newly inserted expression
     pub fn insert(&mut self, expression: Expression, boundary: ScopeId) -> ExpressionId {
-        let id = ExpressionId(self.inner.len() as u32);
+        let id = ExpressionId(self.inner.len().into());
         match self
             .inner
             .iter()
             .position(|(e, scope)| expression.eq(e) && boundary.eq(scope))
         {
-            Some(id) => ExpressionId(id as u32),
+            Some(id) => ExpressionId(id.into()),
             None => {
                 self.inner.push((expression, boundary));
                 id
@@ -85,7 +79,7 @@ impl std::ops::Index<ExpressionId> for Expressions {
     type Output = Expression;
 
     fn index(&self, index: ExpressionId) -> &Self::Output {
-        &self.inner[index.0 as usize].0
+        &self.inner[index.0.index()].0
     }
 }
 

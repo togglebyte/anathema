@@ -217,7 +217,9 @@ mod test {
 
         let mut test = RunBuilder::from_src(tpl);
         let mut inst = test.finish();
-        inst.eval(|ctx| panic!("{:?}", ctx.elements));
+        inst.eval(|ctx| {
+            panic!("{:?}", ctx.elements)
+        });
     }
 
     #[test]

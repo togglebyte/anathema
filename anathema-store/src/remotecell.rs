@@ -47,7 +47,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for RemoteCell<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "RC<")?;
         self.deref().fmt(f);
-        write!(f, ">")
+        write!(f, " ({:p})>", Rc::as_ptr(&self.value))
     }
 }
 
