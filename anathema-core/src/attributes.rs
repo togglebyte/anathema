@@ -1,3 +1,6 @@
+//! Element attributes
+// #![deny(missing_docs)]
+use anathema_store::remotecell::RemoteCell;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
@@ -23,7 +26,7 @@ impl<'bp> AllAttributes<'bp> {
 
 #[derive(Debug)]
 pub struct Attributes<'bp> {
-    inner: SmallMap<SmallIndex, TemplateValue<'bp>>,
+    inner: SmallMap<&'bp str, RemoteCell<TemplateValue<'bp>>>,
 }
 
 impl<'bp> Attributes<'bp> {
@@ -31,6 +34,10 @@ impl<'bp> Attributes<'bp> {
         Self {
             inner: SmallMap::empty(),
         }
+    }
+
+    pub fn set(&mut self, key: &'bp str, value: RemoteCell<TemplateValue<'bp>>) {
+        self.inner.set(key, value);
     }
 
     pub(crate) fn get(&self, s: &str) -> TemplateValue<'bp> {

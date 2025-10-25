@@ -1,3 +1,4 @@
+// #![deny(missing_docs)]
 #[allow(unused_extern_crates)]
 extern crate anathema_state as anathema;
 

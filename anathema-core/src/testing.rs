@@ -5,16 +5,19 @@ use anathema_state::{State, StateId, States};
 
 use crate::attributes::{AllAttributes, Attributes};
 use crate::layout::Layout;
-use crate::runtime::components::{Component, ComponentId, Components};
+use crate::runtime::components::{Component, ComponentId, Components, FnComp, FnState};
 use crate::runtime::elements::{Element, ElementId, Elements};
-use crate::runtime::eval::expression::RuntimeExpressions;
+use crate::runtime::eval::expression::{eval_by_id, RuntimeExpressions};
 use crate::runtime::eval::scope::Scope;
+use crate::runtime::eval::values::TemplateValue;
 use crate::runtime::eval::{eval, EvalCtx};
 use crate::runtime::functions::FunctionTable;
 use crate::runtime::widgets::iter::Children;
 use crate::runtime::widgets::{RegisteredWidgets, Widget};
 use crate::templates::expressions::Expressions;
-use crate::templates::{Blueprint, Document, Expression, ExpressionId, Variables};
+use crate::templates::{
+    Blueprint, ComponentBlueprintId, Document, Expression, ExpressionId, SourceKind, TemplateSource, Variables,
+};
 
 fn test_widgets() -> RegisteredWidgets {
     let mut factory = RegisteredWidgets::empty();
@@ -35,6 +38,9 @@ impl Default for NoDoc {
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Generic test runner -
+// -----------------------------------------------------------------------------
 #[derive(Debug, Default)]
 pub struct RunBuilder<T> {
     inner: T,
@@ -63,10 +69,10 @@ impl RunBuilder<NoDoc> {
             .unwrap()
     }
 
-    pub fn add_component(&mut self, comp: impl Component, state: impl State) -> ComponentId {
-        self.components.temporary_insert(comp, state)
-        // self.states.insert(state)
-    }
+    // pub fn add_component(&mut self, comp: impl Component, state: impl State) -> ComponentId {
+    //     panic!()
+    //     // self.components.insert_component(comp, state)
+    // }
 
     pub(crate) fn finish(&mut self) -> Instance<'_, '_> {
         Instance::new(
@@ -82,15 +88,14 @@ impl RunBuilder<NoDoc> {
     }
 }
 
-impl RunBuilder<(Document, Blueprint)> {
+impl RunBuilder<(Document, Option<Blueprint>)> {
     pub fn from_src(src: &str) -> Self {
         let template = src.to_string();
-        let mut variables = Variables::new();
-        let mut doc = Document::new(template);
-        let bp = doc.compile(&mut variables).unwrap();
+        let variables = Variables::new();
+        let doc = Document::new(template);
 
         Self {
-            inner: (doc, bp),
+            inner: (doc, None),
             states: Default::default(),
             components: Default::default(),
             functions: Default::default(),
@@ -100,14 +105,34 @@ impl RunBuilder<(Document, Blueprint)> {
         }
     }
 
+    pub fn add_component(
+        &mut self,
+        name: &str,
+        template: impl Into<SourceKind>,
+        comp: impl Component,
+        state: impl State,
+    ) -> ComponentId {
+        let component_bp_id = self.inner.0.add_component(name, template.into()).unwrap();
+        let comp_id = self.components.insert_component(component_bp_id, comp, state);
+        comp_id
+    }
+
+    pub fn add_prototype(&mut self, name: &str, template: impl Into<SourceKind>, component: FnComp, state: FnState) {
+        let component_bp_id = self.inner.0.add_component(name, template.into()).unwrap();
+        let comp_id = self.components.insert_prototype(component_bp_id, component, state);
+    }
+
     pub(crate) fn finish(&mut self) -> Instance<'_, '_> {
+        let bp = self.inner.0.compile(&mut self.variables).unwrap();
+        self.inner.1 = Some(bp);
+
         Instance::new(
             &self.states,
             &mut self.components,
             &self.variables,
             &self.inner.0.expressions,
             &self.functions,
-            Some(&self.inner.1),
+            self.inner.1.as_ref(),
             &self.widget_registry,
             &mut self.dirty_elements,
         )
@@ -182,13 +207,6 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         id
     }
 
-    pub(crate) fn add_component(&mut self, comp_id: ComponentId, parent: Option<ElementId>) -> ElementId {
-        let el = Element::Component(comp_id);
-        let id = self.elements.insert(el, parent);
-        self.attributes.insert(id, Attributes::empty());
-        id
-    }
-
     pub(crate) fn eval<F>(&mut self, f: F)
     where
         F: Fn(&mut EvalCtx<'_, '_>),
@@ -211,8 +229,81 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
 }
 
 // -----------------------------------------------------------------------------
-//   - Old test jazz -
+//   - Expression evaluator -
 // -----------------------------------------------------------------------------
+
+struct ExpressionEvaluatorComponent<S>(std::marker::PhantomData<S>);
+impl<S: State> Component for ExpressionEvaluatorComponent<S> {
+    type Message = ();
+    type State = S;
+}
+
+pub struct ExpressionEvaluator {
+    variables: Variables,
+    expressions: Expressions,
+    components: Components,
+    functions: FunctionTable,
+}
+
+impl ExpressionEvaluator {
+    pub fn new() -> Self {
+        Self {
+            variables: Variables::new(),
+            expressions: Expressions::empty(),
+            components: Components::empty(),
+            functions: FunctionTable::new(),
+        }
+    }
+
+    pub fn register_global(&mut self, ident: &str, value: impl Into<Expression>) {
+        self.variables.register_global(ident, value, &mut self.expressions);
+    }
+
+    pub fn eval<S: State, F>(&mut self, expr: Expression, state: S, f: F)
+    where
+        F: Fn(&TemplateValue<'_>),
+    {
+        let mut elements = Elements::empty();
+
+        let component = ExpressionEvaluatorComponent::<S>(Default::default());
+        let component = self
+            .components
+            .insert_component(ComponentBlueprintId::ZERO, component, state);
+        let parent = elements.insert(Element::Component(component), None);
+        let element = elements.insert(Element::Widget(test_widget("")), Some(parent));
+
+        let mut scope = Scope::empty();
+        scope.push_component(parent, component);
+        let expr_id = self.expressions.insert_at_root(expr);
+        let mut runtime_expressions = RuntimeExpressions::empty();
+        let mut attributes = AllAttributes::empty();
+
+        let mut dirty_elements = vec![];
+
+        let mut ctx = EvalCtx::new(
+            &mut elements,
+            &mut attributes,
+            &mut self.components,
+            &self.variables,
+            &self.expressions,
+            &self.functions,
+            &mut scope,
+            &mut runtime_expressions,
+            &mut dirty_elements,
+        );
+
+        let value = eval_by_id(expr_id, element, Some(parent), &mut ctx);
+        f(&value);
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Test widget -
+// -----------------------------------------------------------------------------
+
+fn test_widget(s: impl Into<String>) -> RefCell<Box<dyn Widget>> {
+    RefCell::new(Box::new(TestWidget(s.into())))
+}
 
 #[derive(Debug, Default)]
 pub struct TestWidget(pub String);

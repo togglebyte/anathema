@@ -1,49 +1,104 @@
 use anathema::Value;
 use anathema_state::State;
+use anathema_store::key;
+use anathema_store::slab::{GenSlab, SecondaryMap};
 
 pub use self::component::{AnyComponent, Component};
+use crate::templates::ComponentBlueprintId;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct ComponentId(usize);
+key!(ComponentId, Debug, Copy, Clone);
 
-type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
-type FnState = Box<dyn Fn() -> Box<dyn State>>;
+pub(crate) type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
+pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;
 
 mod component;
 
-enum Entry {
-    Component {
-        component: Box<dyn AnyComponent>,
-        state: Box<dyn State>,
-    },
-    PrototypeInstance {
-        component: Box<dyn AnyComponent>,
-        state: Box<dyn State>,
-    },
-    Prototype(FnComp, FnState),
+struct Entry {
+    component: Box<dyn AnyComponent>,
+    state: Value<Box<dyn State>>,
+    kind: ComponentKind,
 }
 
-#[derive(Debug, Default)]
+enum ComponentKind {
+    Component,
+    PrototypeInstance,
+}
+
+enum Lookup {
+    Prototype(FnComp, FnState),
+    Component(ComponentId),
+}
+
 pub struct Components {
-    temporary: Vec<(Box<dyn AnyComponent>, Value<Box<dyn State>>)>,
+    instances: GenSlab<ComponentId, Entry>,
+    blueprints: SecondaryMap<ComponentBlueprintId, Lookup>,
 }
 
 impl Components {
     pub fn empty() -> Self {
-        Self { temporary: vec![] }
+        Self {
+            instances: GenSlab::empty(),
+            blueprints: SecondaryMap::empty(),
+        }
     }
 
-    pub(crate) fn temporary_insert(&mut self, component: impl AnyComponent, state: impl State) -> ComponentId {
-        let index = self.temporary.len();
-        self.temporary.push((Box::new(component), Value::new(Box::new(state))));
-        ComponentId(index)
+    pub(crate) fn insert_component(
+        &mut self,
+        blueprint_id: ComponentBlueprintId,
+        component: impl AnyComponent,
+        state: impl State,
+    ) -> ComponentId {
+        let entry = Entry {
+            component: Box::new(component),
+            state: Value::new(Box::new(state)),
+            kind: ComponentKind::Component,
+        };
+        let component_id = self.instances.insert(entry);
+        self.blueprints.insert(blueprint_id, Lookup::Component(component_id));
+        component_id
     }
 
-    pub(crate) fn by_blueprint_id(&self) {}
+    pub(crate) fn insert_prototype(&mut self, blueprint_id: ComponentBlueprintId, component: FnComp, state: FnState) {
+        self.blueprints
+            .insert(blueprint_id, Lookup::Prototype(component, state));
+    }
+
+    pub(crate) fn by_blueprint_id(&mut self, id: ComponentBlueprintId) -> ComponentId {
+        match self.blueprints.get(id) {
+            Some(Lookup::Component(id)) => *id,
+            Some(Lookup::Prototype(comp, state)) => {
+                let entry = Entry {
+                    component: comp(),
+                    state: Value::new(state()),
+                    kind: ComponentKind::PrototypeInstance,
+                };
+                self.instances.insert(entry)
+            }
+            None => todo!(),
+        }
+    }
 
     pub(crate) fn by_component_id(&self) {}
 
     pub(crate) fn get_state(&self, component_id: ComponentId) -> Option<&Value<Box<dyn State>>> {
-        self.temporary.get(component_id.0).map(|(_, state)| state)
+        let inst = self.instances.get(component_id)?;
+        Some(&inst.state)
+    }
+
+    pub(crate) fn get_state_mut(&mut self, component_id: ComponentId) -> Option<&mut Value<Box<dyn State>>> {
+        let inst = self.instances.get_mut(component_id)?;
+        Some(&mut inst.state)
+    }
+}
+
+impl Default for Components {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+impl std::fmt::Debug for Components {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<components>")
     }
 }

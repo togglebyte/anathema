@@ -4,7 +4,12 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use anathema_store::slab::RcElement;
+#[cfg(feature = "multithread")]
+pub use arcval::{drain_changes, AnonValue, Value, ValueMut, ValueRef};
+#[cfg(not(feature = "multithread"))]
+pub use rcval::{drain_changes, AnonValue, Value, ValueMut, ValueRef};
 
+pub use self::changes::Changes;
 pub use self::list::List;
 pub use self::map::Map;
 pub use self::maybe::{Maybe, Nullable};
@@ -14,11 +19,6 @@ use crate::states::State;
 mod arcval;
 #[cfg(not(feature = "multithread"))]
 mod rcval;
-
-#[cfg(feature = "multithread")]
-pub use arcval::{Value, AnonValue, ValueRef, ValueMut, drain_changes};
-#[cfg(not(feature = "multithread"))]
-pub use rcval::{Value, AnonValue, ValueRef, ValueMut, drain_changes};
 
 mod changes;
 mod list;
@@ -490,7 +490,8 @@ pub enum Type {
 
 #[cfg(test)]
 mod test {
-    use anathema_store::{slab::Key, stack::Stack};
+    use anathema_store::slab::Key;
+    use anathema_store::stack::Stack;
 
     use super::*;
 

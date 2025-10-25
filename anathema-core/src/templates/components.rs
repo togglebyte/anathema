@@ -147,6 +147,10 @@ pub struct AssocEventMapping {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentBlueprintId(u32);
 
+impl ComponentBlueprintId {
+    pub const ZERO: Self = Self(0);
+}
+
 impl SlabIndex for ComponentBlueprintId {
     const MAX: usize = u32::MAX as usize;
 

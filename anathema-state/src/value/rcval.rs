@@ -103,8 +103,8 @@ where
     }
 
     /// Replace the underlying value
-    pub(crate) fn set(&mut self, empty: T) {
-        _ = self.inner.replace(empty);
+    pub fn set(&mut self, new_value: T) {
+        _ = self.inner.replace(new_value);
         self.subs.changed(Change::Changed);
     }
 

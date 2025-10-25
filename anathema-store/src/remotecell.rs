@@ -45,9 +45,9 @@ impl<T> Deref for RemoteCell<T> {
 
 impl<T: std::fmt::Debug> std::fmt::Debug for RemoteCell<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "RC<")?;
+        write!(f, "-> ")?;
         self.deref().fmt(f);
-        write!(f, " ({:p})>", Rc::as_ptr(&self.value))
+        write!(f, " ({:p})", Rc::as_ptr(&self.value))
     }
 }
 
