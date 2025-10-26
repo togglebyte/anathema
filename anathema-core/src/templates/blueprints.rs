@@ -60,11 +60,17 @@ pub struct Component {
 /// A blueprint represents what widget should be built from the information
 #[derive(Clone, Debug, PartialEq)]
 pub enum Blueprint {
+    /// A singular widget
     Single(Single),
+    /// A for-loop
     For(For),
+    /// A `with` statement
     With(With),
+    /// If / else
     ControlFlow(ControlFlow),
+    /// A component
     Component(Component),
+    /// A slot for a component
     Slot(Vec<Self>),
 }
 

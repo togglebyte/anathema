@@ -11,6 +11,7 @@ use super::variables::{ScopeId, VarId};
 pub(crate) mod eval;
 pub(crate) mod parser;
 
+/// A key for an [`Expression`]
 key!(ExpressionId, Debug, Clone, Copy, PartialEq, Eq);
 
 impl std::hash::Hash for ExpressionId {

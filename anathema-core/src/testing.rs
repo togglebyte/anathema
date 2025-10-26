@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use anathema_geometry::{Pos, Size};
 use anathema_state::{State, StateId, States};
 
-use crate::attributes::{AllAttributes, Attributes};
+use crate::attributes::{AttributeRegistry, Attributes};
 use crate::layout::Layout;
 use crate::runtime::components::{Component, ComponentId, Components, FnComp, FnState};
 use crate::runtime::elements::{Element, ElementId, Elements};
@@ -16,7 +16,7 @@ use crate::runtime::widgets::iter::Children;
 use crate::runtime::widgets::{RegisteredWidgets, Widget};
 use crate::templates::expressions::Expressions;
 use crate::templates::{
-    Blueprint, ComponentBlueprintId, Document, Expression, ExpressionId, SourceKind, TemplateSource, Variables,
+    Blueprint, ComponentBlueprintId, Document, Expression, ExpressionId, SourceKind, Variables,
 };
 
 fn test_widgets() -> RegisteredWidgets {
@@ -143,7 +143,7 @@ impl<T> RunBuilder<T> {}
 
 pub struct Instance<'frame, 'bp> {
     pub scope: Scope<'bp>,
-    attributes: AllAttributes<'bp>,
+    attributes: AttributeRegistry<'bp>,
     elements: Elements<'bp>,
     components: &'frame mut Components,
     variables: &'frame Variables,
@@ -168,7 +168,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
     ) -> Self {
         Self {
             scope: Scope::empty(),
-            attributes: AllAttributes::empty(),
+            attributes: AttributeRegistry::empty(),
             elements: Elements::empty(),
             runtime_expressions: RuntimeExpressions::empty(),
             components,
@@ -276,7 +276,7 @@ impl ExpressionEvaluator {
         scope.push_component(parent, component);
         let expr_id = self.expressions.insert_at_root(expr);
         let mut runtime_expressions = RuntimeExpressions::empty();
-        let mut attributes = AllAttributes::empty();
+        let mut attributes = AttributeRegistry::empty();
 
         let mut dirty_elements = vec![];
 

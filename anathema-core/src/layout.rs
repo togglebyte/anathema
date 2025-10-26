@@ -1,15 +1,19 @@
+//! Storing the calculated layout of each element.
+//!
+//! The calculating the layout it self is done elsewhere.
 use anathema_geometry::{Pos, Region, Size};
 use anathema_store::slab::SecondaryMap;
 
 use crate::runtime::elements::ElementId;
 
+/// Store the layout for each element.
 #[derive(Debug)]
 pub struct Layout {
     regions: SecondaryMap<ElementId, Region>,
 }
 
 impl Layout {
-    pub fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Self {
             regions: SecondaryMap::empty(),
         }

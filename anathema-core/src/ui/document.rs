@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::attributes::AllAttributes;
+use crate::attributes::AttributeRegistry;
 use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::layout::Layout;
 
@@ -8,7 +8,7 @@ use crate::layout::Layout;
 pub struct Document<'a, 'bp> {
     elements: &'a mut Elements<'bp>,
     layout: &'a mut Layout,
-    attributes: &'a mut AllAttributes<'bp>,
+    attributes: &'a mut AttributeRegistry<'bp>,
 }
 
 impl<'a, 'bp> Document<'a, 'bp> {
@@ -25,7 +25,7 @@ impl<'a, 'bp> Document<'a, 'bp> {
         // node_id
     }
 
-    pub(crate) fn new(elements: &'a mut Elements<'bp>, layout: &'a mut Layout, attributes: &'a mut AllAttributes<'bp>) -> Self {
+    pub(crate) fn new(elements: &'a mut Elements<'bp>, layout: &'a mut Layout, attributes: &'a mut AttributeRegistry<'bp>) -> Self {
         Self {
             elements,
             layout,

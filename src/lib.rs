@@ -10,7 +10,7 @@ pub use {
 };
 
 pub mod prelude {
-    pub use crate::core::templates::{ComponentBlueprintId, Document, SourceKind, ToSourceKind};
+    pub use crate::core::templates::{ComponentBlueprintId, Document, SourceKind};
 }
 
 pub mod component {

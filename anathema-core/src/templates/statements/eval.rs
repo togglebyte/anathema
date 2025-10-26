@@ -291,7 +291,7 @@ mod test {
     use super::*;
     use crate::templates::blueprints::single;
     use crate::templates::document::Document;
-    use crate::templates::{ToSourceKind, Variables};
+    use crate::templates::Variables;
 
 
     #[test]
@@ -417,7 +417,7 @@ mod test {
         let comp_src = "node a + 2";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src.to_template()).unwrap();
+        doc.add_component("comp", comp_src).unwrap();
         let blueprint = doc.compile(&mut Variables::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -442,7 +442,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", comp_src.to_template()).unwrap();
+        doc.add_component("comp", comp_src).unwrap();
         let blueprint = doc.compile(&mut Variables::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::Component(Component { .. })));
     }
@@ -456,7 +456,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", "node a".to_template()).unwrap();
+        doc.add_component("comp", "node a").unwrap();
         let _ = doc.compile(&mut Variables::new()).unwrap();
     }
 
@@ -467,7 +467,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", "node a".to_template()).unwrap();
+        doc.add_component("comp", "node a").unwrap();
         let _ = doc.compile(&mut Variables::new()).unwrap();
     }
 
@@ -479,7 +479,7 @@ mod test {
         ";
 
         let mut doc = Document::new(src);
-        doc.add_component("comp", "node a".to_template()).unwrap();
+        doc.add_component("comp", "node a").unwrap();
         let blueprint = doc.compile(&mut Variables::new()).unwrap();
         assert!(matches!(blueprint, Blueprint::With(With { .. })));
     }

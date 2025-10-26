@@ -1,7 +1,9 @@
+//! Compiling template source to blueprints and expressions.
+// #![deny(missing_docs)]
 pub use blueprints::Blueprint;
 pub(crate) use blueprints::{Component, ControlFlow, For, Single, With};
 
-pub use self::components::{AssocEventMapping, ComponentBlueprintId, SourceKind, TemplateSource, ToSourceKind};
+pub use self::components::{ComponentBlueprintId, SourceKind};
 pub use self::document::Document;
 pub use self::expressions::{Expression, ExpressionId};
 pub use self::lexer::Lexer;

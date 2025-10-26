@@ -21,12 +21,13 @@ use super::{ComponentBlueprintId, Lexer, Variables};
 /// ```
 pub struct Document {
     template: TemplateSource,
-    pub strings: Strings,
-    pub expressions: Expressions,
+    pub(crate) strings: Strings,
+    pub(crate) expressions: Expressions,
     components: ComponentTemplates,
 }
 
 impl Document {
+    /// Create a new instance of a document.
     pub fn new(template: impl Into<TemplateSource>) -> Self {
         let template = template.into();
         Self {
@@ -38,7 +39,12 @@ impl Document {
     }
 
     #[allow(private_bounds)]
-    pub fn add_component(&mut self, name: impl Into<String>, src: SourceKind) -> Result<ComponentBlueprintId> {
+    pub(crate) fn add_component(
+        &mut self,
+        name: impl Into<String>,
+        src: impl Into<SourceKind>,
+    ) -> Result<ComponentBlueprintId> {
+        let src = src.into();
         let name = name.into();
         let name = self.strings.push(name);
 
@@ -57,6 +63,7 @@ impl Document {
         Ok(id)
     }
 
+    /// Compile the document to a [`Blueprint`].
     pub fn compile(&mut self, globals: &mut Variables) -> Result<Blueprint> {
         globals.reset_globals();
         self.expressions.clear();
@@ -84,14 +91,17 @@ impl Document {
         }
     }
 
+    /// Get an iterator of all the file paths for all the templates
     pub fn template_paths(&self) -> impl Iterator<Item = &PathBuf> {
         self.components.file_paths()
     }
 
+    /// Reload all the templates (that have a file path associated with them)
     pub fn reload_templates(&mut self) -> Result<()> {
         self.components.reload()
     }
 
+    /// Get the file path for a component if it has one
     pub fn get_component_source(&self, component_id: ComponentBlueprintId) -> Option<PathBuf> {
         self.components.path(component_id)
     }

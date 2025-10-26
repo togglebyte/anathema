@@ -19,62 +19,13 @@ use super::token::Tokens;
 use super::variables::Variables;
 use super::Lexer;
 
-pub trait ToSourceKind {
-    fn to_path(self) -> SourceKind;
-
-    fn to_template(self) -> SourceKind;
-
-    fn to_source_kind(self) -> SourceKind
-    where
-        Self: Sized,
-    {
-        self.to_path()
-    }
-}
-
-impl ToSourceKind for String {
-    fn to_path(self) -> SourceKind {
-        SourceKind::Path(self.into())
-    }
-
-    fn to_template(self) -> SourceKind {
-        SourceKind::Str(self)
-    }
-}
-
-impl ToSourceKind for &str {
-    fn to_path(self) -> SourceKind {
-        SourceKind::Path(self.into())
-    }
-
-    fn to_template(self) -> SourceKind {
-        SourceKind::Str(self.into())
-    }
-}
-
-impl ToSourceKind for PathBuf {
-    fn to_path(self) -> SourceKind {
-        SourceKind::Path(self)
-    }
-
-    fn to_template(self) -> SourceKind {
-        panic!("PathBuf can not be a template, only a path to one")
-    }
-}
-
+/// Template source.
+/// For hot reloading this has to be a `Path`.
 pub enum SourceKind {
+    /// A path to a file
     Path(PathBuf),
+    /// The template as a string
     Str(String),
-}
-
-impl ToSourceKind for SourceKind {
-    fn to_path(self) -> SourceKind {
-        self
-    }
-
-    fn to_template(self) -> SourceKind {
-        self
-    }
 }
 
 impl From<PathBuf> for SourceKind {
@@ -95,7 +46,8 @@ impl From<&str> for SourceKind {
     }
 }
 
-pub enum TemplateSource {
+/// The template source used by the template compiler.
+pub(crate) enum TemplateSource {
     File { path: PathBuf, template: String },
     InMemory(String),
     Static(&'static str),
@@ -138,16 +90,28 @@ impl From<String> for TemplateSource {
     }
 }
 
+/// An associated event mapping maps the internal name to the external name.
+/// 
+/// The following example maps the "press" event to "submit".
+/// ```text
+/// @button (press -> submit)
+/// ```
+///
+/// When the button publishes the "press" event it can be found as "submit".
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct AssocEventMapping {
+pub(super) struct AssocEventMapping {
+    /// The name of the event used by the issuing component
     pub internal: StringId,
+    /// The public event name used by components to catch the event.
     pub external: StringId,
 }
 
+/// This is used by both the templates and the runtime to identify components.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentBlueprintId(u32);
 
 impl ComponentBlueprintId {
+    /// This should never be used for anything other than testing.
     pub const ZERO: Self = Self(0);
 }
 

@@ -5,7 +5,7 @@ use anathema_store::remotecell::RemoteHandle;
 
 use self::scope::Scope;
 use super::error::Result;
-use crate::attributes::{AllAttributes, Attributes, ValueKey};
+use crate::attributes::{AttributeRegistry, Attributes, ValueKey};
 use crate::runtime::components::Components;
 use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::runtime::eval::expression::{eval_by_id, RuntimeExpression, RuntimeExpressions};
@@ -14,7 +14,6 @@ use crate::runtime::functions::{Function, FunctionTable};
 use crate::runtime::widgets::RegisteredWidgets;
 use crate::templates::expressions::{self, Expressions};
 use crate::templates::{Blueprint, Component, ExpressionId, For, Single, Variables};
-use crate::ui::Document;
 
 mod assoc;
 pub(crate) mod expression;
@@ -24,7 +23,7 @@ pub(crate) mod values;
 #[derive(Debug)]
 pub struct EvalCtx<'a, 'bp> {
     pub(crate) elements: &'a mut Elements<'bp>,
-    pub(crate) attributes: &'a mut AllAttributes<'bp>,
+    pub(crate) attributes: &'a mut AttributeRegistry<'bp>,
     pub(crate) components: &'a mut Components,
     pub(crate) variables: &'a Variables,
     pub(crate) expressions: &'bp Expressions,
@@ -37,7 +36,7 @@ pub struct EvalCtx<'a, 'bp> {
 impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
     pub(crate) fn new(
         elements: &'frame mut Elements<'bp>,
-        attributes: &'frame mut AllAttributes<'bp>,
+        attributes: &'frame mut AttributeRegistry<'bp>,
         components: &'frame mut Components,
         variables: &'frame Variables,
         expressions: &'bp Expressions,
@@ -239,7 +238,7 @@ mod test {
     use anathema_state::Value;
 
     use super::*;
-    use crate::attributes::AllAttributes;
+    use crate::attributes::AttributeRegistry;
     use crate::layout::Layout;
     use crate::testing::{RunBuilder, TestWidget};
 

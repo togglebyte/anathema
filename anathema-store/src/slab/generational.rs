@@ -10,6 +10,7 @@ use super::{Index, Ticket};
 #[macro_export]
 macro_rules! key {
     ($name:ident, $($derive:ident),*) => {
+        /// A newtype for a [`Key`](anathema_store::slab::Key)
         #[derive(
             $(
                 $derive,

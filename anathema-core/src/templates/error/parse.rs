@@ -4,8 +4,8 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use super::Error;
+use crate::templates::components::TemplateSource;
 use crate::templates::token::Operator;
-use crate::templates::TemplateSource;
 
 // Line number and column starts at one, not zero,
 // because actual humans might read this
