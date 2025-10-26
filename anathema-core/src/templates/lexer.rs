@@ -1,3 +1,72 @@
+//! Lexical analysis for Anathema template source code.
+//!
+//! This module provides the [`Lexer`] type, which tokenizes template source code into
+//! a stream of [`Token`]s. The lexer is the first stage of template compilation,
+//! converting raw text into structured tokens that can be parsed into an AST.
+//!
+//! # Overview
+//!
+//! The lexer performs lexical analysis by:
+//!
+//! - Scanning template source character by character
+//! - Recognizing keywords, identifiers, literals, and operators
+//! - Handling comments and whitespace
+//! - Producing a token stream for the parser
+//!
+//! # Token Types
+//!
+//! The lexer recognizes several categories of tokens:
+//!
+//! - **Keywords**: `if`, `else`, `for`, `in`, `with`, `as`, etc.
+//! - **Identifiers**: Variable and widget names
+//! - **Literals**: Numbers, strings, characters, booleans, hex colors
+//! - **Operators**: `+`, `-`, `*`, `/`, `==`, `!=`, `&&`, `||`, etc.
+//! - **Delimiters**: `[`, `]`, `{`, `}`, `(`, `)`, `,`, `:`, etc.
+//! - **Comments**: `// ...` (line comments)
+//!
+//! # Usage
+//!
+//! The lexer implements `Iterator`, yielding tokens until the end of the source:
+//!
+//! ```rust,ignore
+//! use anathema_core::templates::{Lexer, Document};
+//!
+//! let source = "text 'Hello, World!'";
+//! let mut doc = Document::new(source);
+//! let mut strings = doc.strings;
+//!
+//! let lexer = Lexer::new(&template_source, &mut strings);
+//! for token in lexer {
+//!     match token {
+//!         Ok(token) => println!("Token: {:?}", token),
+//!         Err(e) => eprintln!("Lexer error: {}", e),
+//!     }
+//! }
+//! ```
+//!
+//! # Error Handling
+//!
+//! The lexer returns `Result<Token>` for each token, allowing it to report errors
+//! like invalid characters or malformed literals without panicking. Errors include
+//! position information for accurate error reporting.
+//!
+//! # String Interning
+//!
+//! The lexer uses a [`Strings`] table for string interning. Identifiers and string
+//! literals are stored in the string table and referenced by ID, reducing memory
+//! usage and enabling efficient string comparisons.
+//!
+//! # Comments
+//!
+//! The lexer recognizes single-line comments starting with `//` and automatically
+//! skips them, so they don't appear in the token stream.
+//!
+//! # Whitespace
+//!
+//! Most whitespace is significant in Anathema templates (e.g., for indentation-based
+//! structure), so the lexer produces whitespace tokens where appropriate. However,
+//! some whitespace within expressions may be skipped.
+
 use std::iter::Peekable;
 use std::str::CharIndices;
 
@@ -47,13 +116,60 @@ impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
     }
 }
 
+/// Lexical analyzer for Anathema template source code.
+///
+/// The lexer tokenizes template source into a stream of tokens that can be consumed
+/// by the parser. It handles all lexical elements of the template language including
+/// keywords, identifiers, literals, operators, and delimiters.
+///
+/// # Lifetime Parameters
+///
+/// - `'src`: The lifetime of the source code being lexed
+/// - `'strings`: The lifetime of the string interning table
+///
+/// # Implementation
+///
+/// The lexer implements `Iterator<Item = Result<Token>>`, making it easy to consume
+/// tokens in a streaming fashion. The iterator stops when it reaches EOF.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use anathema_core::templates::Lexer;
+///
+/// let lexer = Lexer::new(&template_source, &mut strings);
+///
+/// for token_result in lexer {
+///     match token_result {
+///         Ok(token) => {
+///             // Process token
+///         }
+///         Err(error) => {
+///             // Handle lexer error
+///         }
+///     }
+/// }
+/// ```
 pub struct Lexer<'src, 'strings> {
+    /// Reference to the template source being lexed
     pub(super) src: &'src TemplateSource,
+    /// String interning table for identifiers and string literals
     pub(crate) strings: &'strings mut Strings,
+    /// Character iterator with position tracking
     chars: Peekable<CharIndices<'src>>,
 }
 
 impl<'src, 'strings> Lexer<'src, 'strings> {
+    /// Create a new lexer for the given template source.
+    ///
+    /// # Parameters
+    ///
+    /// - `src`: The template source to tokenize
+    /// - `strings`: Mutable reference to the string interning table
+    ///
+    /// # Returns
+    ///
+    /// A new `Lexer` instance ready to tokenize the source.
     pub(crate) fn new(src: &'src TemplateSource, strings: &'strings mut Strings) -> Self {
         Self {
             chars: src.template().char_indices().peekable(),

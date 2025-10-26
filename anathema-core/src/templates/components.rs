@@ -8,6 +8,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::Storage;
 
+use super::Lexer;
 use super::blueprints::Blueprint;
 use super::error::{Error, ErrorKind, Result};
 use super::expressions::Expressions;
@@ -17,14 +18,45 @@ use super::statements::{Context, Statements};
 use super::strings::{StringId, Strings};
 use super::token::Tokens;
 use super::variables::Variables;
-use super::Lexer;
 
-/// Template source.
-/// For hot reloading this has to be a `Path`.
+/// Source of a template for compilation.
+///
+/// Templates can be provided either as file paths (for hot reloading) or as
+/// in-memory strings. This enum represents both possibilities.
+///
+/// # Variants
+///
+/// - **Path**: A file path to a template file on disk, enabling hot reloading
+/// - **Str**: An in-memory string containing the template source
+///
+/// # Hot Reloading
+///
+/// When a template is loaded from a file path, it can be reloaded when the file
+/// changes, enabling rapid development iteration without restarting the application.
+///
+/// # Example
+///
+/// ```rust
+/// use std::path::PathBuf;
+/// use anathema_core::templates::SourceKind;
+///
+/// // From a file path
+/// let source: SourceKind = PathBuf::from("templates/main.aml").into();
+///
+/// // From a string
+/// let source: SourceKind = "text 'Hello, World!'".into();
+/// ```
 pub enum SourceKind {
-    /// A path to a file
+    /// A file path to a template file.
+    ///
+    /// Templates loaded from files can be hot-reloaded when the file changes,
+    /// making development iteration faster.
     Path(PathBuf),
-    /// The template as a string
+
+    /// An in-memory template string.
+    ///
+    /// Templates provided as strings are compiled directly and cannot be
+    /// hot-reloaded.
     Str(String),
 }
 
@@ -91,7 +123,7 @@ impl From<String> for TemplateSource {
 }
 
 /// An associated event mapping maps the internal name to the external name.
-/// 
+///
 /// The following example maps the "press" event to "submit".
 /// ```text
 /// @button (press -> submit)
