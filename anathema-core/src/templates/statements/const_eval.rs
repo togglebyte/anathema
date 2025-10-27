@@ -58,7 +58,11 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
         E::Negative(expr) => E::Negative(ce!(expr)),
         E::Equality(lhs, rhs, eq) => E::Equality(ce!(lhs), ce!(rhs), eq),
         E::LogicalOp(lhs, rhs, op) => E::LogicalOp(ce!(lhs), ce!(rhs), op),
-        E::Range(from, to) => E::Range(ce!(from), ce!(to)),
+        E::Range { start, end, inclusive } => E::Range {
+            start: ce!(start),
+            end: ce!(end),
+            inclusive,
+        },
 
         E::Ident(_) | E::Index(..) => eval_path(expr, ctx)?,
         E::Variable(_) => unreachable!("const eval is not recursive so this can never happen"),
@@ -182,10 +186,10 @@ mod test {
     #[test]
     fn const_range() {
         with_context(|ctx| {
-            let expr = range(num(1), num(2));
+            let expr = range(num(1), num(2), true);
 
             let output = const_eval(expr, &ctx).unwrap();
-            assert_eq!(output, *range(num(1), num(2)));
+            assert_eq!(output, *range(num(1), num(2), true));
         });
     }
 }

@@ -1,9 +1,11 @@
+//! Runtime user defined component registry
 use anathema::Value;
 use anathema_state::State;
 use anathema_store::key;
 use anathema_store::slab::{GenSlab, SecondaryMap};
 
-pub use self::component::{AnyComponent, Component};
+pub use self::component::Component;
+use crate::runtime::components::component::AnyComponent;
 use crate::templates::ComponentBlueprintId;
 
 key!(ComponentId, Debug, Copy, Clone);
@@ -29,7 +31,8 @@ enum Lookup {
     Component(ComponentId),
 }
 
-pub struct Components {
+/// Runtime component storage
+pub(crate) struct Components {
     instances: GenSlab<ComponentId, Entry>,
     blueprints: SecondaryMap<ComponentBlueprintId, Lookup>,
 }
@@ -77,8 +80,6 @@ impl Components {
             None => todo!(),
         }
     }
-
-    pub(crate) fn by_component_id(&self) {}
 
     pub(crate) fn get_state(&self, component_id: ComponentId) -> Option<&Value<Box<dyn State>>> {
         let inst = self.instances.get(component_id)?;

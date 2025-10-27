@@ -1,24 +1,34 @@
 use anathema_store::smallmap::SmallMap;
 use anathema_store::storage::strings::StringId;
 
+use super::ComponentBlueprintId;
 use super::components::AssocEventMapping;
 use super::expressions::ExpressionId;
-use super::ComponentBlueprintId;
 
-/// A singular named node
+/// A singular named node in the blueprint tree (e.g., "text", "container")
 #[derive(Debug, Clone, PartialEq)]
 pub struct Single {
     pub ident: String,
+    /// Associated children
     pub children: Vec<Blueprint>,
+    /// Key-value pairs of widget attributes mapped to their expressions
     pub attributes: SmallMap<String, ExpressionId>,
+    /// Expression representing the widget's value content
     pub value: Option<ExpressionId>,
 }
 
-/// A `for-each` node
+/// Iterating over a collection with a binding:
+/// ```text
+/// for item in items
+///     text item
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct For {
+    /// The loop variable name binding
     pub binding: String,
+    /// Expression representing the collection
     pub data: ExpressionId,
+    /// The body of the for-loop
     pub body: Vec<Blueprint>,
 }
 
@@ -29,29 +39,52 @@ pub struct For {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct With {
+    /// The variable name binding for the scoped value
     pub binding: String,
+    /// Data to be scoped
     pub data: ExpressionId,
+    /// The body of the with-scope
     pub body: Vec<Blueprint>,
 }
 
+/// Conditional control flow structure for if/else statements:
+/// ```text
+/// if condition
+///     text "true branch"
+/// else
+///     text "false branch"
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlFlow {
+    /// A vector of else branches, where the first element represents the initial `if` condition
+    /// and subsequent elements represent `else if` or final `else` branches
     pub elses: Vec<Else>,
 }
 
+/// A single branch in a conditional control flow structure.
+/// Represents an `if`, `else if`, or `else` branch.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Else {
+    /// Optional condition expression; `None` represents a final `else` branch
     pub cond: Option<ExpressionId>,
+    /// The body of this branch
     pub body: Vec<Blueprint>,
 }
 
+/// Components have attributes, body content, and event handlers
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
+    /// The name of the component as a string
     pub name: String,
+    /// The interned string identifier for the component name
     pub name_id: StringId,
+    /// Unique identifier for this component blueprint
     pub id: ComponentBlueprintId,
+    /// The body of the component
     pub body: Vec<Blueprint>,
+    /// Component attributes
     pub attributes: SmallMap<String, ExpressionId>,
+    /// Associated event handler mappings for this component
     pub assoc_functions: Vec<AssocEventMapping>,
     /// The parent component in the blueprint
     pub parent: Option<ComponentBlueprintId>,
@@ -111,4 +144,4 @@ macro_rules! forloop {
     };
 }
 
-pub(crate) use {single, forloop};
+pub(crate) use {forloop, single};

@@ -25,6 +25,10 @@ impl<'bp> AttributeRegistry<'bp> {
     pub(crate) fn insert(&mut self, id: ElementId, attributes: Attributes<'bp>) {
         self.attributes.insert(id, attributes);
     }
+
+    pub(crate) fn get(&self, id: ElementId) -> Option<&Attributes<'bp>> {
+        self.attributes.get(id)
+    }
 }
 
 // The access key for attributes.
@@ -299,5 +303,19 @@ mod test {
         assert_eq!("int", iter.next().unwrap());
         assert_eq!("strings", iter.next().unwrap());
         assert_eq!("numbers", iter.next().unwrap());
+    }
+
+    #[test]
+    fn mixed_type_iteration() {
+        let attributes = attributes();
+        let mixed = attributes.get("mixed").unwrap();
+
+        if let TemplateValue::List(list) = mixed {
+            assert_eq!(list[0].as_bool().unwrap(), true);
+            assert_eq!(list[1].as_int().unwrap(), 1);
+            assert_eq!(list[2].as_str().unwrap(), "string");
+        } else {
+            panic!("Expected List");
+        }
     }
 }

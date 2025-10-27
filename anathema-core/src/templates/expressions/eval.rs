@@ -37,9 +37,13 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
                 let rhs = strings.get_unchecked(string_id);
                 Expression::Index(lhs, Expression::Str(rhs).into())
             }
-            Operator::DotDot => {
-                let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());
-                Expression::Range(lhs, rhs)
+            op @ (Operator::DotDot | Operator::DotDotDot) => {
+                let (start, end) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());
+                Expression::Range {
+                    start,
+                    end,
+                    inclusive: op == Operator::DotDotDot,
+                }
             }
             Operator::Mul | Operator::Plus | Operator::Minus | Operator::Div | Operator::Mod => {
                 let (lhs, rhs) = (eval(*lhs, strings)?.into(), eval(*rhs, strings)?.into());

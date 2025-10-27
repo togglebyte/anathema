@@ -17,7 +17,7 @@ pub(crate) enum Entry<'bp> {
     // TODO: gross, this is supposed to be a component id
     State(ComponentId),
 
-    Attributes(Key),
+    Attributes(ElementId),
     Value { key: &'bp str, value: () },
 }
 
@@ -82,11 +82,11 @@ impl<'bp> Scope<'bp> {
         match self.scopes.get_mut(element) {
             Some(node) => node
                 .entries
-                .extend_from_slice(&[Entry::State(component), Entry::Attributes(element.into())]),
+                .extend_from_slice(&[Entry::State(component), Entry::Attributes(element)]),
             None => self.scopes.insert(
                 element,
                 ScopeNode {
-                    entries: vec![Entry::State(component), Entry::Attributes(element.into())],
+                    entries: vec![Entry::State(component), Entry::Attributes(element)],
                     boundary: true,
                 },
             ),

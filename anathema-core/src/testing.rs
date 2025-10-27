@@ -259,9 +259,10 @@ impl ExpressionEvaluator {
         self.variables.register_global(ident, value, &mut self.expressions);
     }
 
-    pub fn eval<S: State, F>(&mut self, expr: Expression, state: S, f: F)
+    pub fn eval<S: State, F, FA>(&mut self, expr: Expression, state: S, with_attribs: FA, f: F)
     where
         F: Fn(&TemplateValue<'_>),
+        FA: Fn(&mut Attributes<'_>),
     {
         let mut elements = Elements::empty();
 
@@ -276,13 +277,17 @@ impl ExpressionEvaluator {
         scope.push_component(parent, component);
         let expr_id = self.expressions.insert_at_root(expr);
         let mut runtime_expressions = RuntimeExpressions::empty();
-        let mut attributes = AttributeRegistry::empty();
+
+        let mut attribute_reg = AttributeRegistry::empty();
+        let mut attributes = Attributes::empty();
+        with_attribs(&mut attributes);
+        attribute_reg.insert(parent, attributes);
 
         let mut dirty_elements = vec![];
 
         let mut ctx = EvalCtx::new(
             &mut elements,
-            &mut attributes,
+            &mut attribute_reg,
             &mut self.components,
             &self.variables,
             &self.expressions,

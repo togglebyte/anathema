@@ -113,8 +113,12 @@ pub(crate) enum RuntimeExpression<'bp> {
     List(Box<[Self]>),
     Map(HashMap<&'bp str, Self>),
     Index(Box<Self>, Box<Self>),
-    Range(Box<Self>, Box<Self>),
-    Attributes(Key),
+    Range {
+        start: Box<Self>,
+        end: Box<Self>,
+        inclusive: bool,
+    },
+    Attributes(ElementId),
 
     Not(Box<Self>),
     Negative(Box<Self>),
@@ -271,10 +275,11 @@ fn eval_expr<'bp>(
             eval_expr(first, expr_id, parent, ctx).into(),
             eval_expr(second, expr_id, parent, ctx).into(),
         ),
-        Expression::Range(start, end) => RuntimeExpression::Range(
-            eval_expr(start, expr_id, parent, ctx).into(),
-            eval_expr(end, expr_id, parent, ctx).into(),
-        ),
+        Expression::Range { start, end, inclusive } => RuntimeExpression::Range {
+            start: eval_expr(start, expr_id, parent, ctx).into(),
+            end: eval_expr(end, expr_id, parent, ctx).into(),
+            inclusive: *inclusive,
+        },
         Expression::Call { fun, args } => {
             match &**fun {
                 // function(args)
@@ -351,6 +356,15 @@ impl<'bp> From<TemplateValue<'bp>> for LazyExpression<'_, 'bp> {
     }
 }
 
+macro_rules! or_null {
+    ($opt:expr) => {
+        match $opt {
+            Some(val) => val,
+            None => return TemplateValue::Null.into(),
+        }
+    };
+}
+
 fn lazy_eval<'a, 'bp>(
     expr: &'a RuntimeExpression<'bp>,
     expression_id: ExpressionId,
@@ -416,6 +430,22 @@ fn lazy_eval<'a, 'bp>(
             }
         }
 
+        &RuntimeExpression::Range {
+            ref start,
+            ref end,
+            inclusive,
+        } => {
+            let start = match eval_runtime_expr(start, expression_id, ctx) {
+                TemplateValue::Int(num) => num,
+                _ => return TemplateValue::Null.into(),
+            };
+            let end = match eval_runtime_expr(end, expression_id, ctx) {
+                TemplateValue::Int(num) => num,
+                _ => return TemplateValue::Null.into(),
+            };
+            TemplateValue::Range { start, end, inclusive }.into()
+        }
+
         // -----------------------------------------------------------------------------
         //   - Maps, lists and range -
         // -----------------------------------------------------------------------------
@@ -424,7 +454,6 @@ fn lazy_eval<'a, 'bp>(
         | RuntimeExpression::Composite(_, _)
         | RuntimeExpression::List(_)
         | RuntimeExpression::Map(_) => LazyExpression::Expression(expr),
-        RuntimeExpression::Range(runtime_expression, runtime_expression1) => todo!(),
         RuntimeExpression::Attributes(key) => todo!(),
 
         // -----------------------------------------------------------------------------
@@ -437,13 +466,65 @@ fn lazy_eval<'a, 'bp>(
         // -----------------------------------------------------------------------------
         RuntimeExpression::Not(expr) => {
             let value = eval_runtime_expr(expr, expression_id, ctx);
-            TemplateValue::Bool(value.truthiness()).into()
+            TemplateValue::Bool(!value.truthiness()).into()
         }
-        RuntimeExpression::Negative(runtime_expression) => todo!(),
-        RuntimeExpression::Equality(runtime_expression, runtime_expression1, equality) => todo!(),
-        RuntimeExpression::LogicalOp(runtime_expression, runtime_expression1, logical_op) => todo!(),
-        RuntimeExpression::Op(runtime_expression, runtime_expression1, op) => todo!(),
-        RuntimeExpression::Either(runtime_expression, runtime_expression1) => todo!(),
+        RuntimeExpression::Negative(num) => match eval_runtime_expr(num, expression_id, ctx) {
+            TemplateValue::Int(num) => TemplateValue::Int(-num),
+            _ => TemplateValue::Null,
+        }
+        .into(),
+        RuntimeExpression::Equality(lhs, rhs, equality) => {
+            let lhs = eval_runtime_expr(lhs, expression_id, ctx);
+            if lhs == TemplateValue::Null {
+                return TemplateValue::Null.into();
+            }
+
+            let rhs = eval_runtime_expr(rhs, expression_id, ctx);
+            if rhs == TemplateValue::Null {
+                return TemplateValue::Null.into();
+            }
+
+            let boolean = match equality {
+                Equality::Eq => lhs == rhs,
+                Equality::NotEq => lhs != rhs,
+                Equality::Gt => or_null!(lhs.as_int()) > or_null!(rhs.as_int()),
+                Equality::Gte => or_null!(lhs.as_int()) >= or_null!(rhs.as_int()),
+                Equality::Lt => or_null!(lhs.as_int()) < or_null!(rhs.as_int()),
+                Equality::Lte => or_null!(lhs.as_int()) <= or_null!(rhs.as_int()),
+            };
+
+            TemplateValue::Bool(boolean).into()
+        }
+        RuntimeExpression::LogicalOp(lhs, rhs, op) => {
+            let lhs = or_null!(eval_runtime_expr(lhs, expression_id, ctx).as_bool());
+            let rhs = or_null!(eval_runtime_expr(rhs, expression_id, ctx).as_bool());
+
+            let result = match op {
+                LogicalOp::And => lhs && rhs,
+                LogicalOp::Or => lhs || rhs,
+            };
+
+            TemplateValue::Bool(result).into()
+        }
+        &RuntimeExpression::Op(ref lhs, ref rhs, op) => {
+            let lhs = eval_runtime_expr(lhs, expression_id, ctx);
+            let rhs = eval_runtime_expr(rhs, expression_id, ctx);
+
+            match (lhs, rhs) {
+                (TemplateValue::Int(lhs), TemplateValue::Int(rhs)) => int_op(lhs, rhs, op).into(),
+                (TemplateValue::Int(lhs), TemplateValue::Float(rhs)) => float_op(lhs as f64, rhs, op).into(),
+                (TemplateValue::Float(lhs), TemplateValue::Int(rhs)) => float_op(lhs, rhs as f64, op).into(),
+                (TemplateValue::Float(lhs), TemplateValue::Float(rhs)) => float_op(lhs, rhs, op).into(),
+                _ => return TemplateValue::Null.into(),
+            }
+        }
+        RuntimeExpression::Either(first, second) => {
+            let first = eval_runtime_expr(first, expression_id, ctx);
+            if first.truthiness() {
+                return first.into();
+            }
+            eval_runtime_expr(second, expression_id, ctx).into()
+        }
 
         // -----------------------------------------------------------------------------
         //   - Functions -
@@ -455,6 +536,30 @@ fn lazy_eval<'a, 'bp>(
         // -----------------------------------------------------------------------------
         RuntimeExpression::Null => TemplateValue::Null.into(),
     }
+}
+
+fn int_op(lhs: i64, rhs: i64, op: Op) -> TemplateValue<'static> {
+    let result = match op {
+        Op::Add => lhs + rhs,
+        Op::Sub => lhs - rhs,
+        Op::Div => lhs / rhs,
+        Op::Mul => lhs * rhs,
+        Op::Mod => lhs % rhs,
+    };
+
+    TemplateValue::Int(result)
+}
+
+fn float_op(lhs: f64, rhs: f64, op: Op) -> TemplateValue<'static> {
+    let result = match op {
+        Op::Add => lhs + rhs,
+        Op::Sub => lhs - rhs,
+        Op::Div => lhs / rhs,
+        Op::Mul => lhs * rhs,
+        Op::Mod => lhs % rhs,
+    };
+
+    TemplateValue::Float(result)
 }
 
 // This is the final value and should be resolved to a template value.
@@ -483,32 +588,32 @@ fn eval_runtime_expr<'bp>(
         | RuntimeExpression::Float(_)
         | RuntimeExpression::Hex(_)
         | RuntimeExpression::Color(_, _)
+        | RuntimeExpression::Range { .. }
         | RuntimeExpression::Str(_) => unreachable!("this was evaluated in lazy eval"),
 
         // -----------------------------------------------------------------------------
         //   - Maps, lists and range -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::DynMap(anon_value, _) => todo!(),
-        RuntimeExpression::DynList(anon_value, _) => todo!(),
-        RuntimeExpression::Composite(anon_value, _) => todo!(),
+        RuntimeExpression::DynMap(_, _) | RuntimeExpression::DynList(_, _) | RuntimeExpression::Composite(_, _) => {
+            unreachable!("this is handled by lazy_eval")
+        }
+
         RuntimeExpression::List(items) => {
             TemplateValue::List(items.iter().map(|i| eval_runtime_expr(i, expression_id, ctx)).collect())
         }
         RuntimeExpression::Map(hash_map) => todo!(),
-        RuntimeExpression::Range(runtime_expression, runtime_expression1) => todo!(),
         RuntimeExpression::Attributes(key) => todo!(),
 
         // -----------------------------------------------------------------------------
         //   - Index -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::Index(_, _) => unreachable!("this should be resolved by lazy eval only"), // resolve_index(src, index, element, ctx),
+        RuntimeExpression::Index(_, _) => unreachable!("this should be resolved by lazy eval only"),
 
         // -----------------------------------------------------------------------------
         //   - Ops -
         // -----------------------------------------------------------------------------
         RuntimeExpression::Not(expr) => {
-            let value = eval_runtime_expr(expr, expression_id, ctx);
-            TemplateValue::Bool(value.truthiness())
+            panic!();
         }
         RuntimeExpression::Negative(runtime_expression) => todo!(),
         RuntimeExpression::Equality(runtime_expression, runtime_expression1, equality) => todo!(),
@@ -519,22 +624,20 @@ fn eval_runtime_expr<'bp>(
         // -----------------------------------------------------------------------------
         //   - Functions -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::Call { fun_ptr, args } => todo!(),
+        RuntimeExpression::Call { fun_ptr, args } => {
+            // NOTE: Should this perhaps be done in the lazy eval instead?
+            let args = args
+                .iter()
+                .map(|expr| eval_runtime_expr(expr, expression_id, ctx))
+                .collect::<Box<_>>();
+            fun_ptr.invoke(&args)
+        }
 
         // -----------------------------------------------------------------------------
         //   - Null -
         // -----------------------------------------------------------------------------
-        RuntimeExpression::Null => todo!(),
+        RuntimeExpression::Null => TemplateValue::Null,
     }
-}
-
-macro_rules! or_null {
-    ($opt:expr) => {
-        match $opt {
-            Some(val) => val,
-            None => return TemplateValue::Null.into(),
-        }
-    };
 }
 
 fn eval_index<'a, 'bp>(
@@ -558,6 +661,11 @@ fn eval_index<'a, 'bp>(
             let value = or_null!(list.lookup(index));
             value.subscribe(expression_id);
             anon_to_template_value(value).into()
+        }
+        RuntimeExpression::Attributes(el) => {
+            let attributes = or_null!(ctx.get_attributes(*el));
+            let value = or_null!(index.with_str(|key| attributes.get(key)).flatten());
+            value.clone().into()
         }
         RuntimeExpression::List(list) => {
             let index = or_null!(index.as_usize());
@@ -588,24 +696,14 @@ fn eval_index<'a, 'bp>(
                 LazyExpression::Value(_) => TemplateValue::Null.into(),
             }
         }
-        RuntimeExpression::Range(from, to) => todo!(),
-        RuntimeExpression::Attributes(el) => {
-            panic!()
-            // let attributes = ctx.get_attributes((*el).into());
-
-            // match index {
-            //     RuntimeExpression::Str(kind) => match kind {
-            //         &Kind::Static(s) => attributes.get(s),
-            //         Kind::Dyn(anon_value, _) => {
-            //             let s = anon_value.as_state();
-            //             let s = or_null!(s.as_str());
-            //             attributes.get(s)
-            //         }
-            //     },
-            //     _ => TemplateValue::Null,
-            // }
+        RuntimeExpression::Range { start, end, inclusive } => todo!(),
+        RuntimeExpression::Either(first, second) => {
+            match eval_index(first, index, expression_id, ctx) {
+                LazyExpression::Expression(runtime_expression) => todo!(),
+                LazyExpression::Value(TemplateValue::Null) => eval_index(second, index, expression_id, ctx),
+                LazyExpression::Value(value) => value.into(),
+            }
         }
-        RuntimeExpression::Either(first, second) => todo!(),
         RuntimeExpression::Null => TemplateValue::Null.into(),
         _ => unreachable!("should this return null instead?"),
     }
@@ -636,6 +734,7 @@ mod test {
     use anathema::{List, Map, State, Value};
 
     use super::*;
+    use crate::attributes::Attributes;
     use crate::runtime::eval::values;
     use crate::templates::expressions;
     use crate::testing::{ExpressionEvaluator, RunBuilder, TestWidget};
@@ -665,48 +764,17 @@ mod test {
     where
         F: Fn(&TemplateValue<'_>),
     {
-        // use expressions::{ident, index, num, strlit};
         let expr = expr.into();
         expr_test(|mut test, state| {
-            test.eval(expr, state, |val| f(val));
+            test.eval(
+                expr,
+                state,
+                |attr| {
+                    attr.set("number", 1);
+                },
+                |val| f(val),
+            );
         });
-
-        // // let expr = index(ident("state"), strlit("index"));
-
-        // // -----------------------------------------------------------------------------
-        // //   - Setup globals -
-        // //  {map: {b: {c: 1}}}
-        // //
-        // //  Setup a global var named map
-        // // -----------------------------------------------------------------------------
-        // let mut b = HashMap::from([("c".to_string(), num(123))]);
-        // let map = Expression::from(HashMap::from([("b".to_string(), b)]));
-
-        // let mut test = RunBuilder::from_src("@comp");
-        // let comp_id = test.add_component("comp", "", TestComp, state);
-        // test.register_global("map", map);
-
-        // let expr_id = test.insert_expression(expr);
-
-        // // -----------------------------------------------------------------------------
-        // //   - Setup component and state -
-        // // -----------------------------------------------------------------------------
-        // let mut inst = test.finish();
-        // let comp_el = inst.add_component(comp_id, None);
-
-        // // -----------------------------------------------------------------------------
-        // //   - Add a widget -
-        // // -----------------------------------------------------------------------------
-        // let el = inst.add_widget(TestWidget("hello".to_string()), Some(comp_el));
-        // // ... and scope the state
-        // inst.scope.push_component(comp_el, comp_id);
-
-        // inst.run(|ctx| {
-        //     // let expr = ctx.expressions.get(expr_id);
-        //     // let rt = eval_expr(expr, expr_id, el, ctx);
-        //     // let val = eval_runtime_expr(&rt, el, ctx);
-        //     // f(val);
-        // });
     }
 
     fn expr_test<F>(f: F)
@@ -730,6 +798,9 @@ mod test {
         let mut a = Map::empty();
         a.insert("val", 1);
         state.map_o_maps.to_mut().insert("a", a);
+
+        let mut attributes = Attributes::empty();
+        attributes.set("number", 123);
 
         f(ExpressionEvaluator::new(), state)
     }
@@ -759,7 +830,7 @@ mod test {
             let map = Expression::from(HashMap::from([("b".to_string(), b)]));
 
             test.register_global("map", map);
-            test.eval(*expr, state, |val| assert_eq!(*val, values::num(123)));
+            test.eval(*expr, state, |_| {}, |val| assert_eq!(*val, values::num(123)));
         });
     }
 
@@ -797,6 +868,163 @@ mod test {
     fn static_str() {
         let expected = values::strlit("hello");
         assert_expr(expressions::strlit("hello"), expected);
+    }
+
+    #[test]
+    fn negative_int() {
+        let expected = values::num(-1);
+        assert_expr(expressions::negative(expressions::num(1)), expected);
+    }
+
+    #[test]
+    fn equals() {
+        use expressions::num;
+        let expected = values::boolean(true);
+        assert_expr(expressions::eq(num(1), num(1)), expected);
+        let expected = values::boolean(false);
+        assert_expr(expressions::eq(num(2), num(1)), expected);
+    }
+
+    #[test]
+    fn not_equals() {
+        use expressions::num;
+        let expected = values::boolean(true);
+        assert_expr(expressions::neq(num(2), num(1)), expected);
+    }
+
+    #[test]
+    fn gt() {
+        use expressions::num;
+        let expected = values::boolean(true);
+        assert_expr(expressions::gt(num(2), num(1)), expected);
+        let expected = values::boolean(false);
+        assert_expr(expressions::gt(num(2), num(2)), expected);
+    }
+
+    #[test]
+    fn gte() {
+        use expressions::num;
+        let expected = values::boolean(true);
+        assert_expr(expressions::gte(num(2), num(1)), expected);
+        let expected = values::boolean(true);
+        assert_expr(expressions::gte(num(2), num(2)), expected);
+    }
+
+    #[test]
+    fn lt() {
+        use expressions::num;
+        let expected = values::boolean(false);
+        assert_expr(expressions::lt(num(2), num(1)), expected);
+        let expected = values::boolean(false);
+        assert_expr(expressions::lt(num(2), num(2)), expected);
+    }
+
+    #[test]
+    fn lte() {
+        use expressions::num;
+        let expected = values::boolean(false);
+        assert_expr(expressions::lte(num(2), num(1)), expected);
+        let expected = values::boolean(true);
+        assert_expr(expressions::lte(num(2), num(2)), expected);
+    }
+
+    #[test]
+    fn and() {
+        use expressions::boolean;
+        let expected = values::boolean(true);
+        assert_expr(expressions::and(boolean(true), boolean(true)), expected);
+        let expected = values::boolean(false);
+        assert_expr(expressions::and(boolean(true), boolean(false)), expected);
+    }
+
+    #[test]
+    fn or() {
+        use expressions::boolean;
+        let expected = values::boolean(true);
+        assert_expr(expressions::or(boolean(true), boolean(true)), expected);
+        let expected = values::boolean(true);
+        assert_expr(expressions::or(boolean(true), boolean(false)), expected);
+    }
+
+    #[test]
+    fn add() {
+        use expressions::num;
+        let expected = values::num(3);
+        assert_expr(expressions::add(num(1), num(2)), expected);
+    }
+
+    #[test]
+    fn sub() {
+        use expressions::num;
+        let expected = values::num(3);
+        assert_expr(expressions::sub(num(5), num(2)), expected);
+    }
+
+    #[test]
+    fn mul() {
+        use expressions::num;
+        let expected = values::num(10);
+        assert_expr(expressions::mul(num(5), num(2)), expected);
+    }
+
+    #[test]
+    fn div() {
+        use expressions::num;
+        let expected = values::num(10);
+        assert_expr(expressions::div(num(100), num(10)), expected);
+    }
+
+    #[test]
+    fn modulo() {
+        use expressions::num;
+        let expected = values::num(2);
+        assert_expr(expressions::modulo(num(8), num(6)), expected);
+    }
+
+    #[test]
+    fn either() {
+        use expressions::{num, strlit};
+        use values::num as val;
+        assert_expr(expressions::either(num(0), num(2)), val(2));
+        assert_expr(expressions::either(strlit(""), num(2)), val(2));
+    }
+
+    #[test]
+    fn complex_either() {
+        use expressions::{either, ident, index, num, strlit, list};
+        use values::num as val;
+        let expr = index(
+            either(
+                // index
+                index(ident("state"), strlit("missing")),
+                // num
+                list([1, 2]),
+            ),
+
+            num(0)
+        );
+        assert_expr(expr, val(1));
+    }
+
+    #[test]
+    fn range_exclusive() {
+        use expressions::num;
+        let expected = values::range(0, 5, false);
+        assert_expr(expressions::range(num(0), num(5), false), expected);
+    }
+
+    #[test]
+    fn range_inclusive() {
+        use expressions::num;
+        let expected = values::range(0, 5, true);
+        assert_expr(expressions::range(num(0), num(5), true), expected);
+    }
+
+    #[test]
+    fn not_true() {
+        use expressions::boolean;
+        let expected = values::boolean(false);
+        assert_expr(expressions::not(boolean(true)), expected);
     }
 
     #[test]
@@ -859,5 +1087,12 @@ mod test {
         );
 
         assert_expr(expr, values::num(3));
+    }
+
+    #[test]
+    fn attributes() {
+        use expressions::{ident, index, num, strlit};
+        let expr = index(ident("attributes"), strlit("number"));
+        assert_expr(expr, values::num(1));
     }
 }

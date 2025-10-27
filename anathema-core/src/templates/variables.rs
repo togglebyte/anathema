@@ -239,8 +239,7 @@ impl Declarations {
     }
 }
 
-/// Variable access, declaration and assignment
-/// during the compilation step.
+/// Map variables to expressions.
 #[derive(Debug)]
 pub struct Variables {
     globals: Globals,
@@ -258,6 +257,7 @@ impl Default for Variables {
 }
 
 impl Variables {
+    /// Create a new instance of variable storage.
     pub fn new() -> Self {
         let root = RootScope::default();
         Self {
@@ -292,6 +292,17 @@ impl Variables {
         self.globals.clear_template_globals();
     }
 
+    /// Register a global value.
+    ///
+    /// A global value can be anything that implements `Into<Expression>`,
+    /// which is most primitives.
+    ///
+    /// ```
+    /// # use anathema_core::templates::{Variables, Expressions};
+    /// # let mut expressions = Expressions::empty();
+    /// let mut variables = Variables::new();
+    /// variables.register_global("number", 123, &mut expressions);
+    /// ```
     pub fn register_global(
         &mut self,
         ident: impl Into<String>,
@@ -303,18 +314,18 @@ impl Variables {
         self.set_global(ident, global)
     }
 
-    pub fn define_global(&mut self, ident: impl Into<String>, expression: ExpressionId) -> Result<(), ErrorKind> {
+    pub(super) fn define_global(&mut self, ident: impl Into<String>, expression: ExpressionId) -> Result<(), ErrorKind> {
         let global = Global::Template(expression);
         self.set_global(ident, global)
     }
 
-    pub fn define_local(&mut self, ident: impl Into<String>, value: ExpressionId) -> VarId {
+    pub(super) fn define_local(&mut self, ident: impl Into<String>, value: ExpressionId) -> VarId {
         let scope_id = self.current.clone();
         let var_id = self.store.insert(Variable::Declaration(value));
         self.declare_at(ident, var_id, scope_id)
     }
 
-    pub fn declare_local(&mut self, ident: impl Into<String>, expressions: &mut Expressions) -> VarId {
+    pub(super) fn declare_local(&mut self, ident: impl Into<String>, expressions: &mut Expressions) -> VarId {
         let scope_id = self.current.clone();
         let ident = ident.into();
         let id = expressions.insert(Expression::Ident(ident.clone()), scope_id.clone());
@@ -370,7 +381,7 @@ impl Variables {
         self.load(id)
     }
 
-    pub fn global_lookup(&self, ident: &str) -> Option<ExpressionId> {
+    pub(crate) fn global_lookup(&self, ident: &str) -> Option<ExpressionId> {
         self.globals.get(ident)
     }
 

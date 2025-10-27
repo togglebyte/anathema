@@ -8,6 +8,7 @@ use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::Storage;
 
+use super::Lexer;
 use super::blueprints::Blueprint;
 use super::error::{Error, ErrorKind, Result};
 use super::expressions::Expressions;
@@ -17,7 +18,6 @@ use super::statements::{Context, Statements};
 use super::strings::{StringId, Strings};
 use super::token::Tokens;
 use super::variables::Variables;
-use super::Lexer;
 
 /// Template source.
 /// For hot reloading this has to be a `Path`.
@@ -91,7 +91,7 @@ impl From<String> for TemplateSource {
 }
 
 /// An associated event mapping maps the internal name to the external name.
-/// 
+///
 /// The following example maps the "press" event to "submit".
 /// ```text
 /// @button (press -> submit)
@@ -99,7 +99,7 @@ impl From<String> for TemplateSource {
 ///
 /// When the button publishes the "press" event it can be found as "submit".
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(super) struct AssocEventMapping {
+pub struct AssocEventMapping {
     /// The name of the event used by the issuing component
     pub internal: StringId,
     /// The public event name used by components to catch the event.

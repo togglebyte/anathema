@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::ops::Range;
 
 use anathema_state::{AnonValue, Color, Hex};
 
@@ -8,30 +9,53 @@ use anathema_state::{AnonValue, Color, Hex};
 /// the end of an evaluation
 #[derive(Debug, PartialEq, Clone)]
 pub enum TemplateValue<'bp> {
+    /// Int
     Int(i64),
+    /// Float
     Float(f64),
+    /// Bool
     Bool(bool),
+    /// Char
     Char(char),
+    /// Hex
     Hex(Hex),
+    /// Color
     Color(Color),
+    /// Either a borrowed string from the template or an owned string
+    /// from state
     Str(Cow<'bp, str>),
+    /// Null...
     Null,
 
     // NOTE
     // The map is the final value, and is never used as part
     // of an index, for that reason the map doesn't hold any values.
     // TODO: is this true? what about variables binding to maps? e.g: let a = {a: 1}, let b = a.a
+    /// A map of values
     Map(HashMap<&'bp str, TemplateValue<'bp>>),
     // Map,
     // NOTE
     // The attributes is the final value, and is never used as part
     // of an index, for that reason the attributes doesn't hold any values.
+    /// Attributes
     Attributes,
+    /// A collection of values
     List(Box<[TemplateValue<'bp>]>),
+    /// A collection of values from state
     DynList(AnonValue),
+    /// A map of values from state
     DynMap(AnonValue),
+    /// A state
     Composite(AnonValue),
-    Range(usize, usize),
+    /// A range
+    Range { 
+        /// Start of the range
+        start: i64, 
+        /// End of the range
+        end: i64, 
+        /// Is the range inclusive or exclusive
+        inclusive: bool 
+    },
 }
 
 impl TemplateValue<'_> {
@@ -54,6 +78,71 @@ impl TemplateValue<'_> {
             _ => true,
         }
     }
+
+    pub(crate) fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_int(&self) -> Option<i64> {
+        match self {
+            Self::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_float(&self) -> Option<f64> {
+        match self {
+            Self::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_char(&self) -> Option<char> {
+        match self {
+            Self::Char(c) => Some(*c),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_hex(&self) -> Option<Hex> {
+        match self {
+            Self::Hex(h) => Some(*h),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_color(&self) -> Option<Color> {
+        match self {
+            Self::Color(c) => Some(*c),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::Str(s) => Some(s.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_range(&self) -> Option<Range<i64>> {
+        match self {
+            Self::Range {
+                start,
+                end,
+                inclusive: false,
+            } => Some(*start..*end),
+            Self::Range {
+                start,
+                end,
+                inclusive: true,
+            } => Some(*start..*end + 1),
+            _ => None,
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -66,7 +155,7 @@ macro_rules! impl_from {
                 Self::$variant(val)
             }
         }
-    }
+    };
 }
 
 impl_from!(bool, Bool);
@@ -105,9 +194,9 @@ impl From<f32> for TemplateValue<'_> {
     }
 }
 
-impl From<std::ops::Range<usize>> for TemplateValue<'static> {
-    fn from(value: std::ops::Range<usize>) -> Self {
-        Self::Range(value.start, value.end)
+impl From<Range<i64>> for TemplateValue<'static> {
+    fn from(value: Range<i64>) -> Self {
+        Self::Range { start: value.start, end: value.end, inclusive: false, }
     }
 }
 
@@ -167,8 +256,8 @@ pub fn strlit<'a>(value: &'a str) -> TemplateValue<'a> {
 // -----------------------------------------------------------------------------
 //   - List, map and range -
 // -----------------------------------------------------------------------------
-pub fn range(lhs: usize, rhs: usize) -> TemplateValue<'static> {
-    TemplateValue::Range(lhs, rhs)
+pub fn range(start: i64, end: i64, inclusive: bool) -> TemplateValue<'static> {
+    TemplateValue::Range { start, end, inclusive }
 }
 
 pub fn list<'a, T: Into<TemplateValue<'a>>>(list: impl IntoIterator<Item = T>) -> TemplateValue<'a> {

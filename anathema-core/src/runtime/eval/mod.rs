@@ -6,7 +6,7 @@ use anathema_store::remotecell::RemoteHandle;
 use self::scope::Scope;
 use super::error::Result;
 use crate::attributes::{AttributeRegistry, Attributes, ValueKey};
-use crate::runtime::components::Components;
+use crate::runtime::components::{Components};
 use crate::runtime::elements::{Element, ElementId, Elements};
 use crate::runtime::eval::expression::{eval_by_id, RuntimeExpression, RuntimeExpressions};
 use crate::runtime::eval::values::TemplateValue;
@@ -58,15 +58,14 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         }
     }
 
-    fn with_expression<F>(&mut self, id: ExpressionId, mut f: F) 
-        where F: FnMut(&mut Self, &RuntimeExpression<'bp>, &mut RemoteHandle<TemplateValue<'bp>>),
+    fn with_expression<F>(&mut self, id: ExpressionId, mut f: F)
+    where
+        F: FnMut(&mut Self, &RuntimeExpression<'bp>, &mut RemoteHandle<TemplateValue<'bp>>),
     {
         let Some((expr, mut handle)) = self.runtime_expressions.remove(id) else { return };
         f(self, &expr, &mut handle);
         self.runtime_expressions.return_entry(id, expr, handle);
-
     }
-
 
     fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
         self.elements.insert(element, parent)
@@ -80,8 +79,8 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         self.functions.lookup(fun)
     }
 
-    fn get_attributes(&self, el: ElementId) -> &Attributes<'bp> {
-        todo!()
+    fn get_attributes(&self, element: ElementId) -> Option<&Attributes<'bp>> {
+        self.attributes.get(element)
     }
 
     fn reserve_element_id(&mut self) -> ElementId {
@@ -272,7 +271,6 @@ mod test {
 
         let mut inst = test.finish();
         inst.eval(|ctx| {
-
             // * Get hold of the state
             {
                 let state = ctx.components.get_state_mut(comp_id).unwrap();

@@ -1,4 +1,5 @@
-// #![deny(missing_docs)]
+//! TODO: write docs
+#![deny(missing_docs)]
 #[allow(unused_extern_crates)]
 extern crate anathema_state as anathema;
 
@@ -6,8 +7,6 @@ extern crate anathema_state as anathema;
 pub mod attributes;
 pub mod frontend;
 pub mod layout;
-
-// Dosn't like has docs so is a bit mid
 pub mod runtime;
 pub mod templates;
 

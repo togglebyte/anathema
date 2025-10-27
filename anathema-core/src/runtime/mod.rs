@@ -1,3 +1,5 @@
+//! TODO: write docs
+pub use components::Component;
 pub use widgets::iter::Children;
 pub use widgets::{RegisteredWidgets, Widget};
 

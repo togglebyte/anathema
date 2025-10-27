@@ -6,10 +6,15 @@ use anathema_state::Hex;
 /// These values are all static and resolved at eval time.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Primitive {
+    /// Bool
     Bool(bool),
+    /// Char
     Char(char),
+    /// Int
     Int(i64),
+    /// Float
     Float(f64),
+    /// Hex
     Hex(Hex),
 }
 

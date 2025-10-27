@@ -12,7 +12,7 @@ type WidgetFactory = Box<dyn Fn(&Attributes<'_>) -> Box<dyn Widget>>;
 
 pub mod iter;
 
-/// All registered element types
+/// All registered widget types
 #[derive(Default)]
 pub struct RegisteredWidgets {
     registry: HashMap<Box<str>, WidgetFactory>,
@@ -25,17 +25,20 @@ impl std::fmt::Debug for RegisteredWidgets {
 }
 
 impl RegisteredWidgets {
+    /// Create an empty set of registered widgets.
     pub fn empty() -> Self {
         Self {
             registry: HashMap::new(),
         }
     }
 
+    /// Register a widget type as longas it implements default
     pub fn register_default<T: Widget + Default>(&mut self, ident: impl Into<Box<str>>) {
         self.registry
             .insert(ident.into(), Box::new(|_attr| Box::<T>::default()));
     }
 
+    /// Create a widget from attributes
     pub fn make(&self, ident: &str, attributes: &Attributes<'_>) -> Result<Box<dyn Widget>, ()> {
         let Some(factory) = self.registry.get(ident) else { return Err(()) };
         let element = factory(attributes);
@@ -43,14 +46,18 @@ impl RegisteredWidgets {
     }
 }
 
-/// An element ...
+/// A widget
 pub trait Widget: 'static {
+    /// Layout the widget
     fn layout(&mut self, children: Children<'_, '_>, layout: &mut Layout) -> Size;
 
+    /// Position the widget
     fn position(&mut self) -> Pos;
 
+    /// Paint the widget
     fn paint(&mut self);
 
+    /// A function that described a widget in a debug context.
     fn describe(&self) -> &str {
         "<dyn Element>"
     }

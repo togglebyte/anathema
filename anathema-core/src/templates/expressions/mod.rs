@@ -22,12 +22,15 @@ impl std::hash::Hash for ExpressionId {
 
 impl nohash_hasher::IsEnabled for ExpressionId {}
 
+/// A collection of expressions paired with their scope boundaries.
 #[derive(Debug)]
 pub struct Expressions {
+    // Each expression is stored with its associated scope boundary
     inner: Vec<(Expression, ScopeId)>,
 }
 
 impl Expressions {
+    /// Create an empty set of expressions
     pub fn empty() -> Self {
         Self { inner: vec![] }
     }
@@ -84,80 +87,104 @@ impl std::ops::Index<ExpressionId> for Expressions {
     }
 }
 
+/// Binary arithmetic operators for expressions
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Op {
+    /// Add
     Add,
+    /// Sub
     Sub,
+    /// Div
     Div,
+    /// Mul
     Mul,
+    /// Mod
     Mod,
 }
 
+/// Equality check
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Equality {
+    /// Eq
     Eq,
+    /// NotEq
     NotEq,
+    /// Gt
     Gt,
+    /// Gte
     Gte,
+    /// Lt
     Lt,
+    /// Lte
     Lte,
 }
 
+/// Logical operators
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LogicalOp {
+    /// And
     And,
+    /// Or
     Or,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum BoolOp {
-    Eq,
-    NotEq,
-    And,
-    Or,
-    Gt,
-    Gte,
-    Lt,
-    Lte,
-}
-
+/// An expression is a value for a blueprint
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    // Value types
+    /// Primitives (int, bool, char, etc.)
     Primitive(Primitive),
+    /// String
     Str(String),
+    /// List
     List(Vec<Self>),
+    /// Map
     Map(HashMap<String, Self>),
 
-    // Lookup a variable in the var table
+    /// Variable
     Variable(VarId),
 
-    // This is specifically for the "value" of a node.
+    /// This is specifically for the "value" of a node.
     TextSegments(Vec<Self>),
 
-    // Unary
+    /// Unary expression
     Not(Box<Self>),
+
+    /// Negative numbers
     Negative(Box<Self>),
 
-    // Conditionals
+    /// Conditionals
     Equality(Box<Self>, Box<Self>, Equality),
+    /// Logical operations
     LogicalOp(Box<Self>, Box<Self>, LogicalOp),
 
-    // Lookup
+    /// Lookup
     Ident(String),
+    /// Index (a.b / a["b"])
     Index(Box<Self>, Box<Self>),
 
-    // Operations
+    /// Maths operations
     Op(Box<Self>, Box<Self>, Op),
 
-    // Either
+    /// Either
     Either(Box<Self>, Box<Self>),
 
-    // Range
-    Range(Box<Self>, Box<Self>),
+    /// Range
+    Range {
+        /// Start value of the range
+        start: Box<Self>,
+        /// End value of the range
+        end: Box<Self>,
+        /// If the range exclusive (..) or inclusive (...)
+        inclusive: bool,
+    },
 
-    // Function call
-    Call { fun: Box<Self>, args: Vec<Self> },
+    /// Function call
+    Call {
+        /// Function
+        fun: Box<Self>,
+        /// Arguments
+        args: Vec<Self>,
+    },
 }
 
 impl From<Box<Expression>> for Expression {
@@ -226,7 +253,16 @@ impl Display for Expression {
                 write!(f, "{lhs} {op} {rhs}")
             }
             Self::Either(lhs, rhs) => write!(f, "{lhs} ? {rhs}"),
-            Self::Range(lhs, rhs) => write!(f, "{lhs} .. {rhs}"),
+            Self::Range {
+                start,
+                end,
+                inclusive: false,
+            } => write!(f, "{start} .. {end}"),
+            Self::Range {
+                start,
+                end,
+                inclusive: true,
+            } => write!(f, "{start} ... {end}"),
             Self::List(list) => {
                 write!(
                     f,
@@ -298,8 +334,8 @@ pub fn either(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
     Expression::Either(lhs, rhs).into()
 }
 
-pub fn range(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
-    Expression::Range(lhs, rhs).into()
+pub fn range(start: Box<Expression>, end: Box<Expression>, inclusive: bool) -> Box<Expression> {
+    Expression::Range { start, end, inclusive }.into()
 }
 
 // -----------------------------------------------------------------------------
@@ -339,6 +375,10 @@ pub fn less_than(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> 
 
 pub fn less_than_equal(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
     Expression::Equality(lhs, rhs, Equality::Lte).into()
+}
+
+pub fn negative(num: Box<Expression>) -> Box<Expression> {
+    Expression::Negative(num).into()
 }
 
 // -----------------------------------------------------------------------------
@@ -404,6 +444,26 @@ pub fn not(expr: Box<Expression>) -> Box<Expression> {
 
 pub fn eq(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
     Expression::Equality(lhs, rhs, Equality::Eq).into()
+}
+
+pub fn neq(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Equality(lhs, rhs, Equality::NotEq).into()
+}
+
+pub fn gt(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Equality(lhs, rhs, Equality::Gt).into()
+}
+
+pub fn gte(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Equality(lhs, rhs, Equality::Gte).into()
+}
+
+pub fn lt(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Equality(lhs, rhs, Equality::Lt).into()
+}
+
+pub fn lte(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {
+    Expression::Equality(lhs, rhs, Equality::Lte).into()
 }
 
 pub fn and(lhs: Box<Expression>, rhs: Box<Expression>) -> Box<Expression> {

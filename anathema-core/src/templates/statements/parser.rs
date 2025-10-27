@@ -978,10 +978,17 @@ mod test {
     }
 
     #[test]
-    fn parse_range() {
+    fn parse_exclusive_range() {
         let src = "for i in x..y";
         let mut statements = parse_ok(src);
-        assert_eq!(statements.remove(0), for_loop(2, range(ident("x"), ident("y"))));
+        assert_eq!(statements.remove(0), for_loop(2, range(ident("x"), ident("y"), false)));
+    }
+
+    #[test]
+    fn parse_inclusive_range() {
+        let src = "for i in x...y";
+        let mut statements = parse_ok(src);
+        assert_eq!(statements.remove(0), for_loop(2, range(ident("x"), ident("y"), true)));
     }
 
     #[test]

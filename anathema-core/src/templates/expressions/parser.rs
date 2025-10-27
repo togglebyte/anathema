@@ -31,7 +31,7 @@ fn get_precedence(op: Operator) -> u8 {
         }
         Operator::EqualEqual | Operator::NotEqual => prec::EQUALITY,
         Operator::Or | Operator::And | Operator::Either => prec::CONDITIONAL,
-        Operator::DotDot => prec::RANGE,
+        Operator::DotDot | Operator::DotDotDot => prec::RANGE,
 
         _ => prec::INITIAL,
     }
@@ -388,10 +388,17 @@ mod test {
     }
 
     #[test]
-    fn range() {
+    fn range_exclusive() {
         let input = "a..b";
         let actual = parse(input);
         assert_eq!(actual, "(.. <sid 1> <sid 2>)");
+    }
+
+    #[test]
+    fn range_inclusive() {
+        let input = "a...b";
+        let actual = parse(input);
+        assert_eq!(actual, "(... <sid 1> <sid 2>)");
     }
 
     #[test]

@@ -47,6 +47,7 @@ impl<'src, 'consts> Iterator for Lexer<'src, 'consts> {
     }
 }
 
+/// Lex AML source to tokens
 pub struct Lexer<'src, 'strings> {
     pub(super) src: &'src TemplateSource,
     pub(crate) strings: &'strings mut Strings,
@@ -90,7 +91,14 @@ impl<'src, 'strings> Lexer<'src, 'strings> {
             }
             ('.', Some('.')) => {
                 let _ = self.chars.next();
-                Ok(Kind::Op(Operator::DotDot).to_token(index))
+                let op = match self.chars.peek() {
+                    Some(&(_, '.')) => {
+                        self.chars.next();
+                        Operator::DotDotDot
+                    }
+                    _ => Operator::DotDot,
+                };
+                Ok(Kind::Op(op).to_token(index))
             }
             ('|', Some('|')) => {
                 let _ = self.chars.next();
@@ -579,5 +587,11 @@ mod test {
     fn double_dot() {
         let decl = token_kind("..");
         assert_eq!(decl, Kind::Op(Operator::DotDot));
+    }
+
+    #[test]
+    fn triple_dot() {
+        let decl = token_kind("...");
+        assert_eq!(decl, Kind::Op(Operator::DotDotDot));
     }
 }
