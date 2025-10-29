@@ -7,9 +7,9 @@ use super::{Index, Slab};
 ///
 ///
 /// ```
-/// use anathema_store::slab::{GenSlab, SecondaryMap};
+/// use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 ///
-/// let mut names = GenSlab::empty();
+/// let mut names = GenSlab::<Key, _>::empty();
 /// let lilly = names.insert("Lilly");
 ///
 /// let mut favourite_foods = SecondaryMap::empty();
@@ -69,6 +69,32 @@ where
     /// Produce an iterator over the values in the secondary map
     pub fn iter(&self) -> impl Iterator<Item = &V> {
         self.0.iter().map(|(_, v)| v)
+    }
+}
+
+impl<K, V> std::ops::Index<K> for SecondaryMap<K, V>
+where
+    K: Into<Index> + Copy,
+{
+    type Output = V;
+
+    fn index(&self, index: K) -> &Self::Output {
+        match self.get(index) {
+            Some(val) => val,
+            None => panic!("invalid key: {:?}", index.into()),
+        }
+    }
+}
+
+impl<K, V> std::ops::IndexMut<K> for SecondaryMap<K, V>
+where
+    K: Into<Index> + Copy,
+{
+    fn index_mut(&mut self, index: K) -> &mut Self::Output {
+        match self.get_mut(index) {
+            Some(val) => val,
+            None => panic!("invalid key: {:?}", index.into()),
+        }
     }
 }
 

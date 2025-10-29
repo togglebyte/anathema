@@ -1,4 +1,4 @@
-use super::Ticket;
+use std::ops::{Index, IndexMut};
 
 /// Implement this for anything that can be an index of a slab
 pub trait SlabIndex: Copy + PartialEq {
@@ -58,11 +58,11 @@ impl_slabindex!(u32);
 // -----------------------------------------------------------------------------
 //   - Entry -
 // -----------------------------------------------------------------------------
+
 #[derive(Debug, PartialEq, Clone)]
 enum Entry<I, T> {
     Vacant(Option<I>),
     Occupied(T),
-    CheckedOut(I),
 }
 
 impl<I, T> Entry<I, T> {
@@ -81,10 +81,10 @@ impl<I, T> Entry<I, T> {
     // An entry should never be vacant where this call is involved.
     //
     // This means this method should never be used outside of update calls.
-    fn as_occupied_mut(&mut self) -> &mut T {
+    pub fn as_occupied_mut(&mut self) -> &mut T {
         match self {
             Entry::Occupied(value) => value,
-            Entry::Vacant(_) | Entry::CheckedOut(_) => unreachable!("invalid state"),
+            Entry::Vacant(_) => unreachable!("invalid state"),
         }
     }
 }
@@ -93,10 +93,19 @@ impl<I, T> Entry<I, T> {
 //   - Slab -
 // -----------------------------------------------------------------------------
 /// A basic slab
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Slab<I, T> {
     next_id: Option<I>,
     inner: Vec<Entry<I, T>>,
+}
+
+impl<I, T> Default for Slab<I, T> {
+    fn default() -> Self {
+        Self {
+            next_id: None,
+            inner: vec![],
+        }
+    }
 }
 
 impl<I, T> Slab<I, T>
@@ -169,7 +178,6 @@ where
                 .expect("there should be entries up to self.len()");
 
             match entry {
-                Entry::CheckedOut(_) => panic!("value is checked out"),
                 Entry::Vacant(None) => *entry = Entry::Occupied(value),
                 Entry::Occupied(val) => *val = value,
                 &mut Entry::Vacant(Some(next_free)) => {
@@ -193,7 +201,6 @@ where
                                     Some(Entry::Occupied(_)) => {
                                         unreachable!("entry is occupied, so this should never be the next value")
                                     }
-                                    Some(Entry::CheckedOut(_)) => unreachable!("entry checked out"),
                                     None => unreachable!("the index can only point to a vacant value"),
                                 }
                             }
@@ -234,7 +241,7 @@ where
 
         match entry {
             Entry::Occupied(val) => val,
-            Entry::Vacant(_) | Entry::CheckedOut(_) => panic!("removal of vacant entry"),
+            Entry::Vacant(_) => panic!("removal of vacant entry"),
         }
     }
 
@@ -255,7 +262,6 @@ where
                 Some(val)
             }
             Entry::Vacant(_) => None,
-            Entry::CheckedOut(_) => panic!("value is in use"),
         }
     }
 
@@ -283,7 +289,6 @@ where
                 Some(val)
             }
             Entry::Vacant(_) => None,
-            Entry::CheckedOut(_) => panic!("value is in use"),
         }
     }
 
@@ -296,7 +301,7 @@ where
                 std::mem::swap(value, &mut new_value);
                 Some(new_value)
             }
-            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+            Entry::Vacant(_) => None,
         }
     }
 
@@ -327,41 +332,6 @@ where
         }
     }
 
-    /// Check out a value from the slab.
-    /// The value has to be manually returned using `Self::restore`.
-    ///
-    /// It's up to the developer to remember to do this
-    ///
-    /// # Panics
-    ///
-    /// This will panic if a value does not at exist at the given key
-    pub fn checkout(&mut self, key: I) -> Ticket<I, T> {
-        let mut entry = Entry::CheckedOut(key);
-        std::mem::swap(&mut entry, &mut self.inner[key.as_usize()]);
-
-        match entry {
-            Entry::Occupied(value) => Ticket { value, key },
-            Entry::CheckedOut(_) => panic!("value already checked out"),
-            _ => panic!("no entry matching the key"),
-        }
-    }
-
-    /// Restore a value that is currently checked out.
-    ///
-    /// # Panics
-    ///
-    /// This will panic if a value does not at exist at the given key,
-    /// or if the value is not currently checked out
-    pub fn restore(&mut self, Ticket { value, key }: Ticket<I, T>) {
-        let mut entry = Entry::Occupied(value);
-        std::mem::swap(&mut entry, &mut self.inner[key.as_usize()]);
-
-        match entry {
-            Entry::CheckedOut(_) => (),
-            _ => panic!("failed to return checked out value"),
-        }
-    }
-
     /// # Panics
     ///
     /// Will panic if the value does not exist
@@ -381,7 +351,6 @@ where
         self.inner.iter().filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
             Entry::Vacant(_) => None,
-            Entry::CheckedOut(_) => None,
         })
     }
 
@@ -393,7 +362,7 @@ where
     pub fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
         self.inner.iter_mut().filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+            Entry::Vacant(_) => None,
         })
     }
 
@@ -401,7 +370,7 @@ where
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
         self.inner.iter().enumerate().filter_map(|(i, e)| match e {
             Entry::Occupied(val) => Some((I::from_usize(i), val)),
-            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+            Entry::Vacant(_) => None,
         })
     }
 
@@ -412,7 +381,7 @@ where
         self.next_id = None;
         self.inner.drain(..).filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+            Entry::Vacant(_) => None,
         })
     }
 
@@ -420,7 +389,7 @@ where
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> + '_ {
         self.inner.iter_mut().enumerate().filter_map(|(i, e)| match e {
             Entry::Occupied(val) => Some((I::from_usize(i), val)),
-            Entry::Vacant(_) | Entry::CheckedOut(_) => None,
+            Entry::Vacant(_) => None,
         })
     }
 
@@ -431,6 +400,29 @@ where
     }
 }
 
+impl<T: SlabIndex, U> Index<T> for Slab<T, U> {
+    type Output = U;
+
+    fn index(&self, index: T) -> &Self::Output {
+        let entry = &self.inner[index.as_usize()];
+        match entry {
+            Entry::Occupied(value) => value,
+            Entry::Vacant(_) => panic!("vacant slot"),
+        }
+    }
+}
+
+impl<T: SlabIndex, U> IndexMut<T> for Slab<T, U> {
+    fn index_mut(&mut self, index: T) -> &mut Self::Output {
+        let entry = &mut self.inner[index.as_usize()];
+        match entry {
+            Entry::Occupied(value) => value,
+            Entry::Vacant(_) => panic!("vacant slot"),
+        }
+    }
+}
+
+#[cfg(test)]
 impl<I, T> Slab<I, T>
 where
     I: Copy,
@@ -454,7 +446,6 @@ where
                     }
                 }
                 Entry::Occupied(value) => writeln!(&mut s, "{idx}: {value:?}"),
-                Entry::CheckedOut(_) => writeln!(&mut s, "entry is checked out"),
             };
         }
 

@@ -7,7 +7,8 @@
 //! number has to be treated as a float
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
-use crate::{State, Type};
+use crate::value::{SubKey, Type};
+use crate::State;
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum Number {
@@ -83,7 +84,7 @@ impl Number {
     }
 }
 
-impl State for Number {
+impl<K: SubKey> State<K> for Number {
     fn type_info(&self) -> Type {
         match self {
             Number::Usize(_)

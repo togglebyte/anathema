@@ -5,18 +5,12 @@ use anathema_store::slab::Key;
 
 pub use crate::colors::{Color, FromColor};
 pub use crate::numbers::Number;
-pub use crate::states::{AnyList, AnyMap, State, StateId, States, TypeId};
-pub use crate::store::subscriber::SubTo;
-pub use crate::store::watchers::Watcher;
-pub use crate::store::{
-    Change, Changes, Subscriber, Watched, clear_all_changes, clear_all_subs, drain_changes, drain_watchers,
-};
-pub use crate::value::{List, Map, Maybe, Nullable, PendingValue, SharedState, Type, Value, ValueRef};
+pub use crate::states::{AnyList, AnyMap, State, StateId, TypeId};
+pub use crate::value::{AnonValue, Change, List, Map, Maybe, SubKey, Type, Value, ValueRef};
 
 mod colors;
 mod numbers;
 mod states;
-mod store;
 mod value;
 
 // -----------------------------------------------------------------------------
@@ -26,24 +20,6 @@ mod value;
 extern crate self as anathema;
 #[allow(unused_imports)]
 pub use crate as state;
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Path<'e> {
-    Key(&'e str),
-    Index(usize),
-}
-
-impl From<usize> for Path<'_> {
-    fn from(value: usize) -> Self {
-        Self::Index(value)
-    }
-}
-
-impl<'a> From<&'a str> for Path<'a> {
-    fn from(value: &'a str) -> Self {
-        Self::Key(value)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

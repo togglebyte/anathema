@@ -1,39 +1,39 @@
 use std::collections::HashMap;
 
-use super::{Shared, Type, Unique, Value};
+use super::{AnonValue, Value};
 use crate::states::AnyMap;
-use crate::store::values::{get_unique, try_make_shared};
-use crate::{PendingValue, State};
+use crate::value::{SubKey, Type, ValueMut};
+use crate::{State, ValueRef};
 
 #[derive(Debug)]
-pub struct Map<T> {
-    inner: HashMap<String, Value<T>>,
+pub struct Map<K, V> {
+    inner: HashMap<String, Value<K, V>>,
 }
 
-impl<T: State> Map<T> {
+impl<K: SubKey, V: State<K>> Map<K, V> {
     pub fn empty() -> Self {
         Self { inner: HashMap::new() }
     }
 
-    pub fn get(&self, key: &str) -> Option<&Value<T>> {
+    pub fn get(&self, key: &str) -> Option<&Value<K, V>> {
         self.inner.get(key)
     }
 
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value<T>> {
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut Value<K, V>> {
         self.inner.get_mut(key)
     }
 
     /// Insert a value into the `Map`.
     /// The value will be wrapped in a `Value<T>` so it's not advisable to insert pre-wrapped
     /// value.
-    pub fn insert(&mut self, map_key: impl Into<String>, value: T) {
+    pub fn insert(&mut self, map_key: impl Into<String>, value: V) {
         let value = value.into();
         let map_key = map_key.into();
         self.inner.insert(map_key, value);
     }
 
     /// Remove a value from the map.
-    pub fn remove(&mut self, map_key: &str) -> Option<Value<T>> {
+    pub fn remove(&mut self, map_key: &str) -> Option<Value<K, V>> {
         self.inner.remove(map_key)
     }
 
@@ -43,7 +43,7 @@ impl<T: State> Map<T> {
     }
 }
 
-impl<T: State> Default for Map<T> {
+impl<K: SubKey, V: State<K>> Default for Map<K, V> {
     fn default() -> Self {
         Self { inner: HashMap::new() }
     }
@@ -55,38 +55,15 @@ impl<T: State> Default for Map<T> {
 /// let mut map = Map::empty();
 /// map.insert("key", 123);
 /// ```
-impl<T: State> Value<Map<T>> {
+impl<K: SubKey, V: State<K>> Value<K, Map<K, V>> {
     pub fn empty() -> Self {
         let map = Map { inner: HashMap::new() };
         Value::new(map)
     }
-
-    pub fn get(&self, key: impl AsRef<str>) -> Option<Shared<'_, T>> {
-        let map = &*self.to_ref();
-        let value = map.get(key.as_ref())?;
-        let key = value.key;
-
-        let (key, value) = try_make_shared(key.owned())?;
-        let shared = Shared::new(key, value);
-        Some(shared)
-    }
-
-    pub fn get_mut<'a>(&'a mut self, key: impl AsRef<str>) -> Option<Unique<'a, T>> {
-        let map = &*self.to_ref();
-        let value = map.get(key.as_ref())?;
-
-        let key = value.key;
-        let value = Unique {
-            value: Some(get_unique(key.owned())),
-            key,
-            _p: std::marker::PhantomData,
-        };
-        Some(value)
-    }
 }
 
-impl<T: State> AnyMap for Map<T> {
-    fn lookup(&self, key: &str) -> Option<PendingValue> {
+impl<K: SubKey, V: State<K>> AnyMap<K> for Map<K, V> {
+    fn lookup(&self, key: &str) -> Option<AnonValue<K>> {
         self.get(key).map(|val| val.reference())
     }
 
@@ -95,12 +72,12 @@ impl<T: State> AnyMap for Map<T> {
     }
 }
 
-impl<T: State> State for Map<T> {
+impl<K: SubKey, V: State<K>> State<K> for Map<K, V> {
     fn type_info(&self) -> Type {
         Type::Map
     }
 
-    fn as_any_map(&self) -> Option<&dyn AnyMap> {
+    fn as_any_map(&self) -> Option<&dyn AnyMap<K>> {
         Some(self)
     }
 }

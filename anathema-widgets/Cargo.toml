@@ -1,30 +1,11 @@
 [package]
 name = "anathema-widgets"
-license = "MIT"
-description = "Anathema widget base"
-version.workspace = true
 edition.workspace = true
-documentation = "https://togglebyte.github.io/anathema-guide/"
-homepage = "https://github.com/togglebyte/anathema"
-repository = "https://github.com/togglebyte/anathema"
+version.workspace = true
 
 [dependencies]
-anathema-geometry = { workspace = true }
-anathema-state = { workspace = true }
-anathema-store = { workspace = true }
-# anathema-strings = { workspace = true }
-anathema-templates = { workspace = true }
-anathema-value-resolver = { workspace = true }
-flume = { workspace = true }
-bitflags = { workspace = true }
-unicode-width = { workspace = true }
-unicode-segmentation = "1.11.0"
-puffin = { version = "0.19.1", features = ["web"], optional = true }
-
-[features]
-default = []
-profile = ["puffin"]
-filelog = []
+anathema-core = { path = "../anathema-core", version = "0.2.12-beta" }
+anathema-geometry = { path = "../anathema-geometry", version = "0.2.12-beta" }
 
 [lints]
 workspace = true
