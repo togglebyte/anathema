@@ -66,7 +66,7 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
                 ::anathema::state::Type::List
             }
 
-            fn as_any_list(&self) -> Option<&dyn ::anathema::state::AnyList> {
+            fn as_any_list(&self) -> Option<&dyn ::anathema::state::AnyList<::anathema::core::ValueIndex>> {
                 Some(self)
             }
         }
@@ -76,7 +76,7 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
         }
 
         impl ::anathema::state::AnyList for #name {
-            fn lookup(&self, index: usize) -> Option<::anathema::state::AnonValue> {
+            fn lookup(&self, index: usize) -> Option<::anathema::state::AnonValue<::anathema::core::ValueIndex>> {
                 match index {
                     #( #iter, )*
                     _ => None
@@ -118,7 +118,7 @@ fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::Tok
                 ::anathema::state::Type::Composite
             }
 
-            fn as_any_map(&self) -> Option<&dyn ::anathema::state::AnyMap> {
+            fn as_any_map(&self) -> Option<&dyn ::anathema::state::AnyMap<::anathema::core::ValueIndex>> {
                 Some(self)
             }
         }
@@ -128,7 +128,7 @@ fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::Tok
         }
 
         impl ::anathema::state::AnyMap for #name {
-            fn lookup(&self, key: &str) -> Option<::anathema::state::AnonValue> {
+            fn lookup(&self, key: &str) -> Option<::anathema::state::AnonValue<::anathema::core::ValueIndex>> {
                 match key {
                     #(
                         #field_names => {
