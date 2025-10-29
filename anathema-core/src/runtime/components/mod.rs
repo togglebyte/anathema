@@ -1,23 +1,24 @@
 //! Runtime user defined component registry
-use anathema::Value;
-use anathema_state::State;
+use anathema::State;
 use anathema_store::key;
 use anathema_store::slab::{GenSlab, SecondaryMap};
 
 pub use self::component::Component;
 use crate::runtime::components::component::AnyComponent;
+use crate::runtime::ValueIndex;
+use crate::state::Value;
 use crate::templates::ComponentBlueprintId;
 
 key!(ComponentId, Debug, Copy, Clone);
 
 pub(crate) type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
-pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;
+pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State<ValueIndex>>>;
 
 mod component;
 
 struct Entry {
     component: Box<dyn AnyComponent>,
-    state: Value<Box<dyn State>>,
+    state: Value<Box<dyn State<ValueIndex>>>,
     kind: ComponentKind,
 }
 
@@ -49,7 +50,7 @@ impl Components {
         &mut self,
         blueprint_id: ComponentBlueprintId,
         component: impl AnyComponent,
-        state: impl State,
+        state: impl State<ValueIndex>,
     ) -> ComponentId {
         let entry = Entry {
             component: Box::new(component),
@@ -81,12 +82,12 @@ impl Components {
         }
     }
 
-    pub(crate) fn get_state(&self, component_id: ComponentId) -> Option<&Value<Box<dyn State>>> {
+    pub(crate) fn get_state(&self, component_id: ComponentId) -> Option<&Value<Box<dyn State<ValueIndex>>>> {
         let inst = self.instances.get(component_id)?;
         Some(&inst.state)
     }
 
-    pub(crate) fn get_state_mut(&mut self, component_id: ComponentId) -> Option<&mut Value<Box<dyn State>>> {
+    pub(crate) fn get_state_mut(&mut self, component_id: ComponentId) -> Option<&mut Value<Box<dyn State<ValueIndex>>>> {
         let inst = self.instances.get_mut(component_id)?;
         Some(&mut inst.state)
     }

@@ -11,3 +11,8 @@ nohash-hasher = "0.2.0"
 
 [lints]
 workspace = true
+
+[features]
+default = []
+multithread = []
+

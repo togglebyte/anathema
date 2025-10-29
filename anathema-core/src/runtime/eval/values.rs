@@ -2,7 +2,53 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::Range;
 
-use anathema_state::{AnonValue, Color, Hex};
+use anathema_state::{Color, Hex};
+use anathema_store::remotecell::RemoteCell;
+
+use crate::state::AnonValue;
+
+/// A collection used by a for-loop
+#[derive(Debug, Clone)]
+pub struct Collection<'bp> {
+    inner: RemoteCell<TemplateValue<'bp>>,
+}
+
+impl<'bp> Collection<'bp> {
+    pub fn new(inner: RemoteCell<TemplateValue<'bp>>) -> Self {
+        Self { inner }
+    }
+
+    pub(crate) fn iter<'a>(&'a self) -> CollectionIter<'a, 'bp> {
+        CollectionIter {
+            inner: &*self.inner,
+            index: 0,
+        }
+    }
+}
+
+pub(crate) struct CollectionIter<'a, 'bp> {
+    inner: &'a TemplateValue<'bp>,
+    index: u32,
+}
+
+impl<'a, 'bp> Iterator for CollectionIter<'a, 'bp> {
+    type Item = TemplateValue<'bp>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index;
+
+        let value = match self.inner {
+            TemplateValue::DynList(list) => todo!(),
+            TemplateValue::List(list) => list.get(index as usize).cloned()?,
+            TemplateValue::Range { start, end, inclusive } => todo!(),
+            _ => return None,
+        };
+
+        self.index += 1;
+
+        Some(value)
+    }
+}
 
 /// This value can never be part of an evaluation chain, only the return value.
 /// It should only ever be the final type that is held by a `Value`, at
@@ -48,13 +94,13 @@ pub enum TemplateValue<'bp> {
     /// A state
     Composite(AnonValue),
     /// A range
-    Range { 
+    Range {
         /// Start of the range
-        start: i64, 
+        start: i64,
         /// End of the range
-        end: i64, 
+        end: i64,
         /// Is the range inclusive or exclusive
-        inclusive: bool 
+        inclusive: bool,
     },
 }
 
@@ -196,7 +242,11 @@ impl From<f32> for TemplateValue<'_> {
 
 impl From<Range<i64>> for TemplateValue<'static> {
     fn from(value: Range<i64>) -> Self {
-        Self::Range { start: value.start, end: value.end, inclusive: false, }
+        Self::Range {
+            start: value.start,
+            end: value.end,
+            inclusive: false,
+        }
     }
 }
 

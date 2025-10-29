@@ -70,7 +70,7 @@ impl<T> RemoteHandle<T> {
     }
 
     /// Update the value of the remote cell.
-    pub fn set(&mut self, new_value: T) {
+    pub fn set(&self, new_value: T) {
         _ = std::mem::replace(unsafe { &mut *self.value.get() }, new_value);
     }
 
@@ -87,7 +87,7 @@ mod test {
 
     #[test]
     fn update_cell() {
-        let (mut cell, mut handle) = RemoteCell::new("hello".to_string());
+        let (cell, handle) = RemoteCell::new("hello".to_string());
 
         assert_eq!(&*cell, "hello");
 

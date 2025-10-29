@@ -5,6 +5,7 @@ use anathema_store::key;
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 use crate::runtime::components::ComponentId;
+use crate::runtime::eval::values::Collection;
 use crate::runtime::widgets::{Node as WidgetNode, Widget, Widgets};
 use crate::templates::{Blueprint, ExpressionId};
 
@@ -31,7 +32,10 @@ pub struct Node<'bp> {
 pub enum Element<'bp> {
     For {
         binding: &'bp str,
-        // collection: Collection<'bp>,
+        collection: Collection<'bp>,
+    },
+    Iteration {
+        loop_counter: u32,
     },
     Widget(RefCell<Box<dyn Widget>>),
     Component(ComponentId),
@@ -89,33 +93,3 @@ impl<'bp> Index<ElementId> for Elements<'bp> {
         &self.elements[index]
     }
 }
-
-// fn widget_tree<'bp>(elements: &Elements<'bp>) -> Widgets {
-//     let mut widgets = Widgets::empty();
-
-//     fn add_child<'bp>(id: ElementId, elements: &Elements<'bp>, children: &mut Vec<ElementId>) {
-//         let node = &elements[id];
-//         match &node.element {
-//             Element::For { .. } | Element::Component(_) => {
-//                 for child in &node.children {
-//                     add_child(id, elements, children);
-//                 }
-//             }
-//             Element::Widget(_) => children.push(id),
-//         }
-//     }
-
-//     for (id, node) in elements.elements.iter_keys() {
-//         match &node.element {
-//             Element::Widget(widget) => {
-//                 let mut children = vec![];
-//                 add_child(id, elements, &mut children);
-//                 let node = WidgetNode::new(id, children);
-//                 widgets.widgets.insert(id, node);
-//             }
-//             _ => continue,
-//         }
-//     }
-
-//     widgets
-// }

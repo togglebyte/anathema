@@ -1,10 +1,12 @@
 use anathema_state::StateId;
 use anathema_store::key;
-use anathema_store::slab::{Key, SecondaryMap};
+use anathema_store::slab::{Index, Key, SecondaryMap};
 
 use crate::runtime::components::ComponentId;
 use crate::runtime::elements::{ElementId, Elements};
+use crate::runtime::TemplateValue;
 
+// The value key for a scope entry
 #[derive(Debug, Copy, Clone)]
 pub(super) enum ScopeKey<'a> {
     Attributes,
@@ -12,9 +14,23 @@ pub(super) enum ScopeKey<'a> {
     Key(&'a str),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) struct ScopeId(ElementId);
+
+impl From<ElementId> for ScopeId {
+    fn from(value: ElementId) -> Self {
+        ScopeId(value)
+    }
+}
+
+impl From<ScopeId> for Index {
+    fn from(value: ScopeId) -> Self {
+        value.0.into()
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum Entry<'bp> {
-    // TODO: gross, this is supposed to be a component id
     State(ComponentId),
 
     Attributes(ElementId),
@@ -50,7 +66,7 @@ impl<'bp> ScopeNode<'bp> {
 
 #[derive(Debug)]
 pub(crate) struct Scope<'bp> {
-    scopes: SecondaryMap<ElementId, ScopeNode<'bp>>,
+    scopes: SecondaryMap<ScopeId, ScopeNode<'bp>>,
 }
 
 impl<'bp> Scope<'bp> {
@@ -60,7 +76,18 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub fn lookup(&self, key: ScopeKey<'_>, mut id: ElementId, elements: &Elements<'bp>) -> Option<Entry<'bp>> {
+    /// Find the closest scoped id from a given element id
+    pub fn nearest_scope_id(&self, id: ElementId, elements: &Elements<'_>) -> Option<ScopeId> {
+        let mut id = ScopeId(id);
+        loop {
+            match self.scopes.get(id) {
+                Some(node) => break Some(id),
+                None => id = ScopeId(elements[id.0].parent?),
+            }
+        }
+    }
+
+    pub fn lookup(&self, key: ScopeKey<'_>, mut id: ScopeId, elements: &Elements<'bp>) -> Option<Entry<'bp>> {
         // Try to get until we reach a scope boundary
 
         loop {
@@ -70,26 +97,32 @@ impl<'bp> Scope<'bp> {
                     match node.get(key).copied() {
                         val @ Some(_) => break val,
                         None if node.boundary => break None,
-                        None => id = elements[id].parent?,
+                        None => id = ScopeId(elements[id.0].parent?),
                     }
                 }
-                None => id = elements[id].parent?,
+                None => id = ScopeId(elements[id.0].parent?),
             }
         }
     }
 
-    pub(crate) fn push_component(&mut self, element: ElementId, component: ComponentId) {
-        match self.scopes.get_mut(element) {
+    pub(crate) fn push_component(&mut self, component_element: ElementId, component: ComponentId) {
+        let scope_id = ScopeId(component_element);
+
+        match self.scopes.get_mut(scope_id) {
             Some(node) => node
                 .entries
-                .extend_from_slice(&[Entry::State(component), Entry::Attributes(element)]),
+                .extend_from_slice(&[Entry::State(component), Entry::Attributes(component_element)]),
             None => self.scopes.insert(
-                element,
+                scope_id,
                 ScopeNode {
-                    entries: vec![Entry::State(component), Entry::Attributes(element)],
+                    entries: vec![Entry::State(component), Entry::Attributes(component_element)],
                     boundary: true,
                 },
             ),
         }
+    }
+
+    pub(crate) fn scope_iteration(&self, value: TemplateValue<'bp>, loop_coutner: u32) {
+        todo!()
     }
 }

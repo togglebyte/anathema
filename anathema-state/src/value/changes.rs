@@ -1,8 +1,6 @@
 use anathema_store::slab::Key;
 use anathema_store::stack::Stack;
 
-pub type Changes = Stack<(Key, Change)>;
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Change {
     /// A value was inserted into a list

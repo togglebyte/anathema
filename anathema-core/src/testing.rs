@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use anathema_geometry::{Pos, Size};
-use anathema_state::{State, StateId, States};
+use anathema_state::{State, StateId};
 
 use crate::attributes::{AttributeRegistry, Attributes};
 use crate::layout::Layout;
@@ -14,6 +14,7 @@ use crate::runtime::eval::{eval, EvalCtx};
 use crate::runtime::functions::FunctionTable;
 use crate::runtime::widgets::iter::Children;
 use crate::runtime::widgets::{RegisteredWidgets, Widget};
+use crate::runtime::ValueIndex;
 use crate::templates::expressions::Expressions;
 use crate::templates::{
     Blueprint, ComponentBlueprintId, Document, Expression, ExpressionId, SourceKind, Variables,
@@ -44,7 +45,6 @@ impl Default for NoDoc {
 #[derive(Debug, Default)]
 pub struct RunBuilder<T> {
     inner: T,
-    states: States,
     components: Components,
     functions: FunctionTable,
     variables: Variables,
@@ -76,7 +76,6 @@ impl RunBuilder<NoDoc> {
 
     pub(crate) fn finish(&mut self) -> Instance<'_, '_> {
         Instance::new(
-            &self.states,
             &mut self.components,
             &self.variables,
             &self.inner.expressions,
@@ -96,7 +95,6 @@ impl RunBuilder<(Document, Option<Blueprint>)> {
 
         Self {
             inner: (doc, None),
-            states: Default::default(),
             components: Default::default(),
             functions: Default::default(),
             variables,
@@ -110,7 +108,7 @@ impl RunBuilder<(Document, Option<Blueprint>)> {
         name: &str,
         template: impl Into<SourceKind>,
         comp: impl Component,
-        state: impl State,
+        state: impl State<ValueIndex>,
     ) -> ComponentId {
         let component_bp_id = self.inner.0.add_component(name, template.into()).unwrap();
         let comp_id = self.components.insert_component(component_bp_id, comp, state);
@@ -127,7 +125,6 @@ impl RunBuilder<(Document, Option<Blueprint>)> {
         self.inner.1 = Some(bp);
 
         Instance::new(
-            &self.states,
             &mut self.components,
             &self.variables,
             &self.inner.0.expressions,
@@ -157,7 +154,6 @@ pub struct Instance<'frame, 'bp> {
 
 impl<'frame, 'bp> Instance<'frame, 'bp> {
     fn new(
-        states: &'frame States,
         components: &'frame mut Components,
         variables: &'frame Variables,
         expressions: &'bp Expressions,
@@ -233,7 +229,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
 // -----------------------------------------------------------------------------
 
 struct ExpressionEvaluatorComponent<S>(std::marker::PhantomData<S>);
-impl<S: State> Component for ExpressionEvaluatorComponent<S> {
+impl<S: State<ValueIndex>> Component for ExpressionEvaluatorComponent<S> {
     type Message = ();
     type State = S;
 }
@@ -259,7 +255,7 @@ impl ExpressionEvaluator {
         self.variables.register_global(ident, value, &mut self.expressions);
     }
 
-    pub fn eval<S: State, F, FA>(&mut self, expr: Expression, state: S, with_attribs: FA, f: F)
+    pub fn eval<S: State<ValueIndex>, F, FA>(&mut self, expr: Expression, state: S, with_attribs: FA, f: F)
     where
         F: Fn(&TemplateValue<'_>),
         FA: Fn(&mut Attributes<'_>),
@@ -297,7 +293,7 @@ impl ExpressionEvaluator {
             &mut dirty_elements,
         );
 
-        let value = eval_by_id(expr_id, element, Some(parent), &mut ctx);
+        let value = eval_by_id(expr_id, element, Some(parent.into()), &mut ctx);
         f(&value);
     }
 }

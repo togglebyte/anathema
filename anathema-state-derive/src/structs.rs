@@ -39,7 +39,7 @@ pub fn generate(input: &DeriveInput, data: &DataStruct) -> proc_macro::TokenStre
 
 fn generate_unit(name: &Ident) -> proc_macro::TokenStream {
     quote::quote! {
-        impl ::anathema::state::State for #name {
+        impl ::anathema::state::State<::anathema::core::ValueIndex> for #name {
             fn type_info(&self) -> ::anathema::state::Type {
                 ::anathema::state::Type::Unit
             }

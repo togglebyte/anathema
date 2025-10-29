@@ -70,14 +70,12 @@ impl std::fmt::Debug for dyn Widget {
 }
 
 pub struct Node {
-    // TODO: do we need the id here?
-    id: ElementId,
     children: Vec<ElementId>,
 }
 
 impl Node {
-    pub fn new(id: ElementId, children: Vec<ElementId>) -> Self {
-        Self { id, children }
+    pub fn new(children: Vec<ElementId>) -> Self {
+        Self { children }
     }
 }
 

@@ -5,64 +5,60 @@ use std::rc::{Rc, Weak};
 
 use anathema_store::slab::Key;
 
-use crate::value::changes::{Change, Changes};
-use crate::value::Type;
+use crate::value::changes::Change;
+use crate::value::{SubKey, Type};
 use crate::State;
 
 type RcRefCell<T> = Rc<RefCell<T>>;
 
-thread_local! {
-    static CHANGES: RefCell<Changes> = RefCell::new(Default::default());
-}
+// thread_local! {
+//     static CHANGES: RefCell<Changes> = RefCell::new(Default::default());
+// }
 
-/// Drain the current changes into a local value.
-pub fn drain_changes(local_changes: &mut Changes) {
-    CHANGES.with_borrow_mut(|changes| changes.drain_into(local_changes));
-}
+// /// Drain the current changes into a local value.
+// pub fn drain_changes(local_changes: &mut Changes) {
+//     CHANGES.with_borrow_mut(|changes| changes.drain_into(local_changes));
+// }
 
-/// Clear all changes
-pub fn clear_all_changes() {
-    CHANGES.with_borrow_mut(|changes| changes.clear());
-}
+// /// Clear all changes
+// pub fn clear_all_changes() {
+//     CHANGES.with_borrow_mut(|changes| changes.clear());
+// }
 
-pub(crate) fn changed(key: Key, change: Change) {
-    CHANGES.with_borrow_mut(|changes| changes.push((key, change)));
-}
+// pub(crate) fn changed(key: (Key, Key), change: Change) {
+//     CHANGES.with_borrow_mut(|changes| changes.push((key, change)));
+// }
 
 /// Keys that are subscribing to changes of a given value
 #[derive(Debug, Default, PartialEq)]
-pub struct Subs(RcRefCell<Vec<Key>>);
+pub struct Subs<K>(RcRefCell<Vec<K>>);
 
-impl Clone for Subs {
+impl<K: Clone> Clone for Subs<K> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl Subs {
+impl<K: SubKey> Subs<K> {
     pub(crate) fn changed(&mut self, change: Change) {
-        self.0
-            .borrow_mut()
-            .iter()
-            .copied()
-            .for_each(|key| changed(key, change));
+        K::changed_many(change, self.0.borrow_mut().iter().copied());
     }
 
-    fn empty() -> Subs {
+    fn empty() -> Subs<K> {
         Self(Default::default())
     }
 
-    fn subscribe(&self, key: Key) {
+    fn subscribe(&self, key: K) {
         self.0.borrow_mut().push(key);
     }
 
-    fn unsubscribe(&self, key: Key) {
+    fn unsubscribe(&self, key: K) {
         self.0.borrow_mut().retain(|id| !key.eq(id));
     }
 
     fn with_keys<F>(&self, f: F)
     where
-        F: Fn(Key),
+        F: Fn(K),
     {
         self.0.borrow().iter().copied().for_each(f)
     }
@@ -76,17 +72,18 @@ impl Subs {
 /// *value.to_mut() += 1;
 /// ```
 #[derive(Debug)]
-pub struct Value<T> {
-    inner: RcRefCell<T>,
-    pub(crate) subs: Subs,
+pub struct Value<K, V> {
+    inner: RcRefCell<V>,
+    pub(crate) subs: Subs<K>,
 }
 
-impl<T> Value<T>
+impl<K, V> Value<K, V>
 where
-    T: State,
+    V: State<K>,
+    K: SubKey,
 {
     /// Create a new instance of a value
-    pub fn new(inner: T) -> Self {
+    pub fn new(inner: V) -> Self {
         Self {
             inner: Rc::new(RefCell::new(inner)),
             subs: Subs::empty(),
@@ -94,7 +91,7 @@ where
     }
 
     /// Get an anonymous value
-    pub fn reference(&self) -> AnonValue {
+    pub fn reference(&self) -> AnonValue<K> {
         let weak = Rc::downgrade(&self.inner);
         AnonValue {
             inner: self.inner.clone(), //weak,
@@ -103,13 +100,13 @@ where
     }
 
     /// Replace the underlying value
-    pub fn set(&mut self, new_value: T) {
+    pub fn set(&mut self, new_value: V) {
         _ = self.inner.replace(new_value);
         self.subs.changed(Change::Changed);
     }
 
     /// Mutable access to the underlying value.
-    pub fn to_mut(&mut self) -> ValueMut<'_, T> {
+    pub fn to_mut(&mut self) -> ValueMut<'_, K, V> {
         ValueMut {
             val: self.inner.borrow_mut(),
             subs: self.subs.clone(),
@@ -117,13 +114,13 @@ where
     }
 
     /// Immutable access to the underlying value.
-    pub fn to_ref(&self) -> ValueRef<'_, T> {
+    pub fn to_ref(&self) -> ValueRef<'_, V> {
         ValueRef {
             val: self.inner.borrow(),
         }
     }
 
-    pub(crate) fn untracked_mut(&mut self) -> (&mut Subs, UntrackedMut<'_, T>) {
+    pub(crate) fn untracked_mut(&mut self) -> (&mut Subs<K>, UntrackedMut<'_, V>) {
         (&mut self.subs, UntrackedMut(self.inner.borrow_mut()))
     }
 
@@ -150,26 +147,26 @@ impl<T> Deref for ValueRef<'_, T> {
 //   - Value mut -
 // -----------------------------------------------------------------------------
 /// A mutable reference to a value that registers changes whenever the value is dereferenced
-pub struct ValueMut<'a, T> {
-    val: RefMut<'a, T>,
-    subs: Subs,
+pub struct ValueMut<'a, K, V> {
+    val: RefMut<'a, V>,
+    subs: Subs<K>,
 }
 
-impl<'a, T> ValueMut<'a, T> {
-    pub fn sub(&mut self, sub: Key) {
+impl<'a, K: SubKey, V> ValueMut<'a, K, V> {
+    pub fn sub(&mut self, sub: K) {
         self.subs.subscribe(sub);
     }
 }
 
-impl<T> Deref for ValueMut<'_, T> {
-    type Target = T;
+impl<K, V> Deref for ValueMut<'_, K, V> {
+    type Target = V;
 
     fn deref(&self) -> &Self::Target {
         &*self.val
     }
 }
 
-impl<T> DerefMut for ValueMut<'_, T> {
+impl<K: SubKey, V> DerefMut for ValueMut<'_, K, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.subs.changed(Change::Changed);
         &mut *self.val
@@ -179,10 +176,10 @@ impl<T> DerefMut for ValueMut<'_, T> {
 // -----------------------------------------------------------------------------
 //   - Untracked mut -
 // -----------------------------------------------------------------------------
-pub(crate) struct UntrackedMut<'a, T>(RefMut<'a, T>);
+pub(crate) struct UntrackedMut<'a, V>(RefMut<'a, V>);
 
-impl<T> Deref for UntrackedMut<'_, T> {
-    type Target = T;
+impl<V> Deref for UntrackedMut<'_, V> {
+    type Target = V;
 
     fn deref(&self) -> &Self::Target {
         &*self.0
@@ -216,27 +213,27 @@ impl<T> DerefMut for UntrackedMut<'_, T> {
 /// assert_eq!(*v1.value::<u32>().unwrap(), 123);
 /// ```
 #[derive(Debug, Clone)]
-pub struct AnonValue {
-    inner: Rc<RefCell<dyn State>>,
-    subs: Subs,
+pub struct AnonValue<K: SubKey> {
+    inner: Rc<RefCell<dyn State<K>>>,
+    subs: Subs<K>,
 }
 
-impl PartialEq for AnonValue {
+impl<K: SubKey> PartialEq for AnonValue<K> {
     fn eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.inner, &other.inner) && self.subs == other.subs
     }
 }
 
-impl AnonValue {
-    pub fn subscribe(&self, key: impl Into<Key>) {
+impl<K: SubKey> AnonValue<K> {
+    pub fn subscribe(&self, key: impl Into<K>) {
         self.subs.subscribe(key.into());
     }
 
-    pub fn unsubscribe(&self, key: impl Into<Key>) {
+    pub fn unsubscribe(&self, key: impl Into<K>) {
         self.subs.unsubscribe(key.into());
     }
 
-    pub fn as_state(&self) -> Ref<'_, dyn State> {
+    pub fn as_state(&self) -> Ref<'_, dyn State<K>> {
         self.inner.borrow()
     }
 

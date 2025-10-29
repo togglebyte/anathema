@@ -14,5 +14,5 @@ pub mod prelude {
 }
 
 pub mod component {
-    pub use crate::state::{Color, List, Map, Maybe, Nullable, State, Value};
+    pub use crate::state::{Color, List, Map, Maybe, State, Value};
 }

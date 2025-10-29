@@ -5,31 +5,35 @@ use std::collections::VecDeque;
 use std::ops::DerefMut;
 
 use super::{AnonValue, Value};
-use crate::{states::{AnyList, State}, value::{changes::Change, rcval::{changed, Subs}, Type, ValueMut}, ValueRef};
+use crate::states::{AnyList, State};
+use crate::value::changes::Change;
+use crate::value::rcval::Subs;
+use crate::value::{SubKey, Type, ValueMut};
+use crate::ValueRef;
 
 #[derive(Debug)]
-pub struct List<T> {
-    inner: VecDeque<Value<T>>,
+pub struct List<K, V> {
+    inner: VecDeque<Value<K, V>>,
 }
 
-impl<T: State> List<T> {
+impl<K: SubKey, V: State<K>> List<K, V> {
     pub const fn empty() -> Self {
         Self { inner: VecDeque::new() }
     }
 
-    pub fn get(&self, index: usize) -> Option<&Value<T>> {
+    pub fn get(&self, index: usize) -> Option<&Value<K, V>> {
         self.inner.get(index)
     }
 
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut Value<T>> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Value<K, V>> {
         self.inner.get_mut(index)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Value<T>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Value<K, V>> {
         self.inner.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Value<T>> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Value<K, V>> {
         self.inner.iter_mut()
     }
 
@@ -42,7 +46,7 @@ impl<T: State> List<T> {
     }
 }
 
-impl<T: State> Default for List<T> {
+impl<K: SubKey, V: State<K>> Default for List<K, V> {
     fn default() -> Self {
         Self { inner: VecDeque::new() }
     }
@@ -54,18 +58,18 @@ impl<T: State> Default for List<T> {
 /// let mut list: Value<List<u32>> = List::empty().into();
 /// list.push(123);
 /// ```
-impl<T: State> Value<List<T>> {
+impl<K: SubKey, V: State<K>> Value<K, List<K, V>> {
     // This does not trigger a change but still gives mutable access
     // to the underlying list.
     fn with_mut<F, U>(&mut self, f: F) -> U
     where
-        F: FnOnce(&mut Subs, &mut List<T>) -> U,
+        F: FnOnce(&mut Subs<K>, &mut List<K, V>) -> U,
     {
         let (subs, mut inner) = self.untracked_mut();
 
-        let list: &mut dyn State = inner.deref_mut();
+        let list: &mut dyn State<K> = inner.deref_mut();
         let list: &mut dyn std::any::Any = list;
-        let list: &mut List<T> = list.downcast_mut().expect("the type should never change");
+        let list: &mut List<K, V> = list.downcast_mut().expect("the type should never change");
 
         let ret_val = f(subs, list);
 
@@ -86,7 +90,7 @@ impl<T: State> Value<List<T>> {
     /// Retain all values that matches the predicate
     pub fn retain<F>(&mut self, mut f: F)
     where
-        F: FnMut(&Value<T>) -> bool,
+        F: FnMut(&Value<K, V>) -> bool,
     {
         let mut index = 0;
         self.with_mut(|subs, list| {
@@ -104,9 +108,9 @@ impl<T: State> Value<List<T>> {
     /// Return all values matching the predicate.
     ///
     /// Note that unlike `Vec::extract_if`, this will allocate a vector for the result
-    pub fn extract_if<F>(&mut self, mut f: F) -> Vec<Value<T>>
+    pub fn extract_if<F>(&mut self, mut f: F) -> Vec<Value<K, V>>
     where
-        F: FnMut(&Value<T>) -> bool,
+        F: FnMut(&Value<K, V>) -> bool,
     {
         self.with_mut(|subs, List { inner: list, .. }| {
             let mut extraction = vec![];
@@ -128,12 +132,12 @@ impl<T: State> Value<List<T>> {
     }
 
     /// Push a value to the list
-    pub fn push(&mut self, value: T) {
+    pub fn push(&mut self, value: V) {
         self.push_back(value)
     }
 
     /// Push a value to the back of the list
-    pub fn push_back(&mut self, value: T) {
+    pub fn push_back(&mut self, value: V) {
         let value = Value::new(value);
 
         let index = self.with_mut(|_, list| {
@@ -146,7 +150,7 @@ impl<T: State> Value<List<T>> {
     }
 
     /// Push a value to the front of the list
-    pub fn push_front(&mut self, value: impl Into<Value<T>>) {
+    pub fn push_front(&mut self, value: impl Into<Value<K, V>>) {
         let value = value.into();
         self.with_mut(|_, list| list.inner.push_front(value));
         self.changed(Change::Inserted(0));
@@ -157,7 +161,7 @@ impl<T: State> Value<List<T>> {
     /// # Panics
     ///
     /// Will panic if the index is out of bounds
-    pub fn insert(&mut self, index: usize, value: impl Into<Value<T>>) {
+    pub fn insert(&mut self, index: usize, value: impl Into<Value<K, V>>) {
         let value = value.into();
         self.with_mut(|_, list| list.inner.insert(index, value));
         self.changed(Change::Inserted(index as u32));
@@ -165,14 +169,14 @@ impl<T: State> Value<List<T>> {
 
     /// Remove a value from the list.
     /// If the value isn't in the list `None` is returned.
-    pub fn remove(&mut self, index: usize) -> Option<Value<T>> {
+    pub fn remove(&mut self, index: usize) -> Option<Value<K, V>> {
         let value = self.with_mut(|_, list| list.inner.remove(index));
         self.changed(Change::Removed(index as u32));
         value
     }
 
     /// Pop a value from the front of the list
-    pub fn pop_front(&mut self) -> Option<Value<T>> {
+    pub fn pop_front(&mut self) -> Option<Value<K, V>> {
         let value = self.with_mut(|_, list| list.inner.pop_front());
         if value.is_some() {
             self.changed(Change::Removed(0));
@@ -181,7 +185,7 @@ impl<T: State> Value<List<T>> {
     }
 
     /// Pop a value from the back of the list
-    pub fn pop_back(&mut self) -> Option<Value<T>> {
+    pub fn pop_back(&mut self) -> Option<Value<K, V>> {
         let value = self.with_mut(|_, list| list.inner.pop_back());
         if value.is_some() {
             let index = self.len();
@@ -191,7 +195,7 @@ impl<T: State> Value<List<T>> {
     }
 
     /// Alias for `pop_back`
-    pub fn pop(&mut self) -> Option<Value<T>> {
+    pub fn pop(&mut self) -> Option<Value<K, V>> {
         self.pop_back()
     }
 
@@ -199,7 +203,7 @@ impl<T: State> Value<List<T>> {
     /// Each element will be marked as changed.
     pub fn for_each<F>(&mut self, mut f: F)
     where
-        F: FnMut(&mut T),
+        F: FnMut(&mut V),
     {
         self.with_mut(|_, list| {
             list.inner.iter_mut().for_each(|val| {
@@ -232,8 +236,8 @@ impl<T: State> Value<List<T>> {
     }
 }
 
-impl<T: State> AnyList for List<T> {
-    fn lookup(&self, index: usize) -> Option<AnonValue> {
+impl<K: SubKey, V: State<K>> AnyList<K> for List<K, V> {
+    fn lookup(&self, index: usize) -> Option<AnonValue<K>> {
         self.get(index).map(|val| val.reference())
     }
 
@@ -242,33 +246,35 @@ impl<T: State> AnyList for List<T> {
     }
 }
 
-impl<T: State> State for List<T> {
+impl<K: SubKey, V: State<K>> State<K> for List<K, V> {
     fn type_info(&self) -> Type {
         Type::List
     }
 
-    fn as_any_list(&self) -> Option<&dyn AnyList> {
+    fn as_any_list(&self) -> Option<&dyn AnyList<K>> {
         Some(self)
     }
 }
 
-impl<T> FromIterator<T> for Value<List<T>>
+impl<K, V> FromIterator<V> for Value<K, List<K, V>>
 where
-    T: State,
-    Value<T>: From<T>,
+    K: SubKey,
+    V: State<K>,
+    Value<K, V>: From<V>,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
         let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
         let list = List { inner };
         Value::new(list)
     }
 }
 
-impl<T> FromIterator<T> for List<T>
+impl<K, V> FromIterator<V> for List<K, V>
 where
-    T: State,
+    K: SubKey,
+    V: State<K>,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = V>>(iter: I) -> Self {
         let inner = iter.into_iter().map(Into::into).collect::<VecDeque<_>>();
         List { inner }
     }
@@ -279,9 +285,8 @@ mod test {
 
     use anathema_store::slab::Key;
 
-    use crate::value::changes::Changes;
-
     use super::*;
+    use crate::value::changes::Changes;
 
     fn changes() -> Vec<(Key, Change)> {
         let mut changes = Changes::empty();

@@ -1,14 +1,13 @@
 use std::cell::RefCell;
 
-use anathema_state::States;
 use anathema_store::remotecell::RemoteHandle;
 
 use self::scope::Scope;
 use super::error::Result;
 use crate::attributes::{AttributeRegistry, Attributes, ValueKey};
-use crate::runtime::components::{Components};
+use crate::runtime::components::Components;
 use crate::runtime::elements::{Element, ElementId, Elements};
-use crate::runtime::eval::expression::{eval_by_id, RuntimeExpression, RuntimeExpressions};
+use crate::runtime::eval::expression::{eval_by_id, eval_collection, RuntimeExpression, RuntimeExpressions};
 use crate::runtime::eval::values::TemplateValue;
 use crate::runtime::functions::{Function, FunctionTable};
 use crate::runtime::widgets::RegisteredWidgets;
@@ -58,14 +57,14 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
         }
     }
 
-    fn with_expression<F>(&mut self, id: ExpressionId, mut f: F)
-    where
-        F: FnMut(&mut Self, &RuntimeExpression<'bp>, &mut RemoteHandle<TemplateValue<'bp>>),
-    {
-        let Some((expr, mut handle)) = self.runtime_expressions.remove(id) else { return };
-        f(self, &expr, &mut handle);
-        self.runtime_expressions.return_entry(id, expr, handle);
-    }
+    // fn with_expression<F>(&mut self, id: ExpressionId, mut f: F)
+    // where
+    //     F: FnMut(&mut Self, &RuntimeExpression<'bp>, &mut RemoteHandle<TemplateValue<'bp>>),
+    // {
+    //     let Some((expr, mut handle)) = self.runtime_expressions.remove(id) else { return };
+    //     f(self, &expr, &mut handle);
+    //     self.runtime_expressions.return_entry(id, expr, handle);
+    // }
 
     fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
         self.elements.insert(element, parent)
@@ -133,12 +132,12 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty();
 
         for (key, expr) in input.attributes.iter() {
-            let value = eval_by_id(*expr, element_id, parent, ctx);
+            let value = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
             attributes.set_attribute(ValueKey::Attribute(key), value);
         }
 
         if let Some(expr) = &input.value {
-            let val = eval_by_id(*expr, element_id, parent, ctx);
+            let val = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
             attributes.set_attribute(ValueKey::Value, val);
         }
 
@@ -172,18 +171,24 @@ impl Evaluator for ForEval {
         factory: &RegisteredWidgets,
         parent: Option<ElementId>,
     ) -> Result<()> {
-        // Resolve collection
-        // resolve(forloop.data);
-        let collection = [1];
+        let element_id = ctx.reserve_element_id();
+
+        let collection = eval_collection(input.data, element_id, parent.map(Into::into), ctx);
 
         let el = Element::For {
             binding: &input.binding,
+            collection: collection.clone(),
         };
 
         let parent = ctx.insert_element(el, parent);
+        assert_eq!(parent, element_id);
 
-        for val in collection {
-            // scope.scope(forloop.binding, val);
+        for (loop_counter, val) in collection.iter().enumerate() {
+            let loop_counter = loop_counter as u32;
+            let iteration = Element::Iteration { loop_counter };
+            let parent = ctx.insert_element(iteration, Some(parent));
+            ctx.scope.scope_iteration(val, loop_counter);
+
             for child in &input.body {
                 eval(child, ctx, factory, Some(parent));
             }
@@ -211,7 +216,7 @@ impl Evaluator for ComponentEval {
         let mut attributes = Attributes::empty();
 
         for (key, expr) in input.attributes.iter() {
-            let rte = eval_by_id(*expr, element_id, parent, ctx);
+            let rte = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
         }
 
         let el = Element::Component(comp_id);
@@ -234,7 +239,7 @@ impl Evaluator for ComponentEval {
 #[cfg(test)]
 mod test {
     use anathema::State;
-    use anathema_state::Value;
+    use crate::state::Value;
 
     use super::*;
     use crate::attributes::AttributeRegistry;
@@ -243,7 +248,7 @@ mod test {
 
     #[derive(Debug, State)]
     struct TestState {
-        value: Value<u32>,
+        value: Value<u8>,
     }
 
     struct Comp;
@@ -277,7 +282,6 @@ mod test {
                 let state = &mut *state.to_mut();
                 let state = state.as_mut() as &mut dyn std::any::Any;
                 let test_state = state.downcast_mut::<TestState>().unwrap();
-
                 test_state.value.set(321);
             }
 
@@ -295,19 +299,19 @@ mod test {
             // * Look at dirty widgets
             // * Update the values using the remote handle
 
-            // panic!("this is some bs: {:#?}", ctx.attributes)
+            // panic!("{:#?}", ctx.attributes)
         });
     }
 
     #[test]
     fn forloop() {
         let tpl = "
-            for x in y
+            for x in [1, 2, 3]
                 node x
         ";
 
         let mut test = RunBuilder::from_src(tpl);
         let mut inst = test.finish();
-        // inst.eval(|ctx| panic!("{:#?}", ctx.elements));
+        inst.eval(|ctx| panic!("{:#?}", ctx.elements));
     }
 }

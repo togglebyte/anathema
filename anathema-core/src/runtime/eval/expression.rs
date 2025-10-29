@@ -1,37 +1,65 @@
 use std::collections::HashMap;
 
-use anathema_state::{AnonValue, Color, Hex, Type};
+use anathema_state::{Color, Hex, Type};
 use anathema_store::key;
 use anathema_store::remotecell::{RemoteCell, RemoteHandle};
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 use crate::runtime::elements::ElementId;
 use crate::runtime::eval::assoc::Associations;
-use crate::runtime::eval::scope::{Entry, ScopeKey};
-use crate::runtime::eval::values::TemplateValue;
+use crate::runtime::eval::scope::{Entry, ScopeId, ScopeKey};
+use crate::runtime::eval::values::{Collection, TemplateValue};
 use crate::runtime::eval::EvalCtx;
 use crate::runtime::functions::Function;
+use crate::runtime::ValueIndex;
+use crate::state::AnonValue;
 use crate::templates::expressions::{Equality, LogicalOp, Op};
 use crate::templates::{Expression, ExpressionId, Primitive};
 
 #[derive(Debug)]
 struct ExprEntry<'bp> {
-    expr: RuntimeExpression<'bp>,
+    exprs: Vec<(Option<ScopeId>, RuntimeExpression<'bp>)>,
     handle: RemoteHandle<TemplateValue<'bp>>,
 }
 
 impl<'bp> ExprEntry<'bp> {
-    fn new(expr: RuntimeExpression<'bp>, handle: RemoteHandle<TemplateValue<'bp>>) -> Self {
-        Self { expr, handle }
+    fn new(scope: Option<ScopeId>, expr: RuntimeExpression<'bp>, handle: RemoteHandle<TemplateValue<'bp>>) -> Self {
+        Self {
+            exprs: vec![(scope, expr)],
+            handle,
+        }
     }
 
     fn value(&self) -> RemoteCell<TemplateValue<'bp>> {
         self.handle.value()
     }
+
+    fn get_scoped(
+        &self,
+        scope_id: Option<ScopeId>,
+    ) -> Option<(&RemoteHandle<TemplateValue<'bp>>, &RuntimeExpression<'bp>)> {
+        let expr = self.exprs.iter().find(|e| e.0 == scope_id).map(|e| &e.1)?;
+        Some((&self.handle, expr))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+struct RTKey {
+    expression: ExpressionId,
+    scope: Option<ElementId>,
 }
 
 #[derive(Debug)]
 pub(crate) struct RuntimeExpressions<'bp> {
+    // The element id here is howe we can scope different values with the same expression id,
+    // for instance in a for-loop:
+    // ```
+    // for x in [1, 2, 3]
+    //     text x // <- here x has the same expression id for every iteration
+    //            //    even though the value should be different. So by scoping
+    //            //    the value with the `Iteration`s ElementId it becomes unique
+    //            //    per itration.
+    // ```
     inner: SecondaryMap<ExpressionId, ExprEntry<'bp>>,
     associations: Associations,
 }
@@ -44,40 +72,34 @@ impl<'bp> RuntimeExpressions<'bp> {
         }
     }
 
-    pub fn remove(
-        &mut self,
-        expression_id: ExpressionId,
-    ) -> Option<(RuntimeExpression<'bp>, RemoteHandle<TemplateValue<'bp>>)> {
-        let val = self.inner.remove(expression_id);
-        Some((val.expr, val.handle))
+    fn get_entry(&self, index: ValueIndex) -> Option<(&RemoteHandle<TemplateValue<'bp>>, &RuntimeExpression<'bp>)> {
+        let (expression_id, scope_id) = index.consume();
+        let entry = self.inner.get(expression_id)?;
+        entry.get_scoped(scope_id)
     }
 
-    pub fn return_entry(
-        &mut self,
-        expression_id: ExpressionId,
-        expr: RuntimeExpression<'bp>,
-        handle: RemoteHandle<TemplateValue<'bp>>,
-    ) {
-        let entry = ExprEntry { expr, handle };
-        self.inner.insert(expression_id, entry);
-    }
-
-    fn get_value(&self, id: ExpressionId) -> Option<RemoteCell<TemplateValue<'bp>>> {
+    fn get_value(&self, id: ExpressionId, scope: Option<ScopeId>) -> Option<RemoteCell<TemplateValue<'bp>>> {
         self.inner.get(id).map(|e| e.handle.value())
     }
 
     fn insert(
         &mut self,
         id: ExpressionId,
+        // Made from the parent elements `ElementId`.
+        // There is no guarantee that this element is an actual scope,
+        // but it's used to find the nearest scope.
+        scope: Option<ScopeId>,
         expr: RuntimeExpression<'bp>,
         value: TemplateValue<'bp>,
     ) -> RemoteCell<TemplateValue<'bp>> {
         let (value, handle) = RemoteCell::new(value);
-        let entry = ExprEntry::new(expr, handle);
+        let entry = ExprEntry::new(scope, expr, handle);
         self.inner.insert(id, entry);
         value
     }
 
+    // The element will be placed in `dirty_widgets` when the value expression
+    // is re-evaluated
     fn associate(&mut self, id: ExpressionId, element: ElementId) {
         self.associations.associate(id, element);
     }
@@ -86,7 +108,7 @@ impl<'bp> RuntimeExpressions<'bp> {
 #[derive(Debug, Clone)]
 enum Kind<T> {
     Static(T),
-    Dyn(AnonValue, Key),
+    Dyn(AnonValue, ValueIndex),
 }
 
 impl<T> Drop for Kind<T> {
@@ -105,11 +127,11 @@ pub(crate) enum RuntimeExpression<'bp> {
     Int(Kind<i64>),
     Float(Kind<f64>),
     Hex(Kind<Hex>),
-    Color(AnonValue, Key),
+    Color(AnonValue, ValueIndex),
     Str(Kind<&'bp str>),
-    DynMap(AnonValue, Key),
-    DynList(AnonValue, Key),
-    Composite(AnonValue, Key),
+    DynMap(AnonValue, ValueIndex),
+    DynList(AnonValue, ValueIndex),
+    Composite(AnonValue, ValueIndex),
     List(Box<[Self]>),
     Map(HashMap<&'bp str, Self>),
     Index(Box<Self>, Box<Self>),
@@ -156,23 +178,9 @@ impl RuntimeExpression<'_> {
             _ => None,
         }
     }
-}
 
-impl<'bp> From<Primitive> for RuntimeExpression<'bp> {
-    fn from(value: Primitive) -> Self {
-        match value {
-            Primitive::Bool(val) => RuntimeExpression::Bool(Kind::Static(val)),
-            Primitive::Char(val) => RuntimeExpression::Char(Kind::Static(val)),
-            Primitive::Int(val) => RuntimeExpression::Int(Kind::Static(val)),
-            Primitive::Float(val) => RuntimeExpression::Float(Kind::Static(val)),
-            Primitive::Hex(val) => RuntimeExpression::Hex(Kind::Static(val)),
-        }
-    }
-}
-
-impl<'bp> From<(AnonValue, ExpressionId)> for RuntimeExpression<'bp> {
-    fn from((value, expr): (AnonValue, ExpressionId)) -> Self {
-        let key = expr.into();
+    fn from_anon(value: AnonValue, key: impl Into<ValueIndex>) -> Self {
+        let key = key.into();
         match value.type_info() {
             Type::Int => Self::Int(Kind::Dyn(value, key)),
             Type::Float => Self::Float(Kind::Dyn(value, key)),
@@ -190,11 +198,33 @@ impl<'bp> From<(AnonValue, ExpressionId)> for RuntimeExpression<'bp> {
     }
 }
 
-pub fn re_evalute_expr<'bp>(id: ExpressionId, ctx: &mut EvalCtx<'_, 'bp>) {
-    ctx.with_expression(id, |ctx, expr, handle| {
-        let value = eval_runtime_expr(expr, id, ctx);
-        handle.set(value);
-    })
+impl<'bp> From<Primitive> for RuntimeExpression<'bp> {
+    fn from(value: Primitive) -> Self {
+        match value {
+            Primitive::Bool(val) => RuntimeExpression::Bool(Kind::Static(val)),
+            Primitive::Char(val) => RuntimeExpression::Char(Kind::Static(val)),
+            Primitive::Int(val) => RuntimeExpression::Int(Kind::Static(val)),
+            Primitive::Float(val) => RuntimeExpression::Float(Kind::Static(val)),
+            Primitive::Hex(val) => RuntimeExpression::Hex(Kind::Static(val)),
+        }
+    }
+}
+
+pub fn re_evalute_expr<'bp>(idx: ValueIndex, ctx: &EvalCtx<'_, 'bp>) {
+    let Some((handle, expr)) = ctx.runtime_expressions.get_entry(idx) else { return };
+    let (id, _) = idx.consume();
+    let value = eval_runtime_expr(expr, id, ctx);
+    handle.set(value);
+}
+
+pub fn eval_collection<'bp>(
+    id: ExpressionId,
+    element: ElementId,
+    scope: Option<ScopeId>,
+    ctx: &mut EvalCtx<'_, 'bp>,
+) -> Collection<'bp> {
+    let inner = eval_by_id(id, element, scope, ctx);
+    Collection::new(inner)
 }
 
 pub fn eval_by_id<'bp>(
@@ -202,29 +232,30 @@ pub fn eval_by_id<'bp>(
     element: ElementId,
     // the parent is needed for scope lookup
     // as the `element` might not be added to the tree yet at this point.
-    parent: Option<ElementId>,
+    scope: Option<ScopeId>,
     ctx: &mut EvalCtx<'_, 'bp>,
 ) -> RemoteCell<TemplateValue<'bp>> {
     // If the expression already exist: associate the element with the expression
     // and return a remote cell to the already existing value.
     //
     // This is to ensure that there is only one value per expression
-    if let Some(value) = ctx.runtime_expressions.get_value(id) {
+    if let Some(value) = ctx.runtime_expressions.get_value(id, scope) {
         ctx.runtime_expressions.associate(id, element);
         return value;
     }
 
     let expr = ctx.expressions.get(id);
-    let expr = eval_expr(expr, id, parent, ctx);
+    let expr = eval_expr(expr, id, scope, ctx);
     let value = eval_runtime_expr(&expr, id, ctx);
     ctx.runtime_expressions.associate(id, element);
-    ctx.runtime_expressions.insert(id, expr, value)
+    ctx.runtime_expressions.insert(id, scope, expr, value)
 }
 
 fn eval_expr<'bp>(
     expr: &'bp Expression,
     expr_id: ExpressionId,
-    parent: Option<ElementId>,
+    // The parent element, converted to a `ScopeId`
+    scope: Option<ScopeId>,
     ctx: &mut EvalCtx<'_, 'bp>,
 ) -> RuntimeExpression<'bp> {
     match expr {
@@ -234,50 +265,50 @@ fn eval_expr<'bp>(
             .load(var_id)
             .map(|expr_id| {
                 let expr = ctx.expressions.get(expr_id);
-                eval_expr(expr, expr_id, parent, ctx)
+                eval_expr(expr, expr_id, scope, ctx)
             })
             .unwrap_or(RuntimeExpression::Null),
         Expression::Str(s) => RuntimeExpression::Str(Kind::Static(s)),
         Expression::List(expressions) | Expression::TextSegments(expressions) => {
-            let list = expressions.iter().map(|e| eval_expr(e, expr_id, parent, ctx)).collect();
+            let list = expressions.iter().map(|e| eval_expr(e, expr_id, scope, ctx)).collect();
             RuntimeExpression::List(list)
         }
         Expression::Map(map) => RuntimeExpression::Map(
             map.iter()
-                .map(|(k, e)| (k.as_str(), eval_expr(e, expr_id, parent, ctx)))
+                .map(|(k, e)| (k.as_str(), eval_expr(e, expr_id, scope, ctx)))
                 .collect(),
         ),
-        Expression::Not(expression) => RuntimeExpression::Not(Box::new(eval_expr(expression, expr_id, parent, ctx))),
+        Expression::Not(expression) => RuntimeExpression::Not(Box::new(eval_expr(expression, expr_id, scope, ctx))),
         Expression::Negative(expression) => {
-            RuntimeExpression::Negative(Box::new(eval_expr(expression, expr_id, parent, ctx)))
+            RuntimeExpression::Negative(Box::new(eval_expr(expression, expr_id, scope, ctx)))
         }
         Expression::Equality(lhs, rhs, eq) => RuntimeExpression::Equality(
-            eval_expr(lhs, expr_id, parent, ctx).into(),
-            eval_expr(rhs, expr_id, parent, ctx).into(),
+            eval_expr(lhs, expr_id, scope, ctx).into(),
+            eval_expr(rhs, expr_id, scope, ctx).into(),
             *eq,
         ),
         Expression::LogicalOp(lhs, rhs, op) => RuntimeExpression::LogicalOp(
-            eval_expr(lhs, expr_id, parent, ctx).into(),
-            eval_expr(rhs, expr_id, parent, ctx).into(),
+            eval_expr(lhs, expr_id, scope, ctx).into(),
+            eval_expr(rhs, expr_id, scope, ctx).into(),
             *op,
         ),
-        Expression::Ident(ident) => lookup(ident, expr_id, parent, ctx),
+        Expression::Ident(ident) => lookup(ident, expr_id, scope, ctx),
         Expression::Index(src, index) => RuntimeExpression::Index(
-            eval_expr(src, expr_id, parent, ctx).into(),
-            eval_expr(index, expr_id, parent, ctx).into(),
+            eval_expr(src, expr_id, scope, ctx).into(),
+            eval_expr(index, expr_id, scope, ctx).into(),
         ),
         Expression::Op(lhs, rhs, op) => RuntimeExpression::Op(
-            eval_expr(lhs, expr_id, parent, ctx).into(),
-            eval_expr(rhs, expr_id, parent, ctx).into(),
+            eval_expr(lhs, expr_id, scope, ctx).into(),
+            eval_expr(rhs, expr_id, scope, ctx).into(),
             *op,
         ),
         Expression::Either(first, second) => RuntimeExpression::Either(
-            eval_expr(first, expr_id, parent, ctx).into(),
-            eval_expr(second, expr_id, parent, ctx).into(),
+            eval_expr(first, expr_id, scope, ctx).into(),
+            eval_expr(second, expr_id, scope, ctx).into(),
         ),
         Expression::Range { start, end, inclusive } => RuntimeExpression::Range {
-            start: eval_expr(start, expr_id, parent, ctx).into(),
-            end: eval_expr(end, expr_id, parent, ctx).into(),
+            start: eval_expr(start, expr_id, scope, ctx).into(),
+            end: eval_expr(end, expr_id, scope, ctx).into(),
             inclusive: *inclusive,
         },
         Expression::Call { fun, args } => {
@@ -287,7 +318,7 @@ fn eval_expr<'bp>(
                     Some(fun_ptr) => {
                         let args = args
                             .iter()
-                            .map(|arg| eval_expr(arg, expr_id, parent, ctx))
+                            .map(|arg| eval_expr(arg, expr_id, scope, ctx))
                             .collect::<Box<_>>();
                         RuntimeExpression::Call { fun_ptr, args }
                     }
@@ -295,12 +326,12 @@ fn eval_expr<'bp>(
                 },
                 // some.value.function(args)
                 Expression::Index(lhs, rhs) => {
-                    let first_arg = eval_expr(lhs, expr_id, parent, ctx);
+                    let first_arg = eval_expr(lhs, expr_id, scope, ctx);
                     let Expression::Str(fun) = &**rhs else { return RuntimeExpression::Null };
                     match ctx.lookup_function(fun) {
                         Some(fun_ptr) => {
                             let args = std::iter::once(first_arg)
-                                .chain(args.iter().map(|arg| eval_expr(arg, expr_id, parent, ctx)))
+                                .chain(args.iter().map(|arg| eval_expr(arg, expr_id, scope, ctx)))
                                 .collect::<Box<_>>();
                             RuntimeExpression::Call { fun_ptr, args }
                         }
@@ -317,7 +348,7 @@ fn eval_expr<'bp>(
 fn lookup<'bp>(
     ident: &str,
     expr_id: ExpressionId,
-    parent: Option<ElementId>,
+    scope: Option<ScopeId>,
     ctx: &mut EvalCtx<'_, 'bp>,
 ) -> RuntimeExpression<'bp> {
     let key = match ident {
@@ -326,20 +357,22 @@ fn lookup<'bp>(
         key => ScopeKey::Key(key),
     };
 
-    let Some(element) = parent else { return RuntimeExpression::Null };
+    let Some(scope) = scope else { return RuntimeExpression::Null };
 
-    match ctx.scope.lookup(key, element, ctx.elements) {
+    match ctx.scope.lookup(key, scope, ctx.elements) {
         Some(Entry::State(component_id)) => {
             let Some(state) = ctx.components.get_state(component_id) else { return RuntimeExpression::Null };
             let value = state.reference();
-            (value, expr_id).into()
+            // RuntimeExpression::from_anon(value, expr_id,
+            // (value, expr_id).into()
+            panic!()
         }
         Some(Entry::Attributes(component)) => RuntimeExpression::Attributes(component),
         Some(Entry::Value { value, .. }) => panic!("values needs to be scoped"),
         None => {
             let Some(id) = ctx.variables.global_lookup(ident) else { return RuntimeExpression::Null };
             let expr = ctx.expressions.get(id);
-            eval_expr(expr, expr_id, parent, ctx)
+            eval_expr(expr, expr_id, Some(scope), ctx)
         }
     }
 }
@@ -651,16 +684,18 @@ fn eval_index<'a, 'bp>(
             let state = map.as_state();
             let map = or_null!(state.as_any_map());
             let value = or_null!(index.with_str(|key| map.lookup(key)).flatten());
-            value.subscribe(expression_id);
-            anon_to_template_value(value).into()
+            panic!()
+            // value.subscribe(expression_id);
+            // anon_to_template_value(value).into()
         }
         RuntimeExpression::DynList(list, _) => {
             let state = list.as_state();
             let list = or_null!(state.as_any_list());
             let index = or_null!(index.as_usize());
             let value = or_null!(list.lookup(index));
-            value.subscribe(expression_id);
-            anon_to_template_value(value).into()
+            panic!()
+            // value.subscribe(expression_id);
+            // anon_to_template_value(value).into()
         }
         RuntimeExpression::Attributes(el) => {
             let attributes = or_null!(ctx.get_attributes(*el));
@@ -683,27 +718,27 @@ fn eval_index<'a, 'bp>(
                 LazyExpression::Value(TemplateValue::DynMap(map)) => {
                     let value = index.with_str(|key| map.as_state().as_any_map().expect("type checked").lookup(key));
                     let value = or_null!(value.flatten());
-                    value.subscribe(expression_id);
+                    panic!();
+                    // value.subscribe(expression_id);
                     anon_to_template_value(value).into()
                 }
                 LazyExpression::Value(TemplateValue::DynList(list)) => {
                     let index = or_null!(index.as_usize());
                     let value = list.as_state().as_any_list().expect("type checked").lookup(index);
                     let value = or_null!(value);
-                    value.subscribe(expression_id);
+                    // value.subscribe(expression_id);
+                    panic!();
                     anon_to_template_value(value).into()
                 }
                 LazyExpression::Value(_) => TemplateValue::Null.into(),
             }
         }
         RuntimeExpression::Range { start, end, inclusive } => todo!(),
-        RuntimeExpression::Either(first, second) => {
-            match eval_index(first, index, expression_id, ctx) {
-                LazyExpression::Expression(runtime_expression) => todo!(),
-                LazyExpression::Value(TemplateValue::Null) => eval_index(second, index, expression_id, ctx),
-                LazyExpression::Value(value) => value.into(),
-            }
-        }
+        RuntimeExpression::Either(first, second) => match eval_index(first, index, expression_id, ctx) {
+            LazyExpression::Expression(runtime_expression) => todo!(),
+            LazyExpression::Value(TemplateValue::Null) => eval_index(second, index, expression_id, ctx),
+            LazyExpression::Value(value) => value.into(),
+        },
         RuntimeExpression::Null => TemplateValue::Null.into(),
         _ => unreachable!("should this return null instead?"),
     }
@@ -991,7 +1026,7 @@ mod test {
 
     #[test]
     fn complex_either() {
-        use expressions::{either, ident, index, num, strlit, list};
+        use expressions::{either, ident, index, list, num, strlit};
         use values::num as val;
         let expr = index(
             either(
@@ -1000,8 +1035,7 @@ mod test {
                 // num
                 list([1, 2]),
             ),
-
-            num(0)
+            num(0),
         );
         assert_expr(expr, val(1));
     }
