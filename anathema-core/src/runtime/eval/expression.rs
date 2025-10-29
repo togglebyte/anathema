@@ -766,11 +766,12 @@ fn anon_to_template_value<'a>(value: AnonValue) -> TemplateValue<'a> {
 
 #[cfg(test)]
 mod test {
-    use anathema::state::{List, Map, State, Value};
+    use anathema::State;
 
     use super::*;
     use crate::attributes::Attributes;
     use crate::runtime::eval::values;
+    use crate::state::{List, Map, Value};
     use crate::templates::expressions;
     use crate::testing::{ExpressionEvaluator, RunBuilder, TestWidget};
 

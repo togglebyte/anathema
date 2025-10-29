@@ -29,6 +29,10 @@ pub mod state {
 
     /// Value alias
     pub type Value<T> = anathema_state::Value<ValueIndex, T>;
+    /// Map alias
+    pub type Map<T> = anathema_state::Map<ValueIndex, T>;
+    /// List alias
+    pub type List<T> = anathema_state::List<ValueIndex, T>;
 
     /// AnonValue alias
     pub type AnonValue = anathema_state::AnonValue<ValueIndex>;
