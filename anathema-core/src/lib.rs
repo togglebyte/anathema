@@ -2,6 +2,8 @@
 #![deny(missing_docs)]
 #[allow(unused_extern_crates)]
 extern crate self as anathema;
+#[allow(unused_imports)]
+pub use crate as core;
 
 pub mod attributes;
 pub mod frontend;
@@ -15,12 +17,17 @@ pub mod state {
     use std::cell::RefCell;
 
     use anathema_state::Change;
-    pub use anathema_state::{List, Map, State};
+    pub use anathema_state::State;
+    // pub use anathema_state::{List, Map, State};
     use anathema_store::stack::Stack;
 
     use crate::runtime::ValueIndex;
 
     pub(crate) type Changes = Stack<(ValueIndex, Change)>;
+    
+    pub(crate) fn drain_changes(changes: &mut Changes) {
+        panic!()
+    }
 
     // TODO: This has to be behind the cfg not(multithread)
     thread_local! {

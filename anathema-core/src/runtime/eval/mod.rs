@@ -238,7 +238,7 @@ impl Evaluator for ComponentEval {
 
 #[cfg(test)]
 mod test {
-    use anathema::State;
+    use anathema::state::State;
     use crate::state::Value;
 
     use super::*;
@@ -286,8 +286,8 @@ mod test {
             }
 
             // * Drain changes
-            let mut changes = anathema::Changes::empty();
-            anathema::drain_changes(&mut changes);
+            let mut changes = crate::state::Changes::empty();
+            crate::state::drain_changes(&mut changes);
 
             eprintln!("{changes:?}");
 

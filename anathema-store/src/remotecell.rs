@@ -1,5 +1,5 @@
 use std::cell::UnsafeCell;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::rc::Rc;
 
 /// A remote cell allows the value to be updated from another location.
@@ -13,7 +13,7 @@ use std::rc::Rc;
 /// This is not even remotely safe.
 /// The remote cell can **not ever** be used at the same time as the remote handle.
 ///
-/// NOTE: Since the remote cell is clonable it's not safe to ever implement any kind of 
+/// NOTE: Since the remote cell is clonable it's not safe to ever implement any kind of
 /// mutable access for the remote cell.
 pub struct RemoteCell<T> {
     value: Rc<UnsafeCell<T>>,
@@ -21,7 +21,9 @@ pub struct RemoteCell<T> {
 
 impl<T> Clone for RemoteCell<T> {
     fn clone(&self) -> Self {
-        Self { value: self.value.clone() }
+        Self {
+            value: self.value.clone(),
+        }
     }
 }
 
