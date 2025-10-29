@@ -766,7 +766,7 @@ fn anon_to_template_value<'a>(value: AnonValue) -> TemplateValue<'a> {
 
 #[cfg(test)]
 mod test {
-    use anathema::{List, Map, State, Value};
+    use anathema::state::{List, Map, State, Value};
 
     use super::*;
     use crate::attributes::Attributes;

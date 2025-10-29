@@ -1,5 +1,5 @@
 //! TODO: write docs
-use anathema::SubKey;
+use anathema_state::SubKey;
 pub use components::Component;
 pub use widgets::iter::Children;
 pub use widgets::{RegisteredWidgets, Widget};

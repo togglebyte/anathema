@@ -1,5 +1,5 @@
 //! Runtime user defined component registry
-use anathema::State;
+use anathema_state::State;
 use anathema_store::key;
 use anathema_store::slab::{GenSlab, SecondaryMap};
 

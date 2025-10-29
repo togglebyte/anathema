@@ -1,7 +1,7 @@
 //! TODO: write docs
 #![deny(missing_docs)]
 #[allow(unused_extern_crates)]
-extern crate anathema_state as anathema;
+extern crate self as anathema;
 
 pub mod attributes;
 pub mod frontend;
@@ -14,7 +14,8 @@ pub mod templates;
 pub mod state {
     use std::cell::RefCell;
 
-    use anathema::Change;
+    use anathema_state::Change;
+    pub use anathema_state::{List, Map, State};
     use anathema_store::stack::Stack;
 
     use crate::runtime::ValueIndex;
