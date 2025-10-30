@@ -5,6 +5,8 @@ extern crate self as anathema;
 #[allow(unused_imports)]
 pub use crate as core;
 
+pub use crate::runtime::ValueIndex;
+
 pub mod attributes;
 pub mod frontend;
 pub mod layout;
@@ -16,15 +18,14 @@ pub mod templates;
 pub mod state {
     use std::cell::RefCell;
 
-    use anathema_state::Change;
     pub use anathema_state::State;
+    pub use anathema_state::{Change, Type, TypeId};
     // pub use anathema_state::{List, Map, State};
     use anathema_store::stack::Stack;
-
-    use crate::runtime::ValueIndex;
+    use super::ValueIndex;
 
     pub(crate) type Changes = Stack<(ValueIndex, Change)>;
-    
+
     pub(crate) fn drain_changes(changes: &mut Changes) {
         panic!()
     }

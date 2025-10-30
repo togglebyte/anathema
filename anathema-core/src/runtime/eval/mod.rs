@@ -248,7 +248,7 @@ mod test {
 
     #[derive(Debug, State)]
     struct TestState {
-        value: Value<u8>,
+        // value: Value<u8>,
     }
 
     struct Comp;

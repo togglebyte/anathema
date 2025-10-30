@@ -4,7 +4,7 @@ use proc_macro2::Span;
 use syn::spanned::Spanned as _;
 use syn::{DataStruct, DeriveInput, Field, Fields, Ident};
 
-use crate::attributes::{Constraint, Spanned, parse_attrs};
+use crate::attributes::{parse_attrs, Constraint, Spanned};
 use crate::errors::{reduce_errors, report_missing_data};
 
 static FIELD_RENAME: &str = "rename";
@@ -61,7 +61,7 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
     });
 
     quote::quote! {
-        impl ::anathema::state::State for #name {
+        impl ::anathema::state::State<::anathema::core::ValueIndex> for #name {
             fn type_info(&self) -> ::anathema::state::Type {
                 ::anathema::state::Type::List
             }
@@ -75,7 +75,7 @@ fn generate_list(name: &Ident, len: usize) -> proc_macro::TokenStream {
             const TYPE: ::anathema::state::Type = ::anathema::state::Type::List;
         }
 
-        impl ::anathema::state::AnyList for #name {
+        impl ::anathema::state::AnyList<::anathema::core::ValueIndex> for #name {
             fn lookup(&self, index: usize) -> Option<::anathema::state::AnonValue<::anathema::core::ValueIndex>> {
                 match index {
                     #( #iter, )*
@@ -113,7 +113,7 @@ fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::Tok
         });
 
     quote::quote! {
-        impl ::anathema::state::State for #name {
+        impl ::anathema::state::State<::anathema::core::ValueIndex> for #name {
             fn type_info(&self) -> ::anathema::state::Type {
                 ::anathema::state::Type::Composite
             }
@@ -127,7 +127,7 @@ fn generate_composite(name: &Ident, fields: Vec<data::Field>) -> proc_macro::Tok
             const TYPE: ::anathema::state::Type = ::anathema::state::Type::Composite;
         }
 
-        impl ::anathema::state::AnyMap for #name {
+        impl ::anathema::state::AnyMap<::anathema::core::ValueIndex> for #name {
             fn lookup(&self, key: &str) -> Option<::anathema::state::AnonValue<::anathema::core::ValueIndex>> {
                 match key {
                     #(
@@ -277,7 +277,8 @@ fn collect_fields(
         let rename = match kvs.remove(FIELD_RENAME) {
             Some(parsed) => {
                 #[allow(clippy::let_and_return)] // clippy is totally wrong about this
-                let value @ Some(..) = parsed.value else {
+                let value @ Some(..) = parsed.value
+                else {
                     errors.push(report_missing_data(parsed.key));
                     continue;
                 };
