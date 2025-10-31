@@ -6,8 +6,7 @@ version.workspace = true
 [dependencies]
 anathema-store = { path = "../anathema-store", version = "0.2.12-beta" }
 anathema-geometry = { path = "../anathema-geometry", version = "0.2.12-beta" }
-anathema-state = { path = "../anathema-state", version = "0.2.12-beta" }
-nohash-hasher = "0.2.0"
+anathema-runtime = { path = "../anathema-runtime", version = "0.2.12-beta" }
 
 [lints]
 workspace = true

@@ -14,9 +14,10 @@ publish = true
 rust-version = "1.88"
 
 [dependencies]
+anathema-compiler = { workspace = true }
 anathema-core = { workspace = true }
 anathema-geometry = { workspace = true }
-anathema-state = { workspace = true }
+anathema-runtime = { workspace = true }
 anathema-state-derive = { workspace = true }
 anathema-store = { workspace = true }
 anathema-strings = { workspace = true }
@@ -25,8 +26,8 @@ anathema-widgets = { workspace = true }
 [features]
 default = []
 profile = []
-multithread = ["anathema-core/multithread", "anathema-state/multithread"]
-serde = ["anathema-state/serde", "anathema-store/serde"]
+multithread = ["anathema-core/multithread", "anathema-runtime/multithread"]
+serde = ["anathema-store/serde", "anathema-compiler/serde"]
 
 [lints]
 workspace = true
@@ -41,9 +42,11 @@ crossterm = "0.28.1"
 unicode-width = "0.1.11"
 flume = "0.11.0"
 notify = "6.1.1"
+nohash-hasher = "0.2.0"
+anathema-compiler = { path = "./anathema-compiler", version = "0.2.12-beta" }
 anathema-core = { path = "./anathema-core", version = "0.2.12-beta" }
 anathema-geometry = { path = "./anathema-geometry", version = "0.2.12-beta" }
-anathema-state = { path = "./anathema-state", version = "0.2.12-beta" }
+anathema-runtime = { path = "./anathema-runtime", version = "0.2.12-beta" }
 anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.12-beta" }
 anathema-store = { path = "./anathema-store", version = "0.2.12-beta" }
 anathema-strings = { path = "./anathema-strings", version = "0.2.12-beta" }
@@ -51,9 +54,10 @@ anathema-widgets = { path = "./anathema-widgets", version = "0.2.12-beta" }
 
 [workspace]
 members = [
+    "anathema-compiler", 
     "anathema-core", 
     "anathema-geometry", 
-    "anathema-state",
+    "anathema-runtime",
     "anathema-state-derive",
     "anathema-store",
     "anathema-strings", 

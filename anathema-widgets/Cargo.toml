@@ -4,7 +4,7 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-anathema-core = { path = "../anathema-core", version = "0.2.12-beta" }
+anathema-runtime = { path = "../anathema-runtime", version = "0.2.12-beta" }
 anathema-geometry = { path = "../anathema-geometry", version = "0.2.12-beta" }
 
 [lints]

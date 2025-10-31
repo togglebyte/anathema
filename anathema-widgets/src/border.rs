@@ -1,6 +1,5 @@
-use anathema_core::layout::Layout;
-use anathema_core::runtime::{Children, Widget};
 use anathema_geometry::{Pos, Size};
+use anathema_runtime::widgets::{Children, Layout, Widget};
 
 #[derive(Debug, Default)]
 pub struct Border;

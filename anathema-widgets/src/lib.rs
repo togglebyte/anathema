@@ -1,4 +1,4 @@
-use anathema_core::runtime::RegisteredWidgets;
+use anathema_runtime::widgets::RegisteredWidgets;
 pub use border::{border, Border};
 
 mod border;
