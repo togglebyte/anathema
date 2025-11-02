@@ -13,6 +13,7 @@ use crate::elements::{Element, ElementId, Elements};
 use crate::eval::expression::{eval_by_id, eval_collection, RuntimeExpression, RuntimeExpressions};
 use crate::eval::values::TemplateValue;
 use crate::functions::{Function, FunctionTable};
+use crate::value::Value;
 use crate::widgets::RegisteredWidgets;
 
 mod assoc;
@@ -57,15 +58,6 @@ impl<'frame, 'bp> EvalCtx<'frame, 'bp> {
             dirty_elements,
         }
     }
-
-    // fn with_expression<F>(&mut self, id: ExpressionId, mut f: F)
-    // where
-    //     F: FnMut(&mut Self, &RuntimeExpression<'bp>, &mut RemoteHandle<TemplateValue<'bp>>),
-    // {
-    //     let Some((expr, mut handle)) = self.runtime_expressions.remove(id) else { return };
-    //     f(self, &expr, &mut handle);
-    //     self.runtime_expressions.return_entry(id, expr, handle);
-    // }
 
     fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
         self.elements.insert(element, parent)
@@ -190,10 +182,16 @@ impl Evaluator for ForEval {
         assert_eq!(parent, element_id);
 
         for (loop_counter, val) in collection.iter().enumerate() {
-            let loop_counter = loop_counter as u32;
+            // Can we get the expression id for the collection
+            // and use that to build a RuntimeExpression::Index instead?
+            //
+            // Could even make the iter produce loop indices instead?
+            let loop_counter = Value::new(loop_counter as u32);
+            let loop_counter_ref = loop_counter.reference();
             let iteration = Element::Iteration { loop_counter };
             let parent = ctx.insert_element(iteration, Some(parent));
-            ctx.scope.scope_iteration(val, loop_counter);
+            ctx.scope
+                .scope_iteration(element_id, &input.binding, val, loop_counter_ref);
 
             for child in &input.body {
                 eval(child, ctx, factory, Some(parent));
@@ -248,13 +246,14 @@ mod test {
 
     use super::*;
     use crate::attributes::AttributeRegistry;
-    use crate::widgets::Layout;
-    use crate::value::Value;
     use crate::testing::{RunBuilder, TestWidget};
+    use crate::value::{List, Value};
+    use crate::widgets::Layout;
 
     #[derive(Debug, State)]
     struct TestState {
         value: Value<u16>,
+        list: Value<List<u16>>,
     }
 
     struct Comp;
@@ -275,7 +274,10 @@ mod test {
             node state.value
         ";
 
-        let state = TestState { value: 123.into() };
+        let state = TestState {
+            value: 123.into(),
+            list: List::from_iter(0..10).into(),
+        };
 
         let mut test = RunBuilder::from_src("@comp");
         let comp_id = test.add_component("comp", component_tpl, Comp, state);
@@ -312,11 +314,16 @@ mod test {
     #[test]
     fn forloop() {
         let tpl = "
-            for x in [1, 2, 3]
+            for x in state.list //[state.list, 2, 3]
                 node x
         ";
 
-        let mut test = RunBuilder::from_src(tpl);
+        let mut test = RunBuilder::from_src("@comp");
+        let state = TestState {
+            value: 123.into(),
+            list: List::from_iter(0..10).into(),
+        };
+        let comp_id = test.add_component("comp", tpl, Comp, state);
         let mut inst = test.finish();
         inst.eval(|ctx| panic!("{:#?}", ctx.elements));
     }

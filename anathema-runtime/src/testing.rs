@@ -26,7 +26,11 @@ pub(crate) fn mock_value_index() -> ValueIndex {
 
 fn test_widgets() -> RegisteredWidgets {
     let mut factory = RegisteredWidgets::empty();
-    factory.register_default::<TestWidget>("node");
+    factory.register("node", |attr| {
+        panic!("{attr:?}");
+        let s = attr.value_as::<u32>().unwrap();
+        TestWidget(s.to_string())
+    });
     factory
 }
 
@@ -310,7 +314,7 @@ fn test_widget(s: impl Into<String>) -> RefCell<Box<dyn Widget>> {
     RefCell::new(Box::new(TestWidget(s.into())))
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TestWidget(pub String);
 
 impl Widget for TestWidget {

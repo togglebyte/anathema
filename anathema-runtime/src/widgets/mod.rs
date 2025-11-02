@@ -39,6 +39,16 @@ impl RegisteredWidgets {
             .insert(ident.into(), Box::new(|_attr| Box::<T>::default()));
     }
 
+    /// Register a widget type as longas it implements default
+    pub fn register<F, T>(&mut self, ident: impl Into<Box<str>>, f: F)
+    where
+        T: Widget,
+        F: Fn(&Attributes<'_>) -> T,
+        F: 'static
+    {
+        self.registry.insert(ident.into(), Box::new(move |attr| Box::new(f(attr))));
+    }
+
     /// Create a widget from attributes
     pub fn make(&self, ident: &str, attributes: &Attributes<'_>) -> Result<Box<dyn Widget>, ()> {
         let Some(factory) = self.registry.get(ident) else { return Err(()) };

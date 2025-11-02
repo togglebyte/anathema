@@ -2,10 +2,12 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::Range;
 
+use anathema_compiler::expressions::ExpressionId;
 use anathema_compiler::{Color, Hex};
 use anathema_store::remotecell::RemoteCell;
 
 use crate::value::AnonValue;
+use crate::Type;
 
 /// A collection used by a for-loop
 #[derive(Debug, Clone)]
@@ -14,7 +16,7 @@ pub struct Collection<'bp> {
 }
 
 impl<'bp> Collection<'bp> {
-    pub fn new(inner: RemoteCell<TemplateValue<'bp>>) -> Self {
+    pub(super) fn new(inner: RemoteCell<TemplateValue<'bp>>) -> Self {
         Self { inner }
     }
 
@@ -38,9 +40,15 @@ impl<'a, 'bp> Iterator for CollectionIter<'a, 'bp> {
         let index = self.index;
 
         let value = match self.inner {
-            TemplateValue::DynList(list) => todo!(),
+            TemplateValue::DynList(list) => {
+                let state = list.as_state();
+                let list = state.as_any_list()?;
+                let value = list.lookup(index as usize)?;
+                value.into()
+            }
             TemplateValue::List(list) => list.get(index as usize).cloned()?,
             TemplateValue::Range { start, end, inclusive } => todo!(),
+            val => panic!("{val:?}"),
             _ => return None,
         };
 
@@ -194,6 +202,29 @@ impl TemplateValue<'_> {
 // -----------------------------------------------------------------------------
 //   - From -
 // -----------------------------------------------------------------------------
+impl From<AnonValue> for TemplateValue<'static> {
+    fn from(value: AnonValue) -> Self {
+        let state = value.as_state();
+        match value.type_info() {
+            Type::Int => state.as_int().expect("type checked").into(),
+            Type::Float => state.as_float().expect("type checked").into(),
+            Type::Char => state.as_char().expect("type checked").into(),
+            Type::String => state.as_str().expect("type checked").to_string().into(),
+            Type::Bool => state.as_bool().expect("type checked").into(),
+            Type::Hex => state.as_hex().expect("type checked").into(),
+            Type::Color => state.as_color().expect("type checked").into(),
+            Type::Map => TemplateValue::DynMap(value.clone()),
+            Type::List => TemplateValue::DynList(value.clone()),
+            Type::Composite => TemplateValue::Composite(value.clone()),
+            Type::Unit => TemplateValue::Null,
+            Type::Maybe => match state.as_maybe().expect("type checked").get() {
+                Some(value) => value.into(),
+                None => Self::Null,
+            },
+        }
+    }
+}
+
 macro_rules! impl_from {
     ($t:ty, $variant:ident) => {
         impl From<$t> for TemplateValue<'static> {

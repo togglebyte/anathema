@@ -8,6 +8,7 @@ use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 use crate::components::ComponentId;
 use crate::eval::values::Collection;
+use crate::value::Value;
 use crate::widgets::{Node as WidgetNode, Widget, Widgets};
 
 mod debug;
@@ -36,7 +37,7 @@ pub enum Element<'bp> {
         collection: Collection<'bp>,
     },
     Iteration {
-        loop_counter: u32,
+        loop_counter: Value<u32>,
     },
     Widget(RefCell<Box<dyn Widget>>),
     Component(ComponentId),

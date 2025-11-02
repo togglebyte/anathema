@@ -3,6 +3,7 @@ use anathema_store::slab::{Index, Key, SecondaryMap};
 use crate::components::ComponentId;
 use crate::elements::{ElementId, Elements};
 use crate::eval::values::TemplateValue;
+use crate::AnonValue;
 
 // The value key for a scope entry
 #[derive(Debug, Copy, Clone)]
@@ -27,12 +28,19 @@ impl From<ScopeId> for Index {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) enum Entry<'bp> {
     State(ComponentId),
-
     Attributes(ElementId),
-    Value { key: &'bp str, value: () },
+    Value {
+        key: &'bp str,
+        value: TemplateValue<'bp>,
+    },
+    Iteration {
+        key: &'bp str,
+        value: TemplateValue<'bp>,
+        loop_counter: AnonValue,
+    },
 }
 
 impl PartialEq<Entry<'_>> for ScopeKey<'_> {
@@ -45,6 +53,7 @@ impl PartialEq<Entry<'_>> for ScopeKey<'_> {
             (ScopeKey::State, _) => false,
 
             (ScopeKey::Key(lhs), Entry::Value { key: rhs, .. }) => lhs == rhs,
+            (ScopeKey::Key(lhs), Entry::Iteration { key: rhs, .. }) => lhs == rhs,
             (_, _) => false,
         }
     }
@@ -92,7 +101,7 @@ impl<'bp> Scope<'bp> {
             match self.scopes.get(id) {
                 Some(node) => {
                     // If the scope node contains the key then fetch the value
-                    match node.get(key).copied() {
+                    match node.get(key).cloned() {
                         val @ Some(_) => break val,
                         None if node.boundary => break None,
                         None => id = ScopeId(elements[id.0].parent?),
@@ -120,7 +129,30 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub(crate) fn scope_iteration(&self, value: TemplateValue<'bp>, loop_coutner: u32) {
-        todo!()
+    pub(crate) fn scope_iteration(
+        &mut self,
+        iter_element: ElementId,
+        key: &'bp str,
+        value: TemplateValue<'bp>,
+        loop_counter: AnonValue,
+    ) {
+        let scope_id = ScopeId(iter_element);
+
+        let entry = Entry::Iteration {
+            key,
+            value,
+            loop_counter,
+        };
+
+        match self.scopes.get_mut(scope_id) {
+            Some(node) => node.entries.push(entry),
+            None => self.scopes.insert(
+                scope_id,
+                ScopeNode {
+                    entries: vec![entry],
+                    boundary: false,
+                },
+            ),
+        }
     }
 }

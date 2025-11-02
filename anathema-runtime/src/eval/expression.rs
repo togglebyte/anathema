@@ -6,11 +6,11 @@ use anathema_store::key;
 use anathema_store::remotecell::{RemoteCell, RemoteHandle};
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
+use super::assoc::Associations;
+use super::scope::{Entry, ScopeId, ScopeKey};
+use super::values::{Collection, TemplateValue};
+use super::EvalCtx;
 use crate::elements::ElementId;
-use crate::eval::assoc::Associations;
-use crate::eval::scope::{Entry, ScopeId, ScopeKey};
-use crate::eval::values::{Collection, TemplateValue};
-use crate::eval::EvalCtx;
 use crate::functions::Function;
 use crate::value::{AnonValue, Type, ValueIndex};
 
@@ -49,7 +49,7 @@ struct RTKey {
 
 #[derive(Debug)]
 pub(crate) struct RuntimeExpressions<'bp> {
-    // The element id here is howe we can scope different values with the same expression id,
+    // The element id here is how we can scope different values with the same expression id,
     // for instance in a for-loop:
     // ```
     // for x in [1, 2, 3]
@@ -174,24 +174,6 @@ impl RuntimeExpression<'_> {
             &RuntimeExpression::Str(Kind::Static(s)) => Some(f(s)),
             RuntimeExpression::Str(Kind::Dyn(s, _)) => s.as_state().as_str().map(f),
             _ => None,
-        }
-    }
-
-    fn from_anon(value: AnonValue, expr: ExpressionId, scope: Option<ScopeId>) -> Self {
-        let key = ValueIndex::new(expr, scope);
-        match value.type_info() {
-            Type::Int => Self::Int(Kind::Dyn(value, key)),
-            Type::Float => Self::Float(Kind::Dyn(value, key)),
-            Type::Char => Self::Char(Kind::Dyn(value, key)),
-            Type::String => Self::Str(Kind::Dyn(value, key)),
-            Type::Bool => Self::Bool(Kind::Dyn(value, key)),
-            Type::Hex => Self::Hex(Kind::Dyn(value, key)),
-            Type::Color => Self::Color(value, key),
-            Type::Map => Self::DynMap(value, key),
-            Type::List => Self::DynList(value, key),
-            Type::Composite => Self::Composite(value, key),
-            Type::Unit => Self::Null,
-            Type::Maybe => todo!(),
         }
     }
 }
@@ -365,6 +347,11 @@ fn lookup<'bp>(
             RuntimeExpression::from_anon(value, expr_id, Some(scope))
         }
         Some(Entry::Attributes(component)) => RuntimeExpression::Attributes(component),
+        Some(Entry::Iteration { value, .. }) => {
+            panic!("{value:#?}")
+        }
+        // TODO: this is for the loop counter
+        // Some(Entry::Iteration { loop_counter, .. }) => RuntimeExpression::from_anon(loop_counter, expr_id, scope),
         Some(Entry::Value { value, .. }) => panic!("values needs to be scoped"),
         None => {
             let Some(id) = ctx.variables.global_lookup(ident) else { return RuntimeExpression::Null };
@@ -402,9 +389,6 @@ fn lazy_eval<'a, 'bp>(
     ctx: &EvalCtx<'_, 'bp>,
 ) -> LazyExpression<'a, 'bp> {
     match expr {
-        // -----------------------------------------------------------------------------
-        //   - Primitives -
-        // -----------------------------------------------------------------------------
         &RuntimeExpression::Bool(Kind::Static(val)) => TemplateValue::Bool(val).into(),
         RuntimeExpression::Bool(Kind::Dyn(value, _)) => {
             let state = value.as_state();
@@ -460,7 +444,6 @@ fn lazy_eval<'a, 'bp>(
                 None => TemplateValue::Null.into(),
             }
         }
-
         &RuntimeExpression::Range {
             ref start,
             ref end,
@@ -476,25 +459,13 @@ fn lazy_eval<'a, 'bp>(
             };
             TemplateValue::Range { start, end, inclusive }.into()
         }
-
-        // -----------------------------------------------------------------------------
-        //   - Maps, lists and range -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::DynMap(_, _)
         | RuntimeExpression::DynList(_, _)
         | RuntimeExpression::Composite(_, _)
         | RuntimeExpression::List(_)
         | RuntimeExpression::Map(_) => LazyExpression::Expression(expr),
         RuntimeExpression::Attributes(key) => todo!(),
-
-        // -----------------------------------------------------------------------------
-        //   - Index -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Index(src, index) => eval_index(src, index, expression_id, scope, ctx),
-
-        // -----------------------------------------------------------------------------
-        //   - Ops -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Not(expr) => {
             let value = eval_runtime_expr(expr, expression_id, scope, ctx);
             TemplateValue::Bool(!value.truthiness()).into()
@@ -556,16 +527,10 @@ fn lazy_eval<'a, 'bp>(
             }
             eval_runtime_expr(second, expression_id, scope, ctx).into()
         }
-
-        // -----------------------------------------------------------------------------
-        //   - Functions -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Call { fun_ptr, args } => todo!(),
-
-        // -----------------------------------------------------------------------------
-        //   - Null -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Null => TemplateValue::Null.into(),
+        RuntimeExpression::Range { start, end, inclusive } => todo!(),
+        RuntimeExpression::Op(runtime_expression, runtime_expression1, op) => todo!(),
     }
 }
 
@@ -608,12 +573,6 @@ fn eval_runtime_expr<'bp>(
     };
 
     match expr {
-        // -----------------------------------------------------------------------------
-        //   - Primitives -
-        //
-        //   Primitives are resolved as part of lazy_eval as they are
-        //   always TemplateValues
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Bool(_)
         | RuntimeExpression::Char(_)
         | RuntimeExpression::Int(_)
@@ -622,28 +581,18 @@ fn eval_runtime_expr<'bp>(
         | RuntimeExpression::Color(_, _)
         | RuntimeExpression::Range { .. }
         | RuntimeExpression::Str(_) => unreachable!("this was evaluated in lazy eval"),
-
-        // -----------------------------------------------------------------------------
-        //   - Maps, lists and range -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::DynMap(_, _) | RuntimeExpression::DynList(_, _) | RuntimeExpression::Composite(_, _) => {
             unreachable!("this is handled by lazy_eval")
         }
-
-        RuntimeExpression::List(items) => {
-            TemplateValue::List(items.iter().map(|i| eval_runtime_expr(i, expression_id, scope, ctx)).collect())
-        }
+        RuntimeExpression::List(items) => TemplateValue::List(
+            items
+                .iter()
+                .map(|i| eval_runtime_expr(i, expression_id, scope, ctx))
+                .collect(),
+        ),
         RuntimeExpression::Map(hash_map) => todo!(),
         RuntimeExpression::Attributes(key) => todo!(),
-
-        // -----------------------------------------------------------------------------
-        //   - Index -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Index(_, _) => unreachable!("this should be resolved by lazy eval only"),
-
-        // -----------------------------------------------------------------------------
-        //   - Ops -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Not(expr) => {
             panic!();
         }
@@ -652,10 +601,6 @@ fn eval_runtime_expr<'bp>(
         RuntimeExpression::LogicalOp(runtime_expression, runtime_expression1, logical_op) => todo!(),
         RuntimeExpression::Op(runtime_expression, runtime_expression1, op) => todo!(),
         RuntimeExpression::Either(runtime_expression, runtime_expression1) => todo!(),
-
-        // -----------------------------------------------------------------------------
-        //   - Functions -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Call { fun_ptr, args } => {
             // NOTE: Should this perhaps be done in the lazy eval instead?
             let args = args
@@ -664,10 +609,6 @@ fn eval_runtime_expr<'bp>(
                 .collect::<Box<_>>();
             fun_ptr.invoke(&args)
         }
-
-        // -----------------------------------------------------------------------------
-        //   - Null -
-        // -----------------------------------------------------------------------------
         RuntimeExpression::Null => TemplateValue::Null,
     }
 }
@@ -764,13 +705,13 @@ fn anon_to_template_value<'a>(value: AnonValue) -> TemplateValue<'a> {
 #[cfg(test)]
 mod test {
     use anathema::State;
+    use anathema_compiler::expressions;
 
     use super::*;
     use crate::attributes::Attributes;
     use crate::eval::values;
-    use crate::value::{List, Map, Value};
-    use anathema_compiler::expressions;
     use crate::testing::{ExpressionEvaluator, RunBuilder, TestWidget};
+    use crate::value::{List, Map, Value};
 
     #[derive(Debug, State)]
     pub struct TestState {

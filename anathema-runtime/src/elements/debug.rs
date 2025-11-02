@@ -36,7 +36,7 @@ impl Debug for Element<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Element::For { binding, collection } => write!(f, "<for {binding}>"),
-            Element::Iteration { loop_counter } => write!(f, "<iter {loop_counter}>"),
+            Element::Iteration { loop_counter } => write!(f, "<iter {}>", *loop_counter.to_ref()),
             Element::Widget(widget) => write!(f, "{:?}", widget.borrow()),
             Element::Component(component_id) => write!(f, "<component {component_id:?}>"),
         }

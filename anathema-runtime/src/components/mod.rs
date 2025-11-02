@@ -15,12 +15,14 @@ pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;
 
 mod component;
 
+#[derive(Debug)]
 struct Entry {
     component: Box<dyn AnyComponent>,
     state: Value<Box<dyn State>>,
     kind: ComponentKind,
 }
 
+#[derive(Debug)]
 enum ComponentKind {
     Component,
     PrototypeInstance,
