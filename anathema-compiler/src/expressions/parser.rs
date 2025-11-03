@@ -265,9 +265,9 @@ fn parse_map(tokens: &mut Tokens) -> Result<Expr, ParseErrorKind> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::templates::error::Result;
-    use crate::templates::lexer::Lexer;
-    use crate::templates::strings::Strings;
+    use crate::error::Result;
+    use crate::lexer::Lexer;
+    use crate::strings::Strings;
 
     fn parse_src(input: &'static str) -> Expr {
         let input = input.into();

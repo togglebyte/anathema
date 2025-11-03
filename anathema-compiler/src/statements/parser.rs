@@ -639,10 +639,10 @@ impl Iterator for Parser<'_, '_, '_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::templates::error::ErrorKind;
-    use crate::templates::expressions::{boolean, ident, map, num, range, strlit, text_segments};
-    use crate::templates::lexer::Lexer;
-    use crate::templates::statements::test::{
+    use crate::error::ErrorKind;
+    use crate::expressions::{boolean, ident, map, num, range, strlit, text_segments};
+    use crate::lexer::Lexer;
+    use crate::statements::test::{
         associated_fun, case, component, else_stmt, eof, for_loop, global, if_else, if_stmt, load_attrib, load_value,
         local, node, scope_end, scope_start, slot, switch, with,
     };

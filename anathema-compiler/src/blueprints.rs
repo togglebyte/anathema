@@ -109,7 +109,7 @@ pub enum Blueprint {
 
 macro_rules! single {
     ($ident:expr) => {
-        $crate::templates::blueprints::Blueprint::Single(Single {
+        $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: vec![],
             attributes: SmallMap::empty(),
@@ -117,7 +117,7 @@ macro_rules! single {
         })
     };
     (value @ $ident:expr, $value:expr) => {
-        $crate::templates::blueprints::Blueprint::Single(Single {
+        $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: vec![],
             attributes: SmallMap::empty(),
@@ -125,7 +125,7 @@ macro_rules! single {
         })
     };
     (children @ $ident:expr, $children:expr) => {
-        $crate::templates::blueprints::Blueprint::Single(Single {
+        $crate::blueprints::Blueprint::Single(Single {
             ident: $ident.into(),
             children: $children,
             attributes: SmallMap::empty(),
@@ -136,7 +136,7 @@ macro_rules! single {
 
 macro_rules! forloop {
     ($binding:expr, $data:expr, $body:expr) => {
-        $crate::templates::blueprints::Blueprint::For(For {
+        $crate::blueprints::Blueprint::For(For {
             binding: $binding.into(),
             data: $data,
             body: $body,

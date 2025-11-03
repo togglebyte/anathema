@@ -359,7 +359,7 @@ mod test {
     use anathema_store::storage::strings::StringId;
 
     use super::*;
-    use crate::templates::error::{ErrorKind, ParseErrorKind};
+    use crate::error::{ErrorKind, ParseErrorKind};
 
     fn token_kind(input: &'static str) -> Kind {
         let mut strings = Strings::new();

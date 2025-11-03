@@ -141,10 +141,10 @@ pub(super) fn eval(expr: Expr, strings: &Strings) -> Result<Expression, ParseErr
 mod test {
 
     use super::*;
-    use crate::templates::expressions::parser::parse_expr;
-    use crate::templates::lexer::Lexer;
-    use crate::templates::strings::Strings;
-    use crate::templates::token::Tokens;
+    use crate::expressions::parser::parse_expr;
+    use crate::lexer::Lexer;
+    use crate::strings::Strings;
+    use crate::token::Tokens;
 
     fn eval_src(input: &'static str) -> Expression {
         let input = input.into();

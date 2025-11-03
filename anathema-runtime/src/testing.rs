@@ -301,7 +301,7 @@ impl ExpressionEvaluator {
             &mut dirty_elements,
         );
 
-        let value = eval_by_id(expr_id, element, Some(parent.into()), &mut ctx);
+        let (value, _) = eval_by_id(expr_id, element, Some(parent.into()), &mut ctx);
         f(&value);
     }
 }

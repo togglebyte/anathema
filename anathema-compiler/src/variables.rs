@@ -298,7 +298,7 @@ impl Variables {
     /// which is most primitives.
     ///
     /// ```
-    /// # use anathema_core::templates::{Variables, Expressions};
+    /// # use anathema_compiler::{Variables, expressions::Expressions};
     /// # let mut expressions = Expressions::empty();
     /// let mut variables = Variables::new();
     /// variables.register_global("number", 123, &mut expressions);

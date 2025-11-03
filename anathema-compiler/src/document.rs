@@ -17,7 +17,7 @@ use super::{ComponentBlueprintId, Variables};
 
 /// A document containing templates and components
 /// ```
-/// # use anathema_core::templates::Document;
+/// # use anathema_compiler::Document;
 /// let mut doc = Document::new("text 'I am a widget'");
 /// ```
 pub struct Document {

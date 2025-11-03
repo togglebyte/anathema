@@ -104,8 +104,8 @@ pub(crate) fn const_eval(expr: impl Into<Expression>, ctx: &Context<'_>) -> Opti
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::templates::expressions::{add, div, either, ident, index, list, mul, num, range, strlit, sub};
-    use crate::templates::statements::with_context;
+    use crate::expressions::{add, div, either, ident, index, list, mul, num, range, strlit, sub};
+    use crate::statements::with_context;
 
     #[test]
     fn addition() {

@@ -289,9 +289,9 @@ impl Scope {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::templates::blueprints::single;
-    use crate::templates::document::Document;
-    use crate::templates::Variables;
+    use crate::blueprints::single;
+    use crate::document::Document;
+    use crate::Variables;
 
     #[test]
     fn eval_node() {

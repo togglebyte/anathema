@@ -13,7 +13,7 @@ use crate::elements::{Element, ElementId, Elements};
 use crate::eval::expression::{eval_by_id, eval_collection, RuntimeExpression, RuntimeExpressions};
 use crate::eval::values::TemplateValue;
 use crate::functions::{Function, FunctionTable};
-use crate::value::{ValueIndex, Value};
+use crate::value::{Value, ValueIndex};
 use crate::widgets::RegisteredWidgets;
 
 mod assoc;
@@ -130,12 +130,12 @@ impl Evaluator for SingleEval {
         let mut attributes = Attributes::empty();
 
         for (key, expr) in input.attributes.iter() {
-            let value = eval_by_id(*expr, element_id, parent, ctx);
+            let (value, _) = eval_by_id(*expr, element_id, parent, ctx);
             attributes.set_attribute(ValueKey::Attribute(key), value);
         }
 
         if let Some(expr) = &input.value {
-            let val = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
+            let (val, _) = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
             attributes.set_attribute(ValueKey::Value, val);
         }
 
@@ -172,7 +172,6 @@ impl Evaluator for ForEval {
         let element_id = ctx.reserve_element_id();
 
         let collection = eval_collection(input.data, element_id, parent.map(Into::into), ctx);
-        let collection_key = collection.key;
 
         let el = Element::For {
             binding: &input.binding,
@@ -182,17 +181,14 @@ impl Evaluator for ForEval {
         let parent = ctx.insert_element(el, parent);
         assert_eq!(parent, element_id);
 
-        // for loop_counter in 0..collection.len() {
-        // }
-
-        for (loop_counter, _) in collection.iter().enumerate() {
+        for loop_counter in 0..collection.len() {
             let loop_counter = Value::new(loop_counter as u32);
             let loop_counter_ref = loop_counter.reference();
             let iteration = Element::Iteration { loop_counter };
             let parent = ctx.insert_element(iteration, Some(parent));
 
             ctx.scope
-                .scope_iteration(parent, &input.binding, collection_key, loop_counter_ref);
+                .scope_iteration(parent, &input.binding, collection.expr, loop_counter_ref);
 
             for child in &input.body {
                 eval(child, ctx, factory, Some(parent));
@@ -315,14 +311,15 @@ mod test {
     #[test]
     fn forloop() {
         let tpl = "
-            for x in state.list //[state.list, 2, 3]
-                node x
+            let list = [2, 2, 30, 40]
+            for x in [1]
+                node [] 1...list[3]
         ";
 
         let mut test = RunBuilder::from_src("@comp");
         let state = TestState {
             value: 123.into(),
-            list: List::from_iter(0..10).into(),
+            list: List::from_iter(5..15).into(),
         };
         let comp_id = test.add_component("comp", tpl, Comp, state);
         let mut inst = test.finish();

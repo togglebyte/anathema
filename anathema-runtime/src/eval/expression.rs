@@ -16,28 +16,44 @@ use crate::value::{AnonValue, Type, ValueIndex};
 
 #[derive(Debug)]
 struct ExprEntry<'bp> {
-    exprs: Vec<(Option<ScopeId>, RuntimeExpression<'bp>)>,
+    expr: RuntimeExpression<'bp>,
     handle: RemoteHandle<TemplateValue<'bp>>,
+    scope_id: Option<ScopeId>,
 }
 
 impl<'bp> ExprEntry<'bp> {
+    pub fn new(
+        scope_id: Option<ScopeId>,
+        expr: RuntimeExpression<'bp>,
+        handle: RemoteHandle<TemplateValue<'bp>>,
+    ) -> Self {
+        Self { expr, handle, scope_id }
+    }
+}
+
+#[derive(Debug)]
+struct ExprEntries<'bp> {
+    exprs: Vec<ExprEntry<'bp>>,
+}
+
+impl<'bp> ExprEntries<'bp> {
     fn new(scope: Option<ScopeId>, expr: RuntimeExpression<'bp>, handle: RemoteHandle<TemplateValue<'bp>>) -> Self {
         Self {
-            exprs: vec![(scope, expr)],
-            handle,
+            exprs: vec![ExprEntry::new(scope, expr, handle)],
         }
     }
 
-    fn value(&self) -> RemoteCell<TemplateValue<'bp>> {
-        self.handle.value()
+    fn value(&self, scope_id: Option<ScopeId>) -> Option<RemoteCell<TemplateValue<'bp>>> {
+        let entry = self.exprs.iter().find(|entry| entry.scope_id == scope_id)?;
+        Some(entry.handle.value())
     }
 
     fn get_scoped(
         &self,
         scope_id: Option<ScopeId>,
     ) -> Option<(&RemoteHandle<TemplateValue<'bp>>, &RuntimeExpression<'bp>)> {
-        let expr = self.exprs.iter().find(|e| e.0 == scope_id).map(|e| &e.1)?;
-        Some((&self.handle, expr))
+        let entry = self.exprs.iter().find(|e| e.scope_id == scope_id)?;
+        Some((&entry.handle, &entry.expr))
     }
 }
 
@@ -58,7 +74,7 @@ pub(crate) struct RuntimeExpressions<'bp> {
     //            //    the value with the `Iteration`s ElementId it becomes unique
     //            //    per itration.
     // ```
-    inner: SecondaryMap<ExpressionId, ExprEntry<'bp>>,
+    inner: SecondaryMap<ExpressionId, ExprEntries<'bp>>,
     associations: Associations,
 }
 
@@ -76,8 +92,9 @@ impl<'bp> RuntimeExpressions<'bp> {
         entry.get_scoped(scope_id)
     }
 
-    fn get_value(&self, id: ExpressionId, scope: Option<ScopeId>) -> Option<RemoteCell<TemplateValue<'bp>>> {
-        self.inner.get(id).map(|e| e.handle.value())
+    fn get_value(&self, index: ValueIndex) -> Option<RemoteCell<TemplateValue<'bp>>> {
+        let (expr, key) = index.consume();
+        self.inner.get(expr).and_then(|e| e.value(key))
     }
 
     fn get_expression(&self, index: ValueIndex) -> Option<RuntimeExpression<'bp>> {
@@ -96,7 +113,7 @@ impl<'bp> RuntimeExpressions<'bp> {
         value: TemplateValue<'bp>,
     ) -> RemoteCell<TemplateValue<'bp>> {
         let (value, handle) = RemoteCell::new(value);
-        let entry = ExprEntry::new(scope, expr, handle);
+        let entry = ExprEntries::new(scope, expr, handle);
         self.inner.insert(id, entry);
         value
     }
@@ -225,11 +242,24 @@ pub fn eval_collection<'bp>(
     element: ElementId,
     parent: Option<ElementId>,
     ctx: &mut EvalCtx<'_, 'bp>,
-) -> Collection<'bp> {
-    let scope = ctx.nearest_scope_id(parent);
-    let key = ValueIndex::new(id, scope);
-    let inner = eval_by_id(id, element, parent, ctx);
-    Collection::new(inner, key)
+) -> Collection {
+    let (value, index) = eval_by_id(id, element, parent, ctx);
+    let len = match &*value {
+        TemplateValue::List(list) => list.len() as u32,
+        TemplateValue::DynList(list) => list.as_state().as_any_list().expect("type checked").len() as u32,
+        &TemplateValue::Range {
+            start,
+            end,
+            inclusive: false,
+        } => (end - start) as u32,
+        &TemplateValue::Range {
+            start,
+            end,
+            inclusive: true,
+        } => (end - start) as u32 + 1,
+        _ => 0,
+    };
+    Collection::new(index, len)
 }
 
 pub fn eval_by_id<'bp>(
@@ -239,24 +269,26 @@ pub fn eval_by_id<'bp>(
     // as the `element` might not be added to the tree yet at this point.
     parent: Option<ElementId>,
     ctx: &mut EvalCtx<'_, 'bp>,
-) -> RemoteCell<TemplateValue<'bp>> {
+) -> (RemoteCell<TemplateValue<'bp>>, ValueIndex) {
     let scope = ctx.nearest_scope_id(parent);
+    let index = ValueIndex::new(id, scope);
     eprintln!("scope is {scope:?} | parent is {parent:?}");
 
     // If the expression already exist: associate the element with the expression
     // and return a remote cell to the already existing value.
     //
     // This is to ensure that there is only one value per expression
-    if let Some(value) = ctx.runtime_expressions.get_value(id, scope) {
+    if let Some(value) = ctx.runtime_expressions.get_value(index) {
         ctx.runtime_expressions.associate(id, element);
-        return value;
+        return (value, index);
     }
 
     let expr = ctx.expressions.get(id);
     let expr = eval_expr(expr, id, scope, ctx);
     let value = eval_runtime_expr(&expr, id, scope, ctx);
     ctx.runtime_expressions.associate(id, element);
-    ctx.runtime_expressions.insert(id, scope, expr, value)
+    let value = ctx.runtime_expressions.insert(id, scope, expr, value);
+    (value, index)
 }
 
 fn eval_expr<'bp>(
@@ -712,14 +744,21 @@ fn eval_index<'a, 'bp>(
                 LazyExpression::Value(_) => TemplateValue::Null.into(),
             }
         }
-        RuntimeExpression::Range { start, end, inclusive } => todo!(),
+        RuntimeExpression::Range { start, end, inclusive } => {
+            let index = or_null!(index.as_usize());
+            match lazy_eval(start, expression_id, scope, ctx) {
+                LazyExpression::Value(TemplateValue::Int(start)) => TemplateValue::Int(start + index as i64).into(),
+                // LazyExpression::Expression(expr) => LazyExpression::Expression(RuntimeExpression::Index(expr, ///
+                _ => TemplateValue::Null.into()
+            }
+        }
         RuntimeExpression::Either(first, second) => match eval_index(first, index, expression_id, scope, ctx) {
             LazyExpression::Expression(runtime_expression) => todo!(),
             LazyExpression::Value(TemplateValue::Null) => eval_index(second, index, expression_id, scope, ctx),
             LazyExpression::Value(value) => value.into(),
         },
         RuntimeExpression::Null => TemplateValue::Null.into(),
-        _ => unreachable!("should this return null instead?"),
+        expr => unreachable!("should this return null instead?: {expr:?}"),
     }
 }
 

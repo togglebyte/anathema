@@ -10,54 +10,21 @@ use crate::value::{AnonValue, ValueIndex};
 use crate::Type;
 
 /// A collection used by a for-loop
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Collection {
-    expr: ValueIndex,
+    pub(crate) expr: ValueIndex,
     len: u32,
     // inner: RemoteCell<TemplateValue<'bp>>,
     // pub key: SubKey,
 }
 
 impl Collection {
-    pub(super) fn new(inner: RemoteCell<TemplateValue<'bp>>, key: ValueIndex) -> Self {
-        Self { inner, key }
+    pub(super) fn new(expr: ValueIndex, len: u32) -> Self {
+        Self { expr, len }
     }
 
-    pub(crate) fn iter<'a>(&'a self) -> CollectionIter<'a, 'bp> {
-        CollectionIter {
-            inner: &*self.inner,
-            index: 0,
-        }
-    }
-}
-
-pub(crate) struct CollectionIter<'a, 'bp> {
-    inner: &'a TemplateValue<'bp>,
-    index: u32,
-}
-
-impl<'a, 'bp> Iterator for CollectionIter<'a, 'bp> {
-    type Item = TemplateValue<'bp>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index;
-
-        let value = match self.inner {
-            TemplateValue::DynList(list) => {
-                let state = list.as_state();
-                let list = state.as_any_list()?;
-                let value = list.lookup(index as usize)?;
-                value.into()
-            }
-            TemplateValue::List(list) => list.get(index as usize).cloned()?,
-            TemplateValue::Range { start, end, inclusive } => todo!(),
-            val => panic!("{val:?}"),
-            _ => return None,
-        };
-
-        self.index += 1;
-
-        Some(value)
+    pub(crate) fn len(&self) -> u32 {
+        self.len
     }
 }
 
