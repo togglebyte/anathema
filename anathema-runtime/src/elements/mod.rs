@@ -34,7 +34,7 @@ pub struct Node<'bp> {
 pub enum Element<'bp> {
     For {
         binding: &'bp str,
-        collection: Collection<'bp>,
+        collection: Collection,
     },
     Iteration {
         loop_counter: Value<u32>,

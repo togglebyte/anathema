@@ -1,8 +1,10 @@
+use anathema_compiler::expressions::ExpressionId;
 use anathema_store::slab::{Index, Key, SecondaryMap};
 
 use crate::components::ComponentId;
 use crate::elements::{ElementId, Elements};
 use crate::eval::values::TemplateValue;
+use crate::value::ValueIndex;
 use crate::AnonValue;
 
 // The value key for a scope entry
@@ -38,7 +40,7 @@ pub(crate) enum Entry<'bp> {
     },
     Iteration {
         key: &'bp str,
-        value: TemplateValue<'bp>,
+        collection_key: ValueIndex,
         loop_counter: AnonValue,
     },
 }
@@ -133,14 +135,14 @@ impl<'bp> Scope<'bp> {
         &mut self,
         iter_element: ElementId,
         key: &'bp str,
-        value: TemplateValue<'bp>,
+        collection_key: ValueIndex,
         loop_counter: AnonValue,
     ) {
         let scope_id = ScopeId(iter_element);
 
         let entry = Entry::Iteration {
             key,
-            value,
+            collection_key,
             loop_counter,
         };
 

@@ -17,6 +17,8 @@ pub enum Change {
     Dropped,
 }
 
+/// The `ValueIndex` is used as a key to a value that can
+/// be reloaded and loaded for evaluation.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ValueIndex(ExpressionId, Option<ScopeId>);
 

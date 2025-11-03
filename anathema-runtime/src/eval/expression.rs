@@ -80,6 +80,11 @@ impl<'bp> RuntimeExpressions<'bp> {
         self.inner.get(id).map(|e| e.handle.value())
     }
 
+    fn get_expression(&self, index: ValueIndex) -> Option<RuntimeExpression<'bp>> {
+        let entry = self.get_entry(index)?.1.clone();
+        Some(entry)
+    }
+
     fn insert(
         &mut self,
         id: ExpressionId,
@@ -118,7 +123,7 @@ impl<T> Drop for Kind<T> {
 }
 
 // It's only runtime expressions that subscribe to changes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum RuntimeExpression<'bp> {
     Bool(Kind<bool>),
     Char(Kind<char>),
@@ -176,6 +181,24 @@ impl RuntimeExpression<'_> {
             _ => None,
         }
     }
+
+    fn from_anon(value: AnonValue, expr: ExpressionId, scope: Option<ScopeId>) -> Self {
+        let key = ValueIndex::new(expr, scope);
+        match value.type_info() {
+            Type::Int => Self::Int(Kind::Dyn(value, key)),
+            Type::Float => Self::Float(Kind::Dyn(value, key)),
+            Type::Char => Self::Char(Kind::Dyn(value, key)),
+            Type::String => Self::Str(Kind::Dyn(value, key)),
+            Type::Bool => Self::Bool(Kind::Dyn(value, key)),
+            Type::Hex => Self::Hex(Kind::Dyn(value, key)),
+            Type::Color => Self::Color(value, key),
+            Type::Map => Self::DynMap(value, key),
+            Type::List => Self::DynList(value, key),
+            Type::Composite => Self::Composite(value, key),
+            Type::Unit => Self::Null,
+            Type::Maybe => todo!(),
+        }
+    }
 }
 
 impl<'bp> From<Primitive> for RuntimeExpression<'bp> {
@@ -203,8 +226,10 @@ pub fn eval_collection<'bp>(
     parent: Option<ElementId>,
     ctx: &mut EvalCtx<'_, 'bp>,
 ) -> Collection<'bp> {
+    let scope = ctx.nearest_scope_id(parent);
+    let key = ValueIndex::new(id, scope);
     let inner = eval_by_id(id, element, parent, ctx);
-    Collection::new(inner)
+    Collection::new(inner, key)
 }
 
 pub fn eval_by_id<'bp>(
@@ -216,6 +241,7 @@ pub fn eval_by_id<'bp>(
     ctx: &mut EvalCtx<'_, 'bp>,
 ) -> RemoteCell<TemplateValue<'bp>> {
     let scope = ctx.nearest_scope_id(parent);
+    eprintln!("scope is {scope:?} | parent is {parent:?}");
 
     // If the expression already exist: associate the element with the expression
     // and return a remote cell to the already existing value.
@@ -338,6 +364,7 @@ fn lookup<'bp>(
         key => ScopeKey::Key(key),
     };
 
+    eprintln!("{:?}", key);
     let Some(scope) = scope else { return RuntimeExpression::Null };
 
     match ctx.scope.lookup(key, scope, ctx.elements) {
@@ -347,8 +374,22 @@ fn lookup<'bp>(
             RuntimeExpression::from_anon(value, expr_id, Some(scope))
         }
         Some(Entry::Attributes(component)) => RuntimeExpression::Attributes(component),
-        Some(Entry::Iteration { value, .. }) => {
-            panic!("{value:#?}")
+        Some(Entry::Iteration {
+            loop_counter,
+            collection_key,
+            ..
+        }) => {
+            let expr = ctx.runtime_expressions.get_expression(collection_key);
+            // eprintln!("e: {expr:?} | {collection_expr:?}");
+            // eprintln!("{:#?}", ctx.runtime_expressions);
+            let Some(expr) = expr else { return RuntimeExpression::Null };
+
+            let sub = ValueIndex::new(expr_id, Some(scope));
+            eprintln!("{:?}", loop_counter.as_state().as_int());
+            let index = RuntimeExpression::Int(Kind::Dyn(loop_counter, sub));
+            let index = RuntimeExpression::Index(expr.into(), index.into());
+            index
+            // panic!()
         }
         // TODO: this is for the loop counter
         // Some(Entry::Iteration { loop_counter, .. }) => RuntimeExpression::from_anon(loop_counter, expr_id, scope),

@@ -6,18 +6,21 @@ use anathema_compiler::expressions::ExpressionId;
 use anathema_compiler::{Color, Hex};
 use anathema_store::remotecell::RemoteCell;
 
-use crate::value::AnonValue;
+use crate::value::{AnonValue, ValueIndex};
 use crate::Type;
 
 /// A collection used by a for-loop
 #[derive(Debug, Clone)]
-pub struct Collection<'bp> {
-    inner: RemoteCell<TemplateValue<'bp>>,
+pub struct Collection {
+    expr: ValueIndex,
+    len: u32,
+    // inner: RemoteCell<TemplateValue<'bp>>,
+    // pub key: SubKey,
 }
 
-impl<'bp> Collection<'bp> {
-    pub(super) fn new(inner: RemoteCell<TemplateValue<'bp>>) -> Self {
-        Self { inner }
+impl Collection {
+    pub(super) fn new(inner: RemoteCell<TemplateValue<'bp>>, key: ValueIndex) -> Self {
+        Self { inner, key }
     }
 
     pub(crate) fn iter<'a>(&'a self) -> CollectionIter<'a, 'bp> {

@@ -13,7 +13,7 @@ use crate::elements::{Element, ElementId, Elements};
 use crate::eval::expression::{eval_by_id, eval_collection, RuntimeExpression, RuntimeExpressions};
 use crate::eval::values::TemplateValue;
 use crate::functions::{Function, FunctionTable};
-use crate::value::Value;
+use crate::value::{ValueIndex, Value};
 use crate::widgets::RegisteredWidgets;
 
 mod assoc;
@@ -172,6 +172,7 @@ impl Evaluator for ForEval {
         let element_id = ctx.reserve_element_id();
 
         let collection = eval_collection(input.data, element_id, parent.map(Into::into), ctx);
+        let collection_key = collection.key;
 
         let el = Element::For {
             binding: &input.binding,
@@ -181,17 +182,17 @@ impl Evaluator for ForEval {
         let parent = ctx.insert_element(el, parent);
         assert_eq!(parent, element_id);
 
-        for (loop_counter, val) in collection.iter().enumerate() {
-            // Can we get the expression id for the collection
-            // and use that to build a RuntimeExpression::Index instead?
-            //
-            // Could even make the iter produce loop indices instead?
+        // for loop_counter in 0..collection.len() {
+        // }
+
+        for (loop_counter, _) in collection.iter().enumerate() {
             let loop_counter = Value::new(loop_counter as u32);
             let loop_counter_ref = loop_counter.reference();
             let iteration = Element::Iteration { loop_counter };
             let parent = ctx.insert_element(iteration, Some(parent));
+
             ctx.scope
-                .scope_iteration(element_id, &input.binding, val, loop_counter_ref);
+                .scope_iteration(parent, &input.binding, collection_key, loop_counter_ref);
 
             for child in &input.body {
                 eval(child, ctx, factory, Some(parent));
