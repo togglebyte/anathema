@@ -39,9 +39,13 @@ pub(crate) enum Entry<'bp> {
         value: TemplateValue<'bp>,
     },
     Iteration {
-        key: &'bp str,
+        binding: &'bp str,
         collection_key: ValueIndex,
         loop_counter: AnonValue,
+    },
+    With {
+        binding: &'bp str,
+        value_key: ValueIndex,
     },
 }
 
@@ -55,7 +59,8 @@ impl PartialEq<Entry<'_>> for ScopeKey<'_> {
             (ScopeKey::State, _) => false,
 
             (ScopeKey::Key(lhs), Entry::Value { key: rhs, .. }) => lhs == rhs,
-            (ScopeKey::Key(lhs), Entry::Iteration { key: rhs, .. }) => lhs == rhs,
+            (ScopeKey::Key(lhs), Entry::Iteration { binding: rhs, .. }) => lhs == rhs,
+            (ScopeKey::Key(lhs), Entry::With { binding: rhs, .. }) => lhs == rhs,
             (_, _) => false,
         }
     }
@@ -85,6 +90,19 @@ impl<'bp> Scope<'bp> {
         }
     }
 
+    fn insert_entry(&mut self, scope_id: ScopeId, entry: Entry<'bp>) {
+        match self.scopes.get_mut(scope_id) {
+            Some(node) => node.entries.push(entry),
+            None => self.scopes.insert(
+                scope_id,
+                ScopeNode {
+                    entries: vec![entry],
+                    boundary: false,
+                },
+            ),
+        }
+    }
+
     /// Find the closest scoped id from a given element id
     pub fn nearest_scope_id(&self, id: ElementId, elements: &Elements<'_>) -> Option<ScopeId> {
         let mut id = ScopeId(id);
@@ -102,6 +120,7 @@ impl<'bp> Scope<'bp> {
         loop {
             match self.scopes.get(id) {
                 Some(node) => {
+                    eprintln!("scope id for lookup {id:?}");
                     // If the scope node contains the key then fetch the value
                     match node.get(key).cloned() {
                         val @ Some(_) => break val,
@@ -141,20 +160,16 @@ impl<'bp> Scope<'bp> {
         let scope_id = ScopeId(iter_element);
 
         let entry = Entry::Iteration {
-            key,
+            binding: key,
             collection_key,
             loop_counter,
         };
+        self.insert_entry(scope_id, entry)
+    }
 
-        match self.scopes.get_mut(scope_id) {
-            Some(node) => node.entries.push(entry),
-            None => self.scopes.insert(
-                scope_id,
-                ScopeNode {
-                    entries: vec![entry],
-                    boundary: false,
-                },
-            ),
-        }
+    pub(crate) fn scope_with(&mut self, with_element: ElementId, binding: &'bp str, value_key: ValueIndex) {
+        let scope_id = ScopeId(with_element);
+        let entry = Entry::With { binding, value_key };
+        self.insert_entry(scope_id, entry)
     }
 }

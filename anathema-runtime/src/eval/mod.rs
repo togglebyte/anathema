@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use anathema_compiler::blueprints::{Blueprint, Component, For, Single};
+use anathema_compiler::blueprints::{Blueprint, Component, ControlFlow, For, Single, With};
 use anathema_compiler::expressions::{ExpressionId, Expressions};
 use anathema_compiler::Variables;
 use anathema_store::remotecell::RemoteHandle;
@@ -106,10 +106,10 @@ pub fn eval<'a, 'bp>(
     match blueprint {
         Blueprint::Single(stmt) => SingleEval.eval(stmt, ctx, factory, parent),
         Blueprint::For(stmt) => ForEval.eval(stmt, ctx, factory, parent),
-        Blueprint::With(with) => todo!(),
-        Blueprint::ControlFlow(control_flow) => todo!(),
+        Blueprint::With(stmt) => WithEval.eval(stmt, ctx, factory, parent),
+        Blueprint::ControlFlow(stmt) => ControlFlowEval.eval(stmt, ctx, factory, parent),
         Blueprint::Component(stmt) => ComponentEval.eval(stmt, ctx, factory, parent),
-        Blueprint::Slot(blueprints) => todo!(),
+        Blueprint::Slot(stmt) => todo!(),
     }
 }
 
@@ -170,7 +170,6 @@ impl Evaluator for ForEval {
         parent: Option<ElementId>,
     ) -> Result<()> {
         let element_id = ctx.reserve_element_id();
-
         let collection = eval_collection(input.data, element_id, parent.map(Into::into), ctx);
 
         let el = Element::For {
@@ -193,6 +192,67 @@ impl Evaluator for ForEval {
             for child in &input.body {
                 eval(child, ctx, factory, Some(parent));
             }
+        }
+
+        Ok(())
+    }
+}
+
+struct ControlFlowEval;
+
+impl Evaluator for ControlFlowEval {
+    type Input<'bp> = &'bp ControlFlow;
+
+    fn eval<'a, 'bp>(
+        &mut self,
+        input: Self::Input<'bp>,
+        ctx: &mut EvalCtx<'a, 'bp>,
+        factory: &RegisteredWidgets,
+        parent: Option<ElementId>,
+    ) -> Result<()> {
+        let element_id = ctx.reserve_element_id();
+
+        let el = Element::ControlFlow;
+        let parent = ctx.insert_element(el, parent);
+
+        for els in &input.elses {
+            let cond = els
+                .cond
+                .map(|cond| eval_by_id(cond, element_id, Some(parent).map(Into::into), ctx))
+                .map(|(val, _)| val);
+            let el = Element::Condition(cond);
+            let parent = ctx.insert_element(el, Some(parent));
+
+            for child in &els.body {
+                eval(child, ctx, factory, Some(parent));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct WithEval;
+
+impl Evaluator for WithEval {
+    type Input<'bp> = &'bp With;
+
+    fn eval<'a, 'bp>(
+        &mut self,
+        input: Self::Input<'bp>,
+        ctx: &mut EvalCtx<'a, 'bp>,
+        factory: &RegisteredWidgets,
+        parent: Option<ElementId>,
+    ) -> Result<()> {
+        let element_id = ctx.reserve_element_id();
+
+        let (_, value_index) = eval_by_id(input.data, element_id, parent.map(Into::into), ctx);
+
+        let parent = ctx.insert_element(Element::With, parent);
+        ctx.scope.scope_with(parent, &input.binding, value_index);
+
+        for child in &input.body {
+            eval(child, ctx, factory, Some(parent));
         }
 
         Ok(())
@@ -312,8 +372,46 @@ mod test {
     fn forloop() {
         let tpl = "
             let list = [2, 2, 30, 40]
-            for x in [1]
-                node [] 1...list[3]
+            for x in list
+                node x
+        ";
+
+        let mut test = RunBuilder::from_src("@comp");
+        let state = TestState {
+            value: 123.into(),
+            list: List::from_iter(5..15).into(),
+        };
+        let comp_id = test.add_component("comp", tpl, Comp, state);
+        let mut inst = test.finish();
+        inst.eval(|ctx| panic!("{:#?}", ctx.elements));
+    }
+
+    #[test]
+    fn if_else() {
+        let tpl = "
+            if true
+                node value
+            else if !false 
+                node 'test'
+            else
+                node 'meh'
+        ";
+
+        let mut test = RunBuilder::from_src("@comp");
+        let state = TestState {
+            value: 123.into(),
+            list: List::from_iter(5..15).into(),
+        };
+        let comp_id = test.add_component("comp", tpl, Comp, state);
+        let mut inst = test.finish();
+        inst.eval(|ctx| panic!("{:#?}", ctx.elements));
+    }
+
+    #[test]
+    fn with_value() {
+        let tpl = "
+            with x as 2
+                node x
         ";
 
         let mut test = RunBuilder::from_src("@comp");

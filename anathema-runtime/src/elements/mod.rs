@@ -1,16 +1,19 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::ops::Index;
 
-use anathema_compiler::expressions::ExpressionId;
 use anathema_compiler::blueprints::Blueprint;
+use anathema_compiler::expressions::ExpressionId;
 use anathema_store::key;
+use anathema_store::remotecell::RemoteCell;
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 use crate::components::ComponentId;
-use crate::eval::values::Collection;
+use crate::elements::controlflow::ControlFlow;
+use crate::eval::values::{Collection, TemplateValue};
 use crate::value::Value;
 use crate::widgets::{Node as WidgetNode, Widget, Widgets};
 
+mod controlflow;
 mod debug;
 pub mod iter;
 
@@ -39,6 +42,9 @@ pub enum Element<'bp> {
     Iteration {
         loop_counter: Value<u32>,
     },
+    ControlFlow,
+    Condition(Option<RemoteCell<TemplateValue<'bp>>>),
+    With,
     Widget(RefCell<Box<dyn Widget>>),
     Component(ComponentId),
 }

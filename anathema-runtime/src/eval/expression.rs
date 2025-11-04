@@ -272,7 +272,6 @@ pub fn eval_by_id<'bp>(
 ) -> (RemoteCell<TemplateValue<'bp>>, ValueIndex) {
     let scope = ctx.nearest_scope_id(parent);
     let index = ValueIndex::new(id, scope);
-    eprintln!("scope is {scope:?} | parent is {parent:?}");
 
     // If the expression already exist: associate the element with the expression
     // and return a remote cell to the already existing value.
@@ -396,7 +395,6 @@ fn lookup<'bp>(
         key => ScopeKey::Key(key),
     };
 
-    eprintln!("{:?}", key);
     let Some(scope) = scope else { return RuntimeExpression::Null };
 
     match ctx.scope.lookup(key, scope, ctx.elements) {
@@ -412,20 +410,20 @@ fn lookup<'bp>(
             ..
         }) => {
             let expr = ctx.runtime_expressions.get_expression(collection_key);
-            // eprintln!("e: {expr:?} | {collection_expr:?}");
-            // eprintln!("{:#?}", ctx.runtime_expressions);
             let Some(expr) = expr else { return RuntimeExpression::Null };
 
             let sub = ValueIndex::new(expr_id, Some(scope));
-            eprintln!("{:?}", loop_counter.as_state().as_int());
             let index = RuntimeExpression::Int(Kind::Dyn(loop_counter, sub));
             let index = RuntimeExpression::Index(expr.into(), index.into());
             index
-            // panic!()
         }
         // TODO: this is for the loop counter
         // Some(Entry::Iteration { loop_counter, .. }) => RuntimeExpression::from_anon(loop_counter, expr_id, scope),
         Some(Entry::Value { value, .. }) => panic!("values needs to be scoped"),
+        Some(Entry::With { value_key, .. }) => ctx
+            .runtime_expressions
+            .get_expression(value_key)
+            .unwrap_or(RuntimeExpression::Null),
         None => {
             let Some(id) = ctx.variables.global_lookup(ident) else { return RuntimeExpression::Null };
             let expr = ctx.expressions.get(id);
@@ -749,7 +747,7 @@ fn eval_index<'a, 'bp>(
             match lazy_eval(start, expression_id, scope, ctx) {
                 LazyExpression::Value(TemplateValue::Int(start)) => TemplateValue::Int(start + index as i64).into(),
                 // LazyExpression::Expression(expr) => LazyExpression::Expression(RuntimeExpression::Index(expr, ///
-                _ => TemplateValue::Null.into()
+                _ => TemplateValue::Null.into(),
             }
         }
         RuntimeExpression::Either(first, second) => match eval_index(first, index, expression_id, scope, ctx) {

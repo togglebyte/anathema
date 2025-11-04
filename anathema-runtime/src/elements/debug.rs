@@ -39,6 +39,10 @@ impl Debug for Element<'_> {
             Element::Iteration { loop_counter } => write!(f, "<iter {}>", *loop_counter.to_ref()),
             Element::Widget(widget) => write!(f, "{:?}", widget.borrow()),
             Element::Component(component_id) => write!(f, "<component {component_id:?}>"),
+            Element::ControlFlow => write!(f, "<controlflow>"),
+            Element::Condition(Some(cond)) => write!(f, "<if/else {}>", cond.truthiness()),
+            Element::Condition(None) => write!(f, "<else>"),
+            Element::With => write!(f, "<with>"),
         }
     }
 }
