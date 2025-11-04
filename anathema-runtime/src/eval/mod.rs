@@ -109,7 +109,7 @@ pub fn eval<'a, 'bp>(
         Blueprint::With(stmt) => WithEval.eval(stmt, ctx, factory, parent),
         Blueprint::ControlFlow(stmt) => ControlFlowEval.eval(stmt, ctx, factory, parent),
         Blueprint::Component(stmt) => ComponentEval.eval(stmt, ctx, factory, parent),
-        Blueprint::Slot(stmt) => todo!(),
+        Blueprint::Slot(stmt) => SlotEval.eval(stmt, ctx, factory, parent),
     }
 }
 
@@ -297,6 +297,25 @@ impl Evaluator for ComponentEval {
     }
 }
 
+struct SlotEval;
+
+impl Evaluator for SlotEval {
+    type Input<'bp> = &'bp [Blueprint];
+
+    fn eval<'a, 'bp>(
+        &mut self,
+        input: Self::Input<'bp>,
+        ctx: &mut EvalCtx<'a, 'bp>,
+        factory: &RegisteredWidgets,
+        parent: Option<ElementId>,
+    ) -> Result<()> {
+        for child in input {
+            eval(child, ctx, factory, parent);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use anathema::State;
@@ -420,6 +439,29 @@ mod test {
             list: List::from_iter(5..15).into(),
         };
         let comp_id = test.add_component("comp", tpl, Comp, state);
+        let mut inst = test.finish();
+        inst.eval(|ctx| panic!("{:#?}", ctx.elements));
+    }
+
+    #[test]
+    fn component_with_slots() {
+        let tpl = "
+            @comp
+                node 'child'
+        ";
+
+        let component_tpl = "
+            node 'here'
+                $children
+
+        ";
+
+        let mut test = RunBuilder::from_src(tpl);
+        let state = TestState {
+            value: 123.into(),
+            list: List::from_iter(5..15).into(),
+        };
+        let comp_id = test.add_component("comp", component_tpl, Comp, state);
         let mut inst = test.finish();
         inst.eval(|ctx| panic!("{:#?}", ctx.elements));
     }

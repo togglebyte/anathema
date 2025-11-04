@@ -27,8 +27,8 @@ pub(crate) fn mock_value_index() -> ValueIndex {
 fn test_widgets() -> RegisteredWidgets {
     let mut factory = RegisteredWidgets::empty();
     factory.register("node", |attr| {
-        match attr.value_as::<u32>() {
-            Some(s) => TestWidget(s.to_string()),
+        match attr.value() {
+            Some(s) => TestWidget(format!("{s:?}")),
             None => TestWidget(String::new()),
         }
     });
