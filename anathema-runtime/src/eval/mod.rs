@@ -22,7 +22,7 @@ pub(crate) mod scope;
 pub(crate) mod values;
 
 #[derive(Debug)]
-pub struct EvalCtx<'a, 'bp> {
+pub(crate) struct EvalCtx<'a, 'bp> {
     pub(crate) elements: &'a mut Elements<'bp>,
     pub(crate) attributes: &'a mut AttributeRegistry<'bp>,
     pub(crate) components: &'a mut Components,
@@ -378,6 +378,8 @@ mod test {
             while let Some((expr_id, _)) = changes.pop() {
                 expression::re_evalute_expr(expr_id.into(), ctx);
             }
+
+            panic!("{:#?}", ctx.elements);
 
             // * Change the value
             // * Look at dirty widgets
