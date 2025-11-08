@@ -13,6 +13,7 @@ pub use {
 
 pub mod prelude {
     pub use crate::compiler::{ComponentBlueprintId, Document, SourceKind};
+    pub use crate::geometry::{Size, Pos, Region};
 }
 
 pub mod component {

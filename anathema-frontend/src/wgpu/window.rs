@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anathema_geometry::Size;
 use winit::application::ApplicationHandler;
 use winit::keyboard::KeyCode;
 use winit::window::{Window, WindowAttributes};
@@ -54,10 +55,17 @@ impl<Init, Tick> ApplicationHandler for WindowHandler<Init, Tick>
     ) {
         match event {
             winit::event::WindowEvent::CloseRequested => event_loop.exit(),
+            winit::event::WindowEvent::Resized(new_size) => {
+                let Some(ctx) = &mut self.graphics else { return };
+                let (w, h) = (new_size.width, new_size.height);
+                let size = Size::new(w as f32, h as f32);
+                ctx.resize(size);
+            }
             winit::event::WindowEvent::RedrawRequested => {
                 let Some(ctx) = &mut self.graphics else { return };
                 (self.tick)(ctx);
                 ctx.window.request_redraw();
+                self.renderer.render(ctx);
                 // self.gameloop.tick(&mut self.renderer, graphics);
             }
             _ => {

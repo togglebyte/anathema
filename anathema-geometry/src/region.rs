@@ -34,10 +34,7 @@ impl Region {
 
     /// Get the size of the region
     pub const fn size(&self) -> Size {
-        Size::new(
-            (self.to.x - self.from.x) as u16,
-            (self.to.y - self.from.y) as u16,
-        )
+        Size::new(self.to.x - self.from.x, self.to.y - self.from.y)
     }
 
     /// Get the position of the region.
@@ -54,8 +51,8 @@ impl Region {
 
     /// Resize the region
     pub fn resize(&mut self, size: Size) {
-        self.to.x = self.from.x + size.width as i32;
-        self.to.y = self.from.y + size.height as i32;
+        self.to.x = self.from.x + size.width;
+        self.to.y = self.from.y + size.height;
     }
 
     /// Create a new region by intersecting two regions
@@ -77,20 +74,20 @@ impl Region {
 
     /// Check if a region contains a position.
     /// The check is exclusive, so a region from 0,0 to 10, 10 contains `Pos::ZERO`
-    /// but not `Pos::New(10, 10)`
+    /// but not `Pos::new(10.0, 10.0)`
     pub const fn contains(&self, pos: Pos) -> bool {
         pos.x >= self.from.x && pos.x < self.to.x && pos.y >= self.from.y && pos.y < self.to.y
     }
 
     /// Check if a region contains a position.
     /// The check is inclusive, so a region from 0,0 to 10, 10 contains `Pos::ZERO`
-    /// as well as `Pos::New(10, 10)`
+    /// as well as `Pos::new(10.0, 10.0)`
     pub const fn icontains(&self, pos: Pos) -> bool {
         pos.x >= self.from.x && pos.x <= self.to.x && pos.y >= self.from.y && pos.y <= self.to.y
     }
 
     /// Constrain a region to fit within another region
-    pub fn constrain(&mut self, other: &Region) {
+    pub fn shrink_to_fit(&mut self, other: &Region) {
         self.from.x = self.from.x.max(other.from.x);
         self.from.y = self.from.y.max(other.from.y);
         self.to.x = self.to.x.min(other.to.x);
@@ -100,7 +97,7 @@ impl Region {
 
 impl From<(Pos, Size)> for Region {
     fn from((from, size): (Pos, Size)) -> Self {
-        let to = Pos::new(from.x + size.width as i32, from.y + size.height as i32);
+        let to = Pos::new(from.x + size.width, from.y + size.height);
         Self::new(from, to)
     }
 }
@@ -129,7 +126,7 @@ mod test {
     fn constrain_region() {
         let inner = Region::from((Pos::ZERO, Size::new(10, 10)));
         let mut outer = Region::from((Pos::ZERO, Size::new(100, 100)));
-        outer.constrain(&inner);
+        outer.shrink_to_fit(&inner);
         let expected = inner;
         assert_eq!(expected, outer);
     }

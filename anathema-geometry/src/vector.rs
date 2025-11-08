@@ -1,4 +1,4 @@
-use std::ops::{Add, Index, Mul, Sub};
+use std::ops::{Add, Index, Mul, Sub, Neg};
 
 use bytemuck::{Pod, Zeroable};
 

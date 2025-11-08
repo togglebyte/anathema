@@ -28,18 +28,20 @@ pub struct Materials {
 }
 
 impl Materials {
-    pub fn new(
-        device: &wgpu::Device,
-        pipeline_layout: &wgpu::PipelineLayout,
-        format: wgpu::TextureFormat,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, pipeline_layout: &wgpu::PipelineLayout, format: wgpu::TextureFormat) -> Self {
         let mut inst = Self { inner: Slab::empty() };
 
-        let source =  wgpu::ShaderSource::Wgsl(DEFAULT_SHADER.into());
+        let source = wgpu::ShaderSource::Wgsl(DEFAULT_SHADER.into());
         let id = inst.add_material(device, pipeline_layout, source, format, "default".into());
         assert_eq!(id, MaterialId::default());
 
         inst
+    }
+
+    pub(crate) fn add_texture(&mut self, material: MaterialId, texture: TextureId) {
+        self.inner
+            .get_mut(material)
+            .map(|material| material.textures.push(texture));
     }
 
     pub(crate) fn remove_texture(&mut self, material: MaterialId, texture: TextureId) {
@@ -61,7 +63,7 @@ impl Materials {
         name: String,
     ) -> MaterialId {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("shader"),
+            label: Some("Shader"),
             source,
         });
 
@@ -115,5 +117,5 @@ impl Materials {
 pub struct Material {
     name: String,
     pub(crate) pipeline: wgpu::RenderPipeline,
-    textures: Vec<TextureId>,
+    pub(crate) textures: Vec<TextureId>,
 }

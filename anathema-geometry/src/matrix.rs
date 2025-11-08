@@ -3,12 +3,19 @@ use std::ops::{Add, Index, IndexMut, Mul};
 
 use bytemuck::{Pod, Zeroable};
 
-use super::{Size, Vector};
+use super::vector::Vector;
+use super::Size;
 
 /// Column major matrix
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SquareMatrix<const N: usize>([[f32; N]; N]);
+
+impl<const N: usize> From<SquareMatrix<N>> for [[f32; N]; N] {
+    fn from(value: SquareMatrix<N>) -> Self {
+        value.0
+    }
+}
 
 impl<const N: usize> Default for SquareMatrix<N> {
     fn default() -> Self {
@@ -79,10 +86,8 @@ impl<const N: usize> Display for SquareMatrix<N> {
 // -----------------------------------------------------------------------------
 //   - Byte muck -
 // -----------------------------------------------------------------------------
-unsafe impl<const N: usize> Zeroable for SquareMatrix<N> {
-}
-unsafe impl<const N: usize> Pod for SquareMatrix<N> {
-}
+unsafe impl<const N: usize> Zeroable for SquareMatrix<N> {}
+unsafe impl<const N: usize> Pod for SquareMatrix<N> {}
 
 // -----------------------------------------------------------------------------
 //   - Impl -

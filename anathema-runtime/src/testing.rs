@@ -320,7 +320,7 @@ pub struct TestWidget(pub String);
 
 impl Widget for TestWidget {
     fn layout(&mut self, children: Children<'_, '_>, layout: &mut Layout) -> Size {
-        let mut size = Size::new(self.0.len() as u16, 1);
+        let mut size = Size::new(self.0.len() as f32, 1.0);
 
         for mut child in children {
             let child_size = child.layout(layout);

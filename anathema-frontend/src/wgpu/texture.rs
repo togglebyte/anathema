@@ -5,7 +5,11 @@ use anathema_store::key;
 use anathema_store::slab::{Slab, SlabIndex};
 use image::GenericImageView;
 use wgpu::{
-    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device, Extent3d, FilterMode, Origin3d, Queue, Sampler, SamplerBindingType, SamplerDescriptor, ShaderStages, TexelCopyBufferLayout, TexelCopyTextureInfo, TexelCopyTextureInfoBase, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureView, TextureViewDescriptor, TextureViewDimension
+    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, Device, Extent3d, FilterMode, Origin3d, Queue, Sampler,
+    SamplerBindingType, SamplerDescriptor, ShaderStages, TexelCopyBufferLayout, TexelCopyTextureInfo,
+    TexelCopyTextureInfoBase, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType,
+    TextureUsages, TextureView, TextureViewDescriptor, TextureViewDimension,
 };
 
 use crate::wgpu::material::{MaterialId, Materials};
@@ -28,9 +32,10 @@ impl SlabIndex for TextureId {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Texture {
-    material: MaterialId
+    material: MaterialId,
+    pub(crate) bind_group: BindGroup,
 }
 
 pub(super) struct Textures {
@@ -80,18 +85,29 @@ impl Textures {
         }
     }
 
-    pub(crate) fn load_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue, materials: &mut Materials) -> TextureId {
+    pub(crate) fn load_texture(
+        &mut self,
+        path: impl AsRef<Path>,
+        device: &Device,
+        queue: &Queue,
+        materials: &mut Materials,
+        material: MaterialId,
+    ) -> TextureId {
+        let path = path.as_ref().to_str().unwrap_or("<path>");
         let texture = self.load_single_texture(path, device, queue);
         let view = texture.create_view(&TextureViewDescriptor::default());
-        self.single_texture_bind_group(device, &view);
-        self.inner.insert(Texture::default())
+        let bind_group = self.single_texture_bind_group(device, &view, path);
+        let texture = self.inner.insert(Texture { bind_group, material });
+
+        materials.add_texture(material, texture);
+
+        texture
     }
 
     pub(crate) fn remove_texture(&mut self, id: TextureId, materials: &mut Materials) {
         let texture = self.inner.remove(id);
         materials.remove_texture(texture.material, id);
     }
-
 
     fn load_single_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue) -> wgpu::Texture {
         let diffuse_bytes = std::fs::read(path).unwrap();
@@ -106,7 +122,7 @@ impl Textures {
         };
 
         let diffuse_texture = device.create_texture(&TextureDescriptor {
-            label: Some("texture"),
+            label: Some("Texture"),
             size: texture_size,
             mip_level_count: 1,
             sample_count: 1,
@@ -135,9 +151,9 @@ impl Textures {
         diffuse_texture
     }
 
-    fn single_texture_bind_group(&mut self, device: &Device, texture: &TextureView) -> BindGroup {
+    fn single_texture_bind_group(&mut self, device: &Device, texture: &TextureView, path: &str) -> BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Texture bind group"),
+            label: Some(&format!("Texture bind group: {path}")),
             layout: &self.bind_group_layout,
             entries: &[
                 BindGroupEntry {
@@ -150,5 +166,9 @@ impl Textures {
                 },
             ],
         })
+    }
+
+    pub(crate) fn get(&self, id: TextureId) -> &Texture {
+        &self.inner[id]
     }
 }

@@ -2,6 +2,8 @@ use winit::event_loop::EventLoop;
 
 pub use self::ctx::GraphicsCtx;
 pub use self::renderer::Renderer;
+pub use self::material::MaterialId;
+pub use self::sprite::Sprite;
 
 static DEFAULT_SHADER: &'static str = include_str!("shader.wgsl");
 
@@ -16,10 +18,10 @@ where
     event_loop.run_app(&mut app).unwrap();
 }
 
+mod camera;
 mod ctx;
 mod error;
 mod material;
-mod maths;
 mod model;
 mod renderer;
 mod sprite;

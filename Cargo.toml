@@ -41,10 +41,11 @@ version = "0.2.12-beta"
 
 [workspace.dependencies]
 bitflags = "2.4.1"
-unicode-width = "0.1.11"
+bytemuck = { version = "1.24.0", features = ["derive"] }
 flume = "0.11.0"
-notify = "6.1.1"
 nohash-hasher = "0.2.0"
+notify = "6.1.1"
+unicode-width = "0.1.11"
 anathema-compiler = { path = "./anathema-compiler", version = "0.2.12-beta" }
 anathema-core = { path = "./anathema-core", version = "0.2.12-beta" }
 anathema-frontend = { path = "./anathema-frontend", version = "0.2.12-beta" }

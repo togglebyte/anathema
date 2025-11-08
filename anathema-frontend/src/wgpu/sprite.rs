@@ -1,13 +1,12 @@
 use std::time::Duration;
 
+use anathema_geometry::{Mat4x4, Pos, Size};
 use bytemuck::{Pod, Zeroable};
-use wgpu::{BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode};
-
-use anathema_geometry::{Pos, Size};
-use crate::wgpu::maths::Mat;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{BufferAddress, Device, VertexAttribute, VertexBufferLayout, VertexStepMode};
 
 // TODO:
-// * Store rotatio, scale and translation as separate fields on the Sprite
+// * Store rotation, scale and translation as separate fields on the Sprite
 // * Compute and cache a matrix on the sprite
 // * Do NOT send the entire Sprite, but rather the computed matrix for the sprite
 
@@ -16,7 +15,7 @@ use crate::wgpu::maths::Mat;
 pub struct SpriteData {
     // Sprite sheet index
     index: i32,
-    mat: Mat,
+    mat: Mat4x4,
     uv_size: [f32; 2],
     offset: [f32; 2],
 }
@@ -35,7 +34,7 @@ impl SpriteData {
     fn new(index: i32, uv_size: [f32; 2], offset: [f32; 2]) -> Self {
         Self {
             index: 2,
-            mat: Mat::identity(),
+            mat: Mat4x4::identity(),
             uv_size,
             offset,
         }
@@ -44,9 +43,7 @@ impl SpriteData {
 
 pub struct Sprite {
     pos: Pos,
-    // Scale (whatever nerd)
     pub scale: f32,
-    // Rotation (like in toast?)
     rot: f32,
 
     // Size, in pixels
@@ -63,16 +60,12 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(
-        sheet_size: impl Into<Size>,
-        offset: impl Into<Pos>,
-        size_in_pixels: impl Into<Size>,
-    ) -> Self {
+    pub fn new(sheet_size: impl Into<Size>, offset: impl Into<Pos>, size_in_pixels: impl Into<Size>) -> Self {
         let sheet_size = sheet_size.into();
         let pixel_size = Size::ONE / sheet_size;
         let size_in_pixels = size_in_pixels.into();
         let uv_size = size_in_pixels * pixel_size;
-        let offset = offset.into() * pixel_size;
+        let offset = offset.into() * pixel_size.to_vec();
 
         Self {
             pos: Pos::ZERO,
@@ -84,14 +77,13 @@ impl Sprite {
             dirty: true,
             cache: SpriteData::new(0, uv_size.into(), offset.into()),
             index: 0,
-            animation: None,
             pixel_size,
         }
     }
 
     pub fn data(&mut self) -> SpriteData {
         if self.dirty {
-            let translation = Mat4x4::from_translation(self.pos);
+            let translation = Mat4x4::from_translation(self.pos.to_vec());
             let rotation = Mat4x4::from_rotation(self.rot);
 
             // here we scale pixels
@@ -101,7 +93,7 @@ impl Sprite {
 
             self.cache.mat = translation * rotation * uniform_scale * pixel_size_tranform;
             self.cache.index = self.index;
-            self.cache.offset = (self.offset * self.pixel_size).into();
+            self.cache.offset = (self.offset * self.pixel_size.to_vec()).into();
         }
 
         self.cache
@@ -130,10 +122,50 @@ impl Sprite {
         self.scale = scale;
         self.dirty = true;
     }
+}
 
-    pub(crate) fn update(&mut self, dt: Duration) {
-        let Some(anim) = self.animation.as_mut() else { return };
-        self.offset =  anim.update(dt);
-        self.dirty = true;
+pub(crate) struct Sprites {
+    sprites: Vec<Sprite>,
+    sprite_cache: Vec<SpriteData>,
+    pub(crate) instance_buffer: wgpu::Buffer,
+    len: usize,
+}
+
+impl Sprites {
+    pub fn new(device: &Device) -> Self {
+        let sprite_cache = vec![];
+        let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Instance buffer"),
+            contents: bytemuck::cast_slice(&sprite_cache),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+
+        Self {
+            sprites: vec![],
+            sprite_cache,
+            instance_buffer,
+            len: 0,
+        }
+    }
+
+    fn rebuild_buffer(&mut self, device: &Device) {
+        self.instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Instance buffer"),
+            contents: bytemuck::cast_slice(&self.sprite_cache),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+    }
+
+    pub fn add(&mut self, mut sprite: Sprite, device: &Device) {
+        self.sprite_cache.push(sprite.data());
+        self.sprites.push(sprite);
+
+        if self.sprites.len() > self.len {
+            self.rebuild_buffer(device);
+        }
+    }
+
+    pub(crate) fn len(&self) -> u32 {
+        self.len as u32
     }
 }

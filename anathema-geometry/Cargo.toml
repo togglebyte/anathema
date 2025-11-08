@@ -9,6 +9,7 @@ homepage = "https://github.com/togglebyte/anathema"
 repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
+bytemuck = { workspace = true }
 
 [lints]
 workspace = true
