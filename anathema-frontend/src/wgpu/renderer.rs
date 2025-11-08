@@ -1,0 +1,68 @@
+use super::GraphicsCtx;
+use crate::wgpu::texture::Textures;
+
+pub struct Renderer;
+
+impl Renderer {
+    fn render(&mut self, ctx: &mut GraphicsCtx, textures: &Textures) -> Result<(), ()> {
+        #[cfg(feature = "profiling")]
+        puffin::profile_function!();
+
+        let clear_color = [0.0, 0.0, 1.0, 1.0];
+
+        let output = ctx.surface.get_current_texture().unwrap(); // TODO: add `?` back in when
+                                                                   // result is decided upon;
+
+        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Command encoder"),
+        });
+
+        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: clear_color[0],
+                        g: clear_color[1],
+                        b: clear_color[2],
+                        a: clear_color[3],
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None, // TODO add depth stencil
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        // -----------------------------------------------------------------------------
+        //   - Render pipeline -
+        //   * One pipeline per material
+        //   * Group textures by material
+        // -----------------------------------------------------------------------------
+        for material in ctx.materials.iter() {
+            // render_pass.set_bind_group(0, &ctx.textures.bind_group_layout, &[]);
+            render_pass.set_pipeline(&material.pipeline);
+        }
+
+        // render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+        // render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+
+        // render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        // render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+
+        // render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+        // render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..self.instances.len() as u32);
+
+        drop(render_pass);
+        ctx.queue.submit(Some(encoder.finish()));
+
+        output.present();
+        Ok(())
+    }
+}

@@ -8,6 +8,7 @@ pub use {
     anathema_runtime as runtime,     // runtime
     anathema_state_derive as derive, // derive
     anathema_store as store,         // store
+    anathema_frontend as frontend,   // frontend
 };
 
 pub mod prelude {

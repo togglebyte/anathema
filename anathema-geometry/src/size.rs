@@ -14,6 +14,8 @@ impl Size {
     pub const MAX: Self = Self::new(u16::MAX, u16::MAX);
     /// Zero size
     pub const ZERO: Self = Self::new(0, 0);
+    /// Zero one
+    pub const ONE: Self = Self::new(1, 1);
 
     /// Create a new Size
     pub const fn new(width: u16, height: u16) -> Self {
