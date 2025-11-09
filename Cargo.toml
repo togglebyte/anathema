@@ -43,6 +43,7 @@ version = "0.2.12-beta"
 bitflags = "2.4.1"
 bytemuck = { version = "1.24.0", features = ["derive"] }
 flume = "0.11.0"
+glam = { version = "0.30.9", features = ["bytemuck"] }
 nohash-hasher = "0.2.0"
 notify = "6.1.1"
 unicode-width = "0.1.11"

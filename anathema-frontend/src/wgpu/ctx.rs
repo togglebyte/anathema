@@ -38,6 +38,7 @@ pub struct GraphicsCtx {
     pub(crate) materials: Materials,
     pub(crate) pipeline_layout: PipelineLayout,
     pub(crate) camera: Camera,
+    pub(crate) projection_buffer: Buffer,
     pub(crate) camera_bind_group: BindGroup,
 }
 
@@ -160,10 +161,7 @@ impl GraphicsCtx {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[
-                &textures.bind_group_layout,
-                &camera_bindgroupd_layout
-            ],
+            bind_group_layouts: &[&textures.bind_group_layout, &camera_bindgroupd_layout],
             push_constant_ranges: &[],
         });
 
@@ -191,12 +189,14 @@ impl GraphicsCtx {
 
             camera,
             camera_bind_group,
+            projection_buffer,
         };
 
         Ok(inst)
     }
 
     pub(crate) fn resize(&mut self, size: Size) {
+        self.camera.resize(size, NEAR, FAR);
         self.surface_config.width = size.width as u32;
         self.surface_config.height = size.height as u32;
         self.surface.configure(&self.device, &self.surface_config);
@@ -213,5 +213,17 @@ impl GraphicsCtx {
 
     pub(crate) fn textures(&self, textures: &[TextureId]) -> impl Iterator<Item = &Texture> {
         textures.iter().map(|id| self.textures.get(*id))
+    }
+
+    // TODO: remove this, it's a test function,
+    // but remember to rebuild the buffer!
+    pub fn each_sprite<F>(&mut self, f: F)
+    where
+        F: Fn(&mut Sprite),
+    {
+        for sprite in &mut self.sprites.sprites {
+            f(sprite);
+        }
+        self.sprites.rebuild_buffer(&self.device);
     }
 }

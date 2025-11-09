@@ -1,7 +1,8 @@
 use std::time::Duration;
 
-use anathema_geometry::{Mat4x4, Pos, Size};
+use anathema_geometry::{Pos, Size};
 use bytemuck::{Pod, Zeroable};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{BufferAddress, Device, VertexAttribute, VertexBufferLayout, VertexStepMode};
 
@@ -13,16 +14,21 @@ use wgpu::{BufferAddress, Device, VertexAttribute, VertexBufferLayout, VertexSte
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
 pub struct SpriteData {
-    // Sprite sheet index
-    index: i32,
-    mat: Mat4x4,
-    uv_size: [f32; 2],
-    offset: [f32; 2],
+    uv_size: Size,
+    offset: Pos,
+    mat: Mat4,
 }
 
 impl SpriteData {
     pub fn layout() -> VertexBufferLayout<'static> {
-        const ATTRIBS: [VertexAttribute; 7] = wgpu::vertex_attr_array![4 => Sint32, 5 => Float32x4, 6 => Float32x4, 7 => Float32x4, 8 => Float32x4, 9 => Float32x2, 10 => Float32x2];
+        const ATTRIBS: [VertexAttribute; 6] = wgpu::vertex_attr_array![
+            5 => Float32x2,
+            6 => Float32x2,
+            7 => Float32x4,
+            8 => Float32x4,
+            9 => Float32x4,
+            10 => Float32x4,
+        ];
 
         VertexBufferLayout {
             array_stride: size_of::<Self>() as BufferAddress,
@@ -31,10 +37,9 @@ impl SpriteData {
         }
     }
 
-    fn new(index: i32, uv_size: [f32; 2], offset: [f32; 2]) -> Self {
+    fn new(uv_size: Size, offset: Pos) -> Self {
         Self {
-            index: 2,
-            mat: Mat4x4::identity(),
+            mat: Mat4::IDENTITY,
             uv_size,
             offset,
         }
@@ -52,7 +57,6 @@ pub struct Sprite {
     pub offset: Pos,
     // // Z index
     // pub z_index: f32,
-    pub index: i32,
     dirty: bool,
     pixel_size: Size,
 
@@ -65,7 +69,7 @@ impl Sprite {
         let pixel_size = Size::ONE / sheet_size;
         let size_in_pixels = size_in_pixels.into();
         let uv_size = size_in_pixels * pixel_size;
-        let offset = offset.into() * pixel_size.to_vec();
+        let offset = Pos::from(*offset.into() * pixel_size.to_vec());
 
         Self {
             pos: Pos::ZERO,
@@ -75,25 +79,32 @@ impl Sprite {
             size_in_pixels,
 
             dirty: true,
-            cache: SpriteData::new(0, uv_size.into(), offset.into()),
-            index: 0,
+            cache: SpriteData::new(uv_size, offset),
             pixel_size,
         }
     }
 
     pub fn data(&mut self) -> SpriteData {
         if self.dirty {
-            let translation = Mat4x4::from_translation(self.pos.to_vec());
-            let rotation = Mat4x4::from_rotation(self.rot);
+            let translation = Mat4::from_translation(Vec3::from((*self.pos, 0.0)));
+            let rotation = Mat4::from_rotation_z(self.rot);
 
             // here we scale pixels
-            let pixel_size_tranform = Mat4x4::from_scale(self.size_in_pixels);
+            let pixel_size_transform = Mat4::from_scale(Vec3::from((self.size_in_pixels.to_vec(), 1.0)));
 
-            let uniform_scale = Mat4x4::from_scale(Size::new(self.scale, self.scale));
+            let scale = Size::new(self.scale, self.scale);
+            let uniform_scale = Mat4::from_scale(Vec3::from((scale.to_vec(), 1.0)));
 
-            self.cache.mat = translation * rotation * uniform_scale * pixel_size_tranform;
-            self.cache.index = self.index;
-            self.cache.offset = (self.offset * self.pixel_size.to_vec()).into();
+            let mat_row_major = translation * rotation * uniform_scale * pixel_size_transform;
+
+            // self.cache.mat = mat_row_major;//.transpose();
+            self.cache.mat = Mat4::from_cols(Vec4::X, Vec4::Y, Vec4::Z, Vec4::W);
+            self.cache.offset = (*self.offset * self.pixel_size.to_vec()).into();
+
+            // Brutalise the data because f this
+            self.cache.offset = Pos::ZERO;
+            self.cache.uv_size = Size::ONE;
+            self.cache.mat = Mat4::IDENTITY;
         }
 
         self.cache
@@ -101,11 +112,6 @@ impl Sprite {
 
     pub fn pos(&self) -> Pos {
         self.pos
-    }
-
-    pub fn index(&mut self, index: i32) {
-        self.index = index;
-        self.dirty = true;
     }
 
     pub fn translate(&mut self, pos: Pos) {
@@ -125,8 +131,8 @@ impl Sprite {
 }
 
 pub(crate) struct Sprites {
-    sprites: Vec<Sprite>,
-    sprite_cache: Vec<SpriteData>,
+    pub(crate) sprites: Vec<Sprite>,
+    pub(crate) sprite_cache: Vec<SpriteData>,
     pub(crate) instance_buffer: wgpu::Buffer,
     len: usize,
 }
@@ -148,19 +154,35 @@ impl Sprites {
         }
     }
 
-    fn rebuild_buffer(&mut self, device: &Device) {
-        self.instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Instance buffer"),
-            contents: bytemuck::cast_slice(&self.sprite_cache),
+    pub(crate) fn rebuild_buffer(&mut self, device: &Device) {
+        self.sprite_cache.clear();
+        self.sprites
+            .iter_mut()
+            .map(|sprite| sprite.data())
+            .for_each(|data| self.sprite_cache.push(data));
+        self.len = self.sprites.len();
+
+        let debug_instance_buf = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Debug instance buffer"),
+            contents: bytemuck::cast_slice(&[self.sprite_cache[0]]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
+
+        self.instance_buffer = debug_instance_buf;
+
+        // self.instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
+        //     label: Some("Instance buffer"),
+        //     contents: bytemuck::cast_slice(&self.sprite_cache),
+        //     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        // });
     }
 
     pub fn add(&mut self, mut sprite: Sprite, device: &Device) {
         self.sprite_cache.push(sprite.data());
         self.sprites.push(sprite);
+        self.rebuild_buffer(device);
 
-        if self.sprites.len() > self.len {
+        if self.sprites.len() >= self.len {
             self.rebuild_buffer(device);
         }
     }

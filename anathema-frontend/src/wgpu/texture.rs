@@ -34,6 +34,7 @@ impl SlabIndex for TextureId {
 
 #[derive(Debug)]
 pub struct Texture {
+    inner: wgpu::Texture,
     material: MaterialId,
     pub(crate) bind_group: BindGroup,
 }
@@ -97,7 +98,11 @@ impl Textures {
         let texture = self.load_single_texture(path, device, queue);
         let view = texture.create_view(&TextureViewDescriptor::default());
         let bind_group = self.single_texture_bind_group(device, &view, path);
-        let texture = self.inner.insert(Texture { bind_group, material });
+        let texture = self.inner.insert(Texture {
+            inner: texture,
+            bind_group,
+            material,
+        });
 
         materials.add_texture(material, texture);
 

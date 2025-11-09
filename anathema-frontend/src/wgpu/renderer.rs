@@ -1,5 +1,6 @@
 use super::GraphicsCtx;
-use crate::wgpu::{model::INDICES, texture::Textures};
+use crate::wgpu::model::INDICES;
+use crate::wgpu::texture::Textures;
 
 pub struct Renderer;
 
@@ -8,7 +9,22 @@ impl Renderer {
         #[cfg(feature = "profiling")]
         puffin::profile_function!();
 
-        let clear_color = [0.0, 0.0, 1.0, 1.0];
+        let clear_color = [0.2, 0.3, 0.4, 1.0];
+
+        // Update view_matrix uniform
+        // NOTE: do we need this?
+        ctx.queue.write_buffer(
+            &mut ctx.projection_buffer,
+            0,
+            bytemuck::cast_slice(&[ctx.camera.to_matrix()]),
+        );
+
+        // // NOTE: do we need this?
+        // ctx.queue.write_buffer(
+        //     &mut ctx.sprites.instance_buffer,
+        //     0,
+        //     bytemuck::cast_slice(&ctx.sprites.sprite_cache),
+        // );
 
         let output = ctx.surface.get_current_texture().unwrap(); // TODO: add `?` back in when
                                                                  // result is decided upon;
@@ -47,18 +63,16 @@ impl Renderer {
         // -----------------------------------------------------------------------------
         for material in ctx.materials.iter() {
             for texture in ctx.textures(&material.textures) {
-                render_pass.set_pipeline(&material.pipeline);
+                // render_pass.set_pipeline(&material.pipeline);
                 render_pass.set_bind_group(0, &texture.bind_group, &[]);
+                render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
+
+                // render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
+                // render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
+                // render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                // render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..ctx.sprites.len() as u32);
             }
         }
-
-        render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
-
-        render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
-
-        render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..ctx.sprites.len() as u32);
 
         drop(render_pass);
         ctx.queue.submit(Some(encoder.finish()));
