@@ -35,7 +35,6 @@ impl SlabIndex for TextureId {
 #[derive(Debug)]
 pub struct Texture {
     inner: wgpu::Texture,
-    material: MaterialId,
     pub(crate) bind_group: BindGroup,
 }
 
@@ -91,8 +90,6 @@ impl Textures {
         path: impl AsRef<Path>,
         device: &Device,
         queue: &Queue,
-        materials: &mut Materials,
-        material: MaterialId,
     ) -> TextureId {
         let path = path.as_ref().to_str().unwrap_or("<path>");
         let texture = self.load_single_texture(path, device, queue);
@@ -101,17 +98,13 @@ impl Textures {
         let texture = self.inner.insert(Texture {
             inner: texture,
             bind_group,
-            material,
         });
-
-        materials.add_texture(material, texture);
 
         texture
     }
 
-    pub(crate) fn remove_texture(&mut self, id: TextureId, materials: &mut Materials) {
-        let texture = self.inner.remove(id);
-        materials.remove_texture(texture.material, id);
+    pub(crate) fn remove_texture(&mut self, id: TextureId) {
+        let _texture = self.inner.remove(id);
     }
 
     fn load_single_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue) -> wgpu::Texture {

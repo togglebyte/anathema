@@ -15,7 +15,7 @@ use super::error::{Error, Result};
 use super::model::{INDICES, MODEL};
 use crate::wgpu::camera::Camera;
 use crate::wgpu::material::{Material, MaterialId, Materials};
-use crate::wgpu::sprite::{Sprite, Sprites};
+use crate::wgpu::sprite::{Sprite, SpriteId, Sprites};
 use crate::wgpu::texture::{Texture, TextureId, Textures};
 
 pub const NEAR: f32 = 10.0;
@@ -202,17 +202,23 @@ impl GraphicsCtx {
         self.surface.configure(&self.device, &self.surface_config);
     }
 
-    pub fn load_texture(&mut self, path: impl AsRef<Path>, material: MaterialId) -> TextureId {
+    pub fn load_texture(&mut self, path: impl AsRef<Path>) -> TextureId {
         self.textures
-            .load_texture(path, &self.device, &self.queue, &mut self.materials, material)
+            .load_texture(path, &self.device, &self.queue)
     }
 
-    pub fn add_sprite(&mut self, sprite: Sprite) {
-        self.sprites.add(sprite, &self.device);
+    pub fn add_sprite(&mut self, sprite: Sprite) -> SpriteId {
+        let material = sprite.material;
+        let sprite = self.sprites.add(sprite, &self.device);
+        self.materials.add_sprite(material, sprite);
+        sprite
     }
 
-    pub(crate) fn textures(&self, textures: &[TextureId]) -> impl Iterator<Item = &Texture> {
-        textures.iter().map(|id| self.textures.get(*id))
+    pub(crate) fn sprites(&self, sprites: &[SpriteId]) -> impl Iterator<Item = (&Sprite, &Texture)> {
+        sprites.iter().filter_map(|id| self.sprites.get(*id)).map(|sprite| {
+            let texture = self.textures.get(sprite.texture);
+            (sprite, texture)
+        })
     }
 
     // TODO: remove this, it's a test function,
@@ -221,7 +227,7 @@ impl GraphicsCtx {
     where
         F: Fn(&mut Sprite),
     {
-        for sprite in &mut self.sprites.sprites {
+        for (_, sprite) in self.sprites.sprites.iter_mut() {
             f(sprite);
         }
         self.sprites.rebuild_buffer(&self.device);

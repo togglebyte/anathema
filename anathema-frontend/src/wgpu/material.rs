@@ -1,7 +1,7 @@
 use anathema_store::slab::{Slab, SlabIndex};
 
 use crate::wgpu::model::Vertex;
-use crate::wgpu::sprite::SpriteData;
+use crate::wgpu::sprite::{SpriteData, SpriteId};
 use crate::wgpu::texture::TextureId;
 use crate::wgpu::DEFAULT_SHADER;
 
@@ -38,16 +38,20 @@ impl Materials {
         inst
     }
 
-    pub(crate) fn add_texture(&mut self, material: MaterialId, texture: TextureId) {
-        self.inner
-            .get_mut(material)
-            .map(|material| material.textures.push(texture));
+    pub(crate) fn get_mut(&mut self, material: MaterialId) -> &mut Material {
+        &mut self.inner[material]
     }
 
-    pub(crate) fn remove_texture(&mut self, material: MaterialId, texture: TextureId) {
+    pub(crate) fn add_sprite(&mut self, material: MaterialId, sprite: SpriteId) {
         self.inner
             .get_mut(material)
-            .map(|material| material.textures.retain(|id| texture.ne(id)));
+            .map(|material| material.sprites.push(sprite));
+    }
+
+    pub(crate) fn remove_sprite(&mut self, material: MaterialId, sprite: SpriteId) {
+        self.inner
+            .get_mut(material)
+            .map(|material| material.sprites.retain(|id| sprite.ne(id)));
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Material> {
@@ -108,7 +112,7 @@ impl Materials {
         self.inner.insert(Material {
             name,
             pipeline,
-            textures: vec![],
+            sprites: vec![],
         })
     }
 }
@@ -117,5 +121,5 @@ impl Materials {
 pub struct Material {
     name: String,
     pub(crate) pipeline: wgpu::RenderPipeline,
-    pub(crate) textures: Vec<TextureId>,
+    pub(crate) sprites: Vec<SpriteId>,
 }

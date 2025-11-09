@@ -62,15 +62,17 @@ impl Renderer {
         //   * Group textures by material
         // -----------------------------------------------------------------------------
         for material in ctx.materials.iter() {
-            for texture in ctx.textures(&material.textures) {
-                // render_pass.set_pipeline(&material.pipeline);
+            for (sprite, texture) in ctx.sprites(&material.sprites) {
+                render_pass.set_pipeline(&material.pipeline);
                 render_pass.set_bind_group(0, &texture.bind_group, &[]);
                 render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
 
-                // render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
-                // render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
-                // render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-                // render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..ctx.sprites.len() as u32);
+                panic!("if there is only one sprite then don't use an instance buffer");
+
+                render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
+                render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
+                render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..ctx.sprites.len() as u32);
             }
         }
 
