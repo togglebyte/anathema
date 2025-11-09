@@ -1,10 +1,11 @@
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
-use crate::vector::Vector;
+use bytemuck::{Pod, Zeroable};
+use glam::Vec2;
 
 /// Size
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Default, Pod, Zeroable)]
 pub struct Size {
     /// Width
     pub width: f32,
@@ -31,14 +32,20 @@ impl Size {
     }
 
     /// Convert the size into a vector
-    pub fn to_vec(self) -> Vector<2> {
-        Vector::new([self.width, self.height])
+    pub fn to_vec(self) -> Vec2 {
+        Vec2::new(self.width, self.height)
     }
 }
 
 impl From<(u16, u16)> for Size {
     fn from((width, height): (u16, u16)) -> Self {
         Size::new(width as f32, height as f32)
+    }
+}
+
+impl From<(f32, f32)> for Size {
+    fn from((width, height): (f32, f32)) -> Self {
+        Size::new(width, height)
     }
 }
 
@@ -90,6 +97,17 @@ impl Mul for Size {
         Self {
             width: self.width * other.width,
             height: self.height * other.height,
+        }
+    }
+}
+
+impl Mul<f32> for Size {
+    type Output = Self;
+
+    fn mul(self, other: f32) -> Self {
+        Self {
+            width: self.width * other,
+            height: self.height * other,
         }
     }
 }

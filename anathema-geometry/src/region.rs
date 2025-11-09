@@ -1,7 +1,7 @@
 use crate::{Pos, Size};
 
 /// A normalized region in global space
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub struct Region {
     /// The starting position of the region
     pub from: Pos,
@@ -15,17 +15,17 @@ impl Region {
 
     /// Create a new instance of a region.
     pub const fn new(from: Pos, to: Pos) -> Self {
-        assert!(from.x <= to.x && from.y <= to.y, "region is non-normalized");
+        assert!(from.0.x <= to.0.x && from.0.y <= to.0.y, "region is non-normalized");
         Self { from, to }
     }
 
     /// Check if another region is intersecting with this region
     pub const fn intersects(&self, other: &Region) -> bool {
-        if other.to.x <= self.from.x || other.from.x >= self.to.x {
+        if other.to.0.x <= self.from.0.x || other.from.0.x >= self.to.0.x {
             return false;
         }
 
-        if other.from.y >= self.to.y || other.to.y <= self.from.y {
+        if other.from.0.y >= self.to.0.y || other.to.0.y <= self.from.0.y {
             return false;
         }
 
@@ -34,7 +34,7 @@ impl Region {
 
     /// Get the size of the region
     pub const fn size(&self) -> Size {
-        Size::new(self.to.x - self.from.x, self.to.y - self.from.y)
+        Size::new(self.to.0.x - self.from.0.x, self.to.0.y - self.from.0.y)
     }
 
     /// Get the position of the region.
@@ -45,8 +45,8 @@ impl Region {
 
     /// Move the region to a new position
     pub fn set_pos(&mut self, pos: Pos) {
-        self.from += pos;
-        self.to += pos;
+        *self.from += *pos;
+        *self.to += *pos;
     }
 
     /// Resize the region
@@ -76,14 +76,14 @@ impl Region {
     /// The check is exclusive, so a region from 0,0 to 10, 10 contains `Pos::ZERO`
     /// but not `Pos::new(10.0, 10.0)`
     pub const fn contains(&self, pos: Pos) -> bool {
-        pos.x >= self.from.x && pos.x < self.to.x && pos.y >= self.from.y && pos.y < self.to.y
+        pos.0.x >= self.from.0.x && pos.0.x < self.to.0.x && pos.0.y >= self.from.0.y && pos.0.y < self.to.0.y
     }
 
     /// Check if a region contains a position.
     /// The check is inclusive, so a region from 0,0 to 10, 10 contains `Pos::ZERO`
     /// as well as `Pos::new(10.0, 10.0)`
     pub const fn icontains(&self, pos: Pos) -> bool {
-        pos.x >= self.from.x && pos.x <= self.to.x && pos.y >= self.from.y && pos.y <= self.to.y
+        pos.0.x >= self.from.0.x && pos.0.x <= self.to.0.x && pos.0.y >= self.from.0.y && pos.0.y <= self.to.0.y
     }
 
     /// Constrain a region to fit within another region
