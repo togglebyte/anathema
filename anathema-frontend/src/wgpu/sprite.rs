@@ -233,6 +233,8 @@ impl SpriteBuffers {
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 });
 
+                buffer_entry.buffer = instance_buffer;
+
                 index
             }
             std::collections::hash_map::Entry::Vacant(entry) => {

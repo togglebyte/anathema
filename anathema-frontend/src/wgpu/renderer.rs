@@ -69,7 +69,6 @@ impl Renderer {
         //   * Group textures by material
         // -----------------------------------------------------------------------------
 
-        eprintln!("FIND ME");
         for (material, texture, sprite_buffer, sprite_count) in ctx.something() {
             render_pass.set_pipeline(&material.pipeline);
             render_pass.set_bind_group(0, &texture.bind_group, &[]);
