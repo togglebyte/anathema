@@ -10,7 +10,6 @@ use wgpu::{BufferAddress, Device, VertexAttribute, VertexBufferLayout, VertexSte
 use crate::wgpu::texture::TextureId;
 use crate::wgpu::MaterialId;
 
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SpriteId(u32);
 
@@ -28,8 +27,6 @@ impl SlabIndex for SpriteId {
         Self(index as u32)
     }
 }
-
-
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable)]
@@ -67,8 +64,8 @@ impl SpriteData {
 }
 
 pub struct Sprite {
-    pub(crate) texture: TextureId, 
-    pub(crate) material: MaterialId, 
+    pub(crate) texture: TextureId,
+    pub(crate) material: MaterialId,
 
     pos: Pos,
     pub scale: f32,
@@ -87,7 +84,13 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(texture: TextureId, material: MaterialId, sheet_size: impl Into<Size>, offset: impl Into<Pos>, size_in_pixels: impl Into<Size>) -> Self {
+    pub fn new(
+        texture: TextureId,
+        material: MaterialId,
+        sheet_size: impl Into<Size>,
+        offset: impl Into<Pos>,
+        size_in_pixels: impl Into<Size>,
+    ) -> Self {
         let sheet_size = sheet_size.into();
         let pixel_size = Size::ONE / sheet_size;
         let size_in_pixels = size_in_pixels.into();
@@ -95,7 +98,7 @@ impl Sprite {
         let offset = Pos::from(*offset.into() * pixel_size.to_vec());
 
         Self {
-            texture, 
+            texture,
             material,
 
             pos: Pos::ZERO,
@@ -197,7 +200,7 @@ impl Sprites {
         self.len += 1;
 
         // if self.sprites.len() >= self.len {
-            self.rebuild_buffer(device);
+        self.rebuild_buffer(device);
         // }
 
         sprite_id

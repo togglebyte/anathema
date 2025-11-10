@@ -67,8 +67,6 @@ impl Renderer {
                 render_pass.set_bind_group(0, &texture.bind_group, &[]);
                 render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
 
-                panic!("if there is only one sprite then don't use an instance buffer");
-
                 render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
                 render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
                 render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
