@@ -229,19 +229,16 @@ impl GraphicsCtx {
     {
         for (_, sprite) in self.sprites.sprites.iter_mut() {
             f(sprite);
+            panic!("make a key, update the sprite in the cache");
         }
-        self.sprites.rebuild_buffer(&self.device);
     }
 
-    pub(crate) fn something(&self) -> impl Iterator<Item = (&Material, &Texture, (), u32)> {
-        for material in materials {
-            for texture in material.textures {
-                let sprites = fetch_sprites(materia, texture);
-                let count = sprites.len();
+    pub(crate) fn something(&self) -> impl Iterator<Item = (&Material, &Texture, &Buffer, u32)> {
+        self.sprites.iter_cache().map(|(texture, material, buffer, len)| {
+            let texture = self.textures.get(texture);
+            let material = self.materials.get(material);
 
-                for sprite in sprites
-                }
-            }
-        }
+            (material, texture, buffer, len)
+        })
     }
 }

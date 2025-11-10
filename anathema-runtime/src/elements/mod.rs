@@ -25,8 +25,6 @@ impl std::hash::Hash for ElementId {
     }
 }
 
-impl nohash_hasher::IsEnabled for ElementId {}
-
 #[derive(Debug)]
 pub struct Node<'bp> {
     pub(super) parent: Option<ElementId>,

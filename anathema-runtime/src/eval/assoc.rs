@@ -1,14 +1,11 @@
 // Associate expressions with elements
-use std::hash::{BuildHasherDefault, Hash};
+use std::hash::Hash;
 
 use anathema_compiler::expressions::ExpressionId;
-use nohash_hasher::{IsEnabled, NoHashHasher};
+use anathema_hashmap::{HashMap, HashSet};
 
 use crate::elements::ElementId;
 use crate::eval::values::TemplateValue;
-
-type HashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<NoHashHasher<K>>>;
-type HashSet<K> = std::collections::HashSet<K, BuildHasherDefault<NoHashHasher<K>>>;
 
 #[derive(Debug)]
 enum Entry<T> {
@@ -20,7 +17,7 @@ enum Entry<T> {
 impl<T> Entry<T>
 where
     T: PartialEq + Copy + Eq,
-    T: Hash + IsEnabled,
+    T: Hash,
 {
     fn add(&mut self, value: T) {
         match self {

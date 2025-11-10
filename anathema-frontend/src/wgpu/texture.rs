@@ -14,8 +14,14 @@ use wgpu::{
 
 use crate::wgpu::material::{MaterialId, Materials};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TextureId(u32);
+
+impl From<TextureId> for u32 {
+    fn from(value: TextureId) -> Self {
+        value.0
+    }
+}
 
 impl SlabIndex for TextureId {
     const MAX: usize = u32::MAX as usize;

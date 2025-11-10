@@ -69,13 +69,12 @@ impl Renderer {
         //   * Group textures by material
         // -----------------------------------------------------------------------------
 
+        eprintln!("FIND ME");
         for (material, texture, sprite_buffer, sprite_count) in ctx.something() {
             render_pass.set_pipeline(&material.pipeline);
             render_pass.set_bind_group(0, &texture.bind_group, &[]);
 
             render_pass.set_vertex_buffer(1, sprite_buffer.slice(..));
-            // NOTE: there is no len on the sprite buffer (also there is no sprite buffer) 
-            // as it's bytes, not sprites (also it doesn't exist)
             render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..sprite_count);
         }
 

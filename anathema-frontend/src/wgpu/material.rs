@@ -5,8 +5,14 @@ use crate::wgpu::sprite::{SpriteData, SpriteId};
 use crate::wgpu::texture::TextureId;
 use crate::wgpu::DEFAULT_SHADER;
 
-#[derive(Debug, Default, Copy, Clone, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct MaterialId(u16);
+
+impl From<MaterialId> for u16 {
+    fn from(value: MaterialId) -> Self {
+        value.0
+    }
+}
 
 impl SlabIndex for MaterialId {
     const MAX: usize = u16::MAX as usize;
@@ -36,6 +42,10 @@ impl Materials {
         assert_eq!(id, MaterialId::default());
 
         inst
+    }
+
+    pub(crate) fn get(&self, material: MaterialId) -> &Material {
+        &self.inner[material]
     }
 
     pub(crate) fn get_mut(&mut self, material: MaterialId) -> &mut Material {

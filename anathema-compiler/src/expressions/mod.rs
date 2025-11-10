@@ -21,8 +21,6 @@ impl std::hash::Hash for ExpressionId {
     }
 }
 
-impl nohash_hasher::IsEnabled for ExpressionId {}
-
 /// A collection of expressions paired with their scope boundaries.
 #[derive(Debug)]
 pub struct Expressions {

@@ -6,7 +6,6 @@ version.workspace = true
 [dependencies]
 anathema-store = { path = "../anathema-store", version = "0.2.12-beta" }
 serde = { version = "1.0.228", features = ["derive"], optional = true }
-nohash-hasher = { workspace = true }
 
 [features]
 default = []

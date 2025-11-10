@@ -18,6 +18,7 @@ anathema-compiler = { workspace = true }
 anathema-core = { workspace = true }
 anathema-frontend = { workspace = true }
 anathema-geometry = { workspace = true }
+anathema-hashmap = { workspace = true }
 anathema-runtime = { workspace = true }
 anathema-state-derive = { workspace = true }
 anathema-store = { workspace = true }
@@ -44,13 +45,13 @@ bitflags = "2.4.1"
 bytemuck = { version = "1.24.0", features = ["derive"] }
 flume = "0.11.0"
 glam = { version = "0.30.9", features = ["bytemuck"] }
-nohash-hasher = "0.2.0"
 notify = "6.1.1"
 unicode-width = "0.1.11"
 anathema-compiler = { path = "./anathema-compiler", version = "0.2.12-beta" }
 anathema-core = { path = "./anathema-core", version = "0.2.12-beta" }
 anathema-frontend = { path = "./anathema-frontend", version = "0.2.12-beta" }
 anathema-geometry = { path = "./anathema-geometry", version = "0.2.12-beta" }
+anathema-hashmap = { path = "./anathema-hashmap", version = "0.2.12-beta" }
 anathema-runtime = { path = "./anathema-runtime", version = "0.2.12-beta" }
 anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.12-beta" }
 anathema-store = { path = "./anathema-store", version = "0.2.12-beta" }
@@ -63,6 +64,7 @@ members = [
     "anathema-core", 
     "anathema-frontend", 
     "anathema-geometry", 
+    "anathema-hashmap", 
     "anathema-runtime",
     "anathema-state-derive",
     "anathema-store",
