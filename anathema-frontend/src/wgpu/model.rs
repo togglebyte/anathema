@@ -44,3 +44,4 @@ pub(crate) static MODEL: &[Vertex] = &[
 ];
 
 pub(crate) static INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
+pub(crate) static INDEX_COUNT: u32 = INDICES.len() as u32;

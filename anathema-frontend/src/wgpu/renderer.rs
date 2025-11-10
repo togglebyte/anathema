@@ -1,5 +1,5 @@
 use super::GraphicsCtx;
-use crate::wgpu::model::INDICES;
+use crate::wgpu::model::{INDEX_COUNT, INDICES};
 use crate::wgpu::texture::Textures;
 
 pub struct Renderer;
@@ -56,23 +56,40 @@ impl Renderer {
             occlusion_query_set: None,
         });
 
+        // Camera
+        render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
+
+        // Vertices
+        render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+
         // -----------------------------------------------------------------------------
         //   - Render pipeline -
         //   * One pipeline per material
         //   * Group textures by material
         // -----------------------------------------------------------------------------
-        for material in ctx.materials.iter() {
-            for (sprite, texture) in ctx.sprites(&material.sprites) {
-                render_pass.set_pipeline(&material.pipeline);
-                render_pass.set_bind_group(0, &texture.bind_group, &[]);
-                render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
 
-                render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
-                render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
-                render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-                render_pass.draw_indexed(0..INDICES.len() as u32, 0, 0..ctx.sprites.len() as u32);
-            }
+        for (material, texture, sprite_buffer, sprite_count) in ctx.something() {
+            render_pass.set_pipeline(&material.pipeline);
+            render_pass.set_bind_group(0, &texture.bind_group, &[]);
+
+            render_pass.set_vertex_buffer(1, sprite_buffer.slice(..));
+            // NOTE: there is no len on the sprite buffer (also there is no sprite buffer) 
+            // as it's bytes, not sprites (also it doesn't exist)
+            render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..sprite_count);
         }
+
+        // for material in ctx.materials.iter() {
+        //     for (sprite, texture) in ctx.sprites(&material.sprites) {
+        //         render_pass.set_pipeline(&material.pipeline);
+        //         render_pass.set_bind_group(0, &texture.bind_group, &[]);
+
+        //         // render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
+        //         render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
+        //         // render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        //         render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..ctx.sprites.len() as u32);
+        //     }
+        // }
 
         drop(render_pass);
         ctx.queue.submit(Some(encoder.finish()));

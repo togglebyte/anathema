@@ -232,4 +232,16 @@ impl GraphicsCtx {
         }
         self.sprites.rebuild_buffer(&self.device);
     }
+
+    pub(crate) fn something(&self) -> impl Iterator<Item = (&Material, &Texture, (), u32)> {
+        for material in materials {
+            for texture in material.textures {
+                let sprites = fetch_sprites(materia, texture);
+                let count = sprites.len();
+
+                for sprite in sprites
+                }
+            }
+        }
+    }
 }
