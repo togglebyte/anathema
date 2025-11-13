@@ -709,7 +709,7 @@ fn eval_index<'a, 'bp>(
         }
         RuntimeExpression::Attributes(el) => {
             let attributes = or_null!(ctx.get_attributes(*el));
-            let value = or_null!(index.with_str(|key| attributes.get(key)).flatten());
+            let value = or_null!(index.with_str(|key| attributes.get(key)));
             value.clone().into()
         }
         RuntimeExpression::List(list) => {

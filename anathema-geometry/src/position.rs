@@ -12,7 +12,7 @@ use crate::Size;
 /// A position in global space.
 /// Can contain negative coordinates
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Pod, Zeroable)]
+#[derive(Debug, Copy, Clone, PartialEq, Pod, Zeroable)]
 pub struct Pos(pub(crate) Vec2);
 
 impl Pos {
@@ -99,6 +99,8 @@ impl Add<LocalPos> for Pos {
 pub struct LocalPos(Vec2);
 
 impl LocalPos {
+    pub const ZERO: Self = Self(Vec2::ZERO);
+
     /// Create a new set of coordinates in local space
     pub const fn new(x: f32, y: f32) -> Self {
         assert!(x >= 0.0, "local position should never be negative");
@@ -158,17 +160,17 @@ mod test {
 
     #[test]
     fn index_from_coords() {
-        let width = 20;
+        let width = 20.0;
 
-        let actual = LocalPos::new(0, 0).to_index(width);
+        let actual = LocalPos::ZERO.to_index(width);
         let expected = 0;
         assert_eq!(expected, actual);
 
-        let actual = LocalPos::new(10, 0).to_index(width);
+        let actual = LocalPos::new(10.0, 0.0).to_index(width);
         let expected = 10;
         assert_eq!(expected, actual);
 
-        let actual = LocalPos::new(4, 20).to_index(width);
+        let actual = LocalPos::new(4.0, 20.0).to_index(width);
         let expected = (width * width) as usize + 4;
         assert_eq!(expected, actual);
     }

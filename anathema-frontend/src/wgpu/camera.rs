@@ -48,17 +48,3 @@ impl Camera {
         self.projection = Self::projection_from_size(size, near, far);
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::wgpu::ctx::{FAR, NEAR};
-
-    #[test]
-    fn camera_output() {
-        let width = 800.0;
-        let height = 600.0;
-        let mut camera = Camera::new(Size::new(width, height), NEAR, FAR);
-        panic!("{:#?}", camera.projection);
-    }
-}

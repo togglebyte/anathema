@@ -10,6 +10,7 @@ repository = "https://github.com/togglebyte/anathema"
 
 [dependencies]
 anathema-compiler = { workspace = true }
+anathema-frontend = { workspace = true }
 anathema-geometry = { workspace = true }
 anathema-hashmap = { workspace = true }
 anathema-state-derive = { workspace = true }

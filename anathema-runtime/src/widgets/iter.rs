@@ -44,7 +44,7 @@ impl<'a, 'bp> Iterator for Children<'a, 'bp> {
 
 pub struct WidgetRef<'a, 'bp> {
     id: ElementId,
-    widget: RefMut<'a, Box<dyn Widget>>,
+    widget: RefMut<'a, Box<dyn Widget<'bp>>>,
     children: Children<'a, 'bp>,
 }
 

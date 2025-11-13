@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
@@ -8,7 +9,7 @@ pub use self::layout::Layout;
 use crate::attributes::Attributes;
 use crate::elements::ElementId;
 
-type WidgetFactory = Box<dyn Fn(&Attributes<'_>) -> Box<dyn Widget>>;
+type WidgetFactory = Box<dyn for<'a> Fn(&Attributes<'a>) -> Box<dyn Widget<'a> + 'a>>;
 
 pub mod iter;
 mod layout;
@@ -34,23 +35,28 @@ impl RegisteredWidgets {
     }
 
     /// Register a widget type as longas it implements default
-    pub fn register_default<T: Widget + Default>(&mut self, ident: impl Into<Box<str>>) {
+    pub fn register_default<T>(&mut self, ident: impl Into<Box<str>>)
+    where
+        for<'bp> T: Widget<'bp> + Default,
+    {
         self.registry
-            .insert(ident.into(), Box::new(|_attr| Box::<T>::default()));
+            .insert(ident.into(), Box::new(|_attr| {
+                let inst = T::default();
+                Box::new(inst)
+            }));
     }
 
     /// Register a widget type as longas it implements default
-    pub fn register<F, T>(&mut self, ident: impl Into<Box<str>>, f: F)
+    pub fn register<F>(&mut self, ident: impl Into<Box<str>>, f: F)
     where
-        T: Widget,
-        F: Fn(&Attributes<'_>) -> T,
-        F: 'static
+        for<'bp> F: 'bp + Fn(&Attributes<'bp>) -> Box<dyn Widget<'bp> + 'bp>,
     {
-        self.registry.insert(ident.into(), Box::new(move |attr| Box::new(f(attr))));
+        self.registry
+            .insert(ident.into(), Box::new(move |attr: &Attributes<'_>| f(attr)));
     }
 
     /// Create a widget from attributes
-    pub fn make(&self, ident: &str, attributes: &Attributes<'_>) -> Result<Box<dyn Widget>, ()> {
+    pub fn make<'bp>(&self, ident: &str, attributes: &Attributes<'bp>) -> Result<Box<dyn Widget<'bp> + 'bp>, ()> {
         let Some(factory) = self.registry.get(ident) else { return Err(()) };
         let element = factory(attributes);
         Ok(element)
@@ -58,15 +64,15 @@ impl RegisteredWidgets {
 }
 
 /// A widget
-pub trait Widget: 'static {
+pub trait Widget<'bp>: 'bp {
     /// Layout the widget
-    fn layout(&mut self, children: Children<'_, '_>, layout: &mut Layout) -> Size;
+    fn layout(&mut self, children: Children<'_, 'bp>, layout: &mut Layout) -> Size;
 
     /// Position the widget
     fn position(&mut self) -> Pos;
 
     /// Paint the widget
-    fn paint(&mut self);
+    fn paint(&mut self, children: Children<'_, 'bp>, frontend: &mut dyn Frontend);
 
     /// A function that described a widget in a debug context.
     fn describe(&self) -> &str {
@@ -74,7 +80,7 @@ pub trait Widget: 'static {
     }
 }
 
-impl std::fmt::Debug for dyn Widget {
+impl std::fmt::Debug for dyn Widget<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.describe())
     }

@@ -115,9 +115,19 @@ impl<'bp> Attributes<'bp> {
         self.inner.remove(key)
     }
 
-    pub(crate) fn get(&self, key: &str) -> Option<&TemplateValue<'bp>> {
-        let val = self.inner.get(key)?;
-        Some(&*val)
+    /// Get a value.
+    /// If the value doesn't exist `TemplateValue::Null` is returned.
+    /// ```
+    /// # use anathema_core::attributes::Attributes;
+    ///
+    /// let mut attributes = Attributes::empty();
+    /// attributes.set("num", 123);
+    ///
+    /// assert_eq!(attributes.get_as::<u32>("num").unwrap(), 123);
+    /// assert_eq!(attributes.get_as::<i16>("num").unwrap(), 123);
+    /// ```
+    pub fn get(&self, key: &str) -> &TemplateValue<'bp> {
+        self.inner.get(key).map(|val| &**val).unwrap_or(&TemplateValue::Null)
     }
 
     /// Get a value as a given type.
@@ -152,8 +162,8 @@ impl<'bp> Attributes<'bp> {
 
     /// Get the `Value` out of attributes.
     /// This is always the first item
-    pub fn value(&self) -> Option<&RemoteCell<TemplateValue<'bp>>> {
-        self.inner.get(&ValueKey::Value)
+    pub fn value(&self) -> &TemplateValue<'bp> {
+        self.inner.get(&ValueKey::Value).map(|val| &**val).unwrap_or(&TemplateValue::Null)
     }
 
     /// Iterate over values of a given type
@@ -253,13 +263,13 @@ mod test {
     fn remove() {
         let mut attributes = attributes();
         attributes.remove("int");
-        assert!(attributes.get("int").is_none());
+        assert_eq!(attributes.get("int"), &TemplateValue::Null);
     }
 
     #[test]
     fn get_attribute() {
         let attributes = attributes();
-        assert_eq!(attributes.get("int"), Some(&TemplateValue::Int(1)));
+        assert_eq!(attributes.get("int"), &TemplateValue::Int(1));
     }
 
     #[test]
@@ -308,7 +318,7 @@ mod test {
     #[test]
     fn mixed_type_iteration() {
         let attributes = attributes();
-        let mixed = attributes.get("mixed").unwrap();
+        let mixed = attributes.get("mixed");
 
         if let TemplateValue::List(list) = mixed {
             assert_eq!(list[0].as_bool().unwrap(), true);

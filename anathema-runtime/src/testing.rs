@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::{Expression, ExpressionId, Expressions};
 use anathema_compiler::{ComponentBlueprintId, Document, SourceKind, Variables};
+use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
 
 use crate::attributes::{AttributeRegistry, Attributes};
@@ -26,12 +27,7 @@ pub(crate) fn mock_value_index() -> ValueIndex {
 
 fn test_widgets() -> RegisteredWidgets {
     let mut factory = RegisteredWidgets::empty();
-    factory.register("node", |attr| {
-        match attr.value() {
-            Some(s) => TestWidget(format!("{s:?}")),
-            None => TestWidget(String::new()),
-        }
-    });
+    factory.register("node", |attr| Box::new(TestWidget(attr.value().clone())));
     factory
 }
 
@@ -205,7 +201,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         f(&mut eval_ctx);
     }
 
-    pub fn add_widget(&mut self, widget: impl Widget, parent: Option<ElementId>) -> ElementId {
+    pub fn add_widget(&mut self, widget: impl Widget<'bp>, parent: Option<ElementId>) -> ElementId {
         let el = Element::Widget(RefCell::new(Box::new(widget)));
         let id = self.elements.insert(el, parent);
         self.attributes.insert(id, Attributes::empty());
@@ -311,16 +307,17 @@ impl ExpressionEvaluator {
 //   - Test widget -
 // -----------------------------------------------------------------------------
 
-fn test_widget(s: impl Into<String>) -> RefCell<Box<dyn Widget>> {
+fn test_widget<'bp>(s: impl Into<String>) -> RefCell<Box<dyn Widget<'bp>>> {
+    let s = s.into();
     RefCell::new(Box::new(TestWidget(s.into())))
 }
 
 #[derive(Debug)]
-pub struct TestWidget(pub String);
+pub struct TestWidget<'bp>(pub TemplateValue<'bp>);
 
-impl Widget for TestWidget {
+impl<'bp> Widget<'bp> for TestWidget<'bp> {
     fn layout(&mut self, children: Children<'_, '_>, layout: &mut Layout) -> Size {
-        let mut size = Size::new(self.0.len() as f32, 1.0);
+        let mut size = Size::new(self.0.as_str().map(|s| s.len() as f32).unwrap_or(1.0), 1.0);
 
         for mut child in children {
             let child_size = child.layout(layout);
@@ -335,14 +332,14 @@ impl Widget for TestWidget {
         todo!()
     }
 
-    fn paint(&mut self) {
+    fn paint(&mut self, children: Children<'_, '_>, frontend: &mut dyn Frontend) {
         todo!()
     }
 
     fn describe(&self) -> &str {
-        if self.0.is_empty() {
-            return "<test>";
+        match self.0.as_str() {
+            Some(s) => s,
+            None => "<test>",
         }
-        &self.0
     }
 }

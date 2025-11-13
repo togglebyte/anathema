@@ -1,7 +1,7 @@
 use crate::{Pos, Size};
 
 /// A normalized region in global space
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Region {
     /// The starting position of the region
     pub from: Pos,
@@ -108,24 +108,24 @@ mod test {
 
     #[test]
     fn region_inersect() {
-        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
-        let b = Region::new(Pos::new(5, 5), Pos::new(8, 8));
+        let a = Region::new(Pos::ZERO, Pos::new(10.0, 10.0));
+        let b = Region::new(Pos::new(5.0, 5.0), Pos::new(8.0, 8.0));
         assert!(a.intersects(&b));
         assert!(b.intersects(&a));
     }
 
     #[test]
     fn region_contains() {
-        let a = Region::new(Pos::ZERO, Pos::new(10, 10));
+        let a = Region::new(Pos::ZERO, Pos::new(10.0, 10.0));
         assert!(a.contains(Pos::ZERO));
-        assert!(a.contains(Pos::new(9, 9)));
-        assert!(!a.contains(Pos::new(10, 10)));
+        assert!(a.contains(Pos::new(9.0, 9.0)));
+        assert!(!a.contains(Pos::new(10.0, 10.0)));
     }
 
     #[test]
     fn constrain_region() {
-        let inner = Region::from((Pos::ZERO, Size::new(10, 10)));
-        let mut outer = Region::from((Pos::ZERO, Size::new(100, 100)));
+        let inner = Region::from((Pos::ZERO, Size::new(10.0, 10.0)));
+        let mut outer = Region::from((Pos::ZERO, Size::new(100.0, 100.0)));
         outer.shrink_to_fit(&inner);
         let expected = inner;
         assert_eq!(expected, outer);
