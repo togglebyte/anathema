@@ -1,6 +1,7 @@
 use std::cell::RefMut;
 
-use anathema_geometry::Size;
+use anathema_frontend::Frontend;
+use anathema_geometry::{Pos, Size};
 
 use crate::elements::{Element, ElementId, Elements};
 use crate::widgets::{Layout, Widget};
@@ -51,5 +52,13 @@ pub struct WidgetRef<'a, 'bp> {
 impl<'a, 'bp> WidgetRef<'a, 'bp> {
     pub fn layout(mut self, layout: &mut Layout) -> Size {
         self.widget.layout(self.children, layout)
+    }
+
+    pub fn position(mut self, pos: Pos) {
+        self.widget.position(self.children, pos)
+    }
+
+    pub fn paint(mut self, frontend: &mut dyn Frontend) {
+        self.widget.paint(self.children, frontend)
     }
 }

@@ -328,7 +328,7 @@ impl<'bp> Widget<'bp> for TestWidget<'bp> {
         size
     }
 
-    fn position(&mut self) -> Pos {
+    fn position(&mut self, children: Children<'_, '_>, pos: Pos) {
         todo!()
     }
 

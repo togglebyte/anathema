@@ -69,7 +69,7 @@ pub trait Widget<'bp>: 'bp {
     fn layout(&mut self, children: Children<'_, 'bp>, layout: &mut Layout) -> Size;
 
     /// Position the widget
-    fn position(&mut self) -> Pos;
+    fn position(&mut self, children: Children<'_, 'bp>, pos: Pos);
 
     /// Paint the widget
     fn paint(&mut self, children: Children<'_, 'bp>, frontend: &mut dyn Frontend);

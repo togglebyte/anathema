@@ -32,17 +32,23 @@ impl<'bp> Widget<'bp> for Border<'bp> {
         size
     }
 
-    fn position(&mut self) -> Pos {
-        todo!()
+    fn position(&mut self, mut children: Children<'_, '_>, pos: Pos) {
+        if let Some(child) = children.next() {
+            child.position(pos);
+        }
     }
 
-    fn paint(&mut self, children: Children<'_, '_>, frontend: &mut dyn Frontend) {
+    fn paint(&mut self, mut children: Children<'_, '_>, frontend: &mut dyn Frontend) {
         // let foreground = attributes.get("foreground");
         // let background = attributes.get("background");
         // let width = attributes.get("width");
         // let height = attributes.get("height");
         // let min_width = attributes.get("min_width");
         // let min_height = attributes.get("min_height");
+
+        if let Some(child) = children.next() {
+            child.paint(frontend);
+        }
 
         todo!()
     }
