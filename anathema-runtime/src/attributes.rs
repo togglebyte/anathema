@@ -1,13 +1,86 @@
 //! Element attributes
 use std::borrow::Borrow;
-use std::ops::Deref;
+use std::ops::{Deref, Index};
 
+use anathema_frontend::Brush;
 use anathema_store::remotecell::RemoteCell;
 use anathema_store::slab::SecondaryMap;
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
-use crate::elements::ElementId;
+use crate::elements::{ElementId, Elements};
 use crate::eval::values::TemplateValue;
+
+/// Attribute access for a widget, used
+/// during the layout, position and paint phase.
+pub struct WidgetAttributes<'a, 'bp> {
+    elements: &'a Elements<'bp>,
+    parent: Option<ElementId>,
+    attributes: &'a Attributes<'bp>,
+    reg: &'a AttributeRegistry<'bp>,
+}
+
+impl<'a, 'bp> WidgetAttributes<'a, 'bp> {
+    pub fn new(
+        elements: &'a Elements<'bp>,
+        parent: Option<ElementId>,
+        attributes: &'a Attributes<'bp>,
+        reg: &'a AttributeRegistry<'bp>,
+    ) -> Self {
+        Self {
+            elements,
+            parent,
+            attributes,
+            reg,
+        }
+    }
+
+    pub fn value(&self) -> &TemplateValue<'bp> {
+        self.attributes.value()
+    }
+
+    pub fn get(&self, key: &str) -> &TemplateValue<'bp> {
+        let mut value = self.attributes.get(key);
+        let mut parent = self.parent;
+        while value == &TemplateValue::Null {
+            let Some(id) = parent else { return value };
+            let Some(attributes) = self.reg.get(id) else { continue };
+            value = attributes.get(key);
+            parent = self.elements[id].parent;
+        }
+        value
+    }
+
+    pub fn value_as<'b, T>(&'b self) -> Option<T>
+    where
+        T: TryFrom<&'a TemplateValue<'bp>>,
+        T: ?Sized,
+    {
+        self.attributes.value_as()
+    }
+}
+
+impl<'bp> Brush for WidgetAttributes<'_, 'bp> {
+    fn bool(&self, key: &str) -> Option<bool> {
+        match self.get(key) {
+            &TemplateValue::Bool(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    fn i64(&self, key: &str) -> Option<i64> {
+        match self.get(key) {
+            &TemplateValue::Int(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    fn f64(&self, key: &str) -> Option<f64> {
+        match self.get(key) {
+            &TemplateValue::Float(val) => Some(val),
+            _ => None,
+        }
+    }
+}
 
 // All attributes for all elements
 #[derive(Debug)]
@@ -28,6 +101,17 @@ impl<'bp> AttributeRegistry<'bp> {
 
     pub(crate) fn get(&self, id: ElementId) -> Option<&Attributes<'bp>> {
         self.attributes.get(id)
+    }
+}
+
+impl<'bp> Index<ElementId> for AttributeRegistry<'bp> {
+    type Output = Attributes<'bp>;
+
+    fn index(&self, id: ElementId) -> &Self::Output {
+        match self.attributes.get(id) {
+            Some(attr) => attr,
+            None => panic!("widgets and components all have attributes, was this called in the context of a for loop or if statement?"),
+        }
     }
 }
 
@@ -163,7 +247,10 @@ impl<'bp> Attributes<'bp> {
     /// Get the `Value` out of attributes.
     /// This is always the first item
     pub fn value(&self) -> &TemplateValue<'bp> {
-        self.inner.get(&ValueKey::Value).map(|val| &**val).unwrap_or(&TemplateValue::Null)
+        self.inner
+            .get(&ValueKey::Value)
+            .map(|val| &**val)
+            .unwrap_or(&TemplateValue::Null)
     }
 
     /// Iterate over values of a given type

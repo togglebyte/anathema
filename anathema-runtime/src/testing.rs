@@ -6,7 +6,7 @@ use anathema_compiler::{ComponentBlueprintId, Document, SourceKind, Variables};
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
 
-use crate::attributes::{AttributeRegistry, Attributes};
+use crate::attributes::{AttributeRegistry, Attributes, WidgetAttributes};
 use crate::components::{Component, ComponentId, Components, FnComp, FnState};
 use crate::elements::{Element, ElementId, Elements};
 use crate::eval::expression::{eval_by_id, RuntimeExpressions};
@@ -27,7 +27,13 @@ pub(crate) fn mock_value_index() -> ValueIndex {
 
 fn test_widgets() -> RegisteredWidgets {
     let mut factory = RegisteredWidgets::empty();
-    factory.register("node", |attr| Box::new(TestWidget(attr.value().clone())));
+    factory.register("node", |attribs| {
+        let inner = attribs
+            .value_as::<&str>()
+            .map(ToString::to_string)
+            .unwrap_or_else(String::new);
+        Box::new(TestWidget(inner))
+    });
     factory
 }
 
@@ -309,15 +315,24 @@ impl ExpressionEvaluator {
 
 fn test_widget<'bp>(s: impl Into<String>) -> RefCell<Box<dyn Widget<'bp>>> {
     let s = s.into();
-    RefCell::new(Box::new(TestWidget(s.into())))
+    RefCell::new(Box::new(TestWidget(s)))
 }
 
 #[derive(Debug)]
-pub struct TestWidget<'bp>(pub TemplateValue<'bp>);
+pub struct TestWidget(String);
 
-impl<'bp> Widget<'bp> for TestWidget<'bp> {
-    fn layout(&mut self, children: Children<'_, '_>, layout: &mut Layout) -> Size {
-        let mut size = Size::new(self.0.as_str().map(|s| s.len() as f32).unwrap_or(1.0), 1.0);
+impl<'bp> Widget<'bp> for TestWidget {
+    fn layout(
+        &mut self,
+        children: Children<'_, 'bp>,
+        attributes: WidgetAttributes<'_, 'bp>,
+        layout: &mut Layout,
+    ) -> Size {
+        if let Some(value) = attributes.value_as::<&str>() {
+            self.0 = value.to_string();
+        }
+
+        let mut size = Size::new(self.0.len() as f32, 1.0);
 
         for mut child in children {
             let child_size = child.layout(layout);
@@ -328,18 +343,28 @@ impl<'bp> Widget<'bp> for TestWidget<'bp> {
         size
     }
 
-    fn position(&mut self, children: Children<'_, '_>, pos: Pos) {
+    fn position(&mut self, children: Children<'_, '_>, attributes: WidgetAttributes<'_, 'bp>, pos: Pos) {
         todo!()
     }
 
-    fn paint(&mut self, children: Children<'_, '_>, frontend: &mut dyn Frontend) {
-        todo!()
+    fn paint(
+        &mut self,
+        children: Children<'_, '_>,
+        attributes: WidgetAttributes<'_, 'bp>,
+        frontend: &mut dyn Frontend,
+    ) {
+        let value = attributes.value_as::<&str>().unwrap_or(" ");
+
+        // frontend.set_brush(brush);
+        // frontend.draw_glyph(
+        // frontend.print(pos, s);
+        // frontend.clear_brush();
     }
 
     fn describe(&self) -> &str {
-        match self.0.as_str() {
-            Some(s) => s,
-            None => "<test>",
+        match self.0.is_empty() {
+            false => &self.0,
+            true => "<test>",
         }
     }
 }

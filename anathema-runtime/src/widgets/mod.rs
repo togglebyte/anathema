@@ -6,10 +6,10 @@ use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
 pub use self::iter::Children;
 pub use self::layout::Layout;
-use crate::attributes::Attributes;
+use crate::attributes::{Attributes, WidgetAttributes};
 use crate::elements::ElementId;
 
-type WidgetFactory = Box<dyn for<'a> Fn(&Attributes<'a>) -> Box<dyn Widget<'a> + 'a>>;
+type WidgetFactory = Box<dyn for<'a, 'bp> Fn(&Attributes<'bp>) -> Box<dyn Widget<'bp> + 'bp>>;
 
 pub mod iter;
 mod layout;
@@ -39,11 +39,13 @@ impl RegisteredWidgets {
     where
         for<'bp> T: Widget<'bp> + Default,
     {
-        self.registry
-            .insert(ident.into(), Box::new(|_attr| {
+        self.registry.insert(
+            ident.into(),
+            Box::new(|_attr| {
                 let inst = T::default();
                 Box::new(inst)
-            }));
+            }),
+        );
     }
 
     /// Register a widget type as longas it implements default
@@ -56,23 +58,38 @@ impl RegisteredWidgets {
     }
 
     /// Create a widget from attributes
-    pub fn make<'bp>(&self, ident: &str, attributes: &Attributes<'bp>) -> Result<Box<dyn Widget<'bp> + 'bp>, ()> {
+    pub fn make<'bp>(&self, ident: &str, attribs: &Attributes<'bp>) -> Result<Box<dyn Widget<'bp> + 'bp>, ()> {
         let Some(factory) = self.registry.get(ident) else { return Err(()) };
-        let element = factory(attributes);
+        let element = factory(attribs);
         Ok(element)
     }
 }
 
-/// A widget
+/// A widget.
+///
+/// Attributes should not be preserved on the widgets themselves
+/// except to act as a cache between layout, position and paint.
+/// Since an attribute can change as a result of a component event,
+/// and this will not update any cached values.
 pub trait Widget<'bp>: 'bp {
     /// Layout the widget
-    fn layout(&mut self, children: Children<'_, 'bp>, layout: &mut Layout) -> Size;
+    fn layout(
+        &mut self,
+        children: Children<'_, 'bp>,
+        attributes: WidgetAttributes<'_, 'bp>,
+        layout: &mut Layout,
+    ) -> Size;
 
     /// Position the widget
-    fn position(&mut self, children: Children<'_, 'bp>, pos: Pos);
+    fn position(&mut self, children: Children<'_, 'bp>, attributes: WidgetAttributes<'_, 'bp>, pos: Pos);
 
     /// Paint the widget
-    fn paint(&mut self, children: Children<'_, 'bp>, frontend: &mut dyn Frontend);
+    fn paint(
+        &mut self,
+        children: Children<'_, 'bp>,
+        attributes: WidgetAttributes<'_, 'bp>,
+        frontend: &mut dyn Frontend,
+    );
 
     /// A function that described a widget in a debug context.
     fn describe(&self) -> &str {

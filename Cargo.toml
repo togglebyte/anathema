@@ -26,12 +26,12 @@ anathema-strings = { workspace = true }
 anathema-widgets = { workspace = true }
 
 [features]
-default = ["anathema-frontend/crossterm", "anathema-frontend/wgpu"]
+default = ["crossterm", "wgpu"]
 profile = []
 multithread = ["anathema-core/multithread", "anathema-runtime/multithread"]
 serde = ["anathema-store/serde", "anathema-compiler/serde"]
 wgpu = ["anathema-frontend/wgpu"]
-crossterm = ["anathema-frontend/crossterm"]
+crossterm = ["anathema-frontend/crossterm", "anathema-compiler/crossterm"]
 
 [lints]
 workspace = true
@@ -41,12 +41,6 @@ edition = "2024"
 version = "0.2.12-beta"
 
 [workspace.dependencies]
-bitflags = "2.4.1"
-bytemuck = { version = "1.24.0", features = ["derive"] }
-flume = "0.11.0"
-glam = { version = "0.30.9", features = ["bytemuck"] }
-notify = "6.1.1"
-unicode-width = "0.1.11"
 anathema-compiler = { path = "./anathema-compiler", version = "0.2.12-beta" }
 anathema-core = { path = "./anathema-core", version = "0.2.12-beta" }
 anathema-frontend = { path = "./anathema-frontend", version = "0.2.12-beta" }
@@ -57,6 +51,12 @@ anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.12-be
 anathema-store = { path = "./anathema-store", version = "0.2.12-beta" }
 anathema-strings = { path = "./anathema-strings", version = "0.2.12-beta" }
 anathema-widgets = { path = "./anathema-widgets", version = "0.2.12-beta" }
+bitflags = "2.4.1"
+bytemuck = { version = "1.24.0", features = ["derive"] }
+flume = "0.11.0"
+glam = { version = "0.30.9", features = ["bytemuck"] }
+notify = "6.1.1"
+unicode-width = "0.1.11"
 
 [workspace]
 members = [

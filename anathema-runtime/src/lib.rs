@@ -12,7 +12,7 @@ pub use anathema_state_derive::State;
 use anathema_store::slab::Key;
 
 pub use self::states::State;
-pub use crate::attributes::Attributes;
+pub use crate::attributes::{WidgetAttributes, Attributes};
 pub use crate::eval::values::TemplateValue;
 pub use crate::states::{AnyList, AnyMap, TypeId};
 

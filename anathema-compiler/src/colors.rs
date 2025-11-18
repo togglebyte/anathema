@@ -129,6 +129,34 @@ impl FromStr for Color {
     }
 }
 
+#[cfg(feature = "crossterm")]
+impl From<Color> for crossterm::style::Color {
+    fn from(e: Color) -> Self {
+        type CTC = crossterm::style::Color;
+        match e {
+            Color::Reset => CTC::Reset,
+            Color::Black => CTC::Black,
+            Color::Red => CTC::DarkRed,
+            Color::Green => CTC::DarkGreen,
+            Color::Yellow => CTC::DarkYellow,
+            Color::Blue => CTC::DarkBlue,
+            Color::Magenta => CTC::DarkMagenta,
+            Color::Cyan => CTC::DarkCyan,
+            Color::Grey => CTC::DarkGrey,
+            Color::DarkGrey => CTC::DarkGrey,
+            Color::LightRed => CTC::Red,
+            Color::LightGreen => CTC::Green,
+            Color::LightYellow => CTC::Yellow,
+            Color::LightBlue => CTC::Blue,
+            Color::LightMagenta => CTC::Magenta,
+            Color::LightCyan => CTC::Cyan,
+            Color::White => CTC::White,
+            Color::Rgb(r, g, b) => CTC::Rgb { r, g, b },
+            Color::AnsiVal(val) => CTC::AnsiValue(val),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
