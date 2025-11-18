@@ -15,8 +15,17 @@ impl Buffer {
         }
     }
 
+    pub(super) fn set_cell(&mut self, index: usize, cell: Cell) {
+        self.inner[index] = cell;
+    }
+
     pub(super) fn copy_range(&mut self, range: Range<usize>, src: &Self) {
         self.inner[range.start..range.end].clone_from_slice(&src.inner[range]);
+    }
+
+    pub(crate) fn copy_buffer(&mut self, src: &Buffer) {
+        let len = self.inner.len();
+        self.inner[0..len].clone_from_slice(&src.inner[0..len]);
     }
 
     pub(crate) fn cells(&self, range: Range<usize>) -> &[Cell] {

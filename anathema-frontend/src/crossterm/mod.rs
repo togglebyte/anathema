@@ -3,8 +3,8 @@ use compact_str::CompactString;
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+pub use self::screen::Screen;
 use crate::crossterm::attributes::Attributes;
-use crate::screenbuffer::Screen;
 
 mod attributes;
 pub(crate) mod buffer;
@@ -49,15 +49,23 @@ impl Style {
     /// if `self` has no foreground the foreground from the other style is copied to self.
     /// if `self` has no background the background from the other style is copied to self.
     pub fn merge(&mut self, other: Style) {
-        if let (None, Some(fg)) = (self.fg, other.fg) {
+        if let Some(fg) = other.fg {
             self.fg = Some(fg);
         }
 
-        if let (None, Some(bg)) = (self.bg, other.bg) {
+        if let Some(bg) = other.bg {
             self.bg = Some(bg);
         }
 
         self.attributes |= other.attributes;
+    }
+
+    fn reset() -> Self {
+        Self {
+            fg: Some(Color::Reset),
+            bg: Some(Color::Reset),
+            attributes: Attributes::NORMAL,
+        }
     }
 }
 
@@ -72,8 +80,23 @@ impl Default for Style {
 }
 
 impl From<&dyn crate::Brush> for Style {
-    fn from(e: &dyn crate::Brush) -> Self {
-        panic!()
+    fn from(brush: &dyn crate::Brush) -> Self {
+        let mut attributes = Attributes::NORMAL;
+        match brush.bool("bold") {
+            Some(true) => attributes |= Attributes::BOLD,
+            None | Some(false) => (),
+        }
+
+        match brush.bool("italic") {
+            Some(true) => attributes |= Attributes::ITALIC,
+            None | Some(false) => (),
+        }
+
+        Self {
+            fg: brush.color("foreground"),
+            bg: brush.color("background"),
+            attributes,
+        }
     }
 }
 
@@ -100,4 +123,13 @@ impl State {
 struct Cell {
     style: Style,
     state: State,
+}
+
+impl Cell {
+    pub fn space() -> Self {
+        Self {
+            style: Style::reset(),
+            state: State::Char(' '),
+        }
+    }
 }

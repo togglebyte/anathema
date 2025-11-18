@@ -2,6 +2,7 @@
 use std::borrow::Borrow;
 use std::ops::{Deref, Index};
 
+use anathema_compiler::Color;
 use anathema_frontend::Brush;
 use anathema_store::remotecell::RemoteCell;
 use anathema_store::slab::SecondaryMap;
@@ -77,6 +78,13 @@ impl<'bp> Brush for WidgetAttributes<'_, 'bp> {
     fn f64(&self, key: &str) -> Option<f64> {
         match self.get(key) {
             &TemplateValue::Float(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    fn color(&self, key: &str) -> Option<Color> {
+        match self.get(key) {
+            &TemplateValue::Color(val) => Some(val),
             _ => None,
         }
     }
