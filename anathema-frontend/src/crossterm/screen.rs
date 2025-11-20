@@ -92,6 +92,8 @@ impl<T: Write> Screen<T> {
             self.render_partial();
         }
 
+        self.front.clear_dirty_rows();
+        self.back.clear_dirty_rows();
         self.output.flush();
         // let _ = execute!(&mut self.output, EndSynchronizedUpdate);
     }
@@ -101,16 +103,12 @@ impl<T: Write> Screen<T> {
         self.front.sync_buffers(&self.back, &mut buffer);
 
         let mut last_y = 0;
-        // This is only relevant when multiple diffs apply to the same row.
-        // E.g write + erase.
-        let mut last_x = 0;
 
         for (y, diff) in buffer {
             let d = format!("{diff:?}");
             if y != last_y {
                 self.output.queue(cursor::MoveToNextLine(1)).unwrap();
                 last_y = y;
-                last_x = 0;
             }
 
             match diff {
@@ -121,10 +119,7 @@ impl<T: Write> Screen<T> {
                 }
                 Diff::ClearRange(range) => {
                     write_style(Style::reset(), &mut self.output);
-                    if range.start != last_x {
-                        self.output.queue(cursor::MoveTo(range.start as u16, y as u16)).unwrap();
-                        last_x = range.start;
-                    }
+                    self.output.queue(cursor::MoveTo(range.start as u16, y as u16)).unwrap();
                     _ = self.output.queue(Print(&self.empty_line[range]));
                 }
                 Diff::ClearCell(_) => todo!(),
@@ -137,7 +132,7 @@ impl<T: Write> Screen<T> {
                         let cell = &self.front[index];
 
                         if should_move {
-                            self.output.queue(cursor::MoveTo(last_x as u16, y as u16)).unwrap();
+                            self.output.queue(cursor::MoveTo(x as u16, y as u16)).unwrap();
                             should_move = false;
                         }
 
@@ -272,5 +267,13 @@ impl<T: Write> Frontend for Screen<T> {
             }
             x += width;
         }
+    }
+
+    fn invalidate_region(&mut self, region: Region) {
+        let start_x = region.from.x as usize;
+        let end_x = region.to.x as usize;
+        let start_y = region.from.y as usize;
+        let end_y = region.to.y as usize;
+        self.back.invalidate_region(start_x, start_y, end_x, end_y);
     }
 }

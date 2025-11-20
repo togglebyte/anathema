@@ -12,4 +12,6 @@ pub trait Frontend {
     fn apply_brush_to_region(&mut self, brush: &dyn Brush, region: Region);
 
     fn set_text(&mut self, text: &str, pos: Pos);
+
+    fn invalidate_region(&mut self, region: Region);
 }

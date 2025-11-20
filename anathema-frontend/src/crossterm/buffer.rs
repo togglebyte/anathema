@@ -161,7 +161,6 @@ impl Buffer {
                 ((old_s, old_e), (new_s, new_e)) => rows.push((y, Diff::Write(new_s..new_e))),
             }
 
-
             let from = y * self.dirty_rows.width + new.0;
             let to = from + new.1 - new.0;
             self.inner[from..to].clone_from_slice(&src.inner[from..to]);
@@ -181,6 +180,19 @@ impl Buffer {
 
     pub(super) fn is_dirty(&self) -> bool {
         self.dirty_rows.dirty
+    }
+
+    pub(crate) fn invalidate_region(&mut self, start_x: usize, start_y: usize, end_x: usize, end_y: usize) {
+        for y in start_y..end_y {
+            let index = y * self.dirty_rows.width + start_x;
+            let range = index..index + end_x;
+            self.dirty_rows.insert(y, start_x, end_x);
+            self.inner[range].iter_mut().for_each(|cell| *cell = Cell::space());
+        }
+    }
+
+    pub(crate) fn clear_dirty_rows(&mut self) {
+        self.dirty_rows.clear();
     }
 }
 
@@ -206,14 +218,14 @@ pub(super) struct RowInsert<'a> {
 impl<'a> RowInsert<'a> {
     pub(super) fn write_state(&mut self, x: usize, state: super::State) {
         self.start = self.start.min(x);
-        self.end = self.end.max(x);
+        self.end = self.end.max(x + 1);
         let index = self.y * self.buffer.dirty_rows.width + x;
         self.buffer.inner[index].state = state;
     }
 
     pub(super) fn write_style(&mut self, range: Range<usize>, style: Style) {
         self.start = self.start.min(range.start);
-        self.end = self.end.max(range.end);
+        self.end = self.end.max(range.end + 1);
 
         let from = self.y * self.buffer.dirty_rows.width + range.start;
         let to = from + range.end;
