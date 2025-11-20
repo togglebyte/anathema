@@ -71,6 +71,13 @@ impl Add for Pos {
     }
 }
 
+impl AddAssign for Pos {
+    fn add_assign(&mut self, rhs: Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
 impl Add<Size> for Pos {
     type Output = Self;
 
@@ -125,7 +132,6 @@ impl DerefMut for LocalPos {
         &mut self.0
     }
 }
-
 
 impl TryFrom<Pos> for LocalPos {
     type Error = ();

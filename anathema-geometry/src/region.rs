@@ -19,6 +19,11 @@ impl Region {
         Self { from, to }
     }
 
+    /// The area of the region
+    pub const fn area(&self) -> f32 {
+        self.size().area()
+    }
+
     /// Check if another region is intersecting with this region
     pub const fn intersects(&self, other: &Region) -> bool {
         if other.to.0.x <= self.from.0.x || other.from.0.x >= self.to.0.x {
@@ -93,6 +98,14 @@ impl Region {
         self.to.x = self.to.x.min(other.to.x);
         self.to.y = self.to.y.min(other.to.y);
     }
+
+    /// Expand a given region to include another region
+    pub fn expand_to_fit(&mut self, other: &Region) {
+        self.from.x = self.from.x.min(other.from.x);
+        self.from.y = self.from.y.min(other.from.y);
+        self.to.x = self.to.x.max(other.to.x);
+        self.to.y = self.to.y.max(other.to.y);
+    }
 }
 
 impl From<(Pos, Size)> for Region {
@@ -129,5 +142,23 @@ mod test {
         outer.shrink_to_fit(&inner);
         let expected = inner;
         assert_eq!(expected, outer);
+    }
+
+    #[test]
+    fn expand_region() {
+        let mut origin = Region::new(Pos::new(10.0, 10.0), Pos::new(20.0, 20.0));
+        let include = Region::new(Pos::new(25.0, 25.0), Pos::new(30.0, 30.0));
+        origin.expand_to_fit(&include);
+        let expected = Region::new(Pos::new(10.0, 10.0), Pos::new(30.0, 30.0));
+        assert_eq!(origin, expected);
+    }
+
+    #[test]
+    fn unwante_expand_region() {
+        let mut origin = Region::new(Pos::new(10.0, 10.0), Pos::new(20.0, 20.0));
+        let include = Region::ZERO;
+        origin.expand_to_fit(&include);
+        let expected = Region::new(Pos::ZERO, Pos::new(20.0, 20.0));
+        assert_eq!(origin, expected);
     }
 }

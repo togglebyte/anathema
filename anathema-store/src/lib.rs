@@ -1,6 +1,7 @@
 pub mod indexmap;
 pub mod regionlist;
 pub mod remotecell;
+pub mod scratch;
 pub mod slab;
 pub mod smallmap;
 pub mod stack;
