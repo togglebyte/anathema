@@ -207,6 +207,10 @@ impl GraphicsCtx {
             .load_texture(path, &self.device, &self.queue)
     }
 
+    pub fn load_texture_from_bytes(&mut self, bytes: &[u8]) -> TextureId {
+        panic!();
+    }
+
     pub fn add_sprite(&mut self, sprite: Sprite) -> SpriteId {
         let material = sprite.material;
         let sprite = self.sprites.add(sprite, &self.device);

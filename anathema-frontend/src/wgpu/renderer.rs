@@ -1,10 +1,27 @@
+use anathema_geometry::Size;
+
 use super::GraphicsCtx;
+use crate::wgpu::font::Font;
 use crate::wgpu::model::{INDEX_COUNT, INDICES};
 use crate::wgpu::texture::Textures;
 
-pub struct Renderer;
+pub struct Renderer {
+    size: Size,
+    font: Font,
+}
 
 impl Renderer {
+    pub(crate) fn new(size: Size, font: Font) -> Self {
+        Self {
+            size,
+            font,
+        }
+    }
+
+    pub(crate) fn resize(&mut self, size: Size) {
+        self.size = size;
+    }
+
     pub(crate) fn render(&mut self, ctx: &mut GraphicsCtx) -> Result<(), ()> {
         #[cfg(feature = "profiling")]
         puffin::profile_function!();

@@ -81,9 +81,13 @@ impl Default for Style {
 
 impl From<&dyn crate::Brush> for Style {
     fn from(brush: &dyn crate::Brush) -> Self {
-        let mut attributes = Attributes::NORMAL;
-        match brush.bool("bold") {
-            Some(true) => attributes |= Attributes::BOLD,
+        let mut attributes = match brush.bool("bold") {
+            Some(true) => Attributes::BOLD,
+            None | Some(false) => Attributes::NORMAL,
+        };
+
+        match brush.bool("dim") {
+            Some(true) => attributes |= Attributes::DIM,
             None | Some(false) => (),
         }
 

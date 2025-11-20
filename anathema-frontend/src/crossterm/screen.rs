@@ -95,7 +95,7 @@ impl<T: Write> Screen<T> {
         self.front.clear_dirty_rows();
         self.back.clear_dirty_rows();
         self.output.flush();
-        // let _ = execute!(&mut self.output, EndSynchronizedUpdate);
+        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
     }
 
     fn render_partial(&mut self) {
@@ -105,7 +105,6 @@ impl<T: Write> Screen<T> {
         let mut last_y = 0;
 
         for (y, diff) in buffer {
-            let d = format!("{diff:?}");
             if y != last_y {
                 self.output.queue(cursor::MoveToNextLine(1)).unwrap();
                 last_y = y;
