@@ -36,15 +36,8 @@ impl<'a> Frontend for Ctx<'a> {
             };
 
             // let state = State::Char();
-            let offset = self.renderer.font.get(c) * Pos::new(6.0, 6.0);
-            let mut sprite = Sprite::new(
-                self.renderer.font.texture,
-                MaterialId::default(),
-                Size::new(235.0, 38.0),
-                offset,
-                Size::new(6.0, 6.0),
-            );
-            sprite.scale = 10.0;
+            let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32));
+            sprite.scale = 40.0;
 
             let sprite = self.ctx.add_sprite(sprite);
 

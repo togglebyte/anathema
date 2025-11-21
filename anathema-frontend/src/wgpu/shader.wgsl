@@ -2,12 +2,12 @@
 //   - Vertex -
 // -----------------------------------------------------------------------------
 struct SpriteData {
-    @location(5) size: vec2<f32>,
-    @location(6) offset: vec2<f32>,
-    @location(7) c1: vec4<f32>,
-    @location(8) c2: vec4<f32>,
-    @location(9) c3: vec4<f32>,
-    @location(10) c4: vec4<f32>,
+    @location(4) size: vec2<f32>,
+    @location(5) offset: vec2<f32>,
+    @location(6) c1: vec4<f32>,
+    @location(7) c2: vec4<f32>,
+    @location(8) c3: vec4<f32>,
+    @location(9) c4: vec4<f32>,
 }
 
 @group(1) @binding(0)

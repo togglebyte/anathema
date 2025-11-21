@@ -50,7 +50,13 @@ where
 
         let font_texture = ctx.load_texture_from_bytes(DEFAULT_FONT, "default font");
         let size = Size::new(size.width as f32, size.height as f32);
-        let renderer = Renderer::new(size, Font::new(font_texture));
+        let font =  {
+            let font_size = Size::new(256.0, 32.0);
+            let char_size = Size::new(6.0, 6.0);
+            Font::new(font_texture, font_size, char_size)
+        };
+
+        let renderer = Renderer::new(size, font);
 
         self.ctx.replace(ctx);
         self.renderer.replace(renderer);

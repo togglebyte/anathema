@@ -42,12 +42,12 @@ pub struct SpriteData {
 impl SpriteData {
     pub fn layout() -> VertexBufferLayout<'static> {
         const ATTRIBS: [VertexAttribute; 6] = wgpu::vertex_attr_array![
+            4 => Float32x2,
             5 => Float32x2,
-            6 => Float32x2,
+            6 => Float32x4,
             7 => Float32x4,
             8 => Float32x4,
             9 => Float32x4,
-            10 => Float32x4,
         ];
 
         VertexBufferLayout {
@@ -99,7 +99,7 @@ impl Sprite {
         let pixel_size = Size::ONE / sheet_size;
         let size_in_pixels = size_in_pixels.into();
         let uv_size = size_in_pixels * pixel_size;
-        let offset = Pos::from(*offset.into() * pixel_size.to_vec());
+        let offset = Pos::from(*offset.into() * pixel_size.to_vec()) * sheet_size;
 
         Self {
             texture,
