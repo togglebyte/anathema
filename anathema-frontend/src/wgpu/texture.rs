@@ -91,16 +91,20 @@ impl Textures {
         }
     }
 
-    pub(crate) fn load_texture(
-        &mut self,
-        path: impl AsRef<Path>,
-        device: &Device,
-        queue: &Queue,
-    ) -> TextureId {
+    pub(crate) fn remove_texture(&mut self, id: TextureId) {
+        let _texture = self.inner.remove(id);
+    }
+
+    pub(crate) fn load_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue) -> TextureId {
         let path = path.as_ref().to_str().unwrap_or("<path>");
-        let texture = self.load_single_texture(path, device, queue);
+        let diffuse_bytes = std::fs::read(path).unwrap();
+        self.load_texture_bytes(&diffuse_bytes, device, queue, path)
+    }
+    
+    pub(crate) fn load_texture_bytes(&mut self, bytes: &[u8], device: &Device, queue: &Queue, name: &str) -> TextureId {
+        let texture = self.load_single_texture(bytes, device, queue);
         let view = texture.create_view(&TextureViewDescriptor::default());
-        let bind_group = self.single_texture_bind_group(device, &view, path);
+        let bind_group = self.single_texture_bind_group(device, &view, name);
         let texture = self.inner.insert(Texture {
             inner: texture,
             bind_group,
@@ -109,13 +113,8 @@ impl Textures {
         texture
     }
 
-    pub(crate) fn remove_texture(&mut self, id: TextureId) {
-        let _texture = self.inner.remove(id);
-    }
-
-    fn load_single_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue) -> wgpu::Texture {
-        let diffuse_bytes = std::fs::read(path).unwrap();
-        let diffuse_image = image::load_from_memory(&diffuse_bytes).unwrap();
+    fn load_single_texture(&mut self, diffuse_bytes: &[u8], device: &Device, queue: &Queue) -> wgpu::Texture {
+        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_rgba = diffuse_image.to_rgba8();
         let (width, height) = diffuse_image.dimensions();
 

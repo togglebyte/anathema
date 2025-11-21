@@ -1,40 +1,40 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anathema_geometry::Size;
 use winit::application::ApplicationHandler;
 use winit::keyboard::KeyCode;
 use winit::window::{Window, WindowAttributes};
 
-use crate::wgpu::font::{DEFAULT_FONT, Font};
-
+use super::temporary::Ctx;
 use super::{GraphicsCtx, Renderer};
+use crate::wgpu::font::{Font, DEFAULT_FONT};
 
-pub(crate) struct WindowHandler<Init, Tick> {
+pub(crate) struct WindowHandler<Tick> {
     window_attributes: WindowAttributes,
     ctx: Option<GraphicsCtx>,
     window: Option<Arc<Window>>,
     renderer: Option<Renderer>,
-    init: Init,
     tick: Tick,
+    now: Instant,
 }
 
-impl<Init, Tick> WindowHandler<Init, Tick> {
-    pub fn new(init: Init, tick: Tick) -> Self {
+impl<Tick> WindowHandler<Tick> {
+    pub fn new(tick: Tick) -> Self {
         Self {
             window_attributes: WindowAttributes::default(),
             ctx: None,
             window: None,
             renderer: None,
-            init,
             tick,
+            now: Instant::now(),
         }
     }
 }
 
-impl<Init, Tick> ApplicationHandler for WindowHandler<Init, Tick>
+impl<Tick> ApplicationHandler for WindowHandler<Tick>
 where
-    Init: FnMut(&mut GraphicsCtx),
-    Tick: FnMut(&mut GraphicsCtx),
+    Tick: FnMut(f32, Ctx<'_>),
 {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         let Ok(window) = event_loop.create_window(self.window_attributes.clone()) else {
@@ -47,9 +47,8 @@ where
             Ok(s) => s,
             Err(err) => panic!("{err}"),
         };
-        (self.init)(&mut ctx);
 
-        let font_texture = ctx.load_texture_from_bytes(DEFAULT_FONT);
+        let font_texture = ctx.load_texture_from_bytes(DEFAULT_FONT, "default font");
         let size = Size::new(size.width as f32, size.height as f32);
         let renderer = Renderer::new(size, Font::new(font_texture));
 
@@ -74,11 +73,16 @@ where
                 ctx.resize(size);
             }
             winit::event::WindowEvent::RedrawRequested => {
-                let Some(ctx) = &mut self.ctx else { return };
+                let Some(graph_ctx) = &mut self.ctx else { return };
                 let Some(renderer) = &mut self.renderer else { return };
-                (self.tick)(ctx);
-                ctx.window.request_redraw();
-                renderer.render(ctx);
+
+                let ctx = Ctx::new(renderer, graph_ctx);
+
+                let dt = self.now.elapsed().as_micros() as f32;
+                self.now = Instant::now();
+                (self.tick)(dt, ctx);
+                graph_ctx.window.request_redraw();
+                renderer.render(graph_ctx);
                 // self.gameloop.tick(&mut self.renderer, graphics);
             }
             _ => {

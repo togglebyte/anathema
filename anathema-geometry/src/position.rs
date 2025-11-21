@@ -71,6 +71,14 @@ impl Add for Pos {
     }
 }
 
+impl Mul for Pos {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Pos::new(self.x * rhs.x, self.y * rhs.y)
+    }
+}
+
 impl AddAssign for Pos {
     fn add_assign(&mut self, rhs: Self) {
         self.x += rhs.x;

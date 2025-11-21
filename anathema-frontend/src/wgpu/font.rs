@@ -7,7 +7,7 @@ use crate::wgpu::texture::TextureId;
 pub(crate) static DEFAULT_FONT: &'static [u8] = include_bytes!("font.png");
 
 pub struct Font {
-    texture: TextureId,
+    pub(crate) texture: TextureId,
 }
 
 impl Font {

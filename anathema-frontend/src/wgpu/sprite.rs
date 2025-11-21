@@ -66,6 +66,7 @@ impl SpriteData {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Sprite {
     pub(crate) texture: TextureId,
     pub(crate) material: MaterialId,
@@ -84,7 +85,6 @@ pub struct Sprite {
     // pub z_index: f32,
     dirty: bool,
     pixel_size: Size,
-    // cache: SpriteData,
 }
 
 impl Sprite {

@@ -248,6 +248,5 @@ impl<'a> Drop for RowInsert<'a> {
 pub(super) enum Diff {
     ClearRow,
     ClearRange(Range<usize>),
-    ClearCell(usize),
     Write(Range<usize>),
 }

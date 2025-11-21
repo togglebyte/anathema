@@ -2,6 +2,8 @@ use anathema_compiler::Color;
 use anathema_geometry::Pos;
 use winit::event_loop::EventLoop;
 
+use crate::wgpu::sprite::SpriteId;
+
 pub use self::ctx::GraphicsCtx;
 pub use self::material::MaterialId;
 pub use self::renderer::Renderer;
@@ -10,13 +12,12 @@ pub use self::sprite::Sprite;
 static DEFAULT_SHADER: &'static str = include_str!("shader.wgsl");
 
 // TODO: remove this once we have some kind of runtime
-pub fn justatest<Init, Tick>(init: Init, tick: Tick)
+pub fn justatest<Tick>(tick: Tick)
 where
-    Init: FnMut(&mut GraphicsCtx),
-    Tick: Fn(&mut GraphicsCtx),
+    Tick: FnMut(f32, temporary::Ctx<'_>),
 {
     let event_loop = EventLoop::new().unwrap();
-    let mut app = window::WindowHandler::new(init, tick);
+    let mut app = window::WindowHandler::new(tick);
     event_loop.run_app(&mut app).unwrap();
 }
 
@@ -32,12 +33,14 @@ mod sprite;
 mod texture;
 mod window;
 
+mod temporary;
+
 #[derive(Debug, Default, Clone, PartialEq)]
 enum State {
     #[default]
     Empty,
     Continuation,
-    Char(Pos),
+    Sprite(SpriteId),
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -50,7 +53,7 @@ impl Cell {
     pub fn space() -> Self {
         Self {
             style: Style::reset(),
-            state: State::Char(Pos::ZERO),
+            state: State::Empty,
         }
     }
 }
@@ -76,5 +79,14 @@ impl Style {
 
     fn reset() -> Self {
         Self::default()
+    }
+}
+
+impl From<&dyn crate::Brush> for Style {
+    fn from(brush: &dyn crate::Brush) -> Self {
+        Self {
+            fg: brush.color("foreground"),
+            bg: brush.color("background"),
+        }
     }
 }

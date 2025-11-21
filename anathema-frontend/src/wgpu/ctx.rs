@@ -203,12 +203,11 @@ impl GraphicsCtx {
     }
 
     pub fn load_texture(&mut self, path: impl AsRef<Path>) -> TextureId {
-        self.textures
-            .load_texture(path, &self.device, &self.queue)
+        self.textures.load_texture(path, &self.device, &self.queue)
     }
 
-    pub fn load_texture_from_bytes(&mut self, bytes: &[u8]) -> TextureId {
-        panic!();
+    pub fn load_texture_from_bytes(&mut self, bytes: &[u8], name: &str) -> TextureId {
+        self.textures.load_texture_bytes(bytes, &self.device, &self.queue, name)
     }
 
     pub fn add_sprite(&mut self, sprite: Sprite) -> SpriteId {
