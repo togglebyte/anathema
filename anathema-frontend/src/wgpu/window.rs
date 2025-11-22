@@ -10,6 +10,12 @@ use super::temporary::Ctx;
 use super::{GraphicsCtx, Renderer};
 use crate::wgpu::font::{Font, DEFAULT_FONT};
 
+pub enum ScreenConfig {
+    CellSize(Size),
+    ScreenSize(Size),
+    CellCount { rows: usize, cols: usize },
+}
+
 pub(crate) struct WindowHandler<Tick> {
     window_attributes: WindowAttributes,
     ctx: Option<GraphicsCtx>,
