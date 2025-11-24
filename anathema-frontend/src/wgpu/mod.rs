@@ -22,6 +22,7 @@ where
 
 mod buffer;
 mod camera;
+mod coords;
 mod ctx;
 mod error;
 mod font;

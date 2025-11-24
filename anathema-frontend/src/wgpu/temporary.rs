@@ -36,8 +36,13 @@ impl<'a> Frontend for Ctx<'a> {
                 Some(w) => w,
             };
 
+            let scale = match self.config {
+                &ScreenConfig::CellSize(size) => size,
+                _ => unreachable!(),
+            };
+
             // let state = State::Char();
-            let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), Size::from(40.0));
+            let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), scale);
             sprite.scale = match self.config {
                 ScreenConfig::CellSize(size) => *size,
                 ScreenConfig::CellCount { rows, cols } => todo!(),

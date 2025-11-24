@@ -13,7 +13,9 @@ use crate::wgpu::font::{Font, DEFAULT_FONT};
 /// Screen configuration
 pub enum ScreenConfig {
     /// A cell has a fixed size, so the screen is divided by the cell size,
-    /// and padding is applied
+    /// and padding is applied.
+    ///
+    /// Scaling should always be ^2 to avoid artifacts
     CellSize(Size),
     /// A cell has the width of window_size.width / cols, and a height of window_size.height / rows
     CellCount { rows: usize, cols: usize },

@@ -100,7 +100,7 @@ impl Textures {
         let diffuse_bytes = std::fs::read(path).unwrap();
         self.load_texture_bytes(&diffuse_bytes, device, queue, path)
     }
-    
+
     pub(crate) fn load_texture_bytes(&mut self, bytes: &[u8], device: &Device, queue: &Queue, name: &str) -> TextureId {
         let texture = self.load_single_texture(bytes, device, queue);
         let view = texture.create_view(&TextureViewDescriptor::default());
