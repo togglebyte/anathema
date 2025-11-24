@@ -73,7 +73,7 @@ pub struct Sprite {
     cache_index: usize,
 
     pos: Pos,
-    pub scale: f32,
+    pub scale: Size,
     rot: f32,
     uv_size: Size,
 
@@ -108,7 +108,7 @@ impl Sprite {
 
             pos: Pos::ZERO,
             rot: 0.0,
-            scale: 1.0,
+            scale: Size::ONE,
             offset,
             size_in_pixels,
             uv_size,
@@ -126,8 +126,7 @@ impl Sprite {
         // here we scale pixels
         let pixel_size_transform = Mat4::from_scale(Vec3::from((self.size_in_pixels.to_vec(), 1.0)));
 
-        let scale = Size::new(self.scale, self.scale);
-        let uniform_scale = Mat4::from_scale(Vec3::from((scale.to_vec(), 1.0)));
+        let uniform_scale = Mat4::from_scale(Vec3::from((self.scale.to_vec(), 1.0)));
 
         let mat = translation * rotation * uniform_scale * pixel_size_transform;
         let offset = (*self.offset * self.pixel_size.to_vec()).into();
@@ -153,7 +152,7 @@ impl Sprite {
         self.dirty = true;
     }
 
-    pub fn scale(&mut self, scale: f32) {
+    pub fn scale(&mut self, scale: Size) {
         self.scale = scale;
         self.dirty = true;
     }

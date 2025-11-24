@@ -10,9 +10,12 @@ use super::temporary::Ctx;
 use super::{GraphicsCtx, Renderer};
 use crate::wgpu::font::{Font, DEFAULT_FONT};
 
+/// Screen configuration
 pub enum ScreenConfig {
+    /// A cell has a fixed size, so the screen is divided by the cell size,
+    /// and padding is applied
     CellSize(Size),
-    ScreenSize(Size),
+    /// A cell has the width of window_size.width / cols, and a height of window_size.height / rows
     CellCount { rows: usize, cols: usize },
 }
 
@@ -23,10 +26,11 @@ pub(crate) struct WindowHandler<Tick> {
     renderer: Option<Renderer>,
     tick: Tick,
     now: Instant,
+    config: ScreenConfig,
 }
 
 impl<Tick> WindowHandler<Tick> {
-    pub fn new(tick: Tick) -> Self {
+    pub fn new(tick: Tick, config: ScreenConfig) -> Self {
         Self {
             window_attributes: WindowAttributes::default(),
             ctx: None,
@@ -34,6 +38,7 @@ impl<Tick> WindowHandler<Tick> {
             renderer: None,
             tick,
             now: Instant::now(),
+            config,
         }
     }
 }
@@ -48,6 +53,7 @@ where
         };
 
         let size = window.inner_size();
+        let size = Size::new(size.width as f32, size.height as f32);
 
         let mut ctx = match pollster::block_on(GraphicsCtx::new(window)) {
             Ok(s) => s,
@@ -55,8 +61,13 @@ where
         };
 
         let font_texture = ctx.load_texture_from_bytes(DEFAULT_FONT, "default font");
-        let size = Size::new(size.width as f32, size.height as f32);
-        let font =  {
+
+        let char_size = match self.config {
+            ScreenConfig::CellSize(size) => size,
+            ScreenConfig::CellCount { rows, cols } => todo!(),
+        };
+
+        let font = {
             let font_size = Size::new(256.0, 32.0);
             let char_size = Size::new(6.0, 6.0);
             Font::new(font_texture, font_size, char_size)
@@ -88,7 +99,7 @@ where
                 let Some(graph_ctx) = &mut self.ctx else { return };
                 let Some(renderer) = &mut self.renderer else { return };
 
-                let ctx = Ctx::new(renderer, graph_ctx);
+                let ctx = Ctx::new(renderer, graph_ctx, &self.config);
 
                 let dt = self.now.elapsed().as_micros() as f32;
                 self.now = Instant::now();

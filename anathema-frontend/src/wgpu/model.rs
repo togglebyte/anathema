@@ -21,6 +21,27 @@ impl Vertex {
 }
 
 pub(crate) static MODEL: &[Vertex] = &[
+    // // top left
+    // Vertex {
+    //     pos: Pos::new(0.0, 1.0),
+    //     texture_coords: Pos::ZERO,
+    // },
+    // // // bottom left
+    // Vertex {
+    //     pos: Pos::new(0.0, 0.0),
+    //     texture_coords: Pos::new(0.0, 1.0),
+    // },
+    // // // bottom right
+    // Vertex {
+    //     pos: Pos::new(1.0, 0.0),
+    //     texture_coords: Pos::new(1.0, 1.0),
+    // },
+    // // // top right
+    // Vertex {
+    //     pos: Pos::new(1.0, 1.0),
+    //     texture_coords: Pos::new(1.0, 0.0),
+    // },
+
     // top left
     Vertex {
         pos: Pos::new(-0.5, 0.5),

@@ -2,17 +2,18 @@ use anathema_geometry::{Pos, Region, Size};
 use unicode_width::UnicodeWidthChar;
 
 use super::renderer::Renderer;
-use crate::wgpu::{GraphicsCtx, MaterialId, Sprite, State, Style};
+use crate::wgpu::{GraphicsCtx, MaterialId, ScreenConfig, Sprite, State, Style};
 use crate::Frontend;
 
 pub struct Ctx<'a> {
     renderer: &'a mut Renderer,
     ctx: &'a mut GraphicsCtx,
+    config: &'a ScreenConfig,
 }
 
 impl<'a> Ctx<'a> {
-    pub(crate) fn new(renderer: &'a mut Renderer, ctx: &'a mut GraphicsCtx) -> Self {
-        Self { renderer, ctx }
+    pub(crate) fn new(renderer: &'a mut Renderer, ctx: &'a mut GraphicsCtx, config: &'a ScreenConfig) -> Self {
+        Self { renderer, ctx, config }
     }
 }
 
@@ -36,8 +37,11 @@ impl<'a> Frontend for Ctx<'a> {
             };
 
             // let state = State::Char();
-            let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32));
-            sprite.scale = 40.0;
+            let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), Size::from(40.0));
+            sprite.scale = match self.config {
+                ScreenConfig::CellSize(size) => *size,
+                ScreenConfig::CellCount { rows, cols } => todo!(),
+            };
 
             let sprite = self.ctx.add_sprite(sprite);
 

@@ -49,19 +49,21 @@ impl Font {
         pos * self.char_size
     }
 
-    pub(crate) fn get_sprite(&mut self, c: char, pos: Pos) -> Sprite {
+    pub(crate) fn get_sprite(&mut self, c: char, pos: Pos, scale: Size) -> Sprite {
         let offset = self.get_offset(c);
         let sprite = self.cache.entry(c).or_insert_with(|| {
-            Sprite::new(
+            let mut sprite = Sprite::new(
                 self.texture,
                 MaterialId::default(),
                 self.texture_size,
                 offset,
                 self.char_size,
-            )
+            );
+            sprite.scale = scale;
+            sprite
         });
 
-        sprite.translate(pos * self.char_size * Pos::new(40.0, 40.0));
+        sprite.translate(pos * self.char_size * sprite.scale);
 
         sprite.clone()
     }

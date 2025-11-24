@@ -2,22 +2,21 @@ use anathema_compiler::Color;
 use anathema_geometry::Pos;
 use winit::event_loop::EventLoop;
 
-use crate::wgpu::sprite::SpriteId;
-
 pub use self::ctx::GraphicsCtx;
 pub use self::material::MaterialId;
 pub use self::renderer::Renderer;
-pub use self::sprite::Sprite;
+pub use self::sprite::{Sprite, SpriteId};
+pub use self::window::ScreenConfig;
 
 static DEFAULT_SHADER: &'static str = include_str!("shader.wgsl");
 
 // TODO: remove this once we have some kind of runtime
-pub fn justatest<Tick>(tick: Tick)
+pub fn justatest<Tick>(config: ScreenConfig, tick: Tick)
 where
     Tick: FnMut(f32, temporary::Ctx<'_>),
 {
     let event_loop = EventLoop::new().unwrap();
-    let mut app = window::WindowHandler::new(tick);
+    let mut app = window::WindowHandler::new(tick, config);
     event_loop.run_app(&mut app).unwrap();
 }
 

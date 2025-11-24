@@ -49,6 +49,12 @@ impl From<(f32, f32)> for Size {
     }
 }
 
+impl From<f32> for Size {
+    fn from(width_height: f32) -> Self {
+        Size::new(width_height, width_height)
+    }
+}
+
 impl From<[f32; 2]> for Size {
     fn from([width, height]: [f32; 2]) -> Self {
         Self::new(width, height)
