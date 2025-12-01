@@ -1,6 +1,7 @@
 use std::num::NonZeroU32;
 use std::path::Path;
 
+use anathema_geometry::Size;
 use anathema_store::key;
 use anathema_store::slab::{Slab, SlabIndex};
 use image::GenericImageView;
@@ -95,14 +96,14 @@ impl Textures {
         let _texture = self.inner.remove(id);
     }
 
-    pub(crate) fn load_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue) -> TextureId {
+    pub(crate) fn load_texture(&mut self, path: impl AsRef<Path>, device: &Device, queue: &Queue) -> (TextureId, Size) {
         let path = path.as_ref().to_str().unwrap_or("<path>");
         let diffuse_bytes = std::fs::read(path).unwrap();
         self.load_texture_bytes(&diffuse_bytes, device, queue, path)
     }
 
-    pub(crate) fn load_texture_bytes(&mut self, bytes: &[u8], device: &Device, queue: &Queue, name: &str) -> TextureId {
-        let texture = self.load_single_texture(bytes, device, queue);
+    pub(crate) fn load_texture_bytes(&mut self, bytes: &[u8], device: &Device, queue: &Queue, name: &str) -> (TextureId, Size) {
+        let (texture, size) = self.load_single_texture(bytes, device, queue);
         let view = texture.create_view(&TextureViewDescriptor::default());
         let bind_group = self.single_texture_bind_group(device, &view, name);
         let texture = self.inner.insert(Texture {
@@ -110,10 +111,10 @@ impl Textures {
             bind_group,
         });
 
-        texture
+        (texture, size)
     }
 
-    fn load_single_texture(&mut self, diffuse_bytes: &[u8], device: &Device, queue: &Queue) -> wgpu::Texture {
+    fn load_single_texture(&mut self, diffuse_bytes: &[u8], device: &Device, queue: &Queue) -> (wgpu::Texture, Size) {
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_rgba = diffuse_image.to_rgba8();
         let (width, height) = diffuse_image.dimensions();
@@ -151,7 +152,7 @@ impl Textures {
             texture_size,
         );
 
-        diffuse_texture
+        (diffuse_texture, Size::new(width as f32, height as f32))
     }
 
     fn single_texture_bind_group(&mut self, device: &Device, texture: &TextureView, path: &str) -> BindGroup {

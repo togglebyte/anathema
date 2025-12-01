@@ -51,24 +51,25 @@ mod test {
         strings: Vec<String>,
     }
 
-    impl UseBuffer {
-        fn run(&mut self) {
-            let guard = self.buffer.guard();
+    // impl UseBuffer {
+    //     fn run(&mut self) {
+    //         let guard = self.buffer.guard();
 
-            let data = Data(self.strings[0].as_str());
-            guard.with(|buffer| {
-                buffer.push(&data);
-            });
-        }
-    }
+    //         let data = Data(self.strings[0].as_str());
+    //         guard.with(|buffer| {
+    //             buffer.push(&data);
+    //         });
+    //     }
+    // }
 
     #[test]
     fn use_guard() {
-        let mut ub = UseBuffer {
-            buffer: ScratchBuffer::empty(),
-            strings: vec![String::from("hello")],
-        };
+        panic!()
+        // let mut ub = UseBuffer {
+        //     buffer: ScratchBuffer::empty(),
+        //     strings: vec![String::from("hello")],
+        // };
 
-        ub.run();
+        // ub.run();
     }
 }

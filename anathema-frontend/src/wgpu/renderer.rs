@@ -3,23 +3,24 @@ use unicode_width::UnicodeWidthChar;
 
 use super::GraphicsCtx;
 use crate::wgpu::buffer::{Buffer, Diff};
-use crate::wgpu::font::Font;
+use crate::wgpu::fonts::Font;
 use crate::wgpu::model::{INDEX_COUNT, INDICES};
 use crate::wgpu::texture::Textures;
 use crate::wgpu::{MaterialId, Sprite, State, Style};
 
+const CAMERA_BIND_GROUP: u32 = 1;
+const FONT_BIND_GROUP: u32 = 2;
+
 pub struct Renderer {
     pub(crate) size: Size,
-    pub(crate) font: Font,
     pub(crate) front: Buffer,
     pub(crate) back: Buffer,
 }
 
 impl Renderer {
-    pub(crate) fn new(size: Size, font: Font) -> Self {
+    pub(crate) fn new(size: Size) -> Self {
         Self {
             size,
-            font,
             front: Buffer::new(size.width as usize, size.height as usize),
             back: Buffer::new(size.width as usize, size.height as usize),
         }
@@ -30,6 +31,9 @@ impl Renderer {
     }
 
     pub(crate) fn render(&mut self, ctx: &mut GraphicsCtx) -> Result<(), ()> {
+
+        // This is where we diff the buffers and update the font buffer
+
         self.present(ctx)?;
 
         self.front.clear_dirty_rows();
@@ -81,20 +85,12 @@ impl Renderer {
 
         let clear_color = [0.2, 0.3, 0.4, 1.0];
 
-        // Update view_matrix uniform
-        // NOTE: do we need this?
+        // Write the projection matrix (camera)
         ctx.queue.write_buffer(
             &mut ctx.projection_buffer,
             0,
             bytemuck::cast_slice(&[ctx.camera.to_matrix()]),
         );
-
-        // // NOTE: do we need this?
-        // ctx.queue.write_buffer(
-        //     &mut ctx.sprites.instance_buffer,
-        //     0,
-        //     bytemuck::cast_slice(&ctx.sprites.sprite_cache),
-        // );
 
         let output = ctx.surface.get_current_texture().unwrap(); // TODO: add `?` back in when
                                                                  // result is decided upon;
@@ -127,7 +123,7 @@ impl Renderer {
         });
 
         // Camera
-        render_pass.set_bind_group(1, &ctx.camera_bind_group, &[]);
+        render_pass.set_bind_group(CAMERA_BIND_GROUP, &ctx.camera_bind_group, &[]);
 
         // Vertices
         render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
@@ -139,25 +135,34 @@ impl Renderer {
         //   * Group textures by material
         // -----------------------------------------------------------------------------
 
-        for (material, texture, sprite_buffer, sprite_count) in ctx.something() {
-            render_pass.set_pipeline(&material.pipeline);
-            render_pass.set_bind_group(0, &texture.bind_group, &[]);
+        // for (material, texture, sprite_buffer, sprite_count) in ctx.something() {
+        //     render_pass.set_pipeline(&material.pipeline);
+        //     render_pass.set_bind_group(0, &texture.bind_group, &[]);
 
-            render_pass.set_vertex_buffer(1, sprite_buffer.slice(..));
-            render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..sprite_count);
-        }
-
-        // for material in ctx.materials.iter() {
-        //     for (sprite, texture) in ctx.sprites(&material.sprites) {
-        //         render_pass.set_pipeline(&material.pipeline);
-        //         render_pass.set_bind_group(0, &texture.bind_group, &[]);
-
-        //         // render_pass.set_vertex_buffer(0, ctx.vertex_buffer.slice(..));
-        //         render_pass.set_vertex_buffer(1, ctx.sprites.instance_buffer.slice(..));
-        //         // render_pass.set_index_buffer(ctx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        //         render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..ctx.sprites.len() as u32);
-        //     }
+        //     render_pass.set_vertex_buffer(1, sprite_buffer.slice(..));
+        //     render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..sprite_count);
         // }
+
+
+        // for font in ctx.fonts.iter_mut() {
+        //     let data = font.data();
+        //     render_pass.set_bind_group(FONT_BIND_GROUP, &font.bind_group, &[]);
+
+        //     // Write the uniform data used to draw
+        //     ctx.queue.write_buffer(
+        //         &mut font.buffer,
+        //         0,
+        //         bytemuck::cast_slice(&[data]),
+        //     );
+
+        //     // for (material, sprite_buffer, sprite_count) in font.material_groups() {
+        //     // //     render_pass.set_pipeline(&material.pipeline);
+
+        //     // //     render_pass.set_vertex_buffer(1, sprite_buffer.slice(..));
+        //     // //     render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..sprite_count);
+        //     // }
+        // }
+
 
         drop(render_pass);
         ctx.queue.submit(Some(encoder.finish()));
@@ -167,7 +172,7 @@ impl Renderer {
         Ok(())
     }
 
-    fn style_region(&mut self, region: Region, style: Style) {
+    pub(crate) fn style_region(&mut self, region: Region, style: Style) {
         let from_y = region.from.y as usize;
         let to_y = region.to.y as usize;
         let width = (region.to.x - region.from.x) as usize;

@@ -79,7 +79,7 @@ pub struct Sprite {
 
     // Size, in pixels
     pub size_in_pixels: Size,
-    // Offset, in pixels
+    // Offset into the texture, in pixels
     pub offset: Pos,
     // // Z index
     // pub z_index: f32,
@@ -92,7 +92,12 @@ impl Sprite {
         texture: TextureId,
         material: MaterialId,
         sheet_size: impl Into<Size>,
+        // Offset into the sprite sheet, in pixels.
         offset: impl Into<Pos>,
+        // This is the size of the sprite in the sprite sheet.
+        // This is used with the offset to find the region to draw
+        //
+        // E.g offset = 16x16, size_in_pixels = 16x16
         size_in_pixels: impl Into<Size>,
     ) -> Self {
         let sheet_size = sheet_size.into();
@@ -225,7 +230,8 @@ impl SpriteBuffers {
                 let index = buffer_entry.data.len();
                 buffer_entry.data.push(data);
 
-                // write to the buffer (we aren't writing, we are replacing, change this to write)
+                // write to the buffer only if the data lenghth is the same,
+                // otherwise replace the buffer with a new one.
                 let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
                     label: Some("Instance buffer"),
                     contents: bytemuck::cast_slice(buffer_entry.data.as_slice()),

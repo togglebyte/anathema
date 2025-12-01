@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Deref, DerefMut, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Neg, Sub, SubAssign};
 
 use bytemuck::{Pod, Zeroable};
 use glam::Vec2;
@@ -84,6 +84,14 @@ impl Mul<Size> for Pos {
 
     fn mul(self, rhs: Size) -> Self::Output {
         Pos::new(self.x * rhs.width, self.y * rhs.height)
+    }
+}
+
+impl Div<Size> for Pos {
+    type Output = Self;
+
+    fn div(self, rhs: Size) -> Self::Output {
+        Pos::new(self.x / rhs.width, self.y / rhs.height)
     }
 }
 

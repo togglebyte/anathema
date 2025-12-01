@@ -8,7 +8,7 @@ use winit::window::{Window, WindowAttributes};
 
 use super::temporary::Ctx;
 use super::{GraphicsCtx, Renderer};
-use crate::wgpu::font::{Font, DEFAULT_FONT};
+use crate::wgpu::fonts::{Font, DEFAULT_FONT, DEFAULT_FONT_SHADER};
 
 /// Screen configuration
 pub enum ScreenConfig {
@@ -21,32 +21,35 @@ pub enum ScreenConfig {
     CellCount { rows: usize, cols: usize },
 }
 
-pub(crate) struct WindowHandler<Tick> {
+pub(crate) struct WindowHandler<Init, Tick> {
     window_attributes: WindowAttributes,
     ctx: Option<GraphicsCtx>,
     window: Option<Arc<Window>>,
     renderer: Option<Renderer>,
     tick: Tick,
+    init: Init,
     now: Instant,
     config: ScreenConfig,
 }
 
-impl<Tick> WindowHandler<Tick> {
-    pub fn new(tick: Tick, config: ScreenConfig) -> Self {
+impl<Init, Tick> WindowHandler<Init, Tick> {
+    pub fn new(init: Init, tick: Tick, config: ScreenConfig) -> Self {
         Self {
             window_attributes: WindowAttributes::default(),
             ctx: None,
             window: None,
             renderer: None,
             tick,
+            init,
             now: Instant::now(),
             config,
         }
     }
 }
 
-impl<Tick> ApplicationHandler for WindowHandler<Tick>
+impl<Init, Tick> ApplicationHandler for WindowHandler<Init, Tick>
 where
+    Init: Fn(&mut GraphicsCtx),
     Tick: FnMut(f32, Ctx<'_>),
 {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
@@ -62,20 +65,19 @@ where
             Err(err) => panic!("{err}"),
         };
 
-        let font_texture = ctx.load_texture_from_bytes(DEFAULT_FONT, "default font");
+        (self.init)(&mut ctx);
 
         let char_size = match self.config {
             ScreenConfig::CellSize(size) => size,
             ScreenConfig::CellCount { rows, cols } => todo!(),
         };
+        
+        let char_size = Size::new(6.0, 6.0);
+        let font_shader = ctx.load_shader(DEFAULT_FONT_SHADER, "default font shader");
+        let font_texture = ctx.load_texture_from_bytes(DEFAULT_FONT, "default font");
+        ctx.new_font(font_texture, char_size, font_shader);
 
-        let font = {
-            let font_size = Size::new(256.0, 32.0);
-            let char_size = Size::new(6.0, 6.0);
-            Font::new(font_texture, font_size, char_size)
-        };
-
-        let renderer = Renderer::new(size, font);
+        let renderer = Renderer::new(size);
 
         self.ctx.replace(ctx);
         self.renderer.replace(renderer);

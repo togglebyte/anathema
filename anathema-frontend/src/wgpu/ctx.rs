@@ -14,6 +14,7 @@ use winit::window::Window;
 use super::error::{Error, Result};
 use super::model::{INDICES, MODEL};
 use crate::wgpu::camera::Camera;
+use crate::wgpu::fonts::{Font, Fonts};
 use crate::wgpu::material::{Material, MaterialId, Materials};
 use crate::wgpu::sprite::{Sprite, SpriteId, Sprites};
 use crate::wgpu::texture::{Texture, TextureId, Textures};
@@ -36,10 +37,11 @@ pub struct GraphicsCtx {
 
     pub(crate) textures: Textures,
     pub(crate) materials: Materials,
-    pub(crate) pipeline_layout: PipelineLayout,
     pub(crate) camera: Camera,
     pub(crate) projection_buffer: Buffer,
     pub(crate) camera_bind_group: BindGroup,
+
+    pub(crate) fonts: Fonts,
 }
 
 impl GraphicsCtx {
@@ -165,8 +167,13 @@ impl GraphicsCtx {
             push_constant_ranges: &[],
         });
 
-        let materials = Materials::new(&device, &pipeline_layout, format);
+        let materials = Materials::new(&device, pipeline_layout, format);
         let sprites = Sprites::new(&device);
+
+        // -----------------------------------------------------------------------------
+        //   - Font-
+        // -----------------------------------------------------------------------------
+        let fonts = Fonts::new(&device);
 
         // -----------------------------------------------------------------------------
         //   - Done... -
@@ -184,12 +191,13 @@ impl GraphicsCtx {
 
             textures,
             materials,
-            pipeline_layout,
             sprites,
 
             camera,
             camera_bind_group,
             projection_buffer,
+
+            fonts,
         };
 
         Ok(inst)
@@ -202,18 +210,16 @@ impl GraphicsCtx {
         self.surface.configure(&self.device, &self.surface_config);
     }
 
-    pub fn load_texture(&mut self, path: impl AsRef<Path>) -> TextureId {
+    pub fn load_texture(&mut self, path: impl AsRef<Path>) -> (TextureId, Size) {
         self.textures.load_texture(path, &self.device, &self.queue)
     }
 
-    pub fn load_texture_from_bytes(&mut self, bytes: &[u8], name: &str) -> TextureId {
+    pub fn load_texture_from_bytes(&mut self, bytes: &[u8], name: &str) -> (TextureId, Size) {
         self.textures.load_texture_bytes(bytes, &self.device, &self.queue, name)
     }
 
     pub fn add_sprite(&mut self, sprite: Sprite) -> SpriteId {
-        let material = sprite.material;
         let sprite = self.sprites.add(sprite, &self.device);
-        self.materials.add_sprite(material, sprite);
         sprite
     }
 
@@ -243,5 +249,14 @@ impl GraphicsCtx {
 
             (material, texture, buffer, len)
         })
+    }
+
+    pub(crate) fn new_font(&mut self, (texture, size): (TextureId, Size), char_size: Size, material: MaterialId) {
+        self.fonts.new_font(&self.device, texture, size, char_size, material);
+    }
+
+    pub(crate) fn load_shader(&mut self, src: &str, name: &str) -> MaterialId {
+        let source = wgpu::ShaderSource::Wgsl(src.into());
+        self.materials.add_material(&self.device, source, name.into())
     }
 }

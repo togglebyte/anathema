@@ -2,6 +2,8 @@ use anathema_compiler::Color;
 use anathema_geometry::Pos;
 use winit::event_loop::EventLoop;
 
+use crate::wgpu::fonts::Char;
+
 pub use self::ctx::GraphicsCtx;
 pub use self::material::MaterialId;
 pub use self::renderer::Renderer;
@@ -11,21 +13,21 @@ pub use self::window::ScreenConfig;
 static DEFAULT_SHADER: &'static str = include_str!("shader.wgsl");
 
 // TODO: remove this once we have some kind of runtime
-pub fn justatest<Tick>(config: ScreenConfig, tick: Tick)
+pub fn justatest<Init, Tick>(config: ScreenConfig, init: Init, tick: Tick)
 where
+    Init: Fn(&mut GraphicsCtx),
     Tick: FnMut(f32, temporary::Ctx<'_>),
 {
     let event_loop = EventLoop::new().unwrap();
-    let mut app = window::WindowHandler::new(tick, config);
+    let mut app = window::WindowHandler::new(init, tick, config);
     event_loop.run_app(&mut app).unwrap();
 }
 
 mod buffer;
 mod camera;
-mod coords;
 mod ctx;
 mod error;
-mod font;
+mod fonts;
 mod material;
 mod model;
 mod renderer;
@@ -40,7 +42,10 @@ enum State {
     #[default]
     Empty,
     Continuation,
-    Sprite(SpriteId),
+    Char {
+        material_index: MaterialId,
+        character: u16,
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -64,6 +69,7 @@ pub struct Style {
     pub fg: Option<Color>,
     /// Background colour.
     pub bg: Option<Color>,
+    pub material: Option<MaterialId>,
 }
 
 impl Style {
@@ -75,18 +81,13 @@ impl Style {
         if let Some(bg) = other.bg {
             self.bg = Some(bg);
         }
+
+        if let Some(mat) = other.material {
+            self.material.replace(mat);
+        }
     }
 
     fn reset() -> Self {
         Self::default()
-    }
-}
-
-impl From<&dyn crate::Brush> for Style {
-    fn from(brush: &dyn crate::Brush) -> Self {
-        Self {
-            fg: brush.color("foreground"),
-            bg: brush.color("background"),
-        }
     }
 }

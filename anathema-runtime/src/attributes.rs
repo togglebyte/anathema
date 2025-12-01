@@ -88,6 +88,13 @@ impl<'bp> Brush for WidgetAttributes<'_, 'bp> {
             _ => None,
         }
     }
+
+    fn string(&self, key: &str) -> Option<&str> {
+        match self.get(key) {
+            TemplateValue::Str(val) => Some(&*val),
+            _ => None,
+        }
+    }
 }
 
 // All attributes for all elements

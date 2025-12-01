@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::ops::{Index, IndexMut};
 
 use crate::slab::{Slab, SlabIndex};
 
@@ -64,19 +65,14 @@ where
     }
 
     /// Set a value in the map.
-    /// If there is already a value with the same key,
-    /// the old value will be returned
-    pub fn set(&mut self, key: K, mut value: V) -> Option<V> {
-        let old_value = self.get_mut(&key);
-        match old_value {
-            Some(old) => {
-                std::mem::swap(old, &mut value);
-                Some(value)
+    /// If there is already a value with the same key it will be overwritten.
+    pub fn set(&mut self, key: K, mut value: V) -> SmallIndex {
+        match self.get_index(&key) {
+            Some(index) => {
+                self.0.replace(index, (key, value));
+                index
             }
-            None => {
-                self.0.insert((key, value));
-                None
-            }
+            None => self.0.insert((key, value)),
         }
     }
 
@@ -154,6 +150,20 @@ where
     }
 }
 
+impl<K, V> Index<SmallIndex> for SmallMap<K, V> {
+    type Output = V;
+
+    fn index(&self, index: SmallIndex) -> &Self::Output {
+        &self.0[index].1
+    }
+}
+
+impl<K, V> IndexMut<SmallIndex> for SmallMap<K, V> {
+    fn index_mut(&mut self, index: SmallIndex) -> &mut Self::Output {
+        &mut self.0[index].1
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -182,8 +192,11 @@ mod test {
     #[test]
     fn double_set() {
         let mut map = SmallMap::<&str, u8>::empty();
-        assert_eq!(None, map.set("a", 1));
-        assert_eq!(Some(1), map.set("a", 2));
+        let index_1 = map.set("a", 1);
+        assert_eq!(Some(&1), map.get("a"));
+        let index_2 = map.set("a", 2);
+        assert_eq!(Some(&2), map.get("a"));
+        assert_eq!(index_1, index_2);
     }
 
     #[test]

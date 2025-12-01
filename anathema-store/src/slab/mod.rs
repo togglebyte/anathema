@@ -16,11 +16,13 @@ pub use self::secondary_map::SecondaryMap;
 pub use self::shared::SharedSlab;
 pub use self::shared::arc::{ArcElement, ArcSlab};
 pub use self::shared::rc::{RcElement, RcSlab};
+pub use self::sparse::SparseSlab;
 
 mod basic;
 mod generational;
 mod secondary_map;
 mod shared;
+mod sparse;
 
 /// Index value for a slab
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

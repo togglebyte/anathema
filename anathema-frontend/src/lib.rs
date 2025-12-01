@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Region};
+use anathema_geometry::{CharacterPos, Pos, Region};
 
 pub use self::brush::Brush;
 
@@ -11,7 +11,7 @@ pub trait Frontend {
     // that returns `true` for `wants_draw`
     fn apply_brush_to_region(&mut self, brush: &dyn Brush, region: Region);
 
-    fn set_text(&mut self, text: &str, pos: Pos);
+    fn set_text(&mut self, text: &str, pos: CharacterPos);
 
     fn invalidate_region(&mut self, region: Region);
 }

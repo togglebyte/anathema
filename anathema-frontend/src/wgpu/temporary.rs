@@ -1,7 +1,8 @@
-use anathema_geometry::{Pos, Region, Size};
+use anathema_geometry::{CharacterPos, Pos, Region, Size};
 use unicode_width::UnicodeWidthChar;
 
 use super::renderer::Renderer;
+use crate::wgpu::fonts::Char;
 use crate::wgpu::{GraphicsCtx, MaterialId, ScreenConfig, Sprite, State, Style};
 use crate::Frontend;
 
@@ -19,15 +20,20 @@ impl<'a> Ctx<'a> {
 
 impl<'a> Frontend for Ctx<'a> {
     fn apply_brush_to_region(&mut self, brush: &dyn crate::Brush, region: Region) {
-        let style = Style::from(brush);
-        // panic!()
-        // self.style_region(region, style);
+        let style = Style {
+            fg: brush.color("foreground"),
+            bg: brush.color("background"),
+            material: brush
+                .string("material")
+                .and_then(|mat| self.ctx.materials.get_id_by_name(mat)),
+        };
+
+        self.renderer.style_region(region, style);
     }
 
-    fn set_text(&mut self, text: &str, pos: Pos) {
-        let y = pos.y as usize;
-        let mut x = pos.x as usize;
-        let mut insertion = self.renderer.back.begin_insert(y);
+    fn set_text(&mut self, text: &str, pos: CharacterPos) {
+        let (mut x, y) = pos.to_usize();
+        let mut insertion = self.renderer.back.begin_insert(y as usize);
 
         for c in text.chars() {
             // Ignore any zero width characters
@@ -41,23 +47,23 @@ impl<'a> Frontend for Ctx<'a> {
                 _ => unreachable!(),
             };
 
-            // let state = State::Char();
-            let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), scale);
-            sprite.scale = match self.config {
-                ScreenConfig::CellSize(size) => *size,
-                ScreenConfig::CellCount { rows, cols } => todo!(),
-            };
+            // let c = self.ctx.fonts.character(c, CharacterPos::new(x as i32, y as i32));
+            // let state = State::Char(c);
 
-            let sprite = self.ctx.add_sprite(sprite);
+            // let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), scale);
+            // sprite.scale = match self.config {
+            //     ScreenConfig::CellSize(size) => *size,
+            //     ScreenConfig::CellCount { rows, cols } => todo!(),
+            // };
 
-            let state = State::Sprite(sprite);
+            //     let sprite = self.ctx.add_sprite(sprite);
 
             // write
-            insertion.write_state(x, state);
-            if width > 1 {
-                insertion.write_state(x + 1, State::Continuation);
-            }
-            x += width;
+            // insertion.write_state(x as usize, state);
+            // if width > 1 {
+            //     insertion.write_state(x as usize + 1, State::Continuation);
+            // }
+            // x += width;
         }
     }
 

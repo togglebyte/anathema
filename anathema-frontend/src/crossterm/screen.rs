@@ -1,7 +1,7 @@
 use std::io::{stdout, Stdout, Write};
 use std::ops::Index;
 
-use anathema_geometry::{Pos, Region};
+use anathema_geometry::{Pos, Region, CharacterPos};
 use anathema_store::scratch::ScratchBuffer;
 use compact_str::CompactString;
 use crossterm::style::{Attribute as CrossAttrib, Print, SetAttribute, SetBackgroundColor, SetForegroundColor};
@@ -238,10 +238,9 @@ impl<T: Write> Frontend for Screen<T> {
         self.style_region(region, style);
     }
 
-    fn set_text(&mut self, text: &str, pos: Pos) {
+    fn set_text(&mut self, text: &str, pos: CharacterPos) {
         let graphemes = text.graphemes(true);
-        let y = pos.y as usize;
-        let mut x = pos.x as usize;
+        let (mut x, y) = pos.to_usize();
         let mut insertion = self.back.begin_insert(y);
 
         for grapheme in graphemes {
