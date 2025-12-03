@@ -29,6 +29,13 @@ where
         }
     }
 
+    /// Clear everything
+    pub fn clear(&mut self) {
+        self.value_stack.clear();
+        self.slab_index_stack.clear();
+        self.keys.clear();
+    }
+
     /// Remove a value and return it
     pub fn remove(&mut self, index: I) -> Option<V> {
         let key = self.keys.remove(index);

@@ -32,46 +32,44 @@ impl<'a> Frontend for Ctx<'a> {
     }
 
     fn set_text(&mut self, text: &str, pos: CharacterPos) {
-        let (mut x, y) = pos.to_usize();
-        let mut insertion = self.renderer.back.begin_insert(y as usize);
+        self.renderer.set_text(text, pos);
 
-        for c in text.chars() {
-            // Ignore any zero width characters
-            let width = match c.width() {
-                Some(0) | None => continue,
-                Some(w) => w,
-            };
+        // let (mut x, y) = pos.to_usize();
+        // let mut insertion = self.renderer.back.begin_insert(y as usize);
 
-            let scale = match self.config {
-                &ScreenConfig::CellSize(size) => size,
-                _ => unreachable!(),
-            };
+        // for c in text.chars() {
+        //     // Ignore any zero width characters
+        //     let width = match c.width() {
+        //         Some(0) | None => continue,
+        //         Some(w) => w,
+        //     };
 
-            // let c = self.ctx.fonts.character(c, CharacterPos::new(x as i32, y as i32));
-            // let state = State::Char(c);
+        //     let scale = match self.config {
+        //         &ScreenConfig::CellSize(size) => size,
+        //         _ => unreachable!(),
+        //     };
 
-            // let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), scale);
-            // sprite.scale = match self.config {
-            //     ScreenConfig::CellSize(size) => *size,
-            //     ScreenConfig::CellCount { rows, cols } => todo!(),
-            // };
+        //     // let c = self.ctx.fonts.character(c, CharacterPos::new(x as i32, y as i32));
+        //     // let state = State::Char(c);
 
-            //     let sprite = self.ctx.add_sprite(sprite);
+        //     // let mut sprite = self.renderer.font.get_sprite(c, Pos::new(x as f32, y as f32), scale);
+        //     // sprite.scale = match self.config {
+        //     //     ScreenConfig::CellSize(size) => *size,
+        //     //     ScreenConfig::CellCount { rows, cols } => todo!(),
+        //     // };
 
-            // write
-            // insertion.write_state(x as usize, state);
-            // if width > 1 {
-            //     insertion.write_state(x as usize + 1, State::Continuation);
-            // }
-            // x += width;
-        }
+        //     //     let sprite = self.ctx.add_sprite(sprite);
+
+        //     // write
+        //     // insertion.write_state(x as usize, state);
+        //     // if width > 1 {
+        //     //     insertion.write_state(x as usize + 1, State::Continuation);
+        //     // }
+        //     // x += width;
+        // }
     }
 
     fn invalidate_region(&mut self, region: Region) {
-        let start_x = region.from.x as usize;
-        let end_x = region.to.x as usize;
-        let start_y = region.from.y as usize;
-        let end_y = region.to.y as usize;
-        self.renderer.back.invalidate_region(start_x, start_y, end_x, end_y);
+        self.renderer.buffer.clear_region(region);
     }
 }

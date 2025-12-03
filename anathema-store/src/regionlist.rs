@@ -28,7 +28,8 @@ pub struct RegionList<const SIZE: usize, K, V> {
 
 impl<const SIZE: usize, K, V> RegionList<SIZE, K, V>
 where
-    K: Into<Index>,
+    Index: From<K>,
+    K: From<Index>,
     K: Copy,
 {
     /// Create an empty instance of a change list

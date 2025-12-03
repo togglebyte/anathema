@@ -35,6 +35,12 @@ impl SlabIndex for SmallIndex {
     }
 }
 
+impl From<SmallIndex> for crate::slab::Index {
+    fn from(value: SmallIndex) -> Self {
+        value.0.into()
+    }
+}
+
 /// A small map used to store a small amount of values.
 ///
 /// The `SmallMap` can store up to 256 values.

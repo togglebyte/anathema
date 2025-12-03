@@ -2,12 +2,13 @@ use std::ops::Index;
 
 use anathema_geometry::{CharacterPos, Pos, ScreenPos, Size};
 use anathema_hashmap::HashMap;
+use anathema_store::slab::{SecondaryMap, SparseSlab};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, Device};
 
-use crate::wgpu::material::Materials;
+use crate::wgpu::material::{MaterialGroups, Materials};
 use crate::wgpu::texture::TextureId;
 use crate::wgpu::{MaterialId, Sprite};
 
@@ -46,9 +47,7 @@ pub struct Font {
     char_size: Size,
     pub(crate) buffer: Buffer,
     pub(crate) bind_group: BindGroup,
-
-
-    // chars: SecondaryMap<MaterialId, 
+    chars: MaterialGroups<Char>,
 }
 
 impl Font {
@@ -81,9 +80,15 @@ impl Font {
             char_size,
             buffer,
             bind_group,
+            chars: panic!(),
         }
     }
 
+    fn clear_material_groups(&mut self) {
+        self.chars.for_each(|_material, chars| chars.clear());
+    }
+
+    // This is the uniform value that is uploaded to the shader
     pub(crate) fn data(&self) -> FontData {
         let translation = Mat4::IDENTITY;
 
@@ -169,5 +174,9 @@ impl Fonts {
     pub(crate) fn character(&self, c: char, pos: CharacterPos) -> Char {
         let pixel_offset = self.inner[0].get_offset(c);
         Char { pos, pixel_offset }
+    }
+
+    pub(crate) fn clear_material_groups(&mut self) {
+        self.inner.iter_mut().for_each(|font| font.clear_material_groups());
     }
 }

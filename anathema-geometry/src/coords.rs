@@ -74,6 +74,14 @@ impl<C> Pos<C> {
         coord_sys: PhantomData,
         inner: InnerPos::ZERO,
     };
+
+    pub fn x(&self) -> f32 {
+        self.inner.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.inner.y
+    }
 }
 
 impl<T> From<Pos<T>> for InnerPos {

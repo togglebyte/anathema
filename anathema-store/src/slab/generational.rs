@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use super::{Index, Ticket};
+use crate::slab::SlabIndex;
 
 /// Create a newtype that wraps a `Key`.
 /// This implements the following traits:
@@ -89,7 +90,7 @@ impl Key {
     const GEN_BITS: usize = 10;
     const INDEX_BITS: usize = 22;
     /// Max, with the generation set to zero
-    pub const MAX: Self = Self::new(u32::MAX, 0);
+    pub const MAX: Self = Self::new(u32::MAX << Self::GEN_BITS >> Self::GEN_BITS, 0);
     /// One (generation is set to zero)
     pub const ONE: Self = Self::new(1, 0);
     /// Zero for both index and generation.
@@ -167,7 +168,10 @@ impl From<Key> for u32 {
 }
 
 /// Implement this trait for any type acting like a key
-pub trait SlabKey: Into<Key> + From<Key> {}
+///
+/// TODO: rename this.
+/// It's the same as SlabIndex except it has generations
+pub trait SlabKey: Into<Key> + From<Key> + PartialEq + Copy {}
 
 impl SlabKey for Key {}
 

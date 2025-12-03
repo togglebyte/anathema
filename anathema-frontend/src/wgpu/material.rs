@@ -1,4 +1,4 @@
-use anathema_store::slab::{Slab, SlabIndex};
+use anathema_store::slab::{SecondaryMap, Slab, SlabIndex, SparseSlab};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
 use crate::wgpu::model::Vertex;
@@ -105,4 +105,21 @@ impl Materials {
 #[derive(Debug)]
 pub struct Material {
     pub(crate) pipeline: wgpu::RenderPipeline,
+}
+
+
+pub(crate) struct MaterialGroups<T>(SecondaryMap<MaterialId, SparseSlab<u32, T>>);
+
+impl<T> MaterialGroups<T> {
+    pub fn empty() -> Self {
+        Self(SecondaryMap::empty())
+    }
+
+    pub fn get_or_create(&mut self, key: MaterialId) -> &mut SparseSlab<u32, T> {
+        panic!()
+    }
+
+    pub fn for_each(&mut self, f: impl Fn(MaterialId, &mut SparseSlab<u32, T>)) {
+        self.0.for_each(f)
+    }
 }

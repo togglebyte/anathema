@@ -1,9 +1,9 @@
-use anathema_geometry::{Pos, Region, Size};
+use anathema_geometry::{CharacterPos, Pos, Region, Size};
 use unicode_width::UnicodeWidthChar;
 
 use super::GraphicsCtx;
-use crate::wgpu::buffer::{Buffer, Diff};
-use crate::wgpu::fonts::Font;
+use super::buffer::Buffer;
+use crate::wgpu::fonts::{Font, Fonts};
 use crate::wgpu::model::{INDEX_COUNT, INDICES};
 use crate::wgpu::texture::Textures;
 use crate::wgpu::{MaterialId, Sprite, State, Style};
@@ -13,16 +13,14 @@ const FONT_BIND_GROUP: u32 = 2;
 
 pub struct Renderer {
     pub(crate) size: Size,
-    pub(crate) front: Buffer,
-    pub(crate) back: Buffer,
+    pub(crate) buffer: Buffer,
 }
 
 impl Renderer {
     pub(crate) fn new(size: Size) -> Self {
         Self {
             size,
-            front: Buffer::new(size.width as usize, size.height as usize),
-            back: Buffer::new(size.width as usize, size.height as usize),
+            buffer: Buffer::new(size),
         }
     }
 
@@ -36,47 +34,11 @@ impl Renderer {
 
         self.present(ctx)?;
 
-        self.front.clear_dirty_rows();
-        self.back.clear_dirty_rows();
-
         Ok(())
     }
 
-    fn render_partial(&mut self) {
-        let mut buffer = vec![];
-        self.front.sync_buffers(&self.back, &mut buffer);
-
-        let mut last_y = 0;
-
-        for (y, diff) in buffer {
-            match diff {
-                Diff::ClearRow => {
-                    // write_style(Style::reset(), &mut self.output);
-                    // self.output.queue(cursor::MoveTo(0, y as u16)).unwrap();
-                    // _ = self.output.queue(Print(&self.empty_line));
-                }
-                Diff::ClearRange(range) => {
-                    // write_style(Style::reset(), &mut self.output);
-                    // self.output.queue(cursor::MoveTo(range.start as u16, y as u16)).unwrap();
-                    // _ = self.output.queue(Print(&self.empty_line[range]));
-                }
-                Diff::Write(range) => {
-                    for x in range {
-                        let index = y * self.size.width as usize + x;
-                        let cell = &self.front[index];
-
-                        // write_style(cell.style, &mut self.output);
-
-                        // write the character
-                        // match &cell.state {
-                        //     super::State::Empty | super::State::Continuation => (),
-                        //     super::State::Char(c) => _ = self.output.queue(Print(c)),
-                        //     super::State::Cluster(cluster) => _ = self.output.queue(Print(cluster)),
-                        // }
-                    }
-                }
-            }
-        }
+    fn render_partial(&mut self, fonts: &mut Fonts) {
+        fonts.clear_material_groups();
     }
 
     pub(crate) fn present(&mut self, ctx: &mut GraphicsCtx) -> Result<(), ()> {
@@ -143,7 +105,6 @@ impl Renderer {
         //     render_pass.draw_indexed(0..INDEX_COUNT, 0, 0..sprite_count);
         // }
 
-
         // for font in ctx.fonts.iter_mut() {
         //     let data = font.data();
         //     render_pass.set_bind_group(FONT_BIND_GROUP, &font.bind_group, &[]);
@@ -173,14 +134,10 @@ impl Renderer {
     }
 
     pub(crate) fn style_region(&mut self, region: Region, style: Style) {
-        let from_y = region.from.y as usize;
-        let to_y = region.to.y as usize;
-        let width = (region.to.x - region.from.x) as usize;
-        let from_x = region.from.x as usize;
-        let to_x = region.to.x as usize;
-        for y in from_y..to_y {
-            let mut insert = self.back.begin_insert(y);
-            insert.write_style(from_x..to_x, style);
-        }
+        self.buffer.write_style(region, style);
+    }
+
+    pub(crate) fn set_text(&mut self, text: &str, pos: CharacterPos) {
+        self.buffer.write_line(text, pos);
     }
 }

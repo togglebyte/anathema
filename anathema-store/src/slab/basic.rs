@@ -398,6 +398,12 @@ where
     pub fn total_len(&self) -> usize {
         self.inner.len()
     }
+
+    /// Clear the inner storage and reset the next free slot
+    pub fn clear(&mut self) {
+        self.inner.clear();
+        _ = self.next_id.take();
+    }
 }
 
 impl<T: SlabIndex, U> Index<T> for Slab<T, U> {

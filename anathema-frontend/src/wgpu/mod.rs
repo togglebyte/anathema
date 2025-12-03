@@ -42,10 +42,7 @@ enum State {
     #[default]
     Empty,
     Continuation,
-    Char {
-        material_index: MaterialId,
-        character: u16,
-    }
+    Char(char),
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]

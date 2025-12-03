@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use super::{Index, Slab};
+use crate::slab::SlabIndex;
 
 /// A secondary map holds values associated
 /// with a key belonging to a [`GenSlab`].
@@ -22,15 +23,15 @@ use super::{Index, Slab};
 //
 // This means we can store the generation (when needed) as part of the value instead.
 #[derive(Debug)]
-pub struct SecondaryMap<K, V>(Slab<Index, V>, PhantomData<K>);
+pub struct SecondaryMap<K, V>(Slab<K, V>);
 
 impl<K, V> SecondaryMap<K, V>
 where
-    K: Into<Index>,
+    K: SlabIndex,
 {
     /// Create a an empty instance of a secondary map
     pub fn empty() -> Self {
-        Self(Slab::empty(), PhantomData)
+        Self(Slab::empty())
     }
 
     /// Insert a value into the map.
@@ -40,17 +41,17 @@ where
 
     /// Get a reference to a value in the map
     pub fn get(&self, key: K) -> Option<&V> {
-        self.0.get(key.into())
+        self.0.get(key)
     }
 
     /// Get a mutable reference to a value in the map
     pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
-        self.0.get_mut(key.into())
+        self.0.get_mut(key)
     }
 
     /// Remove a value from the map
     pub fn remove(&mut self, key: K) -> V {
-        self.0.remove(key.into())
+        self.0.remove(key)
     }
 
     /// Try to remove a value from the map
@@ -70,30 +71,35 @@ where
     pub fn iter(&self) -> impl Iterator<Item = &V> {
         self.0.iter().map(|(_, v)| v)
     }
+
+    /// Iterate over keys and values
+    pub fn for_each(&mut self, f: impl Fn(K, &mut V)) {
+        self.0.iter_mut().map(|(k, v)| f(k, v));
+    }
 }
 
 impl<K, V> std::ops::Index<K> for SecondaryMap<K, V>
 where
-    K: Into<Index> + Copy,
+    K: SlabIndex + std::fmt::Debug,
 {
     type Output = V;
 
     fn index(&self, index: K) -> &Self::Output {
         match self.get(index) {
             Some(val) => val,
-            None => panic!("invalid key: {:?}", index.into()),
+            None => panic!("invalid key: {:?}", index),
         }
     }
 }
 
 impl<K, V> std::ops::IndexMut<K> for SecondaryMap<K, V>
 where
-    K: Into<Index> + Copy,
+    K: SlabIndex + std::fmt::Debug,
 {
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
         match self.get_mut(index) {
             Some(val) => val,
-            None => panic!("invalid key: {:?}", index.into()),
+            None => panic!("invalid key: {:?}", index),
         }
     }
 }
