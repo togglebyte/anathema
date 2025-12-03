@@ -2,7 +2,7 @@ use std::ops::Index;
 
 use anathema_geometry::{CharacterPos, Pos, ScreenPos, Size};
 use anathema_hashmap::HashMap;
-use anathema_store::slab::{SecondaryMap, SparseSlab};
+use anathema_store::slab::{SecondaryMap, Sparse};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};

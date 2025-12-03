@@ -2,7 +2,7 @@ use std::mem::swap;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use super::SharedSlab;
+use super::Shared;
 
 /// An element stored in a generational slab.
 #[derive(Debug, PartialEq)]
@@ -115,7 +115,7 @@ where
     }
 }
 
-impl<I, T> SharedSlab<I, T> for RcSlab<I, T>
+impl<I, T> Shared<I, T> for RcSlab<I, T>
 where
     I: Copy,
     I: From<usize>,

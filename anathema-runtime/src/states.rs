@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::Debug;
 
 use anathema_compiler::{Color, Hex};
-use anathema_store::slab::{Slab, SlabIndex};
+use anathema_store::slab::{Basic, SlabIndex};
 
 use crate::value::{AnonValue, Type};
 

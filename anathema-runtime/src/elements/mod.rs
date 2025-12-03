@@ -5,7 +5,7 @@ use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::ExpressionId;
 use anathema_store::gen_key;
 use anathema_store::remotecell::RemoteCell;
-use anathema_store::slab::{GenSlab, Key, SecondaryMap};
+use anathema_store::slab::{Generational, Key, SecondaryMap};
 
 use crate::components::ComponentId;
 use crate::elements::controlflow::ControlFlow;
@@ -49,13 +49,13 @@ pub enum Element<'bp> {
 
 pub struct Elements<'bp> {
     root: ElementId,
-    pub(crate) elements: GenSlab<ElementId, Node<'bp>>,
+    pub(crate) elements: Generational<ElementId, Node<'bp>>,
     removed_widgets: Vec<ElementId>,
 }
 
 impl<'bp> Elements<'bp> {
     pub fn empty() -> Self {
-        let elements = GenSlab::empty();
+        let elements = Generational::empty();
         Self {
             root: elements.next_id(),
             elements,

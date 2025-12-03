@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
-use super::{Index, GenSlab};
-use crate::slab::{Key, SlabIndex, SlabKey};
+use super::{Generational, Index};
+use crate::slab::{Slab, Key, SlabIndex, SlabKey};
 
 /// A secondary map holds values associated
 /// with a key belonging to a [`GenSlab`].
@@ -19,20 +19,22 @@ use crate::slab::{Key, SlabIndex, SlabKey};
 /// assert_eq!("apple", favourite_foods.remove(lilly));
 /// ```
 #[derive(Debug)]
-pub struct SecondaryMap<K, V>(GenSlab<K, V>);
-
-impl<K, V> SecondaryMap<K, V>
+pub struct SecondaryMap<S, K, V>(Generational<K, V>)
 where
-    K: SlabKey,
+    S: Slab<Key = K, Value = V>;
+
+impl<S, K, V> SecondaryMap<K, V>
+where
+    S: Slab<Key = K, Value = V>,
 {
     /// Create a an empty instance of a secondary map
     pub fn empty() -> Self {
-        Self(GenSlab::empty())
+        Self(S::empty())
     }
 
     /// Insert a value into the map.
     pub fn insert(&mut self, key: K, value: V) {
-        self.0.insert_at(key.into(), value);
+        self.0.insert_at(key, value);
     }
 
     /// Get a reference to a value in the map
@@ -46,13 +48,8 @@ where
     }
 
     /// Remove a value from the map
-    pub fn remove(&mut self, key: K) -> V {
+    pub fn remove(&mut self, key: K) -> Option<V> {
         self.0.remove(key)
-    }
-
-    /// Try to remove a value from the map
-    pub fn try_remove(&mut self, key: K) -> Option<V> {
-        self.0.try_remove(key.into())
     }
 
     /// Try to remove a value from the map
@@ -65,7 +62,7 @@ where
 
     /// Produce an iterator over the values in the secondary map
     pub fn iter(&self) -> impl Iterator<Item = &V> {
-        self.0.iter().map(|(_, v)| v)
+        self.0.iter_values()
     }
 
     /// Iterate over keys and values

@@ -1,4 +1,4 @@
-use crate::slab::{Slab, SlabIndex};
+use crate::slab::{Basic, SlabIndex};
 
 #[derive(Debug, Copy, Clone)]
 struct SparseIndex(u32);
@@ -10,13 +10,13 @@ struct SparseIndex(u32);
 ///
 /// Insert and remove is slower than a basic slab.
 #[derive(Debug, Clone)]
-pub struct SparseSlab<I, V> {
+pub struct Sparse<I, V> {
     value_stack: Vec<V>,
     slab_index_stack: Vec<I>,
-    keys: Slab<I, SparseIndex>,
+    keys: Basic<I, SparseIndex>,
 }
 
-impl<I, V> SparseSlab<I, V>
+impl<I, V> Sparse<I, V>
 where
     I: SlabIndex,
 {
@@ -25,7 +25,7 @@ where
         Self {
             value_stack: vec![],
             slab_index_stack: vec![],
-            keys: Slab::empty(),
+            keys: Basic::empty(),
         }
     }
 
@@ -80,7 +80,7 @@ mod test {
 
     #[test]
     fn insert() {
-        let mut sparse = SparseSlab::<u8, &str>::empty();
+        let mut sparse = Sparse::<u8, &str>::empty();
         let first = sparse.insert("first");
 
         let value = sparse.iter().next().copied().unwrap();
@@ -89,7 +89,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut sparse = SparseSlab::<u8, &str>::empty();
+        let mut sparse = Sparse::<u8, &str>::empty();
         let first = sparse.insert("first");
         let second = sparse.insert("second");
         let third = sparse.insert("third");
@@ -105,7 +105,7 @@ mod test {
 
     #[test]
     fn get_mut() {
-        let mut sparse = SparseSlab::<u8, u32>::empty();
+        let mut sparse = Sparse::<u8, u32>::empty();
         let key = sparse.insert(0);
 
         assert_eq!(sparse.get_mut(key).copied().unwrap(), 0);

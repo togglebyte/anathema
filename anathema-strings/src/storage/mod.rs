@@ -1,4 +1,4 @@
-use anathema_store::slab::Slab;
+use anathema_store::slab::Basic;
 
 pub use self::transaction::Transaction;
 use crate::StrIndex;
@@ -8,7 +8,7 @@ mod transaction;
 
 const END: usize = 5;
 
-fn bytes_to_str<'a>(bytes: &mut &'a [u8], slices: &'a Slab<u16, &str>) -> &'a str {
+fn bytes_to_str<'a>(bytes: &mut &'a [u8], slices: &'a Basic<u16, &str>) -> &'a str {
     match &bytes[..2] {
         [0xFF, 0xFF] => {
             let len = u16::from_ne_bytes([bytes[2], bytes[3]]) as usize;
@@ -24,7 +24,7 @@ fn bytes_to_str<'a>(bytes: &mut &'a [u8], slices: &'a Slab<u16, &str>) -> &'a st
     }
 }
 
-fn remove_slice(bytes: &mut &[u8], slices: &mut Slab<u16, &str>) {
+fn remove_slice(bytes: &mut &[u8], slices: &mut Basic<u16, &str>) {
     while !bytes.is_empty() {
         match &bytes[..2] {
             [0xFF, 0xFF] => {
@@ -43,21 +43,21 @@ fn remove_slice(bytes: &mut &[u8], slices: &mut Slab<u16, &str>) {
 #[derive(Debug)]
 pub(super) struct Storage<'slice> {
     inner: Vec<u8>,
-    slices: Slab<u16, &'slice str>,
-    free: Slab<u8, Vec<Region>>,
+    slices: Basic<u16, &'slice str>,
+    free: Basic<u8, Vec<Region>>,
     buffer: Vec<u8>,
 }
 
 impl<'slice> Storage<'slice> {
     pub(super) fn empty() -> Self {
-        let mut free = Slab::empty();
+        let mut free = Basic::empty();
         for _ in 0..END {
             free.insert(vec![]);
         }
 
         Self {
             inner: vec![],
-            slices: Slab::empty(),
+            slices: Basic::empty(),
             free,
             buffer: vec![],
         }

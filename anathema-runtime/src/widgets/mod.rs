@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
-use anathema_store::slab::{GenSlab, Key, SecondaryMap};
+use anathema_store::slab::{Generational, Key, SecondaryMap};
 
 pub use self::iter::Children;
 pub use self::layout::Layout;

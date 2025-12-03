@@ -3,7 +3,7 @@ use std::path::Path;
 
 use anathema_geometry::Size;
 use anathema_store::gen_key;
-use anathema_store::slab::{Slab, SlabIndex};
+use anathema_store::slab::{Basic, SlabIndex};
 use image::GenericImageView;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -46,7 +46,7 @@ pub struct Texture {
 }
 
 pub(super) struct Textures {
-    inner: Slab<TextureId, Texture>,
+    inner: Basic<TextureId, Texture>,
     pub(crate) bind_group_layout: BindGroupLayout,
     diffuse_sampler: Sampler,
 }
@@ -86,7 +86,7 @@ impl Textures {
         });
 
         Self {
-            inner: Slab::empty(),
+            inner: Basic::empty(),
             bind_group_layout,
             diffuse_sampler,
         }

@@ -1,8 +1,29 @@
 use std::fmt::{self, Debug, Display};
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
-use super::{Index, Ticket};
+use super::Index;
+
+/// A ticket used when checkout an entry out of the slab.
+#[derive(Debug)]
+pub struct Ticket<I, T> {
+    pub(crate) value: T,
+    key: I,
+}
+
+impl<I, T> Deref for Ticket<I, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<I, T> DerefMut for Ticket<I, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
+}
 
 /// Create a newtype that wraps a `Key`.
 /// This implements the following traits:
@@ -213,13 +234,13 @@ impl<T: Debug> Debug for Entry<T> {
 /// If another value is inserted at the same index it will have a new generation.
 /// This prevents stale indices pointing to incorrect values.
 #[derive(Debug)]
-pub struct GenSlab<K, T> {
+pub struct Generational<K, T> {
     next_id: Option<Key>,
     inner: Vec<Entry<T>>,
     _key: PhantomData<K>,
 }
 
-impl<K, T> GenSlab<K, T>
+impl<K, T> Generational<K, T>
 where
     K: SlabKey,
 {
@@ -457,7 +478,10 @@ where
     }
 }
 
-impl<K, T> GenSlab<K, T>
+// -----------------------------------------------------------------------------
+//   - Testing and debugging -
+// -----------------------------------------------------------------------------
+impl<K, T> Generational<K, T>
 where
     T: std::fmt::Debug,
     K: SlabKey,
@@ -498,7 +522,7 @@ where
 // -----------------------------------------------------------------------------
 //   - Index -
 // -----------------------------------------------------------------------------
-impl<K, T> std::ops::Index<K> for GenSlab<K, T>
+impl<K, T> std::ops::Index<K> for Generational<K, T>
 where
     K: SlabKey,
 {
@@ -512,7 +536,7 @@ where
     }
 }
 
-impl<K, T> std::ops::IndexMut<K> for GenSlab<K, T>
+impl<K, T> std::ops::IndexMut<K> for Generational<K, T>
 where
     K: SlabKey,
 {
@@ -530,7 +554,7 @@ mod test {
 
     #[test]
     fn push() {
-        let mut slab = GenSlab::<Key, _>::empty();
+        let mut slab = Generational::<Key, _>::empty();
         let index = slab.insert(123);
         let val = slab.remove(index).unwrap();
         assert_eq!(val, 123);
@@ -538,7 +562,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut slab = GenSlab::<Key, _>::empty();
+        let mut slab = Generational::<Key, _>::empty();
         let key_1 = slab.insert(1u32);
         let _ = slab.remove(key_1);
         let key_2 = slab.insert(2);
@@ -548,7 +572,7 @@ mod test {
 
     #[test]
     fn replace() {
-        let mut slab = GenSlab::<Key, _>::empty();
+        let mut slab = Generational::<Key, _>::empty();
         let key_1 = slab.insert("hello world");
         let (key_1, _) = slab.replace(key_1, "updated");
         let s = slab.remove(key_1).unwrap();
@@ -557,7 +581,7 @@ mod test {
 
     #[test]
     fn get_and_get_mut() {
-        let mut slab = GenSlab::<Key, _>::empty();
+        let mut slab = Generational::<Key, _>::empty();
         let key = slab.insert(1);
 
         let value = slab.get_mut(key).unwrap();
@@ -569,7 +593,7 @@ mod test {
 
     #[test]
     fn ticket() {
-        let mut slab = GenSlab::<Key, _>::empty();
+        let mut slab = Generational::<Key, _>::empty();
         let key_1 = slab.insert(1);
         let key_2 = slab.insert(2);
 
@@ -591,7 +615,7 @@ mod test {
     #[test]
     #[should_panic(expected = "value already checked out")]
     fn double_checkout() {
-        let mut slab = GenSlab::<Key, _>::empty();
+        let mut slab = Generational::<Key, _>::empty();
         let key_1 = slab.insert(1);
         let _t1 = slab.checkout(key_1);
         let _t2 = slab.checkout(key_1);

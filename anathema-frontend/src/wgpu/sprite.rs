@@ -3,8 +3,7 @@ use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
 use anathema_hashmap::HashMap;
-use anathema_store::slab::{Slab, SlabIndex};
-use anathema_store::stack::Stack;
+use anathema_store::slab::{Basic, SlabIndex};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
@@ -164,7 +163,7 @@ impl Sprite {
 }
 
 pub(crate) struct Sprites {
-    pub(crate) sprites: Slab<SpriteId, Sprite>,
+    pub(crate) sprites: Basic<SpriteId, Sprite>,
     pub(crate) sprite_cache: SpriteBuffers,
 }
 
@@ -173,7 +172,7 @@ impl Sprites {
         let sprite_cache = SpriteBuffers::empty();
 
         Self {
-            sprites: Slab::empty(),
+            sprites: Basic::empty(),
             sprite_cache,
         }
     }

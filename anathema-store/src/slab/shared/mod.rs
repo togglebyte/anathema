@@ -2,7 +2,8 @@ pub(super) mod arc;
 pub(super) mod rc;
 
 /// TODO: document this trait
-pub trait SharedSlab<I, T> {
+/// TODO: ignore previous todo, remove this as we are aiming for a generic trait for all slabs
+pub trait Shared<I, T> {
     /// The shared container
     type Element;
 

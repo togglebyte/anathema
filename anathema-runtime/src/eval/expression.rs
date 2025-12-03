@@ -4,7 +4,7 @@ use anathema_compiler::expressions::{Equality, Expression, ExpressionId, Logical
 use anathema_compiler::Hex;
 use anathema_store::gen_key;
 use anathema_store::remotecell::{RemoteCell, RemoteHandle};
-use anathema_store::slab::{GenSlab, Key, SecondaryMap};
+use anathema_store::slab::{Generational, Key, SecondaryMap};
 
 use super::assoc::Associations;
 use super::scope::{Entry, ScopeId, ScopeKey};

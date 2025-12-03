@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_store::slab::{Slab, SlabIndex};
+use anathema_store::slab::{Basic, SlabIndex};
 
 use super::error::ErrorKind;
 use super::expressions::{Expression, ExpressionId, Expressions};
@@ -246,7 +246,7 @@ pub struct Variables {
     root: RootScope,
     current: ScopeId,
     boundary: Vec<ScopeId>,
-    store: Slab<VarId, Variable>,
+    store: Basic<VarId, Variable>,
     declarations: Declarations,
 }
 
@@ -265,7 +265,7 @@ impl Variables {
             current: root.0.id.clone(),
             boundary: vec![],
             root,
-            store: Slab::empty(),
+            store: Basic::empty(),
             declarations: Declarations::new(),
         }
     }

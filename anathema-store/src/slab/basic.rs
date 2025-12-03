@@ -94,12 +94,12 @@ impl<I, T> Entry<I, T> {
 // -----------------------------------------------------------------------------
 /// A basic slab
 #[derive(Debug, Clone, PartialEq)]
-pub struct Slab<I, T> {
+pub struct Basic<I, T> {
     next_id: Option<I>,
     inner: Vec<Entry<I, T>>,
 }
 
-impl<I, T> Default for Slab<I, T> {
+impl<I, T> Default for Basic<I, T> {
     fn default() -> Self {
         Self {
             next_id: None,
@@ -108,7 +108,7 @@ impl<I, T> Default for Slab<I, T> {
     }
 }
 
-impl<I, T> Slab<I, T>
+impl<I, T> Basic<I, T>
 where
     I: SlabIndex,
 {
@@ -406,7 +406,7 @@ where
     }
 }
 
-impl<T: SlabIndex, U> Index<T> for Slab<T, U> {
+impl<T: SlabIndex, U> Index<T> for Basic<T, U> {
     type Output = U;
 
     fn index(&self, index: T) -> &Self::Output {
@@ -418,7 +418,7 @@ impl<T: SlabIndex, U> Index<T> for Slab<T, U> {
     }
 }
 
-impl<T: SlabIndex, U> IndexMut<T> for Slab<T, U> {
+impl<T: SlabIndex, U> IndexMut<T> for Basic<T, U> {
     fn index_mut(&mut self, index: T) -> &mut Self::Output {
         let entry = &mut self.inner[index.as_usize()];
         match entry {
@@ -429,7 +429,7 @@ impl<T: SlabIndex, U> IndexMut<T> for Slab<T, U> {
 }
 
 #[cfg(test)]
-impl<I, T> Slab<I, T>
+impl<I, T> Basic<I, T>
 where
     I: Copy,
     I: From<usize>,
@@ -472,7 +472,7 @@ mod test {
 
     #[test]
     fn push() {
-        let mut slab = Slab::<usize, _>::empty();
+        let mut slab = Basic::<usize, _>::empty();
         let index = slab.insert(123);
         let val = slab.remove(index);
         assert_eq!(val, 123);
@@ -480,7 +480,7 @@ mod test {
 
     #[test]
     fn take() {
-        let mut slab = Slab::<usize, _>::empty();
+        let mut slab = Basic::<usize, _>::empty();
         let index_1 = slab.insert(1);
         let _ = slab.remove(index_1);
         let index_2 = slab.insert(2);
@@ -489,7 +489,7 @@ mod test {
 
     #[test]
     fn update() {
-        let mut slab = Slab::<usize, _>::empty();
+        let mut slab = Basic::<usize, _>::empty();
         let index_1 = slab.insert("hello world");
         slab.replace(index_1, "updated");
         let s = slab.remove(index_1);
@@ -498,7 +498,7 @@ mod test {
 
     #[test]
     fn insert_at_with_no_prior_allocations() {
-        let mut slab = Slab::<usize, &str>::empty();
+        let mut slab = Basic::<usize, &str>::empty();
         slab.insert_at(1, "hello");
         assert_eq!(Some(0), slab.next_id);
         assert!(matches!(slab.inner[0], Entry::Vacant(None)));
@@ -507,7 +507,7 @@ mod test {
 
     #[test]
     fn insert_at_with_prior_allocations() {
-        let mut slab = Slab::<usize, &str>::empty();
+        let mut slab = Basic::<usize, &str>::empty();
         slab.insert("a");
         slab.insert("b");
         slab.insert("c");

@@ -1,10 +1,10 @@
 use std::ops::Index;
 
-use crate::slab::{Slab, SlabIndex};
+use crate::slab::{Basic, SlabIndex};
 
 pub mod strings;
 
-pub struct Storage<I, K, V>(Slab<I, (K, V)>);
+pub struct Storage<I, K, V>(Basic<I, (K, V)>);
 
 /// Simple storage backed by a slab, prevents duplicate values
 /// and associate values with keys
@@ -14,7 +14,7 @@ where
 {
     /// Create an empty store
     pub const fn empty() -> Self {
-        Self(Slab::empty())
+        Self(Basic::empty())
     }
 
     /// De-duplicate values.

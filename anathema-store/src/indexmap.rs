@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::slab::{Slab, SlabIndex};
+use crate::slab::{Basic, SlabIndex};
 
 pub struct IndexMap<I, K> {
-    slab: Slab<I, K>,
+    slab: Basic<I, K>,
     map: HashMap<K, I>,
 }
 
@@ -17,7 +17,7 @@ where
     /// Create an empty index map
     pub fn empty() -> Self {
         Self {
-            slab: Slab::empty(),
+            slab: Basic::empty(),
             map: HashMap::new(),
         }
     }

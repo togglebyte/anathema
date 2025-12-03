@@ -1,7 +1,7 @@
 //! Runtime user defined component registry
 use anathema_compiler::ComponentBlueprintId;
 use anathema_store::gen_key;
-use anathema_store::slab::{GenSlab, SecondaryMap};
+use anathema_store::slab::{Generational, SecondaryMap};
 
 pub use self::component::Component;
 use crate::components::component::AnyComponent;
@@ -35,14 +35,14 @@ enum Lookup {
 
 /// Runtime component storage
 pub(crate) struct Components {
-    instances: GenSlab<ComponentId, Entry>,
+    instances: Generational<ComponentId, Entry>,
     blueprints: SecondaryMap<ComponentBlueprintId, Lookup>,
 }
 
 impl Components {
     pub fn empty() -> Self {
         Self {
-            instances: GenSlab::empty(),
+            instances: Generational::empty(),
             blueprints: SecondaryMap::empty(),
         }
     }

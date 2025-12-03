@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::ops::{Index, IndexMut};
 
-use crate::slab::{Slab, SlabIndex};
+use crate::slab::{Basic, SlabIndex};
 
 type NumType = u16;
 
@@ -59,7 +59,7 @@ impl From<SmallIndex> for crate::slab::Index {
 /// assert_eq!(5, *value);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct SmallMap<K, V>(Slab<SmallIndex, (K, V)>);
+pub struct SmallMap<K, V>(Basic<SmallIndex, (K, V)>);
 
 impl<K, V> SmallMap<K, V>
 where
@@ -67,7 +67,7 @@ where
 {
     /// Create a en empty map
     pub fn empty() -> Self {
-        Self(Slab::empty())
+        Self(Basic::empty())
     }
 
     /// Set a value in the map.
