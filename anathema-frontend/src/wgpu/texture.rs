@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 
 use anathema_geometry::Size;
-use anathema_store::key;
+use anathema_store::gen_key;
 use anathema_store::slab::{Slab, SlabIndex};
 use image::GenericImageView;
 use wgpu::{

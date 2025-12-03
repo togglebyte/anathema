@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema_compiler::expressions::{Equality, Expression, ExpressionId, LogicalOp, Op, Primitive};
 use anathema_compiler::Hex;
-use anathema_store::key;
+use anathema_store::gen_key;
 use anathema_store::remotecell::{RemoteCell, RemoteHandle};
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 

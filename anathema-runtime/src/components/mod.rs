@@ -1,6 +1,6 @@
 //! Runtime user defined component registry
 use anathema_compiler::ComponentBlueprintId;
-use anathema_store::key;
+use anathema_store::gen_key;
 use anathema_store::slab::{GenSlab, SecondaryMap};
 
 pub use self::component::Component;
@@ -8,7 +8,7 @@ use crate::components::component::AnyComponent;
 use crate::value::{Value, ValueIndex};
 use crate::states::State;
 
-key!(ComponentId, Debug, Copy, Clone);
+gen_key!(ComponentId, Debug, Copy, Clone);
 
 pub(crate) type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
 pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;

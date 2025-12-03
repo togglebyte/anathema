@@ -3,13 +3,12 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use super::{Index, Ticket};
-use crate::slab::SlabIndex;
 
 /// Create a newtype that wraps a `Key`.
 /// This implements the following traits:
 /// * From<Key>
 #[macro_export]
-macro_rules! key {
+macro_rules! gen_key {
     ($name:ident, $($derive:ident),*) => {
         /// A newtype for a [`Key`](anathema_store::slab::Key)
         #[derive(
@@ -145,6 +144,7 @@ impl From<(usize, Gen)> for Key {
 
 impl From<u32> for Key {
     fn from(value: u32) -> Self {
+        assert!(value <= u32::MAX << Self::GEN_BITS >> Self::GEN_BITS, "value too large");
         Self(value)
     }
 }
@@ -161,17 +161,11 @@ impl From<Key> for Index {
     }
 }
 
-impl From<Key> for u32 {
-    fn from(value: Key) -> Self {
-        value.0
-    }
-}
-
 /// Implement this trait for any type acting like a key
 ///
 /// TODO: rename this.
 /// It's the same as SlabIndex except it has generations
-pub trait SlabKey: Into<Key> + From<Key> + PartialEq + Copy {}
+pub trait SlabKey: Into<Key> + From<Key> {}
 
 impl SlabKey for Key {}
 

@@ -3,7 +3,7 @@ use std::ops::Index;
 
 use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::ExpressionId;
-use anathema_store::key;
+use anathema_store::gen_key;
 use anathema_store::remotecell::RemoteCell;
 use anathema_store::slab::{GenSlab, Key, SecondaryMap};
 
@@ -17,7 +17,7 @@ mod controlflow;
 mod debug;
 pub mod iter;
 
-key!(ElementId, Debug, PartialEq, Copy, Clone, Eq);
+gen_key!(ElementId, Debug, PartialEq, Copy, Clone, Eq);
 
 impl std::hash::Hash for ElementId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {

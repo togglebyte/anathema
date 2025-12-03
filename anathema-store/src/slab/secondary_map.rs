@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
-use super::{Index, Slab};
-use crate::slab::SlabIndex;
+use super::{Index, GenSlab};
+use crate::slab::{Key, SlabIndex, SlabKey};
 
 /// A secondary map holds values associated
 /// with a key belonging to a [`GenSlab`].
@@ -18,20 +18,16 @@ use crate::slab::SlabIndex;
 ///
 /// assert_eq!("apple", favourite_foods.remove(lilly));
 /// ```
-// The reason this is not using a `GenSlab`: the key size for the gen
-// slab is 64bits whereas the basic slab can make do with 32 bits.
-//
-// This means we can store the generation (when needed) as part of the value instead.
 #[derive(Debug)]
-pub struct SecondaryMap<K, V>(Slab<K, V>);
+pub struct SecondaryMap<K, V>(GenSlab<K, V>);
 
 impl<K, V> SecondaryMap<K, V>
 where
-    K: SlabIndex,
+    K: SlabKey,
 {
     /// Create a an empty instance of a secondary map
     pub fn empty() -> Self {
-        Self(Slab::empty())
+        Self(GenSlab::empty())
     }
 
     /// Insert a value into the map.

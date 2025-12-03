@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use anathema_store::key;
+use anathema_store::gen_key;
 use anathema_store::slab::Index;
 
 pub use self::primitives::Primitive;
@@ -13,7 +13,7 @@ pub(crate) mod parser;
 mod primitives;
 
 /// A key for an [`Expression`]
-key!(ExpressionId, Debug, Clone, Copy, PartialEq, Eq);
+gen_key!(ExpressionId, Debug, Clone, Copy, PartialEq, Eq);
 
 impl std::hash::Hash for ExpressionId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
