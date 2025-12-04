@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anathema_geometry::{Pos, Size};
 use anathema_hashmap::HashMap;
-use anathema_store::slab::{Basic, SlabIndex};
+use anathema_store::slab::{Basic, Slab};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
@@ -15,18 +15,15 @@ use crate::wgpu::MaterialId;
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SpriteId(u32);
 
-impl SlabIndex for SpriteId {
-    const MAX: usize = u32::MAX as usize;
-
-    fn as_usize(&self) -> usize {
-        self.0 as usize
+impl From<SpriteId> for usize {
+    fn from(value: SpriteId) -> Self {
+        value.0 as Self
     }
+}
 
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        Self(index as u32)
+impl From<usize> for SpriteId {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
     }
 }
 
@@ -204,8 +201,8 @@ impl Key {
 
 impl Hash for Key {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let texture = u32::from(self.0) as u64;
-        let material = u16::from(self.1) as u64;
+        let texture = u32::from(self.0.0) as u64;
+        let material = usize::from(self.1) as u64;
         let key = texture | (material << 32);
         state.write_u64(key);
     }

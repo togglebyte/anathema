@@ -3,7 +3,7 @@ use std::path::Path;
 
 use anathema_geometry::Size;
 use anathema_store::gen_key;
-use anathema_store::slab::{Basic, SlabIndex};
+use anathema_store::slab::{Basic, Slab};
 use image::GenericImageView;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -16,26 +16,17 @@ use wgpu::{
 use crate::wgpu::material::{MaterialId, Materials};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TextureId(u32);
+pub struct TextureId(pub(super) u32);
 
-impl From<TextureId> for u32 {
+impl From<TextureId> for usize {
     fn from(value: TextureId) -> Self {
-        value.0
+        value.0 as Self
     }
 }
 
-impl SlabIndex for TextureId {
-    const MAX: usize = u32::MAX as usize;
-
-    fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        Self(index as u32)
+impl From<usize> for TextureId {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
     }
 }
 
@@ -102,7 +93,13 @@ impl Textures {
         self.load_texture_bytes(&diffuse_bytes, device, queue, path)
     }
 
-    pub(crate) fn load_texture_bytes(&mut self, bytes: &[u8], device: &Device, queue: &Queue, name: &str) -> (TextureId, Size) {
+    pub(crate) fn load_texture_bytes(
+        &mut self,
+        bytes: &[u8],
+        device: &Device,
+        queue: &Queue,
+        name: &str,
+    ) -> (TextureId, Size) {
         let (texture, size) = self.load_single_texture(bytes, device, queue);
         let view = texture.create_view(&TextureViewDescriptor::default());
         let bind_group = self.single_texture_bind_group(device, &view, name);

@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
-use anathema_store::slab::{Generational, Key, SecondaryMap};
+use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
+use anathema_store::slab::{Generational, Key};
 
 pub use self::iter::Children;
 pub use self::layout::Layout;
@@ -115,7 +116,7 @@ impl Node {
 
 /// The widget tree, constructed from the element tree
 pub struct Widgets {
-    pub widgets: SecondaryMap<ElementId, Node>,
+    pub widgets: SecondaryMap<GenerationalStorage<ElementId, Node>>,
 }
 
 impl Widgets {

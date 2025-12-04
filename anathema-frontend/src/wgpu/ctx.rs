@@ -2,6 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anathema_geometry::Size;
+use anathema_store::slab::Slab;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupLayoutDescriptor, Buffer, BufferUsages, Device, Features, Instance,

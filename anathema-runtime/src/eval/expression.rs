@@ -4,7 +4,8 @@ use anathema_compiler::expressions::{Equality, Expression, ExpressionId, Logical
 use anathema_compiler::Hex;
 use anathema_store::gen_key;
 use anathema_store::remotecell::{RemoteCell, RemoteHandle};
-use anathema_store::slab::{Generational, Key, SecondaryMap};
+use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
+use anathema_store::slab::Key;
 
 use super::assoc::Associations;
 use super::scope::{Entry, ScopeId, ScopeKey};
@@ -74,7 +75,7 @@ pub(crate) struct RuntimeExpressions<'bp> {
     //            //    the value with the `Iteration`s ElementId it becomes unique
     //            //    per itration.
     // ```
-    inner: SecondaryMap<ExpressionId, ExprEntries<'bp>>,
+    inner: SecondaryMap<GenerationalStorage<ExpressionId, ExprEntries<'bp>>>,
     associations: Associations,
 }
 

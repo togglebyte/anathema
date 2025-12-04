@@ -2,7 +2,6 @@ use std::ops::Index;
 
 use anathema_geometry::{CharacterPos, Pos, ScreenPos, Size};
 use anathema_hashmap::HashMap;
-use anathema_store::slab::{SecondaryMap, Sparse};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
@@ -14,6 +13,23 @@ use crate::wgpu::{MaterialId, Sprite};
 
 pub(crate) static DEFAULT_FONT: &'static [u8] = include_bytes!("font.png");
 pub(crate) static DEFAULT_FONT_SHADER: &'static str = include_str!("fontshader.wgsl");
+
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct CharKey(u32);
+
+impl From<usize> for CharKey {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
+    }
+}
+
+impl From<CharKey> for usize {
+    fn from(value: CharKey) -> Self {
+        value.0 as Self
+    }
+}
+
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) struct Char {
@@ -47,7 +63,7 @@ pub struct Font {
     char_size: Size,
     pub(crate) buffer: Buffer,
     pub(crate) bind_group: BindGroup,
-    chars: MaterialGroups<Char>,
+    chars: MaterialGroups<CharKey, Char>,
 }
 
 impl Font {

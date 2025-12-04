@@ -1,14 +1,15 @@
 //! Runtime user defined component registry
 use anathema_compiler::ComponentBlueprintId;
 use anathema_store::gen_key;
-use anathema_store::slab::{Generational, SecondaryMap};
+use anathema_store::secondary_map::{BasicStorage, SecondaryMap};
+use anathema_store::slab::{Generational, Key, Slab};
 
 pub use self::component::Component;
 use crate::components::component::AnyComponent;
-use crate::value::{Value, ValueIndex};
 use crate::states::State;
+use crate::value::{Value, ValueIndex};
 
-gen_key!(ComponentId, Debug, Copy, Clone);
+gen_key!(ComponentId, Debug, Copy, Clone, PartialEq);
 
 pub(crate) type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
 pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;
@@ -36,7 +37,7 @@ enum Lookup {
 /// Runtime component storage
 pub(crate) struct Components {
     instances: Generational<ComponentId, Entry>,
-    blueprints: SecondaryMap<ComponentBlueprintId, Lookup>,
+    blueprints: SecondaryMap<BasicStorage<ComponentBlueprintId, Lookup>>,
 }
 
 impl Components {
@@ -88,10 +89,7 @@ impl Components {
         Some(&inst.state)
     }
 
-    pub(crate) fn get_state_mut(
-        &mut self,
-        component_id: ComponentId,
-    ) -> Option<&mut Value<Box<dyn State>>> {
+    pub(crate) fn get_state_mut(&mut self, component_id: ComponentId) -> Option<&mut Value<Box<dyn State>>> {
         let inst = self.instances.get_mut(component_id)?;
         Some(&mut inst.state)
     }

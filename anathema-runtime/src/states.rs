@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::Debug;
 
 use anathema_compiler::{Color, Hex};
-use anathema_store::slab::{Basic, SlabIndex};
+use anathema_store::slab::Basic;
 
 use crate::value::{AnonValue, Type};
 
@@ -47,21 +47,6 @@ pub struct StateId(usize);
 
 impl StateId {
     pub const ZERO: Self = Self(0);
-}
-
-impl SlabIndex for StateId {
-    const MAX: usize = usize::MAX;
-
-    fn as_usize(&self) -> usize {
-        self.0
-    }
-
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        Self(index)
-    }
 }
 
 pub trait State: Any + 'static {

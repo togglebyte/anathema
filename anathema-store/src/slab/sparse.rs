@@ -1,4 +1,4 @@
-use crate::slab::{Basic, SlabIndex};
+use crate::slab::{Basic, Slab};
 
 #[derive(Debug, Copy, Clone)]
 struct SparseIndex(u32);
@@ -10,15 +10,18 @@ struct SparseIndex(u32);
 ///
 /// Insert and remove is slower than a basic slab.
 #[derive(Debug, Clone)]
-pub struct Sparse<I, V> {
+pub struct Sparse<K, V> {
     value_stack: Vec<V>,
-    slab_index_stack: Vec<I>,
-    keys: Basic<I, SparseIndex>,
+    slab_index_stack: Vec<K>,
+    keys: Basic<K, SparseIndex>,
 }
 
-impl<I, V> Sparse<I, V>
+impl<K, V> Sparse<K, V>
 where
-    I: SlabIndex,
+    K: Copy,
+    K: From<usize>,
+    K: PartialEq,
+    usize: From<K>,
 {
     /// Create a new empty sparse slab
     pub fn empty() -> Self {
@@ -37,8 +40,8 @@ where
     }
 
     /// Remove a value and return it
-    pub fn remove(&mut self, index: I) -> Option<V> {
-        let key = self.keys.remove(index);
+    pub fn remove(&mut self, key: K) -> Option<V> {
+        let key = self.keys.remove(key);
 
         let inner_index = key.0 as usize;
 
@@ -53,7 +56,7 @@ where
     }
 
     /// Insert a new value
-    pub fn insert(&mut self, value: V) -> I {
+    pub fn insert(&mut self, value: V) -> K {
         let key = SparseIndex(self.value_stack.len() as u32);
         let index = self.keys.insert(key);
         self.slab_index_stack.push(index);
@@ -62,7 +65,7 @@ where
     }
 
     /// Get a mutable reference to a value
-    pub fn get_mut(&mut self, key: I) -> Option<&mut V> {
+    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
         let idx = self.keys.get(key).copied()?;
         Some(&mut self.value_stack[idx.0 as usize])
     }

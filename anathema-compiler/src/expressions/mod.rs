@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use anathema_store::gen_key;
-use anathema_store::slab::Index;
+use anathema_store::{gen_key, slab::Key};
 
 pub use self::primitives::Primitive;
 use super::variables::{ScopeId, VarId};
@@ -13,11 +12,24 @@ pub(crate) mod parser;
 mod primitives;
 
 /// A key for an [`Expression`]
-gen_key!(ExpressionId, Debug, Clone, Copy, PartialEq, Eq);
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ExpressionId(Key);
+
+impl From<ExpressionId> for Key {
+    fn from(value: ExpressionId) -> Self {
+        value.0
+    }
+}
+
+impl From<Key> for ExpressionId {
+    fn from(value: Key) -> Self {
+        Self(value)
+    }
+}
 
 impl std::hash::Hash for ExpressionId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        hasher.write_u32(self.0.into())
+        hasher.write_u32(self.0.index() as u32)
     }
 }
 

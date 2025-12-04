@@ -5,7 +5,7 @@ use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::ExpressionId;
 use anathema_store::gen_key;
 use anathema_store::remotecell::RemoteCell;
-use anathema_store::slab::{Generational, Key, SecondaryMap};
+use anathema_store::slab::{Generational, Key, Slab};
 
 use crate::components::ComponentId;
 use crate::elements::controlflow::ControlFlow;
@@ -17,11 +17,24 @@ mod controlflow;
 mod debug;
 pub mod iter;
 
-gen_key!(ElementId, Debug, PartialEq, Copy, Clone, Eq);
+#[derive(Debug, PartialEq, Copy, Clone, Eq)]
+pub struct ElementId(Key);
+
+impl From<Key> for ElementId {
+    fn from(value: Key) -> Self {
+        Self(value)
+    }
+}
+
+impl From<ElementId> for Key {
+    fn from(value: ElementId) -> Self {
+        value.0
+    }
+}
 
 impl std::hash::Hash for ElementId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        hasher.write_u32(self.0.into())
+        hasher.write_u32(self.0.as_raw())
     }
 }
 
@@ -33,13 +46,8 @@ pub struct Node<'bp> {
 }
 
 pub enum Element<'bp> {
-    For {
-        binding: &'bp str,
-        collection: Collection,
-    },
-    Iteration {
-        loop_counter: Value<u32>,
-    },
+    For { binding: &'bp str, collection: Collection },
+    Iteration { loop_counter: Value<u32> },
     ControlFlow,
     Condition(Option<RemoteCell<TemplateValue<'bp>>>),
     With,
@@ -80,7 +88,8 @@ impl<'bp> Elements<'bp> {
     }
 
     pub fn remove(&mut self, id: ElementId) {
-        let Some(node) = self.elements.remove(id) else { return };
+        // NOTE: if this panics we probably need to add `try_remove` back in
+        let node = self.elements.remove(id);
 
         if let Some(parent) = node.parent {
             self.elements[parent].children.retain(|node| parent.ne(node));

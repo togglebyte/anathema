@@ -1,5 +1,6 @@
 use anathema_compiler::expressions::ExpressionId;
-use anathema_store::slab::{Index, Key, SecondaryMap};
+use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
+use anathema_store::slab::Key;
 
 use crate::components::ComponentId;
 use crate::elements::{ElementId, Elements};
@@ -18,15 +19,21 @@ pub(super) enum ScopeKey<'a> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(crate) struct ScopeId(ElementId);
 
-impl From<ElementId> for ScopeId {
-    fn from(value: ElementId) -> Self {
-        ScopeId(value)
+impl From<Key> for ScopeId {
+    fn from(value: Key) -> Self {
+        Self(ElementId::from(value))
     }
 }
 
-impl From<ScopeId> for Index {
+impl From<ScopeId> for Key {
     fn from(value: ScopeId) -> Self {
         value.0.into()
+    }
+}
+
+impl From<ElementId> for ScopeId {
+    fn from(value: ElementId) -> Self {
+        ScopeId(value)
     }
 }
 
@@ -80,7 +87,7 @@ impl<'bp> ScopeNode<'bp> {
 
 #[derive(Debug)]
 pub(crate) struct Scope<'bp> {
-    scopes: SecondaryMap<ScopeId, ScopeNode<'bp>>,
+    scopes: SecondaryMap<GenerationalStorage<ScopeId, ScopeNode<'bp>>>,
 }
 
 impl<'bp> Scope<'bp> {

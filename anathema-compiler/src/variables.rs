@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anathema_store::slab::{Basic, SlabIndex};
+use anathema_store::slab::{Basic, Slab};
 
 use super::error::ErrorKind;
 use super::expressions::{Expression, ExpressionId, Expressions};
@@ -57,18 +57,15 @@ impl Globals {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct VarId(u32);
 
-impl SlabIndex for VarId {
-    const MAX: usize = usize::MAX;
-
-    fn as_usize(&self) -> usize {
-        self.0 as usize
+impl From<VarId> for usize {
+    fn from(value: VarId) -> Self {
+        value.0 as Self
     }
+}
 
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        Self(index as u32)
+impl From<usize> for VarId {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
     }
 }
 
@@ -314,7 +311,11 @@ impl Variables {
         self.set_global(ident, global)
     }
 
-    pub(super) fn define_global(&mut self, ident: impl Into<String>, expression: ExpressionId) -> Result<(), ErrorKind> {
+    pub(super) fn define_global(
+        &mut self,
+        ident: impl Into<String>,
+        expression: ExpressionId,
+    ) -> Result<(), ErrorKind> {
         let global = Global::Template(expression);
         self.set_global(ident, global)
     }

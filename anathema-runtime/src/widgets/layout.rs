@@ -2,14 +2,14 @@
 //!
 //! The calculating the layout it self is done elsewhere.
 use anathema_geometry::{Pos, Region, Size};
-use anathema_store::slab::SecondaryMap;
+use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 
 use crate::elements::ElementId;
 
 /// Store the layout for each element.
 #[derive(Debug)]
 pub struct Layout {
-    regions: SecondaryMap<ElementId, Region>,
+    regions: SecondaryMap<GenerationalStorage<ElementId, Region>>,
 }
 
 impl Layout {
@@ -32,6 +32,6 @@ impl Layout {
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Region> {
-        self.regions.iter()
+        self.regions.iter().map(|(_, region)| region)
     }
 }

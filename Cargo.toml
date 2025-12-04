@@ -22,7 +22,7 @@ anathema-hashmap = { workspace = true }
 anathema-runtime = { workspace = true }
 anathema-state-derive = { workspace = true }
 anathema-store = { workspace = true }
-anathema-strings = { workspace = true }
+# anathema-strings = { workspace = true }
 anathema-widgets = { workspace = true }
 
 [features]
@@ -49,7 +49,7 @@ anathema-hashmap = { path = "./anathema-hashmap", version = "0.2.12-beta" }
 anathema-runtime = { path = "./anathema-runtime", version = "0.2.12-beta" }
 anathema-state-derive = { path = "./anathema-state-derive", version = "0.2.12-beta" }
 anathema-store = { path = "./anathema-store", version = "0.2.12-beta" }
-anathema-strings = { path = "./anathema-strings", version = "0.2.12-beta" }
+# anathema-strings = { path = "./anathema-strings", version = "0.2.12-beta" }
 anathema-widgets = { path = "./anathema-widgets", version = "0.2.12-beta" }
 bitflags = "2.4.1"
 bytemuck = { version = "1.24.0", features = ["derive"] }
@@ -68,7 +68,7 @@ members = [
     "anathema-runtime",
     "anathema-state-derive",
     "anathema-store",
-    "anathema-strings", 
+    # "anathema-strings", 
     "anathema-widgets", 
 ]
 

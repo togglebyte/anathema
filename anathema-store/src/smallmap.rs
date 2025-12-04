@@ -1,12 +1,13 @@
 use std::borrow::Borrow;
 use std::ops::{Index, IndexMut};
 
-use crate::slab::{Basic, SlabIndex};
+use crate::slab::{Basic, Slab};
 
 type NumType = u16;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct SmallIndex(NumType);
+pub struct SmallIndex(pub(super) NumType);
+
 
 impl SmallIndex {
     pub const MAX: Self = Self(NumType::MAX);
@@ -20,24 +21,16 @@ impl From<SmallIndex> for NumType {
     }
 }
 
-impl SlabIndex for SmallIndex {
-    const MAX: usize = NumType::MAX as usize;
-
-    fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        Self(index as NumType)
+impl From<SmallIndex> for usize {
+    fn from(value: SmallIndex) -> Self {
+        value.0 as Self
     }
 }
 
-impl From<SmallIndex> for crate::slab::Index {
-    fn from(value: SmallIndex) -> Self {
-        value.0.into()
+impl From<usize> for SmallIndex {
+    fn from(value: usize) -> Self {
+        assert!(value <= NumType::MAX as usize, "value is larger than the index allows");
+        Self(value as NumType)
     }
 }
 
@@ -66,7 +59,7 @@ where
     K: PartialEq,
 {
     /// Create a en empty map
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self(Basic::empty())
     }
 
@@ -98,10 +91,7 @@ where
         K: Borrow<Q>,
         Q: PartialEq + ?Sized,
     {
-        self.0.iter().find_map(|(_, (k, v))| match k.borrow() == key {
-            true => Some(v),
-            false => None,
-        })
+        self.0.iter().find_map(|(_, (k, v))| k.borrow().eq(key).then_some(v))
     }
 
     /// Get a mutable reference to a value in the map
@@ -110,10 +100,9 @@ where
         K: Borrow<Q>,
         Q: PartialEq + ?Sized,
     {
-        self.0.iter_mut().find_map(|(_, (k, v))| match (*k).borrow() == key {
-            true => Some(v),
-            false => None,
-        })
+        self.0
+            .iter_mut()
+            .find_map(|(_, (k, v))| (*k).borrow().eq(key).then_some(v))
     }
 
     pub fn get_index<Q>(&self, key: &Q) -> Option<SmallIndex>
@@ -121,10 +110,7 @@ where
         K: Borrow<Q>,
         Q: PartialEq + ?Sized,
     {
-        self.0.iter().find_map(|(i, (k, _))| match k.borrow() == key {
-            true => Some(i),
-            false => None,
-        })
+        self.0.iter().find_map(|(i, (k, _))| k.borrow().eq(key).then_some(i))
     }
 
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
@@ -133,7 +119,7 @@ where
         Q: PartialEq + ?Sized,
     {
         let idx = self.get_index(key)?;
-        self.0.try_remove(idx).map(|(_, v)| v)
+        Some(self.0.remove(idx).1)
     }
 
     /// Iterate over the key-value pairs of the map.

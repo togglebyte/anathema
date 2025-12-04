@@ -13,7 +13,6 @@ where
     pub const fn empty() -> Self {
         Self {
             inner: Vec::new(),
-            len: 0,
         }
     }
 
@@ -74,33 +73,33 @@ where
 
     /// Number of elements on the stack
     pub fn len(&self) -> usize {
-        self.inner.len
+        self.inner.len()
     }
 
     /// Drain all the values into another stack.
     /// Prefer `Self::drain_copy_into` if `T` is `Copy`.
     /// It might be marginally faster.
     pub fn drain_into(&mut self, local: &mut Stack<T>) {
-        local.extend(self.inner.drain(..));
+        local.inner.extend(self.inner.drain(..));
     }
 }
 
 impl<T: PartialEq> Stack<T> {
     /// Check if the stack contains a given value
     pub fn contains(&self, value: &T) -> bool {
-        self.iter().any(|v| v == value)
+        self.inner.iter().any(|v| v == value)
     }
 }
 
 impl<T> FromIterator<T> for Stack<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
-            inner: iter.collect(),
+            inner: iter.into_iter().collect(),
         }
     }
 }
 
-impl<T> Default for Stack<T> {
+impl<T: Copy> Default for Stack<T> {
     fn default() -> Self {
         Self::empty()
     }

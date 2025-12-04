@@ -3,15 +3,14 @@ use std::fs::read_to_string;
 use std::ops::Deref;
 use std::path::PathBuf;
 
-use anathema_store::slab::{Index, SlabIndex};
 use anathema_store::smallmap::SmallMap;
 use anathema_store::stack::Stack;
 use anathema_store::storage::Storage;
 
-use super::lexer::Lexer;
 use super::blueprints::Blueprint;
 use super::error::{Error, ErrorKind, Result};
 use super::expressions::Expressions;
+use super::lexer::Lexer;
 use super::statements::eval::Scope;
 use super::statements::parser::Parser;
 use super::statements::{Context, Statements};
@@ -47,6 +46,7 @@ impl From<&str> for SourceKind {
 }
 
 /// The template source used by the template compiler.
+#[derive(Debug, PartialEq)]
 pub(crate) enum TemplateSource {
     File { path: PathBuf, template: String },
     InMemory(String),
@@ -115,18 +115,15 @@ impl ComponentBlueprintId {
     pub const ZERO: Self = Self(0);
 }
 
-impl SlabIndex for ComponentBlueprintId {
-    const MAX: usize = u32::MAX as usize;
-
-    fn as_usize(&self) -> usize {
-        self.0 as usize
+impl From<usize> for ComponentBlueprintId {
+    fn from(value: usize) -> Self {
+        Self(value as u32)
     }
+}
 
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        Self(index as u32)
+impl From<ComponentBlueprintId> for usize {
+    fn from(value: ComponentBlueprintId) -> Self {
+        value.0 as Self
     }
 }
 
@@ -137,27 +134,9 @@ impl From<u32> for ComponentBlueprintId {
     }
 }
 
-impl From<ComponentBlueprintId> for Index {
-    fn from(value: ComponentBlueprintId) -> Self {
-        Index::from(value.0.as_usize() as u32)
-    }
-}
-
-impl From<ComponentBlueprintId> for usize {
-    fn from(value: ComponentBlueprintId) -> Self {
-        value.as_usize()
-    }
-}
-
-impl From<usize> for ComponentBlueprintId {
-    fn from(value: usize) -> Self {
-        Self::from_usize(value)
-    }
-}
-
 pub(crate) struct ComponentTemplates {
     dependencies: RefCell<Stack<ComponentBlueprintId>>,
-    components: Storage<ComponentBlueprintId, StringId, TemplateSource>,
+    components: Storage<ComponentBlueprintId, (StringId, TemplateSource)>,
 }
 
 impl ComponentTemplates {
@@ -184,7 +163,7 @@ impl ComponentTemplates {
     }
 
     pub(crate) fn insert(&mut self, ident: StringId, template: TemplateSource) -> ComponentBlueprintId {
-        self.components.insert(ident, template)
+        self.components.insert((ident, template))
     }
 
     pub(crate) fn load(
@@ -240,7 +219,7 @@ impl ComponentTemplates {
     }
 
     pub(crate) fn reload(&mut self) -> Result<()> {
-        for (_, component) in self.components.iter_mut() {
+        for (_, (_, component)) in self.components.iter_mut() {
             match component {
                 TemplateSource::File { path, template } => {
                     *template = match read_to_string(&*path) {
@@ -255,6 +234,6 @@ impl ComponentTemplates {
     }
 
     pub(crate) fn get_component_by_string_id(&self, ident: StringId) -> Option<ComponentBlueprintId> {
-        self.components.index_by_key(ident)
+        self.components.iter().find(|(bpid, (idnt, _))| ident.eq(idnt)).map(|(bpid, _)| bpid)
     }
 }

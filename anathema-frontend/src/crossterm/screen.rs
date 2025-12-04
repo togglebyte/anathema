@@ -1,7 +1,7 @@
 use std::io::{stdout, Stdout, Write};
 use std::ops::Index;
 
-use anathema_geometry::{Pos, Region, CharacterPos};
+use anathema_geometry::{CharacterPos, Pos, Region};
 use anathema_store::scratch::ScratchBuffer;
 use compact_str::CompactString;
 use crossterm::style::{Attribute as CrossAttrib, Print, SetAttribute, SetBackgroundColor, SetForegroundColor};

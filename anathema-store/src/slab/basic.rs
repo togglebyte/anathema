@@ -1,59 +1,61 @@
 use std::ops::{Index, IndexMut};
 
-/// Implement this for anything that can be an index of a slab
-pub trait SlabIndex: Copy + PartialEq {
-    /// The max value of the key
-    const MAX: usize;
+use crate::slab::Slab;
 
-    /// Convert the index into a usize
-    fn as_usize(&self) -> usize;
+// /// Implement this for anything that can be an index of a slab
+// pub trait SlabIndex: Copy + PartialEq {
+//     /// The max value of the key
+//     const MAX: usize;
 
-    /// Create an index from a usize.
-    ///
-    /// This should never fail, so it's up to the slab implementation to not
-    /// truncate the value.
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized;
-}
+//     /// Convert the index into a usize
+//     fn as_usize(&self) -> usize;
 
-impl SlabIndex for usize {
-    const MAX: usize = usize::MAX;
+//     /// Create an index from a usize.
+//     ///
+//     /// This should never fail, so it's up to the slab implementation to not
+//     /// truncate the value.
+//     fn from_usize(index: usize) -> Self
+//     where
+//         Self: Sized;
+// }
 
-    fn as_usize(&self) -> usize {
-        *self
-    }
+// impl SlabIndex for usize {
+//     const MAX: usize = usize::MAX;
 
-    fn from_usize(index: usize) -> Self
-    where
-        Self: Sized,
-    {
-        index
-    }
-}
+//     fn as_usize(&self) -> usize {
+//         *self
+//     }
 
-macro_rules! impl_slabindex {
-    ($num:ty) => {
-        impl SlabIndex for $num {
-            const MAX: usize = <$num>::MAX as usize;
+//     fn from_usize(index: usize) -> Self
+//     where
+//         Self: Sized,
+//     {
+//         index
+//     }
+// }
 
-            fn as_usize(&self) -> usize {
-                *self as usize
-            }
+// macro_rules! impl_slabindex {
+//     ($num:ty) => {
+//         impl SlabIndex for $num {
+//             const MAX: usize = <$num>::MAX as usize;
 
-            fn from_usize(index: usize) -> Self {
-                index as $num
-            }
-        }
-    };
-}
+//             fn as_usize(&self) -> usize {
+//                 *self as usize
+//             }
 
-impl_slabindex!(i8);
-impl_slabindex!(u8);
-impl_slabindex!(i16);
-impl_slabindex!(u16);
-impl_slabindex!(i32);
-impl_slabindex!(u32);
+//             fn from_usize(index: usize) -> Self {
+//                 index as $num
+//             }
+//         }
+//     };
+// }
+
+// impl_slabindex!(i8);
+// impl_slabindex!(u8);
+// impl_slabindex!(i16);
+// impl_slabindex!(u16);
+// impl_slabindex!(i32);
+// impl_slabindex!(u32);
 
 // -----------------------------------------------------------------------------
 //   - Entry -
@@ -94,12 +96,12 @@ impl<I, T> Entry<I, T> {
 // -----------------------------------------------------------------------------
 /// A basic slab
 #[derive(Debug, Clone, PartialEq)]
-pub struct Basic<I, T> {
-    next_id: Option<I>,
-    inner: Vec<Entry<I, T>>,
+pub struct Basic<K, V> {
+    next_id: Option<K>,
+    inner: Vec<Entry<K, V>>,
 }
 
-impl<I, T> Default for Basic<I, T> {
+impl<K, V> Default for Basic<K, V> {
     fn default() -> Self {
         Self {
             next_id: None,
@@ -108,28 +110,25 @@ impl<I, T> Default for Basic<I, T> {
     }
 }
 
-impl<I, T> Basic<I, T>
+impl<K, V> Slab for Basic<K, V>
 where
-    I: SlabIndex,
+    K: Copy,
+    K: From<usize>,
+    K: PartialEq,
+    usize: From<K>,
 {
-    /// Create an empty slab
-    pub const fn empty() -> Self {
-        Self {
-            next_id: None,
-            inner: vec![],
-        }
-    }
+    type Key = K;
+    type Value = V;
 
     // If there is a `self.next_id` then `take` the id (making it None)
     // and replace the vacant entry at the given index.
     //
     // Write the vacant entry's `next_id` into self.next_id, and
     // finally replace the vacant entry with the occupied value
-    /// Insert a value into the slab, returning the index
-    pub fn insert(&mut self, value: T) -> I {
+    fn insert(&mut self, value: Self::Value) -> Self::Key {
         match self.next_id.take() {
             Some(index) => {
-                let entry = &mut self.inner[index.as_usize()];
+                let entry = &mut self.inner[usize::from(index)];
 
                 let Entry::Vacant(new_next_id) = entry else {
                     unreachable!("you found a bug with Anathema, please file a bug report")
@@ -142,102 +141,16 @@ where
             None => {
                 self.inner.push(Entry::occupied(value));
                 let index = self.inner.len() - 1;
-                assert!(index <= I::MAX, "index exceeds the capacity of the slab");
-                I::from_usize(index)
+                // assert!(index <= K::MAX, "index exceeds the capacity of the slab");
+                K::from(index)
             }
         }
     }
 
-    /// Insert a value at a given index.
-    /// This will force the underlying storage to grow if
-    /// the index given is larger than the current capacity.
-    ///
-    /// This will overwrite any value currently at that index.
-    ///
-    /// # Panics
-    ///
-    /// Panics if a value is inserted at a position that is currently checked out
-    pub fn insert_at(&mut self, index: I, value: T) {
-        let idx = index.as_usize();
-
-        // If the index is outside of the current
-        // length then fill the slots in between with
-        // vacant entries
-        if idx >= self.inner.len() {
-            for i in self.inner.len()..idx {
-                let entry = Entry::Vacant(self.next_id.take());
-                self.next_id = Some(I::from_usize(i));
-                self.inner.push(entry);
-            }
-            self.inner.push(Entry::Occupied(value));
-        // If the index is inside the current length:
-        } else {
-            let entry = self
-                .inner
-                .get_mut(idx)
-                .expect("there should be entries up to self.len()");
-
-            match entry {
-                Entry::Vacant(None) => *entry = Entry::Occupied(value),
-                Entry::Occupied(val) => *val = value,
-                &mut Entry::Vacant(Some(next_free)) => {
-                    // Find the values that points to `index`
-                    // and replace that with `next_free`
-
-                    let mut next_id = &mut self.next_id;
-                    loop {
-                        match next_id {
-                            Some(id) if *id == index => {
-                                *id = next_free;
-                                break;
-                            }
-                            Some(id) => {
-                                let idx: usize = id.as_usize();
-                                match self.inner.get_mut(idx) {
-                                    Some(Entry::Vacant(id)) => {
-                                        next_id = id;
-                                        continue;
-                                    }
-                                    Some(Entry::Occupied(_)) => {
-                                        unreachable!("entry is occupied, so this should never be the next value")
-                                    }
-                                    None => unreachable!("the index can only point to a vacant value"),
-                                }
-                            }
-                            None => todo!(),
-                        }
-                    }
-
-                    // Insert new value
-                    self.inner[idx] = Entry::Occupied(value);
-                }
-            }
-        }
-    }
-
-    /// Get the next id.
-    ///
-    /// # Warning
-    ///
-    /// There is no guarantee that this value will be the same
-    /// value produced when doing an insert if another insert has happened
-    /// since this value was returned.
-    pub fn next_id(&self) -> I {
-        match self.next_id {
-            Some(id) => id,
-            None => I::from_usize(self.inner.len()),
-        }
-    }
-
-    /// Removes a value out of the slab.
-    /// This assumes the value exists
-    ///
-    /// # Panics
-    /// Will panic if the slot is not occupied
-    pub fn remove(&mut self, index: I) -> T {
+    fn remove(&mut self, key: K) -> Self::Value {
         let mut entry = Entry::Vacant(self.next_id.take());
-        self.next_id = Some(index);
-        std::mem::swap(&mut self.inner[index.as_usize()], &mut entry);
+        self.next_id = Some(key);
+        std::mem::swap(&mut self.inner[usize::from(key)], &mut entry);
 
         match entry {
             Entry::Occupied(val) => val,
@@ -250,8 +163,128 @@ where
     /// # Panics
     ///
     /// Will panic if the slot is not occupied
-    pub fn try_remove(&mut self, index: I) -> Option<T> {
-        let old = self.inner.get_mut(index.as_usize())?;
+    fn remove_if<F>(&mut self, key: K, f: F) -> Option<Self::Value>
+    where
+        F: Fn(&Self::Value) -> bool,
+    {
+        let old = self.inner.get_mut(usize::from(key))?;
+
+        match old {
+            Entry::Occupied(val) => {
+                if !f(val) {
+                    return None;
+                }
+
+                let mut entry = Entry::Vacant(self.next_id.take());
+                std::mem::swap(old, &mut entry);
+                self.next_id = Some(key);
+                let Entry::Occupied(val) = entry else { unreachable!() };
+                Some(val)
+            }
+            Entry::Vacant(_) => None,
+        }
+    }
+
+    fn get(&self, key: K) -> Option<&Self::Value> {
+        match self.inner.get(usize::from(key))? {
+            Entry::Occupied(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    fn get_mut(&mut self, key: K) -> Option<&mut Self::Value> {
+        match self.inner.get_mut(usize::from(key))? {
+            Entry::Occupied(val) => Some(val),
+            _ => None,
+        }
+    }
+
+    fn contains_key(&mut self, key: Self::Key) -> bool {
+        let index = usize::from(key);
+        if index >= self.inner.len() {
+            return false;
+        }
+
+        match &self.inner[index] {
+            Entry::Vacant(_) => false,
+            Entry::Occupied(_) => true,
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (Self::Key, &Self::Value)> {
+        self.inner.iter().enumerate().filter_map(|(index, entry)| match entry {
+            Entry::Occupied(val) => Some((Self::Key::from(index), val)),
+            Entry::Vacant(_) => None,
+        })
+    }
+
+    fn iter_mut(&mut self) -> impl Iterator<Item = (Self::Key, &mut Self::Value)> {
+        self.inner
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(index, entry)| match entry {
+                Entry::Occupied(val) => Some((Self::Key::from(index), val)),
+                Entry::Vacant(_) => None,
+            })
+    }
+
+    fn iter_keys(&self) -> impl Iterator<Item = Self::Key> {
+        self.inner.iter().enumerate().filter_map(|(index, entry)| match entry {
+            Entry::Occupied(_) => Some(Self::Key::from(index)),
+            Entry::Vacant(_) => None,
+        })
+    }
+
+    fn iter_values(&self) -> impl Iterator<Item = &Self::Value> {
+        self.inner.iter().filter_map(|entry| match entry {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) => None,
+        })
+    }
+
+    fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut Self::Value> {
+        self.inner.iter_mut().filter_map(|entry| match entry {
+            Entry::Occupied(val) => Some(val),
+            Entry::Vacant(_) => None,
+        })
+    }
+}
+
+impl<K, V> Basic<K, V>
+where
+    K: Copy,
+    K: From<usize>,
+    usize: From<K>,
+{
+    /// Create an empty slab
+    pub const fn empty() -> Self {
+        Self {
+            next_id: None,
+            inner: vec![],
+        }
+    }
+
+    /// Get the next id.
+    ///
+    /// # Warning
+    ///
+    /// There is no guarantee that this value will be the same
+    /// value produced when doing an insert if another insert has happened
+    /// since this value was returned.
+    pub fn next_id(&self) -> K {
+        match self.next_id {
+            Some(id) => id,
+            None => K::from(self.inner.len()),
+        }
+    }
+
+    /// Removes a value out of the slab.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the slot is not occupied
+    pub fn try_remove(&mut self, index: K) -> Option<V> {
+        let old = self.inner.get_mut(usize::from(index))?;
 
         match old {
             Entry::Occupied(_) => {
@@ -265,38 +298,11 @@ where
         }
     }
 
-    /// Removes a value out of the slab.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if the slot is not occupied
-    pub fn remove_if<F>(&mut self, index: I, f: F) -> Option<T>
-    where
-        F: Fn(&T) -> bool,
-    {
-        let old = self.inner.get_mut(index.as_usize())?;
-
-        match old {
-            Entry::Occupied(val) => {
-                if !f(val) {
-                    return None;
-                }
-
-                let mut entry = Entry::Vacant(self.next_id.take());
-                std::mem::swap(old, &mut entry);
-                self.next_id = Some(index);
-                let Entry::Occupied(val) = entry else { unreachable!() };
-                Some(val)
-            }
-            Entry::Vacant(_) => None,
-        }
-    }
-
     /// Try to replace an existing value with a new value.
     /// Unlike [`Self::replace`] this function will not panic
     /// if the value does not exist
-    pub fn try_replace(&mut self, index: I, mut new_value: T) -> Option<T> {
-        match &mut self.inner[index.as_usize()] {
+    pub fn try_replace(&mut self, index: K, mut new_value: V) -> Option<V> {
+        match &mut self.inner[usize::from(index)] {
             Entry::Occupied(value) => {
                 std::mem::swap(value, &mut new_value);
                 Some(new_value)
@@ -310,85 +316,29 @@ where
     /// # Panics
     ///
     /// Will panic if there is no value at the given index.
-    pub fn replace(&mut self, index: I, mut new_value: T) -> T {
-        let value = self.inner[index.as_usize()].as_occupied_mut();
+    pub fn replace(&mut self, index: K, mut new_value: V) -> V {
+        let value = self.inner[usize::from(index)].as_occupied_mut();
         std::mem::swap(value, &mut new_value);
         new_value
-    }
-
-    /// Get a reference to a value
-    pub fn get(&self, index: I) -> Option<&T> {
-        match self.inner.get(index.as_usize())? {
-            Entry::Occupied(val) => Some(val),
-            _ => None,
-        }
-    }
-
-    /// Get a mutable reference to a value
-    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
-        match self.inner.get_mut(index.as_usize())? {
-            Entry::Occupied(val) => Some(val),
-            _ => None,
-        }
     }
 
     /// # Panics
     ///
     /// Will panic if the value does not exist
-    pub fn get_mut_unchecked(&mut self, index: I) -> &mut T {
-        match self.inner.get_mut(index.as_usize()) {
+    pub fn get_mut_unchecked(&mut self, index: K) -> &mut V {
+        match self.inner.get_mut(usize::from(index)) {
             Some(Entry::Occupied(val)) => val,
-            _ => panic!("no slot at index {}", index.as_usize()),
+            _ => panic!("no slot at index {}", usize::from(index)),
         }
-    }
-
-    /// Be aware that this will only ever be as performant as
-    /// the underlying vector if all entries are occupied.
-    ///
-    /// E.g if the only slot occupied is 1,000,000, then this will
-    /// iterate over 1,000,000 entries to get there.
-    pub fn iter_values(&self) -> impl Iterator<Item = &T> + '_ {
-        self.inner.iter().filter_map(|e| match e {
-            Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
-        })
-    }
-
-    /// Be aware that this will only ever be as performant as
-    /// the underlying vector if all entries are occupied.
-    ///
-    /// E.g if the only slot occupied is 1,000,000, then this will
-    /// iterate over 1,000,000 entries to get there.
-    pub fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
-        self.inner.iter_mut().filter_map(|e| match e {
-            Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
-        })
-    }
-
-    /// Iterator over the keys and elements
-    pub fn iter(&self) -> impl Iterator<Item = (I, &T)> + '_ {
-        self.inner.iter().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val) => Some((I::from_usize(i), val)),
-            Entry::Vacant(_) => None,
-        })
     }
 
     /// Consume all the values in the slab and resets the next id.
     /// This does not replace occupied entries with vacant ones,
     /// but rather drain the underlying storage.
-    pub fn consume(&mut self) -> impl Iterator<Item = T> + '_ {
+    pub fn consume(&mut self) -> impl Iterator<Item = V> + '_ {
         self.next_id = None;
         self.inner.drain(..).filter_map(|e| match e {
             Entry::Occupied(val) => Some(val),
-            Entry::Vacant(_) => None,
-        })
-    }
-
-    /// Mutable iterator over the keys and elements
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> + '_ {
-        self.inner.iter_mut().enumerate().filter_map(|(i, e)| match e {
-            Entry::Occupied(val) => Some((I::from_usize(i), val)),
             Entry::Vacant(_) => None,
         })
     }
@@ -406,11 +356,14 @@ where
     }
 }
 
-impl<T: SlabIndex, U> Index<T> for Basic<T, U> {
-    type Output = U;
+impl<K, V> Index<K> for Basic<K, V>
+where
+    usize: From<K>,
+{
+    type Output = V;
 
-    fn index(&self, index: T) -> &Self::Output {
-        let entry = &self.inner[index.as_usize()];
+    fn index(&self, index: K) -> &Self::Output {
+        let entry = &self.inner[usize::from(index)];
         match entry {
             Entry::Occupied(value) => value,
             Entry::Vacant(_) => panic!("vacant slot"),
@@ -418,9 +371,12 @@ impl<T: SlabIndex, U> Index<T> for Basic<T, U> {
     }
 }
 
-impl<T: SlabIndex, U> IndexMut<T> for Basic<T, U> {
-    fn index_mut(&mut self, index: T) -> &mut Self::Output {
-        let entry = &mut self.inner[index.as_usize()];
+impl<K, V> IndexMut<K> for Basic<K, V>
+where
+    usize: From<K>,
+{
+    fn index_mut(&mut self, index: K) -> &mut Self::Output {
+        let entry = &mut self.inner[usize::from(index)];
         match entry {
             Entry::Occupied(value) => value,
             Entry::Vacant(_) => panic!("vacant slot"),
@@ -496,35 +452,35 @@ mod test {
         assert_eq!(s, "updated");
     }
 
-    #[test]
-    fn insert_at_with_no_prior_allocations() {
-        let mut slab = Basic::<usize, &str>::empty();
-        slab.insert_at(1, "hello");
-        assert_eq!(Some(0), slab.next_id);
-        assert!(matches!(slab.inner[0], Entry::Vacant(None)));
-        assert_eq!(slab.inner[1], Entry::Occupied("hello"));
-    }
+    // #[test]
+    // fn insert_at_with_no_prior_allocations() {
+    //     let mut slab = Basic::<usize, &str>::empty();
+    //     slab.insert_at(1, "hello");
+    //     assert_eq!(Some(0), slab.next_id);
+    //     assert!(matches!(slab.inner[0], Entry::Vacant(None)));
+    //     assert_eq!(slab.inner[1], Entry::Occupied("hello"));
+    // }
 
-    #[test]
-    fn insert_at_with_prior_allocations() {
-        let mut slab = Basic::<usize, &str>::empty();
-        slab.insert("a");
-        slab.insert("b");
-        slab.insert("c");
+    // #[test]
+    // fn insert_at_with_prior_allocations() {
+    //     let mut slab = Basic::<usize, &str>::empty();
+    //     slab.insert("a");
+    //     slab.insert("b");
+    //     slab.insert("c");
 
-        // Free order: [1, 2, 0]
-        slab.remove(0);
-        slab.remove(2);
-        slab.remove(1);
+    //     // Free order: [1, 2, 0]
+    //     slab.remove(0);
+    //     slab.remove(2);
+    //     slab.remove(1);
 
-        assert_eq!(Some(1), slab.next_id);
-        assert_eq!(Entry::Vacant(Some(2)), slab.inner[1]);
-        assert_eq!(Entry::Vacant(Some(0)), slab.inner[2]);
+    //     assert_eq!(Some(1), slab.next_id);
+    //     assert_eq!(Entry::Vacant(Some(2)), slab.inner[1]);
+    //     assert_eq!(Entry::Vacant(Some(0)), slab.inner[2]);
 
-        // Free order: [2, 0]
-        slab.insert_at(1, "x");
+    //     // Free order: [2, 0]
+    //     slab.insert_at(1, "x");
 
-        assert_eq!(Some(2), slab.next_id);
-        assert_eq!(Entry::Vacant(Some(0)), slab.inner[2]);
-    }
+    //     assert_eq!(Some(2), slab.next_id);
+    //     assert_eq!(Entry::Vacant(Some(0)), slab.inner[2]);
+    // }
 }

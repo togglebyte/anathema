@@ -5,7 +5,7 @@ use std::ops::{Deref, Index};
 use anathema_compiler::Color;
 use anathema_frontend::Brush;
 use anathema_store::remotecell::RemoteCell;
-use anathema_store::slab::SecondaryMap;
+use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
 use crate::elements::{ElementId, Elements};
@@ -100,7 +100,7 @@ impl<'bp> Brush for WidgetAttributes<'_, 'bp> {
 // All attributes for all elements
 #[derive(Debug)]
 pub(crate) struct AttributeRegistry<'bp> {
-    attributes: SecondaryMap<ElementId, Attributes<'bp>>,
+    attributes: SecondaryMap<GenerationalStorage<ElementId, Attributes<'bp>>>,
 }
 
 impl<'bp> AttributeRegistry<'bp> {

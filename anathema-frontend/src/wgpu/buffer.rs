@@ -3,7 +3,7 @@ use std::ops::Range;
 use anathema_geometry::{CharacterPos, Region, Size};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::wgpu::{fonts::Char, material::MaterialGroups, Cell, MaterialId, State, Style};
+use crate::wgpu::{fonts::{Char, CharKey}, material::MaterialGroups, Cell, MaterialId, State, Style};
 
 pub struct Buffer {
     size: (usize, usize),
@@ -76,7 +76,7 @@ impl Buffer {
         });
     }
 
-    fn iter_materials(&self, material_groups: &mut MaterialGroups<Char>) {
+    fn iter_materials(&self, material_groups: &mut MaterialGroups<CharKey, Char>) {
         for (material, region) in &self.material_regions {
             let mut char_buffer = material_groups.get_or_create(*material);
 

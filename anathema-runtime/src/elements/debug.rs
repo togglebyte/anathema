@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
+use anathema_store::slab::Slab;
+
 use super::Elements;
 use crate::elements::{Element, ElementId, Node};
 

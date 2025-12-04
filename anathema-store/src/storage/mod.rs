@@ -1,16 +1,19 @@
 use std::ops::Index;
 
-use crate::slab::{Basic, SlabIndex};
+use crate::slab::{Basic, Slab};
 
 pub mod strings;
 
-pub struct Storage<I, K, V>(Basic<I, (K, V)>);
-
 /// Simple storage backed by a slab, prevents duplicate values
 /// and associate values with keys
-impl<I, K, V> Storage<I, K, V>
+pub struct Storage<K, V>(Basic<K, V>);
+
+impl<K, V> Storage<K, V>
 where
-    I: SlabIndex,
+    K: Copy,
+    K: From<usize>,
+    K: PartialEq,
+    usize: From<K>,
 {
     /// Create an empty store
     pub const fn empty() -> Self {
@@ -24,51 +27,41 @@ where
     ///
     /// This will not overwrite the existing value.
     #[must_use]
-    pub fn push(&mut self, key: impl Into<K>, value: impl Into<V>) -> I
+    pub fn push(&mut self, value: impl Into<V>) -> K
     where
-        K: PartialEq,
+        V: PartialEq,
     {
         let value = value.into();
-        let key = key.into();
-        let index = self.0.iter().find(|(_, (k, _))| key.eq(k)).map(|(i, (_, _))| i);
-        index.unwrap_or_else(|| self.0.insert((key, value)))
+
+        if let Some(key) = self.0.iter().find_map(|(k, v)| value.eq(v).then_some(k)) {
+            return key;
+        }
+
+        self.0.insert(value)
     }
 
     /// Insert a key and a value.
     /// If the key already exists the value will be overwritten
     #[must_use]
-    pub fn insert(&mut self, key: impl Into<K>, value: impl Into<V>) -> I
+    pub fn insert(&mut self, value: impl Into<V>) -> K
     where
-        K: PartialEq,
+        V: PartialEq,
     {
         let value = value.into();
-        let key = key.into();
-        let index = self.0.iter().find(|(_, (k, _))| key.eq(k)).map(|(i, (_, _))| i);
-
-        match index {
-            Some(i) => {
-                self.0.get_mut_unchecked(i).1 = value;
-                i
-            }
-            None => self.0.insert((key, value)),
+        if let Some(k) = self.0.iter().find_map(|(k, v)| value.eq(v).then_some(k)) {
+            return k;
         }
+        self.push(value)
     }
 
     /// Get a reference by index
-    pub fn get(&self, index: I) -> Option<&(K, V)> {
-        self.0.get(index)
+    pub fn get(&self, key: K) -> Option<&V> {
+        self.0.get(key)
     }
 
     /// Get a mutable reference by index
-    pub fn get_mut(&mut self, index: I) -> Option<&mut (K, V)> {
-        self.0.get_mut(index)
-    }
-
-    pub fn index_by_key(&self, key: K) -> Option<I>
-    where
-        K: PartialEq,
-    {
-        self.0.iter().filter(|(_, (k, _))| key.eq(k)).map(|(i, _)| i).next()
+    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
+        self.0.get_mut(key)
     }
 
     /// Get a value by index assuming the value exists.
@@ -76,27 +69,39 @@ where
     /// # Panics
     ///
     /// If the value doesn't exist
-    pub fn get_unchecked(&self, index: I) -> &(K, V) {
-        self.0.get(index).expect("missing value")
+    pub fn get_unchecked(&self, key: K) -> &V {
+        self.0.get(key).expect("missing value")
     }
 
-    pub fn remove(&mut self, index: I) -> Option<(K, V)> {
-        self.0.try_remove(index)
+    pub fn remove(&mut self, key: K) -> Option<V> {
+        self.0.try_remove(key)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (I, &(K, V))> {
+    pub fn iter(&self) -> impl Iterator<Item = (K, &V)> {
         self.0.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (K, V)> {
-        self.0.iter_values_mut()
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (K, &mut V)> {
+        self.0.iter_mut()
+    }
+
+    pub fn find_key<Q>(&self, value: &Q) -> Option<K>
+    where
+        V: std::borrow::Borrow<Q>,
+        Q: ?Sized,
+        Q: PartialEq,
+    {
+        self.0.iter().find_map(|(k, v)| (v.borrow() == value).then_some(k))
     }
 }
 
-impl<I: SlabIndex, U, T> Index<I> for Storage<I, U, T> {
-    type Output = (U, T);
+impl<K, V> Index<K> for Storage<K, V>
+where
+    usize: From<K>,
+{
+    type Output = V;
 
-    fn index(&self, index: I) -> &Self::Output {
+    fn index(&self, index: K) -> &Self::Output {
         &self.0[index]
     }
 }
