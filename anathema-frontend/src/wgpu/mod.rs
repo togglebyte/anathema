@@ -2,13 +2,12 @@ use anathema_compiler::Color;
 use anathema_geometry::Pos;
 use winit::event_loop::EventLoop;
 
-use crate::wgpu::fonts::Char;
-
 pub use self::ctx::GraphicsCtx;
 pub use self::material::MaterialId;
 pub use self::renderer::Renderer;
 pub use self::sprite::{Sprite, SpriteId};
 pub use self::window::ScreenConfig;
+use crate::wgpu::fonts::Char;
 
 static DEFAULT_SHADER: &'static str = include_str!("shader.wgsl");
 
@@ -66,7 +65,7 @@ pub struct Style {
     pub fg: Option<Color>,
     /// Background colour.
     pub bg: Option<Color>,
-    pub material: Option<MaterialId>,
+    pub material: MaterialId,
 }
 
 impl Style {
@@ -79,9 +78,7 @@ impl Style {
             self.bg = Some(bg);
         }
 
-        if let Some(mat) = other.material {
-            self.material.replace(mat);
-        }
+        self.material = other.material;
     }
 
     fn reset() -> Self {

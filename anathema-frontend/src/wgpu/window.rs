@@ -110,7 +110,6 @@ where
                 (self.tick)(dt, ctx);
                 graph_ctx.window.request_redraw();
                 renderer.render(graph_ctx);
-                // self.gameloop.tick(&mut self.renderer, graphics);
             }
             _ => {
                 let Some(ctx) = &mut self.ctx else { return };

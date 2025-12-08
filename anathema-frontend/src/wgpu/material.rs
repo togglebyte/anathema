@@ -7,7 +7,42 @@ use crate::wgpu::sprite::{SpriteData, SpriteId};
 use crate::wgpu::texture::TextureId;
 use crate::wgpu::DEFAULT_SHADER;
 
-pub type MaterialId = SmallIndex;
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct MaterialId(SmallIndex);
+
+impl MaterialId {
+    pub const ZERO: Self = Self(SmallIndex::ZERO);
+}
+
+impl Default for MaterialId {
+    fn default() -> Self {
+        Self(SmallIndex::ZERO)
+    }
+}
+
+impl From<SmallIndex> for MaterialId {
+    fn from(value: SmallIndex) -> Self {
+        Self(value)
+    }
+}
+
+impl From<MaterialId> for SmallIndex {
+    fn from(value: MaterialId) -> Self {
+        value.0
+    }
+}
+
+impl From<usize> for MaterialId {
+    fn from(value: usize) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<MaterialId> for usize {
+    fn from(value: MaterialId) -> Self {
+        value.0.into()
+    }
+}
 
 pub struct Materials {
     inner: SmallMap<String, Material>,
@@ -35,15 +70,15 @@ impl Materials {
     }
 
     pub(crate) fn get(&self, material: MaterialId) -> &Material {
-        &self.inner[material]
+        &self.inner[material.0]
     }
 
     pub(crate) fn get_mut(&mut self, material: MaterialId) -> &mut Material {
-        &mut self.inner[material]
+        &mut self.inner[material.0]
     }
 
     pub(crate) fn get_id_by_name(&self, mat: &str) -> Option<MaterialId> {
-        self.inner.get_index(mat)
+        self.inner.get_index(mat).map(|i| i.into())
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Material> {
@@ -99,7 +134,7 @@ impl Materials {
             cache: None,
         });
 
-        self.inner.set(name, Material { pipeline })
+        self.inner.set(name, Material { pipeline }).into()
     }
 }
 

@@ -25,7 +25,8 @@ impl<'a> Frontend for Ctx<'a> {
             bg: brush.color("background"),
             material: brush
                 .string("material")
-                .and_then(|mat| self.ctx.materials.get_id_by_name(mat)),
+                .and_then(|mat| self.ctx.materials.get_id_by_name(mat))
+                .unwrap_or(MaterialId::ZERO),
         };
 
         self.renderer.style_region(region, style);

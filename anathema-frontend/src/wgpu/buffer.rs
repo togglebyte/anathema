@@ -8,7 +8,7 @@ use crate::wgpu::{fonts::{Char, CharKey}, material::MaterialGroups, Cell, Materi
 pub struct Buffer {
     size: (usize, usize),
     inner: Vec<Cell>,
-    material_regions: Vec<(MaterialId, Region)>,
+    material_regions: Vec<(Style, Region)>,
 }
 
 impl Buffer {
@@ -77,8 +77,8 @@ impl Buffer {
     }
 
     fn iter_materials(&self, material_groups: &mut MaterialGroups<CharKey, Char>) {
-        for (material, region) in &self.material_regions {
-            let mut char_buffer = material_groups.get_or_create(*material);
+        for (style, region) in &self.material_regions {
+            let mut char_buffer = material_groups.get_or_create(style.material);
 
             self.with_region(*region, |slice| {
                 slice;
