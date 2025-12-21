@@ -15,7 +15,7 @@ impl<T> ScratchBuffer<T> {
     /// SAFETY
     /// The memory is cleared when the guard is dropped.
     pub fn guard<'a>(&'a mut self) -> ScratchGuard<'a, T> {
-        let inner = unsafe { std::mem::transmute(&mut self.inner) };
+        let inner: Vec<&'a _> = unsafe { std::mem::transmute(&mut self.inner) };
         ScratchGuard { inner }
     }
 }
@@ -51,25 +51,24 @@ mod test {
         strings: Vec<String>,
     }
 
-    // impl UseBuffer {
-    //     fn run(&mut self) {
-    //         let guard = self.buffer.guard();
+    impl UseBuffer {
+        fn run(&mut self) {
+            let guard = self.buffer.guard();
 
-    //         let data = Data(self.strings[0].as_str());
-    //         guard.with(|buffer| {
-    //             buffer.push(&data);
-    //         });
-    //     }
-    // }
+            let data = Data(self.strings[0].as_str());
+            guard.with(|buffer| {
+                buffer.push(&data);
+            });
+        }
+    }
 
     #[test]
     fn use_guard() {
-        panic!()
-        // let mut ub = UseBuffer {
-        //     buffer: ScratchBuffer::empty(),
-        //     strings: vec![String::from("hello")],
-        // };
+        let mut ub = UseBuffer {
+            buffer: ScratchBuffer::empty(),
+            strings: vec![String::from("hello")],
+        };
 
-        // ub.run();
+        ub.run();
     }
 }

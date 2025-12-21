@@ -9,7 +9,7 @@ use crate::components::component::AnyComponent;
 use crate::states::State;
 use crate::value::{Value, ValueIndex};
 
-gen_key!(ComponentId, Debug, Copy, Clone, PartialEq);
+gen_key!(pub(crate) ComponentId);
 
 pub(crate) type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
 pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;

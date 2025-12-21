@@ -1,6 +1,8 @@
 //! Storing the calculated layout of each element.
 //!
 //! The calculating the layout it self is done elsewhere.
+use std::ops::Index;
+
 use anathema_geometry::{Pos, Region, Size};
 use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 
@@ -20,11 +22,14 @@ impl Layout {
     }
 
     pub(crate) fn set_size(&mut self, id: ElementId, size: Size) {
-        self.regions[id].resize(size);
+        match self.regions.get_mut(id) {
+            Some(region) => region.resize(size),
+            None => self.regions.insert(id, Region::from((Pos::ZERO, size))),
+        }
     }
 
     pub(crate) fn set_pos(&mut self, id: ElementId, pos: Pos) {
-        self.regions[id].set_pos(pos);
+        self.regions[id].move_to(pos);
     }
 
     pub(crate) fn insert(&mut self, id: ElementId) {
@@ -33,5 +38,13 @@ impl Layout {
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Region> {
         self.regions.iter().map(|(_, region)| region)
+    }
+}
+
+impl Index<ElementId> for Layout {
+    type Output = Region;
+
+    fn index(&self, index: ElementId) -> &Self::Output {
+        &self.regions[index]
     }
 }

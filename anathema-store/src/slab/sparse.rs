@@ -79,11 +79,15 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::basic_key;
+
     use super::*;
+
+    basic_key!(Key(u8));
 
     #[test]
     fn insert() {
-        let mut sparse = Sparse::<u8, &str>::empty();
+        let mut sparse = Sparse::<Key, &str>::empty();
         let first = sparse.insert("first");
 
         let value = sparse.iter().next().copied().unwrap();
@@ -92,7 +96,7 @@ mod test {
 
     #[test]
     fn remove() {
-        let mut sparse = Sparse::<u8, &str>::empty();
+        let mut sparse = Sparse::<Key, &str>::empty();
         let first = sparse.insert("first");
         let second = sparse.insert("second");
         let third = sparse.insert("third");
@@ -100,15 +104,15 @@ mod test {
         sparse.remove(third);
 
         assert_eq!(sparse.value_stack.len(), 1);
-        assert_eq!(sparse.slab_index_stack.len(), 1);
+        assert_eq!(usize::from(sparse.slab_index_stack.len()), 1);
 
         assert_eq!(sparse.value_stack[0], "second");
-        assert_eq!(sparse.slab_index_stack[0], 1);
+        assert_eq!(usize::from(sparse.slab_index_stack[0]), 1);
     }
 
     #[test]
     fn get_mut() {
-        let mut sparse = Sparse::<u8, u32>::empty();
+        let mut sparse = Sparse::<Key, u32>::empty();
         let key = sparse.insert(0);
 
         assert_eq!(sparse.get_mut(key).copied().unwrap(), 0);

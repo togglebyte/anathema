@@ -136,4 +136,11 @@ impl Cell {
             state: State::Char(' '),
         }
     }
+
+    fn if_empty_make_space(&mut self) {
+        match self.state {
+            State::Empty => self.state = State::Char(' '),
+            _ => (),
+        }
+    }
 }

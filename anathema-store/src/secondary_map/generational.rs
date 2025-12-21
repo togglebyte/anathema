@@ -1,6 +1,5 @@
-use crate::slab::Key;
-
 use super::MapStorage;
+use crate::slab::Key;
 
 // -----------------------------------------------------------------------------
 //   - Entry -
@@ -68,7 +67,7 @@ where
     fn insert(&mut self, key: Self::Key, value: Self::Value) {
         let idx = Key::from(key).index();
         if idx >= self.inner.len() {
-            self.inner.resize_with(idx, || Entry::default());
+            self.inner.resize_with(idx + 1, || Entry::default());
         }
 
         self.inner[idx] = Entry::Occupied(key, value);

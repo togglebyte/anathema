@@ -4,28 +4,29 @@ use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::{Expression, ExpressionId, Expressions};
 use anathema_compiler::{ComponentBlueprintId, Document, SourceKind, Variables};
 use anathema_frontend::Frontend;
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Region, Size};
 
+use crate::State;
 use crate::attributes::{AttributeRegistry, Attributes, WidgetAttributes};
 use crate::components::{Component, ComponentId, Components, FnComp, FnState};
+use crate::constraints::Constraints;
 use crate::elements::{Element, ElementId, Elements};
-use crate::eval::expression::{eval_by_id, RuntimeExpressions};
+use crate::eval::expression::{RuntimeExpressions, eval_by_id};
 use crate::eval::scope::Scope;
 use crate::eval::values::TemplateValue;
-use crate::eval::{eval, EvalCtx};
+use crate::eval::{EvalCtx, eval};
 use crate::functions::FunctionTable;
 use crate::states::StateId;
 use crate::value::ValueIndex;
 use crate::widgets::iter::Children;
 use crate::widgets::{Layout, RegisteredWidgets, Widget};
-use crate::State;
 
 pub(crate) fn mock_value_index() -> ValueIndex {
     let exp_id = ExpressionId::from(anathema_store::slab::Key::ZERO);
     ValueIndex::new(exp_id, None)
 }
 
-fn test_widgets() -> RegisteredWidgets {
+pub fn test_widgets() -> RegisteredWidgets {
     let mut factory = RegisteredWidgets::empty();
     factory.register("node", |attribs| {
         let inner = attribs
@@ -327,36 +328,47 @@ impl<'bp> Widget<'bp> for TestWidget {
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layout,
+        mut constraints: Constraints,
     ) -> Size {
         if let Some(value) = attributes.value_as::<&str>() {
             self.0 = value.to_string();
         }
 
-        let mut size = Size::new(self.0.len() as f32, 1.0);
+        let mut size = Size::new(self.0.len() as u32, 1);
 
         for mut child in children {
-            let child_size = child.layout(layout);
+            let child_size = child.layout(layout, constraints);
             size.width = size.width.max(child_size.width);
             size.height += child_size.height;
+            constraints.sub_max_height(child_size.height);
         }
 
         size
     }
 
-    fn position(&mut self, children: Children<'_, '_>, attributes: WidgetAttributes<'_, 'bp>, pos: Pos) {
-        todo!()
+    fn position(
+        &mut self,
+        children: Children<'_, '_>,
+        attributes: WidgetAttributes<'_, 'bp>,
+        layout: &mut Layout,
+        pos: Pos,
+    ) {
+        // todo!()
     }
 
     fn paint(
         &mut self,
+        region: Region,
         children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
         frontend: &mut dyn Frontend,
+        layout: &Layout,
     ) {
         let value = attributes.value_as::<&str>().unwrap_or(" ");
 
-        // frontend.set_brush(brush);
-        // frontend.draw_glyph(
+        let region = Region::new(Pos::ZERO, Pos::new(value.len() as i32, 1));
+        frontend.apply_brush_to_region(&attributes, region);
+        frontend.set_text(value, Pos::ZERO);
         // frontend.print(pos, s);
         // frontend.clear_brush();
     }

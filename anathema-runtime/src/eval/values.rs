@@ -82,7 +82,7 @@ pub enum TemplateValue<'bp> {
     },
 }
 
-impl TemplateValue<'_> {
+impl<'bp> TemplateValue<'bp> {
     pub(crate) fn truthiness(&self) -> bool {
         match self {
             Self::Int(0) | Self::Float(0.0) | Self::Bool(false) => false,

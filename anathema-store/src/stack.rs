@@ -48,6 +48,8 @@ where
     }
 
     /// A draining iterator over the values on the stack.
+    ///
+    /// The iterator returns the top value (last inserted) first.
     /// ```
     /// # use anathema_store::stack::Stack;
     /// let mut stack = Stack::empty();
@@ -58,7 +60,7 @@ where
     /// assert!(stack.is_empty());
     /// ```
     pub fn drain(&mut self) -> impl DoubleEndedIterator<Item = T> + '_ {
-        self.inner.drain(..)
+        self.inner.drain(..).rev()
     }
 
     /// Clear the values from the stack
@@ -118,13 +120,13 @@ mod test {
     #[test]
     fn drain() {
         let mut stack = Stack::empty();
-        stack.push(1);
+        stack.push(1u8);
         stack.push(2);
 
         let mut iter = stack.drain();
         assert_eq!(2, iter.next().unwrap());
         drop(iter);
 
-        assert_eq!(stack.inner, vec![Entry::Empty, Entry::Empty]);
+        assert!(stack.inner.is_empty());
     }
 }

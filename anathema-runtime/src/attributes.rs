@@ -1,6 +1,7 @@
 //! Element attributes
 use std::borrow::Borrow;
 use std::ops::{Deref, Index};
+use std::str::FromStr;
 
 use anathema_compiler::Color;
 use anathema_frontend::Brush;
@@ -51,6 +52,14 @@ impl<'a, 'bp> WidgetAttributes<'a, 'bp> {
         value
     }
 
+    pub fn get_as<'b, T>(&'b self, key: &str) -> Option<T>
+    where
+        T: TryFrom<&'b TemplateValue<'bp>>,
+    {
+        let value = self.get(key);
+        T::try_from(value).ok()
+    }
+
     pub fn value_as<'b, T>(&'b self) -> Option<T>
     where
         T: TryFrom<&'a TemplateValue<'bp>>,
@@ -85,6 +94,8 @@ impl<'bp> Brush for WidgetAttributes<'_, 'bp> {
     fn color(&self, key: &str) -> Option<Color> {
         match self.get(key) {
             &TemplateValue::Color(val) => Some(val),
+            &TemplateValue::Str(ref val) => Color::from_str(&*val).ok(),
+            &TemplateValue::Hex(hex) => hex.try_into().ok(),
             _ => None,
         }
     }

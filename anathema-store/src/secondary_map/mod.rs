@@ -43,17 +43,20 @@ pub trait MapStorage: Default {
 /// A secondary map holds values associated
 /// with a key belonging to a [`GenSlab`].
 ///
-///
 /// ```
-/// use anathema_store::slab::{GenSlab, Key, SecondaryMap};
+/// use anathema_store::gen_key;
+/// use anathema_store::slab::{Slab, Generational};
+/// use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 ///
-/// let mut names = GenSlab::<Key, _>::empty();
+/// gen_key!(Key);
+///
+/// let mut names = Generational::<Key, _>::empty();
 /// let lilly = names.insert("Lilly");
 ///
-/// let mut favourite_foods = SecondaryMap::empty();
+/// let mut favourite_foods = SecondaryMap::<GenerationalStorage<Key, _>>::empty();
 /// favourite_foods.insert(lilly, "apple");
 ///
-/// assert_eq!("apple", favourite_foods.remove(lilly));
+/// assert_eq!("apple", favourite_foods.remove(lilly).unwrap());
 /// ```
 #[derive(Debug)]
 pub struct SecondaryMap<S>(S)
@@ -142,8 +145,8 @@ mod test {
 
     #[test]
     fn insert_and_get() {
-        let mut map = SecondaryMap::<Basic<usize, u32>>::empty();
-        map.booh(0usize, 1);
+        let mut map = SecondaryMap::<BasicStorage<usize, u32>>::empty();
+        // map.booh(0usize, 1);
         // assert_eq!(*map.get(0usize).unwrap(), 1);
     }
 

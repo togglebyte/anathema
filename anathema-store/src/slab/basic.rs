@@ -2,60 +2,26 @@ use std::ops::{Index, IndexMut};
 
 use crate::slab::Slab;
 
-// /// Implement this for anything that can be an index of a slab
-// pub trait SlabIndex: Copy + PartialEq {
-//     /// The max value of the key
-//     const MAX: usize;
+#[macro_export]
+macro_rules! basic_key {
+    ($v:vis $name:ident ($num:ty)) => {
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        $v struct $name($num);
 
-//     /// Convert the index into a usize
-//     fn as_usize(&self) -> usize;
+        impl From<usize> for $name {
+            fn from(value: usize) -> Self {
+                Self(value as $num)
+            }
+        }
 
-//     /// Create an index from a usize.
-//     ///
-//     /// This should never fail, so it's up to the slab implementation to not
-//     /// truncate the value.
-//     fn from_usize(index: usize) -> Self
-//     where
-//         Self: Sized;
-// }
+        impl From<$name> for usize {
+            fn from(value: $name) -> usize {
+                value.0 as usize
+            }
+        }
 
-// impl SlabIndex for usize {
-//     const MAX: usize = usize::MAX;
-
-//     fn as_usize(&self) -> usize {
-//         *self
-//     }
-
-//     fn from_usize(index: usize) -> Self
-//     where
-//         Self: Sized,
-//     {
-//         index
-//     }
-// }
-
-// macro_rules! impl_slabindex {
-//     ($num:ty) => {
-//         impl SlabIndex for $num {
-//             const MAX: usize = <$num>::MAX as usize;
-
-//             fn as_usize(&self) -> usize {
-//                 *self as usize
-//             }
-
-//             fn from_usize(index: usize) -> Self {
-//                 index as $num
-//             }
-//         }
-//     };
-// }
-
-// impl_slabindex!(i8);
-// impl_slabindex!(u8);
-// impl_slabindex!(i16);
-// impl_slabindex!(u16);
-// impl_slabindex!(i32);
-// impl_slabindex!(u32);
+    };
+}
 
 // -----------------------------------------------------------------------------
 //   - Entry -

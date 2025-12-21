@@ -1,8 +1,7 @@
 use std::io::{stdout, Stdout, Write};
 use std::ops::Index;
 
-use anathema_geometry::{CharacterPos, Pos, Region};
-use anathema_store::scratch::ScratchBuffer;
+use anathema_geometry::{Pos, Region, Size};
 use compact_str::CompactString;
 use crossterm::style::{Attribute as CrossAttrib, Print, SetAttribute, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, BeginSynchronizedUpdate, EndSynchronizedUpdate};
@@ -24,13 +23,16 @@ pub struct Screen<T> {
     output: T,
     clear_screen: bool,
     empty_line: String,
-    scratch: ScratchBuffer<(usize, Diff)>,
 }
 
 impl Screen<Stdout> {
     pub fn new() -> Self {
         let (width, height) = crossterm::terminal::size().unwrap();
         Self::with_output(width as usize, height as usize, stdout())
+    }
+
+    pub fn size(&self) -> Size {
+        Size::new(self.width as u32, self.height as u32)
     }
 }
 
@@ -44,7 +46,6 @@ impl<T: Write> Screen<T> {
             output,
             clear_screen: true,
             empty_line: " ".repeat(width),
-            scratch: ScratchBuffer::empty(),
         }
     }
 
@@ -88,9 +89,9 @@ impl<T: Write> Screen<T> {
             self.clear_screen = false;
             self.render_clear_screen();
             self.output.queue(cursor::MoveTo(0, 0)).unwrap();
-        } else {
-            self.render_partial();
         }
+
+        self.render_partial();
 
         self.front.clear_dirty_rows();
         self.back.clear_dirty_rows();
@@ -181,9 +182,7 @@ fn write_style(style: Style, output: &mut impl Write) {
         output.queue(SetAttribute(CrossAttrib::NormalIntensity));
     }
 
-    if style.attributes.contains(Attributes::NORMAL) {
-        output.queue(SetAttribute(CrossAttrib::NormalIntensity));
-    } else if style.attributes.contains(Attributes::BOLD) {
+    if style.attributes.contains(Attributes::BOLD) {
         output.queue(SetAttribute(CrossAttrib::Bold));
     }
 
@@ -238,7 +237,7 @@ impl<T: Write> Frontend for Screen<T> {
         self.style_region(region, style);
     }
 
-    fn set_text(&mut self, text: &str, pos: CharacterPos) {
+    fn set_text(&mut self, text: &str, pos: Pos) {
         let graphemes = text.graphemes(true);
         let (mut x, y) = pos.to_usize();
         let mut insertion = self.back.begin_insert(y);

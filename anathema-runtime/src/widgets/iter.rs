@@ -4,6 +4,7 @@ use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
 
 use crate::attributes::{AttributeRegistry, WidgetAttributes};
+use crate::constraints::Constraints;
 use crate::elements::{Element, ElementId, Elements};
 use crate::widgets::{Layout, Widget};
 
@@ -13,6 +14,21 @@ pub struct Children<'a, 'bp> {
     elements: &'a Elements<'bp>,
     attribute_reg: &'a AttributeRegistry<'bp>,
     index: usize,
+}
+
+impl<'a, 'bp> Children<'a, 'bp> {
+    pub(crate) fn new(
+        children: &'a [ElementId],
+        elements: &'a Elements<'bp>,
+        attribute_reg: &'a AttributeRegistry<'bp>,
+    ) -> Self {
+        Self {
+            index: 0,
+            children,
+            elements,
+            attribute_reg,
+        }
+    }
 }
 
 impl<'a, 'bp> Iterator for Children<'a, 'bp> {
@@ -58,15 +74,33 @@ pub struct WidgetRef<'a, 'bp> {
 }
 
 impl<'a, 'bp> WidgetRef<'a, 'bp> {
-    pub fn layout(mut self, layout: &mut Layout) -> Size {
-        self.widget.layout(self.children, self.attributes, layout)
+    pub(crate) fn new(
+        id: ElementId,
+        widget: RefMut<'a, Box<dyn Widget<'bp>>>,
+        attributes: WidgetAttributes<'a, 'bp>,
+        children: Children<'a, 'bp>,
+    ) -> Self {
+        Self {
+            id,
+            widget,
+            children,
+            attributes,
+        }
     }
 
-    pub fn position(mut self, pos: Pos) {
-        self.widget.position(self.children, self.attributes, pos)
+    pub fn layout(mut self, layout: &mut Layout, constraints: Constraints) -> Size {
+        let size = self.widget.layout(self.children, self.attributes, layout, constraints);
+        layout.set_size(self.id, size);
+        size
     }
 
-    pub fn paint(mut self, frontend: &mut dyn Frontend) {
-        self.widget.paint(self.children, self.attributes, frontend)
+    pub fn position(mut self, layout: &mut Layout, pos: Pos) {
+        layout.set_pos(self.id, pos);
+        self.widget.position(self.children, self.attributes, layout, pos)
+    }
+
+    pub fn paint(mut self, frontend: &mut dyn Frontend, layout: &Layout) {
+        let region = layout[self.id];
+        self.widget.paint(region, self.children, self.attributes, frontend, layout)
     }
 }

@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use anathema_frontend::Frontend;
-use anathema_geometry::{Pos, Size};
+use anathema_geometry::{Pos, Region, Size};
 use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 use anathema_store::slab::{Generational, Key};
 
 pub use self::iter::Children;
 pub use self::layout::Layout;
 use crate::attributes::{Attributes, WidgetAttributes};
+use crate::constraints::Constraints;
 use crate::elements::ElementId;
 
 type WidgetFactory = Box<dyn for<'a, 'bp> Fn(&Attributes<'bp>) -> Box<dyn Widget<'bp> + 'bp>>;
@@ -79,17 +80,26 @@ pub trait Widget<'bp>: 'bp {
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layout,
+        constraints: Constraints,
     ) -> Size;
 
     /// Position the widget
-    fn position(&mut self, children: Children<'_, 'bp>, attributes: WidgetAttributes<'_, 'bp>, pos: Pos);
+    fn position(
+        &mut self,
+        children: Children<'_, 'bp>,
+        attributes: WidgetAttributes<'_, 'bp>,
+        layout: &mut Layout,
+        pos: Pos,
+    );
 
     /// Paint the widget
     fn paint(
         &mut self,
+        region: Region,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         frontend: &mut dyn Frontend,
+        layout: &Layout,
     );
 
     /// A function that described a widget in a debug context.

@@ -225,13 +225,19 @@ impl<'a> RowInsert<'a> {
 
     pub(super) fn write_style(&mut self, range: Range<usize>, style: Style) {
         self.start = self.start.min(range.start);
-        self.end = self.end.max(range.end + 1);
+        self.end = self.end.max(range.end);
 
         let from = self.y * self.buffer.dirty_rows.width + range.start;
-        let to = from + range.end;
-        self.buffer.inner[from..to]
-            .iter_mut()
-            .for_each(|cell| cell.style.merge(style));
+        let to = from + range.end - range.start;
+        let buffer = &mut self.buffer.inner[from..to];
+        buffer.iter_mut().for_each(|cell| {
+            cell.style.merge(style);
+            cell.if_empty_make_space();
+        });
+
+        eprintln!("from: {from} | to: {to}");
+        eprintln!("{buffer:#?}");
+
     }
 }
 

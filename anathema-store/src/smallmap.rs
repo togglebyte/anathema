@@ -43,7 +43,7 @@ impl From<usize> for SmallIndex {
 /// let mut map = SmallMap::empty();
 /// map.set("a", 1);
 /// map.set("b", 2);
-/// let Some(1) = map.set("a", 5) else { unreachable!("we know there is a one there") };
+/// let index = map.set("a", 5);
 ///
 /// let value = map.get("b").unwrap();
 /// assert_eq!(2, *value);

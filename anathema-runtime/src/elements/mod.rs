@@ -1,11 +1,11 @@
 use std::cell::{Ref, RefCell, RefMut};
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::ExpressionId;
 use anathema_store::gen_key;
 use anathema_store::remotecell::RemoteCell;
-use anathema_store::slab::{Generational, Key, Slab};
+use anathema_store::slab::{Generational, Slab};
 
 use crate::components::ComponentId;
 use crate::elements::controlflow::ControlFlow;
@@ -17,20 +17,7 @@ mod controlflow;
 mod debug;
 pub mod iter;
 
-#[derive(Debug, PartialEq, Copy, Clone, Eq)]
-pub struct ElementId(Key);
-
-impl From<Key> for ElementId {
-    fn from(value: Key) -> Self {
-        Self(value)
-    }
-}
-
-impl From<ElementId> for Key {
-    fn from(value: ElementId) -> Self {
-        value.0
-    }
-}
+gen_key!(pub ElementId);
 
 impl std::hash::Hash for ElementId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
@@ -56,7 +43,7 @@ pub enum Element<'bp> {
 }
 
 pub struct Elements<'bp> {
-    root: ElementId,
+    pub(crate) root: ElementId,
     pub(crate) elements: Generational<ElementId, Node<'bp>>,
     removed_widgets: Vec<ElementId>,
 }
@@ -106,5 +93,11 @@ impl<'bp> Index<ElementId> for Elements<'bp> {
 
     fn index(&self, index: ElementId) -> &Self::Output {
         &self.elements[index]
+    }
+}
+
+impl<'bp> IndexMut<ElementId> for Elements<'bp> {
+    fn index_mut(&mut self, index: ElementId) -> &mut Self::Output {
+        &mut self.elements[index]
     }
 }

@@ -32,22 +32,18 @@ impl<I, T> DerefMut for Ticket<I, T> {
 /// * From<Key>
 #[macro_export]
 macro_rules! gen_key {
-    ($name:ident, $($derive:ident),*) => {
+    ($v:vis $name:ident) => {
         /// A newtype for a [`Key`](anathema_store::slab::Key)
-        #[derive(
-            $(
-                $derive,
-            )*
-        )]
-        pub struct $name(anathema_store::slab::Key);
+        #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+        $v struct $name($crate::slab::Key);
 
         impl From<anathema_store::slab::Key> for $name {
-            fn from(key: anathema_store::slab::Key) -> Self {
+            fn from(key: $crate::slab::Key) -> Self {
                 Self(key)
             }
         }
 
-        impl From<$name> for anathema_store::slab::Key {
+        impl From<$name> for $crate::slab::Key {
             fn from(key: $name) -> Self {
                 key.0
             }
