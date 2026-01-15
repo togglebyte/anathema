@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use anathema_value_resolver::{Attributes, ValueKind};
 
-use crate::nodes::component::Component;
+use crate::{WidgetId, nodes::component::Component};
 
 pub struct DeferredComponents {
     queue: Vec<Command>,
@@ -38,6 +38,10 @@ impl DeferredComponents {
 
     pub fn nth(&mut self, count: usize) -> QueryBuilder<'_> {
         QueryBuilder::new(&mut self.queue, Filter::Nth(count))
+    }
+
+    pub fn by_id(&mut self, id: WidgetId) -> QueryBuilder<'_> {
+        QueryBuilder::new(&mut self.queue, Filter::Id(id))
     }
 }
 
@@ -75,6 +79,13 @@ impl<'a> QueryBuilder<'a> {
         }
     }
 
+    pub fn by_id(self, id: WidgetId) -> Self {
+        Self {
+            queue: self.queue,
+            filter: self.filter.chain(Filter::Id(id)),
+        }
+    }
+
     pub fn send(self, message: impl Any + Send + Sync) {
         let command = Command {
             kind: CommandKind::SendMessage(Box::new(message)),
@@ -100,6 +111,7 @@ enum Filter {
     },
     Nth(usize),
     Chain(Box<Self>, Box<Self>),
+    Id(WidgetId),
 }
 
 impl Filter {
@@ -134,6 +146,7 @@ impl Filter {
                 true => second.filter(component, attributes),
                 false => false,
             },
+            Filter::Id(widget_id) => component.widget_id == *widget_id,
         }
     }
 }
