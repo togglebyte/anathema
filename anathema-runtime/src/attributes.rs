@@ -14,6 +14,7 @@ use crate::eval::values::TemplateValue;
 
 /// Attribute access for a widget, used
 /// during the layout, position and paint phase.
+#[derive(Debug, Copy, Clone)]
 pub struct WidgetAttributes<'a, 'bp> {
     elements: &'a Elements<'bp>,
     parent: Option<ElementId>,
@@ -41,7 +42,26 @@ impl<'a, 'bp> WidgetAttributes<'a, 'bp> {
     }
 
     pub fn get(&self, key: &str) -> &TemplateValue<'bp> {
+        // Only styles are inherited,
+        // attributes like dimension, axis etc. are not
+        static inherited_attributes: &[&str] = &[
+            "foreground",
+            "background",
+            "bold",
+            "italic",
+            "dim",
+            "underline",
+            "crossed_out",
+            "overlined",
+            "reversed",
+        ];
+
         let mut value = self.attributes.get(key);
+
+        if !inherited_attributes.contains(&key) {
+            return value;
+        }
+
         let mut parent = self.parent;
         while value == &TemplateValue::Null {
             let Some(id) = parent else { return value };
@@ -49,6 +69,7 @@ impl<'a, 'bp> WidgetAttributes<'a, 'bp> {
             value = attributes.get(key);
             parent = self.elements[id].parent;
         }
+
         value
     }
 
@@ -136,7 +157,9 @@ impl<'bp> Index<ElementId> for AttributeRegistry<'bp> {
     fn index(&self, id: ElementId) -> &Self::Output {
         match self.attributes.get(id) {
             Some(attr) => attr,
-            None => panic!("widgets and components all have attributes, was this called in the context of a for loop or if statement?"),
+            None => panic!(
+                "widgets and components all have attributes, was this called in the context of a for loop or if statement?"
+            ),
         }
     }
 }

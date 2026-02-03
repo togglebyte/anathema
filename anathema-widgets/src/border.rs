@@ -1,6 +1,6 @@
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Region, Size};
-use anathema_runtime::widgets::{Children, Layout, Widget};
+use anathema_runtime::widgets::{Children, LayoutSize, Layouts, Widget};
 use anathema_runtime::{Attributes, Constraints, TemplateValue, WidgetAttributes};
 use compact_str::CompactString;
 use unicode_segmentation::UnicodeSegmentation;
@@ -8,20 +8,24 @@ use unicode_width::UnicodeWidthStr;
 
 const CORNER_COUNT: usize = 8;
 
-const CORNER_TL: usize = 0;
-const CORNER_T: usize = 1;
-const CORNER_TR: usize = 2;
-const CORNER_R: usize = 3;
-const CORNER_BR: usize = 4;
-const CORNER_B: usize = 5;
-const CORNER_BL: usize = 6;
-const CORNER_L: usize = 7;
+mod corners {
+    pub(super) const TOP_LEFT: usize = 0;
+    pub(super) const TOP: usize = 1;
+    pub(super) const TOP_RIGHT: usize = 2;
+    pub(super) const RIGHT: usize = 3;
+    pub(super) const BOTTOM_RIGHT: usize = 4;
+    pub(super) const BOTTOM: usize = 5;
+    pub(super) const BOTTOM_LEFT: usize = 6;
+    pub(super) const LEFT: usize = 7;
+}
 
 const DEFAULT_SLIM_EDGES: CompactString = CompactString::const_new("┌─┐│┘─└│");
+const DEFAULT_THICK_EDGES: CompactString = CompactString::const_new("╔═╗║╝═╚║");
+const DEFAULT_ROUND_EDGES: CompactString = CompactString::const_new("╭─╮│╯─╰│");
 
 type Index = u8;
 
-struct BorderRep<'a> {
+struct BorderCorners<'a> {
     top_left: &'a str,
     top: &'a str,
     top_right: &'a str,
@@ -33,17 +37,17 @@ struct BorderRep<'a> {
 }
 
 #[derive(Debug, Default)]
-struct BorderBusiness {
-    style: CompactString,
+struct BorderStyle {
+    kind: CompactString,
     left_width: u8,
     right_width: u8,
     corners: [Index; CORNER_COUNT],
 }
 
-impl BorderBusiness {
+impl BorderStyle {
     const fn empty() -> Self {
         Self {
-            style: DEFAULT_SLIM_EDGES,
+            kind: DEFAULT_SLIM_EDGES,
             left_width: 1,
             right_width: 1,
             corners: [0, 3, 6, 9, 12, 15, 18, 21],
@@ -55,12 +59,12 @@ impl BorderBusiness {
         Size::new(width as u32, 2)
     }
 
-    fn fix_if_expired(&mut self, border_style: &str) {
-        if border_style == self.style {
+    fn fix_if_expired(&mut self, kind: &str) {
+        if kind == self.kind {
             return;
         }
 
-        let graphemes = self.style.grapheme_indices(true);
+        let graphemes = self.kind.grapheme_indices(true);
         let mut left = 1;
         let mut right = 1;
 
@@ -103,53 +107,132 @@ impl BorderBusiness {
     fn slice(&self, from: usize, to: usize) -> &str {
         let from = self.corners[from] as usize;
         let to = self.corners[to] as usize;
-        &self.style[from..to]
+        &self.kind[from..to]
     }
 
-    fn tl(&self) -> &str {
-        self.slice(CORNER_TL, CORNER_T)
+    fn top_left(&self) -> &str {
+        self.slice(corners::TOP_LEFT, corners::TOP)
     }
 
-    fn t(&self) -> &str {
-        self.slice(CORNER_T, CORNER_TR)
+    fn top(&self) -> &str {
+        self.slice(corners::TOP, corners::TOP_RIGHT)
     }
 
-    fn tr(&self) -> &str {
-        self.slice(CORNER_TR, CORNER_R)
+    fn top_right(&self) -> &str {
+        self.slice(corners::TOP_RIGHT, corners::RIGHT)
     }
 
-    fn r(&self) -> &str {
-        self.slice(CORNER_R, CORNER_BR)
+    fn right(&self) -> &str {
+        self.slice(corners::RIGHT, corners::BOTTOM_RIGHT)
     }
 
-    fn br(&self) -> &str {
-        self.slice(CORNER_BR, CORNER_B)
+    fn bottom_right(&self) -> &str {
+        self.slice(corners::BOTTOM_RIGHT, corners::BOTTOM)
     }
 
-    fn b(&self) -> &str {
-        self.slice(CORNER_B, CORNER_BL)
+    fn bottom(&self) -> &str {
+        self.slice(corners::BOTTOM, corners::BOTTOM_LEFT)
     }
 
-    fn bl(&self) -> &str {
-        self.slice(CORNER_BL, CORNER_L)
+    fn bottom_left(&self) -> &str {
+        self.slice(corners::BOTTOM_LEFT, corners::LEFT)
     }
 
-    fn l(&self) -> &str {
-        let from = self.corners[CORNER_L] as usize;
-        let to = self.style.len();
-        &self.style[from..to]
+    fn left(&self) -> &str {
+        let from = self.corners[corners::LEFT] as usize;
+        let to = self.kind.len();
+        &self.kind[from..to]
+    }
+}
+
+struct BorderPaint<'a> {
+    region: Region,
+    style: &'a BorderStyle,
+    frontend: &'a mut dyn Frontend,
+}
+
+impl<'a> BorderPaint<'a> {
+    fn new(region: Region, style: &'a BorderStyle, frontend: &'a mut dyn Frontend) -> Self {
+        Self {
+            region,
+            style,
+            frontend,
+        }
+    }
+
+    fn horz(&mut self) {
+        let width = self.region.size().width as usize;
+
+        let top = self.style.top();
+        let top_pos = self.region.from + Pos::new(self.style.top_left().width() as i32, 0);
+        let top_width = width - self.style.top_right().width();
+        self.frontend.repeat_text(top, top_width, top_pos);
+
+        let bottom = self.style.bottom();
+        let bottom_pos = Pos::new(self.region.from.x, self.region.to.y - 1);
+        let bottom_width = width - self.style.bottom_right().width();
+        self.frontend.repeat_text(bottom, bottom_width, bottom_pos);
+    }
+
+    fn vert(&mut self) {
+        let left = self.style.left();
+        let right = self.style.right();
+
+        for y in self.region.from.y + 1..self.region.to.y - 1 {
+            let left_x = self.region.from.x;
+            let right_x = self.region.to.x - right.width() as i32;
+            self.frontend.set_text(left, Pos::new(left_x, y as i32));
+            self.frontend.set_text(right, Pos::new(right_x, y as i32));
+        }
+    }
+
+    fn corners(mut self) {
+        let top_left = self.region.from;
+        self.frontend.set_text(self.style.top_left(), top_left);
+
+        let top_right = Pos::new(
+            self.region.to.x - self.style.top_right().width() as i32,
+            self.region.from.y,
+        );
+        self.frontend.set_text(self.style.top_right(), top_right);
+
+        let bottom_right = Pos::new(
+            self.region.to.x - self.style.top_right().width() as i32,
+            self.region.to.y - 1,
+        );
+        self.frontend.set_text(self.style.bottom_right(), bottom_right);
+
+        let bottom_left = Pos::new(self.region.from.x, self.region.to.y - 1);
+        self.frontend.set_text(self.style.bottom_left(), bottom_left);
+    }
+
+    fn paint(mut self) {
+        // -----------------------------------------------------------------------------
+        //   - Horz -
+        // -----------------------------------------------------------------------------
+        self.horz();
+
+        // -----------------------------------------------------------------------------
+        //   - Vert -
+        // -----------------------------------------------------------------------------
+        self.vert();
+
+        // -----------------------------------------------------------------------------
+        //   - Corners -
+        // -----------------------------------------------------------------------------
+        self.corners();
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Border {
-    border: BorderBusiness,
+    border: BorderStyle,
 }
 
 impl Border {
     pub(crate) fn new<'bp>(attrs: &Attributes<'bp>) -> Self {
         Self {
-            border: BorderBusiness::empty(),
+            border: BorderStyle::empty(),
         }
     }
 }
@@ -159,64 +242,36 @@ impl<'bp> Widget<'bp> for Border {
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layout,
+        layout: &mut Layouts,
         mut constraints: Constraints,
-    ) -> Size {
-        // 1. Check if the border style has changed
-        if let Some(border_style) = attributes.get_as::<&str>("border_style") {
-            self.border.fix_if_expired(border_style);
-        }
-
-        // 2. Shrink constraint by border size
+    ) -> LayoutSize {
+        crate::update_constraints(attributes, &mut constraints);
         let border_size = self.border.size();
 
-        if let Some(min_width) = attributes.get_as::<u32>("min_width") {
-            constraints.min.width = constraints.min.width.max(min_width);
-        }
+        let inner = children
+            .next()
+            .map(|child| child.layout(layout, constraints - border_size))
+            .map(|size| size)
+            .unwrap_or(Size::ZERO);
 
-        if let Some(min_height) = attributes.get_as::<u32>("min_heigth") {
-            constraints.min.height = constraints.min.height.max(min_height);
-        }
+        // if there is a fixed dimension then use that as long as it's smaller than
+        // or equal to that of the max constraint
+        let outer = crate::fix_size(inner + border_size, attributes, constraints);
 
-        if let Some(width) = attributes.get_as::<u32>("width") {
-            constraints.try_fit_width(width);
-        }
-
-        if let Some(height) = attributes.get_as::<u32>("height") {
-            constraints.try_fit_height(height);
-        }
-
-        // 3. Layout children with the new constraint
-        constraints -= border_size;
-        let mut size = match children.next().map(|child| child.layout(layout, constraints)) {
-            Some(size) => size + border_size,
-            None => border_size,
-        };
-
-        // 4. If a fixed width / height is set, apply this to the output size
-        if let Some(width) = attributes.get_as::<u32>("width") {
-            size.width = width;
-        }
-
-        if let Some(height) = attributes.get_as::<u32>("height") {
-            size.height = height;
-        }
-
-        size
+        LayoutSize::new(inner, outer)
     }
 
     fn position(
         &mut self,
         mut children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layout,
+        layout: &mut Layouts,
         mut pos: Pos,
     ) {
-        if let Some(child) = children.next() {
-            pos.x += self.border.left_width as i32;
-            pos.y += 1;
-            child.position(layout, pos);
-        }
+        let Some(child) = children.next() else { return };
+        pos.x += self.border.left_width as i32;
+        pos.y += 1;
+        child.position(layout, pos);
     }
 
     fn paint(
@@ -225,15 +280,16 @@ impl<'bp> Widget<'bp> for Border {
         mut children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
         frontend: &mut dyn Frontend,
-        layout: &Layout,
+        layout: &Layouts,
     ) {
         frontend.apply_brush_to_region(&attributes, region);
-
-        let s = region.size();
 
         if let Some(child) = children.next() {
             child.paint(frontend, layout);
         }
+
+        let painter = BorderPaint::new(region, &self.border, frontend);
+        painter.paint();
     }
 
     fn describe(&self) -> &str {

@@ -54,6 +54,17 @@ impl Add for Pos {
     }
 }
 
+impl Sub for Pos {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
 impl Mul for Pos {
     type Output = Self;
 

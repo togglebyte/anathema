@@ -19,7 +19,7 @@ use crate::functions::FunctionTable;
 use crate::states::StateId;
 use crate::value::ValueIndex;
 use crate::widgets::iter::Children;
-use crate::widgets::{Layout, RegisteredWidgets, Widget};
+use crate::widgets::{LayoutSize, Layouts, RegisteredWidgets, Widget};
 
 pub(crate) fn mock_value_index() -> ValueIndex {
     let exp_id = ExpressionId::from(anathema_store::slab::Key::ZERO);
@@ -327,9 +327,9 @@ impl<'bp> Widget<'bp> for TestWidget {
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layout,
+        layout: &mut Layouts,
         mut constraints: Constraints,
-    ) -> Size {
+    ) -> LayoutSize {
         if let Some(value) = attributes.value_as::<&str>() {
             self.0 = value.to_string();
         }
@@ -343,14 +343,14 @@ impl<'bp> Widget<'bp> for TestWidget {
             constraints.sub_max_height(child_size.height);
         }
 
-        size
+        LayoutSize::same(size)
     }
 
     fn position(
         &mut self,
         children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layout,
+        layout: &mut Layouts,
         pos: Pos,
     ) {
         // todo!()
@@ -362,7 +362,7 @@ impl<'bp> Widget<'bp> for TestWidget {
         children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
         frontend: &mut dyn Frontend,
-        layout: &Layout,
+        layout: &Layouts,
     ) {
         let value = attributes.value_as::<&str>().unwrap_or(" ");
 

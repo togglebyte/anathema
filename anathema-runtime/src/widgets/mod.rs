@@ -6,7 +6,7 @@ use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 use anathema_store::slab::{Generational, Key};
 
 pub use self::iter::Children;
-pub use self::layout::Layout;
+pub use self::layout::{LayoutSize, Layouts};
 use crate::attributes::{Attributes, WidgetAttributes};
 use crate::constraints::Constraints;
 use crate::elements::ElementId;
@@ -79,16 +79,16 @@ pub trait Widget<'bp>: 'bp {
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layout,
+        layout: &mut Layouts,
         constraints: Constraints,
-    ) -> Size;
+    ) -> LayoutSize;
 
     /// Position the widget
     fn position(
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layout,
+        layout: &mut Layouts,
         pos: Pos,
     );
 
@@ -99,7 +99,7 @@ pub trait Widget<'bp>: 'bp {
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         frontend: &mut dyn Frontend,
-        layout: &Layout,
+        layout: &Layouts,
     );
 
     /// A function that described a widget in a debug context.

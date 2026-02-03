@@ -39,7 +39,7 @@ pub use crate::states::{AnyList, AnyMap, TypeId};
 use crate::testing::test_widgets;
 pub use crate::value::{AnonValue, Type};
 use crate::widgets::iter::WidgetRef;
-use crate::widgets::{Children, Layout, RegisteredWidgets};
+use crate::widgets::{Children, Layouts, RegisteredWidgets};
 
 mod attributes;
 mod components;
@@ -66,7 +66,7 @@ pub struct Temp<'bp> {
     functions: &'bp FunctionTable,
     scope: Scope<'bp>,
     dirty_elements: Vec<ElementId>,
-    layouts: Layout,
+    layouts: Layouts,
     fe: Screen<Stdout>,
 }
 
@@ -91,7 +91,7 @@ impl<'bp> Temp<'bp> {
             functions,
             scope: Scope::empty(),
             dirty_elements: vec![],
-            layouts: Layout::empty(),
+            layouts: Layouts::empty(),
             fe: Screen::new(),
         }
     }

@@ -324,7 +324,7 @@ mod test {
     use crate::attributes::AttributeRegistry;
     use crate::testing::{RunBuilder, TestWidget};
     use crate::value::{List, Value};
-    use crate::widgets::Layout;
+    use crate::widgets::Layouts;
 
     #[derive(Debug, State)]
     struct TestState {

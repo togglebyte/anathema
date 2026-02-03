@@ -8,43 +8,97 @@ use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 
 use crate::elements::ElementId;
 
-/// Store the layout for each element.
-#[derive(Debug)]
+/// A widget layout size containing both the inner
+/// and the outer size.
+#[derive(Debug, Copy, Clone)]
+pub struct LayoutSize {
+    pub inner: Size,
+    pub outer: Size,
+}
+
+impl LayoutSize {
+    const ZERO: Self = Self {
+        inner: Size::ZERO,
+        outer: Size::ZERO,
+    };
+
+    pub fn new(inner: Size, outer: Size) -> Self {
+        Self { inner, outer }
+    }
+
+    pub fn same(size: Size) -> Self {
+        Self {
+            inner: size,
+            outer: size,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Layout {
-    regions: SecondaryMap<GenerationalStorage<ElementId, Region>>,
+    pos: Pos,
+    size: LayoutSize,
 }
 
 impl Layout {
-    pub(crate) fn empty() -> Self {
+    const ZERO: Self = Layout {
+        pos: Pos::ZERO,
+        size: LayoutSize::ZERO,
+    };
+
+    fn new(size: LayoutSize) -> Self {
         Self {
-            regions: SecondaryMap::empty(),
+            pos: Pos::ZERO,
+            size,
         }
     }
 
-    pub(crate) fn set_size(&mut self, id: ElementId, size: Size) {
-        match self.regions.get_mut(id) {
-            Some(region) => region.resize(size),
-            None => self.regions.insert(id, Region::from((Pos::ZERO, size))),
+    pub fn region(self) -> Region {
+        Region::from((self.pos, self.size.outer))
+    }
+
+    fn resize(&mut self, size: LayoutSize) {
+        self.size = size;
+    }
+}
+
+/// Store the layout for each element.
+#[derive(Debug)]
+pub struct Layouts {
+    inner: SecondaryMap<GenerationalStorage<ElementId, Layout>>,
+}
+
+impl Layouts {
+    pub(crate) fn empty() -> Self {
+        Self {
+            inner: SecondaryMap::empty(),
+        }
+    }
+
+    pub(crate) fn set_size(&mut self, id: ElementId, size: LayoutSize) {
+        match self.inner.get_mut(id) {
+            Some(layout) => layout.resize(size),
+            None => self.inner.insert(id, Layout::new(size)),
         }
     }
 
     pub(crate) fn set_pos(&mut self, id: ElementId, pos: Pos) {
-        self.regions[id].move_to(pos);
+        self.inner[id].pos = pos;
     }
 
     pub(crate) fn insert(&mut self, id: ElementId) {
-        self.regions.insert(id, Region::ZERO);
+        self.inner.insert(id, Layout::ZERO);
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Region> {
-        self.regions.iter().map(|(_, region)| region)
+    pub(crate) fn iter(&self) -> impl Iterator<Item = Region> {
+        self.inner.iter().map(|(_, layout)| layout.region())
     }
 }
 
-impl Index<ElementId> for Layout {
-    type Output = Region;
+impl Index<ElementId> for Layouts {
+    type Output = Layout;
 
     fn index(&self, index: ElementId) -> &Self::Output {
-        &self.regions[index]
+        &self.inner[index]
     }
 }

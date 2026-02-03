@@ -71,11 +71,7 @@ impl Style {
 
 impl Default for Style {
     fn default() -> Self {
-        Self {
-            fg: None,
-            bg: None,
-            attributes: Attributes::NORMAL,
-        }
+        Self::reset()
     }
 }
 

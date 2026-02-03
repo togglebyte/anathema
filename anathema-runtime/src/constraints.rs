@@ -1,4 +1,4 @@
-use std::ops::SubAssign;
+use std::ops::{Sub, SubAssign};
 
 use anathema_geometry::{Region, Size};
 
@@ -84,12 +84,16 @@ impl Constraints {
 
     /// The given width is clamped to the current max width,
     /// so the new width is not allowed to exceed the current max width
+    ///
+    /// This makes the width "tight"
     pub fn try_fit_width(&mut self, width: u32) {
         self.max.width = self.max.width.min(width).max(self.min.width);
     }
 
     /// The given height is clamped to the current max height,
     /// so the new height is not allowed to exceed the current max height
+    ///
+    /// This makes the height "tight"
     pub fn try_fit_height(&mut self, height: u32) {
         self.max.height = self.max.height.min(height).max(self.min.height);
     }
@@ -127,5 +131,21 @@ impl SubAssign<Size> for Constraints {
         if !self.is_unbounded() {
             self.max -= rhs;
         }
+    }
+}
+
+impl Sub<Size> for Constraints {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Size) -> Self::Output {
+        if self.is_tight() {
+            self.min -= rhs;
+        }  
+
+        if !self.is_unbounded() {
+            self.max -= rhs;
+        }
+
+        self
     }
 }

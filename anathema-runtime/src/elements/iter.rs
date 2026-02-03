@@ -3,7 +3,7 @@ use std::cell::RefMut;
 use anathema_geometry::Size;
 
 use crate::elements::{Element, ElementId, Elements};
-use crate::widgets::{Layout, Widget};
+use crate::widgets::{Layouts, Widget};
 
 pub struct ElementChildren<'a, 'bp> {
     children: &'a [ElementId],
