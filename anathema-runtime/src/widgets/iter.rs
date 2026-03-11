@@ -69,7 +69,7 @@ impl<'a, 'bp> Iterator for Children<'a, 'bp> {
 pub struct WidgetRef<'a, 'bp> {
     id: ElementId,
     widget: RefMut<'a, Box<dyn Widget<'bp>>>,
-    attributes: WidgetAttributes<'a, 'bp>,
+    pub attributes: WidgetAttributes<'a, 'bp>,
     children: Children<'a, 'bp>,
 }
 
@@ -103,5 +103,9 @@ impl<'a, 'bp> WidgetRef<'a, 'bp> {
         let desc = self.widget.describe();
         let region = layout[self.id].region();
         self.widget.paint(region, self.children, self.attributes, frontend, layout)
+    }
+
+    pub fn to<T: Widget<'a>>(&mut self) -> Option<&mut T> {
+        None
     }
 }

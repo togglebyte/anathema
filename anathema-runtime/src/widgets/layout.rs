@@ -17,7 +17,7 @@ pub struct LayoutSize {
 }
 
 impl LayoutSize {
-    const ZERO: Self = Self {
+    pub const ZERO: Self = Self {
         inner: Size::ZERO,
         outer: Size::ZERO,
     };

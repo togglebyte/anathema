@@ -1,13 +1,18 @@
 use anathema_geometry::Size;
 use anathema_runtime::widgets::RegisteredWidgets;
 use anathema_runtime::{Constraints, WidgetAttributes};
-pub use border::{Border, border};
-pub use container::Container;
-pub use padding::Padding;
+use border::border;
+
+pub use crate::border::Border;
+pub use crate::container::Container;
+pub use crate::padding::Padding;
+pub use crate::text::Text;
 
 mod border;
 mod container;
 mod padding;
+mod text;
+mod textlayout;
 
 fn update_constraints(attributes: WidgetAttributes<'_, '_>, constraints: &mut Constraints) {
     if let Some(min_width) = attributes.get_as::<u32>("min_width") {
@@ -33,12 +38,6 @@ fn update_constraints(attributes: WidgetAttributes<'_, '_>, constraints: &mut Co
     }
 }
 
-pub fn register_default_widgets(factory: &mut RegisteredWidgets) {
-    factory.register("border", |attrs| Box::new(Border::new(attrs)));
-    factory.register("container", |attrs| Box::new(Container));
-    factory.register("padding", |attrs| Box::new(Padding));
-}
-
 fn fix_size(mut size: Size, attributes: WidgetAttributes<'_, '_>, constraints: Constraints) -> Size {
     if let Some(width) = attributes.get_as::<u32>("width") {
         size.width = width;
@@ -57,4 +56,11 @@ fn fix_size(mut size: Size, attributes: WidgetAttributes<'_, '_>, constraints: C
     }
 
     size
+}
+
+pub fn register_default_widgets(factory: &mut RegisteredWidgets) {
+    factory.register("border", |attrs| Box::new(Border::new(attrs)));
+    factory.register("container", |attrs| Box::new(Container));
+    factory.register("padding", |attrs| Box::new(Padding));
+    factory.register("text", |attrs| Box::new(Text::new()));
 }
