@@ -237,8 +237,8 @@ impl Border {
     }
 }
 
-impl<'bp> Widget<'bp> for Border {
-    fn layout(
+impl Widget for Border {
+    fn layout<'bp>(
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -261,7 +261,7 @@ impl<'bp> Widget<'bp> for Border {
         LayoutSize::new(inner, outer)
     }
 
-    fn position(
+    fn position<'bp>(
         &mut self,
         mut children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -274,7 +274,7 @@ impl<'bp> Widget<'bp> for Border {
         child.position(layout, pos);
     }
 
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         mut children: Children<'_, '_>,
@@ -297,6 +297,6 @@ impl<'bp> Widget<'bp> for Border {
     }
 }
 
-pub fn border<'bp>(attr: &Attributes<'bp>) -> Box<dyn Widget<'bp> + 'bp> {
+pub fn border<'bp>(attr: &Attributes<'bp>) -> Box<dyn Widget> {
     Box::new(Border::new(attr))
 }

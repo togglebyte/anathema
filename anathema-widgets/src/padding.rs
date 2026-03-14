@@ -36,8 +36,8 @@ impl PaddingValues {
 
 pub struct Padding;
 
-impl<'bp> Widget<'bp> for Padding {
-    fn layout(
+impl Widget for Padding {
+    fn layout<'bp>(
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -59,7 +59,7 @@ impl<'bp> Widget<'bp> for Padding {
         LayoutSize::new(inner, outer)
     }
 
-    fn position(
+    fn position<'bp>(
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -72,7 +72,7 @@ impl<'bp> Widget<'bp> for Padding {
         }
     }
 
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         mut children: Children<'_, 'bp>,

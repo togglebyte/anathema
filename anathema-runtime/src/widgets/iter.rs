@@ -1,4 +1,5 @@
 use std::cell::RefMut;
+use std::any::Any;
 
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Size};
@@ -68,7 +69,7 @@ impl<'a, 'bp> Iterator for Children<'a, 'bp> {
 
 pub struct WidgetRef<'a, 'bp> {
     id: ElementId,
-    widget: RefMut<'a, Box<dyn Widget<'bp>>>,
+    widget: RefMut<'a, Box<dyn Widget>>,
     pub attributes: WidgetAttributes<'a, 'bp>,
     children: Children<'a, 'bp>,
 }
@@ -76,7 +77,7 @@ pub struct WidgetRef<'a, 'bp> {
 impl<'a, 'bp> WidgetRef<'a, 'bp> {
     pub(crate) fn new(
         id: ElementId,
-        widget: RefMut<'a, Box<dyn Widget<'bp>>>,
+        widget: RefMut<'a, Box<dyn Widget>>,
         attributes: WidgetAttributes<'a, 'bp>,
         children: Children<'a, 'bp>,
     ) -> Self {
@@ -105,7 +106,8 @@ impl<'a, 'bp> WidgetRef<'a, 'bp> {
         self.widget.paint(region, self.children, self.attributes, frontend, layout)
     }
 
-    pub fn to<T: Widget<'a>>(&mut self) -> Option<&mut T> {
-        None
+    pub fn to<T: Widget>(&mut self) -> Option<&mut T> {
+        let widget = self.widget.as_mut() as &mut dyn Any;
+        widget.downcast_mut()
     }
 }

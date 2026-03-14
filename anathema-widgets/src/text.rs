@@ -2,8 +2,9 @@ use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Region, Size};
 use anathema_runtime::widgets::{Children, LayoutSize, Layouts, Widget};
 use anathema_runtime::{Constraints, WidgetAttributes};
+use unicode_width::UnicodeWidthStr;
 
-use crate::textlayout::{PerformLayout, TextLayout};
+use crate::textlayout::{Instruction, PerformLayout, TextLayout};
 
 pub struct Text {
     layout: TextLayout,
@@ -17,8 +18,8 @@ impl Text {
     }
 }
 
-impl<'bp> Widget<'bp> for Text {
-    fn layout(
+impl Widget for Text {
+    fn layout<'bp>(
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -41,9 +42,9 @@ impl<'bp> Widget<'bp> for Text {
         LayoutSize::same(size)
     }
 
-    fn position(&mut self, _: Children<'_, 'bp>, _: WidgetAttributes<'_, 'bp>, _: &mut Layouts, _: Pos) {}
+    fn position<'bp>(&mut self, _: Children<'_, 'bp>, _: WidgetAttributes<'_, 'bp>, _: &mut Layouts, _: Pos) {}
 
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         mut children: Children<'_, 'bp>,
@@ -51,20 +52,32 @@ impl<'bp> Widget<'bp> for Text {
         frontend: &mut dyn Frontend,
         layout: &Layouts,
     ) {
-        // TODO: this has to be added as an offset for every position in the layou
-        let text_offset = region.from;
+        let mut text_offset = region.from;
 
-        let Some(text) = attributes.value_as::<&str>() else { return };
-        // frontend.apply_brush_to_region(&attributes, region);
+        for (attribs, seg) in std::iter::once(attributes)
+            .chain(children.map(|c| c.attributes))
+            .zip(self.layout.segments.iter())
+        {
+            let Some(text) = attribs.value_as::<&str>() else { continue };
 
-        // self.text_layout
-        // frontend.set_text(layout.pos, text);
+            for instruction in seg.instructions() {
+                match instruction {
+                    Instruction::Newline => {
+                        text_offset.x = region.from.x;
+                        text_offset.y += 1;
+                    }
+                    Instruction::Print(range) => {
+                        let text = &text[range];
 
-        // for (layout, child) in children.zip(self.layout.children()) {
-        //     let Some(text) = child.attributes.value_as::<&str>() else { continue };
-        //     frontend.apply_brush_to_region(&child.attributes, layout.region);
-        //     frontend.set_text(layout.pos, text);
-        // }
+                        let width = text.width() as i32;
+                        let region = Region::new(text_offset, text_offset + Pos::new(width, 1));
+                        frontend.apply_brush_to_region(&attribs, region);
+
+                        frontend.set_text(text, text_offset);
+                    }
+                }
+            }
+        }
     }
 
     fn describe(&self) -> &str {
@@ -72,21 +85,16 @@ impl<'bp> Widget<'bp> for Text {
     }
 }
 
-
-pub struct Span {
-    layout: TextLayout,
-}
+pub struct Span {}
 
 impl Span {
     pub fn new() -> Self {
-        Self {
-            layout: TextLayout::new(),
-        }
+        Self {}
     }
 }
 
-impl<'bp> Widget<'bp> for Span {
-    fn layout(
+impl Widget for Span {
+    fn layout<'bp>(
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -96,7 +104,7 @@ impl<'bp> Widget<'bp> for Span {
         todo!()
     }
 
-    fn position(
+    fn position<'bp>(
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -106,7 +114,7 @@ impl<'bp> Widget<'bp> for Span {
         todo!()
     }
 
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         children: Children<'_, 'bp>,
@@ -115,5 +123,9 @@ impl<'bp> Widget<'bp> for Span {
         layout: &Layouts,
     ) {
         todo!()
+    }
+
+    fn describe(&self) -> &'static str {
+        "span"
     }
 }

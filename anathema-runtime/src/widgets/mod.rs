@@ -11,7 +11,7 @@ use crate::attributes::{Attributes, WidgetAttributes};
 use crate::constraints::Constraints;
 use crate::elements::ElementId;
 
-type WidgetFactory = Box<dyn for<'a, 'bp> Fn(&Attributes<'bp>) -> Box<dyn Widget<'bp> + 'bp>>;
+type WidgetFactory = Box<dyn for<'a, 'bp> Fn(&Attributes<'bp>) -> Box<dyn Widget>>;
 
 pub mod iter;
 mod layout;
@@ -39,7 +39,7 @@ impl RegisteredWidgets {
     /// Register a widget type as longas it implements default
     pub fn register_default<T>(&mut self, ident: impl Into<Box<str>>)
     where
-        for<'bp> T: Widget<'bp> + Default,
+        T: Widget + Default,
     {
         self.registry.insert(
             ident.into(),
@@ -53,14 +53,14 @@ impl RegisteredWidgets {
     /// Register a widget type as longas it implements default
     pub fn register<F>(&mut self, ident: impl Into<Box<str>>, f: F)
     where
-        for<'bp> F: 'bp + Fn(&Attributes<'bp>) -> Box<dyn Widget<'bp> + 'bp>,
+        for<'bp> F: 'bp + Fn(&Attributes<'bp>) -> Box<dyn Widget>,
     {
         self.registry
             .insert(ident.into(), Box::new(move |attr: &Attributes<'_>| f(attr)));
     }
 
     /// Create a widget from attributes
-    pub fn make<'bp>(&self, ident: &str, attribs: &Attributes<'bp>) -> Result<Box<dyn Widget<'bp> + 'bp>, ()> {
+    pub fn make<'bp>(&self, ident: &str, attribs: &Attributes<'bp>) -> Result<Box<dyn Widget>, ()> {
         let Some(factory) = self.registry.get(ident) else { return Err(()) };
         let element = factory(attribs);
         Ok(element)
@@ -73,9 +73,9 @@ impl RegisteredWidgets {
 /// except to act as a cache between layout, position and paint.
 /// Since an attribute can change as a result of a component event,
 /// and this will not update any cached values.
-pub trait Widget<'bp>: 'bp {
+pub trait Widget: std::any::Any {
     /// Layout the widget
-    fn layout(
+    fn layout<'bp>(
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -84,7 +84,7 @@ pub trait Widget<'bp>: 'bp {
     ) -> LayoutSize;
 
     /// Position the widget
-    fn position(
+    fn position<'bp>(
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -93,7 +93,7 @@ pub trait Widget<'bp>: 'bp {
     );
 
     /// Paint the widget
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         children: Children<'_, 'bp>,
@@ -108,7 +108,7 @@ pub trait Widget<'bp>: 'bp {
     }
 }
 
-impl std::fmt::Debug for dyn Widget<'_> {
+impl std::fmt::Debug for dyn Widget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.describe())
     }

@@ -208,7 +208,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         f(&mut eval_ctx);
     }
 
-    pub fn add_widget(&mut self, widget: impl Widget<'bp>, parent: Option<ElementId>) -> ElementId {
+    pub fn add_widget(&mut self, widget: impl Widget, parent: Option<ElementId>) -> ElementId {
         let el = Element::Widget(RefCell::new(Box::new(widget)));
         let id = self.elements.insert(el, parent);
         self.attributes.insert(id, Attributes::empty());
@@ -314,7 +314,7 @@ impl ExpressionEvaluator {
 //   - Test widget -
 // -----------------------------------------------------------------------------
 
-fn test_widget<'bp>(s: impl Into<String>) -> RefCell<Box<dyn Widget<'bp>>> {
+fn test_widget<'bp>(s: impl Into<String>) -> RefCell<Box<dyn Widget>> {
     let s = s.into();
     RefCell::new(Box::new(TestWidget(s)))
 }
@@ -322,8 +322,8 @@ fn test_widget<'bp>(s: impl Into<String>) -> RefCell<Box<dyn Widget<'bp>>> {
 #[derive(Debug)]
 pub struct TestWidget(String);
 
-impl<'bp> Widget<'bp> for TestWidget {
-    fn layout(
+impl Widget for TestWidget {
+    fn layout<'bp>(
         &mut self,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -346,7 +346,7 @@ impl<'bp> Widget<'bp> for TestWidget {
         LayoutSize::same(size)
     }
 
-    fn position(
+    fn position<'bp>(
         &mut self,
         children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -356,7 +356,7 @@ impl<'bp> Widget<'bp> for TestWidget {
         // todo!()
     }
 
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         children: Children<'_, '_>,

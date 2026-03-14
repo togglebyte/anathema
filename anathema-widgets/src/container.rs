@@ -5,8 +5,8 @@ use anathema_runtime::{Constraints, WidgetAttributes};
 
 pub struct Container;
 
-impl<'bp> Widget<'bp> for Container {
-    fn layout(
+impl Widget for Container {
+    fn layout<'bp>(
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -22,7 +22,7 @@ impl<'bp> Widget<'bp> for Container {
         LayoutSize::same(size)
     }
 
-    fn position(
+    fn position<'bp>(
         &mut self,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -34,7 +34,7 @@ impl<'bp> Widget<'bp> for Container {
         }
     }
 
-    fn paint(
+    fn paint<'bp>(
         &mut self,
         region: Region,
         mut children: Children<'_, 'bp>,

@@ -11,6 +11,7 @@ pub use crate::text::Text;
 mod border;
 mod container;
 mod padding;
+mod string;
 mod text;
 mod textlayout;
 

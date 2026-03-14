@@ -10,6 +10,7 @@ anathema-runtime = { path = "../anathema-runtime", version = "0.2.12-beta" }
 compact_str = { workspace = true }
 unicode-segmentation = { workspace = true }
 unicode-width = { workspace = true }
+sillybug = { version = "0.1.0", path = "../../../../temp/sillybug" }
 
 [lints]
 workspace = true

@@ -38,7 +38,7 @@ pub enum Element<'bp> {
     ControlFlow,
     Condition(Option<RemoteCell<TemplateValue<'bp>>>),
     With,
-    Widget(RefCell<Box<dyn Widget<'bp>>>),
+    Widget(RefCell<Box<dyn Widget>>),
     Component(ComponentId),
 }
 
