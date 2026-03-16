@@ -38,14 +38,6 @@ impl WordBoundary {
         self.index = index;
         self.width = width;
     }
-
-    fn debug(&self) {
-        obs!("word boundary", "<some>");
-        obs!("word boundary byte", self.index.byte);
-        obs!("word boundary slice", self.index.slice);
-        obs!("word boundary width", self.width);
-        obs!("word boundary skip", self.skip);
-    }
 }
 
 // -----------------------------------------------------------------------------
@@ -53,20 +45,20 @@ impl WordBoundary {
 // -----------------------------------------------------------------------------
 
 #[derive(Debug)]
-pub struct Lines<'a, 'b, T> {
-    words: Peekable<Words<'a, 'b, T>>,
-    slices: &'b [(&'a str, T)],
+pub struct Lines<'a, 'b, T: Copy> {
+    words: Words<'a, 'b, T>,
     max: Size,
     line: usize,
+    current: Option<Word<'a, 'b, T>>,
 }
 
-impl<'a, 'b, T> Lines<'a, 'b, T> {
-    pub fn new(words: Words<'a, 'b, T>, slices: &'b [(&'a str, T)], max: Size) -> Self {
+impl<'a, 'b, T: Copy> Lines<'a, 'b, T> {
+    pub fn new(words: Words<'a, 'b, T>, max: Size) -> Self {
         Self {
-            words: words.peekable(),
-            slices,
+            words,
             max,
             line: 0,
+            current: None,
         }
     }
 }
@@ -75,28 +67,61 @@ impl<'a, 'b, T: Copy + std::fmt::Debug> Iterator for Lines<'a, 'b, T> {
     type Item = Slice<'a, 'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let word = self.words.next()?;
-        let mut width = word.width;
-
-        let start = word.slice.range.start;
-
-        let mut last = None::<Word<'_, '_, T>>;
-
-        loop {
-            let next_word = match self.words.peek() {
-                Some(w) => w,
-                None => {
-                    let end = last.map(|word| word.slice.range.end).unwrap_or(word.slice.range.end);
-                    break Some(Slice::new(start..end, self.slices));
-                }
-            };
-
-            if width + next_word.width > self.max.width {
-                let end = last.map(|word| word.slice.range.end).unwrap_or(word.slice.range.end);
-                break Some(Slice::new(start..end, self.slices));
-            }
-
-            last = self.words.next();
+        if self.line == self.max.height as usize {
+            return None;
         }
+
+        // Loop
+        // * find the next word
+        // * fit it
+        // * update the end index
+        // repeat until it no longer fits, then make the end index the start index
+        // and go again
+
+        // Look at the next word.
+        // Does it fit?
+        // Yes -> Send it
+        // No -> Make a new line
+        //  Does it fit?
+        //  Yes -> Send it
+        //  No -> Split the word by max width
+
+        let word = match self.current.take() {
+            // if the word is longer than max width then split the word
+            Some(word) if word.width > self.max.width => {
+                let (lhs, rhs) = word.split(self.max.width as usize);
+                obs!("lhs", format!("{lhs}"));
+                obs!("rhs", format!("{rhs}"));
+                self.current = Some(rhs);
+                self.line += 1;
+                return Some(lhs.into());
+            }
+            Some(word) => word,
+            None => {
+                self.current = Some(self.words.next()?);
+                return self.next();
+            }
+        };
+
+        let mut width = word.width + word.whitespace_width as u32;
+        obs!("word", format!("{word}"));
+
+        let start = word.start();
+        let mut end = word.end();
+        while let Some(word) = self.words.next() {
+            obs!("word", format!("{word}"));
+            width += word.width;
+            if width > self.max.width {
+                self.current = Some(word);
+                break;
+            }
+            width +=  word.whitespace_width as u32;
+
+            end = word.end();
+        }
+
+        let range = start..end;
+        self.line += 1;
+        Some(self.words.slice().subslice(range))
     }
 }

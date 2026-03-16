@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use anathema_geometry::Size;
 
-use crate::string::chars::{CharIndices, Index};
+pub use crate::string::chars::{CharIndices, Index};
 use crate::string::lines::Lines;
 use crate::string::slice::Slice;
 use crate::string::words::Words;
@@ -16,7 +16,7 @@ pub struct SegString<'a, T> {
     inner: Vec<(&'a str, T)>,
 }
 
-impl<'a, T> SegString<'a, T> {
+impl<'a, T: Copy> SegString<'a, T> {
     pub fn new(s: &'a str, val: T) -> Self {
         Self { inner: vec![(s, val)] }
     }
@@ -31,23 +31,25 @@ impl<'a, T> SegString<'a, T> {
 
     pub fn lines<'b>(&'b self, max: Size) -> Lines<'a, 'b, T> {
         let words = self.words();
-        Lines::new(words, &self.inner, max)
+        Lines::new(words, max)
     }
 
     pub fn words<'b>(&'b self) -> Words<'a, 'b, T> {
-        Words::new(self.char_indices())
+        Words::new(self.as_slice().char_indices())
+    }
+
+    pub fn as_slice<'b>(&'b self) -> Slice<'a, 'b, T> {
+        let last = self.inner.len() - 1;
+        let range = Index::ZERO..Index::new(self.inner.len() as u32, self.inner[last].0.len() as u32);
+        Slice::new(range, &self.inner)
     }
 
     pub fn slice<'b>(&'b self, range: Range<Index>) -> Slice<'a, 'b, T> {
         Slice::new(range, &self.inner)
     }
-
-    fn char_indices<'b>(&'b self) -> CharIndices<'a, 'b, T> {
-        CharIndices::new(&self.inner)
-    }
 }
 
-impl<'a, T> FromIterator<(&'a str, T)> for SegString<'a, T> {
+impl<'a, T: Copy> FromIterator<(&'a str, T)> for SegString<'a, T> {
     fn from_iter<V: IntoIterator<Item = (&'a str, T)>>(iter: V) -> Self {
         let mut inst = Self::empty();
 

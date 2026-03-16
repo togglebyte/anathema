@@ -1,3 +1,5 @@
+use crate::string::slice::Slice;
+
 // -----------------------------------------------------------------------------
 //   - Index -
 // -----------------------------------------------------------------------------
@@ -23,24 +25,24 @@ impl Index {
 //   - Iterator -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
-pub(crate) struct CharIndices<'a, 'b, T> {
-    // pub(crate) slices: &'b [(&'a str, T)],
-    pub(crate) slices: &'b [(&'a str, T)],
+pub struct CharIndices<'a, 'b, T> {
+    pub(crate) slice: Slice<'a, 'b, T>,
     index: Index,
-    indices: std::str::CharIndices<'a>,
+    // This is the first byte offset and is only used for the 
+    // first slice.
+    byte_offset: u32,
+    indices: Option<std::str::CharIndices<'a>>,
     next: Option<(Index, char)>,
 }
 
-impl<'a, 'b, T> CharIndices<'a, 'b, T> {
-    pub fn new(slices: &'b [(&'a str, T)]) -> Self {
-        let indices = slices
-            .first()
-            .map(|(slice, _)| slice.char_indices())
-            .unwrap_or_else(|| "".char_indices());
-
+impl<'a, 'b, T: Copy> CharIndices<'a, 'b, T> {
+    pub fn new(mut slices: Slice<'a, 'b, T>) -> Self {
+        let index = slices.start();
+        let indices = slices.next().map(|(s, _)| s.char_indices());
         Self {
-            slices,
-            index: Index { slice: 0, byte: 0 },
+            slice: slices,
+            byte_offset: index.byte,
+            index,
             indices,
             next: None,
         }
@@ -55,7 +57,7 @@ impl<'a, 'b, T> CharIndices<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T> Iterator for CharIndices<'a, 'b, T> {
+impl<'a, 'b, T: Copy> Iterator for CharIndices<'a, 'b, T> {
     type Item = (Index, char);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -63,17 +65,27 @@ impl<'a, 'b, T> Iterator for CharIndices<'a, 'b, T> {
             return val;
         };
 
-        match self.indices.next() {
+        // Get the current char_indices or fetch
+        // the next set and increment the slice index
+        let indices = match self.indices.as_mut() {
+            Some(indices) => indices,
+            None => {
+                self.indices = Some(self.slice.next()?.0.char_indices());
+                self.index.slice += 1;
+                self.index.byte = 0;
+                self.byte_offset = 0;
+                return self.next();
+            }
+        };
+
+        match indices.next() {
             Some((index, c)) => {
-                self.index.byte = index as u32;
+                self.index.byte = index as u32 + self.byte_offset;
                 let ret = Some((self.index, c));
                 ret
             }
-            None if 1 + self.index.slice as usize == self.slices.len() => None,
             None => {
-                self.index.slice += 1;
-                self.indices = self.slices[self.index.slice as usize].0.char_indices();
-                self.index.byte = 0;
+                self.indices = None;
                 self.next()
             }
         }
