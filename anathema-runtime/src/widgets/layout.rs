@@ -57,6 +57,10 @@ impl Layout {
         Region::from((self.pos, self.size.outer))
     }
 
+    pub fn outer_size(self) -> Size {
+        self.size.outer
+    }
+
     fn resize(&mut self, size: LayoutSize) {
         self.size = size;
     }

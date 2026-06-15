@@ -15,7 +15,7 @@ use super::State;
 use crate::crossterm::{Cell, Style};
 use crate::Frontend;
 
-pub struct Screen<T> {
+pub struct Crossterm<T> {
     front: Buffer,
     back: Buffer,
     width: usize,
@@ -25,9 +25,9 @@ pub struct Screen<T> {
     empty_line: String,
 }
 
-impl Screen<Stdout> {
+impl Crossterm<Stdout> {
     pub fn new() -> Self {
-        let (width, height) = crossterm::terminal::size().unwrap();
+        let (width, height) = crossterm::terminal::size().expect("failed to get the terminal size, can not continue");
         Self::with_output(width as usize, height as usize, stdout())
     }
 
@@ -36,7 +36,7 @@ impl Screen<Stdout> {
     }
 }
 
-impl<T: Write> Screen<T> {
+impl<T: Write> Crossterm<T> {
     pub fn with_output(width: usize, height: usize, output: T) -> Self {
         Self {
             front: Buffer::new(width, height),
@@ -231,7 +231,7 @@ fn write_style(style: Style, output: &mut impl Write) {
     // Ok(())
 }
 
-impl<T: Write> Frontend for Screen<T> {
+impl<T: Write> Frontend for Crossterm<T> {
     fn apply_brush_to_region(&mut self, brush: &dyn crate::Brush, region: Region) {
         let style = Style::from(brush);
         self.style_region(region, style);

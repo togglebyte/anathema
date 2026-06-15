@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Region, Size};
 use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
@@ -7,65 +5,14 @@ use anathema_store::slab::{Generational, Key};
 
 pub use self::iter::Children;
 pub use self::layout::{LayoutSize, Layouts};
+pub use self::registry::RegisteredWidgets;
 use crate::attributes::{Attributes, WidgetAttributes};
 use crate::constraints::Constraints;
 use crate::elements::ElementId;
 
-type WidgetFactory = Box<dyn for<'a, 'bp> Fn(&Attributes<'bp>) -> Box<dyn Widget>>;
-
 pub mod iter;
 mod layout;
-
-/// All registered widget types
-#[derive(Default)]
-pub struct RegisteredWidgets {
-    registry: HashMap<Box<str>, WidgetFactory>,
-}
-
-impl std::fmt::Debug for RegisteredWidgets {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_set().entries(self.registry.keys()).finish()
-    }
-}
-
-impl RegisteredWidgets {
-    /// Create an empty set of registered widgets.
-    pub fn empty() -> Self {
-        Self {
-            registry: HashMap::new(),
-        }
-    }
-
-    /// Register a widget type as longas it implements default
-    pub fn register_default<T>(&mut self, ident: impl Into<Box<str>>)
-    where
-        T: Widget + Default,
-    {
-        self.registry.insert(
-            ident.into(),
-            Box::new(|_attr| {
-                let inst = T::default();
-                Box::new(inst)
-            }),
-        );
-    }
-
-    /// Register a widget type as longas it implements default
-    pub fn register<F>(&mut self, ident: impl Into<Box<str>>, f: F)
-    where
-        for<'bp> F: 'bp + Fn(&Attributes<'bp>) -> Box<dyn Widget>,
-    {
-        self.registry
-            .insert(ident.into(), Box::new(move |attr: &Attributes<'_>| f(attr)));
-    }
-
-    /// Create a widget from attributes
-    pub fn make<'bp>(&self, ident: &str, attribs: &Attributes<'bp>) -> Result<Box<dyn Widget>, ()> {
-        let Some(factory) = self.registry.get(ident) else { return Err(()) };
-        let element = factory(attribs);
-        Ok(element)
-    }
-}
+mod registry;
 
 /// A widget.
 ///
@@ -77,29 +24,32 @@ pub trait Widget: std::any::Any {
     /// Layout the widget
     fn layout<'bp>(
         &mut self,
+        id: ElementId,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layouts,
+        layouts: &mut Layouts,
         constraints: Constraints,
     ) -> LayoutSize;
 
     /// Position the widget
     fn position<'bp>(
         &mut self,
+        id: ElementId,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
-        layout: &mut Layouts,
+        layouts: &mut Layouts,
         pos: Pos,
     );
 
     /// Paint the widget
     fn paint<'bp>(
         &mut self,
+        id: ElementId,
         region: Region,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         frontend: &mut dyn Frontend,
-        layout: &Layouts,
+        layouts: &Layouts,
     );
 
     /// A function that described a widget in a debug context.

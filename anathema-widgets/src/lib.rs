@@ -1,11 +1,11 @@
 use anathema_geometry::Size;
-use anathema_runtime::widgets::RegisteredWidgets;
-use anathema_runtime::{Constraints, WidgetAttributes};
+use anathema_runtime::{Constraints, WidgetAttributes, ElementId};
 use border::border;
 
 pub use crate::border::Border;
 pub use crate::container::Container;
 pub use crate::padding::Padding;
+use crate::text::Span;
 pub use crate::text::Text;
 
 mod border;
@@ -59,9 +59,10 @@ fn fix_size(mut size: Size, attributes: WidgetAttributes<'_, '_>, constraints: C
     size
 }
 
-pub fn register_default_widgets(factory: &mut RegisteredWidgets) {
+fn register_default_widgets(factory: &mut RegisteredWidgets) {
     factory.register("border", |attrs| Box::new(Border::new(attrs)));
     factory.register("container", |attrs| Box::new(Container));
     factory.register("padding", |attrs| Box::new(Padding));
     factory.register("text", |attrs| Box::new(Text::new()));
+    factory.register("span", |attrs| Box::new(Span::new()));
 }

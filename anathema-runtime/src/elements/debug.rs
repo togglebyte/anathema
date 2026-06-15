@@ -39,7 +39,7 @@ impl Debug for Element<'_> {
         match self {
             Element::For { binding, collection } => write!(f, "<for {binding}>"),
             Element::Iteration { loop_counter } => write!(f, "<iter {}>", *loop_counter.to_ref()),
-            Element::Widget(widget) => panic!("fixing lifetimes"),//write!(f, "{:?}", widget.borrow()),
+            Element::Widget(widget) => write!(f, "{}", widget.borrow().describe()),
             Element::Component(component_id) => write!(f, "<component {component_id:?}>"),
             Element::ControlFlow => write!(f, "<controlflow>"),
             Element::Condition(Some(cond)) => write!(f, "<if/else {}>", cond.truthiness()),

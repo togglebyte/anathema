@@ -1,7 +1,7 @@
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Region, Size};
 use anathema_runtime::widgets::{Children, LayoutSize, Layouts, Widget};
-use anathema_runtime::{Constraints, WidgetAttributes};
+use anathema_runtime::{Constraints, ElementId, WidgetAttributes};
 
 struct PaddingValues {
     left: u32,
@@ -39,6 +39,7 @@ pub struct Padding;
 impl Widget for Padding {
     fn layout<'bp>(
         &mut self,
+        _: ElementId,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
@@ -61,6 +62,7 @@ impl Widget for Padding {
 
     fn position<'bp>(
         &mut self,
+        _: ElementId,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
@@ -74,6 +76,7 @@ impl Widget for Padding {
 
     fn paint<'bp>(
         &mut self,
+        _: ElementId,
         region: Region,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,

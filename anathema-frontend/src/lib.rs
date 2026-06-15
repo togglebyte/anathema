@@ -2,9 +2,10 @@ use anathema_geometry::{Pos, Region};
 use unicode_width::UnicodeWidthStr;
 
 pub use self::brush::Brush;
+pub use crate::crossterm::Crossterm;
 
 mod brush;
-pub mod crossterm;
+mod crossterm;
 
 pub trait Frontend {
     // This will happen outside of the widget and will be called for any widget

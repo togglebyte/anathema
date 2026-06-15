@@ -146,8 +146,8 @@ mod test {
     #[test]
     fn insert_and_get() {
         let mut map = SecondaryMap::<BasicStorage<usize, u32>>::empty();
-        // map.booh(0usize, 1);
-        // assert_eq!(*map.get(0usize).unwrap(), 1);
+        map.insert(2, 1);
+        assert_eq!(*map.get(2).unwrap(), 1);
     }
 
     #[test]

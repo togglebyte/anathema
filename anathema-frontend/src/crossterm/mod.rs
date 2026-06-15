@@ -3,7 +3,7 @@ use compact_str::CompactString;
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-pub use self::screen::Screen;
+pub use self::screen::Crossterm;
 use crate::crossterm::attributes::Attributes;
 
 mod attributes;

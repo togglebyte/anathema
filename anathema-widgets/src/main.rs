@@ -30,7 +30,8 @@ fn main() {
     let mut lines = string.lines(Size::new(5, 10));
 
     for line in lines {
-        let s = line.to_string();
-        eprintln!("{s:?}");
+        for (word, a) in line {
+            eprintln!("{word}");
+        }
     }
 }

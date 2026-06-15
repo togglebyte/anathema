@@ -90,20 +90,20 @@ impl<'a, 'bp> WidgetRef<'a, 'bp> {
     }
 
     pub fn layout(mut self, layout: &mut Layouts, constraints: Constraints) -> Size {
-        let result = self.widget.layout(self.children, self.attributes, layout, constraints);
+        let result = self.widget.layout(self.id, self.children, self.attributes, layout, constraints);
         layout.set_size(self.id, result);
         result.outer
     }
 
     pub fn position(mut self, layout: &mut Layouts, pos: Pos) {
         layout.set_pos(self.id, pos);
-        self.widget.position(self.children, self.attributes, layout, pos)
+        self.widget.position(self.id, self.children, self.attributes, layout, pos)
     }
 
     pub fn paint(mut self, frontend: &mut dyn Frontend, layout: &Layouts) {
         let desc = self.widget.describe();
         let region = layout[self.id].region();
-        self.widget.paint(region, self.children, self.attributes, frontend, layout)
+        self.widget.paint(self.id, region, self.children, self.attributes, frontend, layout)
     }
 
     pub fn to<T: Widget>(&mut self) -> Option<&mut T> {

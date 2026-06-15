@@ -325,6 +325,7 @@ pub struct TestWidget(String);
 impl Widget for TestWidget {
     fn layout<'bp>(
         &mut self,
+        id: ElementId,
         children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
@@ -348,6 +349,7 @@ impl Widget for TestWidget {
 
     fn position<'bp>(
         &mut self,
+        id: ElementId,
         children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
@@ -358,6 +360,7 @@ impl Widget for TestWidget {
 
     fn paint<'bp>(
         &mut self,
+        id: ElementId,
         region: Region,
         children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,

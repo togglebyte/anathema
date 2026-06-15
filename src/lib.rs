@@ -14,6 +14,8 @@ pub use {
 pub mod prelude {
     pub use crate::compiler::{ComponentBlueprintId, Document, SourceKind};
     pub use crate::geometry::{Pos, Region, Size};
+    pub use crate::frontend::Crossterm;
+    pub use crate::runtime::Runtime;
 }
 
 pub mod component {

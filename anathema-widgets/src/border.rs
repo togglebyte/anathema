@@ -1,7 +1,7 @@
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Region, Size};
 use anathema_runtime::widgets::{Children, LayoutSize, Layouts, Widget};
-use anathema_runtime::{Attributes, Constraints, TemplateValue, WidgetAttributes};
+use anathema_runtime::{Attributes, Constraints, ElementId, TemplateValue, WidgetAttributes};
 use compact_str::CompactString;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
@@ -45,7 +45,7 @@ struct BorderStyle {
 }
 
 impl BorderStyle {
-    const fn empty() -> Self {
+    const fn thin() -> Self {
         Self {
             kind: DEFAULT_SLIM_EDGES,
             left_width: 1,
@@ -226,13 +226,13 @@ impl<'a> BorderPaint<'a> {
 
 #[derive(Debug, Default)]
 pub struct Border {
-    border: BorderStyle,
+    border_style: BorderStyle,
 }
 
 impl Border {
     pub(crate) fn new<'bp>(attrs: &Attributes<'bp>) -> Self {
         Self {
-            border: BorderStyle::empty(),
+            border_style: BorderStyle::thin(),
         }
     }
 }
@@ -240,13 +240,14 @@ impl Border {
 impl Widget for Border {
     fn layout<'bp>(
         &mut self,
+        _: ElementId,
         mut children: Children<'_, 'bp>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut constraints: Constraints,
     ) -> LayoutSize {
         crate::update_constraints(attributes, &mut constraints);
-        let border_size = self.border.size();
+        let border_size = self.border_style.size();
 
         let inner = children
             .next()
@@ -263,19 +264,21 @@ impl Widget for Border {
 
     fn position<'bp>(
         &mut self,
+        _: ElementId,
         mut children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut pos: Pos,
     ) {
         let Some(child) = children.next() else { return };
-        pos.x += self.border.left_width as i32;
+        pos.x += self.border_style.left_width as i32;
         pos.y += 1;
         child.position(layout, pos);
     }
 
     fn paint<'bp>(
         &mut self,
+        _: ElementId,
         region: Region,
         mut children: Children<'_, '_>,
         attributes: WidgetAttributes<'_, 'bp>,
@@ -288,7 +291,7 @@ impl Widget for Border {
             child.paint(frontend, layout);
         }
 
-        let painter = BorderPaint::new(region, &self.border, frontend);
+        let painter = BorderPaint::new(region, &self.border_style, frontend);
         painter.paint();
     }
 

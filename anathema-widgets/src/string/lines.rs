@@ -1,7 +1,6 @@
 use std::iter::Peekable;
 
 use anathema_geometry::Size;
-use sillybug::obs;
 use unicode_width::UnicodeWidthChar;
 
 use crate::string::chars::{CharIndices, Index};
@@ -90,8 +89,6 @@ impl<'a, 'b, T: Copy + std::fmt::Debug> Iterator for Lines<'a, 'b, T> {
             // if the word is longer than max width then split the word
             Some(word) if word.width > self.max.width => {
                 let (lhs, rhs) = word.split(self.max.width as usize);
-                obs!("lhs", format!("{lhs}"));
-                obs!("rhs", format!("{rhs}"));
                 self.current = Some(rhs);
                 self.line += 1;
                 return Some(lhs.into());
@@ -104,12 +101,10 @@ impl<'a, 'b, T: Copy + std::fmt::Debug> Iterator for Lines<'a, 'b, T> {
         };
 
         let mut width = word.width + word.whitespace_width as u32;
-        obs!("word", format!("{word}"));
 
         let start = word.start();
         let mut end = word.end();
         while let Some(word) = self.words.next() {
-            obs!("word", format!("{word}"));
             width += word.width;
             if width > self.max.width {
                 self.current = Some(word);
