@@ -2,11 +2,11 @@ use anathema_compiler::expressions::ExpressionId;
 use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 use anathema_store::slab::Key;
 
-use crate::components::ComponentId;
-use crate::elements::{ElementId, Elements};
-use crate::eval::values::TemplateValue;
-use crate::value::ValueIndex;
+use super::values::TemplateValue;
 use crate::AnonValue;
+use crate::components::InternalComponentId;
+use crate::elements::{ElementId, Elements};
+use crate::value::ValueIndex;
 
 // The value key for a scope entry
 #[derive(Debug, Copy, Clone)]
@@ -39,7 +39,7 @@ impl From<ElementId> for ScopeId {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Entry<'bp> {
-    State(ComponentId),
+    State(InternalComponentId),
     Attributes(ElementId),
     Value {
         key: &'bp str,
@@ -127,7 +127,6 @@ impl<'bp> Scope<'bp> {
         loop {
             match self.scopes.get(id) {
                 Some(node) => {
-                    eprintln!("scope id for lookup {id:?}");
                     // If the scope node contains the key then fetch the value
                     match node.get(key).cloned() {
                         val @ Some(_) => break val,
@@ -140,7 +139,7 @@ impl<'bp> Scope<'bp> {
         }
     }
 
-    pub(crate) fn push_component(&mut self, component_element: ElementId, component: ComponentId) {
+    pub(crate) fn push_component(&mut self, component_element: ElementId, component: InternalComponentId) {
         let scope_id = ScopeId(component_element);
 
         match self.scopes.get_mut(scope_id) {

@@ -234,10 +234,6 @@ impl<'a> RowInsert<'a> {
             cell.style.merge(style);
             cell.if_empty_make_space();
         });
-
-        eprintln!("from: {from} | to: {to}");
-        eprintln!("{buffer:#?}");
-
     }
 }
 

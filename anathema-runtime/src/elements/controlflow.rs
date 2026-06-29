@@ -1,6 +1,6 @@
 use anathema_store::remotecell::RemoteCell;
 
-use crate::eval::values::TemplateValue;
+use crate::eval::blueprints::values::TemplateValue;
 
 #[derive(Debug)]
 pub struct ControlFlow<'bp> {

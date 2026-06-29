@@ -1,4 +1,4 @@
-use anathema_geometry::{Pos, Region};
+use anathema_geometry::{Pos, Region, Size};
 use unicode_width::UnicodeWidthStr;
 
 pub use self::brush::Brush;
@@ -23,4 +23,8 @@ pub trait Frontend {
             pos.x += width as i32;
         }
     }
+
+    fn viewport_size(&self) -> Size;
+
+    fn render(&mut self);
 }

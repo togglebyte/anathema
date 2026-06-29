@@ -10,7 +10,7 @@ use anathema_store::slab::Key;
 use super::assoc::Associations;
 use super::scope::{Entry, ScopeId, ScopeKey};
 use super::values::{Collection, TemplateValue};
-use super::EvalCtx;
+use super::BlueprintEvalCtx;
 use crate::elements::ElementId;
 use crate::functions::Function;
 use crate::value::{AnonValue, Type, ValueIndex};
@@ -231,7 +231,7 @@ impl<'bp> From<Primitive> for RuntimeExpression<'bp> {
     }
 }
 
-pub fn re_evalute_expr<'bp>(idx: ValueIndex, ctx: &EvalCtx<'_, 'bp>) {
+pub fn re_evalute_expr<'bp>(idx: ValueIndex, ctx: &BlueprintEvalCtx<'_, 'bp>) {
     let Some((handle, expr)) = ctx.runtime_expressions.get_entry(idx) else { return };
     let (id, scope) = idx.consume();
     let value = eval_runtime_expr(expr, id, scope, ctx);
@@ -242,7 +242,7 @@ pub fn eval_collection<'bp>(
     id: ExpressionId,
     element: ElementId,
     parent: Option<ElementId>,
-    ctx: &mut EvalCtx<'_, 'bp>,
+    ctx: &mut BlueprintEvalCtx<'_, 'bp>,
 ) -> Collection {
     let (value, index) = eval_by_id(id, element, parent, ctx);
     let len = match &*value {
@@ -269,7 +269,7 @@ pub fn eval_by_id<'bp>(
     // the parent is needed for scope lookup
     // as the `element` might not be added to the tree yet at this point.
     parent: Option<ElementId>,
-    ctx: &mut EvalCtx<'_, 'bp>,
+    ctx: &mut BlueprintEvalCtx<'_, 'bp>,
 ) -> (RemoteCell<TemplateValue<'bp>>, ValueIndex) {
     let scope = ctx.nearest_scope_id(parent);
     let index = ValueIndex::new(id, scope);
@@ -295,7 +295,7 @@ fn eval_expr<'bp>(
     expr: &'bp Expression,
     expr_id: ExpressionId,
     scope: Option<ScopeId>,
-    ctx: &mut EvalCtx<'_, 'bp>,
+    ctx: &mut BlueprintEvalCtx<'_, 'bp>,
 ) -> RuntimeExpression<'bp> {
     match expr {
         &Expression::Primitive(primitive) => primitive.into(),
@@ -388,7 +388,7 @@ fn lookup<'bp>(
     ident: &str,
     expr_id: ExpressionId,
     scope: Option<ScopeId>,
-    ctx: &mut EvalCtx<'_, 'bp>,
+    ctx: &mut BlueprintEvalCtx<'_, 'bp>,
 ) -> RuntimeExpression<'bp> {
     let key = match ident {
         "state" => ScopeKey::State,
@@ -458,7 +458,7 @@ fn lazy_eval<'a, 'bp>(
     expr: &'a RuntimeExpression<'bp>,
     expression_id: ExpressionId,
     scope: Option<ScopeId>,
-    ctx: &EvalCtx<'_, 'bp>,
+    ctx: &BlueprintEvalCtx<'_, 'bp>,
 ) -> LazyExpression<'a, 'bp> {
     match expr {
         &RuntimeExpression::Bool(Kind::Static(val)) => TemplateValue::Bool(val).into(),
@@ -637,7 +637,7 @@ fn eval_runtime_expr<'bp>(
     expr: &RuntimeExpression<'bp>,
     expression_id: ExpressionId,
     scope: Option<ScopeId>,
-    ctx: &EvalCtx<'_, 'bp>,
+    ctx: &BlueprintEvalCtx<'_, 'bp>,
 ) -> TemplateValue<'bp> {
     let expr = match lazy_eval(expr, expression_id, scope, ctx) {
         LazyExpression::Expression(expr) => expr,
@@ -690,7 +690,7 @@ fn eval_index<'a, 'bp>(
     index: &'a RuntimeExpression<'bp>,
     expression_id: ExpressionId,
     scope: Option<ScopeId>,
-    ctx: &EvalCtx<'_, 'bp>,
+    ctx: &BlueprintEvalCtx<'_, 'bp>,
 ) -> LazyExpression<'a, 'bp> {
     match container {
         RuntimeExpression::DynMap(map, _) | RuntimeExpression::Composite(map, _) => {

@@ -106,4 +106,9 @@ impl Document {
     pub fn get_component_source(&self, component_id: ComponentBlueprintId) -> Option<PathBuf> {
         self.components.path(component_id)
     }
+
+    pub fn blueprint_component_id(&self, name: impl AsRef<str>) -> Option<ComponentBlueprintId> {
+        let str_id = self.strings.lookup(name)?;
+        self.components.get_component_by_string_id(str_id)
+    }
 }

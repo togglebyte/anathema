@@ -9,15 +9,15 @@ impl Widget for Container {
     fn layout<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut constraints: Constraints,
     ) -> LayoutSize {
         crate::update_constraints(attributes, &mut constraints);
         let size = children
-            .next()
-            .map(|child| child.layout(layout, constraints))
+            .first()
+            .map(|mut child| child.layout(layout, constraints))
             .unwrap_or(constraints.min);
 
         LayoutSize::same(size)
@@ -26,12 +26,12 @@ impl Widget for Container {
     fn position<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         pos: Pos,
     ) {
-        if let Some(child) = children.next() {
+        if let Some(mut child) = children.first() {
             child.position(layout, pos);
         }
     }
@@ -47,7 +47,7 @@ impl Widget for Container {
     ) {
         frontend.apply_brush_to_region(&attributes, region);
 
-        if let Some(child) = children.next() {
+        if let Some(child) = children.first() {
             child.paint(frontend, layout);
         }
     }

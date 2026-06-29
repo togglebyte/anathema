@@ -14,7 +14,6 @@ pub struct Children<'a, 'bp> {
     children: &'a [ElementId],
     elements: &'a Elements<'bp>,
     attribute_reg: &'a AttributeRegistry<'bp>,
-    index: usize,
 }
 
 impl<'a, 'bp> Children<'a, 'bp> {
@@ -24,37 +23,64 @@ impl<'a, 'bp> Children<'a, 'bp> {
         attribute_reg: &'a AttributeRegistry<'bp>,
     ) -> Self {
         Self {
-            index: 0,
             children,
             elements,
             attribute_reg,
         }
     }
+
+    pub fn iter<'b>(&'b self) -> ChildrenIter<'a, 'b, 'bp> {
+        ChildrenIter {
+            children: self,
+            index: 0,
+        }
+    }
+
+    pub fn first(&self) -> Option<WidgetRef<'a, 'bp>> {
+        self.iter().next()
+    }
 }
 
-impl<'a, 'bp> Iterator for Children<'a, 'bp> {
+impl<'a, 'b, 'bp> IntoIterator for &'b Children<'a, 'bp> {
+    type Item = WidgetRef<'a, 'bp>;
+
+    type IntoIter = ChildrenIter<'a, 'b, 'bp>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Children of a given widget.
+pub struct ChildrenIter<'a, 'b, 'bp> {
+    children: &'b Children<'a, 'bp>,
+    index: usize,
+}
+
+
+impl<'a, 'b, 'bp> Iterator for ChildrenIter<'a, 'b, 'bp> {
     type Item = WidgetRef<'a, 'bp>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.children.len() {
+        if self.index == self.children.children.len() {
             return None;
         }
 
-        let id = self.children[self.index];
+        let id = self.children.children[self.index];
         self.index += 1;
 
-        let node = &self.elements[id];
+        let node = &self.children.elements[id];
+
         let Element::Widget(widget) = &node.element else { unreachable!() };
 
         let children = Children {
             children: &node.children,
-            elements: self.elements,
-            attribute_reg: self.attribute_reg,
-            index: 0,
+            elements: self.children.elements,
+            attribute_reg: self.children.attribute_reg,
         };
 
-        let attributes = &self.attribute_reg[id];
-        let attributes = WidgetAttributes::new(self.elements, node.parent, attributes, self.attribute_reg);
+        let attributes = &self.children.attribute_reg[id];
+        let attributes = WidgetAttributes::new(self.children.elements, node.parent, attributes, self.children.attribute_reg);
 
         let widget_ref = WidgetRef {
             id,
@@ -89,15 +115,15 @@ impl<'a, 'bp> WidgetRef<'a, 'bp> {
         }
     }
 
-    pub fn layout(mut self, layout: &mut Layouts, constraints: Constraints) -> Size {
-        let result = self.widget.layout(self.id, self.children, self.attributes, layout, constraints);
+    pub fn layout(&mut self, layout: &mut Layouts, constraints: Constraints) -> Size {
+        let result = self.widget.layout(self.id, &mut self.children, &self.attributes, layout, constraints);
         layout.set_size(self.id, result);
         result.outer
     }
 
-    pub fn position(mut self, layout: &mut Layouts, pos: Pos) {
+    pub fn position(&mut self, layout: &mut Layouts, pos: Pos) {
         layout.set_pos(self.id, pos);
-        self.widget.position(self.id, self.children, self.attributes, layout, pos)
+        self.widget.position(self.id, &mut self.children, &self.attributes, layout, pos)
     }
 
     pub fn paint(mut self, frontend: &mut dyn Frontend, layout: &Layouts) {

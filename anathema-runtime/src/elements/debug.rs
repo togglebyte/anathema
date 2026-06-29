@@ -7,7 +7,6 @@ use crate::elements::{Element, ElementId, Node};
 
 impl Debug for Elements<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "")?;
         self.fmt_node(f, self.root, 0)
     }
 }

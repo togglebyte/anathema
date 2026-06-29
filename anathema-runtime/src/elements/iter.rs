@@ -5,6 +5,8 @@ use anathema_geometry::Size;
 use crate::elements::{Element, ElementId, Elements};
 use crate::widgets::{Layouts, Widget};
 
+// TODO this can probably be removed
+
 pub struct ElementChildren<'a, 'bp> {
     children: &'a [ElementId],
     elements: &'a Elements<'bp>,

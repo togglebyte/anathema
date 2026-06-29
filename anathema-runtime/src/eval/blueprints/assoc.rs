@@ -4,8 +4,8 @@ use std::hash::Hash;
 use anathema_compiler::expressions::ExpressionId;
 use anathema_hashmap::{HashMap, HashSet};
 
+use super::values::TemplateValue;
 use crate::elements::ElementId;
-use crate::eval::values::TemplateValue;
 
 #[derive(Debug)]
 enum Entry<T> {

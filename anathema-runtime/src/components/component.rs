@@ -1,3 +1,5 @@
+use crate::State;
+
 /// User defined components
 ///
 /// ```
@@ -13,7 +15,7 @@
 /// ```
 pub trait Component: 'static {
     /// The state associated with the component
-    type State;
+    type State: State;
     /// The type of message that can be sent to the component
     type Message;
 }

@@ -7,11 +7,11 @@ use unicode_width::UnicodeWidthStr;
 use crate::string::SegString;
 use crate::textlayout::{Instruction, PerformLayout, TextLayout};
 
-pub struct Text {}
+pub struct Text;
 
 impl Text {
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 
@@ -19,8 +19,8 @@ impl Widget for Text {
     fn layout<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layouts: &mut Layouts,
         mut constraints: Constraints,
     ) -> LayoutSize {
@@ -28,7 +28,7 @@ impl Widget for Text {
 
         let mut size = Size::ZERO;
         let mut layout = SegString::empty();
-        layout.push(text, attributes);
+        layout.push(text, *attributes);
 
         for mut child in children {
             let Some(text) = child.attributes.value_as::<&str>() else { continue };
@@ -50,8 +50,8 @@ impl Widget for Text {
     fn position<'bp>(
         &mut self,
         _: ElementId,
-        _: Children<'_, 'bp>,
-        _: WidgetAttributes<'_, 'bp>,
+        _: &Children<'_, 'bp>,
+        _: &WidgetAttributes<'_, 'bp>,
         _: &mut Layouts,
         _: Pos,
     ) {
@@ -69,7 +69,7 @@ impl Widget for Text {
         let mut text_offset = region.from;
         let mut string = SegString::empty();
 
-        let attributes = std::iter::once(attributes).chain(children.map(|c| c.attributes));
+        let attributes = std::iter::once(attributes).chain(children.iter().map(|c| c.attributes));
         for attrs in attributes {
             let Some(text) = attrs.value_as::<&str>() else { return };
             string.push(text, attrs);
@@ -110,8 +110,8 @@ impl Widget for Span {
     fn layout<'bp>(
         &mut self,
         _: ElementId,
-        children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         constraints: Constraints,
     ) -> LayoutSize {
@@ -121,8 +121,8 @@ impl Widget for Span {
     fn position<'bp>(
         &mut self,
         _: ElementId,
-        children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         pos: Pos,
     ) {

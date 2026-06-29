@@ -10,7 +10,7 @@ use anathema_store::secondary_map::{GenerationalStorage, SecondaryMap};
 use anathema_store::smallmap::{SmallIndex, SmallMap};
 
 use crate::elements::{ElementId, Elements};
-use crate::eval::values::TemplateValue;
+use crate::eval::blueprints::values::TemplateValue;
 
 /// Attribute access for a widget, used
 /// during the layout, position and paint phase.
@@ -65,9 +65,9 @@ impl<'a, 'bp> WidgetAttributes<'a, 'bp> {
         let mut parent = self.parent;
         while value == &TemplateValue::Null {
             let Some(id) = parent else { return value };
+            parent = self.elements[id].parent;
             let Some(attributes) = self.reg.get(id) else { continue };
             value = attributes.get(key);
-            parent = self.elements[id].parent;
         }
 
         value

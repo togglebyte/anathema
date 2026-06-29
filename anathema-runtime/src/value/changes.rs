@@ -1,5 +1,5 @@
 use crate::elements::ElementId;
-use crate::eval::scope::ScopeId;
+use crate::eval::blueprints::scope::ScopeId;
 use anathema_compiler::expressions::ExpressionId;
 use anathema_store::stack::Stack;
 

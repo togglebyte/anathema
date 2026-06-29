@@ -241,8 +241,8 @@ impl Widget for Border {
     fn layout<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut constraints: Constraints,
     ) -> LayoutSize {
@@ -250,8 +250,8 @@ impl Widget for Border {
         let border_size = self.border_style.size();
 
         let inner = children
-            .next()
-            .map(|child| child.layout(layout, constraints - border_size))
+            .first()
+            .map(|mut child| child.layout(layout, constraints - border_size))
             .map(|size| size)
             .unwrap_or(Size::ZERO);
 
@@ -265,12 +265,12 @@ impl Widget for Border {
     fn position<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, '_>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, '_>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut pos: Pos,
     ) {
-        let Some(child) = children.next() else { return };
+        let Some(mut child) = children.first() else { return };
         pos.x += self.border_style.left_width as i32;
         pos.y += 1;
         child.position(layout, pos);
@@ -287,7 +287,7 @@ impl Widget for Border {
     ) {
         frontend.apply_brush_to_region(&attributes, region);
 
-        if let Some(child) = children.next() {
+        if let Some(child) = children.first() {
             child.paint(frontend, layout);
         }
 

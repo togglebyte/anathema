@@ -8,13 +8,13 @@ use anathema_geometry::{Pos, Region, Size};
 
 use crate::State;
 use crate::attributes::{AttributeRegistry, Attributes, WidgetAttributes};
-use crate::components::{Component, ComponentId, Components, FnComp, FnState};
+use crate::components::{Component, Components, FnComp, FnState, InternalComponentId};
 use crate::constraints::Constraints;
 use crate::elements::{Element, ElementId, Elements};
-use crate::eval::expression::{RuntimeExpressions, eval_by_id};
-use crate::eval::scope::Scope;
-use crate::eval::values::TemplateValue;
-use crate::eval::{EvalCtx, eval};
+use crate::eval::blueprints::expression::{RuntimeExpressions, eval_by_id};
+use crate::eval::blueprints::scope::Scope;
+use crate::eval::blueprints::values::TemplateValue;
+use crate::eval::blueprints::{BlueprintEvalCtx, eval_blueprint};
 use crate::functions::FunctionTable;
 use crate::states::StateId;
 use crate::value::ValueIndex;
@@ -121,7 +121,7 @@ impl RunBuilder<(Document, Option<Blueprint>)> {
         template: impl Into<SourceKind>,
         comp: impl Component,
         state: impl State,
-    ) -> ComponentId {
+    ) -> InternalComponentId {
         let component_bp_id = self.inner.0.add_component(name, template.into()).unwrap();
         let comp_id = self.components.insert_component(component_bp_id, comp, state);
         comp_id
@@ -191,9 +191,9 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
 
     pub fn run<F>(&mut self, f: F)
     where
-        F: Fn(&mut EvalCtx<'_, '_>),
+        F: Fn(&mut BlueprintEvalCtx<'_, '_>),
     {
-        let mut eval_ctx = EvalCtx::new(
+        let mut eval_ctx = BlueprintEvalCtx::new(
             &mut self.elements,
             &mut self.attributes,
             &mut self.components,
@@ -217,9 +217,9 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
 
     pub(crate) fn eval<F>(&mut self, f: F)
     where
-        F: Fn(&mut EvalCtx<'_, '_>),
+        F: Fn(&mut BlueprintEvalCtx<'_, '_>),
     {
-        let mut eval_ctx = EvalCtx::new(
+        let mut eval_ctx = BlueprintEvalCtx::new(
             &mut self.elements,
             &mut self.attributes,
             &mut self.components,
@@ -231,7 +231,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             &mut self.dirty_elements,
         );
 
-        eval(self.blueprint.unwrap(), &mut eval_ctx, self.widget_registry, None).unwrap();
+        eval_blueprint(self.blueprint.unwrap(), &mut eval_ctx, self.widget_registry, None).unwrap();
         f(&mut eval_ctx);
     }
 }
@@ -293,7 +293,7 @@ impl ExpressionEvaluator {
 
         let mut dirty_elements = vec![];
 
-        let mut ctx = EvalCtx::new(
+        let mut ctx = BlueprintEvalCtx::new(
             &mut elements,
             &mut attribute_reg,
             &mut self.components,
@@ -326,8 +326,8 @@ impl Widget for TestWidget {
     fn layout<'bp>(
         &mut self,
         id: ElementId,
-        children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut constraints: Constraints,
     ) -> LayoutSize {
@@ -350,8 +350,8 @@ impl Widget for TestWidget {
     fn position<'bp>(
         &mut self,
         id: ElementId,
-        children: Children<'_, '_>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, '_>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         pos: Pos,
     ) {

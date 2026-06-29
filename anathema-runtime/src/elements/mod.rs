@@ -7,21 +7,29 @@ use anathema_store::gen_key;
 use anathema_store::remotecell::RemoteCell;
 use anathema_store::slab::{Generational, Slab};
 
-use crate::components::ComponentId;
+use crate::components::InternalComponentId;
 use crate::elements::controlflow::ControlFlow;
-use crate::eval::values::{Collection, TemplateValue};
+use crate::eval::blueprints::values::{Collection, TemplateValue};
 use crate::value::Value;
-use crate::widgets::{Node as WidgetNode, Widget, Widgets};
+use crate::widgets::{Node as WidgetNode, Root, Widget, Widgets};
 
 mod controlflow;
 mod debug;
-pub mod iter;
+// pub mod iter;
 
 gen_key!(pub ElementId);
 
 impl std::hash::Hash for ElementId {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
         hasher.write_u32(self.0.as_raw())
+    }
+}
+
+fn root_node<'bp>() -> Node<'bp> {
+    Node {
+        parent: None,
+        children: vec![],
+        element: Element::Widget(RefCell::new(Box::new(Root))),
     }
 }
 
@@ -32,14 +40,14 @@ pub struct Node<'bp> {
     pub(super) element: Element<'bp>,
 }
 
-pub enum Element<'bp> {
+pub(crate) enum Element<'bp> {
     For { binding: &'bp str, collection: Collection },
     Iteration { loop_counter: Value<u32> },
     ControlFlow,
     Condition(Option<RemoteCell<TemplateValue<'bp>>>),
     With,
     Widget(RefCell<Box<dyn Widget>>),
-    Component(ComponentId),
+    Component(InternalComponentId),
 }
 
 pub struct Elements<'bp> {
@@ -85,6 +93,15 @@ impl<'bp> Elements<'bp> {
         if let Element::Widget(_) = node.element {
             self.removed_widgets.push(id);
         }
+    }
+
+    pub(crate) fn root(&self) -> &Node<'bp> {
+        &self.elements[self.root]
+    }
+
+    pub(crate) fn insert_root(&mut self) -> ElementId {
+        self.root = self.elements.insert(root_node());
+        self.root
     }
 }
 

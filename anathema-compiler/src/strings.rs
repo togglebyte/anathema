@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 pub use anathema_store::storage::strings::StringId;
 use anathema_store::storage::strings::Strings as StringStore;
 

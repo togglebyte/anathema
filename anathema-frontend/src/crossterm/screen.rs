@@ -1,19 +1,19 @@
-use std::io::{stdout, Stdout, Write};
+use std::io::{Stdout, Write, stdout};
 use std::ops::Index;
 
 use anathema_geometry::{Pos, Region, Size};
 use compact_str::CompactString;
 use crossterm::style::{Attribute as CrossAttrib, Print, SetAttribute, SetBackgroundColor, SetForegroundColor};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, BeginSynchronizedUpdate, EndSynchronizedUpdate};
-use crossterm::{cursor, execute, QueueableCommand};
+use crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate, disable_raw_mode, enable_raw_mode};
+use crossterm::{QueueableCommand, cursor, execute};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthChar;
 
+use super::State;
 use super::attributes::Attributes;
 use super::buffer::{Buffer, Diff};
-use super::State;
-use crate::crossterm::{Cell, Style};
 use crate::Frontend;
+use crate::crossterm::{Cell, Style};
 
 pub struct Crossterm<T> {
     front: Buffer,
@@ -73,30 +73,6 @@ impl<T: Write> Crossterm<T> {
             let mut insert = self.back.begin_insert(y);
             insert.write_style(from_x..to_x, style);
         }
-    }
-
-    pub fn render(&mut self) {
-        if !self.back.is_dirty() && !self.clear_screen {
-            return;
-        }
-
-        let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
-
-        // Reset cursor position
-        self.output.queue(cursor::MoveTo(0, 0)).unwrap();
-
-        if self.clear_screen {
-            self.clear_screen = false;
-            self.render_clear_screen();
-            self.output.queue(cursor::MoveTo(0, 0)).unwrap();
-        }
-
-        self.render_partial();
-
-        self.front.clear_dirty_rows();
-        self.back.clear_dirty_rows();
-        self.output.flush();
-        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
     }
 
     fn render_partial(&mut self) {
@@ -273,4 +249,36 @@ impl<T: Write> Frontend for Crossterm<T> {
         let end_y = region.to.y as usize;
         self.back.invalidate_region(start_x, start_y, end_x, end_y);
     }
+
+    fn viewport_size(&self) -> Size {
+        Size {
+            width: self.width as u32,
+            height: self.height as u32,
+        }
+    }
+
+    fn render(&mut self) {
+        if !self.back.is_dirty() && !self.clear_screen {
+            return;
+        }
+
+        let _ = execute!(&mut self.output, BeginSynchronizedUpdate);
+
+        // Reset cursor position
+        self.output.queue(cursor::MoveTo(0, 0)).unwrap();
+
+        if self.clear_screen {
+            self.clear_screen = false;
+            self.render_clear_screen();
+            self.output.queue(cursor::MoveTo(0, 0)).unwrap();
+        }
+
+        self.render_partial();
+
+        self.front.clear_dirty_rows();
+        self.back.clear_dirty_rows();
+        self.output.flush();
+        let _ = execute!(&mut self.output, EndSynchronizedUpdate);
+    }
+
 }

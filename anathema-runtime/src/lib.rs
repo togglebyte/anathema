@@ -6,10 +6,10 @@ extern crate self as anathema;
 use std::fmt::Display;
 use std::io::Stdout;
 
+use anathema_compiler::Variables;
 pub use anathema_compiler::blueprints::Blueprint;
 pub use anathema_compiler::expressions::ExpressionId;
 use anathema_compiler::expressions::Expressions;
-use anathema_compiler::Variables;
 pub use anathema_compiler::{Color, FromColor};
 use anathema_geometry::Pos;
 pub use anathema_state_derive::State;
@@ -21,27 +21,26 @@ pub use self::states::State;
 // -----------------------------------------------------------------------------
 #[allow(unused_imports)]
 pub use crate as state;
-
 // -----------------------------------------------------------------------------
 //   -  -
 // -----------------------------------------------------------------------------
 use crate::attributes::AttributeRegistry;
 pub use crate::attributes::{Attributes, WidgetAttributes};
-use crate::components::Components;
+pub use crate::components::{Component, ComponentId, Components};
 pub use crate::constraints::Constraints;
-use crate::elements::{Element, Elements};
 pub use crate::elements::ElementId;
-use crate::eval::expression::RuntimeExpressions;
-use crate::eval::scope::Scope;
-pub use crate::eval::values::TemplateValue;
-use crate::eval::EvalCtx;
+use crate::elements::{Element, Elements};
+use crate::eval::blueprints::BlueprintEvalCtx;
+use crate::eval::blueprints::expression::RuntimeExpressions;
+use crate::eval::blueprints::scope::Scope;
+pub use crate::eval::blueprints::values::TemplateValue;
 pub use crate::functions::FunctionTable;
+pub use crate::runtime::Runtime;
 pub use crate::states::{AnyList, AnyMap, TypeId};
 use crate::testing::test_widgets;
 pub use crate::value::{AnonValue, Type};
 use crate::widgets::iter::WidgetRef;
 use crate::widgets::{Children, Layouts, RegisteredWidgets};
-pub use crate::runtime::Runtime;
 
 mod attributes;
 mod components;

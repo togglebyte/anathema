@@ -1,4 +1,6 @@
 //! Runtime user defined component registry
+use std::marker::PhantomData;
+
 use anathema_compiler::ComponentBlueprintId;
 use anathema_store::gen_key;
 use anathema_store::secondary_map::{BasicStorage, SecondaryMap};
@@ -9,7 +11,25 @@ use crate::components::component::AnyComponent;
 use crate::states::State;
 use crate::value::{Value, ValueIndex};
 
-gen_key!(pub(crate) ComponentId);
+
+#[derive(Debug)]
+pub struct ComponentId<T>(pub(crate) ComponentBlueprintId, pub(crate) PhantomData<T>);
+
+impl<T> From<ComponentBlueprintId> for ComponentId<T> {
+    fn from(value: ComponentBlueprintId) -> Self {
+        Self(value, PhantomData)
+    }
+}
+
+impl<T> Clone for ComponentId<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for ComponentId<T> {}
+
+gen_key!(pub InternalComponentId);
 
 pub(crate) type FnComp = Box<dyn Fn() -> Box<dyn AnyComponent>>;
 pub(crate) type FnState = Box<dyn Fn() -> Box<dyn State>>;
@@ -31,12 +51,12 @@ enum ComponentKind {
 
 enum Lookup {
     Prototype(FnComp, FnState),
-    Component(ComponentId),
+    Component(InternalComponentId),
 }
 
 /// Runtime component storage
-pub(crate) struct Components {
-    instances: Generational<ComponentId, Entry>,
+pub struct Components {
+    instances: Generational<InternalComponentId, Entry>,
     blueprints: SecondaryMap<BasicStorage<ComponentBlueprintId, Lookup>>,
 }
 
@@ -48,12 +68,12 @@ impl Components {
         }
     }
 
-    pub(crate) fn insert_component(
+    pub fn insert_component(
         &mut self,
         blueprint_id: ComponentBlueprintId,
         component: impl AnyComponent,
         state: impl State,
-    ) -> ComponentId {
+    ) -> InternalComponentId {
         let entry = Entry {
             component: Box::new(component),
             state: Value::new(Box::new(state)),
@@ -69,7 +89,7 @@ impl Components {
             .insert(blueprint_id, Lookup::Prototype(component, state));
     }
 
-    pub(crate) fn by_blueprint_id(&mut self, id: ComponentBlueprintId) -> ComponentId {
+    pub(crate) fn by_blueprint_id(&mut self, id: ComponentBlueprintId) -> InternalComponentId {
         match self.blueprints.get(id) {
             Some(Lookup::Component(id)) => *id,
             Some(Lookup::Prototype(comp, state)) => {
@@ -84,12 +104,12 @@ impl Components {
         }
     }
 
-    pub(crate) fn get_state(&self, component_id: ComponentId) -> Option<&Value<Box<dyn State>>> {
+    pub(crate) fn get_state(&self, component_id: InternalComponentId) -> Option<&Value<Box<dyn State>>> {
         let inst = self.instances.get(component_id)?;
         Some(&inst.state)
     }
 
-    pub(crate) fn get_state_mut(&mut self, component_id: ComponentId) -> Option<&mut Value<Box<dyn State>>> {
+    pub(crate) fn get_state_mut(&mut self, component_id: InternalComponentId) -> Option<&mut Value<Box<dyn State>>> {
         let inst = self.instances.get_mut(component_id)?;
         Some(&mut inst.state)
     }

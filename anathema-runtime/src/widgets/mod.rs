@@ -6,6 +6,7 @@ use anathema_store::slab::{Generational, Key};
 pub use self::iter::Children;
 pub use self::layout::{LayoutSize, Layouts};
 pub use self::registry::RegisteredWidgets;
+pub(crate) use self::root::Root;
 use crate::attributes::{Attributes, WidgetAttributes};
 use crate::constraints::Constraints;
 use crate::elements::ElementId;
@@ -13,6 +14,7 @@ use crate::elements::ElementId;
 pub mod iter;
 mod layout;
 mod registry;
+mod root;
 
 /// A widget.
 ///
@@ -25,8 +27,8 @@ pub trait Widget: std::any::Any {
     fn layout<'bp>(
         &mut self,
         id: ElementId,
-        children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layouts: &mut Layouts,
         constraints: Constraints,
     ) -> LayoutSize;
@@ -35,8 +37,8 @@ pub trait Widget: std::any::Any {
     fn position<'bp>(
         &mut self,
         id: ElementId,
-        children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layouts: &mut Layouts,
         pos: Pos,
     );

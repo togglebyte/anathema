@@ -11,7 +11,7 @@ struct PaddingValues {
 }
 
 impl PaddingValues {
-    fn new(attributes: WidgetAttributes<'_, '_>) -> Self {
+    fn new(attributes: &WidgetAttributes<'_, '_>) -> Self {
         let padding = attributes.get_as::<u32>("padding").unwrap_or(0);
         let left = attributes.get_as::<u32>("left").unwrap_or(padding);
         let right = attributes.get_as::<u32>("right").unwrap_or(padding);
@@ -40,8 +40,8 @@ impl Widget for Padding {
     fn layout<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         mut constraints: Constraints,
     ) -> LayoutSize {
@@ -51,8 +51,8 @@ impl Widget for Padding {
         crate::update_constraints(attributes, &mut constraints);
 
         let inner = children
-            .next()
-            .map(|child| child.layout(layout, constraints - padding_size))
+            .first()
+            .map(|mut child| child.layout(layout, constraints - padding_size))
             .unwrap_or(Size::ZERO);
 
         let outer = crate::fix_size(inner + padding_size, attributes, constraints);
@@ -63,13 +63,13 @@ impl Widget for Padding {
     fn position<'bp>(
         &mut self,
         _: ElementId,
-        mut children: Children<'_, 'bp>,
-        attributes: WidgetAttributes<'_, 'bp>,
+        children: &Children<'_, 'bp>,
+        attributes: &WidgetAttributes<'_, 'bp>,
         layout: &mut Layouts,
         pos: Pos,
     ) {
         let pad = PaddingValues::new(attributes);
-        if let Some(child) = children.next() {
+        if let Some(mut child) = children.first() {
             child.position(layout, pos + pad.top_left());
         }
     }
@@ -85,7 +85,7 @@ impl Widget for Padding {
     ) {
         frontend.apply_brush_to_region(&attributes, region);
 
-        if let Some(child) = children.next() {
+        if let Some(child) = children.first() {
             child.paint(frontend, layout);
         }
     }

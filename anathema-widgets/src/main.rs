@@ -6,8 +6,6 @@ use string::SegString;
 use crate::string::Index;
 
 fn main() {
-    sillybug::init!("/tmp/debbie.sock");
-
     let string = [("aaaaa", 1), (" x  ", 9), ("bb", 2), ("b", 3), ("bbccccc", 123)]
         .into_iter()
         .collect::<SegString<'_, _>>();
