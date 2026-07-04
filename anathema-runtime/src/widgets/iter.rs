@@ -9,6 +9,9 @@ use crate::constraints::Constraints;
 use crate::elements::{Element, ElementId, Elements};
 use crate::widgets::{Layouts, Widget};
 
+// -----------------------------------------------------------------------------
+//   - Children -
+// -----------------------------------------------------------------------------
 /// Children of a given widget.
 pub struct Children<'a, 'bp> {
     children: &'a [ElementId],
@@ -31,7 +34,7 @@ impl<'a, 'bp> Children<'a, 'bp> {
 
     pub fn iter<'b>(&'b self) -> ChildrenIter<'a, 'b, 'bp> {
         ChildrenIter {
-            children: self,
+            inner: self,
             index: 0,
         }
     }
@@ -51,9 +54,12 @@ impl<'a, 'b, 'bp> IntoIterator for &'b Children<'a, 'bp> {
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Children iterator -
+// -----------------------------------------------------------------------------
 /// Children of a given widget.
 pub struct ChildrenIter<'a, 'b, 'bp> {
-    children: &'b Children<'a, 'bp>,
+    inner: &'b Children<'a, 'bp>,
     index: usize,
 }
 
@@ -62,25 +68,25 @@ impl<'a, 'b, 'bp> Iterator for ChildrenIter<'a, 'b, 'bp> {
     type Item = WidgetRef<'a, 'bp>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.children.children.len() {
+        if self.index == self.inner.children.len() {
             return None;
         }
 
-        let id = self.children.children[self.index];
+        let id = self.inner.children[self.index];
         self.index += 1;
 
-        let node = &self.children.elements[id];
+        let node = &self.inner.elements[id];
 
         let Element::Widget(widget) = &node.element else { unreachable!() };
 
         let children = Children {
             children: &node.children,
-            elements: self.children.elements,
-            attribute_reg: self.children.attribute_reg,
+            elements: self.inner.elements,
+            attribute_reg: self.inner.attribute_reg,
         };
 
-        let attributes = &self.children.attribute_reg[id];
-        let attributes = WidgetAttributes::new(self.children.elements, node.parent, attributes, self.children.attribute_reg);
+        let attributes = &self.inner.attribute_reg[id];
+        let attributes = WidgetAttributes::new(self.inner.elements, node.parent, attributes, self.inner.attribute_reg);
 
         let widget_ref = WidgetRef {
             id,
@@ -93,6 +99,25 @@ impl<'a, 'b, 'bp> Iterator for ChildrenIter<'a, 'b, 'bp> {
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Prototyping -
+// -----------------------------------------------------------------------------
+pub struct ProtoChildren<'a, 'bp> {
+    elements: &'a Elements<'bp>,
+    parent: ElementId,
+    index: usize,
+}
+
+impl<'a, 'bp> ProtoChildren<'a, 'bp> {
+    pub fn next(&mut self) -> Option<()> {
+        let parent = &self.elements[self.parent];
+        None
+    }
+}
+
+// -----------------------------------------------------------------------------
+//   - Widge reference -
+// -----------------------------------------------------------------------------
 pub struct WidgetRef<'a, 'bp> {
     id: ElementId,
     widget: RefMut<'a, Box<dyn Widget>>,
@@ -137,3 +162,4 @@ impl<'a, 'bp> WidgetRef<'a, 'bp> {
         widget.downcast_mut()
     }
 }
+

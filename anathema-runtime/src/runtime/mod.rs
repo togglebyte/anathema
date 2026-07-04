@@ -88,22 +88,4 @@ impl<Fe> Runtime<Fe> {
             std::thread::sleep_ms(1020);
         }
     }
-
-    // pub fn ctx<'frame>(&'frame mut self) -> (EvalCtx<'frame, 'bp>, &'bp Blueprint, &'frame RegisteredWidgets) {
-    //     let ctx = EvalCtx::new(
-    //         &mut self.elements,
-    //         &mut self.attributes,
-    //         &mut self.components,
-    //         &self.variables,
-    //         self.expressions,
-    //         self.functions,
-    //         &mut self.scope,
-    //         &mut self.runtime_expressions,
-    //         &mut self.dirty_elements,
-    //     );
-
-    //     (ctx, self.blueprint, &self.registered_widgets)
-    // }
-
-    fn layout(&mut self) {}
 }

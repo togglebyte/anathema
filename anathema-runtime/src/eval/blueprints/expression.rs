@@ -788,7 +788,7 @@ mod test {
 
     use super::*;
     use crate::attributes::Attributes;
-    use crate::eval::values;
+    use crate::eval::blueprints::values;
     use crate::testing::{ExpressionEvaluator, RunBuilder, TestWidget};
     use crate::value::{List, Map, Value};
 

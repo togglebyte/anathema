@@ -15,6 +15,7 @@ pub mod iter;
 mod layout;
 mod registry;
 mod root;
+mod view;
 
 /// A widget.
 ///
@@ -63,28 +64,5 @@ pub trait Widget: std::any::Any {
 impl std::fmt::Debug for dyn Widget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.describe())
-    }
-}
-
-pub struct Node {
-    children: Vec<ElementId>,
-}
-
-impl Node {
-    pub fn new(children: Vec<ElementId>) -> Self {
-        Self { children }
-    }
-}
-
-/// The widget tree, constructed from the element tree
-pub struct Widgets {
-    pub widgets: SecondaryMap<GenerationalStorage<ElementId, Node>>,
-}
-
-impl Widgets {
-    pub(crate) fn empty() -> Self {
-        Self {
-            widgets: SecondaryMap::empty(),
-        }
     }
 }

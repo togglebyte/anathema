@@ -11,11 +11,10 @@ use crate::components::InternalComponentId;
 use crate::elements::controlflow::ControlFlow;
 use crate::eval::blueprints::values::{Collection, TemplateValue};
 use crate::value::Value;
-use crate::widgets::{Node as WidgetNode, Root, Widget, Widgets};
+use crate::widgets::{Root, Widget};
 
 mod controlflow;
 mod debug;
-// pub mod iter;
 
 gen_key!(pub ElementId);
 
