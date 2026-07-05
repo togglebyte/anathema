@@ -243,3 +243,19 @@ impl AnonValue {
         self.as_state().type_info()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "RefCell already borrowed")]
+    fn mutable_shared_panic() {
+        // This should panic because of mutable access
+        // is held while also having a value reference.
+        let mut value = Value::new(String::new());
+        let s1 = value.reference();
+        let _r1 = s1.value::<String>();
+        let _m1 = value.to_mut();
+    }
+}

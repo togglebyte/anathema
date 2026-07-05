@@ -112,6 +112,7 @@ where
     pub fn to_mut(&mut self) -> ValueMut<'_, V> {
         ValueMut {
             val: self.inner.write(),
+            subs: self.subs.clone(),
         }
     }
 
@@ -140,6 +141,7 @@ impl<T> Deref for ValueRef<'_, T> {
 
 pub struct ValueMut<'a, T> {
     val: RwLockWriteGuard<'a, T>,
+    subs: Subs,
 }
 
 impl<T> Deref for ValueMut<'_, T> {
@@ -152,8 +154,7 @@ impl<T> Deref for ValueMut<'_, T> {
 
 impl<T> DerefMut for ValueMut<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        panic!();
-        // self.changes.inner.push(Change::Changed);
+        self.subs.changed(Change::Changed);
         &mut *self.val
     }
 }
