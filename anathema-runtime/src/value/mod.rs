@@ -4,10 +4,6 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use anathema_store::slab::RcElement;
-#[cfg(feature = "multithread")]
-pub use arcval::{drain_changes, AnonValue, Value, ValueMut, ValueRef};
-#[cfg(not(feature = "multithread"))]
-pub use rcval::{drain_changes, changed_one, changed_many, AnonValue, Value, ValueMut, ValueRef};
 
 pub use self::changes::{Change, Changes, ValueIndex};
 pub use self::list::List;
@@ -15,10 +11,16 @@ pub use self::map::Map;
 pub use self::maybe::Maybe;
 use crate::states::State;
 
-#[cfg(feature = "multithread")]
-mod arcval;
-#[cfg(not(feature = "multithread"))]
-mod rcval;
+cfg_select! {
+    feature = "multithread" => {
+        mod arcval;
+        pub use arcval::{drain_changes, AnonValue, Value, ValueMut, ValueRef, Subs};
+    }
+    not(feature = "multithread") => {
+        mod rcval;
+        pub use rcval::{drain_changes, changed_one, changed_many, AnonValue, Value, ValueMut, ValueRef, Subs};
+    }
+}
 
 mod changes;
 mod list;

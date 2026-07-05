@@ -27,7 +27,7 @@ impl<Fe> Runtime<Fe> {
         }
     }
 
-    pub fn run(mut self, mut components: Components)
+    pub fn run(&mut self, mut components: Components)
     where
         Fe: Frontend,
     {

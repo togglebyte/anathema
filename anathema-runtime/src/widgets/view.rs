@@ -7,26 +7,57 @@ pub struct View {
     children: Vec<View>,
 }
 
+#[derive(Debug, Copy, Clone)]
+enum ControlFlow {
+    Unresolved,
+    Resolved,
+}
+
+impl ControlFlow {
+    fn unresolved(self) -> bool {
+        match self {
+            Self::Unresolved => true,
+            Self::Resolved => false,
+        }
+    }
+}
+
 pub fn build_view_tree<'bp>(element: ElementId, elements: &Elements<'bp>) -> View {
     let mut children = vec![];
 
     let node = &elements[element];
     for child in &node.children {
-        add_child(&mut children, *child, elements);
+        add_child(&mut children, *child, elements, ControlFlow::Unresolved);
     }
 
     View { element, children }
 }
 
-fn add_child<'bp>(views: &mut Vec<View>, element: ElementId, elements: &Elements<'bp>) {
+fn add_child<'bp>(views: &mut Vec<View>, element: ElementId, elements: &Elements<'bp>, mut control_flow: ControlFlow) {
     let node = &elements[element];
+    let s = format!("{:?}", node.element);
+    eprintln!("{s}");
     match &node.element {
+        Element::ControlFlow => add_child(views, element, elements, ControlFlow::Unresolved),
+        Element::Condition(Some(cond)) if cond.truthiness() && control_flow.unresolved() => {
+            control_flow = ControlFlow::Resolved;
+            for element in &node.children {
+                add_child(views, *element, elements, control_flow);
+            }
+        }
+        Element::Condition(None) if control_flow.unresolved() => {
+            control_flow = ControlFlow::Resolved;
+            for element in &node.children {
+                add_child(views, *element, elements, control_flow);
+            }
+        }
+        Element::Condition(_) => return,
         Element::Widget(ref_cell) => {
             let mut children = vec![];
 
             let node = &elements[element];
             for child in &node.children {
-                add_child(&mut children, *child, elements);
+                add_child(&mut children, *child, elements, control_flow);
             }
 
             let view = View { element, children };
@@ -34,7 +65,7 @@ fn add_child<'bp>(views: &mut Vec<View>, element: ElementId, elements: &Elements
         }
         _ => {
             for element in &node.children {
-                add_child(views, *element, elements);
+                add_child(views, *element, elements, control_flow);
             }
         }
     }
@@ -42,18 +73,18 @@ fn add_child<'bp>(views: &mut Vec<View>, element: ElementId, elements: &Elements
 
 #[cfg(test)]
 mod test {
-    use crate::testing::RunBuilder;
-
     use super::*;
+    use crate::testing::RunBuilder;
 
     #[test]
     fn add_children() {
         let tpl = "
-            let list = [2, 2, 30, 40]
-            node
-                for x in list
-                    for y in [1]
-                        node x
+            if true
+                with val as 'hello'
+                    node val
+            else
+                with val as 'not hello'
+                    node val
         ";
 
         let mut test = RunBuilder::from_src(tpl);

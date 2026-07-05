@@ -59,7 +59,7 @@ impl Anathema {
     pub fn run(self, fe: impl frontend::Frontend) {
         let mut widget_factory = runtime::widgets::RegisteredWidgets::empty();
         widgets::register_default_widgets(&mut widget_factory);
-        let rt = runtime::Runtime::new(self.doc, fe, widget_factory);
+        let mut rt = runtime::Runtime::new(self.doc, fe, widget_factory);
         rt.run(self.components);
     }
 }

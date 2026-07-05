@@ -6,15 +6,13 @@ use std::rc::{Rc, Weak};
 use anathema_store::slab::Key;
 
 use crate::states::State;
-use crate::value::changes::Change;
-use crate::value::{Changes, Type, ValueIndex};
+use crate::value::{Change, Changes, Type, ValueIndex};
 
 type RcRefCell<T> = Rc<RefCell<T>>;
 
 thread_local! {
     static CHANGES: RefCell<Changes> = RefCell::new(Default::default());
 }
-
 
 pub fn changed_one(change: Change, key: ValueIndex) {
     CHANGES.with_borrow_mut(|changes| changes.push((key, change)));
@@ -28,15 +26,6 @@ pub fn changed_many(change: Change, keys: impl Iterator<Item = ValueIndex>) {
 pub fn drain_changes(local_changes: &mut Changes) {
     CHANGES.with_borrow_mut(|changes| changes.drain_into(local_changes));
 }
-
-// /// Clear all changes
-// pub fn clear_all_changes() {
-//     CHANGES.with_borrow_mut(|changes| changes.clear());
-// }
-
-// pub(crate) fn changed(key: (Key, Key), change: Change) {
-//     CHANGES.with_borrow_mut(|changes| changes.push((key, change)));
-// }
 
 /// Keys that are subscribing to changes of a given value
 #[derive(Debug, Default, PartialEq)]
