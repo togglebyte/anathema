@@ -22,16 +22,16 @@ pub(crate) mod scope;
 pub(crate) mod values;
 
 #[derive(Debug)]
-pub(crate) struct BlueprintEvalCtx<'a, 'bp> {
-    pub(crate) elements: &'a mut Elements<'bp>,
-    pub(crate) attributes: &'a mut AttributeRegistry<'bp>,
-    pub(crate) components: &'a mut Components,
-    pub(crate) variables: &'a Variables,
+pub(crate) struct BlueprintEvalCtx<'frame, 'bp> {
+    pub(crate) elements: &'frame mut Elements<'bp>,
+    pub(crate) attributes: &'frame mut AttributeRegistry<'bp>,
+    pub(crate) components: &'frame mut Components,
+    pub(crate) variables: &'frame Variables,
     pub(crate) expressions: &'bp Expressions,
-    pub(crate) runtime_expressions: &'a mut RuntimeExpressions<'bp>,
+    pub(crate) runtime_expressions: &'frame mut RuntimeExpressions<'bp>,
     pub(crate) functions: &'bp FunctionTable,
-    pub(crate) scope: &'a mut Scope<'bp>,
-    pub(crate) dirty_elements: &'a mut Vec<ElementId>,
+    pub(crate) scope: &'frame mut Scope<'bp>,
+    pub(crate) dirty_elements: &'frame mut Vec<ElementId>,
 }
 
 impl<'frame, 'bp> BlueprintEvalCtx<'frame, 'bp> {
@@ -59,7 +59,7 @@ impl<'frame, 'bp> BlueprintEvalCtx<'frame, 'bp> {
         }
     }
 
-    fn insert_element(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
+    fn insert_element(&mut self, element: Element<'bp>, parent: ElementId) -> ElementId {
         self.elements.insert(element, parent)
     }
 
@@ -79,8 +79,7 @@ impl<'frame, 'bp> BlueprintEvalCtx<'frame, 'bp> {
         self.elements.elements.next_id()
     }
 
-    fn nearest_scope_id(&self, element: Option<ElementId>) -> Option<scope::ScopeId> {
-        let element = element?;
+    fn nearest_scope_id(&self, element: ElementId) -> Option<scope::ScopeId> {
         self.scope.nearest_scope_id(element, &self.elements)
     }
 }
@@ -93,7 +92,7 @@ trait Evaluator {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()>;
 }
 
@@ -101,7 +100,7 @@ pub(crate) fn eval_blueprint<'a, 'bp>(
     blueprint: &'bp Blueprint,
     ctx: &mut BlueprintEvalCtx<'a, 'bp>,
     factory: &RegisteredWidgets,
-    parent: Option<ElementId>,
+    parent: ElementId,
 ) -> Result<()> {
     match blueprint {
         Blueprint::Single(stmt) => SingleEval.eval(stmt, ctx, factory, parent),
@@ -123,7 +122,7 @@ impl Evaluator for SingleEval {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()> {
         let element_id = ctx.reserve_element_id();
 
@@ -135,7 +134,7 @@ impl Evaluator for SingleEval {
         }
 
         if let Some(expr) = &input.value {
-            let (val, _) = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
+            let (val, _) = eval_by_id(*expr, element_id, parent, ctx);
             attributes.set_attribute(ValueKey::Value, val);
         }
 
@@ -150,7 +149,7 @@ impl Evaluator for SingleEval {
         ctx.insert_attributes(parent, attributes);
 
         for child in &input.children {
-            eval_blueprint(child, ctx, factory, Some(parent));
+            eval_blueprint(child, ctx, factory, parent);
         }
 
         Ok(())
@@ -167,10 +166,10 @@ impl Evaluator for ForEval {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()> {
         let element_id = ctx.reserve_element_id();
-        let collection = eval_collection(input.data, element_id, parent.map(Into::into), ctx);
+        let collection = eval_collection(input.data, element_id, parent, ctx);
 
         let el = Element::For {
             binding: &input.binding,
@@ -184,13 +183,13 @@ impl Evaluator for ForEval {
             let loop_counter = Value::new(loop_counter as u32);
             let loop_counter_ref = loop_counter.reference();
             let iteration = Element::Iteration { loop_counter };
-            let parent = ctx.insert_element(iteration, Some(parent));
+            let parent = ctx.insert_element(iteration, parent);
 
             ctx.scope
                 .scope_iteration(parent, &input.binding, collection.expr, loop_counter_ref);
 
             for child in &input.body {
-                eval_blueprint(child, ctx, factory, Some(parent));
+                eval_blueprint(child, ctx, factory, parent);
             }
         }
 
@@ -208,7 +207,7 @@ impl Evaluator for ControlFlowEval {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()> {
         let element_id = ctx.reserve_element_id();
 
@@ -218,13 +217,13 @@ impl Evaluator for ControlFlowEval {
         for els in &input.elses {
             let cond = els
                 .cond
-                .map(|cond| eval_by_id(cond, element_id, Some(parent).map(Into::into), ctx))
+                .map(|cond| eval_by_id(cond, element_id, parent, ctx))
                 .map(|(val, _)| val);
             let el = Element::Condition(cond);
-            let parent = ctx.insert_element(el, Some(parent));
+            let parent = ctx.insert_element(el, parent);
 
             for child in &els.body {
-                eval_blueprint(child, ctx, factory, Some(parent));
+                eval_blueprint(child, ctx, factory, parent);
             }
         }
 
@@ -242,17 +241,17 @@ impl Evaluator for WithEval {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()> {
         let element_id = ctx.reserve_element_id();
 
-        let (_, value_index) = eval_by_id(input.data, element_id, parent.map(Into::into), ctx);
+        let (_, value_index) = eval_by_id(input.data, element_id, parent, ctx);
 
         let parent = ctx.insert_element(Element::With, parent);
         ctx.scope.scope_with(parent, &input.binding, value_index);
 
         for child in &input.body {
-            eval_blueprint(child, ctx, factory, Some(parent));
+            eval_blueprint(child, ctx, factory, parent);
         }
 
         Ok(())
@@ -269,7 +268,7 @@ impl Evaluator for ComponentEval {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()> {
         let element_id = ctx.reserve_element_id();
         let comp_id = ctx.components.by_blueprint_id(input.id);
@@ -277,7 +276,7 @@ impl Evaluator for ComponentEval {
         let mut attributes = Attributes::empty();
 
         for (key, expr) in input.attributes.iter() {
-            let rte = eval_by_id(*expr, element_id, parent.map(Into::into), ctx);
+            let rte = eval_by_id(*expr, element_id, parent, ctx);
         }
 
         let el = Element::Component(comp_id);
@@ -290,7 +289,7 @@ impl Evaluator for ComponentEval {
         ctx.scope.push_component(element_id, comp_id);
 
         for child in &input.body {
-            eval_blueprint(child, ctx, factory, Some(parent));
+            eval_blueprint(child, ctx, factory, parent);
         }
 
         Ok(())
@@ -307,7 +306,7 @@ impl Evaluator for SlotEval {
         input: Self::Input<'bp>,
         ctx: &mut BlueprintEvalCtx<'a, 'bp>,
         factory: &RegisteredWidgets,
-        parent: Option<ElementId>,
+        parent: ElementId,
     ) -> Result<()> {
         for child in input {
             eval_blueprint(child, ctx, factory, parent);

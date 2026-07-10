@@ -1,3 +1,6 @@
+use std::time::{Duration, Instant};
+
+use anathema_compiler::blueprints::Blueprint;
 use anathema_compiler::expressions::Expressions;
 use anathema_compiler::{Document, Variables};
 use anathema_frontend::Frontend;
@@ -5,87 +8,177 @@ use anathema_geometry::Pos;
 
 use crate::attributes::AttributeRegistry;
 use crate::components::Components;
-use crate::elements::Elements;
+use crate::elements::{Element, Elements};
 use crate::eval::blueprints::expression::RuntimeExpressions;
 use crate::eval::blueprints::scope::Scope;
 use crate::eval::blueprints::{BlueprintEvalCtx, eval_blueprint};
+use crate::widgets::iter::WidgetRef;
 use crate::widgets::{Layouts, RegisteredWidgets, Root};
-use crate::{Constraints, FunctionTable};
+use crate::{Constraints, ElementId, FunctionTable};
 
 pub struct Runtime<Fe> {
     frontend: Fe,
     doc: Document,
+    blueprint: Blueprint,
     widget_reg: RegisteredWidgets,
+    globals: Variables,
+    functions: FunctionTable,
+    components: Components,
+    dirty_elements: Vec<ElementId>,
 }
 
 impl<Fe> Runtime<Fe> {
-    pub fn new(doc: Document, frontend: Fe, widget_reg: RegisteredWidgets) -> Self {
+    pub fn new(
+        doc: Document,
+        blueprint: Blueprint,
+        globals: Variables,
+        components: Components,
+        frontend: Fe,
+        widget_reg: RegisteredWidgets,
+    ) -> Self {
         Self {
             frontend,
             doc,
+            blueprint,
             widget_reg,
+            globals,
+            functions: FunctionTable::new(),
+            components,
+            dirty_elements: vec![],
         }
     }
 
-    pub fn run(&mut self, mut components: Components)
+    pub fn instance(&mut self) -> RuntimeInstance<'_, '_, Fe> {
+        RuntimeInstance::new(
+            &mut self.components,
+            &self.doc.expressions,
+            &self.functions,
+            &mut self.dirty_elements,
+            &self.globals,
+            &mut self.frontend,
+            &self.blueprint,
+            &self.widget_reg,
+        )
+    }
+
+    pub fn run(&mut self)
     where
         Fe: Frontend,
     {
-        let mut globals = Variables::new();
-        let functions = FunctionTable::new();
-        let bp = self.doc.compile(&mut globals).unwrap();
-        let mut elements = Elements::empty();
+        loop {
+            let mut instance = self.instance();
+            instance.run();
+        }
+    }
+}
+
+pub struct RuntimeInstance<'rt, 'bp, Fe> {
+    elements: Elements<'bp>,
+    attributes: AttributeRegistry<'bp>,
+    runtime_expressions: RuntimeExpressions<'bp>,
+    scope: Scope<'bp>,
+    components: &'rt mut Components,
+    expressions: &'bp Expressions,
+    functions: &'bp FunctionTable,
+    dirty_elements: &'rt mut Vec<ElementId>,
+    variables: &'rt Variables,
+    frontend: &'rt mut Fe,
+}
+
+impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
+    pub fn new(
+        components: &'rt mut Components,
+        expressions: &'bp Expressions,
+        functions: &'bp FunctionTable,
+        dirty_elements: &'rt mut Vec<ElementId>,
+        variables: &'rt Variables,
+        frontend: &'rt mut Fe,
+        blueprint: &'bp Blueprint,
+        widget_reg: &RegisteredWidgets,
+    ) -> Self {
         let mut attributes = AttributeRegistry::empty();
-        let expressions = &self.doc.expressions;
-        let mut runtime_expressions = RuntimeExpressions::empty();
-        let mut scope = Scope::empty();
-        let mut dirty_elements = vec![];
 
-        let root_id = elements.insert_root();
-
-        let mut ctx = BlueprintEvalCtx::new(
-            &mut elements,
-            &mut attributes,
-            &mut components,
-            &globals,
-            expressions,
-            &functions,
-            &mut scope,
-            &mut runtime_expressions,
-            &mut dirty_elements,
-        );
-
-        eval_blueprint(&bp, &mut ctx, &self.widget_reg, Some(root_id)).unwrap();
-
+        let mut elements = Elements::with_root();
         let root = elements.root();
         let root_attributes = crate::Attributes::empty();
         let root_attributes = crate::WidgetAttributes::new(&elements, None, &root_attributes, &attributes);
-        let crate::elements::Element::Widget(root_widget) = &root.element else { unreachable!() };
+        let Element::Widget(root_widget) = &root.element else { unreachable!() };
 
+        let mut inst = Self {
+            elements,
+            attributes,
+            runtime_expressions: RuntimeExpressions::empty(),
+            scope: Scope::empty(),
+            components,
+            expressions,
+            functions,
+            dirty_elements,
+            variables,
+            frontend,
+        };
+
+        inst.eval_blueprints(inst.elements.root, blueprint, widget_reg);
+
+        inst
+    }
+
+    fn context(&mut self) -> BlueprintEvalCtx<'_, 'bp> {
+        BlueprintEvalCtx::new(
+            &mut self.elements,
+            &mut self.attributes,
+            self.components,
+            self.variables,
+            self.expressions,
+            &self.functions,
+            &mut self.scope,
+            &mut self.runtime_expressions,
+            self.dirty_elements,
+        )
+    }
+
+    fn eval_blueprints(&mut self, parent: ElementId, blueprint: &'bp Blueprint, widget_reg: &RegisteredWidgets) {
+        let mut ctx = self.context();
+        eval_blueprint(blueprint, &mut ctx, widget_reg, parent).unwrap();
+    }
+
+    pub fn tick(&mut self) -> Duration
+    where
+        Fe: Frontend,
+    {
+        let now = Instant::now();
+        let constraints = Constraints::new(self.frontend.viewport_size());
+        let children = crate::widgets::Children::new(&self.elements.root().children, &self.elements, &self.attributes);
+        let mut layouts = Layouts::empty();
+
+        let Element::Widget(root_widget) = &self.elements.root().element else { unreachable!() };
+        let root_attributes = crate::Attributes::empty();
+        let root_attributes = crate::WidgetAttributes::new(&self.elements, None, &root_attributes, &self.attributes);
+
+        let mut root_widget_ref =
+            WidgetRef::new(self.elements.root, root_widget.borrow_mut(), root_attributes, children);
+
+        root_widget_ref.layout(&mut layouts, constraints);
+        root_widget_ref.position(&mut layouts, Pos::ZERO);
+        root_widget_ref.paint(self.frontend, &layouts);
+
+        // * [x] Layout
+        // * [x] Position
+        // * [x] Paint
+        // * [ ] Events
+        // * [ ] Messages
+        // * [ ] Deferred events
+
+        now.elapsed()
+    }
+
+    fn run(mut self)
+    where
+        Fe: Frontend,
+    {
         loop {
-            let constraints = Constraints::new(self.frontend.viewport_size());
-            let children = crate::widgets::Children::new(&root.children, &elements, &attributes);
-            let mut layouts = Layouts::empty();
-            let mut root_widget_ref = crate::widgets::iter::WidgetRef::new(
-                elements.root,
-                root_widget.borrow_mut(),
-                root_attributes,
-                children,
-            );
-
-            root_widget_ref.layout(&mut layouts, constraints);
-            root_widget_ref.position(&mut layouts, Pos::ZERO);
-            root_widget_ref.paint(&mut self.frontend, &layouts);
-
-            // * [x] Layout
-            // * [x] Position
-            // * [x] Paint
-            // * [ ] Events
-            // * [ ] Messages
-            // * [ ] Deferred events
-
+            self.tick();
             self.frontend.render();
-            std::thread::sleep_ms(1020);
+            std::thread::sleep_ms(50);
         }
     }
 }

@@ -6,7 +6,6 @@ use anathema_compiler::{ComponentBlueprintId, Document, SourceKind, Variables};
 use anathema_frontend::Frontend;
 use anathema_geometry::{Pos, Region, Size};
 
-use crate::State;
 use crate::attributes::{AttributeRegistry, Attributes, WidgetAttributes};
 use crate::components::{Component, Components, FnComp, FnState, InternalComponentId};
 use crate::constraints::Constraints;
@@ -20,6 +19,16 @@ use crate::states::StateId;
 use crate::value::ValueIndex;
 use crate::widgets::iter::Children;
 use crate::widgets::{LayoutSize, Layouts, RegisteredWidgets, Widget};
+use crate::{Runtime, State};
+
+pub fn runtime(src: &str) -> Runtime<()> {
+    let widgets = test_widgets();
+    let mut doc = Document::new(src.to_string());
+    let mut globals = Variables::new();
+    let blueprint = doc.compile(&mut globals).unwrap();
+    let components = Components::empty();
+    Runtime::new(doc, blueprint, globals, components, (), widgets)
+}
 
 pub(crate) fn mock_value_index() -> ValueIndex {
     let exp_id = ExpressionId::from(anathema_store::slab::Key::ZERO);
@@ -174,10 +183,12 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         widget_registry: &'bp RegisteredWidgets,
         dirty_elements: &'frame mut Vec<ElementId>,
     ) -> Self {
+        let mut elements = Elements::empty();
+        let root_id = elements.insert_root();
         Self {
             scope: Scope::empty(),
             attributes: AttributeRegistry::empty(),
-            elements: Elements::empty(),
+            elements,
             runtime_expressions: RuntimeExpressions::empty(),
             components,
             variables,
@@ -208,7 +219,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
         f(&mut eval_ctx);
     }
 
-    pub fn add_widget(&mut self, widget: impl Widget, parent: Option<ElementId>) -> ElementId {
+    pub fn add_widget(&mut self, widget: impl Widget, parent: ElementId) -> ElementId {
         let el = Element::Widget(RefCell::new(Box::new(widget)));
         let id = self.elements.insert(el, parent);
         self.attributes.insert(id, Attributes::empty());
@@ -219,6 +230,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
     where
         F: Fn(&mut BlueprintEvalCtx<'_, '_>),
     {
+        let root = self.elements.root;
         let mut eval_ctx = BlueprintEvalCtx::new(
             &mut self.elements,
             &mut self.attributes,
@@ -231,7 +243,7 @@ impl<'frame, 'bp> Instance<'frame, 'bp> {
             &mut self.dirty_elements,
         );
 
-        eval_blueprint(self.blueprint.unwrap(), &mut eval_ctx, self.widget_registry, None).unwrap();
+        eval_blueprint(self.blueprint.unwrap(), &mut eval_ctx, self.widget_registry, root).unwrap();
         f(&mut eval_ctx);
     }
 }
@@ -273,13 +285,14 @@ impl ExpressionEvaluator {
         FA: Fn(&mut Attributes<'_>),
     {
         let mut elements = Elements::empty();
+        let root = elements.insert_root();
 
         let component = ExpressionEvaluatorComponent::<S>(Default::default());
         let component = self
             .components
             .insert_component(ComponentBlueprintId::ZERO, component, state);
-        let parent = elements.insert(Element::Component(component), None);
-        let element = elements.insert(Element::Widget(test_widget("")), Some(parent));
+        let parent = elements.insert(Element::Component(component), root);
+        let element = elements.insert(Element::Widget(test_widget("")), parent);
 
         let mut scope = Scope::empty();
         scope.push_component(parent, component);
@@ -305,7 +318,7 @@ impl ExpressionEvaluator {
             &mut dirty_elements,
         );
 
-        let (value, _) = eval_by_id(expr_id, element, Some(parent.into()), &mut ctx);
+        let (value, _) = eval_by_id(expr_id, element, parent, &mut ctx);
         f(&value);
     }
 }

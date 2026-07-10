@@ -241,7 +241,7 @@ pub fn re_evalute_expr<'bp>(idx: ValueIndex, ctx: &BlueprintEvalCtx<'_, 'bp>) {
 pub fn eval_collection<'bp>(
     id: ExpressionId,
     element: ElementId,
-    parent: Option<ElementId>,
+    parent: ElementId,
     ctx: &mut BlueprintEvalCtx<'_, 'bp>,
 ) -> Collection {
     let (value, index) = eval_by_id(id, element, parent, ctx);
@@ -268,7 +268,7 @@ pub fn eval_by_id<'bp>(
     element: ElementId,
     // the parent is needed for scope lookup
     // as the `element` might not be added to the tree yet at this point.
-    parent: Option<ElementId>,
+    parent: ElementId,
     ctx: &mut BlueprintEvalCtx<'_, 'bp>,
 ) -> (RemoteCell<TemplateValue<'bp>>, ValueIndex) {
     let scope = ctx.nearest_scope_id(parent);

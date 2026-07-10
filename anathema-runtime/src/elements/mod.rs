@@ -65,18 +65,22 @@ impl<'bp> Elements<'bp> {
         }
     }
 
-    pub fn insert(&mut self, element: Element<'bp>, parent: Option<ElementId>) -> ElementId {
+    pub fn with_root() -> Self {
+        let mut el = Self::empty();
+        _ = el.insert_root();
+        el
+    }
+
+    pub fn insert(&mut self, element: Element<'bp>, parent: ElementId) -> ElementId {
         let node = Node {
-            parent,
+            parent: Some(parent),
             element,
             children: vec![],
         };
 
         let id = self.elements.insert(node);
 
-        if let Some(parent) = parent {
-            self.elements[parent].children.push(id);
-        }
+        self.elements[parent].children.push(id);
 
         id
     }

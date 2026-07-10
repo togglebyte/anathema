@@ -1,6 +1,7 @@
 //! A TUI library with a custom template language and runtime.
 //!
 //! See the guide to get stared: https://togglebyte.github.io/anathema-guide/
+use anathema_compiler::Variables;
 use runtime::ComponentId;
 pub use {
     anathema_compiler as compiler,   // compiler
@@ -31,7 +32,7 @@ pub struct Anathema {
 }
 
 impl Anathema {
-    pub fn new(doc: compiler::Document) -> Self {
+    pub fn new(mut doc: compiler::Document) -> Self {
         Self {
             components: runtime::Components::empty(),
             doc,
@@ -56,10 +57,12 @@ impl Anathema {
         Ok(id.into())
     }
 
-    pub fn run(self, fe: impl frontend::Frontend) {
+    pub fn run(mut self, fe: impl frontend::Frontend) {
         let mut widget_factory = runtime::widgets::RegisteredWidgets::empty();
         widgets::register_default_widgets(&mut widget_factory);
-        let mut rt = runtime::Runtime::new(self.doc, fe, widget_factory);
-        rt.run(self.components);
+        let mut globals = Variables::new();
+        let blueprint = self.doc.compile(&mut globals).unwrap();
+        let mut rt = runtime::Runtime::new(self.doc, blueprint, globals, self.components, fe, widget_factory);
+        rt.run();
     }
 }

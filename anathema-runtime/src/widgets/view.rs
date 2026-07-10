@@ -87,14 +87,19 @@ mod test {
                     node val
         ";
 
-        let mut test = RunBuilder::from_src(tpl);
-        let mut inst = test.finish();
-        inst.eval(|ctx| {
-            let view = build_view_tree(ctx.elements.root, ctx.elements);
-            eprintln!("{view:#?}");
-            eprintln!("{:?}", ctx.elements);
-            panic!();
-        });
+
+        let mut rt = crate::testing::runtime(tpl);
+        let inst = rt.instance();
+        inst.tick();
+
+        // let mut test = RunBuilder::from_src(tpl);
+        // let mut inst = test.finish();
+        // inst.eval(|ctx| {
+        //     let view = build_view_tree(ctx.elements.root, ctx.elements);
+        //     eprintln!("{view:#?}");
+        //     eprintln!("{:?}", ctx.elements);
+        //     panic!();
+        // });
 
         // assert_eq!(expected, actual);
     }

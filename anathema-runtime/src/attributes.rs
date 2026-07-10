@@ -200,7 +200,7 @@ pub struct Attributes<'bp> {
 
 impl<'bp> Attributes<'bp> {
     /// Create a new instance of en empty set of attributes
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             inner: SmallMap::empty(),
         }

@@ -28,3 +28,18 @@ pub trait Frontend {
 
     fn render(&mut self);
 }
+
+impl Frontend for () {
+    fn apply_brush_to_region(&mut self, _: &dyn Brush, _: Region) {}
+
+    fn set_text(&mut self, _: &str, _: Pos) {}
+
+    fn invalidate_region(&mut self, _: Region) {}
+
+    fn viewport_size(&self) -> Size {
+        // Arbitrary size
+        Size::new(120, 50)
+    }
+
+    fn render(&mut self) {}
+}
