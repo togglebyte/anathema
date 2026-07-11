@@ -7,6 +7,15 @@ pub struct View {
     children: Vec<View>,
 }
 
+impl View {
+    pub fn root(element: ElementId) -> Self {
+        Self {
+            element,
+            children: vec![],
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 enum ControlFlow {
     Unresolved,
@@ -89,7 +98,7 @@ mod test {
 
 
         let mut rt = crate::testing::runtime(tpl);
-        let inst = rt.instance();
+        let mut inst = rt.instance();
         inst.tick();
 
         // let mut test = RunBuilder::from_src(tpl);

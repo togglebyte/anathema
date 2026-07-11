@@ -77,7 +77,7 @@ impl<'a, 'b, 'bp> Iterator for ChildrenIter<'a, 'b, 'bp> {
 
         let node = &self.inner.elements[id];
 
-        let Element::Widget(widget) = &node.element else { unreachable!() };
+        let Element::Widget(widget) = &node.element else { unreachable!("invalid element: {:?}", node.element) };
 
         let children = Children {
             children: &node.children,

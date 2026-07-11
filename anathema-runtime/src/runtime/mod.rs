@@ -13,7 +13,7 @@ use crate::eval::blueprints::expression::RuntimeExpressions;
 use crate::eval::blueprints::scope::Scope;
 use crate::eval::blueprints::{BlueprintEvalCtx, eval_blueprint};
 use crate::widgets::iter::WidgetRef;
-use crate::widgets::{Layouts, RegisteredWidgets, Root};
+use crate::widgets::{Layouts, RegisteredWidgets, Root, View, build_view_tree};
 use crate::{Constraints, ElementId, FunctionTable};
 
 pub struct Runtime<Fe> {
@@ -72,6 +72,9 @@ impl<Fe> Runtime<Fe> {
     }
 }
 
+// -----------------------------------------------------------------------------
+//   - Instance -
+// -----------------------------------------------------------------------------
 pub struct RuntimeInstance<'rt, 'bp, Fe> {
     elements: Elements<'bp>,
     attributes: AttributeRegistry<'bp>,
@@ -83,6 +86,8 @@ pub struct RuntimeInstance<'rt, 'bp, Fe> {
     dirty_elements: &'rt mut Vec<ElementId>,
     variables: &'rt Variables,
     frontend: &'rt mut Fe,
+    blueprint: &'bp Blueprint,
+    widget_reg: &'rt RegisteredWidgets,
 }
 
 impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
@@ -94,7 +99,7 @@ impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
         variables: &'rt Variables,
         frontend: &'rt mut Fe,
         blueprint: &'bp Blueprint,
-        widget_reg: &RegisteredWidgets,
+        widget_reg: &'rt RegisteredWidgets,
     ) -> Self {
         let mut attributes = AttributeRegistry::empty();
 
@@ -103,8 +108,9 @@ impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
         let root_attributes = crate::Attributes::empty();
         let root_attributes = crate::WidgetAttributes::new(&elements, None, &root_attributes, &attributes);
         let Element::Widget(root_widget) = &root.element else { unreachable!() };
+        let view = View::root(elements.root);
 
-        let mut inst = Self {
+        Self {
             elements,
             attributes,
             runtime_expressions: RuntimeExpressions::empty(),
@@ -115,11 +121,9 @@ impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
             dirty_elements,
             variables,
             frontend,
-        };
-
-        inst.eval_blueprints(inst.elements.root, blueprint, widget_reg);
-
-        inst
+            blueprint,
+            widget_reg
+        }
     }
 
     fn context(&mut self) -> BlueprintEvalCtx<'_, 'bp> {
@@ -134,11 +138,6 @@ impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
             &mut self.runtime_expressions,
             self.dirty_elements,
         )
-    }
-
-    fn eval_blueprints(&mut self, parent: ElementId, blueprint: &'bp Blueprint, widget_reg: &RegisteredWidgets) {
-        let mut ctx = self.context();
-        eval_blueprint(blueprint, &mut ctx, widget_reg, parent).unwrap();
     }
 
     pub fn tick(&mut self) -> Duration
@@ -175,6 +174,16 @@ impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
     where
         Fe: Frontend,
     {
+        // Evaluate blueprints
+        let root = self.elements.root;
+        let blueprint = self.blueprint;
+        let widget_reg = self.widget_reg;
+        let mut ctx = self.context();
+        eval_blueprint(blueprint, &mut ctx, widget_reg, root).unwrap();
+
+        // Build the view tree
+        let view = build_view_tree(root, &self.elements);
+
         loop {
             self.tick();
             self.frontend.render();

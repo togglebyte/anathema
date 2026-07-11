@@ -7,6 +7,7 @@ pub use self::iter::Children;
 pub use self::layout::{LayoutSize, Layouts};
 pub use self::registry::RegisteredWidgets;
 pub(crate) use self::root::Root;
+pub use self::view::{View, build_view_tree};
 use crate::attributes::{Attributes, WidgetAttributes};
 use crate::constraints::Constraints;
 use crate::elements::ElementId;

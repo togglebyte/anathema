@@ -31,6 +31,23 @@ pub struct Anathema {
     doc: compiler::Document,
 }
 
+// -----------------------------------------------------------------------------
+//   - Runtime -
+//
+//   Outer
+//      * Evaluate blueprints
+//      * Document
+//
+//      Inner
+//          * Element tree
+//          * View tree
+//
+//          Loop
+//              * Read events
+//              * Update element tree
+//              * Update view tree
+// -----------------------------------------------------------------------------
+
 impl Anathema {
     pub fn new(mut doc: compiler::Document) -> Self {
         Self {
