@@ -27,7 +27,7 @@ pub fn runtime(src: &str) -> Runtime<()> {
     let mut globals = Variables::new();
     let blueprint = doc.compile(&mut globals).unwrap();
     let components = Components::empty();
-    Runtime::new(doc, blueprint, globals, components, (), widgets)
+    Runtime::new(doc, blueprint, globals, (), widgets)
 }
 
 pub(crate) fn mock_value_index() -> ValueIndex {

@@ -14,7 +14,26 @@ use crate::eval::blueprints::scope::Scope;
 use crate::eval::blueprints::{BlueprintEvalCtx, eval_blueprint};
 use crate::widgets::iter::WidgetRef;
 use crate::widgets::{Layouts, RegisteredWidgets, Root, View, build_view_tree};
-use crate::{Constraints, ElementId, FunctionTable};
+use crate::{Component, ComponentId, Constraints, ElementId, FunctionTable};
+
+// -----------------------------------------------------------------------------
+//   - Runtime -
+//
+//   Move everything into the Runtime type, and get rid of the Anathema type
+//
+//   Outer
+//      * Evaluate blueprints
+//      * Document
+//
+//      Inner
+//          * Element tree
+//          * View tree
+//
+//          Loop
+//              * Read events
+//              * Update element tree
+//              * Update view tree
+// -----------------------------------------------------------------------------
 
 pub struct Runtime<Fe> {
     frontend: Fe,
@@ -32,7 +51,6 @@ impl<Fe> Runtime<Fe> {
         doc: Document,
         blueprint: Blueprint,
         globals: Variables,
-        components: Components,
         frontend: Fe,
         widget_reg: RegisteredWidgets,
     ) -> Self {
@@ -43,9 +61,27 @@ impl<Fe> Runtime<Fe> {
             widget_reg,
             globals,
             functions: FunctionTable::new(),
-            components,
+            components: Components::empty(),
             dirty_elements: vec![],
         }
+    }
+
+    /// Registers a [Component] with the runtime.
+    /// This returns a unique [ComponentId] that is used to send messages to the component.
+    ///
+    /// A component can only be used once in a template.
+    /// If you want multiple instances, register the component as a prototype instead,
+    /// see [RuntimeBuilder::prototype].
+    pub fn component<C: Component>(
+        &mut self,
+        ident: impl Into<String>,
+        template: impl Into<anathema_compiler::SourceKind>,
+        component: C,
+        state: C::State,
+    ) -> Result<ComponentId<C::Message>, ()> {
+        let id = self.doc.add_component(ident, template.into()).unwrap();
+        self.components.insert_component(id, component, state);
+        Ok(id.into())
     }
 
     pub fn instance(&mut self) -> RuntimeInstance<'_, '_, Fe> {
@@ -122,7 +158,7 @@ impl<'rt, 'bp, Fe> RuntimeInstance<'rt, 'bp, Fe> {
             variables,
             frontend,
             blueprint,
-            widget_reg
+            widget_reg,
         }
     }
 
